@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Live Camera Feed & Template Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .video-container {
+            width: 100%;
+            height: 80vh; /* 80% of the viewport height */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; /* Prevents scrolling */
+        }
+        #live-video, #live-image {
+            max-height: 100%;
+            max-width: 100%;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+    <header>
+        {% include 'nav.html' %}
+    </header>
+
+
+    <div class="video-container">
+        <img id="live-image" style="width: 100%;">
+        <video id="live-video" style="width: 100%; display: none;" controls autoplay muted></video>
+    </div>
+
+
+<select id="camera-selector" onchange="changeCamera()">
+    <option value="All">All</option>
+    {% set all_groups = [] %}
+    {% for camera, details in template_details.items() %}
+        {% if details.groups %}
+            {% for group in details.groups.split(',') %}
+                {% if group %}
+                    {% set _ = all_groups.append(group|trim) %}
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    {% endfor %}
+    {% for group in all_groups|unique|sort %}
+        <option value="group-{{ group }}">Group: {{ group }}</option>
+    {% endfor %}
+    {% for camera in template_details.keys()|sort %}
+        <option value="{{ camera }}">Camera: {{ camera }}</option>
+    {% endfor %}
+</select>
+
+
+
+
+    <select id="video-source" onchange="changeVideoSource()">
+        <option value="png">PNG Stream</option>
+        <option value="m3u8">M3U8 Stream</option>
+        <option value="loop">Loop Videos</option>
+        <option value="mp4" selected>MP4 Stream</option>
+        <option value="motion">Motion</option>
+        <option value="mjpg">MJPG</option>
+    </select>
+
+    <div>
+	<input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()">
+        <label for="speed-slider">Playback Speed: <span id="speed-value">1x</span></label>
+    </div>
+
+    <div id="template-details"></div>
+
+
+    <script>
+        const video = document.getElementById('live-video');
+        const image = document.getElementById('live-image');
+        const templateDetailsContainer = document.getElementById('template-details');
+        const templateDetails = {{ template_details|tojson }};
+        let currentCamera = 'All'; // Set the default camera to "All"
+        ///let currentCamera = Object.keys(templateDetails)[0];
+        let pngInterval;
+
+function changeCamera() {
+    const cameraSelector = document.getElementById('camera-selector');
+    const selectedValue = cameraSelector.value;
+    if (selectedValue === 'All') {
+        // Handle the "All" option separately
+        currentCamera = 'All';
+        templateDetails['All'] = {
+            url: '/stream.mp4', // Set the URL for the MP4 stream without a group
+            // Add other necessary properties for the "All" group, if needed
+        };
+    } else if (selectedValue.startsWith('group-')) {
+        // Group is selected
+        const groupName = selectedValue.split('group-')[1];
+        currentCamera = 'group-' + groupName; // Use a unique identifier for the group
+        const groupCameras = Object.entries(templateDetails)
+            .filter(([camera, details]) => details.groups && details.groups.split(',').map(s => s.trim()).includes(groupName))
+            .map(([camera, _]) => camera);
+        // Update the special URL for the group with the group query parameter
+        templateDetails[currentCamera] = {
+            url: `/stream.mp4?group=${groupName}`,
+            groupCameras: groupCameras,
+            groupName: groupName, // Add the groupName property
+            // Add other necessary properties for the group
+        };
+    } else {
+        // Individual camera is selected
+        currentCamera = selectedValue;
+    }
+    updateTemplateDetails();
+    updateFeed(); // Make sure to update the video feed after changing the camera or group
+}
+
+        function updateTemplateDetails() {
+            const details = templateDetails[currentCamera];
+		if (details) { 
+		video.title = details.last_caption;
+            templateDetailsContainer.innerHTML = `
+                <h3>Details for ${currentCamera}</h3>
+                <p>URL: ${details.url}</p>
+                <p>Frequency: ${details.frequency} minutes</p>
+                <p>Timeout: ${details.timeout} seconds</p>
+                <p>Notes: ${details.notes || 'N/A'}</p>
+                <p>Last Screenshot Time: ${details.last_screenshot_time}</p>
+		<p>Last Caption: ${details.last_caption}</p>
+            `;
+        }
+		else {
+        templateDetailsContainer.innerHTML = `
+            <h3>Details for ${currentCamera}</h3>
+            <p>No details available</p>
+        `;
+    }
+	}
+
+        function updateFeed() {
+            const source = document.getElementById('video-source').value;
+            switch (source) {
+                case 'm3u8':
+                    playM3U8();
+                    break;
+                case 'loop':
+                    playLoop();
+                    break;
+                case 'png':
+                    playPNG();
+                    break;
+                case 'mp4':
+                    playMP4();
+                    break;
+                case 'mjpg':
+                    playMJPG();
+                    break;
+                case 'motion':
+                    playMotion();
+                    break;
+                default:
+                    console.error('Invalid video source');
+            }
+        }
+
+        function playM3U8() {
+            video.style.display = 'block';
+            image.style.display = 'none';
+            clearInterval(pngInterval);
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource('/stream/' + currentCamera + '.m3u8');
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play();
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = '/stream/' + currentCamera + '.m3u8';
+                video.addEventListener('canplay', function() {
+                    video.play();
+                });
+            }
+        }
+
+
+function playLoop() {
+    video.style.display = 'block';
+    image.style.display = 'none';
+    clearInterval(pngInterval);
+
+    if (currentCamera.startsWith('group-') || currentCamera === 'All') {
+        // Handle both groups and the special "All" group
+        let groupCameras;
+        if (currentCamera === 'All') {
+            // If the "All" group is selected, get all camera names
+            groupCameras = Object.keys(templateDetails).filter(key => key !== 'All');
+        } else {
+            // If a specific group is selected, get the cameras in that group
+            const groupName = currentCamera.split('group-')[1];
+            groupCameras = templateDetails['group-' + groupName].groupCameras;
+        }
+
+        let cameraIndex = 0;
+
+        const cycleCameras = () => {
+            if (cameraIndex >= groupCameras.length) {
+                cameraIndex = 0; // Reset the index to loop through the cameras again
+            }
+            const cameraName = groupCameras[cameraIndex];
+            video.src = `/last_video/${cameraName}`; // Update the video source with the current camera
+            video.load();
+            video.play();
+            cameraIndex++; // Move to the next camera
+        };
+
+        cycleCameras(); // Start the loop
+        video.addEventListener('ended', cycleCameras); // Continue the loop when the video ends
+    } else {
+        // Handling for individual cameras
+        video.src = `/last_video/${currentCamera}`;
+        video.load();
+        video.play();
+    }
+}
+
+
+
+
+function refreshPNG() {
+    image.src = '/last_screenshot/' + currentCamera + '?time=' + new Date().getTime();
+}
+
+
+function playMP4() {
+    video.style.display = 'block';
+    image.style.display = 'none';
+    clearInterval(pngInterval);
+    if (currentCamera.startsWith('group-')) {
+        // Special handling for groups
+        const groupName = currentCamera.split('group-')[1];
+        video.src = `/stream.mp4?group=${encodeURIComponent(groupName)}`;
+    } else if (currentCamera === 'All') {
+        // Special handling for the "All" option
+        video.src = '/stream.mp4';
+    } else {
+        // URL for individual cameras
+        video.src = '/last_video/' + currentCamera;
+    }
+    video.load();
+    video.play();
+
+    // Add an event listener for the 'ended' event
+    video.addEventListener('ended', () => {
+        video.load(); // Reload the video
+        video.play(); // Play the video again
+    });
+}
+
+function playPNG() {
+    video.style.display = 'none';
+    image.style.display = 'block';
+    clearInterval(pngInterval);
+    if (currentCamera.startsWith('group-')) {
+        // Special handling for groups
+        let cameraIndex = 0;
+        const groupCameras = templateDetails[currentCamera].groupCameras;
+        const refreshGroupPNG = () => {
+            if (cameraIndex >= groupCameras.length) {
+                cameraIndex = 0;
+            }
+            const cameraName = groupCameras[cameraIndex];
+            image.src = '/last_screenshot/' + cameraName + '?time=' + new Date().getTime();
+            cameraIndex++;
+        };
+        refreshGroupPNG();
+        clearInterval(pngInterval);
+        pngInterval = setInterval(refreshGroupPNG, 1000);
+    } else if (currentCamera === 'All') {
+        // Special handling for the "All" option
+        image.src = '/stream.png';
+    } else {
+        // Original behavior for individual cameras
+        refreshPNG();
+        clearInterval(pngInterval);
+        pngInterval = setInterval(refreshPNG, 1000);
+    }
+}
+
+function playMJPG() {
+    video.style.display = 'none';
+    image.style.display = 'block';
+    clearInterval(pngInterval);
+    if (currentCamera.startsWith('group-')) {
+        // Special handling for groups
+        const groupName = currentCamera.split('group-')[1];
+        image.src = `/stream.mjpg?group=${encodeURIComponent(groupName)}`;
+    } else if (currentCamera === 'All') {
+        // Special handling for the "All" option
+        image.src = '/stream.mjpg';
+    } else {
+        // URL for individual cameras
+        image.src = '/stream.mjpg?camera=' + currentCamera + '&time=' + new Date().getTime();
+    }
+}
+
+function playMotion() {
+    video.style.display = 'none';
+    image.style.display = 'block';
+    clearInterval(pngInterval);
+    if (currentCamera.startsWith('group-')) {
+        // Special handling for groups
+        const groupName = currentCamera.split('group-')[1];
+        image.src = `/motion.mjpg?group=${encodeURIComponent(groupName)}`;
+    } else if (currentCamera === 'All') {
+        // Special handling for the "All" option
+        image.src = '/motion.mjpg';
+    } else {
+        // URL for individual cameras
+        image.src = '/motion.mjpg?camera=' + currentCamera + '&time=' + new Date().getTime();
+    }
+}
+
+
+        function changeVideoSource() {
+            updateFeed();
+        }
+
+    function updatePlaybackSpeed() {
+        const slider = document.getElementById('speed-slider');
+        const speedDisplay = document.getElementById('speed-value');
+        const speed = Math.pow(2, slider.value);
+        video.playbackRate = parseFloat(speed.toFixed(2)); // Ensure the speed is a float with two decimal places
+        speedDisplay.textContent = speed.toFixed(2) + 'x'; // Update the text to show two decimal places
+
+            // Adjust the refresh rate for the PNG stream based on the playback speed
+            if (pngInterval) {
+                clearInterval(pngInterval);
+                pngInterval = setInterval(refreshPNG, 1000 / speed);
+            }
+
+	        speedDisplay.classList.add('highlight-speed');
+    setTimeout(() => speedDisplay.classList.remove('highlight-speed'), 500);
+        }
+
+        // Initially update template details and play the MP4 stream
+        updateTemplateDetails();
+        playMP4();
+    </script>
+</body>
+</html>
+

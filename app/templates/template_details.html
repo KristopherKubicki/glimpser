@@ -1,0 +1,286 @@
+<!-- app/templates/template_details.html -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Template Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+	<header>
+    {% include 'nav.html' %} 
+	</header>
+    <h2>Screenshots for 
+	    <a href='{{template_details.url}}'>{{ template_name }}</a>
+    </h2>
+
+
+    <button id="instant-screenshot-btn" onclick="takeInstantScreenshot('{{ template_name }}')">Take Instant Screenshot</button>
+    <button id="update-video-btn" onclick="updateVideo('{{ template_name }}')">Update Video</button>
+    <br/>
+
+
+    </script>
+
+            <video controls poster="/last_screenshot/{{ template_name }}" autoplay muted autoplay style='max-height: 100%; max-width: 100%;' width='100%'
+			    {% if template_details.last_caption %} 
+			    title='{{template_details.last_caption}}'
+			    {% endif %} 
+		    >
+    
+            <source src="/last_video/{{template_name}}" type='video/mp4'>
+            </video >
+
+             <script>
+                const video = document.querySelector('video');
+                video.addEventListener('loadedmetadata', () => {
+                    // Set playback speed based on video duration
+                    if (video.duration < 1) {
+                        video.playbackRate = 0.0625;
+                    } else if (video.duration < 3) {
+                        video.playbackRate = 0.0625*2;
+                    } else if (video.duration < 7) {
+                        video.playbackRate = 0.0625*4;
+                    } else if (video.duration < 15) {
+                        video.playbackRate = 0.0625*8;
+                    } else if (video.duration < 30) {
+                        video.playbackRate = 0.0625*16;
+                    } else if (video.duration < 60) {
+                        video.playbackRate = 0.0625*32;
+                    } else if (video.duration > 120) {
+                        video.playbackRate = 0.0625*64;
+                    } else {
+                        video.playbackRate = 0.0625*128;
+                    }
+
+                    // Start the video at t minus 10 seconds if possible
+                    video.currentTime = Math.max(0, video.duration - 10);
+                });
+
+video.addEventListener('ended', () => {
+        const pauseTime = calculatePauseTime(video.duration);
+    setTimeout(() => {
+        video.load(); // Reset the video to show the poster
+        video.play(); // Resume autoplay after 1 second
+    }, pauseTime); // Pause for 1 second
+});
+
+function calculatePauseTime(duration) {
+    if (duration < 1) {
+        return 10000; // 10 seconds for videos shorter than 1 second
+    } else if (duration > 120) {
+        return 3000; // 3 seconds for videos longer than 2 minutes
+    } else {
+        // For videos between 1 second and 2 minutes, calculate a pause time that decreases with duration
+        // This is just an example calculation, you can adjust the formula as needed
+        return 10000 - (duration - 1) * (7000 / 119);
+    }
+}
+             </script>
+
+
+
+<script>
+function takeInstantScreenshot(templateName) {
+    fetch(`/take_screenshot/${templateName}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}) // Empty body for POST request
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.status === 'success') {
+            // Optionally refresh the page or update the UI to show the new screenshot
+            location.reload(); // Simple page refresh
+        }
+    })
+    .catch(error => console.error('Error taking instant screenshot:', error));
+}
+
+function updateVideo(templateName) {
+    fetch(`/update_video/${templateName}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}) // Empty body for POST request
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.status === 'success') {
+            // Optionally refresh the page or update the UI to show the new screenshot
+            location.reload(); // Simple page refresh
+        }
+    })
+    .catch(error => console.error('Error taking instant screenshot:', error));
+}
+
+</script>
+
+
+  <details><summary>Recent Captures</summary>
+    <div id="screenshots">
+        {% for screenshot in screenshots %}
+            <div class="screenshot">
+		    <a href='/screenshots/{{template_name}}/{{screenshot}}'><img src="/screenshots/{{template_name}}/{{screenshot }}" alt="Screenshot" height='200'></a>
+            </div>
+        {% endfor %}
+    </div>
+  </details>
+
+  <details><summary>Recent Videos</summary>
+    <div id="videos">
+        {% for video in videos %}
+            <div class="videos">
+		    <a href='/videos/{{template_name}}/{{video}}'><img src="/videos/{{template_name}}/{{video }}" alt="Screenshot" height='200'></a>
+            </div>
+        {% endfor %}
+    </div>
+  </details>
+
+
+    <details><summary>Edit Template</summary>
+    <!-- Editing Form -->
+    <div id="edit-template">
+        <h2>Edit Template Details</h2>
+        <form action="/update_template/{{ template_name }}" method="post">
+            <label for="url">URL:</label>
+            <input type="text" id="url" name="url" value="{{ template_details.url }}"><br><br>
+
+            <label for="frequency">Frequency (minutes):</label>
+            <input type="text" id="frequency" name="frequency" value="{{ template_details.frequency }}"><br><br>
+
+            <label for="timeout">Timeout (seconds):</label>
+            <input type="text" id="timeout" name="timeout" value="{{ template_details.timeout }}"><br><br>
+
+            <label for="notes">Notes:</label>
+            <textarea id="notes" name="notes">{{ template_details.notes }}</textarea><br><br>
+
+            <label for="object_filter">Object Filter:</label>
+            <input type="text" id="object_filter" name="object_filter" value="{{ template_details.object_filter }}"><br><br>
+
+            <label for="object_confidence">Object Confidence:</label>
+            <input type="text" id="object_confidence" name="object_confidence" value="{{ template_details.object_confidence }}"><br><br>
+
+            <label for="motion">Motion Percent:</label>
+            <input type="text" id="motion" name="motion" value="{{ template_details.motion }}"><br><br>
+
+            <label for="popup_xpath">Popup XPath:</label>
+            <input type="text" id="popup_xpath" name="popup_xpath" value="{{ template_details.popup_xpath }}"><br><br>
+
+            <label for="dedicated_xpath">Dedicated XPath:</label>
+            <input type="text" id="dedicated_xpath" name="dedicated_xpath" value="{{ template_details.dedicated_xpath }}"><br><br>
+
+            <label for="callback_url">Callback URL:</label>
+            <input type="url" id="callback_url" name="callback_url" value="{{ template_details.callback_url }}"><br><br>
+
+            <label for="proxy">Proxy:</label>
+            <input type="text" id="proxy" name="proxy" value="{{ template_details.proxy }}"><br><br>
+
+            <label for="groups">Groups:</label>
+            <input type="text" id="groups" name="groups" value="{{ template_details.groups }}"><br><br>
+
+            <label for="rollback">Rollback Frames:</label>
+            <input type="text" id="rollback_frames" name="rollback_frames" value="{{ template_details.rollback_frames or 0}}"><br><br>
+
+            <label for="invert">Invert:</label>
+            <input type="checkbox" id="invert" name="invert" {% if template_details.invert %}checked{% endif %}><br><br>
+            <label for="dark">Dark Mode:</label>
+            <input type="checkbox" id="dark" name="dark" {% if template_details.dark %}checked{% endif %}><br><br>
+	    <label for="browser">Browser:</label>
+            <input type="checkbox" id="browser" name="browser" {% if template_details.browser %}checked{% endif %}><br><br>
+	    <label for="headless">Headless:</label>
+            <input type="checkbox" id="headless" name="headless" {% if template_details.headless %}checked{% endif %}><br><br>
+	    <label for="stealth">Stealth:</label>
+            <input type="checkbox" id="stealth" name="stealth" {% if template_details.stealth %}checked{% endif %}><br><br>
+	    <label for="caption">Live Caption:</label>
+            <input type="checkbox" id="livecaption" name="livecaption" {% if template_details.livecaption %}checked{% endif %}><br><br>
+
+	    <label for="danger">Danger:</label>
+            <input type="checkbox" id="danger" name="danger" {% if template_details.danger %}checked{% endif %}><br><br>
+
+            <input type="submit" value="Update Template">
+        </form>
+    </div>
+
+    <div id="delete-template"><br/>
+    <button id="delete-btn" onclick="confirmDelete('{{ template_name }}')">Delete Template</button>
+</div>
+
+    </details>
+
+<script>
+function confirmDelete(templateName) {
+    const confirmed = confirm("Are you sure you want to delete this template?");
+    if (confirmed) {
+        // Send a DELETE request to the server
+        fetch('/templates', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name: templateName })
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if(data.status === 'success') {
+                window.location.href = '/'; // Redirect to the homepage or another appropriate page
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+}
+</script>
+
+  <details open><summary>Most Recent Capture</summary>
+          <div id="timestamp-container"></div>
+
+    <script>
+                    function timeAgo(dateString) {
+            const now = new Date();
+            const date = new Date(dateString);
+            const seconds = Math.floor((now - date) / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            const months = Math.floor(days / 30);
+            const years = Math.floor(days / 365);
+
+            if (seconds < 60) {
+                return `${seconds} seconds ago`;
+            } else if (minutes < 60) {
+                return `${minutes} minutes ago`;
+            } else if (hours < 24) {
+                return `${hours} hours ago`;
+            } else if (days < 30) {
+                return `${days} days ago`;
+            } else if (months < 12) {
+                return `${months} months ago`;
+            } else if (years < 1000) {
+                return `${years} years ago`;
+            }
+                            return 'never'
+        }
+
+const timestampContainer = document.getElementById('timestamp-container');
+            const formattedTimestamp = timeAgo('{{template_details['last_screenshot_time']}}');
+        timestampContainer.innerHTML = formattedTimestamp;
+   </script>
+
+
+  </details>
+
+
+
+
+  <details><summary>Metadata</summary>
+	  {{template_details}}
+  </details>
+</body>
+</html>
+

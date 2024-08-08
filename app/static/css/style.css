@@ -1,0 +1,239 @@
+/* app/static/css/style.css */
+
+body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    #background-color: #f7f7f7; /* Lighter background for better contrast */
+    background-color: rgb(16, 16, 16); /* Lighter background for better contrast */
+    color: rgb(191, 191, 191); /* Darker text for better readability */
+}
+
+
+.link color: {  rgb( 192, 192, 192) }
+.link:hover color: {  rgb( 193, 193, 193) }
+
+h1, h2 {
+    color: rgb(191, 191, 191);
+    text-align: center; /* Center the headings */
+}
+
+
+#template-form {
+    margin: 20px;
+    padding: 20px;
+    background-color: white;
+    border-radius: 8px;
+    color: rgb(91, 91, 91);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#template-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, var(--grid-item-width, 360px))); /* Use CSS variable */
+    gap: 10px;
+    padding: 20px;
+    justify-content: center;
+    max-width: 100%;
+}
+
+@media (max-width: 767px) { /* Adjust this value based on your testing */
+    select {
+        font-size: 16px; /* Larger font size for easier interaction */
+        padding: 10px; /* Larger padding for a taller dropdown */
+    }
+    #template-list {
+        grid-template-columns: 1fr; /* Single column layout on mobile */
+    }
+}
+
+select:hover {
+    cursor: pointer;
+    background-color: #f7f7f7;
+}
+
+.templateDiv {
+    background-color: black;
+    overflow: hidden;
+    position: relative;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    width: 100%;
+    /* No fixed height here; it will be set by padding-top in the ::before pseudo-element */
+}
+
+.templateDiv::before {
+    content: '';
+    display: block;
+    width: 100%;
+    padding-top: 56.25%; /* Aspect ratio of 16:9 */
+}
+
+.templateDiv video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* This will cover the area of the .templateDiv, potentially clipping the video */
+}
+
+/* If you need to maintain the aspect ratio without clipping, use object-fit: contain; */
+.templateDiv video {
+    object-fit: contain;
+    object-position: top; /* Aligns the video to the top, so the empty space, if any, will be at the bottom */
+}
+
+
+.play-icon {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent white background */
+    border-radius: 50%;
+    padding: 5px;
+    display: none; /* Hide by default */
+    z-index: 5;
+}
+
+video:hover + .play-icon {
+    display: block; /* Show play icon on hover */
+}
+
+.camera-name, .timestamp {
+    position: absolute;
+    color: white;
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black background */
+    z-index: 5;
+}
+
+.camera-name {
+    top: 0;
+    left: 0;
+}
+
+.timestamp {
+    bottom: 0;
+    right: 0;
+}
+
+.recent-screenshot {
+    border: 5px solid rgba(255, 255, 255, 0.9); /* Faint white border */
+}
+
+header {
+    background-color: #000; /* Dark background for better contrast */
+    color: #fff; /* White text */
+    padding: 10px 20px; /* Padding for spacing */
+    display: flex; /* Flexbox for layout */
+    align-items: center; /* Vertically align items */
+    justify-content: space-between; /* Space out the title and navigation */
+}
+
+header h1 {
+    font-size: 24px; /* Larger font size for title */
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5); /* Text shadow for readability */
+}
+
+nav {
+    display: flex; /* Flexbox for layout */
+    gap: 10px; /* Space between navigation items */
+}
+
+nav a {
+    color: #fff; /* White text */
+    text-decoration: none; /* No underline */
+    padding: 5px 10px; /* Padding */
+    border-radius: 5px; /* Rounded corners */
+}
+
+nav a:hover, nav a.active {
+    background-color: #555; /* Highlight for hover and active link */
+}
+
+@media screen and (max-width: 768px) { /* Responsive design for mobile */
+    header h1 {
+        font-size: 20px; /* Smaller font size on mobile */
+    }
+
+    nav {
+        flex-direction: column; /* Stack navigation items on mobile */
+        align-items: flex-start;
+    }
+
+    nav a {
+        margin-bottom: 5px; /* Add margin for stacked items */
+    }
+}
+
+@keyframes highlight {
+    0% { background-color: yellow; }
+    100% { background-color: transparent; }
+}
+
+.highlight-speed {
+    animation: highlight 0.5s;
+}
+
+/* Add these styles to increase the touch area for the slider and buttons */
+#speed-slider {
+    width: 100%; /* Use the full width for the slider */
+    height: 24px; /* Increase the height for a larger touch area */
+}
+
+/* Increase the size of buttons and links */
+button, a {
+    min-width: 44px; /* Minimum touch target size */
+    min-height: 44px; /* Minimum touch target size */
+    padding: 10px; /* More padding for larger touch area */
+}
+
+/* Adjust padding and margin for better spacing */
+.video-container {
+    padding: 15px; /* Add more padding around the video */
+}
+
+#speed-control-container {
+  position: relative;
+  width: 100px; /* Dial size */
+  height: 100px; /* Dial size */
+  margin: 0 auto; /* Center the dial */
+}
+
+.dial {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: url('path-to-dial-image.png') no-repeat center center; /* Replace with your dial image */
+  background-size: contain;
+  transform-origin: center;
+  cursor: pointer; /* Indicate the dial is interactive */
+}
+
+/* Add this to your existing CSS file */
+textarea {
+    width: calc(100% - 20px); /* Subtracting the total left and right padding */
+    height: 100px; /* You can adjust this to your liking */
+    padding: 10px; /* Add padding for text inside textarea */
+    margin-top: 5px; /* Give some space above the textarea */
+    margin-bottom: 10px; /* Space below the textarea */
+    border: 1px solid #ccc; /* Add a border to make it more visible */
+    box-sizing: border-box; /* Includes padding and border in the element's total width and height */
+}
+
+.update-button {
+    width: 100%;
+    padding: 10px; /* Add padding to increase the clickable area */
+    border: 1px solid #ccc; /* Add a border for better visibility */
+    background-color: #f8f8f8; /* Optional: style to match your site's theme */
+    margin-bottom: 15px; /* Space below the button */
+}
+
+.template-container {
+    margin-bottom: 20px;
+}
+
+.details {
+    margin-left: 20px;
+}

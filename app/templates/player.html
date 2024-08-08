@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Camera Feed</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+	<header>
+    {% include 'nav.html' %} 
+	</header>
+    <h2>Live Feed
+    </h2>
+
+    <div class="video-container">
+	    <div id="camera-name" class="camera-name"></div>
+        <video id="live-video" controls autoplay muted></video>
+    </div>
+
+    <script>
+        const cameras = {{ cameras|tojson }};
+        let currentCameraIndex = 0;
+
+        function playNextCamera() {
+            const videoElement = document.getElementById('live-video');
+		const cameraNameElement = document.getElementById('camera-name');
+            if (cameras.length > 0) {
+                const currentCamera = cameras[currentCameraIndex];
+                videoElement.src = `/last_video/${currentCamera}`;
+                videoElement.load();
+                videoElement.playbackRate = 0.25;
+                videoElement.play();
+		    cameraNameElement.textContent = currentCamera;  
+                currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
+            }
+        }
+
+        document.getElementById('live-video').addEventListener('ended', () => {
+            if (currentCameraIndex === 0) {
+                // Reload the page when the video roll is done
+                window.location.reload();
+            } else {
+                playNextCamera();
+            }
+        });
+
+        // Start playing the first camera
+        playNextCamera();
+    </script>
+</body>
+</html>
+
