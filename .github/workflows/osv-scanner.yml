@@ -30,19 +30,46 @@ permissions:
 jobs:
   scan-scheduled:
     if: ${{ github.event_name == 'push' || github.event_name == 'schedule' }}
-    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@1f1242919d8a60496dd1874b24b62b2370ed4c78" # v1.7.1
-    with:
-      # Example of specifying custom arguments
-      scan-args: |-
-        -r
-        --skip-git
-        ./
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20' # Ensure the latest Node.js version is used
+
+      - name: Run OSV-Scanner
+        uses: google/osv-scanner-action@v1.7.1
+        with:
+          scan-args: |-
+            -r
+            --skip-git
+            ./
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
+
   scan-pr:
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
-    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@1f1242919d8a60496dd1874b24b62b2370ed4c78" # v1.7.1
-    with:
-      # Example of specifying custom arguments
-      scan-args: |-
-        -r
-        --skip-git
-        ./
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20' # Ensure the latest Node.js version is used
+
+      - name: Run OSV-Scanner
+        uses: google/osv-scanner-action@v1.7.1
+        with:
+          scan-args: |-
+            -r
+            --skip-git
+            ./
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
