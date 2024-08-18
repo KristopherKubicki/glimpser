@@ -38,18 +38,18 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20' # Ensure the latest Node.js version is used
+          node-version: '20'
+
+      - name: Install OSV-Scanner
+        run: npm install -g @google/osv-scanner
 
       - name: Run OSV-Scanner
-        uses: google/osv-scanner-action@v1.7.1
-        with:
-          scan-args: |-
-            -r
-            --skip-git
-            ./
+        run: osv-scanner -r --skip-git ./
 
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: results.sarif
 
   scan-pr:
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
@@ -61,15 +61,15 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20' # Ensure the latest Node.js version is used
+          node-version: '20'
+
+      - name: Install OSV-Scanner
+        run: npm install -g @google/osv-scanner
 
       - name: Run OSV-Scanner
-        uses: google/osv-scanner-action@v1.7.1
-        with:
-          scan-args: |-
-            -r
-            --skip-git
-            ./
+        run: osv-scanner -r --skip-git ./
 
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: results.sarif
