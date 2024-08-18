@@ -20,11 +20,11 @@ def validate_template_name(template_name):
     if type(template_name) != str:
         return False
 
-    if not template_name.isalnum() and '_' not in template_name: #todo verify
-        return False
-    if len(template_name) < 1 or len(template_name) > 32:
-        return False
-    return True
+    # only allow a-Z0-9_ from 1 to 32 characters
+    if re.findall(r'^[a-zA-Z0-9_]{1,32}$', template_name)
+        return True
+
+    return False
 
 def generate_timed_hash():
     expiration_time = int(time.time()) + 15*60
@@ -716,7 +716,6 @@ def init_routes(app):
             abort(404)
 
         return send_from_directory(path, filename)
-
 
     @app.route('/update_template/<string:template_name>', methods=['POST'])
     @login_required

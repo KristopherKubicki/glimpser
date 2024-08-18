@@ -11,6 +11,19 @@ from PIL import Image
 from config import VIDEO_DIRECTORY, MAX_COMPRESSED_VIDEO_AGE, MAX_IN_PROCESS_VIDEO_SIZE, SCREENSHOT_DIRECTORY, VERSION, NAME
 from .template_manager import get_templates
 
+def validate_template_name(template_name):
+
+    if template_name is None:
+        return False
+    if type(template_name) != str:
+        return False
+
+    # only allow a-Z0-9_ from 1 to 32 characters
+    if re.findall(r'^[a-zA-Z0-9_]{1,32}$', template_name)
+        return True
+
+    return False
+
 def touch(fname, times=None):
     with open(fname, 'a'):
         os.utime(fname, times)
@@ -21,6 +34,9 @@ def trim_group_name(group_name):
 def compile_to_teaser():
     os.makedirs(VIDEO_DIRECTORY, exist_ok=True)
     final_videos = {}
+
+    if not os.path.isdir(VIDEO_DIRECTORY):
+        return False
 
     with tempfile.NamedTemporaryFile(mode='w+') as temp_file:
         templates = get_templates()
@@ -64,6 +80,10 @@ def compile_to_teaser():
 
 
 def compile_videos(input_file, output_file):
+
+   if not os.path.exists(input_file):
+       return False
+
     create_command = [
         'ffmpeg',
         '-threads','5',
@@ -84,6 +104,8 @@ def compile_videos(input_file, output_file):
         #subprocess.run(create_command)
         if os.path.exists(output_file) and os.path.getsize(output_file) > 300:
             os.rename(output_file, output_file.replace('.tmp', ''))
+            return True
+        # otherwise, do something? clean up the file maybe? 
     except Exception as e:
         #print("FFmpeg command failed:", ' '.join(create_command), e)
         # log to an error instead! 
@@ -109,7 +131,7 @@ def get_video_duration(video_path):
 
 def concatenate_videos(in_process_video, temp_video, video_path):
     """Concatenate the temporary video with the existing in-process video."""
-    if os.path.exists(in_process_video) and os.path.exists(temp_video) and os.path.getsize(in_process_video) > 0 and os.path.getsize(temp_video) > 0:
+    if os.path.exists(in_process_video) and os.path.exists(temp_video) and os.path.getsize(in_process_video) > 0 and os.path.getsize(temp_video) > 0 and os.path.isdir(video_path):
         in_process_duration = get_video_duration(in_process_video)
         temp_video_duration = get_video_duration(temp_video)
         if in_process_duration > 0 and temp_video_duration > 0:
@@ -154,20 +176,27 @@ def handle_concat_error(e, temp_video, in_process_video):
         print("Warning: invalid in_process file")
         if os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
+            # TODO: consider truth
     else:
         print("FFmpeg concat command failed:", ' '.join(concat_command), e)
         if os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
 
 def compile_to_video(camera_path, video_path):
-    in_process_video = os.path.join(video_path, 'in_process.mp4')
 
     os.makedirs(video_path, exist_ok=True)
     os.makedirs(camera_path, exist_ok=True)
 
+    if not os.path.isdir(video_path):
+        return False
+    if not os.path.isdir(camera_path):
+        return False
+
+    in_process_video = os.path.join(video_path, 'in_process.mp4')
+
     # Check if there is an "in-process" video and its size
     # TODO: check the creation_time and if it exceeds the alotment, then alos roll over
-    if os.path.exists(in_process_video):
+    if os.path.isfile(in_process_video):
         file_size_exceeded = os.path.getsize(in_process_video) > MAX_IN_PROCESS_VIDEO_SIZE
         file_age_exceeded = (datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(os.path.getctime(in_process_video))).total_seconds() > MAX_COMPRESSED_VIDEO_AGE * 60*60*24*7
  
@@ -293,6 +322,7 @@ def compile_to_video(camera_path, video_path):
     # This part can be complex because ffmpeg doesn't natively append to videos without re-encoding
     # You may want to consider alternative methods of video assembly if frequent appending is required
 
+
 def archive_screenshots():
     """Background job to compile screenshots into videos."""
     # Ensure VIDEO_DIRECTORY exists
@@ -300,6 +330,8 @@ def archive_screenshots():
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)
 
     for camera_name in os.listdir(SCREENSHOT_DIRECTORY):
+        if not validate_template_name(camera_name):
+            continue
         camera_path = os.path.join(SCREENSHOT_DIRECTORY, camera_name)
         if not os.path.isdir(camera_path):  # just a file
             continue
