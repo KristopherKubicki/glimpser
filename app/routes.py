@@ -639,9 +639,7 @@ def init_routes(app):
     @app.route('/update_video/<template_name>', methods=['POST'])
     @login_required
     def update_video(template_name):
-        """
-        Endpoint to trigger screenshot capture manually.
-        """
+        """Endpoint to trigger screenshot capture manually."""
         if not validate_template_name(template_name):
             abort(404)
 
@@ -651,8 +649,9 @@ def init_routes(app):
             abort(404)
         camera_path = os.path.join(os.path.dirname(os.path.join(__file__)),'..', SCREENSHOT_DIRECTORY, template_name)
         video_path = os.path.join(os.path.dirname(os.path.join(__file__)),'..', VIDEO_DIRECTORY, template_name)
-        video_archiver.compile_to_video(camera_path, video_path)
-        return jsonify({'status': 'success', 'message': f'Screenshot for {template_name} taken'})
+        if os.path.exists(camera_path) and os.path.exists(video_path):
+            video_archiver.compile_to_video(camera_path, video_path)
+            return jsonify({'status': 'success', 'message': f'Screenshot for {template_name} taken'})
 
     @app.route('/templates', methods=['GET', 'POST', 'DELETE'])
     @login_required
