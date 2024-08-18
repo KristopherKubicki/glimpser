@@ -13,6 +13,8 @@ from functools import wraps
 from flask import g, request, redirect, url_for, session
 from threading import Lock
 
+
+# TODO: move this until utils so that its not duplicated
 def validate_template_name(template_name):
 
     if template_name is None:
@@ -21,7 +23,7 @@ def validate_template_name(template_name):
         return False
 
     # only allow a-Z0-9_ from 1 to 32 characters
-    if re.findall(r'^[a-zA-Z0-9_]{1,32}$', template_name)
+    if re.findall(r'^[a-zA-Z0-9_]{1,32}$', template_name):
         return True
 
     return False
