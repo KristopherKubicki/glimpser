@@ -284,7 +284,7 @@ def init_routes(app):
                     active_cameras.append(template)
         return active_cameras
 
-    @app.route('/submit_image/<template_name>', methods=['POST'])
+    @app.route('/submit_image/<string:template_name>', methods=['POST'])
     @login_required
     def submit_image(template_name):
         """
@@ -535,7 +535,7 @@ def init_routes(app):
         abort(404)
 
 
-    @app.route('/last_video/<template_name>')
+    @app.route('/last_video/<string:template_name>')
     @login_required
     def serve_video(template_name):
         """
@@ -555,7 +555,7 @@ def init_routes(app):
         abort(404)
 
 
-    @app.route('/last_screenshot/<template_name>')
+    @app.route('/last_screenshot/<string:template_name>')
     @login_required
     def serve_screenshot(template_name):
         """
@@ -583,7 +583,7 @@ def init_routes(app):
         return jsonify({'status': 'success', 'message': f'Compilation taken'})
 
 
-    @app.route('/upload_screenshot/<template_name>', methods=['POST'])
+    @app.route('/upload_screenshot/<string:template_name>', methods=['POST'])
     @login_required
     def upload_screenshot(template_name):
         """
@@ -618,7 +618,7 @@ def init_routes(app):
         return jsonify({'status': 'success', 'message': f'Screenshot for {template_name} uploaded'})
 
 
-    @app.route('/take_screenshot/<template_name>', methods=['POST','GET'])
+    @app.route('/take_screenshot/<string:template_name>', methods=['POST','GET'])
     @login_required
     def take_screenshot(template_name):
         """
@@ -636,7 +636,7 @@ def init_routes(app):
         scheduling.update_camera(template_name, templates.get(template_name))
         return jsonify({'status': 'success', 'message': f'Screenshot for {template_name} taken'})
 
-    @app.route('/update_video/<template_name>', methods=['POST'])
+    @app.route('/update_video/<string:template_name>', methods=['POST'])
     @login_required
     def update_video(template_name):
         """Endpoint to trigger screenshot capture manually."""
@@ -680,7 +680,7 @@ def init_routes(app):
                 return jsonify({'status': 'failure', 'message': 'Template not found'}), 404
 
 
-    @app.route('/templates/<template_name>')
+    @app.route('/templates/<string:template_name>')
     @login_required
     def template_details(template_name):
         templates = template_manager.get_templates()
@@ -695,7 +695,7 @@ def init_routes(app):
         return render_template('template_details.html', template_name=template_name, template_details=template_details, lscreenshots=screenshots, videos=videos)
 
 
-    @app.route('/screenshots/<name>/<filename>')
+    @app.route('/screenshots/<name>/<string:filename>')
     @login_required
     def uploaded_file(name, filename):
         if not validate_template_name(name):
@@ -706,7 +706,7 @@ def init_routes(app):
 
         return send_from_directory(path, filename)
 
-    @app.route('/videos/<name>/<filename>')
+    @app.route('/videos/<name>/<string:filename>')
     @login_required
     def view_video(name, filename):
         if not validate_template_name(name):
@@ -718,7 +718,7 @@ def init_routes(app):
         return send_from_directory(path, filename)
 
 
-    @app.route('/update_template/<template_name>', methods=['POST'])
+    @app.route('/update_template/<string:template_name>', methods=['POST'])
     @login_required
     def update_template(template_name):
         if not validate_template_name(template_name):
