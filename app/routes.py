@@ -15,14 +15,14 @@ from threading import Lock
 
 
 # TODO: move this until utils so that its not duplicated
-def validate_template_name(template_name):
+def validate_template_name(template_name: str):
 
     if template_name is None:
         return False
     if type(template_name) != str:
         return False
 
-    if '.' in template_name:  # pedantic
+    if '..' in template_name:  # pedantic
         return False
     if '/' in template_name:  # pedantic
         return False
@@ -30,7 +30,7 @@ def validate_template_name(template_name):
         return False
 
     # only allow a-Z0-9_ from 1 to 32 characters
-    if re.findall(r'^[a-zA-Z0-9_]{1,32}$', template_name):
+    if re.findall(r'^[a-zA-Z0-9_\.]{1,32}$', template_name):
         return True
 
     return False
@@ -42,7 +42,7 @@ def generate_timed_hash():
     return f"{hash_digest}.{expiration_time}"
 
 
-def is_hash_valid(timed_hash):
+def is_hash_valid(timed_hash: str):
     try:
         hash_digest, expiration_time = timed_hash.split('.')
         to_hash = f"{API_KEY}{expiration_time}"
@@ -84,7 +84,9 @@ def login_required(f):
     return decorated_function
 
 # TODO: 
-def generate_video_stream(video_path):
+def generate_video_stream(video_path: str):
+
+    # TODO: make sure it exists
     while True:
         with open(video_path, "rb") as video:
             chunk = video.read(1024 * 1024)  # Read 1 MB at a time
@@ -295,7 +297,7 @@ def init_routes(app):
 
     @app.route('/submit_image/<string:template_name>', methods=['POST'])
     @login_required
-    def submit_image(template_name):
+    def submit_image(template_name: str):
         """
         Endpoint to receive and process an image submitted by a remote service or camera.
         """
@@ -381,7 +383,7 @@ def init_routes(app):
         return send_file(last_file) # better than nothing
 
     @app.route('/test.rtsp', methods=['OPTIONS', 'DESCRIBE', 'SETUP', 'PLAY', 'TEARDOWN'])
-    def handle_rtsp(camera_hash):
+    def handle_rtsp(camera_hash: str):
         session_id = request.headers.get('Session', generate_session_id())
         if request.method == 'OPTIONS':
             return Response('Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY', headers={'CSeq': request.headers.get('CSeq', '0')})
@@ -549,7 +551,7 @@ def init_routes(app):
 
     @app.route('/last_video/<string:template_name>')
     @login_required
-    def serve_video(template_name):
+    def serve_video(template_name: str):
         """
         Serve a specific screenshot by template name.
         """
@@ -569,7 +571,7 @@ def init_routes(app):
 
     @app.route('/last_screenshot/<string:template_name>')
     @login_required
-    def serve_screenshot(template_name):
+    def serve_screenshot(template_name: str):
         """
         Serve a specific screenshot by template name.
         """
@@ -597,7 +599,7 @@ def init_routes(app):
 
     @app.route('/upload_screenshot/<string:template_name>', methods=['POST'])
     @login_required
-    def upload_screenshot(template_name):
+    def upload_screenshot(template_name: str):
         """
         Endpoint to upload a screenshot manually.
         """
@@ -632,7 +634,7 @@ def init_routes(app):
 
     @app.route('/take_screenshot/<string:template_name>', methods=['POST','GET'])
     @login_required
-    def take_screenshot(template_name):
+    def take_screenshot(template_name: str):
         """
         Endpoint to trigger screenshot capture manually.
         """
@@ -650,7 +652,7 @@ def init_routes(app):
 
     @app.route('/update_video/<string:template_name>', methods=['POST'])
     @login_required
-    def update_video(template_name):
+    def update_video(template_name: str):
         """Endpoint to trigger screenshot capture manually."""
         if not validate_template_name(template_name):
             abort(404)
@@ -700,7 +702,7 @@ def init_routes(app):
 
     @app.route('/templates/<string:template_name>')
     @login_required
-    def template_details(template_name):
+    def template_details(template_name: str):
         templates = template_manager.get_templates()
         if not validate_template_name(template_name):
             abort(404)
@@ -713,9 +715,9 @@ def init_routes(app):
         return render_template('template_details.html', template_name=template_name, template_details=template_details, lscreenshots=screenshots, videos=videos)
 
 
-    @app.route('/screenshots/<name>/<string:filename>')
+    @app.route('/screenshots/<string:name>/<string:filename>')
     @login_required
-    def uploaded_file(name, filename):
+    def uploaded_file(name: str, filename: str):
         if not validate_template_name(name):
             abort(404)
         path = os.path.join(os.path.dirname(os.path.join(__file__)),'..', SCREENSHOT_DIRECTORY, name)
@@ -724,9 +726,9 @@ def init_routes(app):
 
         return send_from_directory(path, filename)
 
-    @app.route('/videos/<name>/<string:filename>')
+    @app.route('/videos/<string:name>/<string:filename>')
     @login_required
-    def view_video(name, filename):
+    def view_video(name: str, filename: str):
         if not validate_template_name(name):
             abort(404)
         path = os.path.join(os.path.dirname(os.path.join(__file__)),'..', VIDEO_DIRECTORY, name)
@@ -737,7 +739,7 @@ def init_routes(app):
 
     @app.route('/update_template/<string:template_name>', methods=['POST'])
     @login_required
-    def update_template(template_name):
+    def update_template(template_name: str):
         if not validate_template_name(template_name):
             abort(404)
 

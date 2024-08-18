@@ -11,6 +11,7 @@ from PIL import Image
 from config import VIDEO_DIRECTORY, MAX_COMPRESSED_VIDEO_AGE, MAX_IN_PROCESS_VIDEO_SIZE, SCREENSHOT_DIRECTORY, VERSION, NAME
 from .template_manager import get_templates
 
+# TODO: move this until utils so that its not duplicated
 def validate_template_name(template_name):
 
     if template_name is None:
@@ -18,11 +19,19 @@ def validate_template_name(template_name):
     if type(template_name) != str:
         return False
 
+    if '..' in template_name:  # pedantic
+        return False
+    if '/' in template_name:  # pedantic
+        return False
+    if len(template_name) > 32:  # pedantic
+        return False
+
     # only allow a-Z0-9_ from 1 to 32 characters
-    if re.findall(r'^[a-zA-Z0-9_]{1,32}$', template_name):
+    if re.findall(r'^[a-zA-Z0-9_\.]{1,32}$', template_name):
         return True
 
     return False
+
 
 def touch(fname, times=None):
     with open(fname, 'a'):
