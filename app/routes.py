@@ -14,32 +14,18 @@ from flask import g, request, redirect, url_for, session
 from threading import Lock
 
 
-# TODO: move this until utils so that its not duplicated
 def validate_template_name(template_name: str):
-
     if template_name is None:
-        raise
-        return False
-    if type(template_name) != str:
-        raise
-        return False
-
-    if '..' in template_name:  # pedantic
-        raise
-        return False
-    if '/' in template_name:  # pedantic
-        raise
-        return False
-    if len(template_name) > 32:  # pedantic
-        return False
-
-    # only allow a-Z0-9_ from 1 to 32 characters
-    if re.findall(r'^[a-zA-Z0-9_\.]{1,32}$', template_name):
-        return True
-
-    raise 
-
-    return False
+        return None
+    if not isinstance(template_name, str):
+        return None
+    if '..' in template_name or '/' in template_name:
+        return None
+    if len(template_name) > 32:
+        return None
+    for tname in re.findall(r'^[a-zA-Z0-9_\.\-]{1,32}$', template_name):
+        return tname
+    return None
 
 def generate_timed_hash():
     expiration_time = int(time.time()) + 15*60
@@ -48,7 +34,7 @@ def generate_timed_hash():
     return f"{hash_digest}.{expiration_time}"
 
 
-def is_hash_valid(timed_hash: str):
+def is_hash_valid(timed_hash: str) -> bool:
     try:
         hash_digest, expiration_time = timed_hash.split('.')
         to_hash = f"{API_KEY}{expiration_time}"
@@ -184,7 +170,7 @@ def generate(group=None, filename='latest_camera.png'):
                 most_recent_file = None
                 # there is some kind of bug in here where we will sometimes pick an image before we should (like if its not captioned yet)
                 for template_id, template_details in sorted_templates:
-                    template_name = template_details.get('name')
+                    template_name = validate_template_name(template_details.get('name'))
                     if template_name is None:
                         continue
 
@@ -307,7 +293,8 @@ def init_routes(app):
         """
         Endpoint to receive and process an image submitted by a remote service or camera.
         """
-        if not validate_template_name(template_name):
+        template_name = validate_template_name(template_name)
+        if template_name is None:
             abort(404)
 
         # Check if the template exists
@@ -315,7 +302,7 @@ def init_routes(app):
         ltemplate = template_manager.get_template(template_name)
         if ltemplate is None:
             return jsonify({'status': 'error', 'message': 'Template not found'}), 404
-        template_name = ltemplate.get('name')
+        template_name = ltemplate.get('name') # todo... 
 
         # Check if the request has the file part
         if 'file' not in request.files:
@@ -561,7 +548,9 @@ def init_routes(app):
         """
         Serve a specific screenshot by template name.
         """
-        if not validate_template_name(template_name):
+
+        template_name = validate_template_name(template_name)
+        if template_name is None:
             abort(404)
 
         # Placeholder logic to serve the screenshot
@@ -581,7 +570,8 @@ def init_routes(app):
         """
         Serve a specific screenshot by template name.
         """
-        if not validate_template_name(template_name):
+        template_name = validate_template_name(template_name)
+        if template_name is None:
             abort(404)
 
         # Placeholder logic to serve the screenshot
@@ -609,7 +599,9 @@ def init_routes(app):
         """
         Endpoint to upload a screenshot manually.
         """
-        if not validate_template_name(template_name):
+
+        template_name = validate_template_name(template_name)
+        if template_name is None:
             abort(404)
 
         if 'image_file' not in request.files:
@@ -644,7 +636,8 @@ def init_routes(app):
         """
         Endpoint to trigger screenshot capture manually.
         """
-        if not validate_template_name(template_name):
+        template_name = validate_template_name(template_name)
+        if template_name is None:
             abort(404)
 
         templates = template_manager.get_templates()
@@ -660,7 +653,8 @@ def init_routes(app):
     @login_required
     def update_video(template_name: str):
         """Endpoint to trigger screenshot capture manually."""
-        if not validate_template_name(template_name):
+        template_name = validate_template_name(template_name)
+        if template_name is None:
             abort(404)
 
         templates = template_manager.get_templates()
@@ -684,7 +678,10 @@ def init_routes(app):
     def manage_templates():
         if request.method == 'POST':
             data = request.json
-            if validate_template_name(data) and template_manager.save_template(data['name'], data):
+            template_name = validate_template_name(data['name'])
+            if template_name is None:
+                abort(404)
+            if validate_template_name(data) and template_manager.save_template(template_name, data):
                 return jsonify({'status': 'success', 'message': 'Template saved'})
 
         elif request.method == 'GET':
@@ -700,7 +697,10 @@ def init_routes(app):
 
         elif request.method == 'DELETE':
             data = request.json
-            if template_manager.delete_template(data['name']):
+            template_name = validate_template_name(data['name'])
+            if template_name is None:
+                abort(404)
+            if template_manager.delete_template(template_name):
                 return jsonify({'status': 'success', 'message': 'Template deleted'})
             else:
                 return jsonify({'status': 'failure', 'message': 'Template not found'}), 404
