@@ -526,6 +526,9 @@ def init_routes(app):
         """
         Serve a specific screenshot by template name.
         """
+        if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',template_name):
+            abort(404)
+
         # Placeholder logic to serve the screenshot
         path = os.path.join(os.path.dirname(os.path.join(__file__)),'..', VIDEO_DIRECTORY, template_name)
         if not os.path.exists(path):
@@ -543,6 +546,9 @@ def init_routes(app):
         """
         Serve a specific screenshot by template name.
         """
+        if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',template_name):
+            abort(404)
+
         # Placeholder logic to serve the screenshot
         path = os.path.join(os.path.dirname(os.path.join(__file__)),'..', SCREENSHOT_DIRECTORY, template_name)
         if not os.path.exists(path):
@@ -568,6 +574,9 @@ def init_routes(app):
         """
         Endpoint to upload a screenshot manually.
         """
+        if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',template_name):
+            abort(404)
+
         if 'image_file' not in request.files:
             return jsonify({'status': 'error', 'message': 'No image file provided'}), 400
 
@@ -600,6 +609,8 @@ def init_routes(app):
         """
         Endpoint to trigger screenshot capture manually.
         """
+        if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',template_name):
+            abort(404)
 
         templates = template_manager.get_templates()
         # handle if this doesn't exist
@@ -616,6 +627,8 @@ def init_routes(app):
         """
         Endpoint to trigger screenshot capture manually.
         """
+        if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',template_name):
+            abort(404)
 
         templates = template_manager.get_templates()
         # handle if this doesn't exist
@@ -631,8 +644,8 @@ def init_routes(app):
     def manage_templates():
         if request.method == 'POST':
             data = request.json
-            template_manager.save_template(data['name'], data)
-            return jsonify({'status': 'success', 'message': 'Template saved'})
+            if template_manager.save_template(data['name'], data):
+                return jsonify({'status': 'success', 'message': 'Template saved'})
 
         elif request.method == 'GET':
             group = request.args.get('group')
@@ -693,7 +706,9 @@ def init_routes(app):
     @app.route('/update_template/<template_name>', methods=['POST'])
     @login_required
     def update_template(template_name):
-        if request.method == 'POST':
+        # TODO: refactor the template validation name
+
+        if request.method == 'POST' and re.findall(r'^[a-zA-Z0-9_]{1,32}$',template_name): # make sure it matches our quality thresholds
             # Extract form data
 
             updated_data = {

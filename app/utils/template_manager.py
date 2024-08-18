@@ -61,6 +61,9 @@ class TemplateManager:
             session.close()
 
     def save_template(self, name, details):
+        if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',name):
+            return False
+
         session = self.get_session()
         try:
             template = session.query(Template).filter_by(name=name).first()
@@ -95,6 +98,9 @@ class TemplateManager:
             session.close()
 
     def get_template(self, name):
+        if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',name):
+            return False
+
         session = self.get_session()
         try:
             template = session.query(Template).filter_by(name=name).first()
@@ -106,6 +112,9 @@ class TemplateManager:
             session.close()
 
     def delete_template(self, name):
+        if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',name):
+            return False
+
         session = self.get_session()
         try:
             template = session.query(Template).filter_by(name=name).first()
@@ -118,6 +127,7 @@ class TemplateManager:
             session.close()
 
     def get_template_by_id(self, template_id):
+        # TODO: validate id 
         session = self.get_session()
         try:
             template = session.query(Template).filter_by(id=template_id).first()
@@ -132,7 +142,7 @@ def get_templates():
     manager = TemplateManager()
     templates = manager.get_templates()
     for template_name, details in templates.items():
-        if template_name is None:
+        if template_name is None or template_name == "":
             continue
         camera_path = os.path.join(SCREENSHOT_DIRECTORY, template_name)
         video_path = os.path.join(VIDEO_DIRECTORY, template_name)
@@ -141,10 +151,16 @@ def get_templates():
     return templates
 
 def get_template(name):
+    if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',name):
+        return None
+
     manager = TemplateManager()
     return manager.get_template(name)
 
 def save_template(name, template_data):
+    if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',name):
+        return False
+
     manager = TemplateManager()
     manager.save_template(name, template_data)
     screenshot_full_path = os.path.join(SCREENSHOT_DIRECTORY, name)
@@ -152,7 +168,12 @@ def save_template(name, template_data):
     video_full_path = os.path.join(VIDEO_DIRECTORY, name)
     os.makedirs(video_full_path, exist_ok=True)
 
+    return True
+
 def delete_template(name):
+    if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',name):
+        return False
+
     manager = TemplateManager()
     success = manager.delete_template(name)
     if success:
@@ -169,6 +190,8 @@ def get_template_by_id(template_id):
     return manager.get_template_by_id(template_id)
 
 def get_screenshots_for_template(name):
+    if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',name):
+        return []
     if not os.path.exists(os.path.join(SCREENSHOT_DIRECTORY, name)):
         return []
     screenshots = [f for f in os.listdir(os.path.join(SCREENSHOT_DIRECTORY, name)) if f.startswith(name) and f.endswith('.png') and '.tmp' not in f]
@@ -176,8 +199,11 @@ def get_screenshots_for_template(name):
     return sorted_screenshots[:10]
 
 def get_videos_for_template(name):
+    if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',name):
+        return []
     if not os.path.exists(os.path.join(VIDEO_DIRECTORY, name)):
         return []
     videos = [f for f in os.listdir(os.path.join(VIDEO_DIRECTORY, name)) if f.startswith(name) and f.endswith('.mp4')]
     sorted_videos = sorted(videos, key=lambda x: datetime.strptime(x[len(name) + 1:-4], '%Y%m%d%H%M%S'), reverse=True)
     return sorted_videos[:10]
+

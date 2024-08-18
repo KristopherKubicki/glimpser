@@ -552,7 +552,7 @@ def schedule_crawlers():
 
     for index, (id, template) in enumerate(shuffled_templates):
         name = template.get('name')
-        if name is None:
+        if name is None or name == "":
             continue
         output_path = os.path.join(SCREENSHOT_DIRECTORY, name)
         os.makedirs(os.path.dirname(output_path), exist_ok=True)

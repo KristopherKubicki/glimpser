@@ -12,7 +12,7 @@ SCREENSHOT_DIRECTORY = 'data/screenshots/'
 VIDEO_DIRECTORY = 'data/video/' 
 SUMMARIES_DIRECTORY = 'data/summaries/' 
 
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
 LANG = "en-US"
 VERSION = 0.1
 NAME = "glimpser"

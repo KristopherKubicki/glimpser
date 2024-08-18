@@ -92,6 +92,11 @@ def compile_videos(input_file, output_file):
 
 
 def get_video_duration(video_path):
+
+    if not os.path.exists(video_path): # raise? 
+        return None
+
+
     """Get the duration of a video in seconds."""
     command = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', video_path]
     duration = 0

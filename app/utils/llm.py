@@ -38,7 +38,7 @@ def summarize(prompt, history=None, tokens=4096):
 
         # Construct the payload with the prompt and images
         payload = {
-            "model": "gpt-4o-mini", # cheaper and faster
+            "model": "gpt-4o", # cheaper and faster
             "messages": messages,
             "max_tokens": tokens # might even be less
         }

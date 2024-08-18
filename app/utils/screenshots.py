@@ -223,6 +223,7 @@ def download_image(url, output_path, timeout=30, name='unknown', invert=False, d
     response = None
     try:
         headers = {'user-agent': UA}
+        # TODO: apply proxy here
 
         auth = None
         for leach in re.findall(r'\/\/([^\:]+?)\:([^\@]+?)\@',url):
@@ -266,6 +267,8 @@ def download_pdf(url, output_path, timeout=30, name='unknown', invert=False, dar
     try:
         # Download the PDF file
         headers = {'user-agent': UA}
+
+        # TODO: apply proxy
 
         auth = None
         for leach in re.findall(r'\/\/([^\:]+?)\:([^\@]+?)\@',url):
@@ -479,6 +482,7 @@ def capture_or_download(name, template):
         # Perform a range request to get a small part of the content
         try:
             headers = {'user-agent': UA, 'Range': 'bytes=0-1024'}
+            # TODO: apply proxy
 
             auth = None
             for leach in re.findall(r'\/\/([^\:]+?)\:([^\@]+?)\@',url):
@@ -1148,6 +1152,9 @@ def capture_screenshot_and_har(url, output_path, popup_xpath=None, dedicated_sel
             driver_path = chrome_service.path
             main_version = extract_version(driver_path)
 
+            # Note - if you're getting a lot of weird errors about the wrong chromedriver version, sometimes its best to 
+            #  clear your ~/.wdm cache.  
+
             if stealth:
                 options = webdriver.ChromeOptions()
                 #options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
@@ -1172,20 +1179,25 @@ def capture_screenshot_and_har(url, output_path, popup_xpath=None, dedicated_sel
 
         if danger:
 
+            # TODO: test if the system is idle
+
             current_window_handle = driver.current_window_handle
             try:
+                # now, test if the browser is idle
                 script = """(function(){let l=Date.now();['mousemove','keydown','scroll','click'].forEach(e=>document.addEventListener(e,()=>l=Date.now()));window.getIdleTime=()=>Date.now()-l;})();"""
-                driver.execute_script(script)
+                lret1 = driver.execute_script(script)
                 #  if there is activity, skip on this.  Don't mess up the computer for a screenshot (only when idle)
-                time.sleep(3)
-                tmp_window_handle = driver.current_window_handle
-                driver.switch_to.window(current_window_handle)
+                time.sleep(10)
                 lret = driver.execute_script("return window.getIdleTime();")
-                driver.switch_to.window(tmp_window_handle)
-                if lret < 3000:
+                print("LRET", lret1, lret)
+                if lret < 10000:
+                    print(" activity...")
                     logging.warn(f"activity detected")
                     return False
-                time.sleep(1)
+                #tmp_window_handle = driver.current_window_handle
+                #driver.switch_to.window(tmp_window_handle)
+                #driver.switch_to.window(current_window_handle)
+                #time.sleep(1)
             except Exception as e:
                 print("> dupe timeout warning", e)
 

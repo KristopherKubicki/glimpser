@@ -23,7 +23,7 @@ def get_latest_file(directory, ext='png'):
     try:
         latest_file = max(files, key=lambda x: os.path.getctime(os.path.join(directory, x)))
     except Exception as e:
-        print("Warning: file error")
+        print("Warning: file error", e)
         return None
     return latest_file
 
@@ -44,7 +44,7 @@ def get_latest_date(directory, ext='png'):
     try:
         latest_file_ctime = os.path.getctime(os.path.join(directory, latest_file))
     except Exception as e:
-        print("Warning: file error")
+        print("Warning: file error", e)
         return None
 
     return datetime.fromtimestamp(latest_file_ctime).strftime('%Y-%m-%d %H:%M:%S')
