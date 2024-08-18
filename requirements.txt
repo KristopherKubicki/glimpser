@@ -9,7 +9,7 @@ selenium==4.1.0
 APScheduler==3.9.1
 flask_apscheduler==1.12.1
 webdriver_manager==4.0.2
-yt-dlp==2023.11.14
+yt-dlp==2024.7.7
 Pillow==10.3.0
 pdf2image==1.17.0
 Flask-Login==0.6.3
