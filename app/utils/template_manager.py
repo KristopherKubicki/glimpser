@@ -1,6 +1,6 @@
 # utils/template_manager.py
 
-import os
+import os, re
 from pathlib import Path
 from datetime import datetime
 from sqlalchemy.orm import Session

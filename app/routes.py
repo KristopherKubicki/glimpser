@@ -324,6 +324,8 @@ def init_routes(app):
             timestamp = datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')
             filename = f"{template_name}_{timestamp}.png.tmp"
             output_path = os.path.join(SCREENSHOT_DIRECTORY, template_name, filename)
+            if not os.path.normpath(output_path).startswith(SCREENSHOT_DIRECTORY):
+                abort(400)
 
             # Save the file to a temporary location
             file.save(output_path)
@@ -345,6 +347,7 @@ def init_routes(app):
     def stream_png():
 
         if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', SCREENSHOT_DIRECTORY,'latest_camera.png')):
+            # TODO: check for file integrity
             return send_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', SCREENSHOT_DIRECTORY,'latest_camera.png'))
 
         global last_time, last_shot
@@ -657,7 +660,13 @@ def init_routes(app):
         if templates.get(template_name) is None:
             abort(404)
         camera_path = os.path.join(os.path.dirname(os.path.join(__file__)),'..', SCREENSHOT_DIRECTORY, template_name)
+        if not os.path.normpath(camera_path).startswith(SCREENSHOT_DIRECTORY):
+            abort(400)
+
         video_path = os.path.join(os.path.dirname(os.path.join(__file__)),'..', VIDEO_DIRECTORY, template_name)
+        if not os.path.normpath(video_path).startswith(VIDEO_DIRECTORY):
+            abort(400)
+
         if os.path.exists(camera_path) and os.path.exists(video_path):
             video_archiver.compile_to_video(camera_path, video_path)
             return jsonify({'status': 'success', 'message': f'Screenshot for {template_name} taken'})
