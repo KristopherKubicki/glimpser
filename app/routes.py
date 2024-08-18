@@ -13,6 +13,18 @@ from functools import wraps
 from flask import g, request, redirect, url_for, session
 from threading import Lock
 
+def validate_template_name(template_name):
+
+    if template_name is None:
+        return False
+    if type(template_name) != str:
+        return False
+
+    if not template_name.isalnum() and '_' not in template_name: #todo verify
+        return False
+    if len(template_name) < 1 or len(template_name) > 32:
+        return False
+    return True
 
 def generate_timed_hash():
     expiration_time = int(time.time()) + 15*60
@@ -278,6 +290,9 @@ def init_routes(app):
         """
         Endpoint to receive and process an image submitted by a remote service or camera.
         """
+        if not validate_template_name(template_name):
+            abort(404)
+
         # Check if the template exists
         print("WARNING BRPKEN!")
         ltemplate = template_manager.get_template(template_name)
@@ -526,7 +541,7 @@ def init_routes(app):
         """
         Serve a specific screenshot by template name.
         """
-        if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',template_name):
+        if not validate_template_name(template_name):
             abort(404)
 
         # Placeholder logic to serve the screenshot
@@ -546,7 +561,7 @@ def init_routes(app):
         """
         Serve a specific screenshot by template name.
         """
-        if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',template_name):
+        if not validate_template_name(template_name):
             abort(404)
 
         # Placeholder logic to serve the screenshot
@@ -574,7 +589,7 @@ def init_routes(app):
         """
         Endpoint to upload a screenshot manually.
         """
-        if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',template_name):
+        if not validate_template_name(template_name):
             abort(404)
 
         if 'image_file' not in request.files:
@@ -609,7 +624,7 @@ def init_routes(app):
         """
         Endpoint to trigger screenshot capture manually.
         """
-        if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',template_name):
+        if not validate_template_name(template_name):
             abort(404)
 
         templates = template_manager.get_templates()
@@ -627,7 +642,7 @@ def init_routes(app):
         """
         Endpoint to trigger screenshot capture manually.
         """
-        if not re.findall(r'^[a-zA-Z0-9_]{1,32}$',template_name):
+        if not validate_template_name(template_name):
             abort(404)
 
         templates = template_manager.get_templates()
@@ -644,7 +659,7 @@ def init_routes(app):
     def manage_templates():
         if request.method == 'POST':
             data = request.json
-            if template_manager.save_template(data['name'], data):
+            if validate_template_name(data) and template_manager.save_template(data['name'], data):
                 return jsonify({'status': 'success', 'message': 'Template saved'})
 
         elif request.method == 'GET':
@@ -670,8 +685,7 @@ def init_routes(app):
     @login_required
     def template_details(template_name):
         templates = template_manager.get_templates()
-        # handle if this doesn't exist
-        if templates.get(template_name) is None:
+        if not validate_template_name(template_name):
             abort(404)
 
         template_details = templates.get(template_name)
@@ -685,7 +699,8 @@ def init_routes(app):
     @app.route('/screenshots/<name>/<filename>')
     @login_required
     def uploaded_file(name, filename):
-        # TODO: make this more robust
+        if not validate_template_name(name):
+            abort(404)
         path = os.path.join(os.path.dirname(os.path.join(__file__)),'..', SCREENSHOT_DIRECTORY, name)
         if not os.path.exists(path):
             abort(404)
@@ -695,7 +710,8 @@ def init_routes(app):
     @app.route('/videos/<name>/<filename>')
     @login_required
     def view_video(name, filename):
-        # TODO: make this more robust
+        if not validate_template_name(name):
+            abort(404)
         path = os.path.join(os.path.dirname(os.path.join(__file__)),'..', VIDEO_DIRECTORY, name)
         if not os.path.exists(path):
             abort(404)
@@ -706,9 +722,10 @@ def init_routes(app):
     @app.route('/update_template/<template_name>', methods=['POST'])
     @login_required
     def update_template(template_name):
-        # TODO: refactor the template validation name
+        if not validate_template_name(template_name):
+            abort(404)
 
-        if request.method == 'POST' and re.findall(r'^[a-zA-Z0-9_]{1,32}$',template_name): # make sure it matches our quality thresholds
+        if True:
             # Extract form data
 
             updated_data = {
