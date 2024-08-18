@@ -22,6 +22,13 @@ def validate_template_name(template_name):
     if type(template_name) != str:
         return False
 
+    if '.' in template_name:  # pedantic
+        return False
+    if '/' in template_name:  # pedantic
+        return False
+    if len(template_name) > 32:  # pedantic
+        return False
+
     # only allow a-Z0-9_ from 1 to 32 characters
     if re.findall(r'^[a-zA-Z0-9_]{1,32}$', template_name):
         return True

@@ -91,7 +91,7 @@ def compile_videos(input_file, output_file):
         '-fflags', '+igndts+ignidx+genpts+fastseek+discardcorrupt',
         '-an', '-dn',
         '-f', 'concat',
-        '-safe', '0',
+        '-safe', '1', # no relative paths...
         '-i', os.path.abspath(input_file),
         '-c', 'copy',
         '-movflags', '+faststart',
@@ -120,7 +120,7 @@ def get_video_duration(video_path):
 
 
     """Get the duration of a video in seconds."""
-    command = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', video_path]
+    command = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', os.path.abspath(video_path)]
     duration = 0
     try:
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -143,6 +143,7 @@ def concatenate_videos(in_process_video, temp_video, video_path):
                 '-fflags', '+igndts+ignidx+genpts+fastseek+discardcorrupt',
                 '-an', '-dn',
                 '-c:v', 'h264',
+                '-safe','1',
                 '-i', os.path.abspath(in_process_video),
                 '-i', os.path.abspath(temp_video),
                 '-filter_complex', '[0:v:0][1:v:0]concat=n=2:v=1:a=0[outv]',
@@ -268,8 +269,8 @@ def compile_to_video(camera_path, video_path):
             '-err_detect','ignore_err',
             '-fflags', '+igndts+ignidx+genpts+fastseek+discardcorrupt',
             '-copyts', '-start_at_zero',
-            '-safe', '0',
-            '-i', temp_file_path,
+            '-safe', '1',
+            '-i', os.path.abspath(temp_file_path),
             '-c:v', 'libx264',
             '-pix_fmt', 'yuv420p',
             '-vf', 'fps=30,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2',
@@ -278,7 +279,7 @@ def compile_to_video(camera_path, video_path):
         create_command.extend(["-metadata", "creation_time=%sZ" % datetime.datetime.utcnow()])
         create_command.extend(["-metadata", "encoded_by=%s" % NAME])
         create_command.extend(["-metadata", "version=%s" % VERSION])
-        create_command.extend(['-y', temp_video])  # Overwrite if exists
+        create_command.extend(['-y', os.path.abspath(temp_video)])  # Overwrite if exists
 
         try:
             #print("CMD", lcount, ' '.join(create_command))
