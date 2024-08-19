@@ -388,8 +388,11 @@ def parse_url(url):
 
     return domain, port
 
-def capture_or_download(name, template):
+def capture_or_download(name: str, template: str) -> bool:
     """Decides whether to download the image directly or capture a screenshot."""
+
+    if name is None or template is None:
+        return False
 
     url = template.get('url')
     popup_xpath = template.get('popup_xpath')

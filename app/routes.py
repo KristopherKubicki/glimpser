@@ -14,7 +14,32 @@ from flask import g, request, redirect, url_for, session
 from threading import Lock
 
 
-def validate_template_name(template_name: str):
+class TemplateName:
+    def __init__(self, name: str):
+        if not self.validate(name):
+            raise ValueError(f"Invalid template name: {name}")
+        self._name = name
+
+    @staticmethod
+    def validate(name: str) -> bool:
+        if name is None:
+            return False
+        if not isinstance(name, str):
+            return False
+        if '..' in name or '/' in name:
+            return False
+        if len(name) > 32:
+            return False
+        return bool(re.match(r'^[a-zA-Z0-9_\.\-]{1,32}$', name))
+
+    def __str__(self):
+        return self._name
+
+    def __repr__(self):
+        return f"TemplateName({self._name!r})"
+
+
+def validate_template_name(template_name: TemplateName):
     if template_name is None:
         return None
     if not isinstance(template_name, str):
@@ -289,7 +314,7 @@ def init_routes(app):
 
     @app.route('/submit_image/<string:template_name>', methods=['POST'])
     @login_required
-    def submit_image(template_name: str):
+    def submit_image(template_name: TemplateName):
         """
         Endpoint to receive and process an image submitted by a remote service or camera.
         """
@@ -544,7 +569,7 @@ def init_routes(app):
 
     @app.route('/last_video/<string:template_name>')
     @login_required
-    def serve_video(template_name: str):
+    def serve_video(template_name: TemplateName):
         """
         Serve a specific screenshot by template name.
         """
@@ -566,7 +591,7 @@ def init_routes(app):
 
     @app.route('/last_screenshot/<string:template_name>')
     @login_required
-    def serve_screenshot(template_name: str):
+    def serve_screenshot(template_name: TemplateName):
         """
         Serve a specific screenshot by template name.
         """
@@ -595,7 +620,7 @@ def init_routes(app):
 
     @app.route('/upload_screenshot/<string:template_name>', methods=['POST'])
     @login_required
-    def upload_screenshot(template_name: str):
+    def upload_screenshot(template_name: TemplateName):
         """
         Endpoint to upload a screenshot manually.
         """
@@ -632,7 +657,7 @@ def init_routes(app):
 
     @app.route('/take_screenshot/<string:template_name>', methods=['POST','GET'])
     @login_required
-    def take_screenshot(template_name: str):
+    def take_screenshot(template_name: TemplateName):
         """
         Endpoint to trigger screenshot capture manually.
         """
@@ -651,7 +676,7 @@ def init_routes(app):
 
     @app.route('/update_video/<string:template_name>', methods=['POST'])
     @login_required
-    def update_video(template_name: str):
+    def update_video(template_name: TemplateName):
         """Endpoint to trigger screenshot capture manually."""
         template_name = validate_template_name(template_name)
         if template_name is None:
@@ -708,7 +733,7 @@ def init_routes(app):
 
     @app.route('/templates/<string:template_name>')
     @login_required
-    def template_details(template_name: str):
+    def template_details(template_name: TemplateName):
         templates = template_manager.get_templates()
         if not validate_template_name(template_name):
             abort(404)
@@ -723,7 +748,7 @@ def init_routes(app):
 
     @app.route('/screenshots/<string:name>/<string:filename>')
     @login_required
-    def uploaded_file(name: str, filename: str):
+    def uploaded_file(name: TemplateName, filename: str):
         if not validate_template_name(name):
             abort(404)
         path = os.path.join(os.path.dirname(os.path.join(__file__)),'..', SCREENSHOT_DIRECTORY, name)
@@ -734,7 +759,7 @@ def init_routes(app):
 
     @app.route('/videos/<string:name>/<string:filename>')
     @login_required
-    def view_video(name: str, filename: str):
+    def view_video(name: TemplateName, filename: str):
         if not validate_template_name(name):
             abort(404)
         path = os.path.join(os.path.dirname(os.path.join(__file__)),'..', VIDEO_DIRECTORY, name)
@@ -745,7 +770,7 @@ def init_routes(app):
 
     @app.route('/update_template/<string:template_name>', methods=['POST'])
     @login_required
-    def update_template(template_name: str):
+    def update_template(template_name: TemplateName):
         if not validate_template_name(template_name):
             abort(404)
 
