@@ -587,7 +587,7 @@ def init_routes(app):
         most_recent_file = None
         last_file = None
         for template in sorted_templates:
-            name = template.get("name")
+            name = secure_filename(template.get("name"))
             path = os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
                 "..",
@@ -714,6 +714,7 @@ def init_routes(app):
             if group:
                 abort(400, "Invalid group name. Group name must be alphanumeric.")
 
+        lgroup = secure_filename(lgroup)
         video_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "..",
@@ -1072,7 +1073,7 @@ def init_routes(app):
         if template_name is None:
             abort(404)
         path = os.path.join(
-            os.path.dirname(os.path.join(__file__)), "..", SCREENSHOT_DIRECTORY, name
+            os.path.dirname(os.path.join(__file__)), "..", SCREENSHOT_DIRECTORY, template_name
         )
         if not os.path.exists(path):
             abort(404)
@@ -1086,7 +1087,7 @@ def init_routes(app):
         if template_name is None:
             abort(404)
         path = os.path.join(
-            os.path.dirname(os.path.join(__file__)), "..", VIDEO_DIRECTORY, name
+            os.path.dirname(os.path.join(__file__)), "..", VIDEO_DIRECTORY, template_name
         )
         if not os.path.exists(path):
             abort(404)
