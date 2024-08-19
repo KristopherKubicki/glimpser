@@ -2,6 +2,7 @@
 
 import os
 import re
+import shutil
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, Float, Integer, String, Text

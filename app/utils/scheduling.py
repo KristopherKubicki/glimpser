@@ -9,16 +9,20 @@ from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
 from flask_apscheduler import APScheduler
 from PIL import Image, ImageDraw, ImageFont
+from transformers import CLIPProcessor, CLIPModel
 
 from app.config import DEBUG, SCREENSHOT_DIRECTORY, SUMMARIES_DIRECTORY, VIDEO_DIRECTORY
 
 from .detect import calculate_difference_fast
 from .image_processing import chatgpt_compare
 from .llm import summarize
-from .screenshots import capture_or_download
+from .screenshots import capture_or_download, remove_background, add_timestamp
 from .template_manager import get_template, get_templates, save_template
 
 scheduler = APScheduler()
+
+
+clip_processor, clip_model = None, None
 
 
 def find_closest_image(directory, last_caption_time):
@@ -147,7 +151,7 @@ def update_camera(name, template, image_file=None):
             image.save(output_path, "PNG")
             if os.path.exists(output_path):
                 # TODO: add error mark from lerror
-                add_timestamp(output_path, name, invert=invert)
+                add_timestamp(output_path, name, invert=template.get('invert',False))
                 os.rename(output_path, output_path.replace(".tmp.png", ".png"))
                 lsuc = True
 
@@ -312,6 +316,15 @@ def update_camera(name, template, image_file=None):
 
         # run the object detect AFTER the motion detetor
         if allow is True and object_filter and object_confidence is not None:
+
+            global clip_model, clip_processor
+
+            if clip_model is None:
+                clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")  # TODO: make these models configurable
+
+            if clip_processor is None:
+                clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+
             # Load the latest image
             latest_image_path = os.path.join(directory, png_files[-1])
             image = Image.open(latest_image_path)
@@ -358,7 +371,7 @@ def update_camera(name, template, image_file=None):
                         closest_image_path = os.path.join(
                             directory, closest_image_filename
                         )
-                        print("last caption....", closet_image_path)
+                        print("last caption....", closest_image_path)
                         image_paths.append(closest_image_path)
                 except Exception as e:
                     print(" warning caption parsing error", e)

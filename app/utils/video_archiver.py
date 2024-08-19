@@ -265,7 +265,7 @@ def handle_concat_error(e, temp_video, in_process_video):
             os.rename(temp_video, in_process_video)
             # TODO: consider truth
     else:
-        print("FFmpeg concat command failed:", " ".join(concat_command), e)
+        print("FFmpeg concat command failed:", e)
         if os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
 

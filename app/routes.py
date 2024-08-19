@@ -8,6 +8,7 @@ import json
 import os
 import re
 import time
+import tempfile
 from datetime import datetime, timedelta
 from functools import wraps
 from threading import Lock
@@ -41,6 +42,7 @@ from app.utils import (
     scheduling,
     template_manager,
     video_archiver,
+    screenshots
 )
 from app.utils.db import SessionLocal
 
@@ -397,6 +399,16 @@ def generate(group=None, filename="latest_camera.png"):
             continue
         time.sleep(1 - (time.time() - ltime))
 
+def allowed_filename(filename: str) -> bool:
+
+    if '..' in filename:
+        return False
+
+    if re.findall(r'^[a-zA-Z0-9\.\-_]+?$', filename):
+
+        return True
+
+    return False
 
 def init_routes(app):
     global login_attempts
@@ -516,7 +528,7 @@ def init_routes(app):
             file.save(output_path)
 
             # Add a timestamp to the image and remove the ".tmp" extension
-            add_timestamp(output_path, name=template_name)
+            screenshots.add_timestamp(output_path, name=template_name)
             final_path = output_path.rstrip(".tmp")
             os.rename(output_path, final_path)
 
