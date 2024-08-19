@@ -516,7 +516,7 @@ def init_routes(app):
         if file.filename == "":
             return jsonify({"status": "error", "message": "No selected file"}), 400
 
-        if file and allowed_file(file.filename):
+        if file and allowed_filename(file.filename):
             # Generate a unique timestamped filename
             timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
             filename = f"{template_name}_{timestamp}.png.tmp"
@@ -617,7 +617,10 @@ def init_routes(app):
         "/test.rtsp", methods=["OPTIONS", "DESCRIBE", "SETUP", "PLAY", "TEARDOWN"]
     )
     def handle_rtsp(camera_hash: str):
-        session_id = request.headers.get("Session", generate_session_id())
+
+        # TODO: generate_session_id() does not exist! 
+        #session_id = request.headers.get("Session", generate_session_id())
+        session_id = request.headers.get("Session", '')
         if request.method == "OPTIONS":
             return Response(
                 "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY",
