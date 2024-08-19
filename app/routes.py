@@ -29,6 +29,7 @@ from flask import (
 from PIL import Image
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
+from werkzeug.utils import secure_filename
 
 import app.config as config
 from app.config import (
@@ -57,7 +58,7 @@ def validate_template_name(template_name: str):
     if len(template_name) > 32:
         return None
     for tname in re.findall(r"^[a-zA-Z0-9_\.\-]{1,32}$", template_name):
-        return tname
+        return secure_filename(tname)
     return None
 
 

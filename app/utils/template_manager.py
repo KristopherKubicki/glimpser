@@ -6,6 +6,7 @@ import shutil
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, Float, Integer, String, Text
+from werkzeug.utils import secure_filename
 
 from app.config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY
 
@@ -154,8 +155,8 @@ def get_templates():
     for template_name, details in templates.items():
         if template_name is None or template_name == "":
             continue
-        camera_path = os.path.join(SCREENSHOT_DIRECTORY, template_name)
-        video_path = os.path.join(VIDEO_DIRECTORY, template_name)
+        camera_path = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(template_name))
+        video_path = os.path.join(VIDEO_DIRECTORY, secure_filename(template_name))
         details["last_screenshot_time"] = get_latest_screenshot_date(camera_path)
         details["last_video_time"] = get_latest_video_date(video_path)
     return templates
@@ -175,9 +176,9 @@ def save_template(name: str, template_data) -> bool:
 
     manager = TemplateManager()
     manager.save_template(name, template_data)
-    screenshot_full_path = os.path.join(SCREENSHOT_DIRECTORY, name)
+    screenshot_full_path = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(name))
     os.makedirs(screenshot_full_path, exist_ok=True)
-    video_full_path = os.path.join(VIDEO_DIRECTORY, name)
+    video_full_path = os.path.join(VIDEO_DIRECTORY, secure_filename(name))
     os.makedirs(video_full_path, exist_ok=True)
 
     return True
@@ -190,10 +191,10 @@ def delete_template(name: str) -> bool:
     manager = TemplateManager()
     success = manager.delete_template(name)
     if success:
-        screenshot_full_path = os.path.join(SCREENSHOT_DIRECTORY, name)
+        screenshot_full_path = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(name))
         if os.path.exists(screenshot_full_path) and os.path.isdir(screenshot_full_path):
             shutil.rmtree(screenshot_full_path)
-        video_full_path = os.path.join(VIDEO_DIRECTORY, name)
+        video_full_path = os.path.join(VIDEO_DIRECTORY, secure_filename(name))
         if os.path.exists(video_full_path) and os.path.isdir(video_full_path):
             shutil.rmtree(video_full_path)
     return success
