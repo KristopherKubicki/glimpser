@@ -192,20 +192,19 @@ def update_setting(name: str, value: str) -> bool:
     session = SessionLocal()
     try:
         existing_setting = session.execute(
-            text("SELECT value FROM settings WHERE name = '%s'" % name)
+                text("SELECT value FROM settings WHERE name = ':name'", {"name": name})
         ).fetchone()
         if existing_setting:
             session.execute(
                 text(
-                    "UPDATE settings SET value = '%s' WHERE name = '%s'" % (value, name)
+                    "UPDATE settings SET value = ':name' WHERE name = ':value'",
+                    {"name": name, "value": value}
                 )
             )
         else:
             session.execute(
-                text(
-                    "INSERT INTO settings (name, value) VALUES ('%s', '%s')"
-                    % (name, value)
-                )
+                text("INSERT INTO settings (name, value) VALUES (:name, :value)"),
+                {"name": name, "value": value}
             )
         session.commit()
     finally:
@@ -1012,7 +1011,7 @@ def init_routes(app):
             template_name = validate_template_name(data["name"])
             if template_name is None:
                 abort(404)
-            if validate_template_name(data) and template_manager.save_template(
+            if template_manager.save_template(
                 template_name, data
             ):
                 return jsonify({"status": "success", "message": "Template saved"})
@@ -1049,7 +1048,8 @@ def init_routes(app):
     @login_required
     def template_details(template_name: TemplateName):
         templates = template_manager.get_templates()
-        if not validate_template_name(template_name):
+        template_name = validate_template_name(template_name)
+        if template_name is None:
             abort(404)
 
         template_details = templates.get(template_name)
@@ -1068,7 +1068,8 @@ def init_routes(app):
     @app.route("/screenshots/<string:name>/<string:filename>")
     @login_required
     def uploaded_file(name: TemplateName, filename: str):
-        if not validate_template_name(name):
+        template_name = validate_template_name(name)
+        if template_name is None:
             abort(404)
         path = os.path.join(
             os.path.dirname(os.path.join(__file__)), "..", SCREENSHOT_DIRECTORY, name
@@ -1081,7 +1082,8 @@ def init_routes(app):
     @app.route("/videos/<string:name>/<string:filename>")
     @login_required
     def view_video(name: TemplateName, filename: str):
-        if not validate_template_name(name):
+        template_name = validate_template_name(name)
+        if template_name is None:
             abort(404)
         path = os.path.join(
             os.path.dirname(os.path.join(__file__)), "..", VIDEO_DIRECTORY, name
@@ -1104,7 +1106,8 @@ def init_routes(app):
     @app.route("/update_template/<string:template_name>", methods=["POST"])
     @login_required
     def update_template(template_name: TemplateName):
-        if not validate_template_name(template_name):
+        template_name = validate_template_name(template_name)
+        if template_name is None:
             abort(404)
 
         if True:

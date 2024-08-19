@@ -1,13 +1,12 @@
 import os
 import unittest
 
-from utils.template_manager import TemplateManager
+from app.utils.template_manager import TemplateManager
 
 
 class TestTemplateManager(unittest.TestCase):
     def setUp(self):
-        self.test_filepath = "test_templates.json"
-        self.template_manager = TemplateManager(self.test_filepath)
+        self.template_manager = TemplateManager()
 
     def test_template_operations(self):
         # Test saving a template
