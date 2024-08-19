@@ -6,7 +6,7 @@ import os
 from flask import Flask, current_app
 from flask_apscheduler import APScheduler
 
-from config import DevelopmentConfig, SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY, SECRET_KEY
+
 from .utils.video_archiver import archive_screenshots, compile_to_teaser
 from .utils.video_compressor import compress_and_cleanup
 from .utils.retention_policy import retention_cleanup
@@ -17,26 +17,24 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 def create_app():
     app = Flask(__name__)
-    app.config.from_object(DevelopmentConfig)
+    #app.config.from_object()
+
+    from app.config import SECRET_KEY
     app.secret_key = SECRET_KEY
 
+    from app.config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY, SUMMARIES_DIRECTORY, MAX_WORKERS
     # Ensure the screenshot directory exists
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)
     os.makedirs(VIDEO_DIRECTORY, exist_ok=True)
+    os.makedirs(SUMMARIES_DIRECTORY, exist_ok=True)
 
     from .routes import init_routes
     init_routes(app)
 
     # Set the executor configuration in the Flask app's config
     # should be at least as many sources
-    #app.config['SCHEDULER_EXECUTORS'] = {
-    #    'default': {'type': 'threadpool', 'max_workers': 100}  # Increase the number of threads here
-    #}
-
-    app.config['SCHEDULER_EXECUTORS'] = {
-            'default': {'type': 'processpool', 'max_workers': 8} # todo: read this from a config.  by default, each thread is 6gb.  So don't do more than what the machine can hande
-            #  allow to be configurable by the database
-    }
+    app.config['SCHEDULER_EXECUTORS'] = { 'default': {'type': 'processpool', 'max_workers': MAX_WORKERS} }
+    logging.info(' starting with %d workers' % MAX_WORKERS)
 
     scheduler.init_app(app)
 

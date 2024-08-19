@@ -39,7 +39,7 @@ import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-from config import SCREENSHOT_DIRECTORY, UA, LANG, DEBUG
+from app.config import SCREENSHOT_DIRECTORY, UA, LANG, DEBUG
 
 last_camera_test = {}
 last_camera_test_time = {}

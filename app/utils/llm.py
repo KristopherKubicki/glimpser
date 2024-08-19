@@ -5,7 +5,7 @@ import time
 import re
 import json
 
-from config import CHATGPT_KEY
+from app.config import CHATGPT_KEY, LLM_SUMMARY_PROMPT, LLM_MODEL_VERSION
 
 last_429_error_time = None
 
@@ -27,10 +27,11 @@ def summarize(prompt, history=None, tokens=4096):
          
         # TODO: make this configurable by the database instead
 
-        messages = [{"role": "system", "content": [{"type": "text",
-            "text": "Below are caption logs from several media sources that are relevant to me, the listener.  Summarize the logs and history into a technical and concise transcript of 10 lines for a personalized news station. Write one line per segment separated by newlines. Each line should contain a logically grouped together set of succint insights, forecasts and alerts that you generate. Keep it brief, don't use colorful language. The audience is highly educated and well informed.  Write plain text for each line. Start the summarization with a greeting, the date, time, temperature, an overall summary including the most major events. Include specifics. Can you tell a bigger story rather than just a list of camera feed captions? Prioritize local contexts. What are the takeaways for the listener? Consider the historic transcripts, no need to repeat unless it's an alert. Include uncommon insights. Be precise, dense, brief and specific.  Don't write timestamps. The time is %s CT. All timestamps from the provided cameras are in UTC. Have a swell sense of humor but use it very sparingly. Close with a classy short goodbye and station identification." % (datetime.datetime.now())  # utc?
-            
+        lsummary_prompt = LLM_SUMMARY_PROMPT
+        lsummary_prompt.replace('$datetime', str(datetime.datetime.now())) 
 
+        messages = [{"role": "system", "content": [{"type": "text",
+            "text":  lsummary_prompt
             }]}]
         messages.append({"role": "user", "content": [{"type": "text", "text": prompt}]})
         if history:
@@ -38,7 +39,7 @@ def summarize(prompt, history=None, tokens=4096):
 
         # Construct the payload with the prompt and images
         payload = {
-            "model": "gpt-4o", # cheaper and faster
+            "model": LLM_MODEL_VERSION, # cheaper and faster
             "messages": messages,
             "max_tokens": tokens # might even be less
         }
@@ -64,7 +65,7 @@ def summarize(prompt, history=None, tokens=4096):
             ltokens = result['usage']['total_tokens']
             #print(">>", result['usage'])
             # TODO: logging.. 
-            print(" total tokens $%0.5f" % ( ltokens * 0.01 / 1000))
+            print(" total tokens $%0.5f" % ( ltokens * 0.005 / 1000))
 
             # TODO: actually, convert this to something else... 
             ljson = {}

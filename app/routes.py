@@ -1,12 +1,16 @@
 # app/routes.py
 
 import os, glob, json, time, hashlib, re, io
+import inspect
 from flask import render_template, jsonify, send_file, send_from_directory, request, abort, redirect, session, flash, Response, stream_with_context
 from datetime import datetime, timedelta
-
-from .utils import screenshots, template_manager, video_archiver, video_details, scheduling
-from config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY, USER_NAME, SECRET_KEY, USER_PASSWORD_HASH, API_KEY
 from werkzeug.security import check_password_hash
+from sqlalchemy import text
+
+import app.config as config
+from app.config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY, USER_NAME, SECRET_KEY, USER_PASSWORD_HASH, API_KEY
+from app.utils.db import SessionLocal
+from app.utils import screenshots, template_manager, video_archiver, video_details, scheduling
 
 from PIL import Image
 from functools import wraps
@@ -14,32 +18,8 @@ from flask import g, request, redirect, url_for, session
 from threading import Lock
 
 
-class TemplateName:
-    def __init__(self, name: str):
-        if not self.validate(name):
-            raise ValueError(f"Invalid template name: {name}")
-        self._name = name
 
-    @staticmethod
-    def validate(name: str) -> bool:
-        if name is None:
-            return False
-        if not isinstance(name, str):
-            return False
-        if '..' in name or '/' in name:
-            return False
-        if len(name) > 32:
-            return False
-        return bool(re.match(r'^[a-zA-Z0-9_\.\-]{1,32}$', name))
-
-    def __str__(self):
-        return self._name
-
-    def __repr__(self):
-        return f"TemplateName({self._name!r})"
-
-
-def validate_template_name(template_name: TemplateName):
+def validate_template_name(template_name: str):
     if template_name is None:
         return None
     if not isinstance(template_name, str):
@@ -51,6 +31,25 @@ def validate_template_name(template_name: TemplateName):
     for tname in re.findall(r'^[a-zA-Z0-9_\.\-]{1,32}$', template_name):
         return tname
     return None
+
+class TemplateName:
+    def __init__(self, name: str):
+        if not self.validate(name):
+            raise ValueError(f"Invalid template name: {name}")
+        self._name = name
+
+    @staticmethod
+    def validate(name: str) -> bool:
+        name = validate_template_name(name)
+        if name is None:
+            return False
+        return True
+
+    def __str__(self):
+        return self._name
+
+    def __repr__(self):
+        return f"TemplateName({self._name!r})"
 
 def generate_timed_hash():
     expiration_time = int(time.time()) + 15*60
@@ -99,6 +98,67 @@ def login_required(f):
                 # No API key provided, and not logged in
                 return redirect(url_for('login', next=request.url))
     return decorated_function
+
+
+
+def get_all_settings():
+    session = SessionLocal()
+    try:
+        # Fetch all settings from the database
+        db_settings = {row[0]: row[1] for row in session.execute(text("SELECT name, value FROM settings")).fetchall()}
+
+        # Fetch all settings from config.py that use get_setting()
+        settings = {}
+        for name, value in inspect.getmembers(config):
+            if inspect.isfunction(value):
+                continue  # Skip functions
+            if name.startswith('_'):
+                continue
+
+            if isinstance(value, (str, int, float, bool)):
+                settings[name] = db_settings.get(name, value)
+
+        # Include settings that are only in the database but not in config.py
+        for name in db_settings:
+            if name not in settings:
+                settings[name] = db_settings[name]
+
+        # Convert the dictionary to a list of dictionaries for easy template usage
+        settings_list = [{'name': name, 'value': value} for name, value in settings.items()]
+        
+        # TODO: blocklist some settings
+        lsettings_list = []
+        blocks = ['SECRET_KEY','USER_PASSWORD_HASH','DATABASE_URL']
+        for sl in settings_list:
+            if re.findall(r'^[A-Z_]+?$', sl['name']) and sl['name'] not in blocks:
+                lsettings_list.append({'name': sl['name'], 'value': sl['value']})
+
+        return lsettings_list
+
+    finally:
+        session.close()
+
+def update_setting(name: str, value: str) -> bool:
+
+    name = name.replace("'",'')[:32]
+    value = value.replace("'",'')[:1024]
+
+    if not re.findall(r'^[A-Z_]+?$', name):
+        return False
+
+    session = SessionLocal()
+    try:
+        existing_setting = session.execute(text(f"SELECT value FROM settings WHERE name = '%s'" % name)).fetchone()
+        if existing_setting:
+            session.execute(text("UPDATE settings SET value = '%s' WHERE name = '%s'" % (value, name)))
+        else:
+            session.execute(text("INSERT INTO settings (name, value) VALUES ('%s', '%s')" % (name, value)))
+        session.commit()
+    finally:
+        session.close()
+
+    return True # not exactly right
+
 
 # TODO: 
 def generate_video_stream(video_path: str):
@@ -767,6 +827,17 @@ def init_routes(app):
             abort(404)
 
         return send_from_directory(path, filename)
+
+    @app.route('/settings', methods=['GET', 'POST'])
+    def settings():
+        if request.method == 'POST':
+            for name, value in request.form.items():
+                update_setting(name, value)
+            return redirect(url_for('settings'))
+
+        settings = get_all_settings()
+        return render_template('settings.html', settings=settings)
+
 
     @app.route('/update_template/<string:template_name>', methods=['POST'])
     @login_required

@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from .db import Base, SessionLocal, init_db
 from sqlalchemy import Column, Integer, String, Text, Float, Boolean
-from config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY
+from app.config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY
 from .video_details import get_latest_screenshot_date, get_latest_video_date
 
 class Template(Base):

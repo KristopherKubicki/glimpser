@@ -13,9 +13,9 @@ from apscheduler.triggers.cron import CronTrigger
 from .template_manager import get_template, get_templates, save_template
 from .screenshots import capture_or_download
 from .detect import calculate_difference_fast
-from .image_processing import tiny_llava_compare, llava_compare, chatgpt_compare
+from .image_processing import chatgpt_compare
 from .llm import summarize
-from config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY, SUMMARIES_DIRECTORY, DEBUG
+from app.config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY, SUMMARIES_DIRECTORY, DEBUG
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -308,43 +308,7 @@ def update_camera(name, template, image_file=None):
             if last_motion_trigger:
                 template['last_motion_time'] = lctime
 
-                '''
-                lprompt = "Have the images changed in a significant way? Please answer Yes or No."  # consider asking if the old caption should be updated 
-                if template.get('notes'):
-                    lprompt += ' ' + template['notes']
-                lret = tiny_llava_compare(prompt=lprompt, image_paths=image_paths)
-                if lret:
-                    print("  OK", name, lret)
-                    if 'yes' in lret.lower():
-                        last_motion_trigger = True
-                    elif 'no' in lret.lower():
-                        last_motion_trigger = False # big optimization.. if the LLM doesnt see a diff, there probably isnt one
-                '''
- 
             lret = None
-            # TODO: find a way to limit this better under load... 
-            '''
-            if last_motion_trigger or template.get('last_motion_caption') is None:
-                print("TRIGGERED", name)
-                lprompt = "You are an analyst for a personalized news feed station in Chicago, Illinois. Your job is to generate an brief (16 word) but intelligent caption for the last image, relevant to our station. Be specific with your observations. "
-                # under certain circumstances, we would want to escalate this further. maybe into an alert?  
-                if template.get('notes'):
-                    lprompt += ' ' + template['notes']
-                lret = None
-                template['last_motion_time'] = lctime
-                lret = llava_compare(prompt=lprompt, image_paths=image_paths)
-                print("<<", name, lret) # not everything can get a caption because we dont have enough to go around . sometimes its a miss... 
-                if lret is not None and lret != '':
-                        print("  oldmc:", name, template.get('last_motion_caption'), image_paths[-1])
-                        print("     mc:", name, lret, image_paths[-1])
-                        template['last_motion_caption'] = lret
-                        # we can always run it once
-                        # potentially has to be a livecaption feed too...
-                        if re.findall(r'(?:interesting|warning|alert|help)', lret, flags=re.I):
-                            print("   **** interesting", lret)
-                            last_caption_trigger = True
-            '''
-
             # just ignore the old
             template = get_template(name)
 

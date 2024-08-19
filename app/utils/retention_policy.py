@@ -3,7 +3,7 @@
 import os
 import time
 
-from config import MAX_COMPRESSED_VIDEO_AGE, VIDEO_DIRECTORY, SCREENSHOT_DIRECTORY, MAX_RAW_DATA_SIZE
+from app.config import MAX_COMPRESSED_VIDEO_AGE, VIDEO_DIRECTORY, SCREENSHOT_DIRECTORY, MAX_RAW_DATA_SIZE
 
 def get_files_sorted_by_creation_time(directory):
     if not os.path.isdir(directory):

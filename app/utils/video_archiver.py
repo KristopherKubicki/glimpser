@@ -8,7 +8,7 @@ import time
 import tempfile
 import random
 from PIL import Image
-from config import VIDEO_DIRECTORY, MAX_COMPRESSED_VIDEO_AGE, MAX_IN_PROCESS_VIDEO_SIZE, SCREENSHOT_DIRECTORY, VERSION, NAME
+from app.config import VIDEO_DIRECTORY, MAX_COMPRESSED_VIDEO_AGE, MAX_IN_PROCESS_VIDEO_SIZE, SCREENSHOT_DIRECTORY, VERSION, NAME
 from .template_manager import get_templates
 
 # TODO: move this until utils so that its not duplicated

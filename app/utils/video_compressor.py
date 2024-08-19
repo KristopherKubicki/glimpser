@@ -1,7 +1,7 @@
 # utils/video_compressor.py
 
 import os
-from config import MAX_RAW_DATA_SIZE, SCREENSHOT_DIRECTORY
+from app.config import MAX_RAW_DATA_SIZE, SCREENSHOT_DIRECTORY
 
 def compress_and_cleanup():
     # Logic to compress videos using ffmpeg
