@@ -62,6 +62,8 @@ class TemplateManager:
             result = {template.name: template.__dict__ for template in templates}
             for key in result:
                 del result[key]["_sa_instance_state"]
+            if result.get(None):
+                del result[None]
             return result
         finally:
             session.close()

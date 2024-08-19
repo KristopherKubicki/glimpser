@@ -1047,11 +1047,11 @@ def init_routes(app):
     @app.route("/templates/<string:template_name>")
     @login_required
     def template_details(template_name: TemplateName):
-        templates = template_manager.get_templates()
         template_name = validate_template_name(template_name)
         if template_name is None:
             abort(404)
 
+        templates = template_manager.get_templates()
         template_details = templates.get(template_name)
         if template_details is None:
             abort(404)  # Template not found
