@@ -1,6 +1,8 @@
-import unittest
 import os
+import unittest
+
 from utils.screenshots import capture_screenshot
+
 
 class TestScreenshotCapture(unittest.TestCase):
     def setUp(self):
@@ -17,6 +19,6 @@ class TestScreenshotCapture(unittest.TestCase):
         if os.path.isfile(self.output_path):
             os.remove(self.output_path)
 
-if __name__ == '__main__':
-    unittest.main()
 
+if __name__ == "__main__":
+    unittest.main()

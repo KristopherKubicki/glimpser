@@ -122,25 +122,26 @@ function updateVideo(templateName) {
 </script>
 
 
-  <details><summary>Recent Captures</summary>
-    <div id="screenshots">
-        {% for screenshot in screenshots %}
-            <div class="screenshot">
-		    <a href='/screenshots/{{template_name}}/{{screenshot}}'><img src="/screenshots/{{template_name}}/{{screenshot }}" alt="Screenshot" height='200'></a>
+  <details><summary>Recent Videos</summary>
+    <div id="videos">
+        {% for video in videos %}
+            <div class="video">
+                <video src="/videos/{{template_name}}/{{video}}" height="200" autoplay loop muted></video>
             </div>
         {% endfor %}
     </div>
   </details>
 
-  <details><summary>Recent Videos</summary>
-    <div id="videos">
-        {% for video in videos %}
-            <div class="videos">
-		    <a href='/videos/{{template_name}}/{{video}}'><img src="/videos/{{template_name}}/{{video }}" alt="Screenshot" height='200'></a>
+    <details><summary>Recent Captures</summary>
+    <div id="screenshots">
+        {% for screenshot in screenshots %}
+            <div class="screenshot">
+                    <a href='/screenshots/{{template_name}}/{{screenshot}}'><img src="/screenshots/{{template_name}}/{{screenshot }}" alt="Screenshot" height='200'></a>
             </div>
         {% endfor %}
     </div>
   </details>
+
 
 
 <details>
