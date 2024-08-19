@@ -799,11 +799,11 @@ def init_routes(app):
             abort(404)
 
         template_details = templates.get(template_name)
+        if template_details is None:
+             abort(404)  # Template not found
         lscreenshots = template_manager.get_screenshots_for_template(template_name)
-        if lscreenshots is None:
-            abort(404)  # Template not found
         videos = template_manager.get_videos_for_template(template_name)
-        return render_template('template_details.html', template_name=template_name, template_details=template_details, lscreenshots=screenshots, videos=videos)
+        return render_template('template_details.html', template_name=template_name, template_details=template_details, screenshots=lscreenshots, videos=videos)
 
 
     @app.route('/screenshots/<string:name>/<string:filename>')

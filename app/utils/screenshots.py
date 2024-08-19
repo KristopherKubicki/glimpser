@@ -165,7 +165,7 @@ def add_timestamp(image_path, name='unknown', invert=False):
                 else:
                     # unlink the offending image
                     os.unlink(image_path)
-                print(" warning : image load issue:", image_path, e)
+                #print(" warning : image load issue:", image_path, e)
                 logging.error(f"Error saving image: {image_path} {e}")
                 return
 
@@ -181,6 +181,9 @@ def add_timestamp(image_path, name='unknown', invert=False):
             # Define font size as 5% of the screen height
             max_height = min(image.height, image.width * 9 // 16)
             font_size = int(max_height * 0.05)
+            if font_size < 5: # anything less than a font size of 5 is goign to fail
+                return
+
             top_offset = (image.height - max_height) / 2
 
             #Define font (you may need to specify a full path to a .ttf file on your system)

@@ -13,63 +13,106 @@
 	{% include 'nav.html' %}
 	</header>
 
-	<details><summary>Add Template</summary>
-    <div id="template-form">
-        <h3>Add Template</h3>
-        <form action="/templates" method="post">
-            <label for="name">Template Name:</label>
-            <input type="text" id="name" name="name"><br><br>
-            <label for="url">URL:</label>
-            <input type="text" id="url" name="url"><br><br>
+<details>
+    <summary>Add Template</summary>
+    <div id="template-form" style="background-color: #222; padding: 20px; border-radius: 10px; max-width: 600px; margin: 20px auto;">
+        <h3 style="color: #fff; text-align: center; margin-bottom: 20px;">Add Template</h3>
+        <form id="add-template-form" action="/templates" method="post" onsubmit="return validateForm()">
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-bottom: 20px;">
+                <label for="name" style="color: #fff;">Template Name:</label>
+                <input type="text" id="name" name="name" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required>
 
+                <label for="url" style="color: #fff;">URL:</label>
+                <input type="url" id="url" name="url" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required>
 
-<label for="frequency">Frequency (minutes):</label>
-<input type="text" id="frequency" name="frequency" value="30"><br><br>
+                <label for="frequency" style="color: #fff;">Frequency (minutes):</label>
+                <input type="number" id="frequency" name="frequency" value="30" min="1" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required>
 
-<label for="timeout">Timeout (seconds):</label>
-<input type="text" id="timeout" name="timeout" value="10"><br><br>
+                <label for="timeout" style="color: #fff;">Timeout (seconds):</label>
+                <input type="number" id="timeout" name="timeout" value="10" min="1" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required>
 
-<label for="notes">Notes:</label>
-<textarea id="notes" name="notes"></textarea><br><br>
+                <label for="notes" style="color: #fff;">Notes:</label>
+                <textarea id="notes" name="notes" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;"></textarea>
 
-<label for="object_filter">Object Filter:</label>
-<input type="text" id="object_filter" name="object_filter"><br><br>
+                <label for="object_filter" style="color: #fff;">Object Filter:</label>
+                <input type="text" id="object_filter" name="object_filter" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
 
-<label for="object_confidence">Object Confidence:</label>
-<input type="text" id="object_filter" name="object_confidence"><br><br>
+                <label for="object_confidence" style="color: #fff;">Object Confidence:</label>
+                <input type="number" id="object_confidence" name="object_confidence" min="0" max="1" step="0.01" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
 
-<label for="popup_xpath">Popup XPath:</label>
-<input type="text" id="popup_xpath" name="popup_xpath"><br><br>
+                <label for="popup_xpath" style="color: #fff;">Popup XPath:</label>
+                <input type="text" id="popup_xpath" name="popup_xpath" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
 
-<label for="dedicated_xpath">Dedicated XPath:</label>
-<input type="text" id="dedicated_xpath" name="dedicated_xpath"><br><br>
+                <label for="dedicated_xpath" style="color: #fff;">Dedicated XPath:</label>
+                <input type="text" id="dedicated_xpath" name="dedicated_xpath" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
 
-<label for="callback_url">Callback URL:</label>
-<input type="url" id="callback_url" name="callback_url"><br><br>
+                <label for="callback_url" style="color: #fff;">Callback URL:</label>
+                <input type="url" id="callback_url" name="callback_url" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
 
-<label for="proxy">Proxy:</label>
-<input type="text" id="proxy" name="proxy"><br><br>
+                <label for="proxy" style="color: #fff;">Proxy:</label>
+                <input type="text" id="proxy" name="proxy" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
 
-<label for="groups">Groups:</label>
-<input type="text" id="groups" name="groups"><br><br>
+                <label for="groups" style="color: #fff;">Groups:</label>
+                <input type="text" id="groups" name="groups" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
 
-<label for="rollback_frames">Rollback Frames:</label>
-<input type="rollback_frames" id="rollback_frames" name="rollback_frames" value='0'><br><br>
+                <label for="rollback_frames" style="color: #fff;">Rollback Frames:</label>
+                <input type="number" id="rollback_frames" name="rollback_frames" value="0" min="0" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+            </div>
 
-            <label for="invert">Invert:</label>
-            <input type="checkbox" id="invert" name="invert"><br><br>
-            <label for="dark">Dark Mode:</label>
-            <input type="checkbox" id="dark" name="dark" checked><br><br>
-            <label for="headless">Headless:</label>
-            <input type="checkbox" id="headless" name="headless" checked><br><br>
-            <label for="stealth">Stealth:</label>
-            <input type="checkbox" id="stealth" name="stealth"><br><br>
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+                <label for="invert" style="color: #fff;">
+                    <input type="checkbox" id="invert" name="invert"> Invert
+                </label>
+                <label for="dark" style="color: #fff;">
+                    <input type="checkbox" id="dark" name="dark" checked> Dark Mode
+                </label>
+                <label for="headless" style="color: #fff;">
+                    <input type="checkbox" id="headless" name="headless" checked> Headless
+                </label>
+                <label for="stealth" style="color: #fff;">
+                    <input type="checkbox" id="stealth" name="stealth"> Stealth
+                </label>
+            </div>
 
-
-            <input type="submit" value="Submit">
+            <div style="text-align: center; margin-top: 20px;">
+                <input type="submit" value="Submit" style="padding: 10px 20px; background-color: #4CAF50; color: #fff; border: none; border-radius: 5px; cursor: pointer;">
+            </div>
         </form>
     </div>
-	</details>
+</details>
+
+<script>
+function validateForm() {
+    const name = document.getElementById('name').value.trim();
+    const url = document.getElementById('url').value.trim();
+    const frequency = document.getElementById('frequency').value;
+    const timeout = document.getElementById('timeout').value;
+    const objectConfidence = document.getElementById('object_confidence').value;
+
+    if (name === "" || url === "") {
+        alert("Template Name and URL are required fields.");
+        return false;
+    }
+
+    if (frequency < 1) {
+        alert("Frequency must be at least 1 minute.");
+        return false;
+    }
+
+    if (timeout < 1) {
+        alert("Timeout must be at least 1 second.");
+        return false;
+    }
+
+    if (objectConfidence !== "" && (objectConfidence < 0 || objectConfidence > 1)) {
+        alert("Object Confidence must be between 0 and 1.");
+        return false;
+    }
+
+    return true;
+}
+</script>
+
 
 	<div>
     <label for="group-dropdown">Filter by Group:</label>
@@ -79,7 +122,7 @@
     </select>
 
 
-        <input type="range" id="grid-width-slider" min="300" max="3840" value="360" onload="this.max = window.innerWidth;">
+        <input type="range" id="grid-width-slider" min="50" max="3840" value="360" onload="this.max = window.innerWidth;">
 	         <button id="play-all">Play All</button>
                 <button id="stop-all">Stop All</button>
 
@@ -89,6 +132,7 @@
         <!-- Template list will be populated here -->
     </div>
 
+    {% include 'footer.html' %}
 </body>
 </html>
 

@@ -60,7 +60,8 @@
                 <table>
                     <tr>
                         <td>
-                            <img src="/last_screenshot/{{template}}" alt="Thumbnail" width="256">
+				<a href='/templates/{{template}}'><img src="/last_screenshot/{{template}}" alt="Thumbnail" width="256"></a>
+					
                         </td>
                         <td>
                             <div class="details">
@@ -75,6 +76,10 @@
             </div>
         {% endfor %}
     </div>
+
+    {% include 'footer.html' %}
+
 </body>
+
 </html>
 

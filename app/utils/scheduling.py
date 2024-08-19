@@ -189,34 +189,7 @@ def update_camera(name, template, image_file=None):
         prev_motion = os.path.join(directory, 'last_motion.png') 
         #print(" detected motion", lsum, name, template.get('last_caption'))
 
-        # Implement a filter using YOLO
-        object_filter = template.get('object_filter', '')
-        object_confidence = 0.5
-        try:
-            object_confidence = float(template.get('object_confidence', 0.5))
-        except Exception as e:
-            pass
-
         allow = False
-
-        if lsum is True and object_filter and object_confidence is not None:
-            # Load the latest image
-            latest_image_path = os.path.join(directory, png_files[-1])
-            image = Image.open(latest_image_path)
-
-            # Process the image and text
-            inputs = clip_processor(text=[object_filter], images=image, return_tensors="pt", padding=True)
-
-            #Get the logits from the model
-            outputs = clip_model(**inputs)
-            logits_per_image = outputs.logits_per_image  # this is the image-text similarity score
-            probs = logits_per_image.softmax(dim=1)  # we can take the softmax to get probabilities
-
-            # Check if the object is detected with confidence higher than the threshold
-            if probs[0, 0] >= object_confidence:
-                allow = True
-                print(f"Object '{object_filter}' detected in {name} with confidence {probs[0, 0]}")
-
 
         #  Work through, Motion detection, then object detection, then live caption, then online captioning
         #  
@@ -231,13 +204,17 @@ def update_camera(name, template, image_file=None):
             allow = True
             last_motion_trigger = True
 
-        if True:
+        if lsum is True:
+            allow = True
+            last_motion_trigger = True
+
+        if allow is False:
             try:
                 last_motion_caption_time = datetime.datetime.strptime(template.get('last_motion_caption_time','1970-01-01 00:00:00'), "%Y-%m-%d %H:%M:%S")
-                if last_motion_caption_time and datetime.datetime.utcnow() - last_motion_caption_time > datetime.timedelta(hours=1):
+                if last_motion_caption_time and datetime.datetime.utcnow() - last_motion_caption_time > datetime.timedelta(hours=3):
                     allow = True
                     last_motion_trigger = True
-                    #print("allowing from old caption", name)
+                    #print("allowing because of an old caption", name)
             except Exception as e:
                 #print(" parse exception", e) #n1c
                 pass
@@ -267,7 +244,36 @@ def update_camera(name, template, image_file=None):
                 #print(" parse exception", e) #n1c
                 pass
 
+        # Implement a filter using CLIP
+        object_filter = template.get('object_filter', '')
+        object_confidence = 0.5
+        try:
+            object_confidence = float(template.get('object_confidence', 0.5))
+        except Exception as e:
+            pass
+
+        # run the object detect AFTER the motion detetor
+        if allow is True and object_filter and object_confidence is not None:
+            # Load the latest image
+            latest_image_path = os.path.join(directory, png_files[-1])
+            image = Image.open(latest_image_path)
+
+            # Process the image and text
+            inputs = clip_processor(text=[object_filter], images=image, return_tensors="pt", padding=True)
+
+            #Get the logits from the model
+            outputs = clip_model(**inputs)
+            logits_per_image = outputs.logits_per_image  # this is the image-text similarity score
+            probs = logits_per_image.softmax(dim=1)  # we can take the softmax to get probabilities
+
+            # Check if the object is detected with confidence higher than the threshold
+            if probs[0, 0] >= object_confidence:
+                allow = True
+                #print(f"Object '{object_filter}' detected in {name} with confidence {probs[0, 0]}")
+
         if allow:
+
+
             # allow this to run one time if we have no detection
             #  generate the symlink. if there is a data/screenshots/<camera>/last_motion.png, please rename the move the symlink to prev_motion.png
             #    then, create the symlink for last_motion.png to point to the new png_files[-1]

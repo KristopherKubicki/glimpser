@@ -112,7 +112,7 @@ function updateGridLayout() {
     if (isMobile()) {
         templateList.style.gridTemplateColumns = '1fr'; // Set to single column layout
     } else {
-        templateList.style.gridTemplateColumns = 'repeat(auto-fit, minmax(300px, var(--grid-item-width, 360px)))'; // Set to dynamic column layout
+        templateList.style.gridTemplateColumns = 'repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px)))'; // Set to dynamic column layout
     }
 }
 
