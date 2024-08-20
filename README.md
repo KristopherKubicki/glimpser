@@ -1,3 +1,7 @@
+<center>
+<img src='app/static/img/glimpser.png'>
+</center>
+
 # Glimpser
 
 ## Introduction
