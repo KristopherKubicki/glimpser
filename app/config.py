@@ -24,8 +24,17 @@ def get_setting(name, default=None):
             text("SELECT value FROM settings WHERE name = '%s'" % name)
         ).fetchone()
         return result[0] if result else default
+    except Exception as e:
+        if 'no such table' in str(e):
+            # this is ok if its the first time only... 
+            print("warning! table does not exist")
+            pass
+        else:
+            print("warning! initialization error", e)
     finally:
         session.close()
+
+    return default
 
 
 SCHEDULER_API_ENABLED = True

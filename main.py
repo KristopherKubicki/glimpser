@@ -12,7 +12,7 @@ DATABASE_PATH = os.getenv(
     "GLIMPSER_DATABASE_PATH", "data/glimpser.db"
 )  # warning, duplicate default value in app/config.py
 if not os.path.isdir(os.path.dirname(DATABASE_PATH)):
-    os.makedirs(DATABASE_PATH, exists_ok=True)
+    os.makedirs(os.path.dirname(DATABASE_PATH))
 
 # initial setup.  If there is no database, then the application is starting from scratch
 if not os.path.exists(DATABASE_PATH):  # check some other things too..
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     from app.config import HOST, LOGGING_PATH, PORT
 
     if not os.path.isdir(os.path.dirname(LOGGING_PATH)):
-        os.makedirs(LOGGING_PATH, exists_ok=True)
+        os.makedirs(os.path.dirname(LOGGING_PATH))
 
     logging.basicConfig(
         filename=LOGGING_PATH,
@@ -39,3 +39,4 @@ if __name__ == "__main__":
     app = create_app()
 
     app.run(host=HOST, port=PORT)
+
