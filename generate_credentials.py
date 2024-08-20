@@ -1,7 +1,7 @@
 import secrets
 import sqlite3
 
-import config
+from app import config
 from werkzeug.security import generate_password_hash
 
 
