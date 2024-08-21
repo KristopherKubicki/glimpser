@@ -192,14 +192,13 @@ def update_setting(name: str, value: str) -> bool:
     session = SessionLocal()
     try:
         existing_setting = session.execute(
-                text("SELECT value FROM settings WHERE name = ':name'", {"name": name})
+                text("SELECT value FROM settings WHERE name = :name"),
+                {"name": name}
         ).fetchone()
         if existing_setting:
             session.execute(
-                text(
-                    "UPDATE settings SET value = ':name' WHERE name = ':value'",
-                    {"name": name, "value": value}
-                )
+                text("UPDATE settings SET value = :value WHERE name = :name"),
+                {"name": name, "value": value}
             )
         else:
             session.execute(
@@ -618,7 +617,7 @@ def init_routes(app):
     )
     def handle_rtsp(camera_hash: str):
 
-        # TODO: generate_session_id() does not exist! 
+        # TODO: generate_session_id() does not exist!
         #session_id = request.headers.get("Session", generate_session_id())
         session_id = request.headers.get("Session", '')
         if request.method == "OPTIONS":
