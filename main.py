@@ -24,11 +24,23 @@ from app.config import HOST, LOGGING_PATH, PORT
 if not os.path.isdir(os.path.dirname(LOGGING_PATH)):
     os.makedirs(os.path.dirname(LOGGING_PATH), exist_ok=True)
 
-logging.basicConfig(
-    filename=LOGGING_PATH,
-    level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
+# Define the logging format
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+
+# Create a logger
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
+# File handler to log to a file
+file_handler = logging.FileHandler(LOGGING_PATH)
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+# Stream handler to log to the console
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
 
 from app import create_app
 from flask import jsonify
