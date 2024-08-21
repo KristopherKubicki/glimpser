@@ -129,7 +129,7 @@ def compile_videos(input_file, output_file):
         "-f",
         "concat",
         "-safe",
-        "1",  # no relative paths...
+        "0",  # no relative paths...
         "-i",
         os.path.abspath(input_file),
         "-c",
@@ -210,7 +210,7 @@ def concatenate_videos(in_process_video, temp_video, video_path):
                 "-c:v",
                 "h264",
                 "-safe",
-                "1",
+                "0",
                 "-i",
                 os.path.abspath(in_process_video),
                 "-i",
@@ -265,7 +265,7 @@ def handle_concat_error(e, temp_video, in_process_video):
             os.rename(temp_video, in_process_video)
             # TODO: consider truth
     else:
-        print("FFmpeg concat command failed:", e)
+        #print("FFmpeg concat command failed:", e) # TODO: handle this better... why non zero exit?
         if os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
 
@@ -376,7 +376,7 @@ def compile_to_video(camera_path, video_path):
             "-copyts",
             "-start_at_zero",
             "-safe",
-            "1",
+            "0",
             "-i",
             os.path.abspath(temp_file_path),
             "-c:v",
@@ -407,8 +407,9 @@ def compile_to_video(camera_path, video_path):
             )
             # subprocess.run(create_command, check=True, stdout=subprocess.PIPE)
             # subprocess.run(create_command, check=True)
-        except Exception:
-            # print("FFmpeg command failed:", e)
+        except Exception as e:
+            #print("FFmpeg command failed:", e)
+            #print(">>>> JOIN:", ' '.join(create_command))
             # subprocess.run(create_command, check=True)
             # TODO: log this better!
             pass

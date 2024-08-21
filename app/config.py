@@ -66,7 +66,7 @@ MAX_IN_PROCESS_VIDEO_SIZE = int(
     get_setting("MAX_IN_PROCESS_VIDEO_SIZE", 100 * 1024 * 1024)
 )  # 100 MB
 
-# originally from auth.py
+LOG_LEVEL = get_setting("LOG_LEVEL","DEBUG")
 
 # Load settings from the database
 SECRET_KEY = get_setting("SECRET_KEY", "default_secret_key")

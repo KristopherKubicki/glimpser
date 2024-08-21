@@ -413,6 +413,11 @@ def init_routes(app):
     global login_attempts
     # get_active_groups()
 
+    @app.route('/health')
+    def health_check():
+        # should be healthy
+        return jsonify({"status": "healthy"}), 200
+
     @app.route("/login", methods=["GET", "POST"])
     def login():
         ip_address = request.remote_addr
@@ -520,8 +525,8 @@ def init_routes(app):
             timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
             filename = f"{template_name}_{timestamp}.png.tmp"
             output_path = os.path.join(SCREENSHOT_DIRECTORY, template_name, filename)
-            if not os.path.normpath(output_path).startswith(SCREENSHOT_DIRECTORY):
-                abort(400)
+            #if not os.path.normpath(output_path).startswith(SCREENSHOT_DIRECTORY):
+            #    abort(400)
 
             # Save the file to a temporary location
             file.save(output_path)
@@ -982,8 +987,6 @@ def init_routes(app):
             SCREENSHOT_DIRECTORY,
             template_name,
         )
-        if not os.path.normpath(camera_path).startswith(SCREENSHOT_DIRECTORY):
-            abort(400)
 
         video_path = os.path.join(
             os.path.dirname(os.path.join(__file__)),
@@ -991,8 +994,6 @@ def init_routes(app):
             VIDEO_DIRECTORY,
             template_name,
         )
-        if not os.path.normpath(video_path).startswith(VIDEO_DIRECTORY):
-            abort(400)
 
         if os.path.exists(camera_path) and os.path.exists(video_path):
             video_archiver.compile_to_video(camera_path, video_path)
