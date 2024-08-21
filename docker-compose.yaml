@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-default_secret_key}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/glimpser.db}
+      - CHATGPT_KEY=${CHATGPT_KEY:-}
+      - GLIMPSER_DATABASE_PATH=/app/data/glimpser.db
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - glimpser_network
+
+networks:
+  glimpser_network:
+    driver: bridge
+
+volumes:
+  data:
+  logs:

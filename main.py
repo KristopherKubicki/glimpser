@@ -12,31 +12,44 @@ DATABASE_PATH = os.getenv(
     "GLIMPSER_DATABASE_PATH", "data/glimpser.db"
 )  # warning, duplicate default value in app/config.py
 if not os.path.isdir(os.path.dirname(DATABASE_PATH)):
-    os.makedirs(os.path.dirname(DATABASE_PATH))
+    os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
 
 # initial setup.  If there is no database, then the application is starting from scratch
 if not os.path.exists(DATABASE_PATH):  # check some other things too..
     from generate_credentials import generate_credentials
-
     generate_credentials()
 
+from app.config import HOST, LOGGING_PATH, PORT
+
+if not os.path.isdir(os.path.dirname(LOGGING_PATH)):
+    os.makedirs(os.path.dirname(LOGGING_PATH), exist_ok=True)
+
+# Define the logging format
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+
+# Create a logger
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
+# File handler to log to a file
+file_handler = logging.FileHandler(LOGGING_PATH)
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+# Stream handler to log to the console
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
+
+from app import create_app
+from flask import jsonify
+
+app = create_app()
+
+# @app.route('/health')
+# def health_check():
+#     return jsonify({"status": "healthy"}), 200
 
 if __name__ == "__main__":
-
-    from app.config import HOST, LOGGING_PATH, PORT
-
-    if not os.path.isdir(os.path.dirname(LOGGING_PATH)):
-        os.makedirs(os.path.dirname(LOGGING_PATH))
-
-    logging.basicConfig(
-        filename=LOGGING_PATH,
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-    )
-
-    from app import create_app
-
-    app = create_app()
-
     app.run(host=HOST, port=PORT)
-
