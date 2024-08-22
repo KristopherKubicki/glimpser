@@ -70,4 +70,4 @@ ENV PYTHONUNBUFFERED=1
 EXPOSE 8082
 
 # Run the application with Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8082", "main:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8082", "--workers", "4", "main:app"]

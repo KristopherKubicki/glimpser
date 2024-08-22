@@ -598,22 +598,24 @@ def update_summary():
             key=lambda x: os.path.getmtime(os.path.join(directory, x)),
             reverse=True,
         )
+        print(jl_files)
 
-        # Load entries from the most recent 5 .jl files
+        # for file in jl_files[:5]:
         entries = []
         steps = [1, 3, 8, 24]
-        # for file in jl_files[:5]:
         for step in steps:
-            if len(jl_files) < step:
-                break
-            file = jl_files[step]
-            file_path = os.path.join(directory, file)
-            with open(file_path, "r") as f:
-                try:
-                    data = json.load(f)
-                    entries.append(data)
-                except Exception:
-                    pass
+            if step < len(jl_files):
+                file = jl_files[step]
+                file_path = os.path.join(directory, file)
+                with open(file_path, "r") as f:
+                    try:
+                        data = json.load(f)
+                        entries.append(data)
+                    except Exception:
+                        pass
+            else:
+                break  # or continue, depending on what you want to do when there aren't enough files
+
         if len(entries) > 0:
             history = ""
             for hour in entries:
