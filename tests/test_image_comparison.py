@@ -1,9 +1,11 @@
 import unittest
-from app.utils.detect import calculate_difference_fast
+
 from PIL import Image
 import tempfile
 import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from app.utils.detect import calculate_difference_fast
 
 class TestImageComparison(unittest.TestCase):
     def setUp(self):
