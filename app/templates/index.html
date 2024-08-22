@@ -114,25 +114,43 @@ function validateForm() {
 </script>
 
 
-	<div>
-    <label for="group-dropdown">Filter by Group:</label>
+    <div class="controls-container">
+        <div class="filter-controls">
+            <label for="group-dropdown">Filter by Group:</label>
+            <select id="group-dropdown">
+                <!-- Options will be populated here -->
+            </select>
+        </div>
 
-    <select id="group-dropdown">
-        <!-- Options will be populated here -->
-    </select>
+        <div class="layout-controls">
+            <label for="grid-width-slider">Adjust Grid Size:</label>
+            <input type="range" id="grid-width-slider" min="200" max="500" value="250" step="10">
+            <span id="grid-width-value">250px</span>
+        </div>
 
-
-        <input type="range" id="grid-width-slider" min="50" max="3840" value="360" onload="this.max = window.innerWidth;">
-	         <button id="play-all">Play All</button>
-                <button id="stop-all">Stop All</button>
-
-</div>
+        <div class="playback-controls">
+            <button id="play-all" class="control-button">Play All</button>
+            <button id="stop-all" class="control-button">Stop All</button>
+        </div>
+    </div>
 
     <div id="template-list">
         <!-- Template list will be populated here -->
     </div>
 
     {% include 'footer.html' %}
+
+    <script>
+        const gridWidthSlider = document.getElementById('grid-width-slider');
+        const gridWidthValue = document.getElementById('grid-width-value');
+        const templateList = document.getElementById('template-list');
+
+        gridWidthSlider.addEventListener('input', function() {
+            const value = this.value + 'px';
+            gridWidthValue.textContent = value;
+            templateList.style.setProperty('--grid-item-width', value);
+        });
+    </script>
 </body>
 </html>
 

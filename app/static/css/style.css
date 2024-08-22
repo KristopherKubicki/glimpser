@@ -30,20 +30,48 @@ h1, h2 {
 
 #template-list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px))); /* Use CSS variable */
-    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
     padding: 20px;
     justify-content: center;
     max-width: 100%;
 }
 
-@media (max-width: 767px) { /* Adjust this value based on your testing */
-    select {
-        font-size: 16px; /* Larger font size for easier interaction */
-        padding: 10px; /* Larger padding for a taller dropdown */
+@media (max-width: 767px) {
+    body {
+        font-size: 14px;
     }
+
+    select, button, input[type="range"] {
+        font-size: 16px;
+        padding: 12px;
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
     #template-list {
-        grid-template-columns: 1fr; /* Single column layout on mobile */
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .templateDiv {
+        margin-bottom: 15px;
+    }
+
+    .camera-name, .timestamp {
+        font-size: 12px;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+    #template-list {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+}
+
+@media (min-width: 1025px) {
+    #template-list {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     }
 }
 
@@ -53,13 +81,66 @@ select:hover {
 }
 
 .templateDiv {
-    background-color: black;
+    background-color: #1a1a1a;
     overflow: hidden;
     position: relative;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     width: 100%;
-    /* No fixed height here; it will be set by padding-top in the ::before pseudo-element */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.templateDiv:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.video-container {
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%; /* 16:9 aspect ratio */
+}
+
+.video-container video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.camera-name, .timestamp {
+    position: absolute;
+    color: white;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+.camera-name {
+    top: 10px;
+    left: 10px;
+}
+
+.timestamp {
+    bottom: 10px;
+    right: 10px;
+}
+
+.play-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    color: white;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.templateDiv:hover .play-icon {
+    opacity: 1;
 }
 
 .templateDiv::before {
@@ -75,13 +156,24 @@ select:hover {
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover; /* This will cover the area of the .templateDiv, potentially clipping the video */
+    object-fit: contain;
+    object-position: center;
 }
 
-/* If you need to maintain the aspect ratio without clipping, use object-fit: contain; */
-.templateDiv video {
-    object-fit: contain;
-    object-position: top; /* Aligns the video to the top, so the empty space, if any, will be at the bottom */
+.video-container {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    overflow: hidden;
+}
+
+.video-container video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
 }
 
 
@@ -184,6 +276,66 @@ nav a:hover, nav a.active {
 
 /* Increase the size of buttons and links */
 button, a {
+    min-width: 44px; /* Minimum touch target size */
+    min-height: 44px; /* Minimum touch target size */
+    padding: 10px; /* More padding for larger touch area */
+}
+
+@media (max-width: 767px) {
+    body {
+        font-size: 14px;
+    }
+
+    select, button, input[type="range"] {
+        font-size: 16px;
+        padding: 12px;
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    #template-list {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .templateDiv {
+        margin-bottom: 15px;
+    }
+
+    .camera-name, .timestamp {
+        font-size: 12px;
+    }
+}
+
+.templateDiv {
+    background-color: #1a1a1a;
+    overflow: hidden;
+    position: relative;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    width: 100%;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.templateDiv:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.video-container {
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%; /* 16:9 aspect ratio */
+}
+
+.video-container video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
     min-width: 44px; /* Minimum touch target size */
     min-height: 44px; /* Minimum touch target size */
     padding: 10px; /* More padding for larger touch area */

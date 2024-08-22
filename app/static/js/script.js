@@ -138,7 +138,6 @@ function isInViewport(element) {
 
 
 function loadTemplates() {
-
     const selectedGroup = document.getElementById('group-dropdown').value || 'all';
     const url = selectedGroup === 'all' ? '/templates' : `/templates?group=${selectedGroup}&t=${new Date().getTime()}`;
 
@@ -148,167 +147,132 @@ function loadTemplates() {
         .then(response => response.json())
         .then(templates => {
             const templateList = document.getElementById('template-list');
-            // Clear existing templates
             templateList.innerHTML = '';
 
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
-                    if (isMobile() && entry.isIntersecting) {
-                        const video = entry.target;
-                        video.play();
+                    const video = entry.target;
+                    if (entry.isIntersecting) {
+                        if (isMobile()) {
+                            video.play().catch(e => console.log("Autoplay prevented:", e));
+                        }
                     } else {
-                        entry.target.pause();
+                        video.pause();
                     }
                 });
             }, {
-                threshold: 0.5 // Trigger when at least 50% of the video is visible
+                threshold: 0.5
             });
 
             Object.entries(templates).forEach(([name, template]) => {
-	      if (templateBelongsToGroup(template, selectedGroup)) {
+                if (templateBelongsToGroup(template, selectedGroup)) {
+                    const lastScreenshotTime = template['last_screenshot_time'];
+                    const humanizedTimestamp = timeAgo(lastScreenshotTime);
 
-	        const lastScreenshotTime = template['last_screenshot_time'];
-                const humanizedTimestamp = timeAgo(lastScreenshotTime);
+                    const lastScreenshotTime2 = new Date(template['last_screenshot_time']);
+                    const oneMinuteAgo = new Date(Date.now() - 60000);
+                    const isRecent = lastScreenshotTime2 > oneMinuteAgo;
+                    const videoContainerClass = isRecent ? "video-container recent-screenshot" : "video-container";
 
+                    const templateDiv = document.createElement('div');
+                    templateDiv.classList.add("templateDiv");
+                    templateDiv.innerHTML = `
+                        <a href='/templates/${name}'>
+                            <div class="${videoContainerClass}">
+                                <div class="camera-name">${name}</div>
+                                <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" muted playsinline preload="none">
+                                    <source src="/last_video/${name}" type='video/mp4'>
+                                    Your browser does not support the video tag.
+                                </video>
+                                <div class="timestamp">${humanizedTimestamp}</div>
+                                <div class="play-icon">&#9658;</div>
+                            </div>
+                        </a>
+                    `;
+                    templateList.appendChild(templateDiv);
 
-                // Check if the last screenshot is less than 1 minute ago
-                const lastScreenshotTime2 = new Date(template['last_screenshot_time']);
-                const oneMinuteAgo = new Date(Date.now() - 60000);
-                const isRecent = lastScreenshotTime2 > oneMinuteAgo;
-                const videoContainerClass = isRecent ? "video-container recent-screenshot" : "video-container";
+                    const video = templateDiv.querySelector('video');
+                    observer.observe(video);
 
-                const templateDiv = document.createElement('div');
-                templateDiv.classList.add("templateDiv"); // Add class to div
-                templateDiv.innerHTML = `
-                    <a href='/templates/${name}'>
-                        <div class="${videoContainerClass}">
-			    <div class="camera-name">${name}</div> <!-- Camera name -->
-                            <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style='width:100%' muted title='` + template["last_caption"] + `' preload="none">
-                                <source src="/last_video/${name}" type='video/mp4'>
-                                Your browser does not support the video tag.
-                            </video>
-			    <div class="timestamp">${humanizedTimestamp}</div> <!-- Humanized timestamp in the bottom right corner -->
-                            <div class="play-icon">&#9658;</div> <!-- Unicode play icon -->
-                        </div>
-                    </a>
-                `;
-                templateList.appendChild(templateDiv);
+                    video.addEventListener('loadedmetadata', () => {
+                        setPlaybackRate(video);
+                        video.currentTime = Math.max(0, video.duration - 10);
+                    });
 
-                // Add event listeners for hover
-                const video = templateDiv.querySelector('video');
-                observer.observe(video);
+                    if (!isMobile()) {
+                        video.addEventListener('mouseenter', () => {
+                            setPlaybackRate(video);
+                            video.play().catch(e => console.log("Playback prevented:", e));
+                        });
 
+                        video.addEventListener('mouseleave', () => {
+                            video.pause();
+                            video.currentTime = 0;
+                        });
+                    }
 
-
-                video.addEventListener('loadedmetadata', () => {
-                    // Set playback speed based on video duration
-                    if (video.duration < 1) {
-                        video.playbackRate = 0.0625;
-		    } else if (video.duration < 3) {
-                        video.playbackRate = 0.0625*2;
-		    } else if (video.duration < 7) {
-                        video.playbackRate = 0.0625*4;
-		    } else if (video.duration < 15) {
-                        video.playbackRate = 0.0625*8;
-		    } else if (video.duration < 30) {
-                        video.playbackRate = 0.0625*16;
-                    } else if (video.duration < 60) {
-                        video.playbackRate = 0.0625*32;
-                    } else if (video.duration > 120) {
-                        video.playbackRate = 0.0625*64;
-                    } else { 
-                        video.playbackRate = 0.0625*128;
-		    }
-
-                    // Start the video at t minus 10 seconds if possible
-                    video.currentTime = Math.max(0, video.duration - 10);
-                });
-
-
-        if (isMobile()) {
-            ///video.setAttribute('autoplay', ''); // Enable autoplay on mobile
-            video.setAttribute('playsinline', ''); // Prevent fullscreen playback on iOS
-            video.addEventListener('play', () => {
-                video.playbackRate = calculatePlaybackRate(video); // Set appropriate playback rate
+                    video.addEventListener('ended', () => {
+                        setTimeout(() => {
+                            video.currentTime = 0;
+                            video.play().catch(e => console.log("Replay prevented:", e));
+                        }, 2000);
+                    });
+                }
             });
-        } else {
-            // Your existing mouseenter and mouseleave event listeners...
-		    video.addEventListener('mouseenter', () => {
-    if (video.playbackRate * 3.0 <= 16) {
-        video.playbackRate *= 3.0; // Set playback speed
+
+            setupPlaybackControls(templateList);
+        })
+        .catch(error => console.error('Error loading templates:', error));
+}
+
+function setPlaybackRate(video) {
+    if (video.duration < 1) {
+        video.playbackRate = 0.0625;
+    } else if (video.duration < 3) {
+        video.playbackRate = 0.125;
+    } else if (video.duration < 7) {
+        video.playbackRate = 0.25;
+    } else if (video.duration < 15) {
+        video.playbackRate = 0.5;
+    } else if (video.duration < 30) {
+        video.playbackRate = 1;
+    } else if (video.duration < 60) {
+        video.playbackRate = 2;
+    } else if (video.duration > 120) {
+        video.playbackRate = 4;
     } else {
-        video.playbackRate = 16; // Set playback rate to max value of 16
+        video.playbackRate = 8;
     }
-			    video.play();
-});
+}
 
-                video.addEventListener('mouseleave', () => {
-                    video.pause();
-                    video.load(); // Reset the video to show the poster again
-                });
-
-    // Add event listeners for each video
-    const videos = document.querySelectorAll('.templateDiv video');
-    videos.forEach(video => {
-        // Play video on hover
-        video.addEventListener('mouseenter', () => {
-            video.play();
-        });
-        // Pause video on mouse leave
-        video.addEventListener('mouseleave', () => {
-            video.pause();
-        });
-        // Use the observer to play/pause based on visibility
-        observer.observe(video);
-    });
-
-        }
-
+function setupPlaybackControls(templateList) {
     const playAllButton = document.getElementById('play-all');
     const stopAllButton = document.getElementById('stop-all');
 
-            // Play all media elements
-            playAllButton.addEventListener('click', function () {
-                const mediaElements = templateList.querySelectorAll('video, audio');
-                mediaElements.forEach(element => {
-                    element.play();
-                });
-            });
+    playAllButton.addEventListener('click', () => {
+        templateList.querySelectorAll('video').forEach(video => {
+            video.play().catch(e => console.log("Playback prevented:", e));
+        });
+    });
 
-            // Stop all media elements
-            stopAllButton.addEventListener('click', function () {
-                const mediaElements = templateList.querySelectorAll('video, audio');
-                mediaElements.forEach(element => {
-                    element.pause();
-                    element.currentTime = 0; // Reset to start
-                });
-            });
-
-
-
-window.addEventListener('resize', updateGridLayout);
-
-video.addEventListener('ended', () => {
-    setTimeout(() => {
-        video.load(); // Reset the video to show the poster
-        video.play(); // Resume autoplay after 1 second
-    }, 2000); // Pause for 1 second
-});
-
-}
-            });
-
-        })
-        .catch(error => console.error('Error loading templates:', error));
+    stopAllButton.addEventListener('click', () => {
+        templateList.querySelectorAll('video').forEach(video => {
+            video.pause();
+            video.currentTime = 0;
+        });
+    });
 }
 
 // Initial load of templates
 loadTemplates();
 loadGroups();
 
+const groupDropdown = document.getElementById('group-dropdown');
 groupDropdown.addEventListener('change', loadTemplates);
 
+window.addEventListener('resize', updateGridLayout);
+
 // Set an interval to update video sources every 30 minutes
-setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
+setInterval(updateVideoSources, 60000 * 30);
 
 });
