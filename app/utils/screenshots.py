@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 import time
 from urllib.parse import urlparse
+import glob
 
 import numpy as np
 import requests
@@ -1701,5 +1702,19 @@ def capture_screenshot_and_har(
             driver.quit()
         if display:
             display.stop()
+
+        # Clean up temporary Chrome files
+        try:
+            temp_chrome_dirs = glob.glob('/tmp/.com.google.Chrome.*')
+            current_time = time.time()
+            cleaned_dirs = 0
+            for temp_dir in temp_chrome_dirs:
+                # Check if the directory hasn't been modified in the last hour
+                if current_time - os.path.getmtime(temp_dir) > 3600:  # 3600 seconds = 1 hour
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+                    cleaned_dirs += 1
+            logging.info(f"Cleaned up {cleaned_dirs} temporary Chrome directories")
+        except Exception as e:
+            logging.error(f"Error cleaning up temporary Chrome files: {e}")
 
     return lsuccess
