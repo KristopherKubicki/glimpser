@@ -43,8 +43,7 @@ class TestTimestampHandling(unittest.TestCase):
 
     def test_get_latest_date_with_files(self):
         with patch('os.path.exists', return_value=True):
-            # feels incorrect...
-            with patch('os.path.getctime', return_value=1609459200 + 60*60*6):  # Mocked timestamp for 2021-01-01 00:00:00 # UTC?
+            with patch('os.path.getctime', return_value=1609459200):  # Mocked timestamp for 2021-01-01 00:00:00 # UTC?
                 date = get_latest_date('/some/directory')
                 self.assertEqual(date, '2021-01-01 00:00:00')
 
