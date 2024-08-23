@@ -7,13 +7,11 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+
     <header>
-        <h1><a href='/'><img src='/static/img/glimpser_small.png' title='Glimpser'></a></h1>
-        <nav>
-            <a href="/">Home</a>
-            <a href="/help" class="active">Help</a>
-        </nav>
+        {% include 'nav.html' %}
     </header>
+
 
     <main>
         <h2>Glimpser Help</h2>
@@ -61,9 +59,10 @@
         </section>
     </main>
 
-    <footer>
-        <p>&copy; 2023 Glimpser. All rights reserved.</p>
+     <footer>
+        {% include 'footer.html' %}
     </footer>
+
 
     <script src="/static/js/script.js"></script>
 </body>

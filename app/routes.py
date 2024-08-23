@@ -1104,6 +1104,7 @@ def init_routes(app):
         return send_from_directory(path, filename)
 
     @app.route("/settings", methods=["GET", "POST"])
+    @login_required
     def settings():
         if request.method == "POST":
             for name, value in request.form.items():
@@ -1112,6 +1113,10 @@ def init_routes(app):
 
         settings = get_all_settings()
         return render_template("settings.html", settings=settings)
+
+    @app.route("/help", methods=["GET"])
+    def help():
+        return render_template("help.html")
 
     @app.route("/update_template/<string:template_name>", methods=["POST"])
     @login_required

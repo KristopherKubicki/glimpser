@@ -6,34 +6,23 @@
 		<a href='/group/{{ag}}'>{{ag}}</a>
 		{% endfor %}
 
-                <a href='/captions'>Captions</a>
+                <a href='/captions' id='captions'>Captions</a>
 			
 
-                <a href='/live'>Live</a>
+                <a href='/live' id='live'>Live</a>
                 <a href='/settings'>Settings</a>
           
                 <div id="coolClock" class="cool-clock">
-                    <div class="clock-face">
-                        <div class="clock-hands" title="todo $digitalTime">
+                    <div id="dateDisplay" class="clock-face">
+                        <div id="digitalTime" class="clock-hands" title="todo $digitalTime">
                             <div class="hand hour-hand"></div>
                             <div class="hand minute-hand"></div>
                             <div class="hand second-hand"></div>
                         </div>
 
-			<!-- todo: mouseover overlay instead 
-                        <div class="clock-center">
-                            <span id="digitalTime"></span>
-                            <span id="dateDisplay"></span>
-                        </div>
-			--!> 
                     </div>
 
-                    <div class="clock-info">
-                        <span id="timezoneDisplay"></span>
-                        <span id="timeAgoDisplay"></span>
-                    </div>
                 </div>
-                <a href='/help'>Help</a>
         </nav>
 
 <script>
@@ -47,10 +36,7 @@
         document.querySelector('.minute-hand').style.transform = `rotate(${minutesDegrees}deg)`;
         document.querySelector('.hour-hand').style.transform = `rotate(${hoursDegrees}deg)`;
 
-        document.getElementById('digitalTime').textContent = now.toLocaleTimeString();
-        document.getElementById('dateDisplay').textContent = now.toDateString();
-        document.getElementById('timezoneDisplay').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        document.getElementById('timeAgoDisplay').textContent = timeAgo(now);
+        document.getElementById('digitalTime').title = now.toLocaleTimeString() + '\n' + Intl.DateTimeFormat().resolvedOptions().timeZone + '\n' + now.toDateString() ;
     }
 
     setInterval(updateCoolClock, 1000);
