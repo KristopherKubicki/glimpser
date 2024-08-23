@@ -2,14 +2,16 @@
 
 import logging
 import os
+import threading
 
 from flask import Flask, current_app
 from flask_apscheduler import APScheduler
 
-from .utils.retention_policy import retention_cleanup
-from .utils.scheduling import schedule_crawlers, schedule_summarization, scheduler
-from .utils.video_archiver import archive_screenshots, compile_to_teaser
-from .utils.video_compressor import compress_and_cleanup
+from app.utils.retention_policy import retention_cleanup
+from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler
+from app.utils.video_archiver import archive_screenshots, compile_to_teaser
+from app.utils.video_compressor import compress_and_cleanup
+from app.config import backup_config, restore_config
 
 # needed for the llava compare
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -35,7 +37,7 @@ def create_app():
     os.makedirs(VIDEO_DIRECTORY, exist_ok=True)
     os.makedirs(SUMMARIES_DIRECTORY, exist_ok=True)
 
-    from .routes import init_routes
+    from app.routes import init_routes
 
     init_routes(app)
 
@@ -82,5 +84,32 @@ def create_app():
         # one time cleanup..
         retention_cleanup()
         logging.info("initialization complete")
+
+    # Backup current configuration
+    backup_config()
+
+    # Set up a watchdog thread to monitor the application
+    def watchdog():
+        import time
+        while True:
+            time.sleep(10)  # Check every 10 seconds
+            if not app.debug:
+                try:
+                    # Try to access a simple route
+                    with app.test_client() as client:
+                        response = client.get('/health')
+                        if response.status_code != 200:
+                            # Raising a general exception is acceptable here as we want to catch any error
+                            raise Exception("Application is not responding correctly")
+                except Exception as e:
+                    # Catching a general exception is necessary here to handle any possible error
+                    logging.error("Application error detected: %s", e)
+                    logging.info("Attempting to restore previous configuration...")
+                    restore_config()
+                    os._exit(1)  # Force restart the application
+
+    watchdog_thread = threading.Thread(target=watchdog)
+    watchdog_thread.daemon = True
+    watchdog_thread.start()
 
     return app

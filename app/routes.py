@@ -7,11 +7,13 @@ import io
 import json
 import os
 import re
+import sys
 import time
 import tempfile
 from datetime import datetime, timedelta
 from functools import wraps
 from threading import Lock
+import subprocess
 
 from flask import (
     Response,
@@ -46,6 +48,10 @@ from app.utils import (
     screenshots
 )
 from app.utils.db import SessionLocal
+
+def restart_server():
+    print("Restarting server...")
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
 def validate_template_name(template_name: str):
@@ -209,7 +215,10 @@ def update_setting(name: str, value: str) -> bool:
     finally:
         session.close()
 
-    return True  # not exactly right
+    # Trigger server restart
+    restart_server()
+
+    return True
 
 
 # TODO:

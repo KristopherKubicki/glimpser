@@ -1,6 +1,7 @@
 # config.py
 
 import os
+import json
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -8,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 # TODO: also consider argparse...
 DATABASE_PATH = os.getenv("GLIMPSER_DATABASE_PATH", "data/glimpser.db")
 LOGGING_PATH = os.getenv("GLIMPSER_LOGGING_PATH", "logs/glimpser.log")
+BACKUP_PATH = os.getenv("GLIMPSER_BACKUP_PATH", "data/config_backup.json")
 
 # todo.. make sure this is not duplicate loading...
 engine = create_engine(f"sqlite:///{DATABASE_PATH}")
@@ -17,7 +19,6 @@ SessionLocal = sessionmaker(
 
 
 def get_setting(name, default=None):
-
     session = SessionLocal()
     try:
         result = session.execute(
@@ -36,6 +37,31 @@ def get_setting(name, default=None):
 
     return default
 
+def backup_config():
+    session = SessionLocal()
+    try:
+        settings = session.execute(text("SELECT name, value FROM settings")).fetchall()
+        config_dict = {name: value for name, value in settings}
+        with open(BACKUP_PATH, 'w') as f:
+            json.dump(config_dict, f)
+    finally:
+        session.close()
+
+def restore_config():
+    if os.path.exists(BACKUP_PATH):
+        with open(BACKUP_PATH, 'r') as f:
+            config_dict = json.load(f)
+        
+        session = SessionLocal()
+        try:
+            for name, value in config_dict.items():
+                session.execute(
+                    text("INSERT OR REPLACE INTO settings (name, value) VALUES (:name, :value)"),
+                    {"name": name, "value": value}
+                )
+            session.commit()
+        finally:
+            session.close()
 
 SCHEDULER_API_ENABLED = True
 
