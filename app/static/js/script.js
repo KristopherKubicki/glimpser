@@ -359,4 +359,63 @@ groupDropdown.addEventListener('change', loadTemplates);
 // Set an interval to update video sources every 30 minutes
 setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
 
+    // Konami Code Easter Egg
+    const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+    let konamiCodePosition = 0;
+
+    document.addEventListener('keydown', function(e) {
+        // Check if the key pressed is the next key in the Konami Code sequence
+        if (e.key === konamiCode[konamiCodePosition]) {
+            konamiCodePosition++;
+
+            // If the full Konami Code has been entered, activate the Easter egg
+            if (konamiCodePosition === konamiCode.length) {
+                activateHackerMode();
+                konamiCodePosition = 0; // Reset for next time
+            }
+        } else {
+            konamiCodePosition = 0; // Reset if wrong key is pressed
+        }
+    });
+
+    function activateHackerMode() {
+        document.body.classList.add('hacker-mode');
+        
+        // Create and append the hacker overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'hacker-overlay';
+        overlay.innerHTML = `
+            <div class="hacker-text">HACKER MODE ACTIVATED</div>
+            <div class="matrix-rain"></div>
+        `;
+        document.body.appendChild(overlay);
+
+        // Simulate "typing" effect for the hacker text
+        const hackerText = overlay.querySelector('.hacker-text');
+        hackerText.style.width = '0';
+        let width = 0;
+        const intervalId = setInterval(() => {
+            if (width >= 100) {
+                clearInterval(intervalId);
+                setTimeout(() => {
+                    document.body.classList.remove('hacker-mode');
+                    overlay.remove();
+                }, 5000); // Remove hacker mode after 5 seconds
+            } else {
+                width += 2;
+                hackerText.style.width = `${width}%`;
+            }
+        }, 50);
+
+        // Create Matrix-style rain effect
+        const matrixRain = overlay.querySelector('.matrix-rain');
+        for (let i = 0; i < 100; i++) {
+            const drop = document.createElement('div');
+            drop.className = 'raindrop';
+            drop.style.left = `${Math.random() * 100}%`;
+            drop.style.animationDuration = `${Math.random() * 2 + 1}s`;
+            drop.textContent = Math.random() < 0.5 ? '0' : '1';
+            matrixRain.appendChild(drop);
+        }
+    }
 });
