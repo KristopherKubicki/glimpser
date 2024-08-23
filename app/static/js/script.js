@@ -45,7 +45,14 @@ function loadGroups() {
         .then(response => response.json())
         .then(groups => {
             const groupDropdown = document.getElementById('group-dropdown');
-            groupDropdown.innerHTML = '<option value="all">All Groups</option>';
+            // Clear existing options
+            groupDropdown.innerHTML = '';
+            // Create and append the "All Groups" option
+            const allOption = document.createElement('option');
+            allOption.value = 'all';
+            allOption.textContent = 'All Groups';
+            groupDropdown.appendChild(allOption);
+            // Create and append options for each group
             groups.forEach(group => {
                 const option = document.createElement('option');
                 option.value = group;
@@ -179,26 +186,53 @@ function loadTemplates() {
 
                 const templateDiv = document.createElement('div');
                 templateDiv.classList.add("templateDiv"); // Add class to div
-                templateDiv.innerHTML = `
-                    <a href='/templates/${name}'>
-                        <div class="${videoContainerClass}">
-			    <div class="camera-name">${name}</div> <!-- Camera name -->
-                            <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style='width:100%' muted title='` + template["last_caption"] + `' preload="none">
-                                <source src="/last_video/${name}" type='video/mp4'>
-                                Your browser does not support the video tag.
-                            </video>
-			    <div class="timestamp">${humanizedTimestamp}</div> <!-- Humanized timestamp in the bottom right corner -->
-                            <div class="play-icon">&#9658;</div> <!-- Unicode play icon -->
-                        </div>
-                    </a>
-                `;
+                
+                const link = document.createElement('a');
+                link.href = `/templates/${name}`;
+                
+                const videoContainer = document.createElement('div');
+                videoContainer.className = videoContainerClass;
+                
+                const cameraName = document.createElement('div');
+                cameraName.className = 'camera-name';
+                cameraName.textContent = name;
+                videoContainer.appendChild(cameraName);
+                
+                const video = document.createElement('video');
+                video.setAttribute('data-name', name);
+                video.setAttribute('poster', `/last_screenshot/${name}`);
+                video.setAttribute('alt', name);
+                video.style.width = '100%';
+                video.muted = true;
+                video.title = template["last_caption"];
+                video.setAttribute('preload', 'none');
+                
+                const source = document.createElement('source');
+                source.src = `/last_video/${name}`;
+                source.type = 'video/mp4';
+                video.appendChild(source);
+                
+                const fallbackText = document.createTextNode('Your browser does not support the video tag.');
+                video.appendChild(fallbackText);
+                
+                videoContainer.appendChild(video);
+                
+                const timestamp = document.createElement('div');
+                timestamp.className = 'timestamp';
+                timestamp.textContent = humanizedTimestamp;
+                videoContainer.appendChild(timestamp);
+                
+                const playIcon = document.createElement('div');
+                playIcon.className = 'play-icon';
+                playIcon.textContent = '▶';
+                videoContainer.appendChild(playIcon);
+                
+                link.appendChild(videoContainer);
+                templateDiv.appendChild(link);
                 templateList.appendChild(templateDiv);
 
                 // Add event listeners for hover
-                const video = templateDiv.querySelector('video');
                 observer.observe(video);
-
-
 
                 video.addEventListener('loadedmetadata', () => {
                     // Set playback speed based on video duration
