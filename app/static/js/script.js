@@ -40,6 +40,76 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Keyboard navigation for dropdowns
+    const dropdowns = document.querySelectorAll('.dropdown');
+    dropdowns.forEach(dropdown => {
+        const dropdownToggle = dropdown.querySelector('.dropbtn');
+        const dropdownContent = dropdown.querySelector('.dropdown-content');
+        const dropdownLinks = dropdownContent.querySelectorAll('a');
+
+        dropdownToggle.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                dropdownContent.style.display = dropdownContent.style.display === 'block' ? 'none' : 'block';
+            }
+        });
+
+        dropdownLinks.forEach(link => {
+            link.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    dropdownContent.style.display = 'none';
+                    dropdownToggle.focus();
+                }
+            });
+        });
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.matches('.dropbtn')) {
+            const dropdowns = document.querySelectorAll('.dropdown-content');
+            dropdowns.forEach(dropdown => {
+                dropdown.style.display = 'none';
+            });
+        }
+    });
+});
+
+    // Keyboard navigation for dropdowns
+    const dropdowns = document.querySelectorAll('.dropdown');
+    dropdowns.forEach(dropdown => {
+        const dropdownToggle = dropdown.querySelector('.dropbtn');
+        const dropdownContent = dropdown.querySelector('.dropdown-content');
+        const dropdownLinks = dropdownContent.querySelectorAll('a');
+
+        dropdownToggle.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                dropdownContent.style.display = dropdownContent.style.display === 'block' ? 'none' : 'block';
+            }
+        });
+
+        dropdownLinks.forEach(link => {
+            link.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    dropdownContent.style.display = 'none';
+                    dropdownToggle.focus();
+                }
+            });
+        });
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.matches('.dropbtn')) {
+            const dropdowns = document.querySelectorAll('.dropdown-content');
+            dropdowns.forEach(dropdown => {
+                dropdown.style.display = 'none';
+            });
+        }
+    });
+});
+
 function loadGroups() {
     fetch('/groups')
         .then(response => response.json())
