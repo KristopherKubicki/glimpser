@@ -1184,3 +1184,16 @@ def init_routes(app):
                 return jsonify({"message": "Template updated successfully!"})
 
             return redirect("/templates/" + template_name)
+
+    @app.route("/search")
+    @login_required
+    def search_templates():
+        query = request.args.get('q', '').lower()
+        templates = template_manager.get_templates()
+
+        filtered_templates = {
+            name: template for name, template in templates.items()
+            if query in name.lower() or query in template.get('url', '').lower() or query in template.get('notes', '').lower()
+        }
+
+        return render_template("search_results.html", templates=filtered_templates, query=query)

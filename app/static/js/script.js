@@ -40,6 +40,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Dark mode toggle functionality
+    const darkModeToggle = document.createElement('button');
+    darkModeToggle.id = 'dark-mode-toggle';
+    darkModeToggle.innerHTML = '🌓';
+    document.body.appendChild(darkModeToggle);
+
+    darkModeToggle.addEventListener('click', function() {
+        document.body.classList.toggle('dark-mode');
+        document.body.classList.toggle('light-mode');
+        localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+    });
+
+    // Check for saved user preference
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+        document.body.classList.remove('light-mode');
+    } else {
+        document.body.classList.add('light-mode');
+        document.body.classList.remove('dark-mode');
+    }
+
 function loadGroups() {
     fetch('/groups')
         .then(response => response.json())
@@ -137,7 +158,46 @@ function isInViewport(element) {
 }
 
 
+function showLoadingSpinner() {
+    const spinner = document.createElement('div');
+    spinner.className = 'loading-spinner';
+    document.body.appendChild(spinner);
+}
+
+function hideLoadingSpinner() {
+    const spinner = document.querySelector('.loading-spinner');
+    if (spinner) {
+        spinner.remove();
+    }
+}
+
+function confirmAction(message) {
+    return new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.className = 'confirmation-modal';
+        modal.innerHTML = `
+            <div class="confirmation-content">
+                <p>${message}</p>
+                <button id="confirm-yes">Yes</button>
+                <button id="confirm-no">No</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        document.getElementById('confirm-yes').addEventListener('click', () => {
+            document.body.removeChild(modal);
+            resolve(true);
+        });
+
+        document.getElementById('confirm-no').addEventListener('click', () => {
+            document.body.removeChild(modal);
+            resolve(false);
+        });
+    });
+}
+
 function loadTemplates() {
+    showLoadingSpinner();
 
     const selectedGroup = document.getElementById('group-dropdown').value || 'all';
     const url = selectedGroup === 'all' ? '/templates' : `/templates?group=${selectedGroup}&t=${new Date().getTime()}`;
@@ -216,7 +276,7 @@ function loadTemplates() {
                         video.playbackRate = 0.0625*32;
                     } else if (video.duration > 120) {
                         video.playbackRate = 0.0625*64;
-                    } else { 
+                    } else {
                         video.playbackRate = 0.0625*128;
 		    }
 
@@ -269,18 +329,26 @@ function loadTemplates() {
 
             // Play all media elements
             playAllButton.addEventListener('click', function () {
-                const mediaElements = templateList.querySelectorAll('video, audio');
-                mediaElements.forEach(element => {
-                    element.play();
+                confirmAction('Are you sure you want to play all videos?').then((confirmed) => {
+                    if (confirmed) {
+                        const mediaElements = templateList.querySelectorAll('video, audio');
+                        mediaElements.forEach(element => {
+                            element.play();
+                        });
+                    }
                 });
             });
 
             // Stop all media elements
             stopAllButton.addEventListener('click', function () {
-                const mediaElements = templateList.querySelectorAll('video, audio');
-                mediaElements.forEach(element => {
-                    element.pause();
-                    element.currentTime = 0; // Reset to start
+                confirmAction('Are you sure you want to stop all videos?').then((confirmed) => {
+                    if (confirmed) {
+                        const mediaElements = templateList.querySelectorAll('video, audio');
+                        mediaElements.forEach(element => {
+                            element.pause();
+                            element.currentTime = 0; // Reset to start
+                        });
+                    }
                 });
             });
 
@@ -298,8 +366,12 @@ video.addEventListener('ended', () => {
 }
             });
 
+            hideLoadingSpinner();
         })
-        .catch(error => console.error('Error loading templates:', error));
+        .catch(error => {
+            console.error('Error loading templates:', error);
+            hideLoadingSpinner();
+        });
 }
 
 // Initial load of templates
@@ -310,5 +382,45 @@ groupDropdown.addEventListener('change', loadTemplates);
 
 // Set an interval to update video sources every 30 minutes
 setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
+
+// Back to Top button functionality
+const backToTopButton = document.createElement('button');
+backToTopButton.id = 'back-to-top';
+backToTopButton.innerHTML = '↑';
+backToTopButton.style.display = 'none';
+document.body.appendChild(backToTopButton);
+
+window.addEventListener('scroll', function() {
+    if (window.pageYOffset > 300) {
+        backToTopButton.style.display = 'block';
+    } else {
+        backToTopButton.style.display = 'none';
+    }
+});
+
+backToTopButton.addEventListener('click', function() {
+    window.scrollTo({top: 0, behavior: 'smooth'});
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl + D: Toggle dark mode
+    if (e.ctrlKey && e.key === 'd') {
+        e.preventDefault();
+        document.getElementById('dark-mode-toggle').click();
+    }
+
+    // Ctrl + T: Go to top
+    if (e.ctrlKey && e.key === 't') {
+        e.preventDefault();
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+
+    // Ctrl + R: Reload templates
+    if (e.ctrlKey && e.key === 'r') {
+        e.preventDefault();
+        loadTemplates();
+    }
+});
 
 });

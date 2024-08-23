@@ -2,18 +2,23 @@
 		<h1><a href='/'><img src='{{ url_for('static', filename='img/glimpser_small.png') }}' title='Glimpser'></a></h1>
         <nav>
 
-		{% for ag in active_groups %} 
+		{% for ag in active_groups %}
 		<a href='/group/{{ag}}'>{{ag}}</a>
 		{% endfor %}
 
                 <a href='/captions'>Captions</a>
-			
+
 
                 <a href='/live'>
 		<span id="utcClock"></span>
 			Live</a>
 
                 <a href='/settings'>Settings</a>
+
+                <form action="{{ url_for('search_templates') }}" method="get">
+                    <input type="text" name="q" placeholder="Search templates...">
+                    <button type="submit">Search</button>
+                </form>
         </nav>
 
 <script>
