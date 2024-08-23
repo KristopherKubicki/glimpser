@@ -59,45 +59,52 @@ select:hover {
     border-radius: 5px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     width: 100%;
-    /* No fixed height here; it will be set by padding-top in the ::before pseudo-element */
-}
-
-.templateDiv::before {
-    content: '';
-    display: block;
-    width: 100%;
-    padding-top: 56.25%; /* Aspect ratio of 16:9 */
+    aspect-ratio: 16 / 9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .templateDiv video {
-    position: absolute;
-    top: 0;
-    left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover; /* This will cover the area of the .templateDiv, potentially clipping the video */
-}
-
-/* If you need to maintain the aspect ratio without clipping, use object-fit: contain; */
-.templateDiv video {
     object-fit: contain;
-    object-position: top; /* Aligns the video to the top, so the empty space, if any, will be at the bottom */
+    object-position: center;
 }
-
 
 .play-icon {
     position: absolute;
     top: 10px;
     right: 10px;
-    background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent white background */
+    background-color: rgba(255, 255, 255, 0.7);
     border-radius: 50%;
     padding: 5px;
-    display: none; /* Hide by default */
+    display: none;
     z-index: 5;
 }
 
 video:hover + .play-icon {
-    display: block; /* Show play icon on hover */
+    display: block;
+}
+
+.camera-name, .timestamp {
+    position: absolute;
+    color: white;
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 5;
+    font-size: calc(8px + 0.5vw);
+    max-font-size: 14px;
+}
+
+.camera-name {
+    top: 0;
+    left: 0;
+}
+
+.timestamp {
+    bottom: 0;
+    right: 0;
 }
 
 :root {
@@ -455,61 +462,4 @@ textarea {
 
 .details {
     margin-left: 20px;
-}
-
-/* Footer Styles */
-footer {
-    background-color: #000;
-    color: #fff;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.footer-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    max-width: 1200px;
-    margin-bottom: 20px;
-}
-
-.footer-logo img {
-    height: 30px;
-    width: auto;
-}
-
-.footer-nav {
-    display: flex;
-    gap: 20px;
-}
-
-.footer-nav a {
-    color: #fff;
-    text-decoration: none;
-    padding: 5px 10px;
-    border-radius: 5px;
-}
-
-.footer-nav a:hover {
-    background-color: #555;
-}
-
-.footer-copyright {
-    text-align: center;
-    font-size: 14px;
-}
-
-@media screen and (max-width: 768px) {
-    .footer-content {
-        flex-direction: column;
-        gap: 20px;
-    }
-
-    .footer-nav {
-        flex-direction: column;
-        align-items: center;
-    }
 }
