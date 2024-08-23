@@ -1,30 +1,48 @@
 /* app/static/css/style.css */
 
+:root {
+    --background-color: rgb(16, 16, 16);
+    --text-color: rgb(191, 191, 191);
+    --link-color: rgb(192, 192, 192);
+    --link-hover-color: rgb(193, 193, 193);
+    --form-background: white;
+    --form-text-color: rgb(91, 91, 91);
+}
+
 body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     margin: 0;
     padding: 0;
-    #background-color: #f7f7f7; /* Lighter background for better contrast */
-    background-color: rgb(16, 16, 16); /* Lighter background for better contrast */
-    color: rgb(191, 191, 191); /* Darker text for better readability */
+    background-color: var(--background-color);
+    color: var(--text-color);
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
 }
 
+body.light-mode {
+    --background-color: #f7f7f7;
+    --text-color: #333;
+    --link-color: #0066cc;
+    --link-hover-color: #004080;
+    --form-background: #ffffff;
+    --form-text-color: #333;
+}
 
-.link color: {  rgb( 192, 192, 192) }
-.link:hover color: {  rgb( 193, 193, 193) }
+.link { color: var(--link-color); }
+.link:hover { color: var(--link-hover-color); }
 
 h1, h2 {
-    color: rgb(191, 191, 191);
+    color: var(--text-color);
     text-align: center; /* Center the headings */
 }
-
 
 #template-form {
     margin: 20px;
     padding: 20px;
-    background-color: white;
+    background-color: var(--form-background);
     border-radius: 8px;
-    color: rgb(91, 91, 91);
+    color: var(--form-text-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -45,6 +63,29 @@ h1, h2 {
     #template-list {
         grid-template-columns: 1fr; /* Single column layout on mobile */
     }
+}
+
+/* Add styles for the theme selector and file input */
+#theme-select, input[type="file"] {
+    padding: 5px;
+    margin: 5px 0;
+    border: 1px solid var(--text-color);
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+button[type="submit"] {
+    background-color: var(--link-color);
+    color: var(--background-color);
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+button[type="submit"]:hover {
+    background-color: var(--link-hover-color);
 }
 
 select:hover {
