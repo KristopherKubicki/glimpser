@@ -163,6 +163,12 @@ def get_all_settings():
             if name not in settings:
                 settings[name] = db_settings[name]
 
+        # Add theme and background image settings if they don't exist
+        if 'theme' not in settings:
+            settings['theme'] = db_settings.get('theme', 'dark')
+        if 'background_image' not in settings:
+            settings['background_image'] = db_settings.get('background_image', '')
+
         # Convert the dictionary to a list of dictionaries for easy template usage
         settings_list = [
             {"name": name, "value": value} for name, value in settings.items()
@@ -174,6 +180,10 @@ def get_all_settings():
         for sl in settings_list:
             if re.findall(r"^[A-Z_]+?$", sl["name"]) and sl["name"] not in blocks:
                 lsettings_list.append({"name": sl["name"], "value": sl["value"]})
+
+        # Always include theme and background_image settings
+        lsettings_list.append({"name": "theme", "value": settings['theme']})
+        lsettings_list.append({"name": "background_image", "value": settings['background_image']})
 
         return lsettings_list
 
@@ -210,6 +220,18 @@ def update_setting(name: str, value: str) -> bool:
         session.close()
 
     return True  # not exactly right
+
+
+def get_setting(name: str, default: str = None) -> str:
+    session = SessionLocal()
+    try:
+        result = session.execute(
+            text("SELECT value FROM settings WHERE name = :name"),
+            {"name": name}
+        ).fetchone()
+        return result[0] if result else default
+    finally:
+        session.close()
 
 
 # TODO:
@@ -1095,14 +1117,26 @@ def init_routes(app):
         return send_from_directory(path, filename)
 
     @app.route("/settings", methods=["GET", "POST"])
+    @login_required
     def settings():
         if request.method == "POST":
             for name, value in request.form.items():
-                update_setting(name, value)
+                if name != "background_image":
+                    update_setting(name, value)
+
+            if 'background_image' in request.files:
+                file = request.files['background_image']
+                if file and allowed_filename(file.filename):
+                    filename = secure_filename(file.filename)
+                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    file.save(file_path)
+                    update_setting('background_image', file_path)
+
             return redirect(url_for("settings"))
 
         settings = get_all_settings()
-        return render_template("settings.html", settings=settings)
+        theme = get_setting("theme", "dark")
+        return render_template("settings.html", settings=settings, theme=theme)
 
     @app.route("/update_template/<string:template_name>", methods=["POST"])
     @login_required

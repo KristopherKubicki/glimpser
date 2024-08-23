@@ -13,8 +13,7 @@
         {% include 'nav.html' %}
     </header>
 
-
-        <form method="POST" action="{{ url_for('settings') }}">
+    <form method="POST" action="{{ url_for('settings') }}" enctype="multipart/form-data">
         <table>
             <thead>
                 <tr>
@@ -31,13 +30,29 @@
                     </td>
                 </tr>
                 {% endfor %}
+                <tr>
+                    <td>Theme</td>
+                    <td>
+                        <select name="theme" id="theme-select">
+                            <option value="dark" {% if theme == 'dark' %}selected{% endif %}>Dark</option>
+                            <option value="light" {% if theme == 'light' %}selected{% endif %}>Light</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Background Image</td>
+                    <td>
+                        <input type="file" name="background_image" accept="image/*">
+                    </td>
+                </tr>
             </tbody>
         </table>
         <button type="submit">Save</button>
     </form>
 
-{% include 'footer.html' %}
+    {% include 'footer.html' %}
 
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
 

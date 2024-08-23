@@ -2,43 +2,87 @@
 
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('#template-form form');
-
     const groupDropdown = document.getElementById('group-dropdown');
+    const slider = document.getElementById('grid-width-slider');
+    const templateList = document.getElementById('template-list');
+    const themeSelect = document.getElementById('theme-select');
+
+    // Theme switching function
+    function setTheme(theme) {
+        document.body.className = theme + '-mode';
+        localStorage.setItem('theme', theme);
+    }
+
+    // Apply saved theme or default to dark
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    setTheme(savedTheme);
+    if (themeSelect) {
+        themeSelect.value = savedTheme;
+    }
+
+    // Theme change event listener
+    if (themeSelect) {
+        themeSelect.addEventListener('change', (e) => {
+            setTheme(e.target.value);
+        });
+    }
+
+    // Apply background image if set
+    const backgroundImage = localStorage.getItem('backgroundImage');
+    if (backgroundImage) {
+        document.body.style.backgroundImage = `url(${backgroundImage})`;
+    }
+
     groupDropdown.addEventListener('change', () => {
-	     console.log('Group changed to:', groupDropdown.value);
+        console.log('Group changed to:', groupDropdown.value);
         loadTemplates(); // Reload templates based on the selected group
     });
 
-    const slider = document.getElementById('grid-width-slider');
-    const templateList = document.getElementById('template-list');
-
-    slider.addEventListener('input', function () {
-        const value = slider.value + 'px';
-        templateList.style.setProperty('--grid-item-width', value);
-    });
-
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-
-        fetch('/templates', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Success:', data);
-            loadTemplates(); // Refresh the list after submission
-            form.reset(); // Reset form after successful submission
-        })
-        .catch((error) => {
-            console.error('Error:', error);
+    if (slider) {
+        slider.addEventListener('input', function () {
+            const value = slider.value + 'px';
+            templateList.style.setProperty('--grid-item-width', value);
         });
-    });
+    }
+
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            // Handle file upload separately
+            const backgroundImageFile = formData.get('background_image');
+            if (backgroundImageFile && backgroundImageFile.size > 0) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const backgroundImageData = e.target.result;
+                    localStorage.setItem('backgroundImage', backgroundImageData);
+                    document.body.style.backgroundImage = `url(${backgroundImageData})`;
+                };
+                reader.readAsDataURL(backgroundImageFile);
+            }
+
+            fetch('/settings', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                // Apply theme immediately
+                setTheme(formData.get('theme'));
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        });
+    }
+
+    // Rest of your existing code...
+});
+
+// Your existing functions (loadGroups, timeAgo, updateVideoSources, etc.) remain unchanged
 
 function loadGroups() {
     fetch('/groups')
