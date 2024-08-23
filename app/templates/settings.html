@@ -36,6 +36,25 @@
         <button type="submit">Save</button>
     </form>
 
+    <h2>Live Logs</h2>
+    <div id="log-controls">
+        <input type="text" id="log-filter" placeholder="Filter logs...">
+        <button id="refresh-logs">Refresh Logs</button>
+    </div>
+    <div id="log-container">
+        <table id="log-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Level</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody id="log-body">
+            </tbody>
+        </table>
+    </div>
+
 {% include 'footer.html' %}
 
 </body>
