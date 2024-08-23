@@ -1,41 +1,41 @@
 # config.py
 
 import os
-
+import logging
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
 
-# TODO: also consider argparse...
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 DATABASE_PATH = os.getenv("GLIMPSER_DATABASE_PATH", "data/glimpser.db")
 LOGGING_PATH = os.getenv("GLIMPSER_LOGGING_PATH", "logs/glimpser.log")
 
-# todo.. make sure this is not duplicate loading...
-engine = create_engine(f"sqlite:///{DATABASE_PATH}")
-SessionLocal = sessionmaker(
-    autocommit=False, autoflush=False, bind=engine
-)  # settings only tthread
-
+try:
+    engine = create_engine(f"sqlite:///{DATABASE_PATH}")
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    logging.info(f"Database initialized successfully at {DATABASE_PATH}")
+except SQLAlchemyError as e:
+    logging.error(f"Failed to initialize database: {e}")
+    raise
 
 def get_setting(name, default=None):
-
     session = SessionLocal()
     try:
         result = session.execute(
-            text("SELECT value FROM settings WHERE name = '%s'" % name)
+            text("SELECT value FROM settings WHERE name = :name"),
+            {"name": name}
         ).fetchone()
         return result[0] if result else default
-    except Exception as e:
+    except SQLAlchemyError as e:
         if 'no such table' in str(e):
-            # this is ok if its the first time only... 
-            print("warning! table does not exist")
-            pass
+            logging.warning(f"Table 'settings' does not exist. This is normal for first-time setup.")
         else:
-            print("warning! initialization error", e)
+            logging.error(f"Database error when fetching setting '{name}': {e}")
+        return default
     finally:
         session.close()
-
-    return default
-
 
 SCHEDULER_API_ENABLED = True
 
