@@ -302,6 +302,34 @@ video.addEventListener('ended', () => {
         .catch(error => console.error('Error loading templates:', error));
 }
 
+function loadCaptions(page = 1) {
+    const captionsList = document.getElementById('captions-list');
+    const loadMoreButton = document.getElementById('load-more');
+    
+    fetch(`/captions?page=${page}`)
+        .then(response => response.json())
+        .then(data => {
+            data.lcaptions.forEach(caption => {
+                const captionElement = document.createElement('div');
+                captionElement.classList.add('caption-item');
+                captionElement.innerHTML = `
+                    <h3>${caption.camera_name}</h3>
+                    <p>${caption.caption}</p>
+                    <small>${timeAgo(caption.timestamp)}</small>
+                `;
+                captionsList.appendChild(captionElement);
+            });
+            
+            if (page * data.per_page < data.total) {
+                loadMoreButton.style.display = 'block';
+                loadMoreButton.onclick = () => loadCaptions(page + 1);
+            } else {
+                loadMoreButton.style.display = 'none';
+            }
+        })
+        .catch(error => console.error('Error loading captions:', error));
+}
+
 // Initial load of templates
 loadTemplates();
 loadGroups();
@@ -310,5 +338,10 @@ groupDropdown.addEventListener('change', loadTemplates);
 
 // Set an interval to update video sources every 30 minutes
 setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
+
+// Load captions if on the captions page
+if (window.location.pathname === '/captions') {
+    loadCaptions();
+}
 
 });
