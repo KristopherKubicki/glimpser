@@ -1201,6 +1201,8 @@ def apply_dark_mode(img, range_value=30, text_range_value=120):
     return img
 
 
+import shlex
+
 def capture_screenshot_and_har_light(
     url, output_path, timeout=30, name="unknown", invert=False, proxy=None, dark=True
 ):
@@ -1223,7 +1225,6 @@ def capture_screenshot_and_har_light(
 
     # Prepare the command
     command = [
-        #'time','-v',
         "wkhtmltoimage",
         "--width",
         "1920",
@@ -1231,10 +1232,7 @@ def capture_screenshot_and_har_light(
         "1080",
         "--javascript-delay",
         str(5000),
-        #'--no-stop-slow-scripts',
         "--quiet",
-        #'--window-status', 'ready',
-        #'--media-type', 'screen',
         "--zoom",
         "1",
         "--quality",
@@ -1244,14 +1242,16 @@ def capture_screenshot_and_har_light(
         "User-Agent",
         UA,
         "--custom-header-propagation",
-        url,
-        output_path,
     ]
+
+    # Safely add the URL to the command
+    command.append(shlex.quote(url))
+    command.append(shlex.quote(output_path))
 
     # Execute the command
     try:
         result = subprocess.run(
-            command, timeout=timeout, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            command, timeout=timeout, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False
         )
         result.stdout.decode("utf-8")
         result.stderr.decode("utf-8")
@@ -1273,9 +1273,8 @@ def capture_screenshot_and_har_light(
 
         if is_mostly_blank(image):
             os.unlink(output_path)
-            # print("  .. blank", output_path)
             return False
-            pass
+
         # Convert the image to RGBA mode in case it's a format that doesn't support transparency
         image = image.convert("RGB")
         image = remove_background(image)
@@ -1289,7 +1288,6 @@ def capture_screenshot_and_har_light(
             add_timestamp(output_path, name, invert=invert)
             lsuccess = True
             os.rename(output_path, output_path.replace(".tmp.png", ".png"))
-            # print(" *** writing", output_path)
         else:
             os.unlink(output_path)
             lsuccess = False
