@@ -46,6 +46,8 @@ class Template(Base):
     danger = Column(Boolean, default=False)
     motion = Column(Float, default=0.2)
     rollback_frames = Column(Integer, default=0)
+    llm_model = Column(String, default="")
+    llm_model = Column(String, default="")
 
 
 class TemplateManager:
