@@ -6,38 +6,37 @@
     <meta charset="UTF-8">
     <title>Settings</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.2/lib/codemirror.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.2/lib/codemirror.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.2/mode/javascript/javascript.min.js"></script>
 </head>
 <body>
     <header>
         {% include 'nav.html' %}
     </header>
 
+    <main class="settings-container">
+        <h1>Settings</h1>
+        <form id="settings-form" method="POST" action="{{ url_for('settings') }}">
+            {% for setting in settings %}
+                <div class="setting-item">
+                    <label for="{{ setting.name }}">{{ setting.name }}</label>
+                    {% if '_PROMPT' in setting.name %}
+                        <textarea id="{{ setting.name }}" name="{{ setting.name }}" class="prompt-editor">{{ setting.value }}</textarea>
+                    {% else %}
+                        <input type="text" id="{{ setting.name }}" name="{{ setting.name }}" value="{{ setting.value }}">
+                    {% endif %}
+                </div>
+            {% endfor %}
+            <button type="submit" class="save-button">Save</button>
+        </form>
+    </main>
 
-        <form method="POST" action="{{ url_for('settings') }}">
-        <table>
-            <thead>
-                <tr>
-                    <th>Setting</th>
-                    <th>Value</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for setting in settings %}
-                <tr>
-                    <td>{{ setting.name }}</td>
-                    <td>
-                        <input type="text" name="{{ setting.name }}" value="{{ setting.value }}">
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <button type="submit">Save</button>
-    </form>
+    {% include 'footer.html' %}
 
-{% include 'footer.html' %}
-
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
 
