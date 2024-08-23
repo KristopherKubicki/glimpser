@@ -737,3 +737,36 @@ def schedule_crawlers():
         )
     except Exception as e:
         logging.error(f"Error scheduling initial crawl: {e}")
+
+import psutil
+import threading
+import time
+
+system_metrics = {
+    'cpu_usage': 0.0,
+    'memory_usage': 0.0,
+    'thread_count': 0,
+    'start_time': time.time()
+}
+
+def collect_system_metrics():
+    global system_metrics
+    while True:
+        system_metrics['cpu_usage'] = psutil.cpu_percent(interval=1)
+        system_metrics['memory_usage'] = psutil.virtual_memory().percent
+        system_metrics['thread_count'] = threading.active_count()
+        time.sleep(5)  # Collect metrics every 5 seconds
+
+def start_metrics_collection():
+    metrics_thread = threading.Thread(target=collect_system_metrics, daemon=True)
+    metrics_thread.start()
+
+def get_system_metrics():
+    global system_metrics
+    uptime = time.time() - system_metrics['start_time']
+    return {
+        'cpu_usage': system_metrics['cpu_usage'],
+        'memory_usage': system_metrics['memory_usage'],
+        'thread_count': system_metrics['thread_count'],
+        'uptime': f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s"
+    }
