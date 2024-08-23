@@ -29,19 +29,16 @@ def get_files_sorted_by_creation_time(directory):
     return files
 
 
-def delete_old_files(file_list, max_age, max_size):
+def delete_old_files(file_list, max_age, max_size, minimum=10):
     current_time = time.time()
     total_size = 0
 
     # sort the list so we keep it in the right date order (it should already be sorted)
-    file_list = sorted(file_list)
-
-    # Keep the last 10 files
-    file_list[-10:]
+    file_list = sorted(file_list, reverse=True)[minimum:]
 
     # Delete files if total size exceeds the maximum size or they are older than max_age
     # start from oldest to newest
-    for file_path in file_list[:-10]:
+    for file_path in file_list:
         if (
             "in_process." in file_path
             or "last_motion." in file_path

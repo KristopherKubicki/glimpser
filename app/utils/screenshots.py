@@ -91,6 +91,9 @@ def adjust_bbox_to_aspect_ratio(bbox, image_size, aspect_ratio=(16, 9)):
     left, top, right, bottom = bbox
     bbox_width = right - left
     bbox_height = bottom - top
+    if bbox_height == 0:
+        bbox_height = 1
+
     bbox_aspect_ratio = bbox_width / bbox_height
 
     target_aspect_ratio = aspect_ratio[0] / aspect_ratio[1]
@@ -431,8 +434,10 @@ def is_address_reachable(address, port=80, timeout=5):
 def parse_url(url):
     parsed_url = urlparse(url)
     domain = parsed_url.hostname
-    port = parsed_url.port
+    if parsed_url and parsed_url.scheme == '' and domain is None:
+        domain = re.sub(r'\/.+?$','', parsed_url.path)
 
+    port = parsed_url.port
     # If the port is None and the scheme is specified, infer the default port
     if port is None:
         if parsed_url.scheme == "http":
