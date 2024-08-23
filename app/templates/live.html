@@ -17,6 +17,75 @@
             max-height: 100%;
             max-width: 100%;
         }
+        .playback-control {
+            margin: 20px 0;
+            width: 100%;
+            max-width: 500px;
+        }
+        .playback-label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .slider-container {
+            position: relative;
+            width: 100%;
+            height: 40px;
+        }
+        #speed-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 10px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        #speed-slider:hover {
+            opacity: 1;
+        }
+        #speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+        }
+        #speed-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+        }
+        .speed-indicator {
+            position: absolute;
+            top: -30px;
+            transform: translateX(-50%);
+            background-color: #4CAF50;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .speed-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+            font-size: 12px;
+            color: #666;
+        }
+        .highlight-speed {
+            animation: pulse 0.5s;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -64,9 +133,19 @@
         <option value="mjpg">MJPG</option>
     </select>
 
-    <div>
-	<input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()">
-        <label for="speed-slider">Playback Speed: <span id="speed-value">1x</span></label>
+    <div class="playback-control">
+        <label for="speed-slider" class="playback-label">Playback Speed Control:</label>
+        <div class="slider-container">
+            <input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()">
+            <div class="speed-indicator">
+                <span id="speed-value">1x</span>
+            </div>
+        </div>
+        <div class="speed-labels">
+            <span>0.125x</span>
+            <span>1x</span>
+            <span>16x</span>
+        </div>
     </div>
 
     <div id="template-details"></div>
@@ -326,23 +405,32 @@ function playMotion() {
     function updatePlaybackSpeed() {
         const slider = document.getElementById('speed-slider');
         const speedDisplay = document.getElementById('speed-value');
+        const speedIndicator = document.querySelector('.speed-indicator');
         const speed = Math.pow(2, slider.value);
         video.playbackRate = parseFloat(speed.toFixed(2)); // Ensure the speed is a float with two decimal places
         speedDisplay.textContent = speed.toFixed(2) + 'x'; // Update the text to show two decimal places
 
-            // Adjust the refresh rate for the PNG stream based on the playback speed
-            if (pngInterval) {
-                clearInterval(pngInterval);
-                pngInterval = setInterval(refreshPNG, 1000 / speed);
-            }
+        // Update the position of the speed indicator
+        const percentage = (parseFloat(slider.value) - parseFloat(slider.min)) / (parseFloat(slider.max) - parseFloat(slider.min)) * 100;
+        speedIndicator.style.left = `${percentage}%`;
 
-	        speedDisplay.classList.add('highlight-speed');
-    setTimeout(() => speedDisplay.classList.remove('highlight-speed'), 500);
+        // Adjust the refresh rate for the PNG stream based on the playback speed
+        if (pngInterval) {
+            clearInterval(pngInterval);
+            pngInterval = setInterval(refreshPNG, 1000 / speed);
         }
 
-        // Initially update template details and play the MP4 stream
-        updateTemplateDetails();
-        playMP4();
+        // Add visual feedback for speed change
+        speedDisplay.classList.add('highlight-speed');
+        setTimeout(() => speedDisplay.classList.remove('highlight-speed'), 500);
+
+        // Update slider background to show current position
+        slider.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${percentage}%, #ddd ${percentage}%, #ddd 100%)`;
+    }
+
+    // Initially update template details and play the MP4 stream
+    updateTemplateDetails();
+    playMP4();
     </script>
 
     {% include 'footer.html' %}
