@@ -278,8 +278,8 @@ function confirmDelete(templateName) {
         }
 
 const timestampContainer = document.getElementById('timestamp-container');
-            const formattedTimestamp = timeAgo('{{template_details['last_screenshot_time']}}');
-        timestampContainer.innerHTML = formattedTimestamp;
+const formattedTimestamp = timeAgo('{{template_details['last_screenshot_time']}}');
+timestampContainer.textContent = formattedTimestamp;
    </script>
 
 

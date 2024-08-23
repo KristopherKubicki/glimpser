@@ -115,25 +115,38 @@ function changeCamera() {
 
         function updateTemplateDetails() {
             const details = templateDetails[currentCamera];
-		if (details) { 
-		video.title = details.last_caption;
-            templateDetailsContainer.innerHTML = `
-                <h3>Details for ${currentCamera}</h3>
-                <p>URL: ${details.url}</p>
-                <p>Frequency: ${details.frequency} minutes</p>
-                <p>Timeout: ${details.timeout} seconds</p>
-                <p>Notes: ${details.notes || 'N/A'}</p>
-                <p>Last Screenshot Time: ${details.last_screenshot_time}</p>
-		<p>Last Caption: ${details.last_caption}</p>
-            `;
+            if (details) { 
+                video.title = details.last_caption;
+                templateDetailsContainer.innerHTML = ''; // Clear existing content
+                
+                const h3 = document.createElement('h3');
+                h3.textContent = `Details for ${currentCamera}`;
+                templateDetailsContainer.appendChild(h3);
+                
+                const createParagraph = (text) => {
+                    const p = document.createElement('p');
+                    p.textContent = text;
+                    templateDetailsContainer.appendChild(p);
+                };
+                
+                createParagraph(`URL: ${details.url}`);
+                createParagraph(`Frequency: ${details.frequency} minutes`);
+                createParagraph(`Timeout: ${details.timeout} seconds`);
+                createParagraph(`Notes: ${details.notes || 'N/A'}`);
+                createParagraph(`Last Screenshot Time: ${details.last_screenshot_time}`);
+                createParagraph(`Last Caption: ${details.last_caption}`);
+            } else {
+                templateDetailsContainer.innerHTML = ''; // Clear existing content
+                
+                const h3 = document.createElement('h3');
+                h3.textContent = `Details for ${currentCamera}`;
+                templateDetailsContainer.appendChild(h3);
+                
+                const p = document.createElement('p');
+                p.textContent = 'No details available';
+                templateDetailsContainer.appendChild(p);
+            }
         }
-		else {
-        templateDetailsContainer.innerHTML = `
-            <h3>Details for ${currentCamera}</h3>
-            <p>No details available</p>
-        `;
-    }
-	}
 
         function updateFeed() {
             const source = document.getElementById('video-source').value;
