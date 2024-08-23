@@ -1,34 +1,26 @@
 
 		<h1><a href='/'><img src='{{ url_for('static', filename='img/glimpser_small.png') }}' title='Glimpser'></a></h1>
         <nav>
-
-		{% for ag in active_groups %} 
-		<a href='/group/{{ag}}'>{{ag}}</a>
-		{% endfor %}
-
+            <div class="nav-left">
+                {% for ag in active_groups %} 
+                <a href='/group/{{ag}}'>{{ag}}</a>
+                {% endfor %}
+            </div>
+            <div class="nav-right">
                 <a href='/captions' id='captions'>Captions</a>
-			
-
-               
-
                 <a href='/live' id='live'>
-
-          
-                <div id="coolClock" class="cool-clock" title="Live">
-                    <div id="dateDisplay" class="clock-face">
-                        <div id="digitalTime" class="clock-hands" title="todo $digitalTime">
-                            <div class="hand hour-hand"></div>
-                            <div class="hand minute-hand"></div>
-                            <div class="hand second-hand"></div>
+                    <div id="coolClock" class="cool-clock" title="Live">
+                        <div id="dateDisplay" class="clock-face">
+                            <div id="digitalTime" class="clock-hands" title="todo $digitalTime">
+                                <div class="hand hour-hand"></div>
+                                <div class="hand minute-hand"></div>
+                                <div class="hand second-hand"></div>
+                            </div>
                         </div>
-
                     </div>
-                </div>
-</a>
-
-
- <a href='/settings' class="settings-icon" title="Settings">&#9881;</a>
-
+                </a>
+                <a href='/settings' class="settings-icon" title="Settings">&#9881;</a>
+            </div>
         </nav>
 
 <script>
