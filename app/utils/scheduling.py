@@ -128,10 +128,22 @@ def add_motion_and_caption(image_path, caption=None, motion=False):
             logging.error(f"Error determining frequency for: {e}")
 
 
-def update_camera(name, template, image_file=None):
+def calculate_sync_ratios(templates):
+    """Calculate sync ratios for cameras based on their frequencies."""
+    frequencies = {name: int(template.get('frequency', 30)) for name, template in templates.items()}
+    min_frequency = min(frequencies.values())
+    return {name: min_frequency / freq for name, freq in frequencies.items()}
+
+def update_camera(name, template, image_file=None, sync_mode=False, sync_ratios=None):
 
     # just ignore the old
     template = get_template(name)
+
+    if sync_mode and sync_ratios:
+        # Adjust update frequency based on sync ratio
+        adjusted_frequency = int(template.get('frequency', 30)) * sync_ratios[name]
+        if random.random() > adjusted_frequency:
+            return  # Skip update to maintain sync
 
     lsuc = False
     if image_file is None:
