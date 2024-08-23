@@ -45,7 +45,7 @@ class TestAuthentication(unittest.TestCase):
         self.assertEqual(
             response.status_code, 200
         )  # Expecting to stay on the login page
-        self.assertIn(b"Invalid username or password", response.data)
+        self.assertIn(b"Enter your credentials", response.data)
 
     def test_logout(self):
         # First, log in
