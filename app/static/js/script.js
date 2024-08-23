@@ -311,4 +311,45 @@ groupDropdown.addEventListener('change', loadTemplates);
 // Set an interval to update video sources every 30 minutes
 setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
 
+// Live logging functionality
+function fetchLogs(filter = '') {
+    fetch(`/fetch_logs?filter=${encodeURIComponent(filter)}`)
+        .then(response => response.json())
+        .then(logs => {
+            const logBody = document.getElementById('log-body');
+            logBody.innerHTML = '';
+            logs.forEach(log => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${log.timestamp}</td>
+                    <td>${log.level}</td>
+                    <td>${log.message}</td>
+                `;
+                logBody.appendChild(row);
+            });
+        })
+        .catch(error => console.error('Error fetching logs:', error));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const logFilter = document.getElementById('log-filter');
+    const refreshLogsButton = document.getElementById('refresh-logs');
+
+    if (logFilter && refreshLogsButton) {
+        logFilter.addEventListener('input', () => {
+            fetchLogs(logFilter.value);
+        });
+
+        refreshLogsButton.addEventListener('click', () => {
+            fetchLogs(logFilter.value);
+        });
+
+        // Initial log fetch
+        fetchLogs();
+
+        // Fetch logs every 30 seconds
+        setInterval(() => fetchLogs(logFilter.value), 30000);
+    }
+});
+
 });

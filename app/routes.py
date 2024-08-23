@@ -9,6 +9,7 @@ import os
 import re
 import time
 import tempfile
+import logging
 from datetime import datetime, timedelta
 from functools import wraps
 from threading import Lock
@@ -1095,6 +1096,7 @@ def init_routes(app):
         return send_from_directory(path, filename)
 
     @app.route("/settings", methods=["GET", "POST"])
+    @login_required
     def settings():
         if request.method == "POST":
             for name, value in request.form.items():
@@ -1103,6 +1105,24 @@ def init_routes(app):
 
         settings = get_all_settings()
         return render_template("settings.html", settings=settings)
+
+    @app.route("/fetch_logs")
+    @login_required
+    def fetch_logs():
+        log_filter = request.args.get('filter', '')
+        # In a real-world scenario, you'd fetch logs from a file or database
+        # For this example, we'll use a list of dummy logs
+        logs = [
+            {"timestamp": "2023-05-10 10:00:00", "level": "INFO", "message": "Application started"},
+            {"timestamp": "2023-05-10 10:01:00", "level": "DEBUG", "message": "Database connection established"},
+            {"timestamp": "2023-05-10 10:02:00", "level": "WARNING", "message": "Low disk space"},
+            {"timestamp": "2023-05-10 10:03:00", "level": "ERROR", "message": "Failed to process request"},
+        ]
+
+        if log_filter:
+            logs = [log for log in logs if log_filter.lower() in log['message'].lower()]
+        return jsonify(logs)
+    
 
     @app.route("/update_template/<string:template_name>", methods=["POST"])
     @login_required
@@ -1184,3 +1204,4 @@ def init_routes(app):
                 return jsonify({"message": "Template updated successfully!"})
 
             return redirect("/templates/" + template_name)
+
