@@ -18,45 +18,45 @@
     <div id="template-form" style="background-color: #222; padding: 20px; border-radius: 10px; max-width: 600px; margin: 20px auto;">
         <h3 style="color: #fff; text-align: center; margin-bottom: 20px;">Add Template</h3>
         <form id="add-template-form" action="/templates" method="post" onsubmit="return validateForm()">
-            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-bottom: 20px;">
-                <label for="name" style="color: #fff;">Template Name:</label>
-                <input type="text" id="name" name="name" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required>
+            <div class="form-grid">
+                <label for="name">Template Name: *</label>
+                <input type="text" id="name" name="name" required title="Enter a unique name for this template">
 
-                <label for="url" style="color: #fff;">URL:</label>
-                <input type="url" id="url" name="url" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required>
+                <label for="url">URL: *</label>
+                <input type="url" id="url" name="url" required title="Enter the full URL to be monitored">
 
-                <label for="frequency" style="color: #fff;">Frequency (minutes):</label>
-                <input type="number" id="frequency" name="frequency" value="30" min="1" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required>
+                <label for="frequency">Frequency (minutes): *</label>
+                <input type="number" id="frequency" name="frequency" value="30" min="1" required title="How often the template should be checked, in minutes">
 
-                <label for="timeout" style="color: #fff;">Timeout (seconds):</label>
-                <input type="number" id="timeout" name="timeout" value="10" min="1" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required>
+                <label for="timeout">Timeout (seconds): *</label>
+                <input type="number" id="timeout" name="timeout" value="10" min="1" required title="Maximum time to wait for a response, in seconds">
 
-                <label for="notes" style="color: #fff;">Notes:</label>
-                <textarea id="notes" name="notes" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;"></textarea>
+                <label for="notes">Notes:</label>
+                <textarea id="notes" name="notes" title="Optional notes about this template"></textarea>
 
-                <label for="object_filter" style="color: #fff;">Object Filter:</label>
-                <input type="text" id="object_filter" name="object_filter" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <label for="object_filter">Object Filter:</label>
+                <input type="text" id="object_filter" name="object_filter" title="Comma-separated list of objects to detect">
 
-                <label for="object_confidence" style="color: #fff;">Object Confidence:</label>
-                <input type="number" id="object_confidence" name="object_confidence" min="0" max="1" step="0.01" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <label for="object_confidence">Object Confidence:</label>
+                <input type="number" id="object_confidence" name="object_confidence" min="0" max="1" step="0.01" title="Confidence threshold for object detection (0-1)">
 
-                <label for="popup_xpath" style="color: #fff;">Popup XPath:</label>
-                <input type="text" id="popup_xpath" name="popup_xpath" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <label for="popup_xpath">Popup XPath:</label>
+                <input type="text" id="popup_xpath" name="popup_xpath" title="XPath to identify and close popups">
 
-                <label for="dedicated_xpath" style="color: #fff;">Dedicated XPath:</label>
-                <input type="text" id="dedicated_xpath" name="dedicated_xpath" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <label for="dedicated_xpath">Dedicated XPath:</label>
+                <input type="text" id="dedicated_xpath" name="dedicated_xpath" title="XPath to focus on a specific element">
 
-                <label for="callback_url" style="color: #fff;">Callback URL:</label>
-                <input type="url" id="callback_url" name="callback_url" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <label for="callback_url">Callback URL:</label>
+                <input type="url" id="callback_url" name="callback_url" title="URL to receive notifications">
 
-                <label for="proxy" style="color: #fff;">Proxy:</label>
-                <input type="text" id="proxy" name="proxy" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <label for="proxy">Proxy:</label>
+                <input type="text" id="proxy" name="proxy" title="Proxy server to use (e.g., http://proxy.example.com:8080)">
 
-                <label for="groups" style="color: #fff;">Groups:</label>
-                <input type="text" id="groups" name="groups" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <label for="groups">Groups:</label>
+                <input type="text" id="groups" name="groups" title="Comma-separated list of groups this template belongs to">
 
-                <label for="rollback_frames" style="color: #fff;">Rollback Frames:</label>
-                <input type="number" id="rollback_frames" name="rollback_frames" value="0" min="0" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <label for="rollback_frames">Rollback Frames:</label>
+                <input type="number" id="rollback_frames" name="rollback_frames" value="0" min="0" title="Number of frames to roll back when detecting changes">
             </div>
 
             <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
@@ -88,51 +88,93 @@ function validateForm() {
     const frequency = document.getElementById('frequency').value;
     const timeout = document.getElementById('timeout').value;
     const objectConfidence = document.getElementById('object_confidence').value;
+    const groups = document.getElementById('groups').value.trim();
+    let isValid = true;
+    let errorMessage = "";
 
-    if (name === "" || url === "") {
-        alert("Template Name and URL are required fields.");
-        return false;
+    // Reset all error styles
+    document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+
+    if (name === "") {
+        document.getElementById('name').classList.add('error');
+        errorMessage += "Template Name is required.\n";
+        isValid = false;
+    }
+
+    if (url === "") {
+        document.getElementById('url').classList.add('error');
+        errorMessage += "URL is required.\n";
+        isValid = false;
+    } else if (!isValidUrl(url)) {
+        document.getElementById('url').classList.add('error');
+        errorMessage += "Please enter a valid URL.\n";
+        isValid = false;
     }
 
     if (frequency < 1) {
-        alert("Frequency must be at least 1 minute.");
-        return false;
+        document.getElementById('frequency').classList.add('error');
+        errorMessage += "Frequency must be at least 1 minute.\n";
+        isValid = false;
     }
 
     if (timeout < 1) {
-        alert("Timeout must be at least 1 second.");
-        return false;
+        document.getElementById('timeout').classList.add('error');
+        errorMessage += "Timeout must be at least 1 second.\n";
+        isValid = false;
     }
 
     if (objectConfidence !== "" && (objectConfidence < 0 || objectConfidence > 1)) {
-        alert("Object Confidence must be between 0 and 1.");
-        return false;
+        document.getElementById('object_confidence').classList.add('error');
+        errorMessage += "Object Confidence must be between 0 and 1.\n";
+        isValid = false;
     }
 
-    return true;
+    if (groups !== "" && !isValidGroupFormat(groups)) {
+        document.getElementById('groups').classList.add('error');
+        errorMessage += "Groups must be comma-separated alphanumeric values.\n";
+        isValid = false;
+    }
+
+    if (!isValid) {
+        alert(errorMessage);
+    }
+
+    return isValid;
+}
+
+function isValidUrl(string) {
+    try {
+        new URL(string);
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+function isValidGroupFormat(string) {
+    return /^[a-zA-Z0-9]+(,[a-zA-Z0-9]+)*$/.test(string);
 }
 </script>
 
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 
-	<div>
+<div>
     <label for="group-dropdown">Filter by Group:</label>
 
     <select id="group-dropdown">
         <!-- Options will be populated here -->
     </select>
 
-
-        <input type="range" id="grid-width-slider" min="50" max="3840" value="360" onload="this.max = window.innerWidth;">
-	         <button id="play-all">Play All</button>
-                <button id="stop-all">Stop All</button>
-
+    <input type="range" id="grid-width-slider" min="50" max="3840" value="360" onload="this.max = window.innerWidth;">
+    <button id="play-all">Play All</button>
+    <button id="stop-all">Stop All</button>
 </div>
 
-    <div id="template-list">
-        <!-- Template list will be populated here -->
-    </div>
+<div id="template-list">
+    <!-- Template list will be populated here -->
+</div>
 
-    {% include 'footer.html' %}
+{% include 'footer.html' %}
 </body>
 </html>
 
