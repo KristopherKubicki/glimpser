@@ -1,51 +1,16 @@
 # app/routes.py
 
-import glob
-import hashlib
-import inspect
-import io
-import json
-import os
-import re
-import time
-import tempfile
-from datetime import datetime, timedelta
-from functools import wraps
-from threading import Lock
+# This file is now deprecated. All routes have been moved to separate files in the app/routes directory.
+# Please refer to the following files for the routes:
+# - app/routes/auth.py
+# - app/routes/main.py
+# - app/routes/api.py
+# - app/routes/stream.py
+# - app/routes/template.py
 
-from flask import (
-    Response,
-    abort,
-    flash,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    send_file,
-    send_from_directory,
-    session,
-    url_for,
-)
-from PIL import Image
-from sqlalchemy import text
-from werkzeug.security import check_password_hash
-from werkzeug.utils import secure_filename
+# Any remaining utility functions or shared logic can be moved to appropriate utility modules.
 
-import app.config as config
-from app.config import (
-    API_KEY,
-    SCREENSHOT_DIRECTORY,
-    USER_NAME,
-    USER_PASSWORD_HASH,
-    VIDEO_DIRECTORY,
-)
-from app.utils import (
-    scheduling,
-    template_manager,
-    video_archiver,
-    screenshots
-)
-from app.utils.db import SessionLocal
+# This file can be safely deleted once all necessary logic has been moved to the new structure.
 
 
 def validate_template_name(template_name: str):
