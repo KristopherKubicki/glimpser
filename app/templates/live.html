@@ -165,18 +165,53 @@ function changeCamera() {
             video.style.display = 'block';
             image.style.display = 'none';
             clearInterval(pngInterval);
+
+            let m3u8Url;
+            if (currentCamera.startsWith('group-')) {
+                const groupName = currentCamera.split('group-')[1];
+                m3u8Url = `/stream.m3u8?group=${encodeURIComponent(groupName)}`;
+            } else if (currentCamera === 'All') {
+                m3u8Url = '/stream.m3u8';
+            } else {
+                m3u8Url = `/stream.m3u8?camera=${encodeURIComponent(currentCamera)}`;
+            }
+
             if (Hls.isSupported()) {
                 const hls = new Hls();
-                hls.loadSource('/stream/' + currentCamera + '.m3u8');
+                hls.loadSource(m3u8Url);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.play();
+                    video.play().catch(e => console.error("Error playing video:", e));
+                });
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    console.error("HLS error:", data);
+                    if (data.fatal) {
+                        switch(data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                console.error("Fatal network error encountered, trying to recover...");
+                                hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                console.error("Fatal media error encountered, trying to recover...");
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                console.error("Fatal error, cannot recover");
+                                hls.destroy();
+                                break;
+                        }
+                    }
                 });
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = '/stream/' + currentCamera + '.m3u8';
+                video.src = m3u8Url;
                 video.addEventListener('canplay', function() {
-                    video.play();
+                    video.play().catch(e => console.error("Error playing video:", e));
                 });
+                video.addEventListener('error', function(e) {
+                    console.error("Video error:", video.error);
+                });
+            } else {
+                console.error("HLS is not supported on this browser");
             }
         }
 
