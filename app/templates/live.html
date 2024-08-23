@@ -1,11 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Live Camera Feed & Template Details</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% include 'header.html' %}
+
+<body>
+    <header>
+        {% include 'nav.html' %}
+    </header>
+
     <style>
-        .video-container {
+        .video-container { 
             width: 100%;
             height: 80vh; /* 80% of the viewport height */
             display: flex;
@@ -18,12 +19,7 @@
             max-width: 100%;
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-</head>
-<body>
-    <header>
-        {% include 'nav.html' %}
-    </header>
+
 
 
     <div class="video-container">

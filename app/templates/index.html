@@ -1,13 +1,7 @@
 <!-- app/templates/index.html -->
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Glimpser Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-</head>
+	{% include 'header.html' %} 
+
 <body>
 	<header>
 	{% include 'nav.html' %}
