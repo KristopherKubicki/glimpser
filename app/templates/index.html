@@ -121,15 +121,40 @@ function validateForm() {
         <!-- Options will be populated here -->
     </select>
 
+    <input type="text" id="search-input" placeholder="Search templates...">
 
-        <input type="range" id="grid-width-slider" min="50" max="3840" value="360" onload="this.max = window.innerWidth;">
+    <input type="range" id="grid-width-slider" min="50" max="3840" value="360" onload="this.max = window.innerWidth;">
 	         <button id="play-all">Play All</button>
                 <button id="stop-all">Stop All</button>
 
+    <button id="dark-mode-toggle">Toggle Dark Mode</button>
+    <button id="show-shortcuts">Show Keyboard Shortcuts</button>
 </div>
 
     <div id="template-list">
         <!-- Template list will be populated here -->
+    </div>
+
+    <div id="loading-indicator" style="display: none; text-align: center; padding: 20px;">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <div id="shortcut-tooltip" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #f9f9f9; border: 1px solid #ccc; padding: 15px; border-radius: 5px; z-index: 1000;">
+        <h3>Keyboard Shortcuts</h3>
+        <ul>
+            <li><strong>P</strong>: Play all videos</li>
+            <li><strong>S</strong>: Stop all videos</li>
+            <li><strong>D</strong>: Toggle dark mode</li>
+            <li><strong>/</strong>: Focus search input</li>
+            <li><strong>Esc</strong>: Clear search</li>
+            <li><strong>?</strong>: Show/hide this tooltip</li>
+        </ul>
+    </div>
+
+    <div id="loading-indicator" style="display: none; text-align: center; padding: 20px;">
+        <div class="spinner"></div>
+        <p>Loading...</p>
     </div>
 
     {% include 'footer.html' %}
