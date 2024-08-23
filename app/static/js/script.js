@@ -194,6 +194,9 @@ function loadTemplates() {
                 `;
                 templateList.appendChild(templateDiv);
 
+                // Remove tinted layers
+                removeTintedLayers(templateDiv);
+
                 // Add event listeners for hover
                 const video = templateDiv.querySelector('video');
                 observer.observe(video);
@@ -312,3 +315,23 @@ groupDropdown.addEventListener('change', loadTemplates);
 setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
 
 });
+
+function removeTintedLayers(element) {
+    const computedStyle = window.getComputedStyle(element);
+    const backgroundColor = computedStyle.backgroundColor;
+    const opacity = parseFloat(computedStyle.opacity);
+
+    // Check if the element has a semi-transparent background
+    if (backgroundColor.startsWith('rgba') && opacity < 1) {
+        const parent = element.parentElement;
+        if (parent) {
+            parent.removeChild(element);
+            removeTintedLayers(parent); // Recursively check parent elements
+        }
+    } else {
+        // Check child elements
+        Array.from(element.children).forEach(child => {
+            removeTintedLayers(child);
+        });
+    }
+}
