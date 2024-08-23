@@ -34,11 +34,19 @@
                 <label for="object_confidence" style="color: #fff;" title="Minimum confidence for object detection">Object Confidence:</label>
                 <input type="number" id="object_confidence" name="object_confidence" min="0" max="1" step="0.01" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter the minimum confidence level for object detection (0-1)">
 
-                <label for="popup_xpath" style="color: #fff;" title="XPath for popup handling">Popup XPath:</label>
-                <input type="text" id="popup_xpath" name="popup_xpath" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter XPath to identify and close popups">
 
-                <label for="dedicated_xpath" style="color: #fff;" title="XPath for specific elements">Dedicated XPath:</label>
-                <input type="text" id="dedicated_xpath" name="dedicated_xpath" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter XPath to identify specific elements">
+                <label for="popup_xpath" style="color: #fff;">Popup XPath:</label>
+                <div class="xpath-input-container">
+                    <input type="text" id="popup_xpath" name="popup_xpath" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc; width: 70%;">
+                    <button type="button" onclick="showStructuredInput('popup_xpath')" style="padding: 5px; border-radius: 5px; background-color: #4CAF50; color: #fff; border: none; cursor: pointer;">Structured</button>
+                </div>
+
+                <label for="dedicated_xpath" style="color: #fff;">Dedicated XPath:</label>
+                <div class="xpath-input-container">
+                    <input type="text" id="dedicated_xpath" name="dedicated_xpath" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc; width: 70%;">
+                    <button type="button" onclick="showStructuredInput('dedicated_xpath')" style="padding: 5px; border-radius: 5px; background-color: #4CAF50; color: #fff; border: none; cursor: pointer;">Structured</button>
+                </div>
+
 
                 <label for="callback_url" style="color: #fff;" title="URL for notifications">Callback URL:</label>
                 <input type="url" id="callback_url" name="callback_url" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter URL to receive notifications">
@@ -104,6 +112,48 @@ function validateForm() {
     }
 
     return true;
+}
+
+function showStructuredInput(inputId) {
+    const input = document.getElementById(inputId);
+    const structuredInputHtml = `
+        <div class="structured-xpath-input">
+            <select id="${inputId}_tag">
+                <option value="div">div</option>
+                <option value="span">span</option>
+                <option value="a">a</option>
+                <option value="p">p</option>
+                <option value="*">*</option>
+            </select>
+            <select id="${inputId}_attribute">
+                <option value="class">class</option>
+                <option value="id">id</option>
+                <option value="name">name</option>
+                <option value="data-*">data-*</option>
+            </select>
+            <input type="text" id="${inputId}_value" placeholder="Attribute value">
+            <button type="button" onclick="generateXPath('${inputId}')">Generate XPath</button>
+        </div>
+    `;
+    input.insertAdjacentHTML('afterend', structuredInputHtml);
+    input.style.display = 'none';
+}
+
+function generateXPath(inputId) {
+    const tag = document.getElementById(`${inputId}_tag`).value;
+    const attribute = document.getElementById(`${inputId}_attribute`).value;
+    const value = document.getElementById(`${inputId}_value`).value;
+    
+    let xpath = `//${tag}`;
+    if (attribute === 'data-*') {
+        xpath += `[starts-with(@data-,'${value}')]`;
+    } else {
+        xpath += `[contains(@${attribute},'${value}')]`;
+    }
+    
+    document.getElementById(inputId).value = xpath;
+    document.getElementById(inputId).style.display = 'block';
+    document.querySelector(`#${inputId} + .structured-xpath-input`).remove();
 }
 </script>
 
