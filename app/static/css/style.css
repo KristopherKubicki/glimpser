@@ -145,19 +145,7 @@ header h1 {
 
 nav {
     display: flex; /* Flexbox for layout */
-    justify-content: space-between; /* Space between left and right groups */
-    align-items: center; /* Vertically align items */
-    flex-grow: 1; /* Allow nav to grow and fill space */
-}
-
-.nav-left, .nav-right {
-    display: flex; /* Flexbox for layout */
-    align-items: center; /* Vertically align items */
     gap: 10px; /* Space between navigation items */
-}
-
-.nav-right {
-    margin-left: auto; /* Push right group to the right */
 }
 
 nav a {
@@ -165,8 +153,6 @@ nav a {
     text-decoration: none; /* No underline */
     padding: 5px 10px; /* Padding */
     border-radius: 5px; /* Rounded corners */
-    display: flex; /* Flexbox for vertical alignment */
-    align-items: center; /* Vertically align content */
 }
 
 nav a:hover, nav a.active {
@@ -186,7 +172,7 @@ nav a:hover, nav a.active {
         font-size: 20px; /* Smaller font size on mobile */
     }
 
-    nav, .nav-left, .nav-right {
+    nav {
         flex-direction: column; /* Stack navigation items on mobile */
         align-items: flex-start;
     }
@@ -242,7 +228,7 @@ button, a {
     background-color: #f0f0f0;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     position: relative;
-    margin: 0 5px; /* Adjust margin for better spacing */
+    margin-left: 20px;
 }
 
 .clock-face {
@@ -469,4 +455,61 @@ textarea {
 
 .details {
     margin-left: 20px;
+}
+
+/* Footer Styles */
+footer {
+    background-color: #000;
+    color: #fff;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 1200px;
+    margin-bottom: 20px;
+}
+
+.footer-logo img {
+    height: 30px;
+    width: auto;
+}
+
+.footer-nav {
+    display: flex;
+    gap: 20px;
+}
+
+.footer-nav a {
+    color: #fff;
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+.footer-nav a:hover {
+    background-color: #555;
+}
+
+.footer-copyright {
+    text-align: center;
+    font-size: 14px;
+}
+
+@media screen and (max-width: 768px) {
+    .footer-content {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .footer-nav {
+        flex-direction: column;
+        align-items: center;
+    }
 }
