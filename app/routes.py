@@ -412,16 +412,7 @@ def allowed_filename(filename: str) -> bool:
 def init_routes(app):
     global login_attempts
     # get_active_groups()
-    
-    @app.errorhandler(404)
-    def page_not_found(e):
-        return render_template('404.html'), 404
 
-    @app.errorhandler(Exception)
-    def handle_exception(e):
-        # Pass the error down to the template
-        return render_template('error.html', error=e), 500
-        
     @app.route('/health')
     def health_check():
         # should be healthy
@@ -501,19 +492,20 @@ def init_routes(app):
 
     @app.route("/submit_image/<string:template_name>", methods=["POST"])
     @login_required
-    def submit_image(template_name: str):
+    def submit_image(template_name: TemplateName):
         """
         Endpoint to receive and process an image submitted by a remote service or camera.
         """
-        sanitized_template_name = validate_template_name(template_name)
-        if sanitized_template_name is None:
-            return jsonify({"status": "error", "message": "Invalid template name"}), 400
+        template_name = validate_template_name(template_name)
+        if template_name is None:
+            abort(404)
 
         # Check if the template exists
-        ltemplate = template_manager.get_template(sanitized_template_name)
+        print("WARNING BRPKEN!")
+        ltemplate = template_manager.get_template(template_name)
         if ltemplate is None:
             return jsonify({"status": "error", "message": "Template not found"}), 404
-        template_name = ltemplate.get("name")
+        template_name = ltemplate.get("name")  # todo...
 
         # Check if the request has the file part
         if "file" not in request.files:
@@ -1088,6 +1080,23 @@ def init_routes(app):
 
         return send_from_directory(path, filename)
 
+    def delete_setting(name: str) -> bool:
+        name = name.replace("'", "")[:32]
+        if not re.findall(r"^[A-Z_]+?$", name):
+            return False
+
+        session = SessionLocal()
+        try:
+            session.execute(
+                text("DELETE FROM settings WHERE name = :name"),
+                {"name": name}
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        return True
+
     @app.route("/videos/<string:name>/<string:filename>")
     @login_required
     def view_video(name: TemplateName, filename: str):
@@ -1103,19 +1112,26 @@ def init_routes(app):
         return send_from_directory(path, filename)
 
     @app.route("/settings", methods=["GET", "POST"])
-    @login_required
     def settings():
         if request.method == "POST":
-            for name, value in request.form.items():
-                update_setting(name, value)
+            action = request.form.get("action")
+            if action == "add":
+                new_name = request.form.get("new_name")
+                new_value = request.form.get("new_value")
+                if new_name and new_value:
+                    update_setting(new_name, new_value)
+            elif action == "delete":
+                name_to_delete = request.form.get("name_to_delete")
+                if name_to_delete:
+                    delete_setting(name_to_delete)
+            else:
+                for name, value in request.form.items():
+                    if name not in ["action", "new_name", "new_value", "name_to_delete"]:
+                        update_setting(name, value)
             return redirect(url_for("settings"))
 
         settings = get_all_settings()
         return render_template("settings.html", settings=settings)
-
-    @app.route("/help", methods=["GET"])
-    def help():
-        return render_template("help.html")
 
     @app.route("/update_template/<string:template_name>", methods=["POST"])
     @login_required
@@ -1197,5 +1213,3 @@ def init_routes(app):
                 return jsonify({"message": "Template updated successfully!"})
 
             return redirect("/templates/" + template_name)
-
-
