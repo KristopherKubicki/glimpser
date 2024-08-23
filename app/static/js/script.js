@@ -40,6 +40,44 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    function addTooltips() {
+        const tooltipElements = document.querySelectorAll('[data-tooltip]');
+        tooltipElements.forEach(element => {
+            element.addEventListener('mouseenter', showTooltip);
+            element.addEventListener('mouseleave', hideTooltip);
+        });
+    }
+
+    function showTooltip(event) {
+        const tooltipText = event.target.getAttribute('data-tooltip');
+        const tooltip = document.createElement('div');
+        tooltip.className = 'tooltip';
+        tooltip.textContent = tooltipText;
+        document.body.appendChild(tooltip);
+
+        const rect = event.target.getBoundingClientRect();
+        tooltip.style.left = `${rect.left + window.scrollX}px`;
+        tooltip.style.top = `${rect.bottom + window.scrollY}px`;
+    }
+
+    function hideTooltip() {
+        const tooltip = document.querySelector('.tooltip');
+        if (tooltip) {
+            tooltip.remove();
+        }
+    }
+
+    function calculatePlaybackRate(video) {
+        // This is a placeholder function. Adjust the logic based on your requirements.
+        if (video.duration < 10) {
+            return 0.5;
+        } else if (video.duration < 30) {
+            return 1;
+        } else {
+            return 2;
+        }
+    }
+
 function loadGroups() {
     fetch('/groups')
         .then(response => response.json())
@@ -180,15 +218,15 @@ function loadTemplates() {
                 const templateDiv = document.createElement('div');
                 templateDiv.classList.add("templateDiv"); // Add class to div
                 templateDiv.innerHTML = `
-                    <a href='/templates/${name}'>
+                    <a href='/templates/${name}' data-tooltip="View details for ${name}">
                         <div class="${videoContainerClass}">
-			    <div class="camera-name">${name}</div> <!-- Camera name -->
-                            <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style='width:100%' muted title='` + template["last_caption"] + `' preload="none">
+			    <div class="camera-name" data-tooltip="Camera: ${name}">${name}</div> <!-- Camera name -->
+                            <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style='width:100%' muted title='` + template["last_caption"] + `' preload="none" data-tooltip="Last caption: ${template["last_caption"]}">
                                 <source src="/last_video/${name}" type='video/mp4'>
                                 Your browser does not support the video tag.
                             </video>
-			    <div class="timestamp">${humanizedTimestamp}</div> <!-- Humanized timestamp in the bottom right corner -->
-                            <div class="play-icon">&#9658;</div> <!-- Unicode play icon -->
+			    <div class="timestamp" data-tooltip="Last updated: ${humanizedTimestamp}">${humanizedTimestamp}</div> <!-- Humanized timestamp in the bottom right corner -->
+                            <div class="play-icon" data-tooltip="Play video">&#9658;</div> <!-- Unicode play icon -->
                         </div>
                     </a>
                 `;
@@ -298,6 +336,8 @@ video.addEventListener('ended', () => {
 }
             });
 
+            // Add tooltips after loading templates
+            addTooltips();
         })
         .catch(error => console.error('Error loading templates:', error));
 }
