@@ -1184,3 +1184,12 @@ def init_routes(app):
                 return jsonify({"message": "Template updated successfully!"})
 
             return redirect("/templates/" + template_name)
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Pass the error down to the template
+    return render_template('error.html', error=e), 500
