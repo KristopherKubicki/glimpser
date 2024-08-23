@@ -201,6 +201,206 @@ button, a {
   margin: 0 auto; /* Center the dial */
 }
 
+/* Cool Clock Styles */
+.cool-clock {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    position: relative;
+    margin-left: 20px;
+}
+
+.clock-face {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+}
+
+.clock-hands {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+}
+
+.hand {
+    position: absolute;
+    bottom: 50%;
+    left: 50%;
+    transform-origin: 50% 100%;
+    background-color: #333;
+}
+
+.hour-hand {
+    width: 4px;
+    height: 30%;
+    margin-left: -2px;
+}
+
+.minute-hand {
+    width: 3px;
+    height: 40%;
+    margin-left: -1.5px;
+}
+
+.second-hand {
+    width: 2px;
+    height: 45%;
+    margin-left: -1px;
+    background-color: #f00;
+}
+
+.clock-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+#digitalTime {
+    font-size: 14px;
+    font-weight: bold;
+    display: block;
+}
+
+#dateDisplay {
+    font-size: 10px;
+    display: block;
+}
+
+.clock-info {
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    width: 100%;
+}
+
+#timezoneDisplay, #timeAgoDisplay {
+    font-size: 10px;
+    display: block;
+}
+
+@media screen and (max-width: 768px) {
+    .cool-clock {
+        width: 100px;
+        height: 100px;
+    }
+
+    #digitalTime {
+        font-size: 12px;
+    }
+
+    #dateDisplay, #timezoneDisplay, #timeAgoDisplay {
+        font-size: 8px;
+    }
+}
+
+/* Cool Clock Styles */
+.cool-clock {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    position: relative;
+    margin-left: 20px;
+}
+
+.clock-face {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+}
+
+.clock-hands {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+}
+
+.hand {
+    position: absolute;
+    bottom: 50%;
+    left: 50%;
+    transform-origin: 50% 100%;
+    background-color: #333;
+}
+
+.hour-hand {
+    width: 4px;
+    height: 30%;
+    margin-left: -2px;
+}
+
+.minute-hand {
+    width: 3px;
+    height: 40%;
+    margin-left: -1.5px;
+}
+
+.second-hand {
+    width: 2px;
+    height: 45%;
+    margin-left: -1px;
+    background-color: #f00;
+}
+
+.clock-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+#digitalTime {
+    font-size: 14px;
+    font-weight: bold;
+    display: block;
+}
+
+#dateDisplay {
+    font-size: 10px;
+    display: block;
+}
+
+.clock-info {
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    width: 100%;
+}
+
+#timezoneDisplay, #timeAgoDisplay {
+    font-size: 10px;
+    display: block;
+}
+
+@media screen and (max-width: 768px) {
+    .cool-clock {
+        width: 100px;
+        height: 100px;
+    }
+
+    #digitalTime {
+        font-size: 12px;
+    }
+
+    #dateDisplay, #timezoneDisplay, #timeAgoDisplay {
+        font-size: 8px;
+    }
+}
+
 .dial {
   width: 100%;
   height: 100%;

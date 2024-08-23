@@ -57,31 +57,29 @@ function loadGroups() {
 }
 
 
-function timeAgo(dateString) {
+function timeAgo(date) {
     const now = new Date();
-    const date = new Date(dateString);
-    const seconds = Math.floor((now - date) / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    const months = Math.floor(days / 30);
-    const years = Math.floor(days / 365);
+    const diffInSeconds = Math.floor((now - date) / 1000);
 
-    if (seconds < 60) {
-        return `${seconds} seconds ago`;
-    } else if (minutes < 60) {
-        return `${minutes} minutes ago`;
-    } else if (hours < 24) {
-        return `${hours} hours ago`;
-    } else if (days < 30) {
-        return `${days} days ago`;
-    } else if (months < 12) {
-        return `${months} months ago`;
-    } else {
-        return `${years} years ago`;
+    const intervals = [
+        { label: 'year', seconds: 31536000 },
+        { label: 'month', seconds: 2592000 },
+        { label: 'day', seconds: 86400 },
+        { label: 'hour', seconds: 3600 },
+        { label: 'minute', seconds: 60 },
+        { label: 'second', seconds: 1 }
+    ];
+
+    for (let i = 0; i < intervals.length; i++) {
+        const interval = intervals[i];
+        const count = Math.floor(diffInSeconds / interval.seconds);
+        if (count >= 1) {
+            return `${count} ${interval.label}${count > 1 ? 's' : ''} ago`;
+        }
     }
-}
 
+    return 'just now';
+}
 
 function updateVideoSources() {
     const videos = document.querySelectorAll('.templateDiv video');
