@@ -144,6 +144,15 @@ function loadTemplates() {
 
     updateGridLayout();
 
+    let isPlaying = false;
+
+    function toggleControlButtons() {
+        const playAllButton = document.getElementById('play-all');
+        const stopAllButton = document.getElementById('stop-all');
+        playAllButton.style.display = isPlaying ? 'none' : 'inline-block';
+        stopAllButton.style.display = isPlaying ? 'inline-block' : 'none';
+    }
+
     fetch('/templates')
         .then(response => response.json())
         .then(templates => {
@@ -216,7 +225,7 @@ function loadTemplates() {
                         video.playbackRate = 0.0625*32;
                     } else if (video.duration > 120) {
                         video.playbackRate = 0.0625*64;
-                    } else { 
+                    } else {
                         video.playbackRate = 0.0625*128;
 		    }
 
@@ -267,33 +276,35 @@ function loadTemplates() {
     const playAllButton = document.getElementById('play-all');
     const stopAllButton = document.getElementById('stop-all');
 
-            // Play all media elements
-            playAllButton.addEventListener('click', function () {
-                const mediaElements = templateList.querySelectorAll('video, audio');
-                mediaElements.forEach(element => {
-                    element.play();
-                });
-            });
+    // Play all media elements
+    playAllButton.addEventListener('click', function () {
+        const mediaElements = templateList.querySelectorAll('video, audio');
+        mediaElements.forEach(element => {
+            element.play();
+        });
+        isPlaying = true;
+        toggleControlButtons();
+    });
 
-            // Stop all media elements
-            stopAllButton.addEventListener('click', function () {
-                const mediaElements = templateList.querySelectorAll('video, audio');
-                mediaElements.forEach(element => {
-                    element.pause();
-                    element.currentTime = 0; // Reset to start
-                });
-            });
+    // Stop all media elements
+    stopAllButton.addEventListener('click', function () {
+        const mediaElements = templateList.querySelectorAll('video, audio');
+        mediaElements.forEach(element => {
+            element.pause();
+            element.currentTime = 0; // Reset to start
+        });
+        isPlaying = false;
+        toggleControlButtons();
+    });
 
+    window.addEventListener('resize', updateGridLayout);
 
-
-window.addEventListener('resize', updateGridLayout);
-
-video.addEventListener('ended', () => {
-    setTimeout(() => {
-        video.load(); // Reset the video to show the poster
-        video.play(); // Resume autoplay after 1 second
-    }, 2000); // Pause for 1 second
-});
+    video.addEventListener('ended', () => {
+        setTimeout(() => {
+            video.load(); // Reset the video to show the poster
+            video.play(); // Resume autoplay after 1 second
+        }, 2000); // Pause for 1 second
+    });
 
 }
             });
