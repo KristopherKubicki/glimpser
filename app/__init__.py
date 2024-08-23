@@ -6,10 +6,11 @@ import os
 from flask import Flask, current_app
 from flask_apscheduler import APScheduler
 
-from .utils.retention_policy import retention_cleanup
-from .utils.scheduling import schedule_crawlers, schedule_summarization, scheduler
-from .utils.video_archiver import archive_screenshots, compile_to_teaser
-from .utils.video_compressor import compress_and_cleanup
+from app.utils.retention_policy import retention_cleanup
+from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler
+from app.routes import init_app as init_routes
+from app.utils.video_archiver import archive_screenshots, compile_to_teaser
+from app.utils.video_compressor import compress_and_cleanup
 
 # needed for the llava compare
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -34,8 +35,6 @@ def create_app():
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)
     os.makedirs(VIDEO_DIRECTORY, exist_ok=True)
     os.makedirs(SUMMARIES_DIRECTORY, exist_ok=True)
-
-    from .routes import init_routes
 
     init_routes(app)
 
@@ -82,5 +81,7 @@ def create_app():
         # one time cleanup..
         retention_cleanup()
         logging.info("initialization complete")
+
+    init_routes(app)
 
     return app
