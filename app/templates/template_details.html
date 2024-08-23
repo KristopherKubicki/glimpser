@@ -19,6 +19,7 @@
 
     <button id="instant-screenshot-btn" onclick="takeInstantScreenshot('{{ template_name }}')" title="Take a screenshot of the template immediately">Take Instant Screenshot</button>
     <button id="update-video-btn" onclick="updateVideo('{{ template_name }}')" title="Update the video for this template">Update Video</button>
+    <button id="show-camera-details-btn" onclick="showCameraDetails('{{ template_name }}')" title="Show camera details and endpoints">Show Camera Details</button>
     <br/>
 
 
@@ -247,6 +248,43 @@ function confirmDelete(templateName) {
         .catch(error => console.error('Error:', error));
     }
 }
+
+function showCameraDetails(templateName) {
+    const baseUrl = window.location.origin;
+    const details = {
+        'Camera Name': templateName,
+        'Last Screenshot URL': `${baseUrl}/last_screenshot/${templateName}`,
+        'Last Video URL': `${baseUrl}/last_video/${templateName}`,
+        'Stream URL': `${baseUrl}/stream.mjpg?group=${templateName}`,
+        'Motion Stream URL': `${baseUrl}/motion.mjpg?group=${templateName}`,
+        'Caption Stream URL': `${baseUrl}/caption.mjpg?group=${templateName}`,
+        'Motion Caption Stream URL': `${baseUrl}/motion_caption.mjpg?group=${templateName}`,
+        'Template Details URL': `${baseUrl}/templates/${templateName}`
+    };
+
+    let detailsHtml = '<h3>Camera Details</h3><pre>';
+    for (const [key, value] of Object.entries(details)) {
+        detailsHtml += `${key}: ${value}\n`;
+    }
+    detailsHtml += '</pre>';
+    detailsHtml += '<button onclick="copyToClipboard()">Copy to Clipboard</button>';
+
+    document.getElementById('camera-details-content').innerHTML = detailsHtml;
+    document.getElementById('camera-details-modal').style.display = 'block';
+}
+
+function copyToClipboard() {
+    const detailsText = document.querySelector('#camera-details-content pre').innerText;
+    navigator.clipboard.writeText(detailsText).then(() => {
+        alert('Camera details copied to clipboard!');
+    }).catch(err => {
+        console.error('Failed to copy text: ', err);
+    });
+}
+
+function closeModal() {
+    document.getElementById('camera-details-modal').style.display = 'none';
+}
 </script>
 
   <details title="View the most recent capture for this template" open><summary>Most Recent Capture</summary>
@@ -295,6 +333,13 @@ const timestampContainer = document.getElementById('timestamp-container');
   </details>
 
   {% include 'footer.html' %}
+
+  <div id="camera-details-modal" style="display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+    <div style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%;">
+      <span onclick="closeModal()" style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+      <div id="camera-details-content"></div>
+    </div>
+  </div>
 </body>
 </html>
 
