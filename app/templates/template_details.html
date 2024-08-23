@@ -17,19 +17,21 @@
     </h2>
 
 
-    <button id="instant-screenshot-btn" onclick="takeInstantScreenshot('{{ template_name }}')">Take Instant Screenshot</button>
-    <button id="update-video-btn" onclick="updateVideo('{{ template_name }}')">Update Video</button>
+    <button id="instant-screenshot-btn" onclick="takeInstantScreenshot('{{ template_name }}')" title="Take a screenshot of the template immediately">Take Instant Screenshot</button>
+    <button id="update-video-btn" onclick="updateVideo('{{ template_name }}')" title="Update the video for this template">Update Video</button>
     <br/>
 
 
     </script>
 
             <video controls poster="/last_screenshot/{{ template_name }}" autoplay muted autoplay style='max-height: 100%; max-width: 100%;' width='100%'
-			    {% if template_details.last_caption %} 
+			    {% if template_details.last_caption %}
 			    title='{{template_details.last_caption}}'
-			    {% endif %} 
+			    {% else %}
+			    title='Latest video capture for this template'
+			    {% endif %}
 		    >
-    
+
             <source src="/last_video/{{template_name}}" type='video/mp4'>
             </video >
 
@@ -122,21 +124,21 @@ function updateVideo(templateName) {
 </script>
 
 
-  <details><summary>Recent Videos</summary>
+  <details title="View recent videos for this template"><summary>Recent Videos</summary>
     <div id="videos">
         {% for video in videos %}
             <div class="video">
-                <video src="/videos/{{template_name}}/{{video}}" height="200" autoplay loop muted></video>
+                <video src="/videos/{{template_name}}/{{video}}" height="200" autoplay loop muted title="Recent video capture: {{video}}"></video>
             </div>
         {% endfor %}
     </div>
   </details>
 
-    <details><summary>Recent Captures</summary>
+    <details title="View recent screenshots for this template"><summary>Recent Captures</summary>
     <div id="screenshots">
         {% for screenshot in screenshots %}
             <div class="screenshot">
-                    <a href='/screenshots/{{template_name}}/{{screenshot}}'><img src="/screenshots/{{template_name}}/{{screenshot }}" alt="Screenshot" height='200'></a>
+                    <a href='/screenshots/{{template_name}}/{{screenshot}}' title="View full-size screenshot"><img src="/screenshots/{{template_name}}/{{screenshot }}" alt="Screenshot" height='200' title="Recent screenshot: {{screenshot}}"></a>
             </div>
         {% endfor %}
     </div>
@@ -144,81 +146,81 @@ function updateVideo(templateName) {
 
 
 
-<details>
+<details title="Edit the details of this template">
     <summary>Edit Template</summary>
     <div id="edit-template" style="background-color: #222; padding: 20px; border-radius: 10px; max-width: 600px; margin: 20px auto;">
         <h2 style="color: #fff; text-align: center; margin-bottom: 20px;">Edit Template Details</h2>
-        <form action="/update_template/{{ template_name }}" method="post">
+        <form action="/update_template/{{ template_name }}" method="post" title="Form to edit template details">
             <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-bottom: 20px;">
                 <label for="url" style="color: #fff;">URL:</label>
-                <input type="text" id="url" name="url" value="{{ template_details.url }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <input type="text" id="url" name="url" value="{{ template_details.url }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="The URL to monitor">
 
                 <label for="frequency" style="color: #fff;">Frequency (minutes):</label>
-                <input type="text" id="frequency" name="frequency" value="{{ template_details.frequency }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <input type="text" id="frequency" name="frequency" value="{{ template_details.frequency }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="How often to check the URL (in minutes)">
 
                 <label for="timeout" style="color: #fff;">Timeout (seconds):</label>
-                <input type="text" id="timeout" name="timeout" value="{{ template_details.timeout }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <input type="text" id="timeout" name="timeout" value="{{ template_details.timeout }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Maximum time to wait for a response (in seconds)">
 
                 <label for="notes" style="color: #fff;">Notes:</label>
-                <textarea id="notes" name="notes" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">{{ template_details.notes }}</textarea>
+                <textarea id="notes" name="notes" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Additional notes or comments">{{ template_details.notes }}</textarea>
 
                 <label for="object_filter" style="color: #fff;">Object Filter:</label>
-                <input type="text" id="object_filter" name="object_filter" value="{{ template_details.object_filter }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <input type="text" id="object_filter" name="object_filter" value="{{ template_details.object_filter }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Object types to filter (e.g., 'person,car')">
 
                 <label for="object_confidence" style="color: #fff;">Object Confidence:</label>
-                <input type="text" id="object_confidence" name="object_confidence" value="{{ template_details.object_confidence }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <input type="text" id="object_confidence" name="object_confidence" value="{{ template_details.object_confidence }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Minimum confidence level for object detection (0-1)">
 
                 <label for="motion" style="color: #fff;">Motion Percent:</label>
-                <input type="text" id="motion" name="motion" value="{{ template_details.motion }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <input type="text" id="motion" name="motion" value="{{ template_details.motion }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Percentage of motion required to trigger an alert">
 
                 <label for="popup_xpath" style="color: #fff;">Popup XPath:</label>
-                <input type="text" id="popup_xpath" name="popup_xpath" value="{{ template_details.popup_xpath }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <input type="text" id="popup_xpath" name="popup_xpath" value="{{ template_details.popup_xpath }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="XPath to identify and close popups">
 
                 <label for="dedicated_xpath" style="color: #fff;">Dedicated XPath:</label>
-                <input type="text" id="dedicated_xpath" name="dedicated_xpath" value="{{ template_details.dedicated_xpath }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <input type="text" id="dedicated_xpath" name="dedicated_xpath" value="{{ template_details.dedicated_xpath }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="XPath to identify specific elements">
 
                 <label for="callback_url" style="color: #fff;">Callback URL:</label>
-                <input type="url" id="callback_url" name="callback_url" value="{{ template_details.callback_url }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <input type="url" id="callback_url" name="callback_url" value="{{ template_details.callback_url }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="URL to receive notifications">
 
                 <label for="proxy" style="color: #fff;">Proxy:</label>
-                <input type="text" id="proxy" name="proxy" value="{{ template_details.proxy }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <input type="text" id="proxy" name="proxy" value="{{ template_details.proxy }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Proxy server address (optional)">
 
                 <label for="groups" style="color: #fff;">Groups:</label>
-                <input type="text" id="groups" name="groups" value="{{ template_details.groups }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <input type="text" id="groups" name="groups" value="{{ template_details.groups }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Comma-separated group names">
 
                 <label for="rollback" style="color: #fff;">Rollback Frames:</label>
-                <input type="text" id="rollback_frames" name="rollback_frames" value="{{ template_details.rollback_frames or 0}}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <input type="text" id="rollback_frames" name="rollback_frames" value="{{ template_details.rollback_frames or 0}}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Number of frames to rollback">
             </div>
 
             <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
                 <label for="invert" style="color: #fff;">
-                    <input type="checkbox" id="invert" name="invert" {% if template_details.invert %}checked{% endif %}> Invert
+                    <input type="checkbox" id="invert" name="invert" {% if template_details.invert %}checked{% endif %} title="Invert colors of the captured image"> Invert
                 </label>
                 <label for="dark" style="color: #fff;">
-                    <input type="checkbox" id="dark" name="dark" {% if template_details.dark %}checked{% endif %}> Dark Mode
+                    <input type="checkbox" id="dark" name="dark" {% if template_details.dark %}checked{% endif %} title="Enable dark mode for the captured page"> Dark Mode
                 </label>
                 <label for="browser" style="color: #fff;">
-                    <input type="checkbox" id="browser" name="browser" {% if template_details.browser %}checked{% endif %}> Browser
+                    <input type="checkbox" id="browser" name="browser" {% if template_details.browser %}checked{% endif %} title="Use a full browser instead of a headless one"> Browser
                 </label>
                 <label for="headless" style="color: #fff;">
-                    <input type="checkbox" id="headless" name="headless" {% if template_details.headless %}checked{% endif %}> Headless
+                    <input type="checkbox" id="headless" name="headless" {% if template_details.headless %}checked{% endif %} title="Run browser in headless mode"> Headless
                 </label>
                 <label for="stealth" style="color: #fff;">
-                    <input type="checkbox" id="stealth" name="stealth" {% if template_details.stealth %}checked{% endif %}> Stealth
+                    <input type="checkbox" id="stealth" name="stealth" {% if template_details.stealth %}checked{% endif %} title="Use stealth mode to avoid detection"> Stealth
                 </label>
                 <label for="danger" style="color: #fff;">
-                    <input type="checkbox" id="danger" name="danger" {% if template_details.danger %}checked{% endif %}> Danger
+                    <input type="checkbox" id="danger" name="danger" {% if template_details.danger %}checked{% endif %} title="Mark this template as potentially dangerous"> Danger
                 </label>
             </div>
 
             <div style="text-align: center; margin-top: 20px;">
-                <input type="submit" value="Update Template" style="padding: 10px 20px; background-color: #4CAF50; color: #fff; border: none; border-radius: 5px; cursor: pointer;">
+                <input type="submit" value="Update Template" style="padding: 10px 20px; background-color: #4CAF50; color: #fff; border: none; border-radius: 5px; cursor: pointer;" title="Save changes to this template">
             </div>
         </form>
     </div>
 
     <div id="delete-template" style="text-align: center; margin-top: 20px;">
-        <button id="delete-btn" onclick="confirmDelete('{{ template_name }}')" style="padding: 10px 20px; background-color: #e74c3c; color: #fff; border: none; border-radius: 5px; cursor: pointer;">Delete Template</button>
+        <button id="delete-btn" onclick="confirmDelete('{{ template_name }}')" style="padding: 10px 20px; background-color: #e74c3c; color: #fff; border: none; border-radius: 5px; cursor: pointer;" title="Delete this template permanently">Delete Template</button>
     </div>
 </details>
 
@@ -247,8 +249,8 @@ function confirmDelete(templateName) {
 }
 </script>
 
-  <details open><summary>Most Recent Capture</summary>
-          <div id="timestamp-container"></div>
+  <details title="View the most recent capture for this template" open><summary>Most Recent Capture</summary>
+          <div id="timestamp-container" title="Time since the last capture"></div>
 
     <script>
                     function timeAgo(dateString) {
