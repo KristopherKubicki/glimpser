@@ -81,16 +81,13 @@ class TemplateManager:
             if template:
                 for key, value in details.items():
                     try:
-                        # should read from the model intead
-                        if key in [
-                            "rollback_frames",
-                            "frequency",
-                            "timeout",
-                        ]:  # HAXKCY!
+                        # should read from the model instead
+                        if key == "rollback_frames":
                             value = int(value)
-                        if key in ["object_confidence"]:  # HAXKCY!
-                            value = int(value)
-                        if key in ["stealth", "headless", "dark", "invert"]:
+                        elif key in ["frequency", "timeout", "object_confidence"]:
+                            # Convert to float to preserve decimal precision if needed
+                            value = float(value)
+                        elif key in ["stealth", "headless", "dark", "invert"]:
                             if value == "on":
                                 value = True
                             elif value == "off":
