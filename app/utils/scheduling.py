@@ -14,9 +14,9 @@ from transformers import CLIPProcessor, CLIPModel
 from app.config import DEBUG, SCREENSHOT_DIRECTORY, SUMMARIES_DIRECTORY, VIDEO_DIRECTORY
 
 from .detect import calculate_difference_fast
-from .image_processing import chatgpt_compare
+from .image_processing import chatgpt_compare, remove_background, add_timestamp
 from .llm import summarize
-from .screenshots import capture_or_download, remove_background, add_timestamp
+from .screenshots import capture_or_download
 from .template_manager import get_template, get_templates, save_template
 
 scheduler = APScheduler()
@@ -349,6 +349,8 @@ def update_camera(name, template, image_file=None):
                 # print(f"Object '{object_filter}' detected in {name} with confidence {probs[0, 0]}")
 
         if allow:
+
+
 
             # allow this to run one time if we have no detection
             #  generate the symlink. if there is a data/screenshots/<camera>/last_motion.png, please rename the move the symlink to prev_motion.png
