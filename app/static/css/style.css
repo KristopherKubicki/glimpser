@@ -13,6 +13,153 @@ body {
 .link color: {  rgb( 192, 192, 192) }
 .link:hover color: {  rgb( 193, 193, 193) }
 
+header {
+    background-color: #000;
+    color: #fff;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+header h1 {
+    font-size: 24px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+#menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+nav {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+nav ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    gap: 10px;
+}
+
+nav a {
+    color: #fff;
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+nav a:hover, nav a.active {
+    background-color: #555;
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #000;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+}
+
+.dropdown-content a {
+    color: #fff;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdown-content a:hover {
+    background-color: #555;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+.search-container {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+}
+
+#search-input {
+    padding: 5px;
+    border: none;
+    border-radius: 3px 0 0 3px;
+}
+
+#search-button {
+    background-color: #555;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 0 3px 3px 0;
+    cursor: pointer;
+}
+
+#search-button:hover {
+    background-color: #777;
+}
+
+@media screen and (max-width: 768px) {
+    .search-container {
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    #search-input {
+        width: calc(100% - 40px);
+    }
+}
+
+@media screen and (max-width: 768px) {
+    header h1 {
+        font-size: 20px;
+    }
+
+    #menu-toggle {
+        display: block;
+    }
+
+    nav {
+        display: none;
+        position: absolute;
+        top: 60px;
+        left: 0;
+        right: 0;
+        background-color: #000;
+        padding: 10px;
+    }
+
+    nav.active {
+        display: block;
+    }
+
+    nav ul {
+        flex-direction: column;
+    }
+
+    nav a {
+        display: block;
+        padding: 10px;
+    }
+}
+.link:hover color: {  rgb( 193, 193, 193) }
+
 h1, h2 {
     color: rgb(191, 191, 191);
     text-align: center; /* Center the headings */
@@ -123,47 +270,158 @@ video:hover + .play-icon {
 }
 
 header {
-    background-color: #000; /* Dark background for better contrast */
-    color: #fff; /* White text */
-    padding: 10px 20px; /* Padding for spacing */
-    display: flex; /* Flexbox for layout */
-    align-items: center; /* Vertically align items */
-    justify-content: space-between; /* Space out the title and navigation */
+    background-color: #000;
+    color: #fff;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 header h1 {
-    font-size: 24px; /* Larger font size for title */
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5); /* Text shadow for readability */
+    font-size: 24px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+#menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
 }
 
 nav {
-    display: flex; /* Flexbox for layout */
-    gap: 10px; /* Space between navigation items */
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+nav ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    gap: 10px;
 }
 
 nav a {
-    color: #fff; /* White text */
-    text-decoration: none; /* No underline */
-    padding: 5px 10px; /* Padding */
-    border-radius: 5px; /* Rounded corners */
+    color: #fff;
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 5px;
 }
 
 nav a:hover, nav a.active {
-    background-color: #555; /* Highlight for hover and active link */
+    background-color: #555;
 }
 
-@media screen and (max-width: 768px) { /* Responsive design for mobile */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #000;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+}
+
+.dropdown-content a {
+    color: #fff;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdown-content a:hover {
+    background-color: #555;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+.search-container {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+}
+
+#search-input {
+    padding: 5px;
+    border: none;
+    border-radius: 3px 0 0 3px;
+}
+
+#search-button {
+    background-color: #555;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 0 3px 3px 0;
+    cursor: pointer;
+}
+
+#search-button:hover {
+    background-color: #777;
+}
+
+@media screen and (max-width: 768px) {
+    .search-container {
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    #search-input {
+        width: calc(100% - 40px);
+    }
+}
+
+@media screen and (max-width: 768px) {
     header h1 {
-        font-size: 20px; /* Smaller font size on mobile */
+        font-size: 20px;
+    }
+
+    #menu-toggle {
+        display: block;
     }
 
     nav {
-        flex-direction: column; /* Stack navigation items on mobile */
-        align-items: flex-start;
+        display: none;
+        position: absolute;
+        top: 60px;
+        left: 0;
+        right: 0;
+        background-color: #000;
+        padding: 10px;
+    }
+
+    nav.active {
+        display: block;
+    }
+
+    nav ul {
+        flex-direction: column;
     }
 
     nav a {
-        margin-bottom: 5px; /* Add margin for stacked items */
+        display: block;
+        padding: 10px;
+    }
+
+    .dropdown-content {
+        position: static;
+        display: none;
+        padding-left: 20px;
+    }
+
+    .dropdown.active .dropdown-content {
+        display: block;
     }
 }
 

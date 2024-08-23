@@ -1,19 +1,33 @@
 
 		<h1><a href='/'><img src='{{ url_for('static', filename='img/glimpser_small.png') }}' title='Glimpser'></a></h1>
-        <nav>
-
-		{% for ag in active_groups %} 
-		<a href='/group/{{ag}}'>{{ag}}</a>
-		{% endfor %}
-
-                <a href='/captions'>Captions</a>
-			
-
-                <a href='/live'>
-		<span id="utcClock"></span>
-			Live</a>
-
-                <a href='/settings'>Settings</a>
+        <button id="menu-toggle" aria-label="Toggle navigation menu">
+            <i class="fas fa-bars"></i>
+        </button>
+        <nav id="main-nav">
+            <ul>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn" aria-haspopup="true" aria-expanded="false">Groups <i class="fas fa-caret-down"></i></a>
+                    <ul class="dropdown-content" role="menu">
+                        {% for ag in active_groups %}
+                        <li><a href='/group/{{ag}}' role="menuitem">{{ag}}</a></li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                <li><a href='/captions'>Captions</a></li>
+                <li>
+                    <a href='/live'>
+                        <span id="utcClock"></span>
+                        Live
+                    </a>
+                </li>
+                <li><a href='/settings'>Settings</a></li>
+            </ul>
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Search..." aria-label="Search">
+                <button id="search-button" aria-label="Submit search">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
         </nav>
 
 <script>
@@ -25,5 +39,134 @@
 
     setInterval(updateClock, 1000);
     updateClock(); // initial call to display the clock immediately
+
+    document.getElementById('menu-toggle').addEventListener('click', function() {
+        document.getElementById('main-nav').classList.toggle('active');
+    });
+
+    // Dropdown functionality
+    var dropdowns = document.querySelectorAll('.dropdown');
+    dropdowns.forEach(function(dropdown) {
+        var dropdownToggle = dropdown.querySelector('.dropbtn');
+        var dropdownContent = dropdown.querySelector('.dropdown-content');
+
+        dropdownToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            dropdownContent.classList.toggle('show');
+            this.setAttribute('aria-expanded', this.getAttribute('aria-expanded') === 'false' ? 'true' : 'false');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target)) {
+                dropdownContent.classList.remove('show');
+                dropdownToggle.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        // Keyboard navigation
+        dropdownToggle.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                dropdownContent.classList.toggle('show');
+                this.setAttribute('aria-expanded', this.getAttribute('aria-expanded') === 'false' ? 'true' : 'false');
+            }
+        });
+
+        dropdownContent.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                dropdownContent.classList.remove('show');
+                dropdownToggle.setAttribute('aria-expanded', 'false');
+                dropdownToggle.focus();
+            }
+        });
+    });
+
+    // Search functionality
+    document.getElementById('search-button').addEventListener('click', function() {
+        var searchTerm = document.getElementById('search-input').value;
+        // Implement search logic here
+        console.log('Searching for:', searchTerm);
+    });
+
+    document.getElementById('search-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            var searchTerm = this.value;
+            // Implement search logic here
+            console.log('Searching for:', searchTerm);
+        }
+    });
+</script>
+
+    // Dropdown functionality
+    var dropdowns = document.getElementsByClassName("dropdown");
+    for (var i = 0; i < dropdowns.length; i++) {
+        dropdowns[i].addEventListener("click", function() {
+            this.classList.toggle("active");
+        });
+    }
+
+    // Close dropdowns when clicking outside
+    window.onclick = function(event) {
+        if (!event.target.matches('.dropbtn')) {
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++) {
+                var openDropdown = dropdowns[i];
+                if (openDropdown.classList.contains('show')) {
+                    openDropdown.classList.remove('show');
+                }
+            }
+        }
+    }
+
+    // Search functionality
+    document.getElementById('search-button').addEventListener('click', function() {
+        var searchTerm = document.getElementById('search-input').value;
+        // Implement search logic here
+        console.log('Searching for:', searchTerm);
+    });
+
+    document.getElementById('search-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            var searchTerm = this.value;
+            // Implement search logic here
+            console.log('Searching for:', searchTerm);
+        }
+    });
+
+    // Search functionality
+    document.getElementById('search-button').addEventListener('click', function() {
+        var searchTerm = document.getElementById('search-input').value;
+        // Implement search logic here
+        console.log('Searching for:', searchTerm);
+    });
+
+    document.getElementById('search-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            var searchTerm = this.value;
+            // Implement search logic here
+            console.log('Searching for:', searchTerm);
+        }
+    });
+
+    // Accessibility improvements for dropdown menu
+    var dropdownToggle = document.querySelector('.dropbtn');
+    var dropdownContent = document.querySelector('.dropdown-content');
+
+    dropdownToggle.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            dropdownContent.style.display = dropdownContent.style.display === 'block' ? 'none' : 'block';
+        }
+    });
+
+    document.querySelectorAll('.dropdown-content a').forEach(function(link) {
+        link.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                dropdownContent.style.display = 'none';
+                dropdownToggle.focus();
+            }
+        });
+    });
 </script>
 
