@@ -4,47 +4,71 @@ body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     margin: 0;
     padding: 0;
-    #background-color: #f7f7f7; /* Lighter background for better contrast */
-    background-color: rgb(16, 16, 16); /* Lighter background for better contrast */
-    color: rgb(191, 191, 191); /* Darker text for better readability */
+    transition: background-color 0.3s, color 0.3s;
 }
 
+body.light-mode {
+    background-color: #f7f7f7;
+    color: #333;
+}
 
-.link color: {  rgb( 192, 192, 192) }
-.link:hover color: {  rgb( 193, 193, 193) }
+body.dark-mode {
+    background-color: rgb(16, 16, 16);
+    color: rgb(191, 191, 191);
+}
+
+.link { color: rgb(192, 192, 192); }
+.link:hover { color: rgb(193, 193, 193); }
 
 h1, h2 {
-    color: rgb(191, 191, 191);
-    text-align: center; /* Center the headings */
+    text-align: center;
 }
-
 
 #template-form {
     margin: 20px;
     padding: 20px;
-    background-color: white;
     border-radius: 8px;
-    color: rgb(91, 91, 91);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.light-mode #template-form {
+    background-color: white;
+    color: rgb(91, 91, 91);
+}
+
+.dark-mode #template-form {
+    background-color: #2a2a2a;
+    color: #e0e0e0;
 }
 
 #template-list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px))); /* Use CSS variable */
+    grid-template-columns: repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px)));
     gap: 10px;
     padding: 20px;
     justify-content: center;
     max-width: 100%;
 }
 
-@media (max-width: 767px) { /* Adjust this value based on your testing */
+@media (max-width: 767px) {
     select {
-        font-size: 16px; /* Larger font size for easier interaction */
-        padding: 10px; /* Larger padding for a taller dropdown */
+        font-size: 16px;
+        padding: 10px;
     }
     #template-list {
-        grid-template-columns: 1fr; /* Single column layout on mobile */
+        grid-template-columns: 1fr;
     }
+}
+
+#dark-mode-toggle {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 24px;
 }
 
 select:hover {
@@ -236,4 +260,132 @@ textarea {
 
 .details {
     margin-left: 20px;
+}
+
+#back-to-top {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    z-index: 1000;
+}
+
+#back-to-top:hover {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.light-mode #back-to-top {
+    background-color: rgba(0, 0, 0, 0.3);
+}
+
+.light-mode #back-to-top:hover {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+}
+
+@keyframes spin {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.light-mode .loading-spinner {
+    border: 3px solid rgba(0, 0, 0, 0.3);
+    border-top-color: #000;
+}
+
+#back-to-top {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    z-index: 1000;
+}
+
+#back-to-top:hover {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.light-mode #back-to-top {
+    background-color: rgba(0, 0, 0, 0.3);
+}
+
+.light-mode #back-to-top:hover {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+}
+
+@keyframes spin {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.light-mode .loading-spinner {
+    border: 3px solid rgba(0, 0, 0, 0.3);
+    border-top-color: #000;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+}
+
+@keyframes spin {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.light-mode .loading-spinner {
+    border: 3px solid rgba(0, 0, 0, 0.3);
+    border-top-color: #000;
 }
