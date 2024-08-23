@@ -1,13 +1,14 @@
 import unittest
-
-from PIL import Image
 import tempfile
 import os
-import sys 
+import sys
+from unittest.mock import patch
+from PIL import Image
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app.utils.detect import calculate_difference_fast
+from app.utils.image_processing import ChatGPTImageComparison
 
 class TestImageComparison(unittest.TestCase):
     def setUp(self):
@@ -39,6 +40,31 @@ class TestImageComparison(unittest.TestCase):
         difference = calculate_difference_fast(self.image_path_a, self.image_path_a)
         self.assertAlmostEqual(difference, 0.0, places=2)
 
+    @patch('app.utils.image_processing.requests.post')
+    def test_chatgpt_image_comparison(self, mock_post):
+        # Mock the API response
+        mock_response = unittest.mock.Mock()
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": "Test response"}}],
+            "usage": {"total_tokens": 10}
+        }
+        mock_post.return_value = mock_response
+
+        # Create an instance of ChatGPTImageComparison
+        chatgpt = ChatGPTImageComparison()
+
+        # Test the compare_images method
+        result = chatgpt.compare_images("Test prompt", [self.image_path_a, self.image_path_b])
+
+        # Assert that the method returns the expected result
+        self.assertEqual(result, "Test response")
+
+        # Assert that the API was called with the correct arguments
+        mock_post.assert_called_once()
+        _, kwargs = mock_post.call_args
+        self.assertIn("json", kwargs)
+        self.assertIn("messages", kwargs["json"])
+        self.assertEqual(len(kwargs["json"]["messages"]), 4)  # System message, user prompt, and two images
 
 if __name__ == "__main__":
     unittest.main()
