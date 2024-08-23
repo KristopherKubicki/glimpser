@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="error-container">
+    <h1 class="error-title">Oops! Something went wrong</h1>
+    <div class="error-image">
+        <img src="{{ url_for('static', filename='img/error_camera.png') }}" alt="Glitchy camera">
+    </div>
+    <p class="error-message">Error {{ error.code }}: {{ error.name }}</p>
+    <p class="error-description">{{ error.description }}</p>
+    <p class="error-tip">Don't worry, our team of expert photographers is on the case!</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">Return to Home</a>
+</div>
+{% endblock %}
