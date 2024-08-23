@@ -13,8 +13,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const templateList = document.getElementById('template-list');
 
     slider.addEventListener('input', function () {
-        const value = slider.value + 'px';
-        templateList.style.setProperty('--grid-item-width', value);
+        const value = slider.value;
+        const pxValue = value + 'px';
+        templateList.style.setProperty('--grid-item-width', pxValue);
+
+        // Calculate font sizes based on the slider value
+        const cameraNameFontSize = Math.max(10, Math.min(14, value / 25)); // Min 10px, Max 14px
+        const timestampFontSize = Math.max(8, Math.min(12, value / 30)); // Min 8px, Max 12px
+
+        // Update CSS variables
+        document.documentElement.style.setProperty('--camera-name-font-size', `${cameraNameFontSize}px`);
+        document.documentElement.style.setProperty('--timestamp-font-size', `${timestampFontSize}px`);
     });
 
     form.addEventListener('submit', function(e) {

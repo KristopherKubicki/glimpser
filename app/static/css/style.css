@@ -100,6 +100,11 @@ video:hover + .play-icon {
     display: block; /* Show play icon on hover */
 }
 
+:root {
+    --camera-name-font-size: 14px;
+    --timestamp-font-size: 12px;
+}
+
 .camera-name, .timestamp {
     position: absolute;
     color: white;
@@ -111,11 +116,13 @@ video:hover + .play-icon {
 .camera-name {
     top: 0;
     left: 0;
+    font-size: var(--camera-name-font-size);
 }
 
 .timestamp {
     bottom: 0;
     right: 0;
+    font-size: var(--timestamp-font-size);
 }
 
 .recent-screenshot {
