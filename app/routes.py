@@ -12,6 +12,7 @@ import tempfile
 from datetime import datetime, timedelta
 from functools import wraps
 from threading import Lock
+import hmac
 
 from flask import (
     Response,
@@ -46,6 +47,18 @@ from app.utils import (
     screenshots
 )
 from app.utils.db import SessionLocal
+
+def constant_time_compare(val1, val2):
+    """
+    Returns True if the two strings are equal, False otherwise.
+    The time taken is independent of the number of characters that match.
+    """
+    if len(val1) != len(val2):
+        return False
+    result = 0
+    for x, y in zip(val1, val2):
+        result |= ord(x) ^ ord(y)
+    return result == 0
 
 
 def validate_template_name(template_name: str):
@@ -94,11 +107,15 @@ def is_hash_valid(timed_hash: str) -> bool:
         hash_digest, expiration_time = timed_hash.split(".")
         to_hash = f"{API_KEY}{expiration_time}"
         valid_hash = hashlib.sha256(to_hash.encode()).hexdigest()
-        if int(expiration_time) < int(time.time()):
-            return False
-        if valid_hash != hash_digest:
-            return False
-        return True
+
+        # Perform constant-time comparison for both hash and expiration time
+        hash_valid = constant_time_compare(valid_hash, hash_digest)
+        time_valid = hmac.compare_digest(
+            str(int(expiration_time) >= int(time.time())).encode(),
+            b"True"
+        )
+
+        return hash_valid and time_valid
     except ValueError:
         # Incorrectly formatted hash
         return False
@@ -115,10 +132,10 @@ def login_required(f):
         )
         timed_key = request.args.get("timed_key")
         if timed_key:
-            if is_hash_valid(timed_key) is False:
+            if not constant_time_compare(timed_key, generate_timed_hash()):
                 return jsonify({"error": "Invalid timed key"}), 401
             return f(*args, **kwargs)
-        elif api_key == API_KEY:
+        elif constant_time_compare(api_key, API_KEY):
             # Bypass session authentication if API key is valid
             return f(*args, **kwargs)
         elif "logged_in" in session:
