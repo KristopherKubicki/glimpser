@@ -136,6 +136,47 @@ function isInViewport(element) {
     );
 }
 
+function showStructuredInput(inputId) {
+    const input = document.getElementById(inputId);
+    const structuredInputHtml = `
+        <div class="structured-xpath-input">
+            <select id="${inputId}_tag">
+                <option value="div">div</option>
+                <option value="span">span</option>
+                <option value="a">a</option>
+                <option value="p">p</option>
+                <option value="*">*</option>
+            </select>
+            <select id="${inputId}_attribute">
+                <option value="class">class</option>
+                <option value="id">id</option>
+                <option value="name">name</option>
+                <option value="data-*">data-*</option>
+            </select>
+            <input type="text" id="${inputId}_value" placeholder="Attribute value">
+            <button type="button" onclick="generateXPath('${inputId}')">Generate XPath</button>
+        </div>
+    `;
+    input.insertAdjacentHTML('afterend', structuredInputHtml);
+    input.style.display = 'none';
+}
+
+function generateXPath(inputId) {
+    const tag = document.getElementById(`${inputId}_tag`).value;
+    const attribute = document.getElementById(`${inputId}_attribute`).value;
+    const value = document.getElementById(`${inputId}_value`).value;
+    
+    let xpath = `//${tag}`;
+    if (attribute === 'data-*') {
+        xpath += `[starts-with(@data-,'${value}')]`;
+    } else {
+        xpath += `[contains(@${attribute},'${value}')]`;
+    }
+    
+    document.getElementById(inputId).value = xpath;
+    document.getElementById(inputId).style.display = 'block';
+    document.querySelector(`#${inputId} + .structured-xpath-input`).remove();
+}
 
 function loadTemplates() {
 
