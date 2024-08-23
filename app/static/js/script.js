@@ -40,6 +40,58 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Initialize CodeMirror editors for prompt settings
+    const promptEditors = document.querySelectorAll('.prompt-editor');
+    promptEditors.forEach(editor => {
+        CodeMirror.fromTextArea(editor, {
+            lineNumbers: true,
+            mode: 'javascript',
+            theme: 'default',
+            lineWrapping: true,
+            viewportMargin: Infinity
+        });
+    });
+
+    // Update CodeMirror content before form submission
+    const settingsForm = document.getElementById('settings-form');
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', function(e) {
+            promptEditors.forEach(editor => {
+                const cmInstance = editor.nextSibling.CodeMirror;
+                if (cmInstance) {
+                    editor.value = cmInstance.getValue();
+                }
+            });
+        });
+    }
+});
+
+    // Initialize CodeMirror editors for prompt settings
+    const promptEditors = document.querySelectorAll('.prompt-editor');
+    promptEditors.forEach(editor => {
+        CodeMirror.fromTextArea(editor, {
+            lineNumbers: true,
+            mode: 'javascript',
+            theme: 'default',
+            lineWrapping: true,
+            viewportMargin: Infinity
+        });
+    });
+
+    // Update CodeMirror content before form submission
+    const settingsForm = document.getElementById('settings-form');
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', function(e) {
+            promptEditors.forEach(editor => {
+                const cmInstance = editor.nextSibling.CodeMirror;
+                if (cmInstance) {
+                    editor.value = cmInstance.getValue();
+                }
+            });
+        });
+    }
+});
+
 function loadGroups() {
     fetch('/groups')
         .then(response => response.json())
