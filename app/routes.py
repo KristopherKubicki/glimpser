@@ -501,20 +501,19 @@ def init_routes(app):
 
     @app.route("/submit_image/<string:template_name>", methods=["POST"])
     @login_required
-    def submit_image(template_name: TemplateName):
+    def submit_image(template_name: str):
         """
         Endpoint to receive and process an image submitted by a remote service or camera.
         """
-        template_name = validate_template_name(template_name)
-        if template_name is None:
-            abort(404)
+        sanitized_template_name = validate_template_name(template_name)
+        if sanitized_template_name is None:
+            return jsonify({"status": "error", "message": "Invalid template name"}), 400
 
         # Check if the template exists
-        print("WARNING BRPKEN!")
-        ltemplate = template_manager.get_template(template_name)
+        ltemplate = template_manager.get_template(sanitized_template_name)
         if ltemplate is None:
             return jsonify({"status": "error", "message": "Template not found"}), 404
-        template_name = ltemplate.get("name")  # todo...
+        template_name = ltemplate.get("name")
 
         # Check if the request has the file part
         if "file" not in request.files:
