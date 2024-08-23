@@ -784,6 +784,8 @@ def init_routes(app):
     @app.route("/captions")
     @login_required
     def captions():
+        page = request.args.get('page', 1, type=int)
+        per_page = 10  # Number of captions per page
 
         # Specify the directory containing the .jl files
         directory = "data/summaries/"
@@ -798,22 +800,30 @@ def init_routes(app):
             reverse=True,
         )
 
-        # Load entries from the most recent 5 .jl files
-        entries = []
-        for file in jl_files[:5]:
+        # Load all entries from .jl files
+        all_entries = []
+        for file in jl_files:
             file_path = os.path.join(directory, file)
             with open(file_path, "r") as f:
                 try:
                     data = json.load(f)
-                    entries.append(data)
+                    all_entries.extend(data if isinstance(data, list) else [data])
                 except Exception:
                     pass
+
+        # Implement pagination
+        total = len(all_entries)
+        entries = all_entries[(page - 1) * per_page: page * per_page]
 
         # Get a list of active cameras (with updates within the last 1 day)
         return render_template(
             "captions.html",
             template_details=template_manager.get_templates(),
             lcaptions=entries,
+            page=page,
+            per_page=per_page,
+            total=total,
+            is_mobile=request.user_agent.platform in ['android', 'iphone', 'ipad']
         )
 
     @app.route("/live")

@@ -1,85 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Bulk Update Templates</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script>
-        function updateTemplate(templateName) {
-            var notes = $('#notes-' + templateName).val();
-            $.ajax({
-                url: '/update_template/' + templateName,
-                type: 'POST',
-                data: {notes: notes},
-                success: function(response) {
-                    alert('Template updated successfully!');
-                },
-                error: function(error) {
-                    alert('Error updating template: ' + error.responseText);
-                }
-            });
-        }
-    </script>
-</head>
-<body>
-    <header>
-        {% include 'nav.html' %}
-    </header>
- 
-
-<details><summary>Captions</summary>
-    <table border="1" style="width: 100%; border-collapse: collapse;">
-        <tr>
-            <th style="padding: 8px; background-color: #f4f4f4;">Timestamp</th>
-            <th style="padding: 8px; background-color: #f4f4f4;">Caption</th>
-        </tr>
-        {% for caption in lcaptions %}
-
-	{% for lc in caption %} 
-	{% if caption[lc] != "" %} 
-
-        <tr>
-		<td>	{{ lc }} </td><td> {{ caption[lc] }}   </td>
-
-        </tr>
-	{% endif %} 
-
-	{% endfor %} 
-        {% endfor %}
-    </table>
-</details>
-
-
-
-
-    <h2>Update Camera Notes</h2>
-    <div class="template-container">
-        {% for template in template_details %}
-            <div class="template">
-                <table>
-                    <tr>
-                        <td>
-				<a href='/templates/{{template}}'><img src="/last_screenshot/{{template}}" alt="Thumbnail" width="256"></a>
-					
-                        </td>
-                        <td>
-                            <div class="details">
-                                <p><strong>{{ template }}</strong></p>
-                                <textarea id="notes-{{ template }}" name="notes">{{ template_details[template]['notes'] }}</textarea>
-                                <p>Last Caption: {{ template_details[template]['last_caption'] }} ({{ template_details[template]['last_caption_date'] }})</p>
-                                <button type="button" onclick="updateTemplate('{{ template }}')">Update</button>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        {% endfor %}
-    </div>
-
-    {% include 'footer.html' %}
-
-</body>
-
-</html>
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h1>Captions</h1>
+    <div id="captions-list"></div>
+    <button id="load-more" style="display: none;">Load More</button>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadCaptions();
+    });
+</script>
+{% endblock %}
 
