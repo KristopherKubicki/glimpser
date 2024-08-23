@@ -231,7 +231,7 @@ function loadTemplates() {
                     <a href='/templates/${name}'>
                         <div class="${videoContainerClass}">
 			    <div class="camera-name">${name}</div> <!-- Camera name -->
-                            <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style='width:100%' muted title='` + template["last_caption"] + `' preload="none">
+                            <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style='width:100%' muted title='${template["last_caption"]} (${humanizedTimestamp})' preload="none">
                                 <source src="/last_video/${name}" type='video/mp4'>
                                 Your browser does not support the video tag.
                             </video>
@@ -264,7 +264,7 @@ function loadTemplates() {
                         video.playbackRate = 0.0625*32;
                     } else if (video.duration > 120) {
                         video.playbackRate = 0.0625*64;
-                    } else { 
+                    } else {
                         video.playbackRate = 0.0625*128;
 		    }
 
