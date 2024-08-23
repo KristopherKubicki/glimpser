@@ -41,14 +41,14 @@
 	<h1><a href='/'><img src='{{ url_for('static', filename='img/glimpser_small.png') }}' title='Glimpser'></a></h1>
 	</header>
 
-    <div class="login-container">
+    <div class="login-container" title="Login form">
         <h2>Login Required</h2>
-        <form method="post">
+        <form method="post" title="Enter your credentials to log in">
             Username:<br>
-            <input type="text" name="username" required><br>
+            <input type="text" name="username" required title="Enter your username"><br>
             Password:<br>
-            <input type="password" name="password" required><br><br>
-            <input type="submit" value="Login">
+            <input type="password" name="password" required title="Enter your password"><br><br>
+            <input type="submit" value="Login" title="Click to log in">
         </form>
     </div>
 

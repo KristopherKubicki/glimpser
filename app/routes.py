@@ -412,7 +412,16 @@ def allowed_filename(filename: str) -> bool:
 def init_routes(app):
     global login_attempts
     # get_active_groups()
+    
+    @app.errorhandler(404)
+    def page_not_found(e):
+        return render_template('404.html'), 404
 
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        # Pass the error down to the template
+        return render_template('error.html', error=e), 500
+        
     @app.route('/health')
     def health_check():
         # should be healthy
@@ -1095,6 +1104,7 @@ def init_routes(app):
         return send_from_directory(path, filename)
 
     @app.route("/settings", methods=["GET", "POST"])
+    @login_required
     def settings():
         if request.method == "POST":
             for name, value in request.form.items():
@@ -1103,6 +1113,10 @@ def init_routes(app):
 
         settings = get_all_settings()
         return render_template("settings.html", settings=settings)
+
+    @app.route("/help", methods=["GET"])
+    def help():
+        return render_template("help.html")
 
     @app.route("/update_template/<string:template_name>", methods=["POST"])
     @login_required
@@ -1184,3 +1198,5 @@ def init_routes(app):
                 return jsonify({"message": "Template updated successfully!"})
 
             return redirect("/templates/" + template_name)
+
+
