@@ -92,3 +92,11 @@ LLM_CAPTION_PROMPT = get_setting(
 # TWILIO_SID = get_setting("TWILIO_SID","")
 # TWILIO_TOKEN = get_setting("TWILIO_TOKEN","")
 # TWILIO_NUMBER = get_setting("TWILIO_NUMBER","")
+
+ANTHROPIC_API_KEY = get_setting("ANTHROPIC_API_KEY", "")
+AVAILABLE_LLM_MODELS = get_setting("AVAILABLE_LLM_MODELS", "gpt-4,gpt-3.5-turbo,claude-2,claude-instant-1")
+DEFAULT_LLM_MODEL = get_setting("DEFAULT_LLM_MODEL", "gpt-3.5-turbo")
+
+ANTHROPIC_API_KEY = get_setting("ANTHROPIC_API_KEY", "")
+AVAILABLE_LLM_MODELS = get_setting("AVAILABLE_LLM_MODELS", "gpt-4,gpt-3.5-turbo,claude-2,claude-instant-1")
+DEFAULT_LLM_MODEL = get_setting("DEFAULT_LLM_MODEL", "gpt-3.5-turbo")

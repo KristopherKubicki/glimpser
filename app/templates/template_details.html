@@ -188,6 +188,13 @@ function updateVideo(templateName) {
 
                 <label for="rollback" style="color: #fff;">Rollback Frames:</label>
                 <input type="text" id="rollback_frames" name="rollback_frames" value="{{ template_details.rollback_frames or 0}}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+
+                <label for="llm_model" style="color: #fff;">LLM Model:</label>
+                <select id="llm_model" name="llm_model" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                    {% for model in available_llm_models.split(',') %}
+                        <option value="{{ model }}" {% if model == template_details.llm_model %}selected{% endif %}>{{ model }}</option>
+                    {% endfor %}
+                </select>
             </div>
 
             <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">

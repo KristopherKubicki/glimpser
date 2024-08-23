@@ -1184,3 +1184,187 @@ def init_routes(app):
                 return jsonify({"message": "Template updated successfully!"})
 
             return redirect("/templates/" + template_name)
+
+@app.route("/templates/<string:template_name>")
+@login_required
+def template_details(template_name: TemplateName):
+    template_name = validate_template_name(template_name)
+    if template_name is None:
+        abort(404)
+
+    templates = template_manager.get_templates()
+    template_details = templates.get(template_name)
+    if template_details is None:
+        abort(404)  # Template not found
+    lscreenshots = template_manager.get_screenshots_for_template(template_name)
+    lvideos = template_manager.get_videos_for_template(template_name)
+    available_llm_models = config.AVAILABLE_LLM_MODELS
+    return render_template(
+        "template_details.html",
+        template_name=template_name,
+        template_details=template_details,
+        screenshots=lscreenshots,
+        videos=lvideos,
+        available_llm_models=available_llm_models
+    )
+
+@app.route("/update_template/<string:template_name>", methods=["POST"])
+@login_required
+def update_template(template_name: TemplateName):
+    template_name = validate_template_name(template_name)
+    if template_name is None:
+        abort(404)
+
+    # Extract form data
+    updated_data = {
+        "url": request.form.get("url"),
+        "frequency": request.form.get("frequency"),
+        "timeout": request.form.get("timeout"),
+        "notes": request.form.get("notes"),
+        "popup_xpath": request.form.get("popup_xpath"),
+        "dedicated_xpath": request.form.get("dedicated_xpath"),
+        "callback_url": request.form.get("callback_url"),
+        "proxy": request.form.get("proxy"),
+        "rollback_frames": request.form.get("rollback_frames"),
+        "groups": request.form.get("groups"),
+        "object_filter": request.form.get("object_filter"),
+        "object_confidence": request.form.get("object_confidence", 0.5),
+        "motion": request.form.get("motion", 0.2),
+        "invert": request.form.get("invert", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+        "dark": request.form.get("dark", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+        "headless": request.form.get("headless", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+        "stealth": request.form.get("stealth", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+        "browser": request.form.get("browser", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+        "livecaption": request.form.get("livecaption", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+        "danger": request.form.get("danger", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+        "llm_model": request.form.get("llm_model"),
+    }
+
+    lremoves = []
+    for lkey in updated_data:
+        if updated_data.get(lkey) is None:
+            lremoves.append(lkey)
+    for lkey in lremoves:
+        del updated_data[lkey]
+
+    # TODO: validate
+
+    if updated_data.get("rollback_frames") == "":
+        updated_data["rollback_frames"] = 0
+    if updated_data.get("timeout") == "":
+        updated_data["timeout"] = 30
+    if updated_data.get("frequency") == "":
+        updated_data["frequency"] = 30
+
+    # Update the template in your storage (e.g., JSON file, database)
+    template_manager.save_template(template_name, updated_data)
+
+    # Reschedule the camera job
+    try:
+        seconds = int(updated_data.get("frequency", 30 * 60))
+        scheduling.scheduler.add_job(
+            func=scheduling.update_camera,
+            trigger="interval",
+            seconds=seconds,
+            args=[template_name, updated_data],
+            id=template_name,
+            replace_existing=True,
+        )
+    except Exception as e:
+        print("job schedule error:", e)
+        # logging.error(f"Error scheduling job for {template_name}: {e}")
+
+    if request.is_json:
+        return jsonify({"message": "Template updated successfully!"})
+
+    return redirect("/templates/" + template_name)
+
+    templates = template_manager.get_templates()
+    template_details = templates.get(template_name)
+    if template_details is None:
+        abort(404)  # Template not found
+    lscreenshots = template_manager.get_screenshots_for_template(template_name)
+    lvideos = template_manager.get_videos_for_template(template_name)
+    available_llm_models = config.AVAILABLE_LLM_MODELS
+    return render_template(
+        "template_details.html",
+        template_name=template_name,
+        template_details=template_details,
+        screenshots=lscreenshots,
+        videos=lvideos,
+        available_llm_models=available_llm_models
+    )
+
+@app.route("/update_template/<string:template_name>", methods=["POST"])
+@login_required
+def update_template(template_name: TemplateName):
+    template_name = validate_template_name(template_name)
+    if template_name is None:
+        abort(404)
+
+    if True:
+        # Extract form data
+        updated_data = {
+            "url": request.form.get("url"),
+            "frequency": request.form.get("frequency"),
+            "timeout": request.form.get("timeout"),
+            "notes": request.form.get("notes"),
+            "popup_xpath": request.form.get("popup_xpath"),
+            "dedicated_xpath": request.form.get("dedicated_xpath"),
+            "callback_url": request.form.get("callback_url"),
+            "proxy": request.form.get("proxy"),
+            "rollback_frames": request.form.get("rollback_frames"),
+            "groups": request.form.get("groups"),
+            "object_filter": request.form.get("object_filter"),
+            "object_confidence": request.form.get("object_confidence", 0.5),
+            "motion": request.form.get("motion", 0.2),
+            "invert": request.form.get("invert", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+            "dark": request.form.get("dark", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+            "headless": request.form.get("headless", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+            "stealth": request.form.get("stealth", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+            "browser": request.form.get("browser", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+            "livecaption": request.form.get("livecaption", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+            "danger": request.form.get("danger", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+            "llm_model": request.form.get("llm_model"),
+        }
+
+        lremoves = []
+        for lkey in updated_data:
+            if updated_data.get(lkey) is None:
+                lremoves.append(lkey)
+        for lkey in lremoves:
+            del updated_data[lkey]
+
+        # TODO: validate
+
+        if updated_data.get("rollback_frames") == "":
+            updated_data["rollback_frames"] = 0
+        if updated_data.get("timeout") == "":
+            updated_data["timeout"] = 30
+        if updated_data.get("frequency") == "":
+            updated_data["frequency"] = 30
+
+        # Update the template in your storage (e.g., JSON file, database)
+        # This assumes you have a function to update templates
+        template_manager.save_template(template_name, updated_data)
+
+        # TODO: stop the old job.  reschedule the camera
+        template_manager.get_template(template_name)
+        try:
+            seconds = int(updated_data.get("frequency", 30 * 60))
+            scheduling.scheduler.add_job(
+                func=scheduling.update_camera,
+                trigger="interval",
+                seconds=seconds,
+                args=[template_name, updated_data],
+                id=template_name,
+                replace_existing=True,
+            )
+        except Exception as e:
+            print("job schedule error:", e)
+            # logging.error(f"Error scheduling job for {name}: {e}")
+
+        if request.is_json:
+            return jsonify({"message": "Template updated successfully!"})
+
+        return redirect("/templates/" + template_name)

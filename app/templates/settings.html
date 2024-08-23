@@ -27,7 +27,17 @@
                 <tr>
                     <td>{{ setting.name }}</td>
                     <td>
-                        <input type="text" name="{{ setting.name }}" value="{{ setting.value }}">
+                        {% if setting.name == 'AVAILABLE_LLM_MODELS' %}
+                            <input type="text" name="{{ setting.name }}" value="{{ setting.value }}" placeholder="Comma-separated list of models">
+                        {% elif setting.name == 'DEFAULT_LLM_MODEL' %}
+                            <select name="{{ setting.name }}">
+                                {% for model in settings['AVAILABLE_LLM_MODELS'].value.split(',') %}
+                                    <option value="{{ model }}" {% if model == setting.value %}selected{% endif %}>{{ model }}</option>
+                                {% endfor %}
+                            </select>
+                        {% else %}
+                            <input type="text" name="{{ setting.name }}" value="{{ setting.value }}">
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
