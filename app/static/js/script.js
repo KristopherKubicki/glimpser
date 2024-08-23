@@ -164,12 +164,22 @@ function loadTemplates() {
                 threshold: 0.5 // Trigger when at least 50% of the video is visible
             });
 
+            // Calculate sync ratios
+            const frequencies = Object.entries(templates).reduce((acc, [name, template]) => {
+                acc[name] = parseInt(template.frequency) || 30;
+                return acc;
+            }, {});
+            const minFrequency = Math.min(...Object.values(frequencies));
+            syncRatios = Object.entries(frequencies).reduce((acc, [name, freq]) => {
+                acc[name] = minFrequency / freq;
+                return acc;
+            }, {});
+
             Object.entries(templates).forEach(([name, template]) => {
-	      if (templateBelongsToGroup(template, selectedGroup)) {
+              if (templateBelongsToGroup(template, selectedGroup)) {
 
-	        const lastScreenshotTime = template['last_screenshot_time'];
+                const lastScreenshotTime = template['last_screenshot_time'];
                 const humanizedTimestamp = timeAgo(lastScreenshotTime);
-
 
                 // Check if the last screenshot is less than 1 minute ago
                 const lastScreenshotTime2 = new Date(template['last_screenshot_time']);
@@ -182,12 +192,12 @@ function loadTemplates() {
                 templateDiv.innerHTML = `
                     <a href='/templates/${name}'>
                         <div class="${videoContainerClass}">
-			    <div class="camera-name">${name}</div> <!-- Camera name -->
+                            <div class="camera-name">${name}</div> <!-- Camera name -->
                             <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style='width:100%' muted title='` + template["last_caption"] + `' preload="none">
                                 <source src="/last_video/${name}" type='video/mp4'>
                                 Your browser does not support the video tag.
                             </video>
-			    <div class="timestamp">${humanizedTimestamp}</div> <!-- Humanized timestamp in the bottom right corner -->
+                            <div class="timestamp">${humanizedTimestamp}</div> <!-- Humanized timestamp in the bottom right corner -->
                             <div class="play-icon">&#9658;</div> <!-- Unicode play icon -->
                         </div>
                     </a>
@@ -198,108 +208,95 @@ function loadTemplates() {
                 const video = templateDiv.querySelector('video');
                 observer.observe(video);
 
-
-
                 video.addEventListener('loadedmetadata', () => {
-                    // Set playback speed based on video duration
-                    if (video.duration < 1) {
-                        video.playbackRate = 0.0625;
-		    } else if (video.duration < 3) {
-                        video.playbackRate = 0.0625*2;
-		    } else if (video.duration < 7) {
-                        video.playbackRate = 0.0625*4;
-		    } else if (video.duration < 15) {
-                        video.playbackRate = 0.0625*8;
-		    } else if (video.duration < 30) {
-                        video.playbackRate = 0.0625*16;
-                    } else if (video.duration < 60) {
-                        video.playbackRate = 0.0625*32;
-                    } else if (video.duration > 120) {
-                        video.playbackRate = 0.0625*64;
-                    } else { 
-                        video.playbackRate = 0.0625*128;
-		    }
+                    // Set playback speed based on video duration and sync ratio
+                    const baseRate = calculateBasePlaybackRate(video.duration);
+                    video.playbackRate = syncMode ? baseRate * syncRatios[name] : baseRate;
 
                     // Start the video at t minus 10 seconds if possible
                     video.currentTime = Math.max(0, video.duration - 10);
                 });
 
+                if (isMobile()) {
+                    video.setAttribute('playsinline', ''); // Prevent fullscreen playback on iOS
+                    video.addEventListener('play', () => {
+                        video.playbackRate = calculatePlaybackRate(video); // Set appropriate playback rate
+                    });
+                } else {
+                    video.addEventListener('mouseenter', () => {
+                        if (video.playbackRate * 3.0 <= 16) {
+                            video.playbackRate *= 3.0; // Set playback speed
+                        } else {
+                            video.playbackRate = 16; // Set playback rate to max value of 16
+                        }
+                        video.play();
+                    });
 
-        if (isMobile()) {
-            ///video.setAttribute('autoplay', ''); // Enable autoplay on mobile
-            video.setAttribute('playsinline', ''); // Prevent fullscreen playback on iOS
-            video.addEventListener('play', () => {
-                video.playbackRate = calculatePlaybackRate(video); // Set appropriate playback rate
+                    video.addEventListener('mouseleave', () => {
+                        video.pause();
+                        video.load(); // Reset the video to show the poster again
+                    });
+                }
+
+                // Use the observer to play/pause based on visibility
+                observer.observe(video);
+            }
+        });
+
+        const playAllButton = document.getElementById('play-all');
+        const stopAllButton = document.getElementById('stop-all');
+
+        // Play all media elements
+        playAllButton.addEventListener('click', function () {
+            const mediaElements = templateList.querySelectorAll('video, audio');
+            mediaElements.forEach(element => {
+                element.play();
             });
-        } else {
-            // Your existing mouseenter and mouseleave event listeners...
-		    video.addEventListener('mouseenter', () => {
-    if (video.playbackRate * 3.0 <= 16) {
-        video.playbackRate *= 3.0; // Set playback speed
-    } else {
-        video.playbackRate = 16; // Set playback rate to max value of 16
-    }
-			    video.play();
-});
+        });
 
-                video.addEventListener('mouseleave', () => {
-                    video.pause();
-                    video.load(); // Reset the video to show the poster again
-                });
+        // Stop all media elements
+        stopAllButton.addEventListener('click', function () {
+            const mediaElements = templateList.querySelectorAll('video, audio');
+            mediaElements.forEach(element => {
+                element.pause();
+                element.currentTime = 0; // Reset to start
+            });
+        });
 
-    // Add event listeners for each video
+        window.addEventListener('resize', updateGridLayout);
+
+        const videos = document.querySelectorAll('.templateDiv video');
+        videos.forEach(video => {
+            video.addEventListener('ended', () => {
+                setTimeout(() => {
+                    video.load(); // Reset the video to show the poster
+                    video.play(); // Resume autoplay after 2 seconds
+                }, 2000);
+            });
+        });
+    })
+    .catch(error => console.error('Error loading templates:', error));
+}
+
+function calculateBasePlaybackRate(duration) {
+    if (duration < 1) return 0.0625;
+    if (duration < 3) return 0.0625 * 2;
+    if (duration < 7) return 0.0625 * 4;
+    if (duration < 15) return 0.0625 * 8;
+    if (duration < 30) return 0.0625 * 16;
+    if (duration < 60) return 0.0625 * 32;
+    if (duration > 120) return 0.0625 * 64;
+    return 0.0625 * 128;
+}
+
+function toggleSyncMode() {
+    syncMode = document.getElementById('sync-mode').checked;
     const videos = document.querySelectorAll('.templateDiv video');
     videos.forEach(video => {
-        // Play video on hover
-        video.addEventListener('mouseenter', () => {
-            video.play();
-        });
-        // Pause video on mouse leave
-        video.addEventListener('mouseleave', () => {
-            video.pause();
-        });
-        // Use the observer to play/pause based on visibility
-        observer.observe(video);
+        const name = video.getAttribute('data-name');
+        const baseRate = calculateBasePlaybackRate(video.duration);
+        video.playbackRate = syncMode ? baseRate * syncRatios[name] : baseRate;
     });
-
-        }
-
-    const playAllButton = document.getElementById('play-all');
-    const stopAllButton = document.getElementById('stop-all');
-
-            // Play all media elements
-            playAllButton.addEventListener('click', function () {
-                const mediaElements = templateList.querySelectorAll('video, audio');
-                mediaElements.forEach(element => {
-                    element.play();
-                });
-            });
-
-            // Stop all media elements
-            stopAllButton.addEventListener('click', function () {
-                const mediaElements = templateList.querySelectorAll('video, audio');
-                mediaElements.forEach(element => {
-                    element.pause();
-                    element.currentTime = 0; // Reset to start
-                });
-            });
-
-
-
-window.addEventListener('resize', updateGridLayout);
-
-video.addEventListener('ended', () => {
-    setTimeout(() => {
-        video.load(); // Reset the video to show the poster
-        video.play(); // Resume autoplay after 1 second
-    }, 2000); // Pause for 1 second
-});
-
-}
-            });
-
-        })
-        .catch(error => console.error('Error loading templates:', error));
 }
 
 // Initial load of templates
