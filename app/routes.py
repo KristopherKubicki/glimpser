@@ -9,6 +9,7 @@ import os
 import re
 import time
 import tempfile
+import uuid
 from datetime import datetime, timedelta
 from functools import wraps
 from threading import Lock
@@ -233,6 +234,7 @@ login_attempts = {}
 last_shot = None
 last_time = None
 active_groups = []
+rtsp_sessions = {}
 
 
 def get_active_groups():
@@ -277,7 +279,7 @@ def resize_and_pad(img, size, color=(0, 0, 0)):
 lock = Lock()
 
 
-def generate(group=None, filename="latest_camera.png"):
+def generate(group=None, filename="latest_camera.png", rtsp=False):
     # pretty hacky but it works ok
     global last_time, last_shot
     boundary = b"frame"
@@ -392,8 +394,14 @@ def generate(group=None, filename="latest_camera.png"):
                             pass
 
         if frame:
-            yield b"--" + boundary + b"\r\n"
-            yield b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n\r\n"
+            if rtsp:
+                # For RTSP, we need to add RTP headers and packetize the frame
+                # This is a simplified version and may need to be adjusted based on your exact requirements
+                rtp_header = b"\x80\x60\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00"
+                yield rtp_header + frame
+            else:
+                yield b"--" + boundary + b"\r\n"
+                yield b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n\r\n"
         if time.time() - ltime > 1:
             continue
         time.sleep(1 - (time.time() - ltime))
@@ -617,52 +625,65 @@ def init_routes(app):
             return send_file(most_recent_file)
         return send_file(last_file)  # better than nothing
 
-    @app.route(
-        "/test.rtsp", methods=["OPTIONS", "DESCRIBE", "SETUP", "PLAY", "TEARDOWN"]
-    )
-    def handle_rtsp(camera_hash: str):
+    @app.route("/test.rtsp", methods=["OPTIONS", "DESCRIBE", "SETUP", "PLAY", "TEARDOWN"])
+    def handle_rtsp():
+        global rtsp_sessions
 
-        # TODO: generate_session_id() does not exist!
-        #session_id = request.headers.get("Session", generate_session_id())
-        session_id = request.headers.get("Session", '')
+        session_id = request.headers.get("Session", str(uuid.uuid4()))
+        cseq = request.headers.get("CSeq", "0")
+
         if request.method == "OPTIONS":
             return Response(
                 "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY",
-                headers={"CSeq": request.headers.get("CSeq", "0")},
+                headers={"CSeq": cseq},
             )
 
         elif request.method == "DESCRIBE":
-            # Return a mock SDP description
-            sdp = "v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\ns=No Name\r\nt=0 0\r\na=tool:libavformat 58.20.100\r\nm=video 0 RTP/AVP 96\r\na=rtpmap:96 H264/90000\r\n"
+            sdp = (
+                "v=0\r\n"
+                "o=- 0 0 IN IP4 127.0.0.1\r\n"
+                "s=Glimpser RTSP Stream\r\n"
+                "t=0 0\r\n"
+                "m=video 0 RTP/AVP 96\r\n"
+                "a=rtpmap:96 H264/90000\r\n"
+                "a=control:streamid=0\r\n"
+            )
             return Response(
                 sdp,
                 mimetype="application/sdp",
-                headers={"CSeq": request.headers.get("CSeq", "0")},
+                headers={"CSeq": cseq, "Content-Base": request.url},
             )
 
         elif request.method == "SETUP":
+            if session_id not in rtsp_sessions:
+                rtsp_sessions[session_id] = {"state": "READY"}
+            transport = request.headers.get("Transport", "")
             return Response(
                 headers={
-                    "CSeq": request.headers.get("CSeq", "0"),
+                    "CSeq": cseq,
                     "Session": session_id,
-                    "Transport": request.headers.get("Transport", ""),
+                    "Transport": transport,
                 }
             )
 
         elif request.method == "PLAY":
-            # Start streaming video (not implemented)
+            if session_id not in rtsp_sessions:
+                abort(454)  # Session Not Found
+            rtsp_sessions[session_id]["state"] = "PLAYING"
             return Response(
                 headers={
-                    "CSeq": request.headers.get("CSeq", "0"),
+                    "CSeq": cseq,
                     "Session": session_id,
+                    "RTP-Info": "url=rtsp://example.com/test.rtsp/streamid=0;seq=0;rtptime=0",
                 }
             )
 
         elif request.method == "TEARDOWN":
-            # Stop streaming video (not implemented)
+            if session_id in rtsp_sessions:
+                del rtsp_sessions[session_id]
             return Response(
                 headers={
-                    "CSeq": request.headers.get("CSeq", "0"),
+                    "CSeq": cseq,
                     "Session": session_id,
                 }
             )
@@ -701,6 +722,16 @@ def init_routes(app):
         return Response(
             generate(group=group, filename="last_motion_caption.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
+        )
+
+    @app.route("/rtsp_stream")
+    def rtsp_stream():
+        session_id = request.args.get("session")
+        if session_id not in rtsp_sessions or rtsp_sessions[session_id]["state"] != "PLAYING":
+            abort(400, "Invalid session or session not in PLAYING state")
+        return Response(
+            generate(rtsp=True),
+            mimetype="application/x-rtp"
         )
 
     @app.route("/stream.mp4")
