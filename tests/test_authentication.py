@@ -1,8 +1,15 @@
+# tests/test_authentication.py
+
 import unittest
-from app import create_app
+
+import os
+import sys 
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from app.config import USER_NAME, API_KEY
 from app.routes import login_required
-
+from app import create_app
 
 class TestAuthentication(unittest.TestCase):
     def setUp(self):
