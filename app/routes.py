@@ -412,7 +412,16 @@ def allowed_filename(filename: str) -> bool:
 def init_routes(app):
     global login_attempts
     # get_active_groups()
+    
+    @app.errorhandler(404)
+    def page_not_found(e):
+        return render_template('404.html'), 404
 
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        # Pass the error down to the template
+        return render_template('error.html', error=e), 500
+        
     @app.route('/health')
     def health_check():
         # should be healthy
@@ -1185,11 +1194,4 @@ def init_routes(app):
 
             return redirect("/templates/" + template_name)
 
-@app.errorhandler(404)
-def page_not_found(e):
-    return render_template('404.html'), 404
 
-@app.errorhandler(Exception)
-def handle_exception(e):
-    # Pass the error down to the template
-    return render_template('error.html', error=e), 500
