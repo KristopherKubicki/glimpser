@@ -784,28 +784,37 @@ def init_routes(app):
     @app.route("/captions")
     @login_required
     def captions():
-
-        # Specify the directory containing the .jl files
+        # Specify the directory containing the summary files
         directory = "data/summaries/"
 
         # Get all files in the directory
         files = os.listdir(directory)
 
-        # Filter out only .jl files and sort them by last modified time in descending order
+        # Load the most recent summaries for each period
+        summaries = {}
+        for period in ['daily', 'weekly', 'monthly', 'yearly']:
+            period_files = [f for f in files if f.startswith(f"summary_{period}_")]
+            if period_files:
+                latest_file = max(period_files, key=lambda x: os.path.getmtime(os.path.join(directory, x)))
+                with open(os.path.join(directory, latest_file), 'r') as f:
+                    summaries[period] = json.load(f)
+            else:
+                summaries[period] = {}
+
+        # Load entries from the most recent 5 .jl files for hourly summaries
         jl_files = sorted(
             [file for file in files if file.endswith(".jl")],
             key=lambda x: os.path.getmtime(os.path.join(directory, x)),
             reverse=True,
         )
 
-        # Load entries from the most recent 5 .jl files
-        entries = []
+        hourly_entries = []
         for file in jl_files[:5]:
             file_path = os.path.join(directory, file)
             with open(file_path, "r") as f:
                 try:
                     data = json.load(f)
-                    entries.append(data)
+                    hourly_entries.append(data)
                 except Exception:
                     pass
 
@@ -813,7 +822,8 @@ def init_routes(app):
         return render_template(
             "captions.html",
             template_details=template_manager.get_templates(),
-            lcaptions=entries,
+            lcaptions=hourly_entries,
+            summaries=summaries,
         )
 
     @app.route("/live")

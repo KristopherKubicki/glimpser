@@ -1,4 +1,5 @@
 import datetime
+from datetime import datetime, timedelta
 import json
 import logging
 import os
@@ -513,14 +514,27 @@ def init_crawl():
         update_camera(name, template)
 
 
-def update_summary():
+def update_summary(period='daily'):
+    current_time = datetime.utcnow()
 
-    # summarize all of htis together
-    lstring = "The following are a list of real time dashboards and cameras, and their recent status updates:\n"
-    templates = get_templates()  # Make sure to fetch the templates within this function
+    if period == 'daily':
+        start_time = current_time - timedelta(days=1)
+        filename = f"summary_daily_{current_time.strftime('%Y%m%d')}.json"
+    elif period == 'weekly':
+        start_time = current_time - timedelta(weeks=1)
+        filename = f"summary_weekly_{current_time.strftime('%Y%W')}.json"
+    elif period == 'monthly':
+        start_time = current_time - timedelta(days=30)
+        filename = f"summary_monthly_{current_time.strftime('%Y%m')}.json"
+    elif period == 'yearly':
+        start_time = current_time - timedelta(days=365)
+        filename = f"summary_yearly_{current_time.strftime('%Y')}.json"
+    else:
+        raise ValueError("Invalid period. Must be 'daily', 'weekly', 'monthly', or 'yearly'.")
 
-    # Sort templates by last_caption_time, descending order
-    # TODO: this could just be a sql call instead
+    lstring = f"The following is a summary of real-time dashboards and cameras, and their status updates for the {period} period:\n"
+    templates = get_templates()
+
     sorted_templates = sorted(
         templates.items(),
         key=lambda item: item[1].get("last_caption_time", ""),
@@ -584,80 +598,105 @@ def update_summary():
     output_path = os.path.join(SUMMARIES_DIRECTORY)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    history = None
-    if True:
-        # Specify the directory containing the .jl files
-        directory = "data/summaries/"
+    # Specify the directory containing the .jl files
+    directory = "data/summaries/"
 
-        # Get all files in the directory
-        files = os.listdir(directory)
+    # Get all files in the directory
+    files = os.listdir(directory)
 
-        # Filter out only .jl files and sort them by last modified time in descending order
-        jl_files = sorted(
-            [file for file in files if file.endswith(".jl")],
-            key=lambda x: os.path.getmtime(os.path.join(directory, x)),
-            reverse=True,
-        )
-        print(jl_files)
+    # Filter out only .jl files and sort them by last modified time in descending order
+    jl_files = sorted(
+        [file for file in files if file.endswith(".jl")],
+        key=lambda x: os.path.getmtime(os.path.join(directory, x)),
+        reverse=True,
+    )
 
-        # for file in jl_files[:5]:
-        entries = []
-        steps = [1, 3, 8, 24]
-        for step in steps:
-            if step < len(jl_files):
-                file = jl_files[step]
-                file_path = os.path.join(directory, file)
-                with open(file_path, "r") as f:
-                    try:
-                        data = json.load(f)
-                        entries.append(data)
-                    except Exception:
-                        pass
-            else:
-                break  # or continue, depending on what you want to do when there aren't enough files
+    entries = []
+    for file in jl_files:
+        file_path = os.path.join(directory, file)
+        file_time = datetime.fromtimestamp(os.path.getmtime(file_path))
+        if file_time >= start_time:
+            with open(file_path, "r") as f:
+                try:
+                    data = json.load(f)
+                    entries.append(data)
+                except Exception:
+                    pass
+        else:
+            break  # We've reached files older than our start time
 
-        if len(entries) > 0:
-            history = ""
-            for hour in entries:
-                for key in hour:
-                    history += "%s: %s\n" % (key, hour[key])
+    if len(entries) > 0:
+        history = ""
+        for entry in entries:
+            for key in entry:
+                history += f"{key}: {entry[key]}\n"
 
     lsum = summarize(lstring, history=history)
 
-    # Generate timestamp for filename and entry key
-    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
-    filename = f"data/summaries/{timestamp}.jl"
-
     if type(lsum) != str:
-        print(" WARNING -- missing transcript")
+        print(f" WARNING -- missing transcript for {period} summary")
         return
 
-    # for leach in re.findall(r'({.+?\})',lsum):  # if we don't find this, then we wasted money...
     lsuc = False
     for leach in re.findall(
         r"^\s*?`?`?`?j?s?o?n?\n?(\{.+?\})\n?`?`?`?", lsum, flags=re.DOTALL
-    ):  # if we don't find this, then we wasted money...
-        # Write to file in JSONL format
-        with open(filename, "w") as file:
-            file.write(leach + "\n")
+    ):
+        # Write to file in JSON format
+        with open(os.path.join(SUMMARIES_DIRECTORY, filename), "w") as file:
+            json.dump(json.loads(leach), file, indent=2)
             lsuc = True
     if lsuc is False:
-        print("WARNING MISSED CAPTION ($$$)", lsum)
+        print(f"WARNING MISSED CAPTION ($$$) for {period} summary", lsum)
+
+def generate_all_summaries():
+    update_summary('daily')
+    update_summary('weekly')
+    update_summary('monthly')
+    update_summary('yearly')
 
 
 def schedule_summarization():
-
-    # loop through the templates and
     try:
+        # Daily summary at midnight
         scheduler.add_job(
             func=update_summary,
-            trigger=CronTrigger(minute=0),
-            id="summary",
+            trigger=CronTrigger(hour=0, minute=0),
+            args=['daily'],
+            id="daily_summary",
+            replace_existing=True,
+        )
+
+        # Weekly summary on Monday at 1:00 AM
+        scheduler.add_job(
+            func=update_summary,
+            trigger=CronTrigger(day_of_week=0, hour=1, minute=0),
+            args=['weekly'],
+            id="weekly_summary",
+            replace_existing=True,
+        )
+
+        # Monthly summary on the 1st of each month at 2:00 AM
+        scheduler.add_job(
+            func=update_summary,
+            trigger=CronTrigger(day=1, hour=2, minute=0),
+            args=['monthly'],
+            id="monthly_summary",
+            replace_existing=True,
+        )
+
+        # Yearly summary on January 1st at 3:00 AM
+        scheduler.add_job(
+            func=update_summary,
+            trigger=CronTrigger(month=1, day=1, hour=3, minute=0),
+            args=['yearly'],
+            id="yearly_summary",
             replace_existing=True,
         )
     except Exception as e:
         print("job schedule error:", e)
-    update_summary()
+
+    # Generate initial summaries
+    generate_all_summaries()
 
 
 def schedule_crawlers():
