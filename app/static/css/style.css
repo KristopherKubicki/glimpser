@@ -203,8 +203,8 @@ button, a {
 
 /* Cool Clock Styles */
 .cool-clock {
-    width: 150px;
-    height: 150px;
+    width: 25px;
+    height: 25px;
     border-radius: 50%;
     background-color: #f0f0f0;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -288,8 +288,8 @@ button, a {
 
 @media screen and (max-width: 768px) {
     .cool-clock {
-        width: 100px;
-        height: 100px;
+        width: 25px;
+        height: 25px;
     }
 
     #digitalTime {
@@ -303,13 +303,13 @@ button, a {
 
 /* Cool Clock Styles */
 .cool-clock {
-    width: 150px;
-    height: 150px;
+    width: 25px;
+    height: 25px;
     border-radius: 50%;
     background-color: #f0f0f0;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 1px rgba(0, 0, 0, 0.1);
     position: relative;
-    margin-left: 20px;
+    margin-left: 5px;
 }
 
 .clock-face {
@@ -388,8 +388,8 @@ button, a {
 
 @media screen and (max-width: 768px) {
     .cool-clock {
-        width: 100px;
-        height: 100px;
+        width: 25px;
+        height: 25px;
     }
 
     #digitalTime {
