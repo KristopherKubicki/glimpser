@@ -1,44 +1,39 @@
 <!-- app/templates/index.html -->
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Glimpser Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-</head>
+	{% include 'header.html' %} 
+
 <body>
 	<header>
 	{% include 'nav.html' %}
 	</header>
 
-<details>
+<details title="Expand to add a new template">
     <summary>Add Template</summary>
-    <div id="template-form" style="background-color: #222; padding: 20px; border-radius: 10px; max-width: 600px; margin: 20px auto;">
+    <div id="template-form" style="background-color: #222; padding: 20px; border-radius: 10px; max-width: 600px; margin: 20px auto;" title="Form to add a new template">
         <h3 style="color: #fff; text-align: center; margin-bottom: 20px;">Add Template</h3>
-        <form id="add-template-form" action="/templates" method="post" onsubmit="return validateForm()">
+        <form id="add-template-form" action="/templates" method="post" onsubmit="return validateForm()" title="Enter details for the new template">
             <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-bottom: 20px;">
-                <label for="name" style="color: #fff;">Template Name:</label>
-                <input type="text" id="name" name="name" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required>
+                <label for="name" style="color: #fff;" title="Name of the template">Template Name:</label>
+                <input type="text" id="name" name="name" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter a unique name for this template">
 
-                <label for="url" style="color: #fff;">URL:</label>
-                <input type="url" id="url" name="url" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required>
+                <label for="url" style="color: #fff;" title="URL to monitor">URL:</label>
+                <input type="url" id="url" name="url" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter the URL to monitor">
 
-                <label for="frequency" style="color: #fff;">Frequency (minutes):</label>
-                <input type="number" id="frequency" name="frequency" value="30" min="1" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required>
+                <label for="frequency" style="color: #fff;" title="How often to check the URL">Frequency (minutes):</label>
+                <input type="number" id="frequency" name="frequency" value="30" min="1" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter how often to check the URL (in minutes)">
 
-                <label for="timeout" style="color: #fff;">Timeout (seconds):</label>
-                <input type="number" id="timeout" name="timeout" value="10" min="1" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required>
+                <label for="timeout" style="color: #fff;" title="Maximum time to wait for a response">Timeout (seconds):</label>
+                <input type="number" id="timeout" name="timeout" value="10" min="1" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter the maximum time to wait for a response (in seconds)">
 
-                <label for="notes" style="color: #fff;">Notes:</label>
-                <textarea id="notes" name="notes" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;"></textarea>
+                <label for="notes" style="color: #fff;" title="Additional notes">Notes:</label>
+                <textarea id="notes" name="notes" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter any additional notes or comments"></textarea>
 
-                <label for="object_filter" style="color: #fff;">Object Filter:</label>
-                <input type="text" id="object_filter" name="object_filter" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <label for="object_filter" style="color: #fff;" title="Filter for specific objects">Object Filter:</label>
+                <input type="text" id="object_filter" name="object_filter" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter object types to filter (e.g., 'person,car')">
 
-                <label for="object_confidence" style="color: #fff;">Object Confidence:</label>
-                <input type="number" id="object_confidence" name="object_confidence" min="0" max="1" step="0.01" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <label for="object_confidence" style="color: #fff;" title="Minimum confidence for object detection">Object Confidence:</label>
+                <input type="number" id="object_confidence" name="object_confidence" min="0" max="1" step="0.01" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter the minimum confidence level for object detection (0-1)">
+
 
                 <label for="popup_xpath" style="color: #fff;">Popup XPath:</label>
                 <div class="xpath-input-container">
@@ -52,36 +47,37 @@
                     <button type="button" onclick="showStructuredInput('dedicated_xpath')" style="padding: 5px; border-radius: 5px; background-color: #4CAF50; color: #fff; border: none; cursor: pointer;">Structured</button>
                 </div>
 
-                <label for="callback_url" style="color: #fff;">Callback URL:</label>
-                <input type="url" id="callback_url" name="callback_url" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
 
-                <label for="proxy" style="color: #fff;">Proxy:</label>
-                <input type="text" id="proxy" name="proxy" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <label for="callback_url" style="color: #fff;" title="URL for notifications">Callback URL:</label>
+                <input type="url" id="callback_url" name="callback_url" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter URL to receive notifications">
 
-                <label for="groups" style="color: #fff;">Groups:</label>
-                <input type="text" id="groups" name="groups" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <label for="proxy" style="color: #fff;" title="Proxy server address">Proxy:</label>
+                <input type="text" id="proxy" name="proxy" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter proxy server address (optional)">
 
-                <label for="rollback_frames" style="color: #fff;">Rollback Frames:</label>
-                <input type="number" id="rollback_frames" name="rollback_frames" value="0" min="0" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <label for="groups" style="color: #fff;" title="Groups for the template">Groups:</label>
+                <input type="text" id="groups" name="groups" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter comma-separated group names">
+
+                <label for="rollback_frames" style="color: #fff;" title="Number of frames to rollback">Rollback Frames:</label>
+                <input type="number" id="rollback_frames" name="rollback_frames" value="0" min="0" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter number of frames to rollback">
             </div>
 
             <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
-                <label for="invert" style="color: #fff;">
-                    <input type="checkbox" id="invert" name="invert"> Invert
+                <label for="invert" style="color: #fff;" title="Invert image colors">
+                    <input type="checkbox" id="invert" name="invert" title="Invert colors of the captured image"> Invert
                 </label>
-                <label for="dark" style="color: #fff;">
-                    <input type="checkbox" id="dark" name="dark" checked> Dark Mode
+                <label for="dark" style="color: #fff;" title="Use dark mode">
+                    <input type="checkbox" id="dark" name="dark" checked title="Enable dark mode for the captured page"> Dark Mode
                 </label>
-                <label for="headless" style="color: #fff;">
-                    <input type="checkbox" id="headless" name="headless" checked> Headless
+                <label for="headless" style="color: #fff;" title="Run in headless mode">
+                    <input type="checkbox" id="headless" name="headless" checked title="Run browser in headless mode"> Headless
                 </label>
-                <label for="stealth" style="color: #fff;">
-                    <input type="checkbox" id="stealth" name="stealth"> Stealth
+                <label for="stealth" style="color: #fff;" title="Use stealth mode">
+                    <input type="checkbox" id="stealth" name="stealth" title="Use stealth mode to avoid detection"> Stealth
                 </label>
             </div>
 
             <div style="text-align: center; margin-top: 20px;">
-                <input type="submit" value="Submit" style="padding: 10px 20px; background-color: #4CAF50; color: #fff; border: none; border-radius: 5px; cursor: pointer;">
+                <input type="submit" value="Submit" style="padding: 10px 20px; background-color: #4CAF50; color: #fff; border: none; border-radius: 5px; cursor: pointer;" title="Submit the template">
             </div>
         </form>
     </div>
@@ -163,20 +159,20 @@ function generateXPath(inputId) {
 
 
 	<div>
-    <label for="group-dropdown">Filter by Group:</label>
+    <label for="group-dropdown" title="Filter templates by group">Filter by Group:</label>
 
-    <select id="group-dropdown">
+    <select id="group-dropdown" title="Select a group to filter templates">
         <!-- Options will be populated here -->
     </select>
 
 
-        <input type="range" id="grid-width-slider" min="50" max="3840" value="360" onload="this.max = window.innerWidth;">
-	         <button id="play-all">Play All</button>
-                <button id="stop-all">Stop All</button>
+        <input type="range" id="grid-width-slider" min="50" max="3840" value="360" onload="this.max = window.innerWidth;" title="Adjust the width of the template grid">
+	         <button id="play-all" title="Start monitoring all templates">Play All</button>
+                <button id="stop-all" title="Stop monitoring all templates">Stop All</button>
 
 </div>
 
-    <div id="template-list">
+    <div id="template-list" title="List of all templates">
         <!-- Template list will be populated here -->
     </div>
 

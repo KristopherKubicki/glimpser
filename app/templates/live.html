@@ -1,11 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Live Camera Feed & Template Details</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% include 'header.html' %}
+
+<body>
+    <header>
+        {% include 'nav.html' %}
+    </header>
+
     <style>
-        .video-container {
+        .video-container { 
             width: 100%;
             height: 80vh; /* 80% of the viewport height */
             display: flex;
@@ -18,12 +19,7 @@
             max-width: 100%;
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-</head>
-<body>
-    <header>
-        {% include 'nav.html' %}
-    </header>
+
 
 
     <div class="video-container">
@@ -33,7 +29,7 @@
 
 
 <select id="camera-selector" onchange="changeCamera()">
-    <option value="All">All</option>
+    <option value="All" title="View all cameras">All</option>
     {% set all_groups = [] %}
     {% for camera, details in template_details.items() %}
         {% if details.groups %}
@@ -45,10 +41,10 @@
         {% endif %}
     {% endfor %}
     {% for group in all_groups|unique|sort %}
-        <option value="group-{{ group }}">Group: {{ group }}</option>
+        <option value="group-{{ group }}" title="View cameras in group {{ group }}">Group: {{ group }}</option>
     {% endfor %}
     {% for camera in template_details.keys()|sort %}
-        <option value="{{ camera }}">Camera: {{ camera }}</option>
+        <option value="{{ camera }}" title="View camera {{ camera }}">Camera: {{ camera }}</option>
     {% endfor %}
 </select>
 
@@ -56,12 +52,12 @@
 
 
     <select id="video-source" onchange="changeVideoSource()">
-        <option value="png">PNG Stream</option>
-        <option value="m3u8">M3U8 Stream</option>
-        <option value="loop">Loop Videos</option>
-        <option value="mp4" selected>MP4 Stream</option>
-        <option value="motion">Motion</option>
-        <option value="mjpg">MJPG</option>
+        <option value="png" title="View a series of PNG images">PNG Stream</option>
+        <option value="m3u8" title="View an HLS (HTTP Live Streaming) video stream">M3U8 Stream</option>
+        <option value="loop" title="Loop through available video clips">Loop Videos</option>
+        <option value="mp4" selected title="View an MP4 video stream">MP4 Stream</option>
+        <option value="motion" title="View motion-detected frames">Motion</option>
+        <option value="mjpg" title="View an MJPEG (Motion JPEG) stream">MJPG</option>
     </select>
 
     <div>
