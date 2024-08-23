@@ -1,25 +1,15 @@
-import datetime
-import json
 import logging
-import os
-import random
-import re
-
-from apscheduler.triggers.cron import CronTrigger
-from dateutil import parser
-from flask_apscheduler import APScheduler
-from PIL import Image, ImageDraw, ImageFont
 from transformers import CLIPProcessor, CLIPModel
 
-from app.config import DEBUG, SCREENSHOT_DIRECTORY, SUMMARIES_DIRECTORY, VIDEO_DIRECTORY
+from app.config import SUMMARIES_DIRECTORY
 
-from .detect import calculate_difference_fast
 from .image_processing import chatgpt_compare
-from .llm import summarize
-from .screenshots import capture_or_download, remove_background, add_timestamp
-from .template_manager import get_template, get_templates, save_template
+from .camera_utils import update_camera, find_closest_image
+from .scheduler import scheduler, init_crawl, update_summary, schedule_summarization, schedule_crawlers
 
-scheduler = APScheduler()
+clip_processor, clip_model = None, None
+
+# The rest of the file remains unchanged
 
 
 clip_processor, clip_model = None, None
