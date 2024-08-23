@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 import time
 from urllib.parse import urlparse
+import glob
 
 import numpy as np
 import requests
@@ -91,6 +92,9 @@ def adjust_bbox_to_aspect_ratio(bbox, image_size, aspect_ratio=(16, 9)):
     left, top, right, bottom = bbox
     bbox_width = right - left
     bbox_height = bottom - top
+    if bbox_height == 0:
+        bbox_height = 1
+
     bbox_aspect_ratio = bbox_width / bbox_height
 
     target_aspect_ratio = aspect_ratio[0] / aspect_ratio[1]
@@ -431,8 +435,10 @@ def is_address_reachable(address, port=80, timeout=5):
 def parse_url(url):
     parsed_url = urlparse(url)
     domain = parsed_url.hostname
-    port = parsed_url.port
+    if parsed_url and parsed_url.scheme == '' and domain is None:
+        domain = re.sub(r'\/.+?$','', parsed_url.path)
 
+    port = parsed_url.port
     # If the port is None and the scheme is specified, infer the default port
     if port is None:
         if parsed_url.scheme == "http":
@@ -1200,6 +1206,8 @@ def apply_dark_mode(img, range_value=30, text_range_value=120):
     return img
 
 
+import shlex
+
 def capture_screenshot_and_har_light(
     url, output_path, timeout=30, name="unknown", invert=False, proxy=None, dark=True
 ):
@@ -1222,7 +1230,6 @@ def capture_screenshot_and_har_light(
 
     # Prepare the command
     command = [
-        #'time','-v',
         "wkhtmltoimage",
         "--width",
         "1920",
@@ -1230,10 +1237,7 @@ def capture_screenshot_and_har_light(
         "1080",
         "--javascript-delay",
         str(5000),
-        #'--no-stop-slow-scripts',
         "--quiet",
-        #'--window-status', 'ready',
-        #'--media-type', 'screen',
         "--zoom",
         "1",
         "--quality",
@@ -1243,14 +1247,16 @@ def capture_screenshot_and_har_light(
         "User-Agent",
         UA,
         "--custom-header-propagation",
-        url,
-        output_path,
     ]
+
+    # Safely add the URL to the command
+    command.append(shlex.quote(url))
+    command.append(shlex.quote(output_path))
 
     # Execute the command
     try:
         result = subprocess.run(
-            command, timeout=timeout, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            command, timeout=timeout, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False
         )
         result.stdout.decode("utf-8")
         result.stderr.decode("utf-8")
@@ -1272,9 +1278,8 @@ def capture_screenshot_and_har_light(
 
         if is_mostly_blank(image):
             os.unlink(output_path)
-            # print("  .. blank", output_path)
             return False
-            pass
+
         # Convert the image to RGBA mode in case it's a format that doesn't support transparency
         image = image.convert("RGB")
         image = remove_background(image)
@@ -1288,7 +1293,6 @@ def capture_screenshot_and_har_light(
             add_timestamp(output_path, name, invert=invert)
             lsuccess = True
             os.rename(output_path, output_path.replace(".tmp.png", ".png"))
-            # print(" *** writing", output_path)
         else:
             os.unlink(output_path)
             lsuccess = False
@@ -1701,5 +1705,19 @@ def capture_screenshot_and_har(
             driver.quit()
         if display:
             display.stop()
+
+        # Clean up temporary Chrome files
+        try:
+            temp_chrome_dirs = glob.glob('/tmp/.com.google.Chrome.*')
+            current_time = time.time()
+            cleaned_dirs = 0
+            for temp_dir in temp_chrome_dirs:
+                # Check if the directory hasn't been modified in the last hour
+                if current_time - os.path.getmtime(temp_dir) > 3600:  # 3600 seconds = 1 hour
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+                    cleaned_dirs += 1
+            logging.info(f"Cleaned up {cleaned_dirs} temporary Chrome directories")
+        except Exception as e:
+            logging.error(f"Error cleaning up temporary Chrome files: {e}")
 
     return lsuccess

@@ -412,7 +412,16 @@ def allowed_filename(filename: str) -> bool:
 def init_routes(app):
     global login_attempts
     # get_active_groups()
+    
+    @app.errorhandler(404)
+    def page_not_found(e):
+        return render_template('404.html'), 404
 
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        # Pass the error down to the template
+        return render_template('error.html', error=e), 500
+        
     @app.route('/health')
     def health_check():
         # should be healthy
@@ -492,20 +501,19 @@ def init_routes(app):
 
     @app.route("/submit_image/<string:template_name>", methods=["POST"])
     @login_required
-    def submit_image(template_name: TemplateName):
+    def submit_image(template_name: str):
         """
         Endpoint to receive and process an image submitted by a remote service or camera.
         """
-        template_name = validate_template_name(template_name)
-        if template_name is None:
-            abort(404)
+        sanitized_template_name = validate_template_name(template_name)
+        if sanitized_template_name is None:
+            return jsonify({"status": "error", "message": "Invalid template name"}), 400
 
         # Check if the template exists
-        print("WARNING BRPKEN!")
-        ltemplate = template_manager.get_template(template_name)
+        ltemplate = template_manager.get_template(sanitized_template_name)
         if ltemplate is None:
             return jsonify({"status": "error", "message": "Template not found"}), 404
-        template_name = ltemplate.get("name")  # todo...
+        template_name = ltemplate.get("name")
 
         # Check if the request has the file part
         if "file" not in request.files:
@@ -1095,6 +1103,7 @@ def init_routes(app):
         return send_from_directory(path, filename)
 
     @app.route("/settings", methods=["GET", "POST"])
+    @login_required
     def settings():
         if request.method == "POST":
             for name, value in request.form.items():
@@ -1103,6 +1112,10 @@ def init_routes(app):
 
         settings = get_all_settings()
         return render_template("settings.html", settings=settings)
+
+    @app.route("/help", methods=["GET"])
+    def help():
+        return render_template("help.html")
 
     @app.route("/update_template/<string:template_name>", methods=["POST"])
     @login_required
@@ -1184,3 +1197,5 @@ def init_routes(app):
                 return jsonify({"message": "Template updated successfully!"})
 
             return redirect("/templates/" + template_name)
+
+
