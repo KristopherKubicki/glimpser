@@ -49,17 +49,32 @@ from app.utils.db import SessionLocal
 
 
 def validate_template_name(template_name: str):
-    if template_name is None:
+    if template_name is None or not isinstance(template_name, str):
         return None
-    if not isinstance(template_name, str):
+
+    # Strict whitelist of allowed characters
+    allowed_chars = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-')
+
+    # Check if all characters are in the allowed set
+    if not all(char in allowed_chars for char in template_name):
         return None
-    if ".." in template_name or "/" in template_name:
+
+    # Check length
+    if len(template_name) == 0 or len(template_name) > 32:
         return None
-    if len(template_name) > 32:
+
+    # Ensure the name doesn't start or end with a dash or underscore
+    if template_name[0] in '-_' or template_name[-1] in '-_':
         return None
-    for tname in re.findall(r"^[a-zA-Z0-9_\.\-]{1,32}$", template_name):
-        return secure_filename(tname)
-    return None
+
+    # Use secure_filename as an additional safety measure
+    sanitized_name = secure_filename(template_name)
+
+    # Ensure secure_filename didn't change the name (which would indicate it found something suspicious)
+    if sanitized_name != template_name:
+        return None
+
+    return sanitized_name
 
 
 class TemplateName:
