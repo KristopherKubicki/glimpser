@@ -94,6 +94,9 @@ Contributions are always welcome. If you have an idea to improve Glimpser, feel 
     ```
 5. Open a pull request.
 
+## Recommendations
+For detailed suggestions on how to use Glimpser effectively, please check out our [Recommendations](docs/recommendations.md) guide.
+
 ## License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
