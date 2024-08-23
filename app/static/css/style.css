@@ -159,6 +159,14 @@ nav a:hover, nav a.active {
     background-color: #555; /* Highlight for hover and active link */
 }
 
+.settings-icon {
+    font-size: 24px; /* Adjust the size of the icon */
+    text-decoration: none; /* Remove underline */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 @media screen and (max-width: 768px) { /* Responsive design for mobile */
     header h1 {
         font-size: 20px; /* Smaller font size on mobile */
@@ -171,6 +179,10 @@ nav a:hover, nav a.active {
 
     nav a {
         margin-bottom: 5px; /* Add margin for stacked items */
+    }
+
+    .settings-icon {
+        font-size: 20px; /* Slightly smaller icon on mobile */
     }
 }
 
