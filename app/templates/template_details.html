@@ -6,15 +6,7 @@
 	<header>
     {% include 'nav.html' %} 
 	</header>
-    <h2>Screenshots for 
-	    <a href='{{template_details.url}}'>{{ template_name }}</a>
-    </h2>
 
-
-    <button id="instant-screenshot-btn" onclick="takeInstantScreenshot('{{ template_name }}')" title="Take a screenshot of the template immediately">Take Instant Screenshot</button>
-    <button id="update-video-btn" onclick="updateVideo('{{ template_name }}')" title="Update the video for this template">Update Video</button>
-    <button id="show-camera-details-btn" onclick="showCameraDetails('{{ template_name }}')" title="Show camera details and endpoints">Show Camera Details</button>
-    <br/>
 
 
     </script>
@@ -386,6 +378,12 @@ function closeModal() {
   <details><summary>Metadata</summary>
 	  {{template_details}}
   </details>
+
+    <button id="instant-screenshot-btn" onclick="takeInstantScreenshot('{{ template_name }}')" title="Take a screenshot of the template immediately">Take Instant Screenshot</button>
+    <button id="update-video-btn" onclick="updateVideo('{{ template_name }}')" title="Update the video for this template">Update Video</button>
+    <button id="show-camera-details-btn" onclick="showCameraDetails('{{ template_name }}')" title="Show camera details and endpoints">Show Camera Details</button>
+    <br/>
+
 
   {% include 'footer.html' %}
 

@@ -758,6 +758,7 @@ def init_routes(app):
             VIDEO_DIRECTORY,
             f"{lgroup}_in_process.mp4",
         )
+
         if not os.path.exists(video_path):
             abort(404)
         return send_file(video_path)
@@ -929,7 +930,7 @@ def init_routes(app):
 
         abort(404)
 
-    @app.route("/compile_teaser", methods=["GET"])
+    @app.route("/compile_teaser", methods=["GET"]) # todo: should probably be post? 
     @login_required
     def take_compile():
         video_archiver.compile_to_teaser()

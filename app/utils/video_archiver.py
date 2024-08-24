@@ -144,8 +144,8 @@ def compile_videos(input_file, output_file):
         "-dn",
         "-f",
         "concat",
-        #"-safe",   # TODO: notworking?
-        #"0",  # no relative paths...
+        "-safe",  
+        "0", 
         "-i",
         os.path.abspath(input_file),
         "-c",
@@ -158,7 +158,9 @@ def compile_videos(input_file, output_file):
 
     try:
         subprocess.run(
-            create_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            create_command, check=True, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE
         )
         # print(' cmd:', ' '.join(create_command))
         # subprocess.run(create_command)

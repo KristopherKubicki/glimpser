@@ -6,6 +6,13 @@
                 <a href='/group/{{ag}}'>{{ag}}</a>
                 {% endfor %}
             </div>
+
+	    <div class="nav-center" style='text-align:center;'>
+{% if template_name %}
+<center><h1><a href='/templates/{{template_name}}'>{{template_name}}</a></h1></center>
+    {% endif %} 
+	    </div>
+
             <div class="nav-right">
 		    <table>
 			    <tr>
