@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>System Status</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+        function updateMetrics() {
+            $.getJSON('/api/metrics', function(data) {
+                $('#cpu-usage').text(data.cpu_usage.toFixed(2) + '%');
+                $('#memory-usage').text(data.memory_usage.toFixed(2) + '%');
+                $('#thread-count').text(data.thread_count);
+                $('#uptime').text(data.uptime);
+            });
+        }
+
+        $(document).ready(function() {
+            updateMetrics();
+            setInterval(updateMetrics, 5000);  // Update every 5 seconds
+        });
+    </script>
+</head>
+<body>
+    <header>
+        {% include 'nav.html' %}
+    </header>
+
+    <h1>System Status</h1>
+
+    <table>
+        <tr>
+            <th>Metric</th>
+            <th>Value</th>
+        </tr>
+        <tr>
+            <td>CPU Usage</td>
+            <td id="cpu-usage"></td>
+        </tr>
+        <tr>
+            <td>Memory Usage</td>
+            <td id="memory-usage"></td>
+        </tr>
+        <tr>
+            <td>Thread Count</td>
+            <td id="thread-count"></td>
+        </tr>
+        <tr>
+            <td>Uptime</td>
+            <td id="uptime"></td>
+        </tr>
+    </table>
+
+    {% include 'footer.html' %}
+</body>
+</html>

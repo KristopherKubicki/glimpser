@@ -84,4 +84,7 @@ def create_app():
         retention_cleanup()
         logging.info("initialization complete")
 
+    from .utils.scheduling import start_metrics_collection
+    start_metrics_collection()
+
     return app
