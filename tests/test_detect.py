@@ -77,8 +77,14 @@ class TestDetect(unittest.TestCase):
         valid_path = self.create_image((100, 100), "white")
         invalid_path = os.path.join(self.temp_dir, "non_existent_image.png")
 
-        with self.assertRaises(Exception):
-            calculate_difference_fast(valid_path, invalid_path)
+        result = calculate_difference_fast(valid_path, invalid_path)
+        self.assertIsNone(result, "Expected None for invalid image path")
+
+        result = calculate_difference_fast(invalid_path, valid_path)
+        self.assertIsNone(result, "Expected None for invalid image path")
+
+        result = calculate_difference_fast(invalid_path, invalid_path)
+        self.assertIsNone(result, "Expected None for invalid image path")
 
 
 if __name__ == "__main__":
