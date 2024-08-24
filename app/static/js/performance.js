@@ -13,6 +13,8 @@ function updatePerformanceMetrics() {
             
             document.getElementById('uptime-value').textContent = data.uptime;
             
+            document.getElementById('frames-per-minute-value').textContent = `${data.frames_per_minute}`;
+            
             updateCPUSparkline(data.cpu_usage);
         });
 }

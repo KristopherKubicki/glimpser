@@ -748,7 +748,10 @@ system_metrics = {
     'cpu_usage': 0.0,
     'memory_usage': 0.0,
     'thread_count': 0,
-    'start_time': time.time()
+    'start_time': time.time(),
+    'frames_per_minute': 0,
+    'last_frame_count': 0,
+    'last_frame_time': time.time()
 }
 
 def collect_system_metrics():
@@ -757,6 +760,17 @@ def collect_system_metrics():
         system_metrics['cpu_usage'] = psutil.cpu_percent(interval=1)
         system_metrics['memory_usage'] = psutil.virtual_memory().percent
         system_metrics['thread_count'] = threading.active_count()
+        
+        # Calculate frames per minute
+        current_time = time.time()
+        current_frame_count = sum(len(os.listdir(os.path.join(SCREENSHOT_DIRECTORY, d))) for d in os.listdir(SCREENSHOT_DIRECTORY) if os.path.isdir(os.path.join(SCREENSHOT_DIRECTORY, d)))
+        time_diff = current_time - system_metrics['last_frame_time']
+        if time_diff >= 60:  # Update every minute
+            frames_diff = current_frame_count - system_metrics['last_frame_count']
+            system_metrics['frames_per_minute'] = int(frames_diff * 60 / time_diff)
+            system_metrics['last_frame_count'] = current_frame_count
+            system_metrics['last_frame_time'] = current_time
+        
         time.sleep(5)  # Collect metrics every 5 seconds
 
 def start_metrics_collection():
@@ -770,5 +784,6 @@ def get_system_metrics():
         'cpu_usage': system_metrics['cpu_usage'],
         'memory_usage': system_metrics['memory_usage'],
         'thread_count': system_metrics['thread_count'],
+        'frames_per_minute': system_metrics['frames_per_minute'],
         'uptime': f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s"
     }
