@@ -13,6 +13,7 @@ from app.config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY
 from .db import Base, SessionLocal, init_db
 from .video_details import get_latest_screenshot_date, get_latest_video_date
 
+from sqlalchemy.orm import validates
 
 class Template(Base):
     __tablename__ = "templates"
@@ -46,6 +47,30 @@ class Template(Base):
     danger = Column(Boolean, default=False)
     motion = Column(Float, default=0.2)
     rollback_frames = Column(Integer, default=0)
+
+    @validates('frequency')
+    def validate_frequency(self, key, frequency):
+        if frequency > 525600:
+            raise ValueError("Frequency cannot be greater than 525600 (1 year)")
+        return frequency
+
+    @validates('timeout')
+    def validate_timeout(self, key, timeout):
+        if timeout >= self.frequency:
+            raise ValueError("Timeout must be less than frequency")
+        return timeout
+
+    @validates('popup_xpath', 'dedicated_xpath')
+    def validate_xpath(self, key, xpath):
+        if xpath and not xpath.startswith('//'):
+            raise ValueError(f"{key} must start with '//'")
+        return xpath
+
+    @validates('object_confidence')
+    def validate_object_confidence(self, key, confidence):
+        if self.object_filter and (confidence < 0 or confidence > 1):
+            raise ValueError("Object confidence must be between 0 and 1")
+        return confidence
 
 
 class TemplateManager:
@@ -81,12 +106,21 @@ class TemplateManager:
             if template:
                 for key, value in details.items():
                     try:
-                        # should read from the model instead
                         if key == "rollback_frames":
                             value = int(value)
-                        elif key in ["frequency", "timeout", "object_confidence"]:
-                            # Convert to float to preserve decimal precision if needed
+                        elif key in ["frequency", "timeout"]:
+                            value = int(value)
+                            if key == "frequency" and value > 525600:
+                                raise ValueError("Frequency cannot be greater than 525600 (1 year)")
+                            if key == "timeout" and value >= details.get("frequency", template.frequency):
+                                raise ValueError("Timeout must be less than frequency")
+                        elif key == "object_confidence":
                             value = float(value)
+                            if details.get("object_filter", template.object_filter) and (value < 0 or value > 1):
+                                raise ValueError("Object confidence must be between 0 and 1")
+                        elif key in ["popup_xpath", "dedicated_xpath"]:
+                            if value and not value.startswith('//'):
+                                raise ValueError(f"{key} must start with '//'")
                         elif key in ["stealth", "headless", "dark", "invert"]:
                             if value == "on":
                                 value = True
@@ -97,12 +131,17 @@ class TemplateManager:
                             else:
                                 print("MISSSSED", value)
                                 continue
-                    except Exception:
-                        # failing validation... TODO logging
-                        continue
+                    except ValueError as e:
+                        # Log the validation error and return False
+                        print(f"Validation error: {str(e)}")
+                        return False
 
                     setattr(template, key, value)
             session.commit()
+            return True
+        except Exception as e:
+            print(f"Error saving template: {str(e)}")
+            return False
         finally:
             session.close()
 
