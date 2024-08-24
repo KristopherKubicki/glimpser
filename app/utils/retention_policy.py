@@ -63,9 +63,18 @@ def delete_old_files(file_list, max_age, max_size, minimum=10):
             try:
                 os.remove(file_path)
                 total_size -= file_size
-                logging.info(f"Deleted file: {file_path}")
+                deletion_reason = "age" if file_age > max_age * 86400 else "size"
+                logging.info(
+                    f"Deleted file: {file_path} (Reason: {deletion_reason}, Size: {file_size / 1024:.2f} KB, Age: {file_age / 86400:.2f} days)"
+                )
             except Exception as e:
-                logging.error(f"Failed to delete file: {file_path}. Error: {str(e)}")
+                logging.error(
+                    f"Failed to delete file: {file_path} (Size: {file_size / 1024:.2f} KB, Age: {file_age / 86400:.2f} days). Error: {str(e)}"
+                )
+        else:
+            logging.debug(
+                f"Keeping file: {file_path} (Size: {file_size / 1024:.2f} KB, Age: {file_age / 86400:.2f} days)"
+            )
 
 
 def retention_cleanup():
