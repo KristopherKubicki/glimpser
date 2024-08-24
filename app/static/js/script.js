@@ -108,9 +108,14 @@ function loadGroups() {
 }
 
 
-function timeAgo(date) {
+function timeAgo(utcDateString) {
     const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
+    const utcDate = new Date(utcDateString);
+    const diffInSeconds = Math.floor((now - utcDate) / 1000);
+
+    if (diffInSeconds < 0) {
+        return 'in the future';
+    }
 
     const intervals = [
         { label: 'year', seconds: 31536000 },
