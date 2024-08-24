@@ -8,13 +8,23 @@ import requests
 from app.config import CHATGPT_KEY, LLM_MODEL_VERSION, LLM_SUMMARY_PROMPT
 
 last_429_error_time = None
+llm_request_count = 0
+llm_total_tokens = 0
+llm_total_cost = 0
 
+def get_llm_stats():
+    global llm_request_count, llm_total_tokens, llm_total_cost
+    return {
+        "request_count": llm_request_count,
+        "total_tokens": llm_total_tokens,
+        "total_cost": llm_total_cost
+    }
 
 def summarize(prompt, history=None, tokens=4096):
+    global last_429_error_time, llm_request_count, llm_total_tokens, llm_total_cost
 
     # 4096 kind of hte max
 
-    global last_429_error_time
     # Check if a 429 error occurred in the last 30 minutes
     if last_429_error_time and (
         datetime.datetime.now() - last_429_error_time
@@ -28,7 +38,7 @@ def summarize(prompt, history=None, tokens=4096):
     # TODO: make this configurable by the database instead
 
     lsummary_prompt = LLM_SUMMARY_PROMPT
-    lsummary_prompt.replace("$datetime", str(datetime.datetime.now()))
+    lsummary_prompt = lsummary_prompt.replace("$datetime", str(datetime.datetime.now()))
 
     messages = [
         {"role": "system", "content": [{"type": "text", "text": lsummary_prompt}]}
@@ -78,7 +88,13 @@ def summarize(prompt, history=None, tokens=4096):
         ltokens = result["usage"]["total_tokens"]
         # print(">>", result['usage'])
         # TODO: logging..
-        print(" total tokens $%0.5f" % (ltokens * 0.005 / 1000))
+        cost = ltokens * 0.005 / 1000
+        print(f" total tokens ${cost:.5f}")
+
+        # Update LLM stats
+        llm_request_count += 1
+        llm_total_tokens += ltokens
+        llm_total_cost += cost
 
         # TODO: actually, convert this to something else...
         ljson = {}

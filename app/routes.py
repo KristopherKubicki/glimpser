@@ -28,7 +28,6 @@ from flask import (
     session,
     url_for,
 )
-from flask_login import logout_user
 from PIL import Image
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
@@ -492,15 +491,13 @@ def init_routes(app):
                     login_attempts[ip_address]["locked_until"] = now + timedelta(
                         minutes=1
                     )
-
-                flash("Invalid username or password")
+                return render_template("login.html", flash="Invalid username or password")
         return render_template("login.html")
 
     @app.route("/logout")
-    @login_required
+    # @login_required
     def logout():
         session.pop("logged_in", None)
-        flash("You have been logged out successfully.", "success")
         return redirect(url_for("login"))
 
     @app.route("/")
@@ -1078,6 +1075,8 @@ def init_routes(app):
                     404,
                 )
 
+        # todo, else?
+
     @app.route("/templates/<string:template_name>")
     @login_required
     def template_details(template_name: TemplateName):
@@ -1246,3 +1245,10 @@ def init_routes(app):
                 return jsonify({"message": "Template updated successfully!"})
 
             return redirect("/templates/" + template_name)
+
+    @app.route("/llm_stats")
+    @login_required
+    def llm_stats():
+        from app.utils.llm import get_llm_stats
+        stats = get_llm_stats()
+        return jsonify(stats)
