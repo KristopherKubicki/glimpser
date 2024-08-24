@@ -15,7 +15,6 @@ import tempfile
 import time
 from urllib.parse import urlparse
 import glob
-from typing import List, Tuple, Dict, Optional, Union, Any
 
 import numpy as np
 import requests
@@ -38,19 +37,20 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
+logging.getLogger("webdriver_manager").setLevel(logging.WARNING)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from app.config import DEBUG, LANG, SCREENSHOT_DIRECTORY, UA
 
-last_camera_test: Dict[str, Any] = {}
-last_camera_test_time: Dict[str, float] = {}
-last_camera_header: Dict[str, str] = {}
-last_camera_header_time: Dict[str, float] = {}
-last_camera_light: Dict[str, Any] = {}
-last_camera_light_time: Dict[str, float] = {}
+last_camera_test = {}
+last_camera_test_time = {}
+last_camera_header = {}
+last_camera_header_time = {}
+last_camera_light = {}
+last_camera_light_time = {}
 
 
-def remove_background(image: Image.Image, background_color: Tuple[int, int, int, int] = (14, 14, 14, 255), threshold: int = 10) -> Image.Image:
+def remove_background(image, background_color=(14, 14, 14, 255), threshold=10):
     """Crop the image to remove the background color border and ensure a 16:9 aspect ratio."""
     # Find the bounding box of the non-background area
     bbox = find_bounding_box(image, background_color, threshold)
@@ -62,7 +62,7 @@ def remove_background(image: Image.Image, background_color: Tuple[int, int, int,
     return image
 
 
-def find_bounding_box(image: Image.Image, background_color: Tuple[int, int, int, int] = (14, 14, 14, 255), threshold: int = 10) -> Tuple[int, int, int, int]:
+def find_bounding_box(image, background_color=(14, 14, 14, 255), threshold=10):
     """Find the bounding box of the non-background area."""
     pixels = image.load()
     width, height = image.size
@@ -88,7 +88,7 @@ def find_bounding_box(image: Image.Image, background_color: Tuple[int, int, int,
     return (left, top, right, bottom)
 
 
-def adjust_bbox_to_aspect_ratio(bbox: Tuple[int, int, int, int], image_size: Tuple[int, int], aspect_ratio: Tuple[int, int] = (16, 9)) -> Tuple[int, int, int, int]:
+def adjust_bbox_to_aspect_ratio(bbox, image_size, aspect_ratio=(16, 9)):
     """Adjust the bounding box to fit the specified aspect ratio."""
     left, top, right, bottom = bbox
     bbox_width = right - left
@@ -116,12 +116,12 @@ def adjust_bbox_to_aspect_ratio(bbox: Tuple[int, int, int, int], image_size: Tup
     return (int(left), int(top), int(right), int(bottom))
 
 
-def is_similar_color(color1: Tuple[int, int, int, int], color2: Tuple[int, int, int, int], threshold: int) -> bool:
+def is_similar_color(color1, color2, threshold):
     """Check if two colors are similar."""
     return all(abs(c1 - c2) <= threshold for c1, c2 in zip(color1, color2))
 
 
-def is_mostly_blank(image: Image.Image, threshold: float = 0.92, blank_color: Tuple[int, int, int] = (255, 255, 255)) -> bool:
+def is_mostly_blank(image, threshold=0.92, blank_color=(255, 255, 255)):
     """
     Analyze the image to check if it's mostly blank, contains shapes, and if it's dark or light.
 
@@ -159,7 +159,7 @@ def is_mostly_blank(image: Image.Image, threshold: float = 0.92, blank_color: Tu
     return False
 
 
-def add_timestamp(image_path: str, name: str = "unknown", invert: bool = False) -> None:
+def add_timestamp(image_path, name="unknown", invert=False):
     if os.path.exists(image_path):
         with Image.open(
             image_path
@@ -238,8 +238,8 @@ def add_timestamp(image_path: str, name: str = "unknown", invert: bool = False) 
 
 
 def download_image(
-    url: str, output_path: str, timeout: int = 30, name: str = "unknown", invert: bool = False, dark: bool = False
-) -> bool:
+    url, output_path, timeout=30, name="unknown", invert=False, dark=False
+):
     """Attempt to download an image directly from the URL and convert it to PNG format."""
 
     response = None
@@ -297,8 +297,8 @@ def download_image(
 
 
 def download_pdf(
-    url: str, output_path: str, timeout: int = 30, name: str = "unknown", invert: bool = False, dark: bool = False
-) -> bool:
+    url, output_path, timeout=30, name="unknown", invert=False, dark=False
+):
     """Attempt to download the first page of a PDF from the URL and convert it to PNG format."""
 
     try:
@@ -371,7 +371,7 @@ def download_pdf(
         return False
 
 
-def is_enhanced(url: str) -> bool:
+def is_enhanced(url):
     extractors = youtube_dl.extractor.gen_extractors()
     for e in extractors:
         if e.suitable(url) and e.IE_NAME != "generic":
@@ -379,7 +379,7 @@ def is_enhanced(url: str) -> bool:
     return False
 
 
-def get_arp_output(ip_address: str, timeout: int) -> bytes:
+def get_arp_output(ip_address, timeout):
     if platform.system() == "Windows":
         command = ["arp", "-a", ip_address]
     else:
@@ -387,11 +387,11 @@ def get_arp_output(ip_address: str, timeout: int) -> bytes:
     return subprocess.check_output(command, stderr=subprocess.STDOUT, timeout=timeout)
 
 
-def is_private_ip(ip_address: str) -> bool:
+def is_private_ip(ip_address):
     return ipaddress.ip_address(ip_address).is_private
 
 
-def is_address_reachable(address: str, port: int = 80, timeout: int = 5) -> bool:
+def is_address_reachable(address, port=80, timeout=5):
 
     if port is None:
         port = 80
@@ -433,7 +433,7 @@ def is_address_reachable(address: str, port: int = 80, timeout: int = 5) -> bool
     return False
 
 
-def parse_url(url: str) -> Tuple[Optional[str], Optional[int]]:
+def parse_url(url):
     parsed_url = urlparse(url)
     domain = parsed_url.hostname
     if parsed_url and parsed_url.scheme == '' and domain is None:
@@ -451,71 +451,119 @@ def parse_url(url: str) -> Tuple[Optional[str], Optional[int]]:
     return domain, port
 
 
-def capture_or_download(name: str, template: Dict[str, Any]) -> bool:
-    """Decides whether to download the image directly or capture a screenshot."""
+def capture_or_download(name: str, template: str) -> bool:
+    """
+    Decides whether to download the image directly or capture a screenshot based on the given template.
 
+    This function is the main entry point for capturing or downloading content from a URL. It handles
+    various types of content (images, PDFs, video streams, web pages) and uses different methods to
+    obtain the content based on the URL and content type.
+
+    Args:
+        name (str): The name to be used for the output file.
+        template (str): A dictionary containing configuration parameters for the capture/download.
+
+    Returns:
+        bool: True if the capture/download was successful, False otherwise.
+    """
     if name is None or template is None:
         return False
 
+    # Extract parameters from the template
     url = template.get("url")
     popup_xpath = template.get("popup_xpath")
     dedicated_selector = template.get("dedicated_xpath")
     timeout = int(template.get("timeout", 30) or 30)
-    invert = False
-    headless = False
-    dark = False
-    stealth = False
-    browser = False
-    danger = False
-    if template.get("invert", "") not in ["", "false", False]:
-        invert = True
-    if template.get("headless", "") not in ["", "false", False]:
-        headless = True
-    if template.get("dark", "") not in ["", "false", False]:
-        dark = True
-    if template.get("stealth", "") not in ["", "false", False]:
-        stealth = True
-        browser = True
-    if template.get("browser", "") not in ["", "false", False]:
-        browser = True
-    if template.get("danger", "") not in ["", "false", False]:
-        danger = True
+
+    # Set flags based on template parameters
+    invert = template.get("invert", "") not in ["", "false", False]
+    headless = template.get("headless", "") not in ["", "false", False]
+    dark = template.get("dark", "") not in ["", "false", False]
+    stealth = template.get("stealth", "") not in ["", "false", False]
+    browser = template.get("browser", "") not in ["", "false", False] or stealth
+    danger = template.get("danger", "") not in ["", "false", False]
+
+    if danger:
         browser = True
         headless = True
-    if headless is False:
+    if not headless:
         browser = True
 
-    # Check to see if the host is online
+    # Check if the host is reachable
     domain, port = parse_url(url)
-    if is_address_reachable(domain, port=port) is False:
-        logging.error("Unsuccessfully could not reach host: %s %s" % (name, url))
+    if not is_address_reachable(domain, port=port):
+        logging.error(f"Could not reach host: {name} {url}")
         return False
 
-    # TODO: let the template specify which downloader to use
-    # Current datetime in the specified format
+    # Prepare output path
     timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
-    # Update the output_path format to include the timestamp
     output_path = os.path.join(SCREENSHOT_DIRECTORY, f"{name}/{name}_{timestamp}.png")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    # Check if the URL is reachable and get the content type
-    # add a simple requests.head call to figure out what kind of media type this is, etc
-    content_type = ""
-    global last_camera_header, last_camera_header_time, last_camera_test, last_camera_test_time
-    if (
-        last_camera_header.get(url)
-        and last_camera_header_time.get(url, 0) > time.time() - 60 * 60
-    ):
-        content_type = last_camera_header.get(url)
+    # Determine content type
+    content_type = get_content_type(url, danger)
 
-    if content_type == "" and "http" in url and not danger:
+    # Attempt to download or capture based on content type and URL
+    if is_image_url(url, content_type) and not danger:
+        return download_image(url, output_path, timeout, name, invert)
+
+    if is_pdf_url(url, content_type) and not danger:
+        return download_pdf(url, output_path, timeout, name, invert)
+
+    if is_video_stream_url(url, content_type) and not danger:
+        return capture_frame_from_stream(url, output_path, timeout, name, invert)
+
+    if is_enhanced(url) and not danger:
+        return capture_frame_with_ytdlp(url, output_path, name, invert)
+
+    # Attempt lightweight browser capture for simple web pages
+    if should_use_lightweight_browser(url, dedicated_selector, popup_xpath, headless, stealth, browser, danger):
+        return capture_screenshot_and_har_light(url, output_path, timeout, name, invert, template.get("proxy"), dark)
+
+    # Fall back to full browser capture
+    if re.findall(r"^https?://", url, flags=re.I):
+        if not browser:
+            headless = True
+        return capture_screenshot_and_har(url, output_path, popup_xpath, dedicated_selector, timeout, name, invert, template.get("proxy"), headless, dark, stealth, danger)
+
+    logging.error(f"Failed to capture or download content from {url}")
+    return False
+
+def get_content_type(url, danger):
+    """
+    Determine the content type of the URL.
+
+    This function attempts to get the content type using HEAD and GET requests,
+    and caches the result for an hour to reduce unnecessary requests.
+
+    Args:
+        url (str): The URL to check.
+        danger (bool): If True, skip content type checking.
+
+    Returns:
+        str: The determined content type, or an empty string if not determined.
+    """
+    global last_camera_header, last_camera_header_time
+
+    # Check cache first
+    if (last_camera_header.get(url) and
+        last_camera_header_time.get(url, 0) > time.time() - 60 * 60):
+        return last_camera_header.get(url)
+
+    if "http" not in url or danger:
+        return ""
+
+    content_type = ""
+    methods = [requests.head, requests.get]
+
+    for method in methods:
         try:
             headers = {"user-agent": UA}
+            if method == requests.get:
+                headers["Range"] = "bytes=0-1024"
 
-            auth = None
-            for leach in re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url):
-                auth = requests.auth.HTTPBasicAuth(leach[0], leach[1])
-            response = requests.head(
+            auth = get_auth(url)
+            response = method(
                 url,
                 stream=True,
                 timeout=5,
@@ -524,12 +572,10 @@ def capture_or_download(name: str, template: Dict[str, Any]) -> bool:
                 auth=auth,
                 allow_redirects=True,
             )
-            if (
-                response.status_code == 401 and auth is not None
-            ):  # Unauthorized, try Digest Authentication
-                for leach in re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url):
-                    auth = requests.auth.HTTPDigestAuth(leach[0], leach[1])
-                response = requests.head(
+
+            if response.status_code == 401 and auth:
+                auth = get_digest_auth(url)
+                response = method(
                     url,
                     timeout=5,
                     verify=False,
@@ -540,250 +586,62 @@ def capture_or_download(name: str, template: Dict[str, Any]) -> bool:
 
             if response.status_code == 404:
                 logging.info(f"Missing {url}")
-                return False
+                return ""
 
             response.raise_for_status()
             content_type = response.headers.get("Content-Type", "").lower()
-            # logging.info(f"Content type for {url} is {content_type}")
+            break  # Exit the loop if successful
         except Exception as e:
-            if "unsupported" in str(e).lower():
-                logging.info(f"Unsupported HEAD {url}: {e}")
-            elif "method not allowed" in str(e).lower():
-                logging.info(f"Not allowed HEAD {url}: {e}")
-            elif "401 client error" in str(e).lower():
-                logging.info(f"Error HEAD {url}: {e}")
-            elif "timeout" in str(e).lower():
-                logging.error(f"Error HEAD {url}: {e}")
-                return False
-            else:
-                # however, a timeout is usually pretty bad.
-                #  we generally dont even want to keep going if a timeout happens.  Consider it.
+            logging.info(f"Error {method.__name__.upper()} {url}: {e}")
 
-                # note - just because this error is here, doesnt actually mean the content isnt here.  cameras often dont support head()
-                logging.info(f"Content type for {url}: {e}")
-            # print(" warn1", response.headers)
-            # really no worse off than we were before
-
-    if content_type == "" and "http" in url and not danger:
-        # Perform a range request to get a small part of the content
-        try:
-            headers = {"user-agent": UA, "Range": "bytes=0-1024"}
-            # TODO: apply proxy
-
-            auth = None
-            for leach in re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url):
-                auth = requests.auth.HTTPBasicAuth(leach[0], leach[1])
-            response = requests.get(
-                url,
-                stream=True,
-                timeout=5,
-                verify=False,
-                headers=headers,
-                auth=auth,
-                allow_redirects=True,
-            )
-
-            if (
-                response.status_code == 401 and auth is not None
-            ):  # Unauthorized, try Digest Authentication
-                for leach in re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url):
-                    auth = requests.auth.HTTPDigestAuth(leach[0], leach[1])
-                response = requests.get(
-                    url,
-                    timeout=5,
-                    verify=False,
-                    headers=headers,
-                    auth=auth,
-                    allow_redirects=True,
-                )
-
-            if response.status_code == 404:
-                logging.info(f"Missing {url}")
-                return False
-
-            response.raise_for_status()
-            # Check the content type again
-            content_type = response.headers.get("Content-Type", "").lower()
-            # TODO: consider checking the content returned for the content headers
-            # print(f"    updated content type {content_type} {url}")
-        except Exception as e:
-            if "unsupported" in str(e).lower():
-                logging.info(f"Unsupported RANGE {url}: {e}")
-            elif "method not allowed" in str(e).lower():
-                logging.info(f"Not allowed RANGE {url}: {e}")
-            elif "401 client error" in str(e).lower():
-                logging.info(f"Error RANGE {url}: {e}")
-            elif "timeout" in str(e).lower():
-                logging.error(f"Error RANGE {url}: {e}")
-            else:
-                logging.warn(f"Error performing range request for {url}: {e}")
-            # print(" warn2", response.headers)
-
-    if (
-        content_type != ""
-        and last_camera_header_time.get(url, 0) < time.time() - 60 * 60
-    ):
-        # print("saved content type!", name, content_type,  last_camera_header_time.get(url,0), time.time() - 60*60)
+    # Cache the result
+    if content_type:
         last_camera_header[url] = content_type
         last_camera_header_time[url] = time.time()
 
-    # Check if the URL is an obvious image based on its extension, some hax
-    if (
-        any(
-            ext in url.lower()
-            for ext in [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".gif", "/picture"]
-        )
-        or "image/" in content_type
-        and not danger
-    ):
-        # Attempt to download the image directly
-        # print(" trying picture", url)
-        image_saved = download_image(
-            url, output_path, timeout=timeout, name=name, invert=invert
-        )
-        # print("   attempt", content_type, url, image_saved)
-        if image_saved:
-            # logging.info(f"Successfully downloaded image from {url}")
-            # if content_type == '':
-            #    print("   MISSING CONTENT TYPE1", url)
-            if (
-                "image/" not in content_type
-                and last_camera_header_time.get(url, 0) < time.time() - 60 * 60
-            ):
-                last_camera_header[url] = "image/unknown"
-                last_camera_header_time[url] = time.time()
-                # print("* *** saved content type1!", name, content_type)
-            return True
-        logging.warn(
-            f"Failed to download image directly from {url}, attempting to capture screenshot..."
-        )
+    return content_type
 
-    if (
-        any(ext in url.lower() for ext in [".pdf"])
-        or "/pdf" in content_type
-        and not danger
-    ):
-        image_saved = download_pdf(
-            url, output_path, timeout=timeout, name=name, invert=invert
-        )
-        if image_saved:
-            # if content_type == '':
-            #    print("   MISSING CONTENT TYPE2", url)
-            if (
-                "/pdf" not in content_type
-                and last_camera_header_time.get(url, 0) < time.time() - 60 * 60
-            ):
-                last_camera_header[url] = "application/pdf"
-                last_camera_header_time[url] = time.time()
-                # print("* *** saved content type2!", name, content_type)
-            # logging.info(f"Successfully downloaded image from {url}")
-            return True
+def get_auth(url):
+    """Extract and return BasicAuth from URL if present."""
+    auth_match = re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url)
+    return requests.auth.HTTPBasicAuth(*auth_match[0]) if auth_match else None
 
-    # Check for media stream URLs
-    #  # port :5004 is an obvious homerunhd machine
-    if (
-        any(
-            ext in url.lower()
-            for ext in [".mjpg", ".mp4", ".gif", ".webp", "rtsp://", ".m3u8", ":5004/"]
-        )
-        or "video/" in content_type
-        and not danger
-    ):
-        frame_captured = capture_frame_from_stream(
-            url, output_path, timeout=timeout, name=name, invert=invert
-        )
-        if frame_captured:
-            # if content_type == '':
-            #    print(" MISSING CONTENT TYPE3", content_type, url)
-            if (
-                "video/" not in content_type
-                and last_camera_header_time.get(url, 0) < time.time() - 60 * 60
-            ):
-                last_camera_header[url] = "video/unknown"
-                last_camera_header_time[url] = time.time()
-                # print("* *** saved content type3!", name, content_type)
-            return True
-    if (
-        is_enhanced(url) and not danger
-    ):  # Note - we probably dont want to do this if its like a home page or something.  can we parse and check?
-        frame_captured = capture_frame_with_ytdlp(
-            url, output_path, name=name, invert=invert
-        )
-        if frame_captured:
-            return True
+def get_digest_auth(url):
+    """Extract and return DigestAuth from URL if present."""
+    auth_match = re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url)
+    return requests.auth.HTTPDigestAuth(*auth_match[0]) if auth_match else None
 
-    # try with a very lightweight browser
-    if (
-        re.findall(r"^https?://", url, flags=re.I)
-        and dedicated_selector in [None, ""]
-        and popup_xpath in [None, ""]
-        and headless is True
-        and stealth is False
-        and browser is False
-        and not is_enhanced(url)
-        and not danger
-    ):
-        image_saved = capture_screenshot_and_har_light(
-            url,
-            output_path,
-            timeout,
-            name=name,
-            invert=invert,
-            proxy=template.get("proxy"),
-            dark=dark,
-        )
-        if image_saved:
-            # if content_type == '':
-            #    print(" MISSING CONTENT TYPE5", content_type, url)
-            if (
-                "text/" not in content_type
-                and last_camera_header_time.get(url, 0) < time.time() - 60 * 60
-            ):
-                last_camera_header[url] = "text/html"
-                last_camera_header_time[url] = time.time()
-                # print("* *** saved content type5!", name, content_type)
-            return True
-        logging.warn(f"Failed to access via webkit {url}, attempting chrome...")
+def is_image_url(url, content_type):
+    """Check if the URL is likely to be an image."""
+    image_extensions = [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".gif", "/picture"]
+    return any(ext in url.lower() for ext in image_extensions) or "image/" in content_type
 
-    # If direct download fails or URL is not an obvious image, capture screenshot
-    if re.findall(r"^https?://", url, flags=re.I):
-        # if we failed over to here, we're taking the browser
-        if browser is False:
-            headless = True
+def is_pdf_url(url, content_type):
+    """Check if the URL is likely to be a PDF."""
+    return ".pdf" in url.lower() or "/pdf" in content_type
 
-        image_saved = capture_screenshot_and_har(
-            url,
-            output_path,
-            popup_xpath,
-            dedicated_selector,
-            timeout,
-            name=name,
-            invert=invert,
-            proxy=template.get("proxy"),
-            headless=headless,
-            dark=dark,
-            stealth=stealth,
-            danger=danger,
-        )
-        if image_saved:
-            # if content_type == '':
-            #    print(" MISSING CONTENT TYPE6", content_type, url)
-            if (
-                "text/" not in content_type
-                and last_camera_header_time.get(url, 0) < time.time() - 60 * 60
-            ):
-                last_camera_header[url] = "text/html"
-                last_camera_header_time[url] = time.time()
-                # print("* *** saved content type!", name, content_type)
-            return True
-        logging.error(f"Failed to access via chrome {url} , quitting")
+def is_video_stream_url(url, content_type):
+    """Check if the URL is likely to be a video stream."""
+    video_indicators = [".mjpg", ".mp4", ".gif", ".webp", "rtsp://", ".m3u8", ":5004/"]
+    return any(ind in url.lower() for ind in video_indicators) or "video/" in content_type
 
-    # print(" CONTENT:", content_type, '::', last_camera_header.get(url,0), url)
+def should_use_lightweight_browser(url, dedicated_selector, popup_xpath, headless, stealth, browser, danger):
+    """Determine if a lightweight browser should be used for capture."""
+    return (re.findall(r"^https?://", url, flags=re.I) and
+            dedicated_selector in [None, ""] and
+            popup_xpath in [None, ""] and
+            headless and
+            not stealth and
+            not browser and
+            not is_enhanced(url) and
+            not danger)
 
-    return False
+# The rest of the functions (download_image, download_pdf, capture_frame_from_stream,
+# capture_frame_with_ytdlp, capture_screenshot_and_har_light, capture_screenshot_and_har)
+# should be implemented as before, with appropriate error handling and logging.
 
 
-def capture_frame_with_ytdlp(url: str, output_path: str, name: str = "unknown", invert: bool = False) -> bool:
+def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
     """Use yt-dlp to get the video URL and ffmpeg to capture a single frame from the video stream."""
 
     if shutil.which("yt-dlp") is None:
@@ -794,7 +652,7 @@ def capture_frame_with_ytdlp(url: str, output_path: str, name: str = "unknown", 
         # Use yt-dlp to get the direct video URL
         output_path + ".%(ext)s"
         ytdlp_command = [
-            "yt-dlp",
+            "yt-dlp",  # TODO make this path a config
             "--get-url",
             "--format",
             "bestvideo",  # Adjust the format as needed
@@ -807,13 +665,13 @@ def capture_frame_with_ytdlp(url: str, output_path: str, name: str = "unknown", 
 
         # Use ffmpeg to capture a frame from the video URL
         ffmpeg_command = [
-            "ffmpeg",
+            "ffmpeg", # TODO: make this a config
             "-analyzeduration",
             "20M",
             "-probesize",
             "20M",
             "-ec",
-            "15",
+            "15",  # todo: add -safe option
             "-i",
             video_url,  # Input stream URL from yt-dlp
             "-sn",
@@ -851,8 +709,8 @@ def capture_frame_with_ytdlp(url: str, output_path: str, name: str = "unknown", 
 
 
 def capture_frame_from_stream(
-    url: str, output_path: str, num_frames: int = 3, timeout: int = 30, name: str = "unknown", invert: bool = False
-) -> bool:
+    url, output_path, num_frames=3, timeout=30, name="unknown", invert=False
+):
     """Use ffmpeg to capture multiple frames from a video stream and save the last one."""
     if shutil.which("ffmpeg") is None:
         print("ffmpeg is not installed or not in the system path.")
@@ -862,9 +720,9 @@ def capture_frame_from_stream(
         # Capture multiple frames into the temporary directory
         temp_output_pattern = os.path.join(tmpdirname, "frame_%03d.png")
         command = [
-            "ffmpeg",
+            "ffmpeg", # TODO: make this configurable
             "-hide_banner",
-            #'-hwaccel', 'auto',
+            #'-hwaccel', 'auto',  #TODO add support
         ]
 
         probe_size = "5M"
@@ -959,7 +817,7 @@ def capture_frame_from_stream(
     return False
 
 
-def add_options(options: Union[webdriver.ChromeOptions, Options], uc: bool = False) -> Union[webdriver.ChromeOptions, Options]:
+def add_options(options, uc=False):
     options.add_argument("--disabled")
 
     # https://stackoverflow.com/questions/62889739/selenium-gives-timed-out-receiving-message-from-renderer-for-all-websites-afte
@@ -1114,7 +972,7 @@ def add_options(options: Union[webdriver.ChromeOptions, Options], uc: bool = Fal
     return options
 
 
-def network_idle_condition(driver: webdriver.Chrome, url: str, timeout: int = 30, idle_time: float = 0.25, stealth: bool = False) -> Tuple[bool, int]:
+def network_idle_condition(driver, url, timeout=30, idle_time=0.25, stealth=False):
     """
     Returns a function that can be used as a condition for WebDriverWait.
     It checks if the network has been idle for a specified amount of time.
@@ -1183,7 +1041,7 @@ def network_idle_condition(driver: webdriver.Chrome, url: str, timeout: int = 30
     return False, lstatus
 
 
-def apply_dark_mode(img: Image.Image, range_value: int = 30, text_range_value: int = 120) -> Image.Image:
+def apply_dark_mode(img, range_value=30, text_range_value=120):
     pixels = img.load()  # Get the pixel map of the image
     text_upper_bound = 255 - text_range_value
 
@@ -1210,8 +1068,8 @@ def apply_dark_mode(img: Image.Image, range_value: int = 30, text_range_value: i
 import shlex
 
 def capture_screenshot_and_har_light(
-    url: str, output_path: str, timeout: int = 30, name: str = "unknown", invert: bool = False, proxy: Optional[str] = None, dark: bool = True
-) -> bool:
+    url, output_path, timeout=30, name="unknown", invert=False, proxy=None, dark=True
+):
     """
     Capture a screenshot of a URL using wkhtmltoimage (WebKit).
 
@@ -1312,7 +1170,7 @@ def capture_screenshot_and_har_light(
 chrome_version = {}
 
 
-def get_chrome_version(chrome_path: str) -> str:
+def get_chrome_version(chrome_path):
     # Command to get the installed version of Chrome
     global chrome_version
     if (
@@ -1329,7 +1187,7 @@ def get_chrome_version(chrome_path: str) -> str:
     return version
 
 
-def extract_version(driver_path: str) -> int:
+def extract_version(driver_path):
     try:
         # Extract the version using regex to handle different structures
         match = re.search(r"(\d+)\.(\d+)\.(\d+)\.(\d+)", driver_path)
@@ -1345,7 +1203,7 @@ def extract_version(driver_path: str) -> int:
         return 127
 
 
-def is_port_open(host: str, port: int, timeout: int = 5) -> bool:
+def is_port_open(host, port, timeout=5):
     """Check if a network port is open on the specified host."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(timeout)
@@ -1357,19 +1215,19 @@ def is_port_open(host: str, port: int, timeout: int = 5) -> bool:
 
 
 def capture_screenshot_and_har(
-    url: str,
-    output_path: str,
-    popup_xpath: Optional[str] = None,
-    dedicated_selector: Optional[str] = None,
-    timeout: int = 30,
-    name: str = "unknown",
-    invert: bool = False,
-    proxy: Optional[str] = None,
-    stealth: bool = False,
-    dark: bool = True,
-    headless: bool = True,
-    danger: bool = False,
-) -> bool:
+    url,
+    output_path,
+    popup_xpath=None,
+    dedicated_selector=None,
+    timeout=30,
+    name="unknown",
+    invert=False,
+    proxy=None,
+    stealth=False,
+    dark=True,
+    headless=True,
+    danger=False,
+):
     """
     Capture a screenshot of a URL using headless Chrome, optionally removing a popup before taking the screenshot.
 
@@ -1717,7 +1575,7 @@ def capture_screenshot_and_har(
                 if current_time - os.path.getmtime(temp_dir) > 3600:  # 3600 seconds = 1 hour
                     shutil.rmtree(temp_dir, ignore_errors=True)
                     cleaned_dirs += 1
-            logging.info(f"Cleaned up {cleaned_dirs} temporary Chrome directories")
+            logging.debug(f"Cleaned up {cleaned_dirs} temporary Chrome directories")
         except Exception as e:
             logging.error(f"Error cleaning up temporary Chrome files: {e}")
 
