@@ -1144,6 +1144,12 @@ def init_routes(app):
 
         return send_from_directory(path, filename)
 
+from flask import jsonify
+from app.utils.scheduling import get_system_metrics
+
+def init_routes(app):
+    # ... (other route definitions)
+
     @app.route("/settings", methods=["GET", "POST"])
     def settings():
         if request.method == "POST":
@@ -1165,6 +1171,10 @@ def init_routes(app):
 
         settings = get_all_settings()
         return render_template("settings.html", settings=settings)
+
+    @app.route('/system_metrics')
+    def system_metrics():
+        return jsonify(get_system_metrics())
 
     @app.route("/update_template/<string:template_name>", methods=["POST"])
     @login_required

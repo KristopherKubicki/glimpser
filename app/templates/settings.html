@@ -6,8 +6,58 @@
         {% include 'nav.html' %}
     </header>
 
+
+    <div id="performance-metrics">
+        <h3>System Performance</h3>
+        <div class="metric">
+            <label>CPU Usage:</label>
+            <div class="progress-bar">
+                <div id="cpu-bar" class="progress"></div>
+            </div>
+            <span id="cpu-value"></span>
+        </div>
+        <div class="metric">
+            <label>Memory Usage:</label>
+            <div class="progress-bar">
+                <div id="memory-bar" class="progress"></div>
+            </div>
+            <span id="memory-value"></span>
+        </div>
+        <div class="metric">
+            <label>CPU Sparkline:</label>
+            <canvas id="cpu-sparkline"></canvas>
+        </div>
+        <div class="metric">
+            <label>Uptime:</label>
+            <span id="uptime-value"></span>
+    <div id="performance-metrics">
+        <h3>System Performance</h3>
+        <div class="metric">
+            <label>CPU Usage:</label>
+            <div class="progress-bar">
+                <div id="cpu-bar" class="progress"></div>
+            </div>
+            <span id="cpu-value"></span>
+        </div>
+        <div class="metric">
+            <label>Memory Usage:</label>
+            <div class="progress-bar">
+                <div id="memory-bar" class="progress"></div>
+            </div>
+            <span id="memory-value"></span>
+        </div>
+        <div class="metric">
+            <label>CPU Sparkline:</label>
+            <canvas id="cpu-sparkline"></canvas>
+        </div>
+        <div class="metric">
+            <label>Uptime:</label>
+            <span id="uptime-value"></span>
+        </div>
+
     <div style="text-align: right; margin: 10px;">
         <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+
     </div>
 
     <h2>Current Settings</h2>
@@ -50,6 +100,7 @@
 
     {% include 'footer.html' %}
 
+    <script src="{{ url_for('static', filename='js/performance.js') }}"></script>
 </body>
 </html>
 
