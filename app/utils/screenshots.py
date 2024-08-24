@@ -452,51 +452,72 @@ def parse_url(url):
 
 
 def capture_or_download(name: str, template: str) -> bool:
-    """Decides whether to download the image directly or capture a screenshot."""
+    """
+    Decides whether to download the image directly or capture a screenshot based on the given template.
+
+    This function is a core component of the screenshot capture system. It analyzes the provided
+    template to determine the best method for obtaining the image (direct download or screenshot),
+    and then executes the chosen method.
+
+    Args:
+        name (str): The name of the template, used for logging and file naming.
+        template (str): A dictionary containing various configuration options for the capture process.
+
+    Returns:
+        bool: True if the image was successfully captured or downloaded, False otherwise.
+
+    Key steps in the process:
+    1. Extract and process template options (URL, selectors, timeouts, etc.)
+    2. Check if the target host is reachable
+    3. Determine the appropriate method for obtaining the image
+    4. Execute the chosen method (download or capture)
+    5. Post-process the image if necessary (e.g., apply dark mode, add timestamp)
+
+    The function supports various capture modes and options, including:
+    - Direct image download for known image URLs
+    - PDF download and conversion
+    - Video stream frame capture
+    - Browser-based screenshot capture (with options for headless, stealth, and dark mode)
+
+    Error handling and logging are implemented throughout the process to ensure robustness
+    and to facilitate debugging.
+    """
 
     if name is None or template is None:
         return False
 
+    # Extract template options
     url = template.get("url")
     popup_xpath = template.get("popup_xpath")
     dedicated_selector = template.get("dedicated_xpath")
     timeout = int(template.get("timeout", 30) or 30)
-    invert = False
-    headless = False
-    dark = False
-    stealth = False
-    browser = False
-    danger = False
-    if template.get("invert", "") not in ["", "false", False]:
-        invert = True
-    if template.get("headless", "") not in ["", "false", False]:
+    invert = template.get("invert", "") not in ["", "false", False]
+    headless = template.get("headless", "") not in ["", "false", False]
+    dark = template.get("dark", "") not in ["", "false", False]
+    stealth = template.get("stealth", "") not in ["", "false", False]
+    browser = template.get("browser", "") not in ["", "false", False]
+    danger = template.get("danger", "") not in ["", "false", False]
+
+    # Adjust capture mode based on template options
+    if stealth or danger:
+        browser = True
+    if danger:
         headless = True
-    if template.get("dark", "") not in ["", "false", False]:
-        dark = True
-    if template.get("stealth", "") not in ["", "false", False]:
-        stealth = True
-        browser = True
-    if template.get("browser", "") not in ["", "false", False]:
-        browser = True
-    if template.get("danger", "") not in ["", "false", False]:
-        danger = True
-        browser = True
-        headless = True
-    if headless is False:
+    if not headless:
         browser = True
 
-    # Check to see if the host is online
+    # Check if the host is reachable
     domain, port = parse_url(url)
-    if is_address_reachable(domain, port=port) is False:
-        logging.error("Unsuccessfully could not reach host: %s %s" % (name, url))
+    if not is_address_reachable(domain, port=port):
+        logging.error(f"Could not reach host: {name} {url}")
         return False
 
-    # TODO: let the template specify which downloader to use
-    # Current datetime in the specified format
+    # Prepare output path
     timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
-    # Update the output_path format to include the timestamp
     output_path = os.path.join(SCREENSHOT_DIRECTORY, f"{name}/{name}_{timestamp}.png")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    # TODO: Implement template-specific downloader selection
 
     # Check if the URL is reachable and get the content type
     # add a simple requests.head call to figure out what kind of media type this is, etc
