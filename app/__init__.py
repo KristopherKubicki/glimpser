@@ -103,7 +103,7 @@ def create_app():
     def watchdog():
         """
         Watchdog function to monitor the application's health.
-        
+
         This function runs in a separate thread and periodically checks if the
         application is responding correctly. If it detects an issue, it attempts
         to restore the previous configuration and force restarts the application.
@@ -121,7 +121,12 @@ def create_app():
                 except Exception as e:
                     logging.error("Application error detected: %s", e)
                     logging.info("Attempting to restore previous configuration...")
-                    restore_config()
+                    try:
+                        restore_config()
+                    except Exception as config_error:
+                        logging.error("Failed to restore configuration: %s", config_error)
+                        raise  # Re-raise the exception after logging
+                    logging.info("Forcing application restart...")
                     os._exit(1)  # Force restart the application
 
     # Start the watchdog thread
