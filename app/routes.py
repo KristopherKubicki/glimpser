@@ -48,6 +48,7 @@ from app.utils import (
     screenshots
 )
 from app.utils.db import SessionLocal
+from app.utils.scheduling import check_disk_space, get_system_metrics
 
 def restart_server():
     print("Restarting server...")
@@ -446,8 +447,14 @@ def init_routes(app):
 
     @app.route('/health')
     def health_check():
-        # should be healthy
-        return jsonify({"status": "healthy"}), 200
+        disk_space_ok = check_disk_space()
+        system_metrics = get_system_metrics()
+        is_healthy = disk_space_ok and system_metrics['cpu_usage'] < 90 and system_metrics['memory_usage'] < 90
+        return jsonify({
+            "status": "healthy" if is_healthy else "unhealthy",
+            "disk_space_ok": disk_space_ok,
+            "system_metrics": system_metrics
+        }), 200 if is_healthy else 500
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
@@ -491,7 +498,8 @@ def init_routes(app):
                     login_attempts[ip_address]["locked_until"] = now + timedelta(
                         minutes=1
                     )
-                return render_template("login.html", flash="Invalid username or password")
+
+                flash("Invalid username or password")
         return render_template("login.html")
 
     @app.route("/logout")
@@ -1074,8 +1082,6 @@ def init_routes(app):
                     jsonify({"status": "failure", "message": "Template not found"}),
                     404,
                 )
-
-        # todo, else? 
 
     @app.route("/templates/<string:template_name>")
     @login_required

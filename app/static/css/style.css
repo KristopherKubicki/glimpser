@@ -590,3 +590,37 @@ footer {
         align-items: center;
     }
 }
+
+.health-indicator {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.health-indicator.healthy {
+    background-color: #4CAF50;  /* Green */
+}
+
+.health-indicator.unhealthy {
+    background-color: #F44336;  /* Red */
+}
+
+.health-indicator {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.health-indicator.healthy {
+    background-color: #4CAF50;  /* Green */
+}
+
+.health-indicator.unhealthy {
+    background-color: #F44336;  /* Red */
+}

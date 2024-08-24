@@ -393,4 +393,35 @@ groupDropdown.addEventListener('change', loadTemplates);
 // Set an interval to update video sources every 30 minutes
 setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
 
+// Add health indicator functionality
+function updateHealthIndicator() {
+    fetch('/health')
+        .then(response => response.json())
+        .then(data => {
+            const healthIndicator = document.getElementById('health-indicator');
+            if (data.status === 'healthy') {
+                healthIndicator.classList.remove('unhealthy');
+                healthIndicator.classList.add('healthy');
+                healthIndicator.title = 'System is healthy';
+            } else {
+                healthIndicator.classList.remove('healthy');
+                healthIndicator.classList.add('unhealthy');
+                healthIndicator.title = `System is unhealthy: ${data.disk_space_ok ? '' : 'Disk space low. '}CPU: ${data.system_metrics.cpu_usage}%, Memory: ${data.system_metrics.memory_usage}%`;
+            }
+        })
+        .catch(error => {
+            console.error('Error updating health indicator:', error);
+            const healthIndicator = document.getElementById('health-indicator');
+            healthIndicator.classList.remove('healthy');
+            healthIndicator.classList.add('unhealthy');
+            healthIndicator.title = 'Error checking system health';
+        });
+}
+
+// Update health indicator every 60 seconds
+setInterval(updateHealthIndicator, 60000);
+
+// Initial health indicator update
+updateHealthIndicator();
+
 });

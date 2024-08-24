@@ -763,6 +763,8 @@ def start_metrics_collection():
     metrics_thread = threading.Thread(target=collect_system_metrics, daemon=True)
     metrics_thread.start()
 
+import shutil
+
 def get_system_metrics():
     global system_metrics
     uptime = time.time() - system_metrics['start_time']
@@ -772,3 +774,13 @@ def get_system_metrics():
         'thread_count': system_metrics['thread_count'],
         'uptime': f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s"
     }
+
+def check_disk_space():
+    total, used, free = shutil.disk_usage("/")
+    disk_usage_percent = (used / total) * 100
+    return disk_usage_percent < 90  # Return True if disk usage is less than 90%
+
+def check_disk_space():
+    total, used, free = shutil.disk_usage("/")
+    disk_usage_percent = (used / total) * 100
+    return disk_usage_percent < 90  # Return True if disk usage is less than 90%
