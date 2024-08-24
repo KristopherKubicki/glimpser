@@ -709,7 +709,7 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
 
 
 def capture_frame_from_stream(
-    url, output_path, num_frames=3, timeout=30, name="unknown", invert=False
+    url, output_path, num_frames=3, timeout=30, name="unknown", invert=False, ffmpeg_args=""
 ):
     """Use ffmpeg to capture multiple frames from a video stream and save the last one."""
     if shutil.which(FFMPEG_PATH) is None:
@@ -774,11 +774,18 @@ def capture_frame_from_stream(
                 "-q:v",
                 "0",  # Output quality (lower is better)
                 #'-b:v', '50000000',               # Output quality (lower is better)
-                "-f",
-                "image2",  # Force image2 muxer
-                temp_output_pattern,  # Temporary output file pattern
             ]
         )
+
+        # Add custom ffmpeg arguments if provided
+        if ffmpeg_args:
+            command.extend(ffmpeg_args.split())
+
+        command.extend([
+            "-f",
+            "image2",  # Force image2 muxer
+            temp_output_pattern,  # Temporary output file pattern
+        ])
 
         try:
             try:

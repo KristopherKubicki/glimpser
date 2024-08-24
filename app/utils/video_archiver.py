@@ -294,7 +294,7 @@ def handle_concat_error(e, temp_video, in_process_video) -> bool:
             os.rename(temp_video, in_process_video)
 
 
-def compile_to_video(camera_path, video_path) -> bool:
+def compile_to_video(camera_path, video_path, ffmpeg_args="") -> bool:
 
     os.makedirs(video_path, exist_ok=True)
     os.makedirs(camera_path, exist_ok=True)
@@ -409,11 +409,21 @@ def compile_to_video(camera_path, video_path) -> bool:
             "libx264",
             "-pix_fmt",
             "yuv420p",
-            "-vf",
-            "fps=30,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
+        ]
+
+        # Add custom ffmpeg arguments if provided
+        if ffmpeg_args:
+            create_command.extend(ffmpeg_args.split())
+        else:
+            create_command.extend([
+                "-vf",
+                "fps=30,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
+            ])
+
+        create_command.extend([
             "-movflags",
             "+faststart",
-        ]
+        ])
         create_command.extend(
             ["-metadata", "creation_time=%sZ" % datetime.datetime.utcnow()]
         )

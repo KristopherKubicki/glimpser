@@ -183,6 +183,9 @@ function updateVideo(templateName) {
 
                 <label for="rollback_frames" style="color: #fff;" title="Number of frames to rollback">Rollback Frames:</label>
                 <input type="number" id="rollback_frames" name="rollback_frames" value="{{ template_details.rollback_frames or 0 }}" min="0" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter number of frames to rollback">
+
+                <label for="ffmpeg_args" style="color: #fff;" title="Custom FFmpeg arguments">FFmpeg Arguments:</label>
+                <input type="text" id="ffmpeg_args" name="ffmpeg_args" value="{{ template_details.ffmpeg_args }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter custom FFmpeg arguments (e.g., -vf 'scale=1280:720')">
             </div>
 	    <br/>
 
@@ -227,6 +230,7 @@ function validateForm() {
     const objectConfidence = parseFloat(document.getElementById('object_confidence').value);
     const popupXpath = document.getElementById('popup_xpath').value.trim();
     const dedicatedXpath = document.getElementById('dedicated_xpath').value.trim();
+    const ffmpegArgs = document.getElementById('ffmpeg_args').value.trim();
 
     if (frequency < 1 || frequency > 525600) {
         alert("Frequency must be between 1 and 525600 minutes (1 year).");

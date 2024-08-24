@@ -47,6 +47,7 @@ class Template(Base):
     danger = Column(Boolean, default=False)
     motion = Column(Float, default=0.2)
     rollback_frames = Column(Integer, default=0)
+    ffmpeg_args = Column(String, default="")
 
     @validates('frequency')
     def validate_frequency(self, key, frequency):
@@ -71,6 +72,12 @@ class Template(Base):
         if self.object_filter and (confidence < 0 or confidence > 1):
             raise ValueError("Object confidence must be between 0 and 1")
         return confidence
+
+    @validates('ffmpeg_args')
+    def validate_ffmpeg_args(self, key, args):
+        if args and not args.startswith('-'):
+            raise ValueError("FFmpeg arguments must start with '-'")
+        return args
 
 
 class TemplateManager:
