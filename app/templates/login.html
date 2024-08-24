@@ -50,6 +50,10 @@
             <input type="text" name="username" required title="Enter your username"><br>
             Password:<br>
             <input type="password" name="password" required title="Enter your password"><br><br>
+
+	    {% if flash %}
+	    Invalid username or password
+	    {% endif %} 
             <input type="submit" value="Login" title="Click to log in">
         </form>
     </div>

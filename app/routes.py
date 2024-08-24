@@ -28,6 +28,7 @@ from flask import (
     session,
     url_for,
 )
+from flask_login import logout_user
 from PIL import Image
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
@@ -496,9 +497,10 @@ def init_routes(app):
         return render_template("login.html")
 
     @app.route("/logout")
-    # @login_required
+    @login_required
     def logout():
         session.pop("logged_in", None)
+        flash("You have been logged out successfully.", "success")
         return redirect(url_for("login"))
 
     @app.route("/")

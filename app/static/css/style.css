@@ -41,9 +41,37 @@ h1, h2 {
     select {
         font-size: 16px; /* Larger font size for easier interaction */
         padding: 10px; /* Larger padding for a taller dropdown */
+        width: 100%; /* Full width on mobile */
+        margin-bottom: 10px;
     }
     #template-list {
         grid-template-columns: 1fr; /* Single column layout on mobile */
+        padding: 10px; /* Reduce padding on mobile */
+    }
+
+    /* Improve form layout on mobile */
+    #template-form, #edit-template {
+        padding: 15px;
+    }
+
+    #template-form input[type="text"],
+    #template-form input[type="url"],
+    #template-form input[type="number"],
+    #template-form textarea,
+    #edit-template input[type="text"],
+    #edit-template input[type="url"],
+    #edit-template input[type="number"],
+    #edit-template textarea {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    /* Adjust button layout on mobile */
+    #template-form input[type="submit"],
+    #edit-template input[type="submit"],
+    #delete-btn {
+        width: 100%;
+        margin-top: 10px;
     }
 }
 
@@ -83,7 +111,6 @@ select:hover {
     object-fit: cover;
     /*object-position: center; */ /* Aligns the video to the top, so the empty space, if any, will be at the bottom */
 }
-
 
 .play-icon {
     position: absolute;
@@ -127,6 +154,14 @@ video:hover + .play-icon {
 
 .recent-screenshot {
     border: 5px solid rgba(255, 255, 255, 0.9); /* Faint white border */
+}
+
+/* Improve video controls on mobile */
+@media (max-width: 767px) {
+    .templateDiv video::-webkit-media-controls-panel {
+        display: flex !important;
+        opacity: 1 !important;
+    }
 }
 
 header {
@@ -184,6 +219,32 @@ nav a:hover, nav a.active {
     .settings-icon {
         font-size: 20px; /* Slightly smaller icon on mobile */
     }
+
+    /* Enhance touch target sizes for mobile */
+    button, a, input[type="submit"], select, .templateDiv {
+        min-width: 48px; /* Increased minimum touch target size */
+        min-height: 48px; /* Increased minimum touch target size */
+        padding: 12px; /* More padding for larger touch area */
+    }
+
+    /* Adjust form elements for better mobile interaction */
+    input[type="text"], input[type="url"], input[type="number"], textarea {
+        font-size: 16px; /* Prevent zoom on focus in iOS */
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+    /* Improve spacing for mobile */
+    .video-container {
+        padding: 10px; /* Slightly reduce padding for smaller screens */
+    }
+
+    /* Adjust slider for mobile */
+    #speed-slider {
+        width: 100%; /* Use the full width for the slider */
+        height: 30px; /* Increase the height for a larger touch area */
+        margin: 10px 0; /* Add some vertical margin */
+    }
 }
 
 @keyframes highlight {
@@ -195,13 +256,7 @@ nav a:hover, nav a.active {
     animation: highlight 0.5s;
 }
 
-/* Add these styles to increase the touch area for the slider and buttons */
-#speed-slider {
-    width: 100%; /* Use the full width for the slider */
-    height: 24px; /* Increase the height for a larger touch area */
-}
-
-/* Increase the size of buttons and links */
+/* Increase the size of buttons and links for all screen sizes */
 button, a {
     min-width: 44px; /* Minimum touch target size */
     min-height: 44px; /* Minimum touch target size */

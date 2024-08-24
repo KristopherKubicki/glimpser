@@ -103,6 +103,7 @@ class TemplateManager:
             if template is None:
                 template = Template()
                 session.add(template)
+            ldelta = False
             if template:
                 for key, value in details.items():
                     try:
@@ -112,8 +113,9 @@ class TemplateManager:
                             value = int(value)
                             if key == "frequency" and value > 525600:
                                 raise ValueError("Frequency cannot be greater than 525600 (1 year)")
-                            if key == "timeout" and value >= details.get("frequency", template.frequency):
-                                raise ValueError("Timeout must be less than frequency")
+                            if key == "timeout" and value >= details.get("frequency", template.frequency) * 60:
+                                value = details.get("frequency", template.frequency) * 60
+                                #raise ValueError("Timeout must be less than frequency")
                         elif key == "object_confidence":
                             value = float(value)
                             if details.get("object_filter", template.object_filter) and (value < 0 or value > 1):
@@ -133,11 +135,15 @@ class TemplateManager:
                                 continue
                     except ValueError as e:
                         # Log the validation error and return False
-                        print(f"Validation error: {str(e)}")
+                        print(f"Validation error: {str(e)}", name, key, value)
                         return False
 
-                    setattr(template, key, value)
-            session.commit()
+                    # check to make sure a change actually occurred
+                    if getattr(template, key) != value:
+                        setattr(template, key, value)
+                        ldelta = True
+            if ldelta is True:
+                session.commit()
             return True
         except Exception as e:
             print(f"Error saving template: {str(e)}")
