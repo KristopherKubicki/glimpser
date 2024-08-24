@@ -6,30 +6,45 @@
         {% include 'nav.html' %}
     </header>
 
-
-        <form method="POST" action="{{ url_for('settings') }}" title="Configure application settings">
-        <table title="Settings configuration table">
+    <h2>Current Settings</h2>
+    <form method="POST" action="{{ url_for('settings') }}">
+        <table>
             <thead>
                 <tr>
-                    <th title="Name of the setting">Setting</th>
-                    <th title="Value of the setting">Value</th>
+                    <th>Setting</th>
+                    <th>Value</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
                 {% for setting in settings %}
                 <tr>
-                    <td title="Name of the setting: {{ setting.name }}">{{ setting.name }}</td>
+                    <td>{{ setting.name }}</td>
                     <td>
-                        <input type="text" name="{{ setting.name }}" value="{{ setting.value }}" title="Enter the value for {{ setting.name }}">
+                        <input type="text" name="{{ setting.name }}" value="{{ setting.value }}">
+                    </td>
+                    <td>
+                        <button type="submit" name="action" value="delete" onclick="document.getElementById('name_to_delete').value='{{ setting.name }}'">Delete</button>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        <button type="submit" title="Save your settings">Save</button>
+        <input type="hidden" id="name_to_delete" name="name_to_delete" value="">
+        <button type="submit">Save Changes</button>
     </form>
 
-{% include 'footer.html' %}
+    <h2>Add New Setting</h2>
+    <form method="POST" action="{{ url_for('settings') }}">
+        <input type="hidden" name="action" value="add">
+        <label for="new_name">Name:</label>
+        <input type="text" id="new_name" name="new_name" required>
+        <label for="new_value">Value:</label>
+        <input type="text" id="new_value" name="new_value" required>
+        <button type="submit">Add Setting</button>
+    </form>
+
+    {% include 'footer.html' %}
 
 </body>
 </html>
