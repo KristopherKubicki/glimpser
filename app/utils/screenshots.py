@@ -379,40 +379,24 @@ def is_enhanced(url):
     return False
 
 
-def get_arp_output(ip_address, timeout):
-    if platform.system() == "Windows":
-        command = ["arp", "-a", ip_address]
-    else:
-        command = ["ip", "neigh", "show", ip_address]
-    return subprocess.check_output(command, stderr=subprocess.STDOUT, timeout=timeout)
-
-
-def is_private_ip(ip_address):
-    return ipaddress.ip_address(ip_address).is_private
-
+from PIL import ImageGrab
+import socket
+import logging
+from urllib.parse import urlparse
+import re
+import os
+import datetime
+from app.config import SCREENSHOT_DIRECTORY
 
 def is_address_reachable(address, port=80, timeout=5):
-
     if port is None:
         port = 80
 
     try:
         # Resolve the domain name to an IP address
         ip_address = socket.gethostbyname(address)
-        # print(f"{address} resolved to {ip_address}")
     except Exception:
-        # print(f"DNS resolution failed for {address}", e)
         return False
-
-    # check the arp table, particularly if its an unroutable ip address
-    if is_private_ip(ip_address):
-        try:
-            arp_entry = get_arp_output(ip_address, timeout).lower()
-            if "no entry" in arp_entry.decode().lower():
-                print(" warning! failing arp entry for ", ip_address)
-                return False
-        except Exception as e:
-            print(" warning -- failure to arp", e)
 
     try:
         # Create a socket object
@@ -421,17 +405,11 @@ def is_address_reachable(address, port=80, timeout=5):
         # Attempt to connect to the address on the specified port
         result = sock.connect_ex((ip_address, port))
         sock.close()
-        if result == 0:
-            # print(f"Successfully connected to {ip_address} on port {port}")
-            # print(f"Failed to connect to {ip_address} on port {port}")
-
-            return True
-        return False
+        return result == 0
     except Exception as e:
         logging.warn(f"Socket error: {e}")
 
     return False
-
 
 def parse_url(url):
     parsed_url = urlparse(url)
@@ -450,44 +428,23 @@ def parse_url(url):
 
     return domain, port
 
-
-def capture_or_download(name: str, template: str) -> bool:
+def capture_screenshot(name: str, template: str) -> bool:
     """
-    Decides whether to download the image directly or capture a screenshot based on the given template.
-
-    This function is the main entry point for capturing or downloading content from a URL. It handles
-    various types of content (images, PDFs, video streams, web pages) and uses different methods to
-    obtain the content based on the URL and content type.
+    Captures a screenshot of the entire screen.
 
     Args:
         name (str): The name to be used for the output file.
-        template (str): A dictionary containing configuration parameters for the capture/download.
+        template (str): A dictionary containing configuration parameters for the capture.
 
     Returns:
-        bool: True if the capture/download was successful, False otherwise.
+        bool: True if the capture was successful, False otherwise.
     """
     if name is None or template is None:
         return False
 
     # Extract parameters from the template
     url = template.get("url")
-    popup_xpath = template.get("popup_xpath")
-    dedicated_selector = template.get("dedicated_xpath")
     timeout = int(template.get("timeout", 30) or 30)
-
-    # Set flags based on template parameters
-    invert = template.get("invert", "") not in ["", "false", False]
-    headless = template.get("headless", "") not in ["", "false", False]
-    dark = template.get("dark", "") not in ["", "false", False]
-    stealth = template.get("stealth", "") not in ["", "false", False]
-    browser = template.get("browser", "") not in ["", "false", False] or stealth
-    danger = template.get("danger", "") not in ["", "false", False]
-
-    if danger:
-        browser = True
-        headless = True
-    if not headless:
-        browser = True
 
     # Check if the host is reachable
     domain, port = parse_url(url)
@@ -500,34 +457,15 @@ def capture_or_download(name: str, template: str) -> bool:
     output_path = os.path.join(SCREENSHOT_DIRECTORY, f"{name}/{name}_{timestamp}.png")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    # Determine content type
-    content_type = get_content_type(url, danger)
-
-    # Attempt to download or capture based on content type and URL
-    if is_image_url(url, content_type) and not danger:
-        return download_image(url, output_path, timeout, name, invert)
-
-    if is_pdf_url(url, content_type) and not danger:
-        return download_pdf(url, output_path, timeout, name, invert)
-
-    if is_video_stream_url(url, content_type) and not danger:
-        return capture_frame_from_stream(url, output_path, timeout, name, invert)
-
-    if is_enhanced(url) and not danger:
-        return capture_frame_with_ytdlp(url, output_path, name, invert)
-
-    # Attempt lightweight browser capture for simple web pages
-    if should_use_lightweight_browser(url, dedicated_selector, popup_xpath, headless, stealth, browser, danger):
-        return capture_screenshot_and_har_light(url, output_path, timeout, name, invert, template.get("proxy"), dark)
-
-    # Fall back to full browser capture
-    if re.findall(r"^https?://", url, flags=re.I):
-        if not browser:
-            headless = True
-        return capture_screenshot_and_har(url, output_path, popup_xpath, dedicated_selector, timeout, name, invert, template.get("proxy"), headless, dark, stealth, danger)
-
-    logging.error(f"Failed to capture or download content from {url}")
-    return False
+    try:
+        # Capture the entire screen
+        screenshot = ImageGrab.grab()
+        screenshot.save(output_path)
+        logging.info(f"Screenshot saved to {output_path}")
+        return True
+    except Exception as e:
+        logging.error(f"Failed to capture screenshot: {e}")
+        return False
 
 def get_content_type(url, danger):
     """

@@ -32,6 +32,7 @@ Glimpser is a straightforward yet powerful real-time monitoring application desi
 
 ### Prerequisites
 - Python 3.8 or higher
+- Docker (for containerized deployment)
 
 ### Steps
 1. **Clone the Repository**
@@ -40,17 +41,33 @@ Glimpser is a straightforward yet powerful real-time monitoring application desi
     cd glimpser
     ```
 
-2. **Install Dependencies**
+2. **Install Dependencies (for local development)**
     ```sh
     pip install -r requirements.txt
     ```
 
-3. **Run the Application**
+3. **Set up Environment Variables**
+   Create a `.env` file in the root directory with the following content:
+   ```
+   GLIMPSER_DATABASE_PATH=data/glimpser.db
+   GLIMPSER_LOGGING_PATH=logs/glimpser.log
+   GLIMPSER_BACKUP_PATH=data/config_backup.json
+   ```
+
+4. **Run the Application**
+   
+   a. **For local development:**
     ```sh
     python3 main.py
     ```
 
-You will be prompted to create a secret key to initialize the local sqlite database.  Follow the rest of the guided setup and then direct your browser to http://127.0.0.1:8082 to finish the rest of the setup. 
+   b. **Using Docker:**
+    ```sh
+    docker build -t glimpser .
+    docker run -p 8082:8082 -v $(pwd)/data:/app/data -v $(pwd)/logs:/app/logs glimpser
+    ```
+
+You will be prompted to create a secret key to initialize the local sqlite database. Follow the rest of the guided setup and then direct your browser to http://127.0.0.1:8082 to finish the rest of the setup. 
 
 ## Usage
 
@@ -76,7 +93,26 @@ Using advanced AI models, Glimpser generates concise and informative captions fo
 Glimpser can summarize data from multiple sources into a coherent and concise format. The summaries highlight the most important information, making it easier for users to stay informed.
 
 ## Contributing
-Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request. 
+Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request.
+
+## Deployment
+For production deployment, it's recommended to use Docker. This ensures consistency across different environments and simplifies the deployment process.
+
+1. Build the Docker image:
+   ```sh
+   docker build -t glimpser:latest .
+   ```
+
+2. Run the Docker container:
+   ```sh
+   docker run -d -p 8082:8082 -v /path/to/data:/app/data -v /path/to/logs:/app/logs --env-file .env glimpser:latest
+   ```
+
+   Replace `/path/to/data` and `/path/to/logs` with the actual paths on your host machine where you want to store the application data and logs.
+
+3. Access the application at `http://localhost:8082`
+
+For more advanced deployment scenarios, consider using Docker Compose or orchestration tools like Kubernetes.
 
 ### Steps to Contribute
 1. Fork the repository.
