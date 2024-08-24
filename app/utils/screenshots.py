@@ -15,6 +15,7 @@ import tempfile
 import time
 from urllib.parse import urlparse
 import glob
+from typing import List, Tuple, Dict, Optional, Union, Any
 
 import numpy as np
 import requests
@@ -37,20 +38,19 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
-logging.getLogger("webdriver_manager").setLevel(logging.WARNING)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from app.config import DEBUG, LANG, SCREENSHOT_DIRECTORY, UA
 
-last_camera_test = {}
-last_camera_test_time = {}
-last_camera_header = {}
-last_camera_header_time = {}
-last_camera_light = {}
-last_camera_light_time = {}
+last_camera_test: Dict[str, Any] = {}
+last_camera_test_time: Dict[str, float] = {}
+last_camera_header: Dict[str, str] = {}
+last_camera_header_time: Dict[str, float] = {}
+last_camera_light: Dict[str, Any] = {}
+last_camera_light_time: Dict[str, float] = {}
 
 
-def remove_background(image, background_color=(14, 14, 14, 255), threshold=10):
+def remove_background(image: Image.Image, background_color: Tuple[int, int, int, int] = (14, 14, 14, 255), threshold: int = 10) -> Image.Image:
     """Crop the image to remove the background color border and ensure a 16:9 aspect ratio."""
     # Find the bounding box of the non-background area
     bbox = find_bounding_box(image, background_color, threshold)
@@ -62,7 +62,7 @@ def remove_background(image, background_color=(14, 14, 14, 255), threshold=10):
     return image
 
 
-def find_bounding_box(image, background_color=(14, 14, 14, 255), threshold=10):
+def find_bounding_box(image: Image.Image, background_color: Tuple[int, int, int, int] = (14, 14, 14, 255), threshold: int = 10) -> Tuple[int, int, int, int]:
     """Find the bounding box of the non-background area."""
     pixels = image.load()
     width, height = image.size
@@ -88,7 +88,7 @@ def find_bounding_box(image, background_color=(14, 14, 14, 255), threshold=10):
     return (left, top, right, bottom)
 
 
-def adjust_bbox_to_aspect_ratio(bbox, image_size, aspect_ratio=(16, 9)):
+def adjust_bbox_to_aspect_ratio(bbox: Tuple[int, int, int, int], image_size: Tuple[int, int], aspect_ratio: Tuple[int, int] = (16, 9)) -> Tuple[int, int, int, int]:
     """Adjust the bounding box to fit the specified aspect ratio."""
     left, top, right, bottom = bbox
     bbox_width = right - left
@@ -116,12 +116,12 @@ def adjust_bbox_to_aspect_ratio(bbox, image_size, aspect_ratio=(16, 9)):
     return (int(left), int(top), int(right), int(bottom))
 
 
-def is_similar_color(color1, color2, threshold):
+def is_similar_color(color1: Tuple[int, int, int, int], color2: Tuple[int, int, int, int], threshold: int) -> bool:
     """Check if two colors are similar."""
     return all(abs(c1 - c2) <= threshold for c1, c2 in zip(color1, color2))
 
 
-def is_mostly_blank(image, threshold=0.92, blank_color=(255, 255, 255)):
+def is_mostly_blank(image: Image.Image, threshold: float = 0.92, blank_color: Tuple[int, int, int] = (255, 255, 255)) -> bool:
     """
     Analyze the image to check if it's mostly blank, contains shapes, and if it's dark or light.
 
@@ -159,7 +159,7 @@ def is_mostly_blank(image, threshold=0.92, blank_color=(255, 255, 255)):
     return False
 
 
-def add_timestamp(image_path, name="unknown", invert=False):
+def add_timestamp(image_path: str, name: str = "unknown", invert: bool = False) -> None:
     if os.path.exists(image_path):
         with Image.open(
             image_path
@@ -238,8 +238,8 @@ def add_timestamp(image_path, name="unknown", invert=False):
 
 
 def download_image(
-    url, output_path, timeout=30, name="unknown", invert=False, dark=False
-):
+    url: str, output_path: str, timeout: int = 30, name: str = "unknown", invert: bool = False, dark: bool = False
+) -> bool:
     """Attempt to download an image directly from the URL and convert it to PNG format."""
 
     response = None
@@ -297,8 +297,8 @@ def download_image(
 
 
 def download_pdf(
-    url, output_path, timeout=30, name="unknown", invert=False, dark=False
-):
+    url: str, output_path: str, timeout: int = 30, name: str = "unknown", invert: bool = False, dark: bool = False
+) -> bool:
     """Attempt to download the first page of a PDF from the URL and convert it to PNG format."""
 
     try:
@@ -371,7 +371,7 @@ def download_pdf(
         return False
 
 
-def is_enhanced(url):
+def is_enhanced(url: str) -> bool:
     extractors = youtube_dl.extractor.gen_extractors()
     for e in extractors:
         if e.suitable(url) and e.IE_NAME != "generic":
@@ -379,7 +379,7 @@ def is_enhanced(url):
     return False
 
 
-def get_arp_output(ip_address, timeout):
+def get_arp_output(ip_address: str, timeout: int) -> bytes:
     if platform.system() == "Windows":
         command = ["arp", "-a", ip_address]
     else:
@@ -387,11 +387,11 @@ def get_arp_output(ip_address, timeout):
     return subprocess.check_output(command, stderr=subprocess.STDOUT, timeout=timeout)
 
 
-def is_private_ip(ip_address):
+def is_private_ip(ip_address: str) -> bool:
     return ipaddress.ip_address(ip_address).is_private
 
 
-def is_address_reachable(address, port=80, timeout=5):
+def is_address_reachable(address: str, port: int = 80, timeout: int = 5) -> bool:
 
     if port is None:
         port = 80
@@ -433,7 +433,7 @@ def is_address_reachable(address, port=80, timeout=5):
     return False
 
 
-def parse_url(url):
+def parse_url(url: str) -> Tuple[Optional[str], Optional[int]]:
     parsed_url = urlparse(url)
     domain = parsed_url.hostname
     if parsed_url and parsed_url.scheme == '' and domain is None:
@@ -451,7 +451,7 @@ def parse_url(url):
     return domain, port
 
 
-def capture_or_download(name: str, template: str) -> bool:
+def capture_or_download(name: str, template: Dict[str, Any]) -> bool:
     """Decides whether to download the image directly or capture a screenshot."""
 
     if name is None or template is None:
@@ -783,7 +783,7 @@ def capture_or_download(name: str, template: str) -> bool:
     return False
 
 
-def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
+def capture_frame_with_ytdlp(url: str, output_path: str, name: str = "unknown", invert: bool = False) -> bool:
     """Use yt-dlp to get the video URL and ffmpeg to capture a single frame from the video stream."""
 
     if shutil.which("yt-dlp") is None:
@@ -794,7 +794,7 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
         # Use yt-dlp to get the direct video URL
         output_path + ".%(ext)s"
         ytdlp_command = [
-            "yt-dlp",  # TODO make this path a config
+            "yt-dlp",
             "--get-url",
             "--format",
             "bestvideo",  # Adjust the format as needed
@@ -807,13 +807,13 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
 
         # Use ffmpeg to capture a frame from the video URL
         ffmpeg_command = [
-            "ffmpeg", # TODO: make this a config
+            "ffmpeg",
             "-analyzeduration",
             "20M",
             "-probesize",
             "20M",
             "-ec",
-            "15",  # todo: add -safe option
+            "15",
             "-i",
             video_url,  # Input stream URL from yt-dlp
             "-sn",
@@ -851,8 +851,8 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
 
 
 def capture_frame_from_stream(
-    url, output_path, num_frames=3, timeout=30, name="unknown", invert=False
-):
+    url: str, output_path: str, num_frames: int = 3, timeout: int = 30, name: str = "unknown", invert: bool = False
+) -> bool:
     """Use ffmpeg to capture multiple frames from a video stream and save the last one."""
     if shutil.which("ffmpeg") is None:
         print("ffmpeg is not installed or not in the system path.")
@@ -862,9 +862,9 @@ def capture_frame_from_stream(
         # Capture multiple frames into the temporary directory
         temp_output_pattern = os.path.join(tmpdirname, "frame_%03d.png")
         command = [
-            "ffmpeg", # TODO: make this configurable
+            "ffmpeg",
             "-hide_banner",
-            #'-hwaccel', 'auto',  #TODO add support
+            #'-hwaccel', 'auto',
         ]
 
         probe_size = "5M"
@@ -959,7 +959,7 @@ def capture_frame_from_stream(
     return False
 
 
-def add_options(options, uc=False):
+def add_options(options: Union[webdriver.ChromeOptions, Options], uc: bool = False) -> Union[webdriver.ChromeOptions, Options]:
     options.add_argument("--disabled")
 
     # https://stackoverflow.com/questions/62889739/selenium-gives-timed-out-receiving-message-from-renderer-for-all-websites-afte
@@ -1114,7 +1114,7 @@ def add_options(options, uc=False):
     return options
 
 
-def network_idle_condition(driver, url, timeout=30, idle_time=0.25, stealth=False):
+def network_idle_condition(driver: webdriver.Chrome, url: str, timeout: int = 30, idle_time: float = 0.25, stealth: bool = False) -> Tuple[bool, int]:
     """
     Returns a function that can be used as a condition for WebDriverWait.
     It checks if the network has been idle for a specified amount of time.
@@ -1183,7 +1183,7 @@ def network_idle_condition(driver, url, timeout=30, idle_time=0.25, stealth=Fals
     return False, lstatus
 
 
-def apply_dark_mode(img, range_value=30, text_range_value=120):
+def apply_dark_mode(img: Image.Image, range_value: int = 30, text_range_value: int = 120) -> Image.Image:
     pixels = img.load()  # Get the pixel map of the image
     text_upper_bound = 255 - text_range_value
 
@@ -1210,8 +1210,8 @@ def apply_dark_mode(img, range_value=30, text_range_value=120):
 import shlex
 
 def capture_screenshot_and_har_light(
-    url, output_path, timeout=30, name="unknown", invert=False, proxy=None, dark=True
-):
+    url: str, output_path: str, timeout: int = 30, name: str = "unknown", invert: bool = False, proxy: Optional[str] = None, dark: bool = True
+) -> bool:
     """
     Capture a screenshot of a URL using wkhtmltoimage (WebKit).
 
@@ -1312,7 +1312,7 @@ def capture_screenshot_and_har_light(
 chrome_version = {}
 
 
-def get_chrome_version(chrome_path):
+def get_chrome_version(chrome_path: str) -> str:
     # Command to get the installed version of Chrome
     global chrome_version
     if (
@@ -1329,7 +1329,7 @@ def get_chrome_version(chrome_path):
     return version
 
 
-def extract_version(driver_path):
+def extract_version(driver_path: str) -> int:
     try:
         # Extract the version using regex to handle different structures
         match = re.search(r"(\d+)\.(\d+)\.(\d+)\.(\d+)", driver_path)
@@ -1345,7 +1345,7 @@ def extract_version(driver_path):
         return 127
 
 
-def is_port_open(host, port, timeout=5):
+def is_port_open(host: str, port: int, timeout: int = 5) -> bool:
     """Check if a network port is open on the specified host."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(timeout)
@@ -1357,19 +1357,19 @@ def is_port_open(host, port, timeout=5):
 
 
 def capture_screenshot_and_har(
-    url,
-    output_path,
-    popup_xpath=None,
-    dedicated_selector=None,
-    timeout=30,
-    name="unknown",
-    invert=False,
-    proxy=None,
-    stealth=False,
-    dark=True,
-    headless=True,
-    danger=False,
-):
+    url: str,
+    output_path: str,
+    popup_xpath: Optional[str] = None,
+    dedicated_selector: Optional[str] = None,
+    timeout: int = 30,
+    name: str = "unknown",
+    invert: bool = False,
+    proxy: Optional[str] = None,
+    stealth: bool = False,
+    dark: bool = True,
+    headless: bool = True,
+    danger: bool = False,
+) -> bool:
     """
     Capture a screenshot of a URL using headless Chrome, optionally removing a popup before taking the screenshot.
 
@@ -1717,7 +1717,7 @@ def capture_screenshot_and_har(
                 if current_time - os.path.getmtime(temp_dir) > 3600:  # 3600 seconds = 1 hour
                     shutil.rmtree(temp_dir, ignore_errors=True)
                     cleaned_dirs += 1
-            logging.debug(f"Cleaned up {cleaned_dirs} temporary Chrome directories")
+            logging.info(f"Cleaned up {cleaned_dirs} temporary Chrome directories")
         except Exception as e:
             logging.error(f"Error cleaning up temporary Chrome files: {e}")
 
