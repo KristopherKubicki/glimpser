@@ -245,6 +245,86 @@ button, a {
     position: absolute;
 }
 
+/* Template Form Styles */
+#template-form, #edit-template {
+    background-color: #222;
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 600px;
+    margin: 20px auto;
+}
+
+#template-form h3, #edit-template h3 {
+    color: #fff;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#template-form form, #edit-template form {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+#template-form label, #edit-template label {
+    color: #fff;
+}
+
+#template-form input[type="text"],
+#template-form input[type="url"],
+#template-form input[type="number"],
+#template-form textarea,
+#edit-template input[type="text"],
+#edit-template input[type="url"],
+#edit-template input[type="number"],
+#edit-template textarea {
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#template-form input[type="submit"],
+#edit-template input[type="submit"],
+#delete-btn {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#delete-btn {
+    background-color: #e74c3c;
+}
+
+.xpath-input-container {
+    display: flex;
+    gap: 5px;
+}
+
+.xpath-input-container input {
+    flex-grow: 1;
+}
+
+.xpath-input-container button {
+    padding: 5px;
+    border-radius: 5px;
+    background-color: #4CAF50;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+@media screen and (max-width: 600px) {
+    #template-form form, #edit-template form {
+        grid-template-columns: 1fr;
+    }
+}
+
 .hand {
     position: absolute;
     bottom: 50%;
