@@ -30,6 +30,15 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
+        const submitButton = form.querySelector('button[type="submit"]');
+        const feedbackElement = document.createElement('div');
+        feedbackElement.className = 'form-feedback';
+        form.appendChild(feedbackElement);
+
+        // Show loading indicator
+        submitButton.disabled = true;
+        submitButton.innerHTML = 'Submitting...';
+        feedbackElement.innerHTML = 'Submitting form...';
 
         fetch('/templates', {
             method: 'POST',
@@ -43,17 +52,38 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Success:', data);
             loadTemplates(); // Refresh the list after submission
             form.reset(); // Reset form after successful submission
+            
+            // Show success message
+            feedbackElement.innerHTML = 'Form submitted successfully!';
+            feedbackElement.style.color = 'green';
         })
         .catch((error) => {
             console.error('Error:', error);
+            
+            // Show error message
+            feedbackElement.innerHTML = 'An error occurred. Please try again.';
+            feedbackElement.style.color = 'red';
+        })
+        .finally(() => {
+            // Reset button state
+            submitButton.disabled = false;
+            submitButton.innerHTML = 'Submit';
+            
+            // Remove feedback message after 3 seconds
+            setTimeout(() => {
+                feedbackElement.remove();
+            }, 3000);
         });
     });
 
 function loadGroups() {
+    const groupDropdown = document.getElementById('group-dropdown');
+    groupDropdown.innerHTML = '<option value="all">Loading groups...</option>';
+    groupDropdown.disabled = true;
+
     fetch('/groups')
         .then(response => response.json())
         .then(groups => {
-            const groupDropdown = document.getElementById('group-dropdown');
             groupDropdown.innerHTML = '<option value="all">All Groups</option>';
             groups.forEach(group => {
                 const option = document.createElement('option');
@@ -62,7 +92,13 @@ function loadGroups() {
                 groupDropdown.appendChild(option);
             });
         })
-        .catch(error => console.error('Error loading groups:', error));
+        .catch(error => {
+            console.error('Error loading groups:', error);
+            groupDropdown.innerHTML = '<option value="all">Error loading groups</option>';
+        })
+        .finally(() => {
+            groupDropdown.disabled = false;
+        });
 }
 
 
@@ -186,17 +222,19 @@ function generateXPath(inputId) {
 }
 
 function loadTemplates() {
-
     const selectedGroup = document.getElementById('group-dropdown').value || 'all';
     const url = selectedGroup === 'all' ? '/templates' : `/templates?group=${selectedGroup}&t=${new Date().getTime()}`;
 
     updateGridLayout();
 
+    const templateList = document.getElementById('template-list');
+    // Show loading indicator
+    templateList.innerHTML = '<div class="loading">Loading templates...</div>';
+
     fetch('/templates')
         .then(response => response.json())
         .then(templates => {
-            const templateList = document.getElementById('template-list');
-            // Clear existing templates
+            // Clear loading indicator
             templateList.innerHTML = '';
 
             const observer = new IntersectionObserver((entries) => {
@@ -212,108 +250,106 @@ function loadTemplates() {
                 threshold: 0.5 // Trigger when at least 50% of the video is visible
             });
 
-            Object.entries(templates).forEach(([name, template]) => {
-	      if (templateBelongsToGroup(template, selectedGroup)) {
+            Object.entries(templates).forEach(([name, template], index) => {
+                if (templateBelongsToGroup(template, selectedGroup)) {
+                    const lastScreenshotTime = template['last_screenshot_time'];
+                    const humanizedTimestamp = timeAgo(lastScreenshotTime);
 
-	        const lastScreenshotTime = template['last_screenshot_time'];
-                const humanizedTimestamp = timeAgo(lastScreenshotTime);
+                    // Check if the last screenshot is less than 1 minute ago
+                    const lastScreenshotTime2 = new Date(template['last_screenshot_time']);
+                    const oneMinuteAgo = new Date(Date.now() - 60000);
+                    const isRecent = lastScreenshotTime2 > oneMinuteAgo;
+                    const videoContainerClass = isRecent ? "video-container recent-screenshot" : "video-container";
 
+                    const templateDiv = document.createElement('div');
+                    templateDiv.classList.add("templateDiv"); // Add class to div
+                    templateDiv.style.opacity = '0';
+                    templateDiv.style.transform = 'translateY(20px)';
+                    templateDiv.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    templateDiv.innerHTML = `
+                        <a href='/templates/${name}'>
+                            <div class="${videoContainerClass}">
+                                <div class="camera-name">${name}</div> <!-- Camera name -->
+                                <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style='width:100%' muted title='${template["last_caption"]} (${humanizedTimestamp})' preload="none">
+                                    <source src="/last_video/${name}" type='video/mp4'>
+                                    Your browser does not support the video tag.
+                                </video>
+                                <div class="timestamp">${humanizedTimestamp}</div> <!-- Humanized timestamp in the bottom right corner -->
+                                <div class="play-icon">&#9658;</div> <!-- Unicode play icon -->
+                            </div>
+                        </a>
+                    `;
+                    templateList.appendChild(templateDiv);
 
-                // Check if the last screenshot is less than 1 minute ago
-                const lastScreenshotTime2 = new Date(template['last_screenshot_time']);
-                const oneMinuteAgo = new Date(Date.now() - 60000);
-                const isRecent = lastScreenshotTime2 > oneMinuteAgo;
-                const videoContainerClass = isRecent ? "video-container recent-screenshot" : "video-container";
+                    // Trigger reflow to enable transition
+                    void templateDiv.offsetWidth;
 
-                const templateDiv = document.createElement('div');
-                templateDiv.classList.add("templateDiv"); // Add class to div
-                templateDiv.innerHTML = `
-                    <a href='/templates/${name}'>
-                        <div class="${videoContainerClass}">
-			    <div class="camera-name">${name}</div> <!-- Camera name -->
-                            <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style='width:100%' muted title='${template["last_caption"]} (${humanizedTimestamp})' preload="none">
-                                <source src="/last_video/${name}" type='video/mp4'>
-                                Your browser does not support the video tag.
-                            </video>
-			    <div class="timestamp">${humanizedTimestamp}</div> <!-- Humanized timestamp in the bottom right corner -->
-                            <div class="play-icon">&#9658;</div> <!-- Unicode play icon -->
-                        </div>
-                    </a>
-                `;
-                templateList.appendChild(templateDiv);
+                    // Add fade-in effect with delay based on index
+                    setTimeout(() => {
+                        templateDiv.style.opacity = '1';
+                        templateDiv.style.transform = 'translateY(0)';
+                    }, index * 100);
 
-                // Add event listeners for hover
-                const video = templateDiv.querySelector('video');
-                observer.observe(video);
+                    // Add event listeners for hover
+                    const video = templateDiv.querySelector('video');
+                    observer.observe(video);
 
+                    video.addEventListener('loadedmetadata', () => {
+                        // Set playback speed based on video duration
+                        if (video.duration < 1) {
+                            video.playbackRate = 0.0625;
+                        } else if (video.duration < 3) {
+                            video.playbackRate = 0.0625*2;
+                        } else if (video.duration < 7) {
+                            video.playbackRate = 0.0625*4;
+                        } else if (video.duration < 15) {
+                            video.playbackRate = 0.0625*8;
+                        } else if (video.duration < 30) {
+                            video.playbackRate = 0.0625*16;
+                        } else if (video.duration < 60) {
+                            video.playbackRate = 0.0625*32;
+                        } else if (video.duration > 120) {
+                            video.playbackRate = 0.0625*64;
+                        } else {
+                            video.playbackRate = 0.0625*128;
+                        }
 
+                        // Start the video at t minus 10 seconds if possible
+                        video.currentTime = Math.max(0, video.duration - 10);
+                    });
 
-                video.addEventListener('loadedmetadata', () => {
-                    // Set playback speed based on video duration
-                    if (video.duration < 1) {
-                        video.playbackRate = 0.0625;
-		    } else if (video.duration < 3) {
-                        video.playbackRate = 0.0625*2;
-		    } else if (video.duration < 7) {
-                        video.playbackRate = 0.0625*4;
-		    } else if (video.duration < 15) {
-                        video.playbackRate = 0.0625*8;
-		    } else if (video.duration < 30) {
-                        video.playbackRate = 0.0625*16;
-                    } else if (video.duration < 60) {
-                        video.playbackRate = 0.0625*32;
-                    } else if (video.duration > 120) {
-                        video.playbackRate = 0.0625*64;
+                    if (isMobile()) {
+                        video.setAttribute('playsinline', ''); // Prevent fullscreen playback on iOS
+                        video.addEventListener('play', () => {
+                            video.playbackRate = calculatePlaybackRate(video); // Set appropriate playback rate
+                        });
                     } else {
-                        video.playbackRate = 0.0625*128;
-		    }
+                        video.addEventListener('mouseenter', () => {
+                            if (video.playbackRate * 3.0 <= 16) {
+                                video.playbackRate *= 3.0; // Set playback speed
+                            } else {
+                                video.playbackRate = 16; // Set playback rate to max value of 16
+                            }
+                            video.play();
+                        });
 
-                    // Start the video at t minus 10 seconds if possible
-                    video.currentTime = Math.max(0, video.duration - 10);
-                });
+                        video.addEventListener('mouseleave', () => {
+                            video.pause();
+                            video.load(); // Reset the video to show the poster again
+                        });
+                    }
 
-
-        if (isMobile()) {
-            ///video.setAttribute('autoplay', ''); // Enable autoplay on mobile
-            video.setAttribute('playsinline', ''); // Prevent fullscreen playback on iOS
-            video.addEventListener('play', () => {
-                video.playbackRate = calculatePlaybackRate(video); // Set appropriate playback rate
+                    video.addEventListener('ended', () => {
+                        setTimeout(() => {
+                            video.load(); // Reset the video to show the poster
+                            video.play(); // Resume autoplay after 1 second
+                        }, 2000); // Pause for 1 second
+                    });
+                }
             });
-        } else {
-            // Your existing mouseenter and mouseleave event listeners...
-		    video.addEventListener('mouseenter', () => {
-    if (video.playbackRate * 3.0 <= 16) {
-        video.playbackRate *= 3.0; // Set playback speed
-    } else {
-        video.playbackRate = 16; // Set playback rate to max value of 16
-    }
-			    video.play();
-});
 
-                video.addEventListener('mouseleave', () => {
-                    video.pause();
-                    video.load(); // Reset the video to show the poster again
-                });
-
-    // Add event listeners for each video
-    const videos = document.querySelectorAll('.templateDiv video');
-    videos.forEach(video => {
-        // Play video on hover
-        video.addEventListener('mouseenter', () => {
-            video.play();
-        });
-        // Pause video on mouse leave
-        video.addEventListener('mouseleave', () => {
-            video.pause();
-        });
-        // Use the observer to play/pause based on visibility
-        observer.observe(video);
-    });
-
-        }
-
-    const playAllButton = document.getElementById('play-all');
-    const stopAllButton = document.getElementById('stop-all');
+            const playAllButton = document.getElementById('play-all');
+            const stopAllButton = document.getElementById('stop-all');
 
             // Play all media elements
             playAllButton.addEventListener('click', function () {
@@ -332,22 +368,12 @@ function loadTemplates() {
                 });
             });
 
-
-
-window.addEventListener('resize', updateGridLayout);
-
-video.addEventListener('ended', () => {
-    setTimeout(() => {
-        video.load(); // Reset the video to show the poster
-        video.play(); // Resume autoplay after 1 second
-    }, 2000); // Pause for 1 second
-});
-
-}
-            });
-
+            window.addEventListener('resize', updateGridLayout);
         })
-        .catch(error => console.error('Error loading templates:', error));
+        .catch(error => {
+            console.error('Error loading templates:', error);
+            templateList.innerHTML = '<div class="error">Error loading templates. Please try again.</div>';
+        });
 }
 
 // Initial load of templates

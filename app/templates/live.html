@@ -25,6 +25,10 @@
     <div class="video-container">
         <img id="live-image" style="width: 100%;">
         <video id="live-video" style="width: 100%; display: none;" controls autoplay muted></video>
+        <div id="video-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
+            <div id="loading-indicator" style="display: none;">Loading...</div>
+            <div id="play-pause-indicator" style="display: none; font-size: 48px;">▶</div>
+        </div>
     </div>
 
 
@@ -76,8 +80,45 @@
         let currentCamera = 'All'; // Set the default camera to "All"
         ///let currentCamera = Object.keys(templateDetails)[0];
         let pngInterval;
+        const videoOverlay = document.getElementById('video-overlay');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const playPauseIndicator = document.getElementById('play-pause-indicator');
+
+        function showLoadingIndicator() {
+            videoOverlay.style.display = 'block';
+            loadingIndicator.style.display = 'block';
+            playPauseIndicator.style.display = 'none';
+        }
+
+        function hideLoadingIndicator() {
+            loadingIndicator.style.display = 'none';
+            if (videoOverlay.style.display === 'block') {
+                setTimeout(() => {
+                    videoOverlay.style.display = 'none';
+                }, 500);
+            }
+        }
+
+        function showPlayPauseIndicator(isPaused) {
+            videoOverlay.style.display = 'block';
+            playPauseIndicator.style.display = 'block';
+            playPauseIndicator.textContent = isPaused ? '▶' : '❚❚';
+            loadingIndicator.style.display = 'none';
+            setTimeout(() => {
+                playPauseIndicator.style.display = 'none';
+                if (loadingIndicator.style.display === 'none') {
+                    videoOverlay.style.display = 'none';
+                }
+            }, 500);
+        }
+
+        video.addEventListener('waiting', showLoadingIndicator);
+        video.addEventListener('canplay', hideLoadingIndicator);
+        video.addEventListener('play', () => showPlayPauseIndicator(false));
+        video.addEventListener('pause', () => showPlayPauseIndicator(true));
 
 function changeCamera() {
+    showLoadingIndicator();
     const cameraSelector = document.getElementById('camera-selector');
     const selectedValue = cameraSelector.value;
     if (selectedValue === 'All') {
