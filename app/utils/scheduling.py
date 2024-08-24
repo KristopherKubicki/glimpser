@@ -588,6 +588,7 @@ def update_summary():
 
     history = None
     if True:
+        # TODO: move this to a database instead
         # Specify the directory containing the .jl files
         directory = "data/summaries/"
 
@@ -600,7 +601,6 @@ def update_summary():
             key=lambda x: os.path.getmtime(os.path.join(directory, x)),
             reverse=True,
         )
-        print(jl_files)
 
         # for file in jl_files[:5]:
         entries = []

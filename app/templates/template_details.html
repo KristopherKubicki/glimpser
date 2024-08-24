@@ -146,7 +146,7 @@ function updateVideo(templateName) {
     <div id="edit-template" style="background-color: #222; padding: 20px; border-radius: 10px; max-width: 600px; margin: 20px auto;">
         <h3 style="color: #fff; text-align: center; margin-bottom: 20px;">Edit Template Details</h3>
         <form id="edit-template-form" action="/update_template/{{ template_name }}" method="post" onsubmit="return validateForm()" title="Form to edit template details">
-            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-bottom: 20px;">
+		<div>
                 <label for="url" style="color: #fff;" title="URL to monitor">URL:</label>
                 <input type="url" id="url" name="url" value="{{ template_details.url }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter the URL to monitor">
 
@@ -192,6 +192,7 @@ function updateVideo(templateName) {
                 <label for="rollback_frames" style="color: #fff;" title="Number of frames to rollback">Rollback Frames:</label>
                 <input type="number" id="rollback_frames" name="rollback_frames" value="{{ template_details.rollback_frames or 0 }}" min="0" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter number of frames to rollback">
             </div>
+	    <br/>
 
             <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
                 <label for="invert" style="color: #fff;" title="Invert image colors">
@@ -213,6 +214,7 @@ function updateVideo(templateName) {
                     <input type="checkbox" id="danger" name="danger" {% if template_details.danger %}checked{% endif %} title="Mark this template as potentially dangerous"> Danger
                 </label>
             </div>
+	    <br/>
 
             <div style="text-align: center; margin-top: 20px;">
                 <input type="submit" value="Update Template" style="padding: 10px 20px; background-color: #4CAF50; color: #fff; border: none; border-radius: 5px; cursor: pointer;" title="Save changes to this template">

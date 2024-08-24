@@ -37,6 +37,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
+logging.getLogger("webdriver_manager").setLevel(logging.WARNING)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from app.config import DEBUG, LANG, SCREENSHOT_DIRECTORY, UA
@@ -793,7 +794,7 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
         # Use yt-dlp to get the direct video URL
         output_path + ".%(ext)s"
         ytdlp_command = [
-            "yt-dlp",
+            "yt-dlp",  # TODO make this path a config
             "--get-url",
             "--format",
             "bestvideo",  # Adjust the format as needed
@@ -806,13 +807,13 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
 
         # Use ffmpeg to capture a frame from the video URL
         ffmpeg_command = [
-            "ffmpeg",
+            "ffmpeg", # TODO: make this a config
             "-analyzeduration",
             "20M",
             "-probesize",
             "20M",
             "-ec",
-            "15",
+            "15",  # todo: add -safe option
             "-i",
             video_url,  # Input stream URL from yt-dlp
             "-sn",
@@ -861,9 +862,9 @@ def capture_frame_from_stream(
         # Capture multiple frames into the temporary directory
         temp_output_pattern = os.path.join(tmpdirname, "frame_%03d.png")
         command = [
-            "ffmpeg",
+            "ffmpeg", # TODO: make this configurable
             "-hide_banner",
-            #'-hwaccel', 'auto',
+            #'-hwaccel', 'auto',  #TODO add support
         ]
 
         probe_size = "5M"
@@ -1716,7 +1717,7 @@ def capture_screenshot_and_har(
                 if current_time - os.path.getmtime(temp_dir) > 3600:  # 3600 seconds = 1 hour
                     shutil.rmtree(temp_dir, ignore_errors=True)
                     cleaned_dirs += 1
-            logging.info(f"Cleaned up {cleaned_dirs} temporary Chrome directories")
+            logging.debug(f"Cleaned up {cleaned_dirs} temporary Chrome directories")
         except Exception as e:
             logging.error(f"Error cleaning up temporary Chrome files: {e}")
 

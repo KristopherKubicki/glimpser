@@ -36,25 +36,32 @@ def get_latest_file(directory, ext="png"):
         return None
     return latest_file
 
-
 def get_latest_date(directory, ext="png"):
     if not os.path.exists(directory):
         return None
 
-    lpath = os.path.join(directory + "latest_camera." + ext)
+    # Correctly join directory and filename
+    lpath = os.path.join(directory, f"latest_camera.{ext}")
     latest_file = None
+
     if os.path.exists(lpath):
-        latest_file = lpath
+        # If 'latest_camera.<ext>' exists, use its filename
+        latest_file = f"latest_camera.{ext}"
     else:
+        # Assume 'get_latest_file' returns just the filename
         latest_file = get_latest_file(directory, ext)
 
     if latest_file is None:
         return None
 
     try:
-        latest_file_ctime = os.path.getctime(os.path.join(directory, latest_file))
+        # Construct the full path to the latest file
+        latest_file_path = os.path.join(directory, latest_file)
+        # Get the creation time of the latest file
+        latest_file_ctime = os.path.getctime(latest_file_path)
     except Exception as e:
         print("Warning: file error", e)
         return None
 
-    return datetime.fromtimestamp(latest_file_ctime).strftime("%Y-%m-%d %H:%M:%S")
+    # Convert the timestamp to UTC datetime string
+    return datetime.utcfromtimestamp(latest_file_ctime).strftime("%Y-%m-%d %H:%M:%S")

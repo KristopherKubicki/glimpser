@@ -9,10 +9,10 @@
 
 <details title="Expand to add a new template">
     <summary>Add Template</summary>
-    <div id="template-form" style="background-color: #222; padding: 20px; border-radius: 10px; max-width: 600px; margin: 20px auto;" title="Form to add a new template">
+    <div id="template-form" style="background-color: #222; padding: 20px; border-radius: 10px; max-width: 1000px; margin: 20px auto;" title="Form to add a new template">
         <h3 style="color: #fff; text-align: center; margin-bottom: 20px;">Add Template</h3>
         <form id="add-template-form" action="/templates" method="post" onsubmit="return validateForm()" title="Enter details for the new template">
-            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-bottom: 20px;">
+		<div>
                 <label for="name" style="color: #fff;" title="Name of the template">Template Name:</label>
                 <input type="text" id="name" name="name" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter a unique name for this template">
 
@@ -60,6 +60,7 @@
                 <label for="rollback_frames" style="color: #fff;" title="Number of frames to rollback">Rollback Frames:</label>
                 <input type="number" id="rollback_frames" name="rollback_frames" value="0" min="0" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter number of frames to rollback">
             </div>
+	    <br/>
 
             <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
                 <label for="invert" style="color: #fff;" title="Invert image colors">
@@ -75,6 +76,7 @@
                     <input type="checkbox" id="stealth" name="stealth" title="Use stealth mode to avoid detection"> Stealth
                 </label>
             </div>
+	    <br/>
 
             <div style="text-align: center; margin-top: 20px;">
                 <input type="submit" value="Submit" style="padding: 10px 20px; background-color: #4CAF50; color: #fff; border: none; border-radius: 5px; cursor: pointer;" title="Submit the template">

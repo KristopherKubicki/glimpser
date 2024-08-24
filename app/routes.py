@@ -48,12 +48,13 @@ from app.utils import (
 from app.utils.db import SessionLocal
 
 
+# todo: add this to utils so it is not duplicated in utils/video_archiver.py
 def validate_template_name(template_name: str):
     if template_name is None or not isinstance(template_name, str):
         return None
 
     # Strict whitelist of allowed characters
-    allowed_chars = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-')
+    allowed_chars = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.')
 
     # Check if all characters are in the allowed set
     if not all(char in allowed_chars for char in template_name):
@@ -64,7 +65,13 @@ def validate_template_name(template_name: str):
         return None
 
     # Ensure the name doesn't start or end with a dash or underscore
-    if template_name[0] in '-_' or template_name[-1] in '-_':
+    if template_name[0] in '-_.' or template_name[-1] in '-_.':
+        return None
+    if '..' in template_name:
+        return None
+    if '--' in template_name:
+        return None
+    if '__' in template_name:
         return None
 
     # Use secure_filename as an additional safety measure

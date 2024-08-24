@@ -7,7 +7,11 @@
                 {% endfor %}
             </div>
             <div class="nav-right">
-                <a href='/captions' id='captions'>Captions</a>
+		    <table>
+			    <tr>
+				    <td>
+					    <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'>&#9000;</a>
+				    </td><td>
                 <a href='/live' id='live'>
                     <div id="coolClock" class="cool-clock" title="Live">
                         <div id="dateDisplay" class="clock-face">
@@ -19,7 +23,11 @@
                         </div>
                     </div>
                 </a>
-                <a href='/settings' class="settings-icon" title="Settings">&#9881;</a>
+				    </td><td>
+                <a href='/settings' class="settings-icon" title="Settings" title='Update settings'>&#9881;</a>
+				    </td>
+			    </tr>
+		    </table>
             </div>
         </nav>
 

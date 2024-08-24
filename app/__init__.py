@@ -59,6 +59,7 @@ def create_app():
             # remove existing schedules, particularly if the app reloads (which it does in debug mode)
             scheduler.remove_all_jobs()
 
+            # TODO: allow disable / enable of these via command line or settings? 
             schedule_crawlers()
             # Additional scheduler setup for video archiving
             scheduler.add_job(

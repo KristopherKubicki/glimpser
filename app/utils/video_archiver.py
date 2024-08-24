@@ -21,26 +21,41 @@ from app.config import (
 from .template_manager import get_templates
 
 
-# TODO: move this until utils so that its not duplicated
-def validate_template_name(template_name):
+# TODO: move this to utils so it is not duplicated in routes.py
+def validate_template_name(template_name: str):
+    if template_name is None or not isinstance(template_name, str):
+        return None
 
-    if template_name is None:
-        return False
-    if type(template_name) != str:
-        return False
+    # Strict whitelist of allowed characters
+    allowed_chars = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.')
 
-    if ".." in template_name:  # pedantic
-        return False
-    if "/" in template_name:  # pedantic
-        return False
-    if len(template_name) > 32:  # pedantic
-        return False
+    # Check if all characters are in the allowed set
+    if not all(char in allowed_chars for char in template_name):
+        return None
 
-    # only allow a-Z0-9_ from 1 to 32 characters
-    if re.findall(r"^[a-zA-Z0-9_\.]{1,32}$", template_name):
-        return True
+    # Check length
+    if len(template_name) == 0 or len(template_name) > 32:
+        return None
 
-    return False
+    # Ensure the name doesn't start or end with a dash or underscore
+    if template_name[0] in '-_.' or template_name[-1] in '-_.':
+        return None
+    if '..' in template_name:
+        return None
+    if '--' in template_name:
+        return None
+    if '__' in template_name:
+        return None
+
+    # Use secure_filename as an additional safety measure
+    sanitized_name = secure_filename(template_name)
+
+    # Ensure secure_filename didn't change the name (which would indicate it found something suspicious)
+    if sanitized_name != template_name:
+        return None
+
+    return sanitized_name
+
 
 
 def touch(fname, times=None):
@@ -117,7 +132,7 @@ def compile_videos(input_file, output_file):
         return False
 
     create_command = [
-        "ffmpeg",
+        "ffmpeg", # TODO make this a config value
         "-threads",
         "5",
         "-err_detect",
@@ -128,8 +143,8 @@ def compile_videos(input_file, output_file):
         "-dn",
         "-f",
         "concat",
-        "-safe",
-        "0",  # no relative paths...
+        #"-safe",   # TODO: notworking?
+        #"0",  # no relative paths...
         "-i",
         os.path.abspath(input_file),
         "-c",
@@ -184,7 +199,7 @@ def get_video_duration(video_path):
     return duration
 
 
-def concatenate_videos(in_process_video, temp_video, video_path):
+def concatenate_videos(in_process_video, temp_video, video_path) -> bool:
     """Concatenate the temporary video with the existing in-process video."""
     if (
         os.path.exists(in_process_video)
@@ -200,7 +215,9 @@ def concatenate_videos(in_process_video, temp_video, video_path):
             concat_command = [
                 "ffmpeg",
                 "-threads",
-                "5",
+                "5", # todo, make this a config
+                #"-safe",  Option not found?  But it is found and used elsewhere?  Not surewhy this is..
+                #"0",
                 "-err_detect",
                 "ignore_err",
                 "-fflags",
@@ -209,8 +226,6 @@ def concatenate_videos(in_process_video, temp_video, video_path):
                 "-dn",
                 "-c:v",
                 "h264",
-                "-safe",
-                "0",
                 "-i",
                 os.path.abspath(in_process_video),
                 "-i",
@@ -229,6 +244,7 @@ def concatenate_videos(in_process_video, temp_video, video_path):
                 os.path.abspath(concat_video),  # Overwrite the in-process video
             ]
             try:
+                # TODO: check stdout and stderr
                 subprocess.run(
                     concat_command,
                     check=True,
@@ -255,22 +271,27 @@ def concatenate_videos(in_process_video, temp_video, video_path):
     elif os.path.getsize(temp_video) > 0:
         os.rename(temp_video, in_process_video)
 
+    # TODO: check timestamp, should be current...
+    if os.path.exists(in_process_video):
+        return True
+    return False
 
-def handle_concat_error(e, temp_video, in_process_video):
+
+def handle_concat_error(e, temp_video, in_process_video) -> bool:
     """Handle errors that occur during the concatenation process."""
 
     if "/in_process.mp4: Invalid data found" in str(e):
-        print("Warning: invalid in_process file")
+        print("Warning: invalid in_process file", e)
         if os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
             # TODO: consider truth
     else:
-        #print("FFmpeg concat command failed:", e) # TODO: handle this better... why non zero exit?
+        print("FFmpeg concat command failed:", e) # TODO: handle this better... why non zero exit?
         if os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
 
 
-def compile_to_video(camera_path, video_path):
+def compile_to_video(camera_path, video_path) -> bool:
 
     os.makedirs(video_path, exist_ok=True)
     os.makedirs(camera_path, exist_ok=True)
@@ -329,6 +350,8 @@ def compile_to_video(camera_path, video_path):
         # print(f'Video finalized: {final_video_path}')  #log instead
         # this is going to generate overlapping segments, which is OK for now .
 
+    #print("OK", glob.glob(camera_path + "/*.png"))
+
     # Filter the list of image files to include only those that are newer than the video
     new_files = [
         f
@@ -336,6 +359,8 @@ def compile_to_video(camera_path, video_path):
         if os.path.getctime(f) > video_mod_time
     ]
     new_files = sorted(new_files)
+
+    #print("compile", time.time(), video_mod_time, len(new_files))
 
     if len(new_files) > 0:
         # Create a temporary file with the list of new frames
@@ -397,8 +422,9 @@ def compile_to_video(camera_path, video_path):
             ["-y", os.path.abspath(temp_video)]
         )  # Overwrite if exists
 
+        lout, lerr = None, None
         try:
-            # print("CMD", lcount, ' '.join(create_command))
+            #print("CMD", lcount, ' '.join(create_command))
             subprocess.run(
                 create_command,
                 check=True,
@@ -421,24 +447,24 @@ def compile_to_video(camera_path, video_path):
 
             # Concatenate the temporary video with the existing in-process video
             if os.path.getsize(temp_video) > 0 and video_mod_time == 0:
-                # print("concatenate skip...", temp_video, lcount) # warning
+                #print("concatenate skip...", temp_video, lcount) # warning
                 os.rename(temp_video, in_process_video)
             else:
                 ldur2 = get_video_duration(temp_video)
                 if os.path.getsize(temp_video) > 0 and ldur2 == 300 / 25:
-                    # print("concatenate skip2...", temp_video, lcount) # warning
+                    #print("concatenate skip2...", temp_video, lcount) # warning
                     os.rename(temp_video, in_process_video)
                 elif round(ldur2, 1) == round(
                     (len(new_files) / 25), 1
                 ):  # this is a perfect encode...
-                    # print(" detected perfect encode... concatenating...", ldur, ldur2, len(new_files) / 25, video_mod_time, camera_path, os.path.getsize(temp_video), os.path.getsize(in_process_video))
+                    #print(" detected perfect encode... concatenating...", ldur, ldur2, len(new_files) / 25, video_mod_time, camera_path, os.path.getsize(temp_video), os.path.getsize(in_process_video))
                     concatenate_videos(in_process_video, temp_video, video_path)
                 else:
                     # this means a lot of frame drops
-                    # print("warning encoding miss!", lcount, video_mod_time, temp_video, os.path.getsize(temp_video) , ldur, ldur2, len(new_files) / 25, os.path.getsize(temp_video), os.path.getsize(in_process_video))
+                    #print("warning encoding miss!", lcount, video_mod_time, temp_video, os.path.getsize(temp_video) , ldur, ldur2, len(new_files) / 25, os.path.getsize(temp_video), os.path.getsize(in_process_video))
                     # subprocess.run(create_command, check=True)
                     # yeah concatenate anyway
-                    concatenate_videos(in_process_video, temp_video, video_path)
+                    ltest = concatenate_videos(in_process_video, temp_video, video_path)
 
     # Add new screenshots to the "in-process" video
     # Assuming screenshots are added at a regular interval, they can be appended in order
