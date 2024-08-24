@@ -20,6 +20,7 @@ from .image_processing import chatgpt_compare
 from .llm import summarize
 from .screenshots import capture_or_download, remove_background, add_timestamp
 from .template_manager import get_template, get_templates, save_template
+from .caching import cached
 
 scheduler = APScheduler()
 
@@ -763,6 +764,9 @@ def start_metrics_collection():
     metrics_thread = threading.Thread(target=collect_system_metrics, daemon=True)
     metrics_thread.start()
 
+from app.utils.caching import cached
+
+@cached(ttl=5)  # Cache for 5 seconds
 def get_system_metrics():
     global system_metrics
     uptime = time.time() - system_metrics['start_time']
