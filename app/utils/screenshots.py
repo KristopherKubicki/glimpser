@@ -451,43 +451,36 @@ def parse_url(url):
     return domain, port
 
 
-def capture_or_download(name: str, template: str) -> bool:
+def capture_or_download(name: str, template: dict) -> bool:
     """
-    Decides whether to download the image directly or capture a screenshot based on the given template.
-
-    This function is the main entry point for capturing or downloading content from a URL. It handles
-    various types of content (images, PDFs, video streams, web pages) and uses different methods to
-    obtain the content based on the URL and content type.
-
-    Args:
-        name (str): The name to be used for the output file.
-        template (str): A dictionary containing configuration parameters for the capture/download.
-
-    Returns:
-        bool: True if the capture/download was successful, False otherwise.
+    Optimized function to decide whether to download the image directly or capture a screenshot based on the given template.
     """
-    if name is None or template is None:
+    if not name or not template:
         return False
 
-    # Extract parameters from the template
     url = template.get("url")
-    popup_xpath = template.get("popup_xpath")
-    dedicated_selector = template.get("dedicated_xpath")
-    timeout = int(template.get("timeout", 30) or 30)
+    if not url:
+        return False
 
-    # Set flags based on template parameters
-    invert = template.get("invert", "") not in ["", "false", False]
-    headless = template.get("headless", "") not in ["", "false", False]
-    dark = template.get("dark", "") not in ["", "false", False]
-    stealth = template.get("stealth", "") not in ["", "false", False]
-    browser = template.get("browser", "") not in ["", "false", False] or stealth
-    danger = template.get("danger", "") not in ["", "false", False]
+    # Extract parameters and set flags
+    params = {
+        "popup_xpath": template.get("popup_xpath"),
+        "dedicated_selector": template.get("dedicated_xpath"),
+        "timeout": int(template.get("timeout") or 30),
+        "invert": template.get("invert") not in ["", "false", False],
+        "headless": template.get("headless") not in ["", "false", False],
+        "dark": template.get("dark") not in ["", "false", False],
+        "stealth": template.get("stealth") not in ["", "false", False],
+        "browser": template.get("browser") not in ["", "false", False],
+        "danger": template.get("danger") not in ["", "false", False],
+        "proxy": template.get("proxy")
+    }
 
-    if danger:
-        browser = True
-        headless = True
-    if not headless:
-        browser = True
+    params["browser"] |= params["stealth"]
+    if params["danger"]:
+        params["browser"] = params["headless"] = True
+    elif not params["headless"]:
+        params["browser"] = True
 
     # Check if the host is reachable
     domain, port = parse_url(url)
@@ -500,31 +493,28 @@ def capture_or_download(name: str, template: str) -> bool:
     output_path = os.path.join(SCREENSHOT_DIRECTORY, f"{name}/{name}_{timestamp}.png")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    # Determine content type
-    content_type = get_content_type(url, danger)
+    # Determine content type and capture method
+    content_type = get_content_type(url, params["danger"])
+    
+    if not params["danger"]:
+        if is_image_url(url, content_type):
+            return download_image(url, output_path, params["timeout"], name, params["invert"])
+        if is_pdf_url(url, content_type):
+            return download_pdf(url, output_path, params["timeout"], name, params["invert"])
+        if is_video_stream_url(url, content_type):
+            return capture_frame_from_stream(url, output_path, params["timeout"], name, params["invert"])
+        if is_enhanced(url):
+            return capture_frame_with_ytdlp(url, output_path, name, params["invert"])
 
-    # Attempt to download or capture based on content type and URL
-    if is_image_url(url, content_type) and not danger:
-        return download_image(url, output_path, timeout, name, invert)
+    # Web page capture
+    if should_use_lightweight_browser(url, params["dedicated_selector"], params["popup_xpath"], params["headless"], params["stealth"], params["browser"], params["danger"]):
+        return capture_screenshot_and_har_light(url, output_path, params["timeout"], name, params["invert"], params["proxy"], params["dark"])
 
-    if is_pdf_url(url, content_type) and not danger:
-        return download_pdf(url, output_path, timeout, name, invert)
-
-    if is_video_stream_url(url, content_type) and not danger:
-        return capture_frame_from_stream(url, output_path, timeout, name, invert)
-
-    if is_enhanced(url) and not danger:
-        return capture_frame_with_ytdlp(url, output_path, name, invert)
-
-    # Attempt lightweight browser capture for simple web pages
-    if should_use_lightweight_browser(url, dedicated_selector, popup_xpath, headless, stealth, browser, danger):
-        return capture_screenshot_and_har_light(url, output_path, timeout, name, invert, template.get("proxy"), dark)
-
-    # Fall back to full browser capture
-    if re.findall(r"^https?://", url, flags=re.I):
-        if not browser:
-            headless = True
-        return capture_screenshot_and_har(url, output_path, popup_xpath, dedicated_selector, timeout, name, invert, template.get("proxy"), headless, dark, stealth, danger)
+    if re.match(r"^https?://", url, re.I):
+        return capture_screenshot_and_har(url, output_path, params["popup_xpath"], params["dedicated_selector"], 
+                                          params["timeout"], name, params["invert"], params["proxy"], 
+                                          params["headless"] or not params["browser"], params["dark"], 
+                                          params["stealth"], params["danger"])
 
     logging.error(f"Failed to capture or download content from {url}")
     return False

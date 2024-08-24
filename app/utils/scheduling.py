@@ -6,6 +6,7 @@ import logging
 import os
 import random
 import re
+import multiprocessing
 
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
@@ -15,11 +16,11 @@ from transformers import CLIPProcessor, CLIPModel
 
 from app.config import DEBUG, SCREENSHOT_DIRECTORY, SUMMARIES_DIRECTORY, VIDEO_DIRECTORY
 
-from .detect import calculate_difference_fast
-from .image_processing import chatgpt_compare
-from .llm import summarize
-from .screenshots import capture_or_download, remove_background, add_timestamp
-from .template_manager import get_template, get_templates, save_template
+from app.utils.detect import calculate_difference_fast
+from app.utils.image_processing import chatgpt_compare
+from app.utils.llm import summarize
+from app.utils.screenshots import capture_or_download, remove_background, add_timestamp
+from app.utils.template_manager import get_template, get_templates, save_template
 
 scheduler = APScheduler()
 
@@ -662,74 +663,68 @@ def schedule_summarization():
     update_summary()
 
 
+def update_camera_wrapper(args):
+    name, template = args
+    return update_camera(name, template)
+
 def schedule_crawlers():
     """
     Fetch templates and schedule them according to their frequency, and schedule init_crawl.
-    Each job will be offset by an additional delay to avoid overloading the system.
+    Uses multiprocessing for parallel camera captures.
     """
     templates = get_templates()
     total_crawlers = len(templates)
     base_delay = 60  # Base delay of 1 minute in seconds
-    #  consider making this more dynamic, so that the shorter term ones have less of a base
 
-    # shuffle the template so its not always the same ones
+    # Shuffle the templates
     shuffled_templates = list(templates.items())
     random.shuffle(shuffled_templates)
 
-    for index, (id, template) in enumerate(shuffled_templates):
+    # Group templates by frequency
+    frequency_groups = {}
+    for id, template in shuffled_templates:
         name = template.get("name")
-        if name is None or name == "":
+        if not name:
             continue
-        output_path = os.path.join(SCREENSHOT_DIRECTORY, name)
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        output_path = os.path.join(VIDEO_DIRECTORY, name)
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-        # Convert frequency from minutes to seconds
+        # Ensure output directories exist
+        for directory in [SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY]:
+            output_path = os.path.join(directory, name)
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
         try:
-            seconds = 60 * int(
-                template.get("frequency", 30)
-            )  # Default value is now dynamically retrieved
+            frequency = int(template.get("frequency", 30))
         except Exception as e:
             logging.error(f"Error determining frequency for {name}: {e}")
-            seconds = 60 * 30  # Fallback to default value if there's an issue
+            frequency = 30
 
-        # Calculate the delay increment dynamically based on the total number of crawlers
-        lbase_delay = base_delay
-        if seconds > 120:
-            lbase_delay *= 2
-        if seconds > 240:
-            lbase_delay *= 2
-        if seconds > 360:
-            lbase_delay *= 2
-        if seconds > 720:
-            lbase_delay *= 2
+        if frequency not in frequency_groups:
+            frequency_groups[frequency] = []
+        frequency_groups[frequency].append((name, template))
 
-        delay_increment = lbase_delay / total_crawlers
+    # Schedule jobs for each frequency group
+    for frequency, group in frequency_groups.items():
+        seconds = 60 * frequency
 
-        # Calculate the offset delay for this crawler
-        offset_delay_seconds = index * delay_increment + index
+        def run_group(group_templates):
+            with multiprocessing.Pool() as pool:
+                pool.map(update_camera_wrapper, group_templates)
 
-        # TODO: consider the fact that the tmeplate is out of date.
-        # any time we update a camera, we upave to remove the old job and create a new one
-
-        # Apply the incremental delay to space out job scheduling
+        # Schedule the group job
         try:
             scheduler.add_job(
-                func=update_camera,
+                func=run_group,
                 trigger="interval",
                 seconds=seconds,
-                start_date=datetime.datetime.now()
-                + datetime.timedelta(seconds=offset_delay_seconds),
-                args=[name, template],
-                id=name,
+                start_date=datetime.datetime.now(),
+                args=[group],
+                id=f"group_{frequency}",
                 replace_existing=True,
             )
         except Exception as e:
-            print("job schedule error:", e)
-            logging.error(f"Error scheduling job for {name}: {e}")
+            logging.error(f"Error scheduling job for frequency {frequency}: {e}")
 
-    # Schedule init_crawl to run once, slightly offset as well
+    # Schedule init_crawl to run once, slightly offset
     try:
         scheduler.add_job(
             func=init_crawl,
