@@ -424,8 +424,36 @@ def init_routes(app):
         
     @app.route('/health')
     def health_check():
-        # should be healthy
-        return jsonify({"status": "healthy"}), 200
+        health_status = {
+            "status": "healthy",
+            "database": check_database_connection(),
+            "system_resources": check_system_resources()
+        }
+        
+        if not all(health_status.values()):
+            return jsonify(health_status), 503
+        return jsonify(health_status), 200
+
+    def check_database_connection():
+        try:
+            db = SessionLocal()
+            db.execute(text("SELECT 1"))
+            return True
+        except SQLAlchemyError:
+            return False
+        finally:
+            db.close()
+
+    def check_system_resources():
+        cpu_usage = psutil.cpu_percent()
+        memory_usage = psutil.virtual_memory().percent
+        disk_usage = psutil.disk_usage('/').percent
+        
+        return {
+            "cpu_usage": cpu_usage,
+            "memory_usage": memory_usage,
+            "disk_usage": disk_usage
+        }
 
     @app.route("/login", methods=["GET", "POST"])
     def login():

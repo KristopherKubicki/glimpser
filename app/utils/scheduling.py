@@ -739,3 +739,32 @@ def schedule_crawlers():
         )
     except Exception as e:
         logging.error(f"Error scheduling initial crawl: {e}")
+
+def perform_health_check():
+    """
+    Perform a comprehensive health check of the application.
+    """
+    from app.utils.db import check_db_connection
+    from app.utils.system_monitor import check_critical_resources
+
+    health_status = {
+        "database": check_db_connection(),
+        "system_resources": check_critical_resources(),
+        "scheduler": scheduler.state == apscheduler.schedulers.base.STATE_RUNNING
+    }
+
+    if not all(health_status.values()):
+        logging.warning(f"Health check failed: {health_status}")
+    else:
+        logging.info("Health check passed")
+
+    return health_status
+
+# Schedule periodic health checks
+scheduler.add_job(
+    func=perform_health_check,
+    trigger="interval",
+    minutes=15,
+    id="periodic_health_check",
+    replace_existing=True
+)

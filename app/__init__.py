@@ -19,7 +19,7 @@ def create_app():
     app = Flask(__name__)
     # app.config.from_object()
 
-    from app.config import SECRET_KEY
+    from app.config import SECRET_KEY, LOG_LEVEL
 
     app.secret_key = SECRET_KEY
 
@@ -35,6 +35,21 @@ def create_app():
     os.makedirs(VIDEO_DIRECTORY, exist_ok=True)
     os.makedirs(SUMMARIES_DIRECTORY, exist_ok=True)
 
+    # Set up logging
+    logging.basicConfig(
+        filename='app.log',
+        level=getattr(logging, LOG_LEVEL),
+        format='%(asctime)s [%(levelname)s] - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
+    # Add a stream handler to output logs to console as well
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(getattr(logging, LOG_LEVEL))
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] - %(message)s')
+    console_handler.setFormatter(formatter)
+    logging.getLogger('').addHandler(console_handler)
+
     from .routes import init_routes
 
     init_routes(app)
@@ -44,14 +59,14 @@ def create_app():
     app.config["SCHEDULER_EXECUTORS"] = {
         "default": {"type": "processpool", "max_workers": MAX_WORKERS}
     }
-    logging.info(" starting with %s workers" % str(MAX_WORKERS))
+    logging.info("Starting with %s workers", str(MAX_WORKERS))
 
     scheduler.init_app(app)
 
     # Scheduler setup
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
         scheduler.start()
-        logging.info("initializing...")
+        logging.info("Initializing...")
 
         # Schedule the crawlers upon app start
         with app.app_context():
@@ -79,8 +94,17 @@ def create_app():
             )
             schedule_summarization()
 
+            # Add new job for system resource monitoring
+            from app.utils.system_monitor import monitor_system_resources
+            scheduler.add_job(
+                id="monitor_system_resources",
+                func=monitor_system_resources,
+                trigger="interval",
+                minutes=5,
+            )
+
         # one time cleanup..
         retention_cleanup()
-        logging.info("initialization complete")
+        logging.info("Initialization complete")
 
     return app
