@@ -1,28 +1,40 @@
 import unittest
-import os
 import sys
-import tempfile
-from PIL import Image
+import os
+from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.utils.screenshots import add_timestamp, remove_background
+from app.utils.image_processing import ChatGPTImageComparison, chatgpt_compare
 
-class TestImageProcessing(unittest.TestCase):
+class TestChatGPTImageComparison(unittest.TestCase):
 
-    def test_add_timestamp(self):
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
-            image_path = temp_file.name
-        try:
-            # Create a simple image and add a timestamp
-            with Image.new("RGB", (100, 100), color="black") as img:
-                img.save(image_path)
-            add_timestamp(image_path, name="Test Image", invert=False)
-            self.assertTrue(os.path.exists(image_path))
-        finally:
-            os.remove(image_path)
+    @patch('app.utils.image_processing.requests.post')
+    def test_compare_images(self, mock_post):
+        # Mock the API response
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": "Test comparison result"}}],
+            "usage": {"total_tokens": 100}
+        }
+        mock_post.return_value = mock_response
 
+        comparison = ChatGPTImageComparison()
+        result = comparison.compare_images("Test prompt", ["test_image1.jpg", "test_image2.jpg"])
+
+        self.assertEqual(result, "Test comparison result")
+        mock_post.assert_called_once()
+
+class TestChatgptCompare(unittest.TestCase):
+
+    @patch('app.utils.image_processing.ChatGPTImageComparison.compare_images')
+    def test_chatgpt_compare(self, mock_compare_images):
+        mock_compare_images.return_value = "Test comparison result"
+
+        result = chatgpt_compare(["test_image1.jpg", "test_image2.jpg"], "Test prompt")
+
+        self.assertEqual(result, "Test comparison result")
+        mock_compare_images.assert_called_once_with("Test prompt", ["test_image1.jpg", "test_image2.jpg"])
 
 if __name__ == '__main__':
     unittest.main()
-

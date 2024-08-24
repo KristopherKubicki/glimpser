@@ -101,15 +101,17 @@ class TestStringFormatting(unittest.TestCase):
         formatted_string = f"Hello, {name}!"
         self.assertEqual(formatted_string, "Hello, World!")
 
-class TestListComprehension(unittest.TestCase):
+class TestDictionaryComprehension(unittest.TestCase):
 
-    def test_list_comprehension(self):
+    def test_simple_dict_comprehension(self):
         numbers = [1, 2, 3, 4, 5]
-        squared_numbers = [x**2 for x in numbers]
-        self.assertEqual(squared_numbers, [1, 4, 9, 16, 25])
+        squared_dict = {n: n**2 for n in numbers}
+        self.assertEqual(squared_dict, {1: 1, 2: 4, 3: 9, 4: 16, 5: 25})
 
-        even_numbers = [x for x in numbers if x % 2 == 0]
-        self.assertEqual(even_numbers, [2, 4])
+    def test_dict_comprehension_with_condition(self):
+        numbers = [1, 2, 3, 4, 5, 6]
+        even_squared_dict = {n: n**2 for n in numbers if n % 2 == 0}
+        self.assertEqual(even_squared_dict, {2: 4, 4: 16, 6: 36})
 
 if __name__ == '__main__':
     unittest.main()
