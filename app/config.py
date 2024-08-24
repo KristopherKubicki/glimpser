@@ -99,7 +99,7 @@ SECRET_KEY = get_setting("SECRET_KEY", "default_secret_key")
 USER_NAME = get_setting("USER_NAME", "admin")
 USER_PASSWORD_HASH = get_setting("USER_PASSWORD_HASH", "")
 API_KEY = get_setting("API_KEY", "")
-CHATGPT_KEY = get_setting("CHATGPT_KEY", "")  # maybe generalize as LLM_KEY ? 
+CHATGPT_KEY = get_setting("CHATGPT_KEY", "")  # maybe generalize as LLM_KEY ?
 
 LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-4o-mini") # todo setup allowed models
 
@@ -113,6 +113,12 @@ LLM_CAPTION_PROMPT = get_setting(
     "LLM_CAPTION_PROMPT",
     "Write a concise caption that highlights the most significant or unique aspect of this image in 10 words or less. Avoid general descriptions, and focus on noteworthy details or anomalies. Then, provide a brief, more detailed description in a couple of sentences. The time is $datetime UTC.",
 )
+
+# FFMPEG path setting
+FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
+
+# FFMPEG path setting
+FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
 
 # experimental
 # TWILIO_SID = get_setting("TWILIO_SID","")
