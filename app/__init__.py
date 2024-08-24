@@ -3,6 +3,9 @@
 import logging
 import os
 import threading
+import signal
+import sys
+import shutil
 
 from flask import Flask, current_app
 from flask_apscheduler import APScheduler
@@ -132,5 +135,15 @@ def create_app():
     # Start collecting metrics
     from .utils.scheduling import start_metrics_collection
     start_metrics_collection()
+
+    # Set up signal handlers for graceful shutdown
+    def graceful_shutdown(signum, frame):
+        logging.info("Received shutdown signal. Shutting down gracefully...")
+        scheduler.shutdown()
+        # Add any other cleanup tasks here (e.g., closing database connections)
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, graceful_shutdown)
+    signal.signal(signal.SIGINT, graceful_shutdown)
 
     return app
