@@ -40,7 +40,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 logging.getLogger("webdriver_manager").setLevel(logging.WARNING)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-from app.config import DEBUG, LANG, SCREENSHOT_DIRECTORY, UA
+from app.config import DEBUG, LANG, SCREENSHOT_DIRECTORY, UA, FFMPEG_PATH
 
 last_camera_test = {}
 last_camera_test_time = {}
@@ -712,15 +712,15 @@ def capture_frame_from_stream(
     url, output_path, num_frames=3, timeout=30, name="unknown", invert=False
 ):
     """Use ffmpeg to capture multiple frames from a video stream and save the last one."""
-    if shutil.which("ffmpeg") is None:
-        print("ffmpeg is not installed or not in the system path.")
+    if shutil.which(FFMPEG_PATH) is None:
+        print(f"{FFMPEG_PATH} is not installed or not in the system path.")
         return False
 
     with tempfile.TemporaryDirectory() as tmpdirname:  # todo make sure this gets dleted
         # Capture multiple frames into the temporary directory
         temp_output_pattern = os.path.join(tmpdirname, "frame_%03d.png")
         command = [
-            "ffmpeg", # TODO: make this configurable
+            FFMPEG_PATH,  # Use the configurable FFMPEG_PATH
             "-hide_banner",
             #'-hwaccel', 'auto',  #TODO add support
         ]
@@ -813,7 +813,7 @@ def capture_frame_from_stream(
         except Exception as e:
             logging.error(f"Error capturing frames from stream: {e}")
 
-    logging.error(f"Error capturing frame with ffmpeg: {url}")
+    logging.error(f"Error capturing frame with {FFMPEG_PATH}: {url}")
     return False
 
 
