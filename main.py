@@ -14,6 +14,16 @@ from app import create_app
 """
 
 def parse_arguments():
+    """
+    Parse command-line arguments for the Glimpser application.
+
+    This function sets up the argument parser and defines various command-line options
+    for configuring the application, including paths for database, logs, and media files,
+    as well as server and logging settings.
+
+    Returns:
+        argparse.Namespace: An object containing the parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="Glimpser %s" % config.VERSION)
     parser.add_argument("--db-path", default=config.DATABASE_PATH,
             help="Path to the database file (default: %s)" % config.DATABASE_PATH)
@@ -35,6 +45,14 @@ def parse_arguments():
     return parser.parse_args()
 
 def setup_config(args=None):
+    """
+    Set up the application configuration based on command-line arguments or default values.
+
+    Args:
+        args (argparse.Namespace, optional): Parsed command-line arguments. Defaults to None.
+
+    If args is None, the function assumes the application is running via Gunicorn and uses default config values.
+    """
     if args is None:
         # Use default config values when running via Gunicorn
         return
@@ -50,6 +68,14 @@ def setup_config(args=None):
     config.SUMMARIES_DIRECTORY = args.summaries_dir
 
 def setup_logging(args=None):
+    """
+    Configure the logging system for the application.
+
+    Args:
+        args (argparse.Namespace, optional): Parsed command-line arguments. Defaults to None.
+
+    This function sets up file logging and optionally console logging based on the provided arguments.
+    """
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     logger = logging.getLogger()
     logger.setLevel(getattr(logging, args.log_level if args else config.LOG_LEVEL))
@@ -57,16 +83,23 @@ def setup_logging(args=None):
     # Ensure log directory exists
     os.makedirs(os.path.dirname(config.LOGGING_PATH), exist_ok=True)
 
+    # Set up file logging
     file_handler = logging.FileHandler(config.LOGGING_PATH)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
+    # Set up console logging if requested
     if args and args.console_log:
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
 
 def ensure_directories():
+    """
+    Create necessary directories for the application if they don't exist.
+
+    This function creates directories for the database, logs, screenshots, videos, and summaries.
+    """
     os.makedirs(os.path.dirname(config.DATABASE_PATH), exist_ok=True)
     os.makedirs(os.path.dirname(config.LOGGING_PATH), exist_ok=True)
     os.makedirs(config.SCREENSHOT_DIRECTORY, exist_ok=True)
@@ -74,11 +107,26 @@ def ensure_directories():
     os.makedirs(config.SUMMARIES_DIRECTORY, exist_ok=True)
 
 def generate_credentials_if_needed():
+    """
+    Generate credentials if the database file doesn't exist.
+
+    This function checks if the database file exists, and if not, it calls the generate_credentials function
+    to create new credentials.
+    """
     if not os.path.exists(config.DATABASE_PATH):
         from generate_credentials import generate_credentials
         generate_credentials()
 
 def create_application():
+    """
+    Create and configure the Flask application.
+
+    This function sets up the entire application, including parsing arguments, setting up configuration and logging,
+    ensuring necessary directories exist, and generating credentials if needed.
+
+    Returns:
+        Flask: The configured Flask application instance.
+    """
     if __name__ == "__main__":
         args = parse_arguments()
         setup_config(args)
@@ -93,7 +141,9 @@ def create_application():
 
     return create_app()
 
+# Create the Flask application
 app = create_application()
 
 if __name__ == "__main__":
+    # Run the application if this script is executed directly
     app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True)
