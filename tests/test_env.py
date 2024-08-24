@@ -20,6 +20,11 @@ class TestEnvironmentVariables(unittest.TestCase):
     def test_environment_variable_missing(self):
         self.assertIsNone(os.getenv("NON_EXISTENT_VAR"))
 
+    @patch.dict(os.environ, {"TEST_INT_VAR": "42", "TEST_FLOAT_VAR": "3.14"})
+    def test_environment_variable_types(self):
+        self.assertEqual(int(os.getenv("TEST_INT_VAR")), 42)
+        self.assertAlmostEqual(float(os.getenv("TEST_FLOAT_VAR")), 3.14)
+
 class TestFileIO(unittest.TestCase):
 
     @patch("builtins.open", new_callable=mock_open, read_data="data")

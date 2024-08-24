@@ -65,6 +65,11 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(domain, "example.com")
         self.assertIsNone(port)
 
+        # Test parsing URL with IPv6 address
+        domain, port = parse_url("http://[2001:db8::1]:8080")
+        self.assertEqual(domain, "2001:db8::1")
+        self.assertEqual(port, 8080)
+
     def test_get_arp_output(self):
         # Test get_arp_output function
         # Note: This test might need to be adjusted based on the actual implementation and system

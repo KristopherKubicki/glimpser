@@ -101,6 +101,16 @@ class TestStringFormatting(unittest.TestCase):
         formatted_string = f"Hello, {name}!"
         self.assertEqual(formatted_string, "Hello, World!")
 
+class TestListComprehension(unittest.TestCase):
+
+    def test_list_comprehension(self):
+        numbers = [1, 2, 3, 4, 5]
+        squared_numbers = [x**2 for x in numbers]
+        self.assertEqual(squared_numbers, [1, 4, 9, 16, 25])
+
+        even_numbers = [x for x in numbers if x % 2 == 0]
+        self.assertEqual(even_numbers, [2, 4])
+
 if __name__ == '__main__':
     unittest.main()
 
