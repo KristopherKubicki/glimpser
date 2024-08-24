@@ -5,24 +5,52 @@ import app.config as config
 from app import create_app
 
 def parse_arguments():
+    """
+    Parse command-line arguments for the Glimpser application.
+
+    This function sets up the argument parser and defines all the command-line
+    options that can be used to configure the application. It includes options
+    for database path, server host and port, logging configuration, debug mode,
+    and various directory paths for storing application data.
+
+    Returns:
+        argparse.Namespace: An object containing all the parsed arguments.
+    """
+    # Create an ArgumentParser object with a description of the program
     parser = argparse.ArgumentParser(description="Glimpser %s" % config.VERSION)
+
+    # Database configuration
     parser.add_argument("--db-path", default=config.DATABASE_PATH,
-            help="Path to the database file (default: %s)" % config.DATABASE_PATH)
-    parser.add_argument("--host", default=config.HOST, help="Host for the web server (default: %s)" % config.HOST)
-    parser.add_argument("--port", type=int, default=config.PORT, help="Port for the web server (default: %s)" % config.PORT)
+            help="Path to the database file (default: %(default)s)")
+
+    # Web server configuration
+    parser.add_argument("--host", default=config.HOST,
+            help="Host for the web server (default: %(default)s)")
+    parser.add_argument("--port", type=int, default=config.PORT,
+            help="Port for the web server (default: %(default)s)")
+
+    # Logging configuration
     parser.add_argument("--log-path", default=config.LOGGING_PATH,
-            help="Path to the log file (default: %s)" % config.LOGGING_PATH)
-    parser.add_argument("--log-level", default=config.LOG_LEVEL, choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-                        help="Logging level")
-    parser.add_argument("--console-log", action="store_true", help="Enable logging to the console", default=False)
+            help="Path to the log file (default: %(default)s)")
+    parser.add_argument("--log-level", default=config.LOG_LEVEL,
+            choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+            help="Set the logging level (default: %(default)s)")
+    parser.add_argument("--console-log", action="store_true",
+            help="Enable logging to the console (default: %(default)s)", default=False)
+
+    # Debug mode
     parser.add_argument("--debug", action="store_true", default=config.DEBUG,
-                        help="Enable debug mode")
+                        help="Enable debug mode (default: %(default)s)")
+
+    # Directory configurations
     parser.add_argument("--screenshot-dir", default=config.SCREENSHOT_DIRECTORY,
-                        help="Directory for storing screenshots")
+                        help="Directory for storing screenshots (default: %(default)s)")
     parser.add_argument("--video-dir", default=config.VIDEO_DIRECTORY,
-                        help="Directory for storing video files")
+                        help="Directory for storing video files (default: %(default)s)")
     parser.add_argument("--summaries-dir", default=config.SUMMARIES_DIRECTORY,
-                        help="Directory for storing summaries")
+                        help="Directory for storing summaries (default: %(default)s)")
+
+    # Parse the arguments and return the result
     return parser.parse_args()
 
 def setup_config(args=None):
