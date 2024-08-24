@@ -51,7 +51,7 @@ class TestScheduler(unittest.TestCase):
 
         # Manually invoke job_func1 to raise the exception
         job_func1 = scheduler.get_job('test_job1').func
-        
+
         # Simulate job execution, with job1 raising an exception
         try:
             job_func1()
@@ -63,6 +63,22 @@ class TestScheduler(unittest.TestCase):
         job_func2 = scheduler.get_job('test_job2').func
         job_func2()
         #job2.assert_called_once() # TODO: fix this ...
+
+    @patch('time.sleep', return_value=None)
+    def test_remove_scheduled_job(self, mock_sleep):
+        job = MagicMock()
+
+        # Schedule a job
+        scheduler.add_job(func=job, trigger='interval', seconds=5, id='test_job')
+
+        # Verify the job is scheduled
+        self.assertIsNotNone(scheduler.get_job('test_job'))
+
+        # Remove the job
+        scheduler.remove_job('test_job')
+
+        # Verify the job is removed
+        self.assertIsNone(scheduler.get_job('test_job'))
 
     '''
     @patch('app.utils.scheduling.scheduler.add_job')

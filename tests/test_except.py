@@ -21,6 +21,22 @@ class TestExceptionHandling(unittest.TestCase):
         with self.assertRaises(IndexError):
             value = test_list[10]
 
+    def test_try_except_else_finally(self):
+        def divide(x, y):
+            result = None
+            try:
+                result = x / y
+            except ZeroDivisionError:
+                result = "Division by zero!"
+            else:
+                result = f"Result: {result}"
+            finally:
+                print("Operation completed")
+            return result
+
+        self.assertEqual(divide(10, 2), "Result: 5.0")
+        self.assertEqual(divide(10, 0), "Division by zero!")
+
 class TestListOperations(unittest.TestCase):
 
     def test_list_append(self):
