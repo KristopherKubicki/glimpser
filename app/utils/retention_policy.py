@@ -2,6 +2,7 @@
 
 import os
 import time
+import logging
 
 from app.config import (
     MAX_COMPRESSED_VIDEO_AGE,
@@ -10,9 +11,15 @@ from app.config import (
     VIDEO_DIRECTORY,
 )
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
 
 def get_files_sorted_by_creation_time(directory):
     if not os.path.isdir(directory):
+        logging.warning(f"Directory does not exist: {directory}")
         return []
 
     # Get all files with their full path and sort them by creation time in ascending order
@@ -23,8 +30,9 @@ def get_files_sorted_by_creation_time(directory):
             if not os.path.islink(os.path.join(directory, f))
         ]
         files.sort(key=lambda x: os.path.getctime(x))
+        logging.info(f"Successfully sorted {len(files)} files in {directory}")
     except Exception as e:
-        print("Warning: file sort error", e)
+        logging.error(f"Error sorting files in {directory}: {str(e)}")
         return []
     return files
 
@@ -55,21 +63,25 @@ def delete_old_files(file_list, max_age, max_size, minimum=10):
             try:
                 os.remove(file_path)
                 total_size -= file_size
-                # print(f"Deleted {file_path}")
+                logging.info(f"Deleted file: {file_path}")
             except Exception as e:
-                # TODO: logging
-                print(f"Warning: failed to delete {file_path}", e)
+                logging.error(f"Failed to delete file: {file_path}. Error: {str(e)}")
 
 
 def retention_cleanup():
+    logging.info("Starting retention cleanup")
     # For each camera, delete old or excess videos
     for camera_name in os.listdir(VIDEO_DIRECTORY):
         camera_dir = os.path.join(VIDEO_DIRECTORY, camera_name)
+        logging.info(f"Processing video directory: {camera_dir}")
         video_files = get_files_sorted_by_creation_time(camera_dir)
         delete_old_files(video_files, MAX_COMPRESSED_VIDEO_AGE, MAX_RAW_DATA_SIZE)
 
     # For each camera, delete old or excess screenshots
     for camera_name in os.listdir(SCREENSHOT_DIRECTORY):
         camera_dir = os.path.join(SCREENSHOT_DIRECTORY, camera_name)
+        logging.info(f"Processing screenshot directory: {camera_dir}")
         image_files = get_files_sorted_by_creation_time(camera_dir)
         delete_old_files(image_files, MAX_COMPRESSED_VIDEO_AGE, MAX_RAW_DATA_SIZE)
+
+    logging.info("Retention cleanup completed")

@@ -131,6 +131,7 @@ def add_motion_and_caption(image_path, caption=None, motion=False):
 
 
 def update_camera(name, template, image_file=None):
+    logging.info(f"Updating camera: {name}")
 
     # just ignore the old
     template = get_template(name)
@@ -146,16 +147,20 @@ def update_camera(name, template, image_file=None):
         )
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         if os.path.exists(output_path):
-            image = Image.open(output_path)
-            # Convert the image to RGBA mode in case it's a format that doesn't support transparency
-            image = image.convert("RGB")
-            image = remove_background(image)
-            image.save(output_path, "PNG")
-            if os.path.exists(output_path):
-                # TODO: add error mark from lerror
-                add_timestamp(output_path, name, invert=template.get('invert',False))
-                os.rename(output_path, output_path.replace(".tmp.png", ".png"))
-                lsuc = True
+            try:
+                image = Image.open(output_path)
+                # Convert the image to RGBA mode in case it's a format that doesn't support transparency
+                image = image.convert("RGB")
+                image = remove_background(image)
+                image.save(output_path, "PNG")
+                if os.path.exists(output_path):
+                    # TODO: add error mark from lerror
+                    add_timestamp(output_path, name, invert=template.get('invert',False))
+                    os.rename(output_path, output_path.replace(".tmp.png", ".png"))
+                    lsuc = True
+                    logging.info(f"Successfully processed and saved image for {name}")
+            except Exception as e:
+                logging.error(f"Error processing image for {name}: {str(e)}")
 
     if lsuc is True:
         directory = os.path.join(SCREENSHOT_DIRECTORY, name)
@@ -165,6 +170,7 @@ def update_camera(name, template, image_file=None):
             if f.endswith(".png") and os.path.isfile(os.path.join(directory, f))
         ]
         if not png_files:
+            logging.warning(f"No PNG files found for camera: {name}")
             return None  # camera is out
 
         png_files = sorted(
@@ -182,6 +188,7 @@ def update_camera(name, template, image_file=None):
                 os.path.abspath(lpath + ".tmp"),
             )
             os.rename(os.path.abspath(lpath + ".tmp"), os.path.abspath(lpath))
+            logging.info(f"Updated symlink: {lpath}")
 
             lpath = os.path.join(SCREENSHOT_DIRECTORY, name, "latest_camera.png")
             if os.path.exists(lpath + ".tmp"):
@@ -191,6 +198,7 @@ def update_camera(name, template, image_file=None):
                 os.path.abspath(lpath + ".tmp"),
             )
             os.rename(os.path.abspath(lpath + ".tmp"), os.path.abspath(lpath))
+            logging.info(f"Updated camera-specific symlink: {lpath}")
 
             # Create symlinks for each group
             if "groups" in template:
@@ -212,9 +220,10 @@ def update_camera(name, template, image_file=None):
                         os.path.abspath(group_lpath + ".tmp"),
                         os.path.abspath(group_lpath),
                     )
+                    logging.info(f"Updated group symlink: {group_lpath}")
 
-        except Exception:
-            pass
+        except Exception as e:
+            logging.error(f"Error updating symlinks for {name}: {str(e)}")
 
         motion_config = template.get("motion", 1)
         if (
@@ -232,12 +241,13 @@ def update_camera(name, template, image_file=None):
             )
             if (percentage_difference or 0) >= float(template.get("motion", 0)):
                 lsum = True
+                logging.info(f"Motion detected for {name}: {percentage_difference}%")
 
         elif png_files == 1:
             lsum = True
+            logging.info(f"First image for {name}, treating as motion")
 
         prev_motion = os.path.join(directory, "last_motion.png")
-        # print(" detected motion", lsum, name, template.get('last_caption'))
 
         allow = False
 
@@ -249,10 +259,11 @@ def update_camera(name, template, image_file=None):
         if (template.get("last_caption", "") or "") == "":
             allow = True
             last_caption_trigger = True
-            # print("allowing from no caption", name)
+            logging.info(f"Allowing caption for {name}: no previous caption")
         if (template.get("last_motion_caption", "") or "") == "":
             allow = True
             last_motion_trigger = True
+            logging.info(f"Allowing motion caption for {name}: no previous motion caption")
 
         if lsum is True:
             allow = True
@@ -271,10 +282,9 @@ def update_camera(name, template, image_file=None):
                 ):
                     allow = True
                     last_motion_trigger = True
-                    # print("allowing because of an old caption", name)
-            except Exception:
-                # print(" parse exception", e) #n1c
-                pass
+                    logging.info(f"Allowing caption for {name}: old motion caption")
+            except Exception as e:
+                logging.error(f"Error parsing last_motion_caption_time for {name}: {str(e)}")
 
             # at least once a day.
             #  maybe at least once per every 8 frames
@@ -303,18 +313,17 @@ def update_camera(name, template, image_file=None):
                 ):  # one caption per day is fine otherwise...
                     allow = True
                     last_caption_trigger = True
-                    # print("allowing from old caption", name)
-            except Exception:
-                # print(" parse exception", e) #n1c
-                pass
+                    logging.info(f"Allowing caption for {name}: old caption")
+            except Exception as e:
+                logging.error(f"Error parsing last_caption_time for {name}: {str(e)}")
 
         # Implement a filter using CLIP
         object_filter = template.get("object_filter", "")
         object_confidence = 0.5
         try:
             object_confidence = float(template.get("object_confidence", 0.5))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.error(f"Error parsing object_confidence for {name}: {str(e)}")
 
         # run the object detect AFTER the motion detetor
         if allow is True and object_filter and object_confidence is not None:
@@ -348,7 +357,7 @@ def update_camera(name, template, image_file=None):
             # Check if the object is detected with confidence higher than the threshold
             if probs[0, 0] >= object_confidence:
                 allow = True
-                # print(f"Object '{object_filter}' detected in {name} with confidence {probs[0, 0]}")
+                logging.info(f"Object '{object_filter}' detected in {name} with confidence {probs[0, 0]}")
 
         if allow:
 
@@ -373,11 +382,10 @@ def update_camera(name, template, image_file=None):
                         closest_image_path = os.path.join(
                             directory, closest_image_filename
                         )
-                        print("last caption....", closest_image_path)
+                        logging.info(f"Found closest image to last caption: {closest_image_path}")
                         image_paths.append(closest_image_path)
                 except Exception as e:
-                    print(" warning caption parsing error", e)
-                    pass
+                    logging.error(f"Error finding closest image for {name}: {str(e)}")
 
             image_paths.append(os.path.join(directory, png_files[-1]))
 
@@ -409,8 +417,7 @@ def update_camera(name, template, image_file=None):
                 #  use Chatgpt_compare
                 gret = chatgpt_compare(prompt=lprompt, image_paths=image_paths)
                 # TODO: add a separator?
-                # print("  oldgpt:", name, template.get('last_caption'))
-                # print("  newgpt:", name, gret)
+                logging.info(f"ChatGPT comparison for {name}: {gret}")
                 if gret and re.findall(r"(?:sorry|cannot|can not)", gret):
                     template["last_ret"] = gret + "*"
                 elif gret:
@@ -440,6 +447,7 @@ def update_camera(name, template, image_file=None):
                     os.path.join(directory, "last_motion_caption.png.tmp"),
                     os.path.join(directory, "last_motion_caption.png"),
                 )
+                logging.info(f"Updated last_motion_caption for {name}")
 
             if last_caption_trigger:
                 if os.path.exists(os.path.join(directory, "last_caption.png.tmp")):
@@ -451,6 +459,7 @@ def update_camera(name, template, image_file=None):
                     os.path.join(directory, "last_caption.png.tmp"),
                     os.path.join(directory, "last_caption.png"),
                 )
+                logging.info(f"Updated last_caption for {name}")
 
             if os.path.exists(prev_motion):
                 destination = os.readlink(prev_motion)
@@ -469,6 +478,7 @@ def update_camera(name, template, image_file=None):
                 os.path.join(directory, "last_motion.png.tmp"),
                 os.path.join(directory, "last_motion.png"),
             )
+            logging.info(f"Updated motion images for {name}")
 
         elif lsum is True:
             # just ignore the old
@@ -498,6 +508,7 @@ def update_camera(name, template, image_file=None):
                 os.path.join(directory, "last_motion.png.tmp"),
                 os.path.join(directory, "last_motion.png"),
             )
+            logging.info(f"Updated motion images for {name} (motion only)")
 
         else:
             # just ignore the old
@@ -507,6 +518,9 @@ def update_camera(name, template, image_file=None):
                 "last_caption", template.get("last_motion_caption", None)
             )
             add_motion_and_caption(lpath, caption=lcap, motion=lsum)
+            logging.info(f"No changes for {name}, using existing caption")
+
+    logging.info(f"Camera update completed for {name}")
 
 
 def init_crawl():

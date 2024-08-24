@@ -467,6 +467,7 @@ def capture_or_download(name: str, template: str) -> bool:
         bool: True if the capture/download was successful, False otherwise.
     """
     if name is None or template is None:
+        logging.error("Invalid input: name or template is None")
         return False
 
     # Extract parameters from the template
@@ -489,6 +490,8 @@ def capture_or_download(name: str, template: str) -> bool:
     if not headless:
         browser = True
 
+    logging.info(f"Capturing or downloading content for {name} from {url}")
+
     # Check if the host is reachable
     domain, port = parse_url(url)
     if not is_address_reachable(domain, port=port):
@@ -499,31 +502,39 @@ def capture_or_download(name: str, template: str) -> bool:
     timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
     output_path = os.path.join(SCREENSHOT_DIRECTORY, f"{name}/{name}_{timestamp}.png")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    logging.info(f"Output path: {output_path}")
 
     # Determine content type
     content_type = get_content_type(url, danger)
+    logging.info(f"Content type: {content_type}")
 
     # Attempt to download or capture based on content type and URL
     if is_image_url(url, content_type) and not danger:
+        logging.info(f"Downloading image from {url}")
         return download_image(url, output_path, timeout, name, invert)
 
     if is_pdf_url(url, content_type) and not danger:
+        logging.info(f"Downloading PDF from {url}")
         return download_pdf(url, output_path, timeout, name, invert)
 
     if is_video_stream_url(url, content_type) and not danger:
+        logging.info(f"Capturing frame from video stream {url}")
         return capture_frame_from_stream(url, output_path, timeout, name, invert)
 
     if is_enhanced(url) and not danger:
+        logging.info(f"Capturing frame with yt-dlp from {url}")
         return capture_frame_with_ytdlp(url, output_path, name, invert)
 
     # Attempt lightweight browser capture for simple web pages
     if should_use_lightweight_browser(url, dedicated_selector, popup_xpath, headless, stealth, browser, danger):
+        logging.info(f"Using lightweight browser capture for {url}")
         return capture_screenshot_and_har_light(url, output_path, timeout, name, invert, template.get("proxy"), dark)
 
     # Fall back to full browser capture
     if re.findall(r"^https?://", url, flags=re.I):
         if not browser:
             headless = True
+        logging.info(f"Using full browser capture for {url}")
         return capture_screenshot_and_har(url, output_path, popup_xpath, dedicated_selector, timeout, name, invert, template.get("proxy"), headless, dark, stealth, danger)
 
     logging.error(f"Failed to capture or download content from {url}")

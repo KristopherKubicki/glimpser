@@ -531,17 +531,19 @@ def init_routes(app):
         """
         template_name = validate_template_name(template_name)
         if template_name is None:
+            logging.error(f"Invalid template name: {template_name}")
             abort(404)
 
         # Check if the template exists
-        print("WARNING BRPKEN!")
         ltemplate = template_manager.get_template(template_name)
         if ltemplate is None:
+            logging.error(f"Template not found: {template_name}")
             return jsonify({"status": "error", "message": "Template not found"}), 404
         template_name = ltemplate.get("name")  # todo...
 
         # Check if the request has the file part
         if "file" not in request.files:
+            logging.warning("No file part in the request")
             return (
                 jsonify({"status": "error", "message": "No file part in the request"}),
                 400,
@@ -551,6 +553,7 @@ def init_routes(app):
 
         # If the user does not select a file, the browser submits an empty file without a filename
         if file.filename == "":
+            logging.warning("No selected file")
             return jsonify({"status": "error", "message": "No selected file"}), 400
 
         if file and allowed_filename(file.filename):
@@ -558,20 +561,29 @@ def init_routes(app):
             timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
             filename = f"{template_name}_{timestamp}.png.tmp"
             output_path = os.path.join(SCREENSHOT_DIRECTORY, template_name, filename)
-            #if not os.path.normpath(output_path).startswith(SCREENSHOT_DIRECTORY):
-            #    abort(400)
 
             # Save the file to a temporary location
-            file.save(output_path)
+            try:
+                file.save(output_path)
+                logging.info(f"Saved temporary file: {output_path}")
+            except Exception as e:
+                logging.error(f"Failed to save file: {output_path}. Error: {str(e)}")
+                return jsonify({"status": "error", "message": "Failed to save file"}), 500
 
             # Add a timestamp to the image and remove the ".tmp" extension
-            screenshots.add_timestamp(output_path, name=template_name)
-            final_path = output_path.rstrip(".tmp")
-            os.rename(output_path, final_path)
+            try:
+                screenshots.add_timestamp(output_path, name=template_name)
+                final_path = output_path.rstrip(".tmp")
+                os.rename(output_path, final_path)
+                logging.info(f"Processed and renamed file: {final_path}")
+            except Exception as e:
+                logging.error(f"Failed to process image: {output_path}. Error: {str(e)}")
+                return jsonify({"status": "error", "message": "Failed to process image"}), 500
 
             # Update the template's last screenshot time
             template_manager.update_last_screenshot_time(template_name)
 
+            logging.info(f"Successfully submitted image for template: {template_name}")
             return (
                 jsonify(
                     {"status": "success", "message": "Image submitted successfully"}
@@ -579,6 +591,7 @@ def init_routes(app):
                 200,
             )
         else:
+            logging.warning(f"Invalid file format: {file.filename}")
             return jsonify({"status": "error", "message": "Invalid file format"}), 400
 
     @app.route("/stream.png")
@@ -641,13 +654,16 @@ def init_routes(app):
                 most_recent_file = last_file
                 most_recent_time = os.path.getmtime(last_file)
         if most_recent_file is None:
+            logging.error("No recent files found for streaming")
             abort(404)
 
         last_time = time.time()
         last_shot = most_recent_file
 
         if os.path.exists(most_recent_file):
+            logging.info(f"Streaming most recent file: {most_recent_file}")
             return send_file(most_recent_file)
+        logging.warning(f"Most recent file not found, using last file: {last_file}")
         return send_file(last_file)  # better than nothing
 
     @app.route(
@@ -721,7 +737,7 @@ def init_routes(app):
     @app.route("/caption.mjpg", methods=["GET"])
     def caption_mjpg():
         group = request.args.get("group")
-        print("last caption")
+        logging.info(f"Streaming caption for group: {group}")
         return Response(
             generate(group=group, filename="last_caption.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -730,7 +746,7 @@ def init_routes(app):
     @app.route("/motion_caption.mjpg", methods=["GET"])
     def motion_caption_mjpg():
         group = request.args.get("group")
-        print("last motion caption")
+        logging.info(f"Streaming motion caption for group: {group}")
         return Response(
             generate(group=group, filename="last_motion_caption.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -749,6 +765,7 @@ def init_routes(app):
         else:
             # If the group is provided but invalid, return a 400 Bad Request
             if group:
+                logging.warning(f"Invalid group name: {group}")
                 abort(400, "Invalid group name. Group name must be alphanumeric.")
 
         lgroup = secure_filename(lgroup)
@@ -760,7 +777,9 @@ def init_routes(app):
         )
 
         if not os.path.exists(video_path):
+            logging.error(f"Video file not found: {video_path}")
             abort(404)
+        logging.info(f"Streaming video: {video_path}")
         return send_file(video_path)
         # TODO: implement slowstreaming and continuous streaming
         # return Response(stream_with_context(generate_video_stream(video_path)), mimetype='video/mp4')
@@ -774,6 +793,7 @@ def init_routes(app):
 
         # Check if the video directory exists
         if not os.path.exists(path):
+            logging.error(f"Video directory not found: {path}")
             abort(404)
 
         # Fetch all camera names or identifiers you have
@@ -800,6 +820,7 @@ def init_routes(app):
             video_path = f"{request.url_root}last_video/{camera_name}?timed_key={lkey}"
             playlist_content += f"#EXTINF:-1,{camera_name}\n{video_path}\n"
 
+        logging.info("Generated m3u8 playlist")
         return Response(playlist_content, mimetype="application/x-mpegURL")
 
     @app.route("/stream")
@@ -840,8 +861,8 @@ def init_routes(app):
                 try:
                     data = json.load(f)
                     entries.append(data)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.error(f"Error loading caption file {file_path}: {str(e)}")
 
         # Get a list of active cameras (with updates within the last 1 day)
         return render_template(
@@ -870,11 +891,14 @@ def init_routes(app):
             os.path.dirname(os.path.join(__file__)), "..", VIDEO_DIRECTORY
         )
         if not os.path.exists(path):
+            logging.error(f"Video directory not found: {path}")
             abort(404)
 
         if os.path.exists(path + "/all_in_process.mp4"):
+            logging.info(f"Serving teaser video: {path}/all_in_process.mp4")
             return send_file(path + "/all_in_process.mp4")
 
+        logging.error("Teaser video not found")
         abort(404)
 
     @app.route("/last_video/<string:template_name>")
@@ -886,6 +910,7 @@ def init_routes(app):
 
         template_name = validate_template_name(template_name)
         if template_name is None:
+            logging.error(f"Invalid template name: {template_name}")
             abort(404)
 
         # Placeholder logic to serve the screenshot
@@ -896,11 +921,14 @@ def init_routes(app):
             template_name,
         )
         if not os.path.exists(path):
+            logging.error(f"Video directory not found: {path}")
             abort(404)
 
         if os.path.exists(path + "/in_process.mp4"):
+            logging.info(f"Serving video: {path}/in_process.mp4")
             return send_file(path + "/in_process.mp4")
 
+        logging.error(f"Video not found for template: {template_name}")
         abort(404)
 
     @app.route("/last_screenshot/<string:template_name>")
@@ -911,6 +939,7 @@ def init_routes(app):
         """
         template_name = validate_template_name(template_name)
         if template_name is None:
+            logging.error(f"Invalid template name: {template_name}")
             abort(404)
 
         # Placeholder logic to serve the screenshot
@@ -921,20 +950,28 @@ def init_routes(app):
             template_name,
         )
         if not os.path.exists(path):
+            logging.error(f"Screenshot directory not found: {path}")
             abort(404)
 
         lfiles = [f for f in glob.glob(path + "/*.png") if os.path.isfile(f)]
         lfiles.sort(key=os.path.getmtime)
         if len(lfiles) > 0:
+            logging.info(f"Serving screenshot: {lfiles[-1]}")
             return send_file(lfiles[-1])
 
+        logging.error(f"No screenshots found for template: {template_name}")
         abort(404)
 
     @app.route("/compile_teaser", methods=["GET"]) # todo: should probably be post? 
     @login_required
     def take_compile():
-        video_archiver.compile_to_teaser()
-        return jsonify({"status": "success", "message": "Compilation taken"})
+        try:
+            video_archiver.compile_to_teaser()
+            logging.info("Teaser compilation successful")
+            return jsonify({"status": "success", "message": "Compilation taken"})
+        except Exception as e:
+            logging.error(f"Error during teaser compilation: {str(e)}")
+            return jsonify({"status": "error", "message": "Compilation failed"}), 500
 
     @app.route("/upload_screenshot/<string:template_name>", methods=["POST"])
     @login_required
@@ -945,9 +982,11 @@ def init_routes(app):
 
         template_name = validate_template_name(template_name)
         if template_name is None:
+            logging.error(f"Invalid template name: {template_name}")
             abort(404)
 
         if "image_file" not in request.files:
+            logging.warning("No image file provided in the request")
             return (
                 jsonify({"status": "error", "message": "No image file provided"}),
                 400,
@@ -955,6 +994,7 @@ def init_routes(app):
 
         image_file = request.files["image_file"]
         if image_file.filename == "":
+            logging.warning("Empty filename provided")
             return (
                 jsonify({"status": "error", "message": "No image file provided"}),
                 400,
@@ -963,12 +1003,14 @@ def init_routes(app):
         print("TODO: rewrite")
         templates = template_manager.get_templates()
         if templates.get(template_name) is None:
+            logging.error(f"Template not found: {template_name}")
             abort(404)
 
         # TODO: add more handling around this
         # Save the uploaded file to a temporary file
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             image_file.save(temp_file.name)
+            logging.info(f"Temporary file saved: {temp_file.name}")
             # Call the update_camera function with the temporary file path
             scheduling.update_camera(
                 template_name, templates.get(template_name), image_file=temp_file.name
@@ -976,7 +1018,11 @@ def init_routes(app):
             # potentially trigger motion too...
 
         # Clean up the temporary file
-        os.unlink(temp_file.name)
+        try:
+            os.unlink(temp_file.name)
+            logging.info(f"Temporary file deleted: {temp_file.name}")
+        except Exception as e:
+            logging.error(f"Error deleting temporary file {temp_file.name}: {str(e)}")
 
         return jsonify(
             {"status": "success", "message": f"Screenshot for {template_name} uploaded"}
@@ -990,18 +1036,25 @@ def init_routes(app):
         """
         template_name = validate_template_name(template_name)
         if template_name is None:
+            logging.error(f"Invalid template name: {template_name}")
             abort(404)
 
         templates = template_manager.get_templates()
         # handle if this doesn't exist
         if templates.get(template_name) is None:
+            logging.error(f"Template not found: {template_name}")
             abort(404)
 
         # TODO: consider adding motion control
-        scheduling.update_camera(template_name, templates.get(template_name))
-        return jsonify(
-            {"status": "success", "message": f"Screenshot for {template_name} taken"}
-        )
+        try:
+            scheduling.update_camera(template_name, templates.get(template_name))
+            logging.info(f"Screenshot taken for template: {template_name}")
+            return jsonify(
+                {"status": "success", "message": f"Screenshot for {template_name} taken"}
+            )
+        except Exception as e:
+            logging.error(f"Error taking screenshot for {template_name}: {str(e)}")
+            return jsonify({"status": "error", "message": "Failed to take screenshot"}), 500
 
     @app.route("/update_video/<string:template_name>", methods=["POST"])
     @login_required
@@ -1009,11 +1062,13 @@ def init_routes(app):
         """Endpoint to trigger screenshot capture manually."""
         template_name = validate_template_name(template_name)
         if template_name is None:
+            logging.error(f"Invalid template name: {template_name}")
             abort(404)
 
         templates = template_manager.get_templates()
         # handle if this doesn't exist
         if templates.get(template_name) is None:
+            logging.error(f"Template not found: {template_name}")
             abort(404)
         camera_path = os.path.join(
             os.path.dirname(os.path.join(__file__)),
@@ -1030,13 +1085,21 @@ def init_routes(app):
         )
 
         if os.path.exists(camera_path) and os.path.exists(video_path):
-            video_archiver.compile_to_video(camera_path, video_path)
-            return jsonify(
-                {
-                    "status": "success",
-                    "message": f"Screenshot for {template_name} taken",
-                }
-            )
+            try:
+                video_archiver.compile_to_video(camera_path, video_path)
+                logging.info(f"Video compiled for template: {template_name}")
+                return jsonify(
+                    {
+                        "status": "success",
+                        "message": f"Video for {template_name} compiled",
+                    }
+                )
+            except Exception as e:
+                logging.error(f"Error compiling video for {template_name}: {str(e)}")
+                return jsonify({"status": "error", "message": "Failed to compile video"}), 500
+        else:
+            logging.error(f"Camera or video path not found for template: {template_name}")
+            return jsonify({"status": "error", "message": "Camera or video path not found"}), 404
 
     @app.route("/templates", methods=["GET", "POST", "DELETE"])
     @login_required
@@ -1045,11 +1108,16 @@ def init_routes(app):
             data = request.json
             template_name = validate_template_name(data["name"])
             if template_name is None:
+                logging.error(f"Invalid template name: {data['name']}")
                 abort(404)
             if template_manager.save_template(
                 template_name, data
             ):
+                logging.info(f"Template saved: {template_name}")
                 return jsonify({"status": "success", "message": "Template saved"})
+            else:
+                logging.error(f"Failed to save template: {template_name}")
+                return jsonify({"status": "error", "message": "Failed to save template"}), 500
 
         elif request.method == "GET":
             group = request.args.get("group")
@@ -1062,18 +1130,23 @@ def init_routes(app):
                     for name, template in templates.items()
                     if group in template.get("groups", "").split(",")
                 }
+                logging.info(f"Filtered templates for group: {group}")
                 return jsonify(filtered_templates)
             else:
+                logging.info("Returning all templates")
                 return jsonify(templates)
 
         elif request.method == "DELETE":
             data = request.json
             template_name = validate_template_name(data["name"])
             if template_name is None:
+                logging.error(f"Invalid template name: {data['name']}")
                 abort(404)
             if template_manager.delete_template(template_name):
+                logging.info(f"Template deleted: {template_name}")
                 return jsonify({"status": "success", "message": "Template deleted"})
             else:
+                logging.error(f"Template not found for deletion: {template_name}")
                 return (
                     jsonify({"status": "failure", "message": "Template not found"}),
                     404,
@@ -1084,14 +1157,17 @@ def init_routes(app):
     def template_details(template_name: TemplateName):
         template_name = validate_template_name(template_name)
         if template_name is None:
+            logging.error(f"Invalid template name: {template_name}")
             abort(404)
 
         templates = template_manager.get_templates()
         template_details = templates.get(template_name)
         if template_details is None:
+            logging.error(f"Template not found: {template_name}")
             abort(404)  # Template not found
         lscreenshots = template_manager.get_screenshots_for_template(template_name)
         lvideos = template_manager.get_videos_for_template(template_name)
+        logging.info(f"Rendering template details for: {template_name}")
         return render_template(
             "template_details.html",
             template_name=template_name,
@@ -1105,18 +1181,22 @@ def init_routes(app):
     def uploaded_file(name: TemplateName, filename: str):
         template_name = validate_template_name(name)
         if template_name is None:
+            logging.error(f"Invalid template name: {name}")
             abort(404)
         path = os.path.join(
             os.path.dirname(os.path.join(__file__)), "..", SCREENSHOT_DIRECTORY, template_name
         )
         if not os.path.exists(path):
+            logging.error(f"Screenshot directory not found: {path}")
             abort(404)
 
+        logging.info(f"Serving screenshot: {filename} for template: {template_name}")
         return send_from_directory(path, filename)
 
     def delete_setting(name: str) -> bool:
         name = name.replace("'", "")[:32]
         if not re.findall(r"^[A-Z_]+?$", name):
+            logging.error(f"Invalid setting name: {name}")
             return False
 
         session = SessionLocal()
@@ -1126,6 +1206,10 @@ def init_routes(app):
                 {"name": name}
             )
             session.commit()
+            logging.info(f"Setting deleted: {name}")
+        except Exception as e:
+            logging.error(f"Error deleting setting {name}: {str(e)}")
+            return False
         finally:
             session.close()
 
@@ -1136,13 +1220,16 @@ def init_routes(app):
     def view_video(name: TemplateName, filename: str):
         template_name = validate_template_name(name)
         if template_name is None:
+            logging.error(f"Invalid template name: {name}")
             abort(404)
         path = os.path.join(
             os.path.dirname(os.path.join(__file__)), "..", VIDEO_DIRECTORY, template_name
         )
         if not os.path.exists(path):
+            logging.error(f"Video directory not found: {path}")
             abort(404)
 
+        logging.info(f"Serving video: {filename} for template: {template_name}")
         return send_from_directory(path, filename)
 
 
@@ -1155,14 +1242,19 @@ def init_routes(app):
                 new_value = request.form.get("new_value")
                 if new_name and new_value:
                     update_setting(new_name, new_value)
+                    logging.info(f"Added new setting: {new_name}")
             elif action == "delete":
                 name_to_delete = request.form.get("name_to_delete")
                 if name_to_delete:
-                    delete_setting(name_to_delete)
+                    if delete_setting(name_to_delete):
+                        logging.info(f"Deleted setting: {name_to_delete}")
+                    else:
+                        logging.error(f"Failed to delete setting: {name_to_delete}")
             else:
                 for name, value in request.form.items():
                     if name not in ["action", "new_name", "new_value", "name_to_delete"]:
                         update_setting(name, value)
+                        logging.info(f"Updated setting: {name}")
             return redirect(url_for("settings"))
 
         settings = get_all_settings()
@@ -1170,13 +1262,16 @@ def init_routes(app):
 
     @app.route('/system_metrics')
     def system_metrics():
-        return jsonify(scheduling.get_system_metrics())
+        metrics = scheduling.get_system_metrics()
+        logging.info("System metrics retrieved")
+        return jsonify(metrics)
 
     @app.route("/update_template/<string:template_name>", methods=["POST"])
     @login_required
     def update_template(template_name: TemplateName):
         template_name = validate_template_name(template_name)
         if template_name is None:
+            logging.error(f"Invalid template name: {template_name}")
             abort(404)
 
         if True:
@@ -1230,7 +1325,11 @@ def init_routes(app):
 
             # Update the template in your storage (e.g., JSON file, database)
             # This assumes you have a function to update templates
-            template_manager.save_template(template_name, updated_data)
+            if template_manager.save_template(template_name, updated_data):
+                logging.info(f"Template updated: {template_name}")
+            else:
+                logging.error(f"Failed to update template: {template_name}")
+                return jsonify({"status": "error", "message": "Failed to update template"}), 500
 
             # TODO: stop the old job.  reschedule the camera
             template_manager.get_template(template_name)
@@ -1244,8 +1343,9 @@ def init_routes(app):
                     id=template_name,
                     replace_existing=True,
                 )
+                logging.info(f"Rescheduled job for template: {template_name}")
             except Exception as e:
-                print("job schedule error:", e)
+                logging.error(f"Error scheduling job for {template_name}: {str(e)}")
                 # logging.error(f"Error scheduling job for {name}: {e}")
 
             if request.is_json:
