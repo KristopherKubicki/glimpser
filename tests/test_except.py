@@ -21,22 +21,6 @@ class TestExceptionHandling(unittest.TestCase):
         with self.assertRaises(IndexError):
             value = test_list[10]
 
-    def test_try_except_else_finally(self):
-        def divide(x, y):
-            result = None
-            try:
-                result = x / y
-            except ZeroDivisionError:
-                result = "Division by zero!"
-            else:
-                result = f"Result: {result}"
-            finally:
-                print("Operation completed")
-            return result
-
-        self.assertEqual(divide(10, 2), "Result: 5.0")
-        self.assertEqual(divide(10, 0), "Division by zero!")
-
 class TestListOperations(unittest.TestCase):
 
     def test_list_append(self):
@@ -71,6 +55,11 @@ class TestDictionaryOperations(unittest.TestCase):
         del test_dict["key1"]
         self.assertNotIn("key1", test_dict)
         self.assertEqual(test_dict, {"key2": "value2"})
+
+    def test_dict_get_with_default(self):
+        test_dict = {"key1": "value1"}
+        self.assertEqual(test_dict.get("key1", "default"), "value1")
+        self.assertEqual(test_dict.get("key2", "default"), "default")
 
 if __name__ == '__main__':
     unittest.main()

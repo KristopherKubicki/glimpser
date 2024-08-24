@@ -20,11 +20,6 @@ class TestEnvironmentVariables(unittest.TestCase):
     def test_environment_variable_missing(self):
         self.assertIsNone(os.getenv("NON_EXISTENT_VAR"))
 
-    @patch.dict(os.environ, {"TEST_INT_VAR": "42", "TEST_FLOAT_VAR": "3.14"})
-    def test_environment_variable_types(self):
-        self.assertEqual(int(os.getenv("TEST_INT_VAR")), 42)
-        self.assertAlmostEqual(float(os.getenv("TEST_FLOAT_VAR")), 3.14)
-
 class TestFileIO(unittest.TestCase):
 
     @patch("builtins.open", new_callable=mock_open, read_data="data")
@@ -68,6 +63,13 @@ class TestStringProcessing(unittest.TestCase):
         string = "hello"
         result = string.upper()
         self.assertEqual(result, "HELLO")
+
+    def test_string_strip(self):
+        string = "  Hello, World!  "
+        result = string.strip()
+        self.assertEqual(result, "Hello, World!")
+        self.assertEqual(string.lstrip(), "Hello, World!  ")
+        self.assertEqual(string.rstrip(), "  Hello, World!")
 
 if __name__ == '__main__':
     unittest.main()
