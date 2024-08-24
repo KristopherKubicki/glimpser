@@ -210,13 +210,25 @@ def get_all_settings():
         session.close()
 
 
+import re
+from flask import Flask, request, flash, redirect, url_for, render_template
+from flask_login import login_required
+from sqlalchemy import text
+from app import app
+from app.utils.db import SessionLocal
+
 def update_setting(name: str, value: str) -> bool:
-
-    name = name.replace("'", "")[:32]
-    value = value.replace("'", "")[:1024]
-
-    if not re.findall(r"^[A-Z_]+?$", name):
+    # Validate name
+    if not re.match(r"^[A-Z_]{1,32}$", name):
         return False
+
+    # Validate value
+    if len(value) > 1024:
+        return False
+
+    # Sanitize inputs
+    name = name.strip()
+    value = value.strip()
 
     session = SessionLocal()
     try:
@@ -235,6 +247,10 @@ def update_setting(name: str, value: str) -> bool:
                 {"name": name, "value": value}
             )
         session.commit()
+    except Exception as e:
+        print(f"Error updating setting: {e}")
+        session.rollback()
+        return False
     finally:
         session.close()
 
@@ -242,6 +258,66 @@ def update_setting(name: str, value: str) -> bool:
     restart_server()
 
     return True
+
+def delete_setting(name: str) -> bool:
+    if not re.match(r"^[A-Z_]{1,32}$", name):
+        return False
+
+    session = SessionLocal()
+    try:
+        result = session.execute(
+            text("DELETE FROM settings WHERE name = :name"),
+            {"name": name}
+        )
+        session.commit()
+        return result.rowcount > 0
+    except Exception as e:
+        print(f"Error deleting setting: {e}")
+        session.rollback()
+        return False
+    finally:
+        session.close()
+
+@app.route("/settings", methods=["GET", "POST"])
+@login_required
+def settings():
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "add":
+            new_name = request.form.get("new_name")
+            new_value = request.form.get("new_value")
+            if new_name and new_value:
+                if re.match(r'^[A-Z_]{1,32}$', new_name):
+                    if update_setting(new_name, new_value):
+                        flash("Setting added successfully.", "success")
+                    else:
+                        flash("Failed to add setting.", "error")
+                else:
+                    flash("Invalid setting name. Use only uppercase letters and underscores (1-32 characters).", "error")
+        elif action == "delete":
+            name_to_delete = request.form.get("name_to_delete")
+            if name_to_delete:
+                if re.match(r'^[A-Z_]{1,32}$', name_to_delete):
+                    if delete_setting(name_to_delete):
+                        flash("Setting deleted successfully.", "success")
+                    else:
+                        flash("Failed to delete setting.", "error")
+                else:
+                    flash("Invalid setting name. Use only uppercase letters and underscores (1-32 characters).", "error")
+        else:
+            for name, value in request.form.items():
+                if name not in ["action", "new_name", "new_value", "name_to_delete"]:
+                    if re.match(r'^[A-Z_]{1,32}$', name):
+                        if update_setting(name, value):
+                            flash(f"Setting '{name}' updated successfully.", "success")
+                        else:
+                            flash(f"Failed to update setting '{name}'.", "error")
+                    else:
+                        flash(f"Invalid setting name: {name}. Skipped.", "warning")
+        return redirect(url_for("settings"))
+
+    settings = get_all_settings()
+    return render_template("settings.html", settings=settings)
 
 
 # TODO:
@@ -1043,13 +1119,47 @@ def init_routes(app):
     def manage_templates():
         if request.method == "POST":
             data = request.json
-            template_name = validate_template_name(data["name"])
+            template_name = validate_template_name(data.get("name"))
             if template_name is None:
-                abort(404)
-            if template_manager.save_template(
-                template_name, data
-            ):
+                return jsonify({"status": "error", "message": "Invalid template name"}), 400
+            
+            # Validate other fields
+            errors = {}
+            if not data.get("url"):
+                errors["url"] = "URL is required"
+            if not data.get("frequency"):
+                errors["frequency"] = "Frequency is required"
+            else:
+                try:
+                    frequency = int(data["frequency"])
+                    if frequency < 1 or frequency > 525600:
+                        errors["frequency"] = "Frequency must be between 1 and 525600 minutes"
+                except ValueError:
+                    errors["frequency"] = "Frequency must be a valid integer"
+            
+            if data.get("timeout"):
+                try:
+                    timeout = int(data["timeout"])
+                    if timeout < 1:
+                        errors["timeout"] = "Timeout must be at least 1 second"
+                except ValueError:
+                    errors["timeout"] = "Timeout must be a valid integer"
+            
+            if data.get("object_confidence"):
+                try:
+                    confidence = float(data["object_confidence"])
+                    if confidence < 0 or confidence > 1:
+                        errors["object_confidence"] = "Object confidence must be between 0 and 1"
+                except ValueError:
+                    errors["object_confidence"] = "Object confidence must be a valid float"
+            
+            if errors:
+                return jsonify({"status": "error", "errors": errors}), 400
+            
+            if template_manager.save_template(template_name, data):
                 return jsonify({"status": "success", "message": "Template saved"})
+            else:
+                return jsonify({"status": "error", "message": "Failed to save template"}), 500
 
         elif request.method == "GET":
             group = request.args.get("group")
@@ -1068,16 +1178,13 @@ def init_routes(app):
 
         elif request.method == "DELETE":
             data = request.json
-            template_name = validate_template_name(data["name"])
+            template_name = validate_template_name(data.get("name"))
             if template_name is None:
-                abort(404)
+                return jsonify({"status": "error", "message": "Invalid template name"}), 400
             if template_manager.delete_template(template_name):
                 return jsonify({"status": "success", "message": "Template deleted"})
             else:
-                return (
-                    jsonify({"status": "failure", "message": "Template not found"}),
-                    404,
-                )
+                return jsonify({"status": "error", "message": "Template not found"}), 404
 
     @app.route("/templates/<string:template_name>")
     @login_required
@@ -1147,6 +1254,7 @@ def init_routes(app):
 
 
     @app.route("/settings", methods=["GET", "POST"])
+    @login_required
     def settings():
         if request.method == "POST":
             action = request.form.get("action")
@@ -1154,21 +1262,31 @@ def init_routes(app):
                 new_name = request.form.get("new_name")
                 new_value = request.form.get("new_value")
                 if new_name and new_value:
-                    update_setting(new_name, new_value)
+                    if re.match(r'^[A-Z_]+$', new_name):
+                        update_setting(new_name, new_value)
+                    else:
+                        flash("Invalid setting name. Use only uppercase letters and underscores.", "error")
             elif action == "delete":
                 name_to_delete = request.form.get("name_to_delete")
                 if name_to_delete:
-                    delete_setting(name_to_delete)
+                    if re.match(r'^[A-Z_]+$', name_to_delete):
+                        delete_setting(name_to_delete)
+                    else:
+                        flash("Invalid setting name. Use only uppercase letters and underscores.", "error")
             else:
                 for name, value in request.form.items():
                     if name not in ["action", "new_name", "new_value", "name_to_delete"]:
-                        update_setting(name, value)
+                        if re.match(r'^[A-Z_]+$', name):
+                            update_setting(name, value)
+                        else:
+                            flash(f"Invalid setting name: {name}. Skipped.", "warning")
             return redirect(url_for("settings"))
 
         settings = get_all_settings()
         return render_template("settings.html", settings=settings)
 
     @app.route('/system_metrics')
+    @login_required
     def system_metrics():
         return jsonify(scheduling.get_system_metrics())
 
@@ -1179,61 +1297,72 @@ def init_routes(app):
         if template_name is None:
             abort(404)
 
-        if True:
-            # Extract form data
+        updated_data = {
+            "url": request.form.get("url"),
+            "frequency": request.form.get("frequency"),
+            "timeout": request.form.get("timeout"),
+            "notes": request.form.get("notes"),
+            "popup_xpath": request.form.get("popup_xpath"),
+            "dedicated_xpath": request.form.get("dedicated_xpath"),
+            "callback_url": request.form.get("callback_url"),
+            "proxy": request.form.get("proxy"),
+            "rollback_frames": request.form.get("rollback_frames"),
+            "groups": request.form.get("groups"),
+            "object_filter": request.form.get("object_filter"),
+            "object_confidence": request.form.get("object_confidence", 0.5),
+            "motion": request.form.get("motion", 0.2),
+            "invert": request.form.get("invert", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+            "dark": request.form.get("dark", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+            "headless": request.form.get("headless", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+            "stealth": request.form.get("stealth", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+            "browser": request.form.get("browser", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+            "livecaption": request.form.get("livecaption", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+            "danger": request.form.get("danger", "false").lower() in ["true", "1", "t", "y", "yes", "on"],
+        }
 
-            updated_data = {
-                "url": request.form.get("url"),
-                "frequency": request.form.get("frequency"),
-                "timeout": request.form.get("timeout"),
-                "notes": request.form.get("notes"),
-                "popup_xpath": request.form.get("popup_xpath"),
-                "dedicated_xpath": request.form.get("dedicated_xpath"),
-                "callback_url": request.form.get("callback_url"),
-                "proxy": request.form.get("proxy"),
-                "rollback_frames": request.form.get("rollback_frames"),
-                "groups": request.form.get("groups"),
-                "object_filter": request.form.get("object_filter"),
-                "object_confidence": request.form.get("object_confidence", 0.5),
-                "motion": request.form.get("motion", 0.2),
-                "invert": request.form.get("invert", "false").lower()
-                in ["true", "1", "t", "y", "yes", "on"],
-                "dark": request.form.get("dark", "false").lower()
-                in ["true", "1", "t", "y", "yes", "on"],
-                "headless": request.form.get("headless", "false").lower()
-                in ["true", "1", "t", "y", "yes", "on"],
-                "stealth": request.form.get("stealth", "false").lower()
-                in ["true", "1", "t", "y", "yes", "on"],
-                "browser": request.form.get("browser", "false").lower()
-                in ["true", "1", "t", "y", "yes", "on"],
-                "livecaption": request.form.get("livecaption", "false").lower()
-                in ["true", "1", "t", "y", "yes", "on"],
-                "danger": request.form.get("danger", "false").lower()
-                in ["true", "1", "t", "y", "yes", "on"],
-            }
+        # Validate inputs
+        errors = {}
+        if not updated_data["url"]:
+            errors["url"] = "URL is required"
+        if updated_data["frequency"]:
+            try:
+                frequency = int(updated_data["frequency"])
+                if frequency < 1 or frequency > 525600:
+                    errors["frequency"] = "Frequency must be between 1 and 525600 minutes"
+            except ValueError:
+                errors["frequency"] = "Frequency must be a valid integer"
+        else:
+            errors["frequency"] = "Frequency is required"
+        
+        if updated_data["timeout"]:
+            try:
+                timeout = int(updated_data["timeout"])
+                if timeout < 1:
+                    errors["timeout"] = "Timeout must be at least 1 second"
+            except ValueError:
+                errors["timeout"] = "Timeout must be a valid integer"
+        
+        if updated_data["object_confidence"]:
+            try:
+                confidence = float(updated_data["object_confidence"])
+                if confidence < 0 or confidence > 1:
+                    errors["object_confidence"] = "Object confidence must be between 0 and 1"
+            except ValueError:
+                errors["object_confidence"] = "Object confidence must be a valid float"
 
-            lremoves = []
-            for lkey in updated_data:
-                if updated_data.get(lkey) is None:
-                    lremoves.append(lkey)
-            for lkey in lremoves:
-                del updated_data[lkey]
+        if errors:
+            return jsonify({"status": "error", "errors": errors}), 400
 
-            # TODO: validate
+        # Remove None values
+        updated_data = {k: v for k, v in updated_data.items() if v is not None}
 
-            if updated_data.get("rollback_frames") == "":
-                updated_data["rollback_frames"] = 0
-            if updated_data.get("timeout") == "":
-                updated_data["timeout"] = 30
-            if updated_data.get("frequency") == "":
-                updated_data["frequency"] = 30
+        # Set default values
+        updated_data["rollback_frames"] = int(updated_data.get("rollback_frames", 0))
+        updated_data["timeout"] = int(updated_data.get("timeout", 30))
+        updated_data["frequency"] = int(updated_data.get("frequency", 30))
 
-            # Update the template in your storage (e.g., JSON file, database)
-            # This assumes you have a function to update templates
-            template_manager.save_template(template_name, updated_data)
-
-            # TODO: stop the old job.  reschedule the camera
-            template_manager.get_template(template_name)
+        # Update the template
+        if template_manager.save_template(template_name, updated_data):
             try:
                 seconds = int(updated_data.get("frequency", 30 * 60))
                 scheduling.scheduler.add_job(
@@ -1249,6 +1378,8 @@ def init_routes(app):
                 # logging.error(f"Error scheduling job for {name}: {e}")
 
             if request.is_json:
-                return jsonify({"message": "Template updated successfully!"})
+                return jsonify({"status": "success", "message": "Template updated successfully!"})
 
             return redirect("/templates/" + template_name)
+        else:
+            return jsonify({"status": "error", "message": "Failed to update template"}), 500

@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('#template-form form');
 
     const groupDropdown = document.getElementById('group-dropdown');
-    if (groupDropdown)  { 
+    if (groupDropdown)  {
     groupDropdown.addEventListener('change', () => {
         loadTemplates(); // Reload templates based on the selected group
     });
@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const slider = document.getElementById('grid-width-slider');
     const templateList = document.getElementById('template-list');
 
-	if (slider) { 
+	if (slider) {
     slider.addEventListener('input', function () {
         const value = slider.value;
         const pxValue = value + 'px';
@@ -29,9 +29,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 	}
 
-	if (form) { 
+	if (form) {
     form.addEventListener('submit', function(e) {
         e.preventDefault();
+        if (!validateForm()) {
+            return;
+        }
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
         const submitButton = form.querySelector('input[type="submit"]');
@@ -57,14 +60,14 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Success:', data);
             loadTemplates(); // Refresh the list after submission
             form.reset(); // Reset form after successful submission
-            
+
             // Show success message
             feedbackElement.innerHTML = 'Source successfully created!';
             feedbackElement.style.color = 'green';
         })
         .catch((error) => {
             console.error('Error:', error);
-            
+
             // Show error message
             feedbackElement.innerHTML = 'An error occurred. Please try again.';
             feedbackElement.style.color = 'red';
@@ -73,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset button state
             submitButton.disabled = false;
             submitButton.innerHTML = 'Submit';
-            
+
             // Remove feedback message after 3 seconds
             setTimeout(() => {
                 feedbackElement.remove();
@@ -81,6 +84,92 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     }
+
+function validateForm() {
+    const name = document.getElementById('name').value.trim();
+    const url = document.getElementById('url').value.trim();
+    const frequency = document.getElementById('frequency').value.trim();
+    const timeout = document.getElementById('timeout').value.trim();
+    const objectFilter = document.getElementById('object_filter').value.trim();
+    const objectConfidence = document.getElementById('object_confidence').value.trim();
+    const popupXpath = document.getElementById('popup_xpath').value.trim();
+    const dedicatedXpath = document.getElementById('dedicated_xpath').value.trim();
+    const callbackUrl = document.getElementById('callback_url').value.trim();
+    const proxy = document.getElementById('proxy').value.trim();
+    const groups = document.getElementById('groups').value.trim();
+
+    let errors = {};
+
+    // Validate name
+    if (name === "") {
+        errors.name = "Template Name is required.";
+    } else if (!/^[a-zA-Z0-9_\-\.]{1,32}$/.test(name)) {
+        errors.name = "Invalid Template Name. Use only letters, numbers, underscores, hyphens, and dots (1-32 characters).";
+    }
+
+    // Validate URL
+    if (url === "") {
+        errors.url = "URL is required.";
+    } else if (!/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(url)) {
+        errors.url = "Invalid URL format.";
+    }
+
+    // Validate frequency
+    if (frequency === "") {
+        errors.frequency = "Frequency is required.";
+    } else {
+        const frequencyInt = parseInt(frequency);
+        if (isNaN(frequencyInt) || frequencyInt < 1 || frequencyInt > 525600) {
+            errors.frequency = "Frequency must be between 1 and 525600 minutes (1 year).";
+        } else if (frequencyInt >= 43200 && !confirm("Warning: The frequency is set to " + frequencyInt + " minutes (more than 30 days). Are you sure you want to continue?")) {
+            return false;
+        }
+    }
+
+    // Validate timeout
+    if (timeout !== "") {
+        const timeoutInt = parseInt(timeout);
+        const frequencyInt = parseInt(frequency);
+        if (isNaN(timeoutInt) || timeoutInt < 1 || (frequencyInt && timeoutInt >= frequencyInt * 60)) {
+            errors.timeout = "Timeout must be at least 1 second and less than the frequency.";
+        }
+    }
+
+    // Validate object confidence
+    if (objectFilter !== "" && objectConfidence !== "") {
+        const confidenceFloat = parseFloat(objectConfidence);
+        if (isNaN(confidenceFloat) || confidenceFloat < 0 || confidenceFloat > 1) {
+            errors.objectConfidence = "Object Confidence must be between 0 and 1 when Object Filter is specified.";
+        }
+    }
+
+    // Validate XPath expressions
+    if ((popupXpath !== "" && !popupXpath.startsWith('//')) || (dedicatedXpath !== "" && !dedicatedXpath.startsWith('//'))) {
+        errors.xpath = "XPath expressions must start with '//'.";
+    }
+
+    // Validate callback URL
+    if (callbackUrl !== "" && !/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(callbackUrl)) {
+        errors.callbackUrl = "Invalid Callback URL format.";
+    }
+
+    // Validate proxy
+    if (proxy !== "" && !/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})(:\d{1,5})?([\/\w \.-]*)*\/?$/.test(proxy)) {
+        errors.proxy = "Invalid Proxy format.";
+    }
+
+    // Display errors if any
+    if (Object.keys(errors).length > 0) {
+        let errorMessage = "Please correct the following errors:\n\n";
+        for (let key in errors) {
+            errorMessage += errors[key] + "\n";
+        }
+        alert(errorMessage);
+        return false;
+    }
+
+    return true;
+}
 
 function loadGroups() {
     const groupDropdown = document.getElementById('group-dropdown');
