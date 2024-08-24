@@ -4,14 +4,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('#template-form form');
 
     const groupDropdown = document.getElementById('group-dropdown');
+    if (groupDropdown)  { 
     groupDropdown.addEventListener('change', () => {
-	     console.log('Group changed to:', groupDropdown.value);
         loadTemplates(); // Reload templates based on the selected group
     });
+	}
 
     const slider = document.getElementById('grid-width-slider');
     const templateList = document.getElementById('template-list');
 
+	if (slider) { 
     slider.addEventListener('input', function () {
         const value = slider.value;
         const pxValue = value + 'px';
@@ -25,7 +27,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.documentElement.style.setProperty('--camera-name-font-size', `${cameraNameFontSize}px`);
         document.documentElement.style.setProperty('--timestamp-font-size', `${timestampFontSize}px`);
     });
+	}
 
+	if (form) { 
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(form);
@@ -75,6 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 3000);
         });
     });
+    }
 
 function loadGroups() {
     const groupDropdown = document.getElementById('group-dropdown');
@@ -221,6 +226,7 @@ function generateXPath(inputId) {
     document.querySelector(`#${inputId} + .structured-xpath-input`).remove();
 }
 
+if (groupDropdown) { 
 function loadTemplates() {
     const selectedGroup = document.getElementById('group-dropdown').value || 'all';
     const url = selectedGroup === 'all' ? '/templates' : `/templates?group=${selectedGroup}&t=${new Date().getTime()}`;
@@ -374,6 +380,7 @@ function loadTemplates() {
             console.error('Error loading templates:', error);
             templateList.innerHTML = '<div class="error">Error loading templates. Please try again.</div>';
         });
+
 }
 
 // Initial load of templates
@@ -381,6 +388,7 @@ loadTemplates();
 loadGroups();
 
 groupDropdown.addEventListener('change', loadTemplates);
+}
 
 // Set an interval to update video sources every 30 minutes
 setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute

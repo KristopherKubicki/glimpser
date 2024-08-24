@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 import time
 
+from werkzeug.utils import secure_filename
 
 from app.config import (
     MAX_COMPRESSED_VIDEO_AGE,

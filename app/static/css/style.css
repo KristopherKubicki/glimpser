@@ -80,8 +80,8 @@ select:hover {
 
 /* If you need to maintain the aspect ratio without clipping, use object-fit: contain; */
 .templateDiv video {
-    object-fit: contain;
-    object-position: top; /* Aligns the video to the top, so the empty space, if any, will be at the bottom */
+    object-fit: cover;
+    /*object-position: center; */ /* Aligns the video to the top, so the empty space, if any, will be at the bottom */
 }
 
 
