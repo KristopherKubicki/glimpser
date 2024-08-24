@@ -6,9 +6,11 @@
         {% include 'nav.html' %}
     </header>
 
-
     <div id="performance-metrics">
         <h3>System Performance</h3>
+	<table>
+		<tr>
+			<td>
         <div class="metric">
             <label>CPU Usage:</label>
             <div class="progress-bar">
@@ -16,6 +18,7 @@
             </div>
             <span id="cpu-value"></span>
         </div>
+	<td></td>
         <div class="metric">
             <label>Memory Usage:</label>
             <div class="progress-bar">
@@ -23,44 +26,34 @@
             </div>
             <span id="memory-value"></span>
         </div>
+	<td></td>
         <div class="metric">
             <label>CPU Sparkline:</label>
             <canvas id="cpu-sparkline"></canvas>
         </div>
-        <div class="metric">
-            <label>Uptime:</label>
-            <span id="uptime-value"></span>
-    <div id="performance-metrics">
-        <h3>System Performance</h3>
-        <div class="metric">
-            <label>CPU Usage:</label>
-            <div class="progress-bar">
-                <div id="cpu-bar" class="progress"></div>
-            </div>
-            <span id="cpu-value"></span>
-        </div>
-        <div class="metric">
-            <label>Memory Usage:</label>
-            <div class="progress-bar">
-                <div id="memory-bar" class="progress"></div>
-            </div>
-            <span id="memory-value"></span>
-        </div>
-        <div class="metric">
-            <label>CPU Sparkline:</label>
-            <canvas id="cpu-sparkline"></canvas>
-        </div>
+	<td></td>
         <div class="metric">
             <label>Uptime:</label>
             <span id="uptime-value"></span>
         </div>
-
-    <div style="text-align: right; margin: 10px;">
-        <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
-
+			</td>
+		</tr>
+	</table>
     </div>
 
+
     <h2>Current Settings</h2>
+
+    <h3>Add New Setting</h3>
+    <form method="POST" action="{{ url_for('settings') }}">
+        <input type="hidden" name="action" value="add">
+        <label for="new_name">Name:</label>
+        <input type="text" id="new_name" name="new_name" required>
+        <label for="new_value">Value:</label>
+        <input type="text" id="new_value" name="new_value" required>
+        <button type="submit">Add Setting</button>
+    </form>
+
     <form method="POST" action="{{ url_for('settings') }}">
         <table>
             <thead>
@@ -86,16 +79,6 @@
         </table>
         <input type="hidden" id="name_to_delete" name="name_to_delete" value="">
         <button type="submit">Save Changes</button>
-    </form>
-
-    <h2>Add New Setting</h2>
-    <form method="POST" action="{{ url_for('settings') }}">
-        <input type="hidden" name="action" value="add">
-        <label for="new_name">Name:</label>
-        <input type="text" id="new_name" name="new_name" required>
-        <label for="new_value">Value:</label>
-        <input type="text" id="new_value" name="new_value" required>
-        <button type="submit">Add Setting</button>
     </form>
 
     {% include 'footer.html' %}

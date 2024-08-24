@@ -9,6 +9,13 @@
             <div class="nav-right">
 		    <table>
 			    <tr>
+
+{% if request.path == url_for('settings') %}
+<td>
+        <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger">Logout</a>
+</td>
+    {% endif %} 
+
 				    <td>
 					    <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'>&#9000;</a>
 				    </td><td>
@@ -26,6 +33,8 @@
 				    </td><td>
                 <a href='/settings' class="settings-icon" title="Settings" title='Update settings'>&#9881;</a>
 				    </td>
+
+
 			    </tr>
 		    </table>
             </div>
