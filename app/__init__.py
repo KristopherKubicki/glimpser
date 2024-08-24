@@ -18,13 +18,22 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 def create_app():
+    """
+    Create and configure the Flask application.
+
+    This function sets up the Flask app, initializes directories, configures
+    the scheduler, sets up various jobs, and starts a watchdog thread.
+
+    Returns:
+        Flask: The configured Flask application instance.
+    """
     app = Flask(__name__)
-    # app.config.from_object()
 
+    # Set the secret key for the Flask app
     from app.config import SECRET_KEY
-
     app.secret_key = SECRET_KEY
 
+    # Import and set up necessary directories
     from app.config import (
         MAX_WORKERS,
         SCREENSHOT_DIRECTORY,
@@ -32,38 +41,34 @@ def create_app():
         VIDEO_DIRECTORY,
     )
 
-    # Ensure the screenshot directory exists
+    # Ensure required directories exist
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)
     os.makedirs(VIDEO_DIRECTORY, exist_ok=True)
     os.makedirs(SUMMARIES_DIRECTORY, exist_ok=True)
 
+    # Initialize routes
     from app.routes import init_routes
-
     init_routes(app)
 
-    # Set the executor configuration in the Flask app's config
-    # should be at least as many sources
+    # Configure the scheduler executor
     app.config["SCHEDULER_EXECUTORS"] = {
         "default": {"type": "processpool", "max_workers": MAX_WORKERS}
     }
-    logging.info(" starting with %s workers" % str(MAX_WORKERS))
+    logging.info("Starting with %s workers" % str(MAX_WORKERS))
 
     scheduler.init_app(app)
 
-    # Scheduler setup
+    # Set up scheduler jobs
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
         scheduler.start()
-        logging.info("initializing...")
+        logging.info("Initializing scheduler...")
 
-        # Schedule the crawlers upon app start
         with app.app_context():
-
-            # remove existing schedules, particularly if the app reloads (which it does in debug mode)
+            # Remove existing schedules (important for app reloads in debug mode)
             scheduler.remove_all_jobs()
 
-            # TODO: allow disable / enable of these via command line or settings? 
+            # Schedule various jobs
             schedule_crawlers()
-            # Additional scheduler setup for video archiving
             scheduler.add_job(
                 id="compile_to_teaser",
                 func=compile_to_teaser,
@@ -76,45 +81,47 @@ def create_app():
                 trigger="interval",
                 minutes=1,
             )
-            # scheduler.add_job(id='compress_and_cleanup', func=compress_and_cleanup, trigger='interval', hours=1)
             scheduler.add_job(
                 id="retention_cleanup", func=retention_cleanup, trigger="cron", day="*"
             )
             schedule_summarization()
 
-        # one time cleanup..
+        # Perform initial cleanup
         retention_cleanup()
-        logging.info("initialization complete")
+        logging.info("Initialization complete")
 
     # Backup current configuration
     backup_config()
 
     # Set up a watchdog thread to monitor the application
     def watchdog():
+        """
+        Watchdog function to monitor the application's health.
+        It checks the application every 10 seconds and restarts if necessary.
+        """
         import time
         while True:
             time.sleep(10)  # Check every 10 seconds
             if not app.debug:
                 try:
-                    # Try to access a simple route
+                    # Try to access a simple route to check app health
                     with app.test_client() as client:
                         response = client.get('/health')
                         if response.status_code != 200:
-                            # Raising a general exception is acceptable here as we want to catch any error
                             raise Exception("Application is not responding correctly")
                 except Exception as e:
-                    # Catching a general exception is necessary here to handle any possible error
                     logging.error("Application error detected: %s", e)
                     logging.info("Attempting to restore previous configuration...")
                     restore_config()
                     os._exit(1)  # Force restart the application
 
+    # Start the watchdog thread
     watchdog_thread = threading.Thread(target=watchdog)
     watchdog_thread.daemon = True
     watchdog_thread.start()
 
+    # Start collecting metrics
     from .utils.scheduling import start_metrics_collection
     start_metrics_collection()
-
 
     return app

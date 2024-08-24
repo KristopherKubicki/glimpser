@@ -131,28 +131,46 @@ def add_motion_and_caption(image_path, caption=None, motion=False):
 
 
 def update_camera(name, template, image_file=None):
+    """
+    Update the camera with a new image, process it, and manage related files and metadata.
 
-    # just ignore the old
+    Args:
+        name (str): The name of the camera.
+        template (dict): The template containing camera settings.
+        image_file (str, optional): Path to an existing image file. If None, a new image will be captured or downloaded.
+
+    Returns:
+        None
+
+    This function performs the following main tasks:
+    1. Capture or process a new image
+    2. Update symlinks for the latest camera image
+    3. Perform motion detection and object detection
+    4. Generate captions for the image
+    5. Update template metadata
+    6. Manage related image files (last_motion, prev_motion, etc.)
+    """
+
+    # Refresh the template to ensure we have the latest settings
     template = get_template(name)
 
     lsuc = False
     if image_file is None:
+        # Capture or download a new image
         lsuc = capture_or_download(name, template)
     else:
+        # Process an existing image file
         timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
-        # Update the output_path format to include the timestamp
         output_path = os.path.join(
             SCREENSHOT_DIRECTORY, f"{name}/{name}_{timestamp}.tmp.png"
         )
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         if os.path.exists(output_path):
             image = Image.open(output_path)
-            # Convert the image to RGBA mode in case it's a format that doesn't support transparency
             image = image.convert("RGB")
             image = remove_background(image)
             image.save(output_path, "PNG")
             if os.path.exists(output_path):
-                # TODO: add error mark from lerror
                 add_timestamp(output_path, name, invert=template.get('invert',False))
                 os.rename(output_path, output_path.replace(".tmp.png", ".png"))
                 lsuc = True
@@ -171,10 +189,10 @@ def update_camera(name, template, image_file=None):
             png_files, key=lambda x: os.path.getctime(os.path.join(directory, x))
         )
 
-        # link for other processes to use
+        # Update symlinks for the latest camera image
         lpath = os.path.join(SCREENSHOT_DIRECTORY, "latest_camera.png")
-
         try:
+            # Update global latest camera symlink
             if os.path.exists(lpath + ".tmp"):
                 os.unlink(os.path.abspath(lpath + ".tmp"))
             os.symlink(
@@ -183,6 +201,7 @@ def update_camera(name, template, image_file=None):
             )
             os.rename(os.path.abspath(lpath + ".tmp"), os.path.abspath(lpath))
 
+            # Update camera-specific latest camera symlink
             lpath = os.path.join(SCREENSHOT_DIRECTORY, name, "latest_camera.png")
             if os.path.exists(lpath + ".tmp"):
                 os.unlink(os.path.abspath(lpath + ".tmp"))
@@ -216,6 +235,7 @@ def update_camera(name, template, image_file=None):
         except Exception:
             pass
 
+        # Check if we need to process the image (based on motion config and existing captions)
         motion_config = template.get("motion", 1)
         if (
             motion_config in [1, None]
@@ -223,6 +243,7 @@ def update_camera(name, template, image_file=None):
         ):
             return
 
+        # Perform motion detection
         lsum = False
         percentage_difference = 0
         if len(png_files) > 1:
@@ -232,33 +253,29 @@ def update_camera(name, template, image_file=None):
             )
             if (percentage_difference or 0) >= float(template.get("motion", 0)):
                 lsum = True
-
         elif png_files == 1:
             lsum = True
 
         prev_motion = os.path.join(directory, "last_motion.png")
-        # print(" detected motion", lsum, name, template.get('last_caption'))
 
+        # Determine if we should process the image
         allow = False
-
-        #  Work through, Motion detection, then object detection, then live caption, then online captioning
-        #
         last_caption_time, _last_motion_caption = None, None
         last_caption_trigger, last_motion_trigger = False, False
 
+        # Check various conditions to determine if we should process the image
         if (template.get("last_caption", "") or "") == "":
             allow = True
             last_caption_trigger = True
-            # print("allowing from no caption", name)
         if (template.get("last_motion_caption", "") or "") == "":
             allow = True
             last_motion_trigger = True
-
         if lsum is True:
             allow = True
             last_motion_trigger = True
 
         if allow is False:
+            # Check if enough time has passed since the last motion caption
             try:
                 last_motion_caption_time = datetime.datetime.strptime(
                     template.get("last_motion_caption_time", "1970-01-01 00:00:00"),
@@ -271,26 +288,21 @@ def update_camera(name, template, image_file=None):
                 ):
                     allow = True
                     last_motion_trigger = True
-                    # print("allowing because of an old caption", name)
             except Exception:
-                # print(" parse exception", e) #n1c
                 pass
 
-            # at least once a day.
-            #  maybe at least once per every 8 frames
-            #  no more frequent than hourly
+            # Determine the time delta for caption updates based on frequency settings
             ldelta = 24
             if int(template.get("frequency", 30)) <= 30:
                 ldelta = 8
             if int(template.get("frequency", 30)) <= 5:
                 ldelta = 3
 
-            if (
-                template.get("livecaption", "") or ""
-            ) == "true":  # spending extra money...
+            if (template.get("livecaption", "") or "") == "true":
                 lfreq = int(template.get("frequency", 30))
                 ldelta = max(1, lfreq / 7)
 
+            # Check if enough time has passed since the last caption
             try:
                 last_caption_time = datetime.datetime.strptime(
                     template.get("last_caption_time", "1970-01-01 00:00:00"),
@@ -300,15 +312,13 @@ def update_camera(name, template, image_file=None):
                     last_caption_time
                     and datetime.datetime.utcnow() - last_caption_time
                     > datetime.timedelta(hours=ldelta)
-                ):  # one caption per day is fine otherwise...
+                ):
                     allow = True
                     last_caption_trigger = True
-                    # print("allowing from old caption", name)
             except Exception:
-                # print(" parse exception", e) #n1c
                 pass
 
-        # Implement a filter using CLIP
+        # Perform object detection using CLIP if configured
         object_filter = template.get("object_filter", "")
         object_confidence = 0.5
         try:
@@ -316,13 +326,11 @@ def update_camera(name, template, image_file=None):
         except Exception:
             pass
 
-        # run the object detect AFTER the motion detetor
         if allow is True and object_filter and object_confidence is not None:
-
             global clip_model, clip_processor
 
             if clip_model is None:
-                clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")  # TODO: make these models configurable
+                clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
 
             if clip_processor is None:
                 clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
@@ -338,28 +346,17 @@ def update_camera(name, template, image_file=None):
 
             # Get the logits from the model
             outputs = clip_model(**inputs)
-            logits_per_image = (
-                outputs.logits_per_image
-            )  # this is the image-text similarity score
-            probs = logits_per_image.softmax(
-                dim=1
-            )  # we can take the softmax to get probabilities
+            logits_per_image = outputs.logits_per_image
+            probs = logits_per_image.softmax(dim=1)
 
             # Check if the object is detected with confidence higher than the threshold
             if probs[0, 0] >= object_confidence:
                 allow = True
-                # print(f"Object '{object_filter}' detected in {name} with confidence {probs[0, 0]}")
 
         if allow:
-
-            # allow this to run one time if we have no detection
-            #  generate the symlink. if there is a data/screenshots/<camera>/last_motion.png, please rename the move the symlink to prev_motion.png
-            #    then, create the symlink for last_motion.png to point to the new png_files[-1]
+            # Process the image if allowed
             image_paths = []
-            # add reference image if exists
-            if os.path.exists(
-                os.path.join(directory, "reference.png")
-            ):  # if doesnt exist, consider taking the oldest?
+            if os.path.exists(os.path.join(directory, "reference.png")):
                 image_paths.append(os.path.join(directory, "reference.png"))
 
             # Find the image that closest matches the last_caption_time
@@ -383,42 +380,24 @@ def update_camera(name, template, image_file=None):
 
             lctime = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
-            # archictecture:
-            #  check to see if there are any image in the object filter
-            #  check to see if there are differences in the image
-            #  check to see if there are alerts in the image -> no? use the llava caption
-            #     yes?  use the gpt caption
-            #
-
-            #  add python llava (llama multimodal)  summarization.  Compare the reference frame, the previous motion capped frame, and this frame together.
-            #      send llava the reference image (if available in data/screenshots/<camera>/reference.png), the last motion image (if available in data/screenshots/<camera>/last_motion.png)
-            # TODO: be more targetted about this
-
-            lret = None
             if last_motion_trigger:
                 template["last_motion_time"] = lctime
 
-            lret = None
-            # just ignore the old
+            # Refresh the template
             template = get_template(name)
 
+            # Generate captions if needed
             if last_caption_trigger or template.get("last_caption") is None:
                 lprompt = ""
                 if template.get("notes"):
                     lprompt += " " + template["notes"]
-                #  use Chatgpt_compare
                 gret = chatgpt_compare(prompt=lprompt, image_paths=image_paths)
-                # TODO: add a separator?
-                # print("  oldgpt:", name, template.get('last_caption'))
-                # print("  newgpt:", name, gret)
                 if gret and re.findall(r"(?:sorry|cannot|can not)", gret):
                     template["last_ret"] = gret + "*"
                 elif gret:
                     template["last_caption"] = gret
                 template["last_caption_time"] = lctime
                 add_motion_and_caption(lpath, caption=gret, motion=lsum)
-            elif lret is not None:
-                add_motion_and_caption(lpath, caption=lret, motion=lsum)
             else:
                 lcap = template.get(
                     "last_caption", template.get("last_motion_caption", None)
@@ -427,6 +406,7 @@ def update_camera(name, template, image_file=None):
 
             save_template(name, template)
 
+            # Update motion-related image files
             if last_motion_trigger or lsum:
                 if os.path.exists(
                     os.path.join(directory, "last_motion_caption.png.tmp")
@@ -471,7 +451,7 @@ def update_camera(name, template, image_file=None):
             )
 
         elif lsum is True:
-            # just ignore the old
+            # Handle motion detection without allowing full processing
             template = get_template(name)
 
             lcap = template.get(
@@ -482,6 +462,7 @@ def update_camera(name, template, image_file=None):
             template["last_motion_time"] = lctime
             save_template(name, template)
 
+            # Update motion-related image files
             if os.path.exists(prev_motion):
                 destination = os.readlink(prev_motion)
                 if os.path.exists(os.path.join(directory, "prev_motion.png.tmp")):
@@ -500,7 +481,7 @@ def update_camera(name, template, image_file=None):
             )
 
         else:
-            # just ignore the old
+            # No processing needed, just update the caption
             template = get_template(name)
 
             lcap = template.get(

@@ -69,6 +69,16 @@ def trim_group_name(group_name):
 
 
 def compile_to_teaser():
+    """
+    Compile video teasers for all cameras and camera groups.
+
+    This function performs the following tasks:
+    1. Creates a teaser video for each camera by extracting the last 5 seconds of their most recent video.
+    2. Compiles a single teaser video containing snippets from all cameras.
+    3. Creates group-specific teaser videos based on camera group assignments.
+
+    The function uses temporary files to store video metadata and FFmpeg for video compilation.
+    """
     os.makedirs(VIDEO_DIRECTORY, exist_ok=True)
     final_videos = {}
 
@@ -89,7 +99,7 @@ def compile_to_teaser():
             if video_files:
                 latest_video = video_files[0]
                 ldur = get_video_duration(latest_video)
-                if ldur < 1:  # not much going on...
+                if ldur < 1:  # Skip if video is too short
                     continue
 
                 # Extract the last 5 seconds of the video
@@ -117,7 +127,7 @@ def compile_to_teaser():
         for group, videos in final_videos.items():
             with tempfile.NamedTemporaryFile(
                 mode="w+"
-            ) as group_temp_file:  # should be cleaning up automatically...
+            ) as group_temp_file:  # Temporary file is automatically cleaned up
                 for video in videos:
                     group_temp_file.write(f"file '{video}'\n")
                 group_temp_file.flush()
@@ -180,7 +190,7 @@ def get_video_duration(video_path):
 
     """Get the duration of a video in seconds."""
     command = [
-        "ffprobe", # TODO: make this a config 
+        "ffprobe",
         "-v",
         "error",
         "-show_entries",
@@ -267,9 +277,9 @@ def concatenate_videos(in_process_video, temp_video, video_path) -> bool:
 
             except Exception as e:
                 handle_concat_error(e, temp_video, in_process_video)
-        elif os.path.exists(temp_video) and os.path.getsize(temp_video) > 0:
+        elif os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
-    elif os.path.exists(temp_video) and os.path.getsize(temp_video) > 0:
+    elif os.path.getsize(temp_video) > 0:
         os.rename(temp_video, in_process_video)
 
     # TODO: check timestamp, should be current...
@@ -327,10 +337,12 @@ def compile_to_video(camera_path, video_path) -> bool:
             # this is going to generate overlapping segments, which is OK for now .
 
     # Get the modification time of the in-process video
-    video_mod_time = 0
+    video_mod_time = (
+        os.path.getmtime(in_process_video) if os.path.exists(in_process_video) else 0
+    )
+
     ldur = 0
     if os.path.exists(in_process_video):
-        video_mod_time = os.path.getmtime(in_process_video)
         ldur = get_video_duration(in_process_video)
         if (
             ldur < 10 and time.time() - video_mod_time > 60 * 60
