@@ -29,7 +29,7 @@ def get_latest_file(directory, ext="png"):
         return None
     try:
         latest_file = max(
-            files, key=lambda x: os.path.getctime(os.path.join(directory, x))
+            files, key=lambda x: os.path.getmtime(os.path.join(directory, x))
         )
     except Exception as e:
         print("Warning: file error", e)
@@ -58,10 +58,11 @@ def get_latest_date(directory, ext="png"):
         # Construct the full path to the latest file
         latest_file_path = os.path.join(directory, latest_file)
         # Get the creation time of the latest file
-        latest_file_ctime = os.path.getctime(latest_file_path)
+        latest_file_mtime = os.path.getmtime(latest_file_path)
     except Exception as e:
         print("Warning: file error", e)
         return None
 
     # Convert the timestamp to UTC datetime string
-    return datetime.utcfromtimestamp(latest_file_ctime).strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.utcfromtimestamp(latest_file_mtime).strftime("%Y-%m-%d %H:%M:%S")
+

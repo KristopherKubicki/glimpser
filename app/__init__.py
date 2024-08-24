@@ -60,7 +60,6 @@ def create_app():
             scheduler.remove_all_jobs()
 
             # TODO: allow disable / enable of these via command line or settings? 
-            '''
             schedule_crawlers()
             # Additional scheduler setup for video archiving
             scheduler.add_job(
@@ -80,7 +79,6 @@ def create_app():
                 id="retention_cleanup", func=retention_cleanup, trigger="cron", day="*"
             )
             schedule_summarization()
-            '''
 
         # one time cleanup..
         retention_cleanup()

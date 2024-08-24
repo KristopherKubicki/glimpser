@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.utils.scheduling import scheduler
+from app.utils.scheduling import scheduler, schedule_crawlers
 
 class TestScheduler(unittest.TestCase):
 
@@ -63,6 +63,25 @@ class TestScheduler(unittest.TestCase):
         job_func2 = scheduler.get_job('test_job2').func
         job_func2()
         #job2.assert_called_once() # TODO: fix this ...
+
+    '''
+    @patch('app.utils.scheduling.scheduler.add_job')
+    @patch('app.utils.scheduling.get_templates', return_value={
+        'camera1': {'name': 'camera1', 'frequency': 30},
+        'camera2': {'name': 'camera2', 'frequency': 60},
+    })
+    def test_schedule_crawlers(self, mock_get_templates, mock_add_job):
+        schedule_crawlers()
+        # Ensure that jobs are being scheduled
+        self.assertEqual(mock_add_job.call_count, 2)
+
+    @patch('app.utils.scheduling.scheduler.add_job')
+    def test_schedule_crawlers_empty_templates(self, mock_add_job):
+        with patch('app.utils.scheduling.get_templates', return_value={}):
+            schedule_crawlers()
+            # Ensure no jobs are scheduled when templates are empty
+            mock_add_job.assert_not_called()
+    '''
 
 if __name__ == '__main__':
     unittest.main()

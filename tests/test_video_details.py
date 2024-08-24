@@ -39,9 +39,9 @@ class TestVideoDetails(unittest.TestCase):
         expected_date = (datetime.now() - timedelta(days=1)).strftime(
             "%Y-%m-%d %H:%M:%S"
         )
-        #self.assertEqual(
-        #    latest_date[:10], expected_date[:10]
-        #)  # Compare only the date part
+        self.assertEqual(
+            latest_date[:10], expected_date[:10]
+        )  # Compare only the date part
 
     def test_get_latest_screenshot_date(self):
         self.create_dummy_file("screenshot1.png", days_ago=2)
@@ -52,17 +52,24 @@ class TestVideoDetails(unittest.TestCase):
         expected_date = (datetime.now() - timedelta(days=1)).strftime(
             "%Y-%m-%d %H:%M:%S"
         )
-        #self.assertEqual(
-        #    latest_date[:10], expected_date[:10]
-        #)  # Compare only the date part
+        self.assertEqual(
+            latest_date[:10], expected_date[:10]
+        )  # Compare only the date part
 
     def test_get_latest_file(self):
         self.create_dummy_file("file1.txt", days_ago=2)
         self.create_dummy_file("file2.txt", days_ago=1)
         self.create_dummy_file("file3.txt", days_ago=3)
+        latest_file = get_latest_file(self.temp_dir, ext="mp4")
+        self.assertEqual(latest_file, None)
 
         latest_file = get_latest_file(self.temp_dir, ext="txt")
-        #self.assertEqual(latest_file, "file2.txt")
+        self.assertEqual(latest_file, "file2.txt")
+        self.create_dummy_file("latest_camera.png", days_ago=5)
+        latest_file = get_latest_file(self.temp_dir, ext="txt")
+        self.assertEqual(latest_file, "file2.txt")
+        latest_file = get_latest_file(self.temp_dir, ext="png")
+        self.assertEqual(latest_file, "latest_camera.png")
 
     def test_get_latest_date(self):
         self.create_dummy_file("file1.txt", days_ago=2)
@@ -73,10 +80,11 @@ class TestVideoDetails(unittest.TestCase):
         expected_date = (datetime.now() - timedelta(days=1)).strftime(
             "%Y-%m-%d %H:%M:%S"
         )
+
         # TODO: fix -- some kind of issue with utc vs local tz 
-        #self.assertEqual(
-        #    latest_date[:10], expected_date[:10]
-        #)  # Compare only the date part
+        self.assertEqual(
+            latest_date[:10], expected_date[:10]
+        )  # Compare only the date part
 
     def test_get_latest_file_empty_directory(self):
         latest_file = get_latest_file(self.temp_dir, ext="txt")
