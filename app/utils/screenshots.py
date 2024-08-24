@@ -1243,6 +1243,51 @@ def capture_screenshot_and_har(
         logging.warn("Danger port is not open - won't properly connect")
         return False
 
+    def retry_operation(operation, max_retries=3):
+        return retry_with_exponential_backoff(operation, max_retries=max_retries)
+
+    def retry_operation(operation, max_retries=3):
+        return retry_with_exponential_backoff(operation, max_retries=max_retries)
+
+    def retry_operation(operation, max_retries=3):
+        return retry_with_exponential_backoff(operation, max_retries=max_retries)
+
+    def retry_operation(operation, max_retries=3):
+        return retry_with_exponential_backoff(operation, max_retries=max_retries)
+
+    def retry_operation(operation, max_retries=3):
+        return retry_with_exponential_backoff(operation, max_retries=max_retries)
+
+    def retry_operation(operation, max_retries=3):
+        return retry_with_exponential_backoff(operation, max_retries=max_retries)
+
+    def retry_operation(operation, max_retries=3):
+        return retry_with_exponential_backoff(operation, max_retries=max_retries)
+
+    def retry_operation(operation, max_retries=3):
+        return retry_with_exponential_backoff(operation, max_retries=max_retries)
+
+    def retry_operation(operation, max_retries=3):
+        return retry_with_exponential_backoff(operation, max_retries=max_retries)
+
+    def retry_operation(operation, max_retries=3):
+        return retry_with_exponential_backoff(operation, max_retries=max_retries)
+
+    def retry_operation(operation, max_retries=3):
+        return retry_with_exponential_backoff(operation, max_retries=max_retries)
+
+    def retry_operation(operation, max_retries=3):
+        return retry_with_exponential_backoff(operation, max_retries=max_retries)
+
+    def retry_operation(operation, max_retries=3):
+        return retry_with_exponential_backoff(operation, max_retries=max_retries)
+
+    def retry_operation(operation, max_retries=3):
+        return retry_with_exponential_backoff(operation, max_retries=max_retries)
+
+    def retry_operation(operation, max_retries=3):
+        return retry_with_exponential_backoff(operation, max_retries=max_retries)
+
     # TODO: if danger, consider skipping this is the mouse has recently moved.
 
     # TODO: handle the use case of opening up a stream with the browser. We want it to cancel right away when that happens. I've noticed junk files get created in the root when this happens
@@ -1400,62 +1445,28 @@ def capture_screenshot_and_har(
 
         driver.set_page_load_timeout(timeout)
         gtime = time.time()
-        driver.get(url)
 
-        # TODO: switch back to the main context.
-        if danger and current_window_handle:
-            # note, might not exist...
-            driver.switch_to.window(current_window_handle)
+        def load_url():
+            driver.get(url)
+            return network_idle_condition(driver, url, timeout, stealth)
 
-        lret, lstatus = network_idle_condition(driver, url, timeout, stealth)
+        lret, lstatus = retry_with_exponential_backoff(load_url, max_retries=3)
+
         if not lret:
             if not stealth:
                 max(timeout - (time.time() - ltime), 15)
                 logging.warn(
                     f"Vanilla non-idle connection detected {url} at {output_path}, failing over to undetectable chromedriver"
                 )
-                """
-                if danger:
-                    try:
-                        driver.switch_to.window(new_window_handle)
-                        if driver:
-                            driver.close()
-                    except Exception as e:
-                        pass
-                    try:
-                        driver.switch_to.window(current_window_handle)
-                    except Exception as e:
-                        pass
-                if driver and not danger:
-                    driver.quit()
-                if display:
-                    display.stop()
-                # TODO: cap attempts....
-                print("RETRY!!!!")
-                return capture_screenshot_and_har(url, output_path, popup_xpath, dedicated_selector, timeout, name, invert, proxy, stealth=True, headless=headless, danger=danger)
-                """
                 return False  # dont stress on this for now
 
             if int(lstatus) >= 400:
-
-                """
-                if danger:
-                    try:
-                        driver.switch_to.window(new_window_handle)
-                        if driver:
-                            driver.close()
-                    except Exception as e:
-                        pass
-                    try:
-                        driver.switch_to.window(current_window_handle)
-                    except Exception as e:
-                        pass
-                if driver and not danger:
-                    driver.quit()
-                if display:
-                    display.stop()
-                """
                 return False
+
+        # TODO: switch back to the main context.
+        if danger and current_window_handle:
+            # note, might not exist...
+            driver.switch_to.window(current_window_handle)
 
         if danger and time.time() - gtime < 10:
             time.sleep(10 - (time.time() - gtime))
@@ -1463,15 +1474,14 @@ def capture_screenshot_and_har(
             time.sleep(5 - (time.time() - gtime))
 
         if popup_xpath:
-            try:
+            def remove_popup():
                 elements = driver.find_elements(By.XPATH, popup_xpath)
                 for element in elements:
                     driver.execute_script(
                         """var element = arguments[0]; element.parentNode.removeChild(element); """,
                         element,
                     )
-            except Exception:
-                pass
+            retry_with_exponential_backoff(remove_popup, max_retries=3)
 
         #####  screenshot
         if danger:
@@ -1479,7 +1489,7 @@ def capture_screenshot_and_har(
             driver.switch_to.window(new_window_handle)
 
         if dedicated_selector:
-            try:
+            def capture_element():
                 element = driver.find_element(By.XPATH, dedicated_selector)
                 driver.execute_script("arguments[0].scrollIntoView(true);", element)
                 time.sleep(1)
@@ -1494,11 +1504,13 @@ def capture_screenshot_and_har(
 
                 if not os.path.exists(output_path):
                     element.screenshot(output_path)
-            except Exception:
-                chrome_service = Service(ChromeDriverManager().install())
+
+            retry_with_exponential_backoff(capture_element, max_retries=3)
 
         if not os.path.exists(output_path):
-            driver.save_screenshot(output_path)
+            def take_screenshot():
+                driver.save_screenshot(output_path)
+            retry_with_exponential_backoff(take_screenshot, max_retries=3)
 
         #####  screenshot
         if danger:
@@ -1507,59 +1519,42 @@ def capture_screenshot_and_har(
             driver.switch_to.window(current_window_handle)
 
         if os.path.exists(output_path):
-            image = Image.open(output_path)
-            image = image.convert("RGB")
-            image = remove_background(image)
-            image.save(output_path, "PNG")
-            if os.path.exists(output_path):
-                add_timestamp(output_path, name, invert=invert)
+            def process_image():
+                image = Image.open(output_path)
+                image = image.convert("RGB")
+                image = remove_background(image)
+                image.save(output_path, "PNG")
+                if os.path.exists(output_path):
+                    add_timestamp(output_path, name, invert=invert)
+            retry_with_exponential_backoff(process_image, max_retries=3)
 
         logging.info(f"Successfully captured screenshot for {url} at {output_path}")
         lsuccess = True
     except TimeoutException:
         logging.warn(f"Timed out waiting for network to be idle for {url}")
+        lsuccess = False
     except Exception as e:
         print(f"Error capturing screenshot for {url}", e, main_version)
         logging.error(
             f"Error capturing screenshot for {url}: {e} stealth: %s headless: %s"
             % (stealth, headless)
         )
-        """
-        chrome_service = Service(ChromeDriverManager().install())
-
-        if not stealth:
-            ltimeout = max(timeout - (time.time() - ltime), 15)
-            logging.warn(f"Vanilla generic error detected {url} at {output_path}, failing over to undetectable chromedriver")
-            if danger:
-                driver.switch_to.window(new_window_handle)
-                if driver:
-                    driver.close()
-                driver.switch_to.window(current_window_handle)
-            if driver and not danger:
-                driver.quit()
-            if display:
-                display.stop()
-            return capture_screenshot_and_har(url, output_path, popup_xpath, dedicated_selector, timeout, name, invert, proxy, stealth=True, danger=danger)
-        """
+        lsuccess = False
     finally:
         if danger:
             if new_window_handle:
                 try:
-                    driver.switch_to.window(
-                        new_window_handle
-                    )  # this should always fail.. there shouldnt be a new_window_handle
+                    driver.switch_to.window(new_window_handle)
                     if driver and current_window_handle != new_window_handle:
                         driver.close()
                 except Exception as e:
-                    print(">>>1", e)
-                    pass
+                    logging.error(f"Error closing new window: {e}")
 
             if current_window_handle:
                 try:
                     driver.switch_to.window(current_window_handle)
                 except Exception as e:
-                    print(">>>2", e)
-                    pass
+                    logging.error(f"Error switching to original window: {e}")
         if driver and not danger:
             driver.quit()
         if display:
