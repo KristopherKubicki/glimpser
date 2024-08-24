@@ -4,6 +4,15 @@ import argparse
 import app.config as config
 from app import create_app
 
+"""
+  ____  _  _
+ / ___||| |(_)_ __ ___  _ __  ___  ___ _ __
+| |  _ | || | '_ ` _ \| '_ \/ __|/ _ \ '__|
+| |_| || || | | | | | | |_) \__ \  __/ |
+ \____||_||_|_| |_| |_| .__/|___/\___|_|
+                      |_|
+"""
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Glimpser %s" % config.VERSION)
     parser.add_argument("--db-path", default=config.DATABASE_PATH,
