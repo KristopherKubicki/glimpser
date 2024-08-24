@@ -1,0 +1,161 @@
+<form id="template-form" action="{{ action_url }}" method="post" onsubmit="return validateForm()" title="Form to {{ 'add' if is_new else 'edit' }} template">
+    <div>
+        {% if is_new %}
+        <label for="name" style="color: #fff;" title="Name of the template">Template Name:</label>
+        <input type="text" id="name" name="name" value="{{ template.name }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter a unique name for this template">
+        {% endif %}
+
+        <label for="url" style="color: #fff;" title="URL to monitor">URL:</label>
+        <input type="url" id="url" name="url" value="{{ template.url }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter the URL to monitor">
+
+        <label for="frequency" style="color: #fff;" title="How often to check the URL">Frequency (minutes):</label>
+        <input type="number" id="frequency" name="frequency" value="{{ template.frequency }}" min="1" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter how often to check the URL (in minutes)">
+
+        <label for="timeout" style="color: #fff;" title="Maximum time to wait for a response">Timeout (seconds):</label>
+        <input type="number" id="timeout" name="timeout" value="{{ template.timeout }}" min="1" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter the maximum time to wait for a response (in seconds)">
+
+        <label for="notes" style="color: #fff;" title="Additional notes">Notes:</label>
+        <textarea id="notes" name="notes" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter any additional notes or comments">{{ template.notes }}</textarea>
+
+        <label for="object_filter" style="color: #fff;" title="Filter for specific objects">Object Filter:</label>
+        <input type="text" id="object_filter" name="object_filter" value="{{ template.object_filter }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter object types to filter (e.g., 'person,car')">
+
+        <label for="object_confidence" style="color: #fff;" title="Minimum confidence for object detection">Object Confidence:</label>
+        <input type="number" id="object_confidence" name="object_confidence" value="{{ template.object_confidence }}" min="0" max="1" step="0.01" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter the minimum confidence level for object detection (0-1)">
+
+        <label for="motion" style="color: #fff;" title="Percentage of motion required to trigger an alert">Motion Percent:</label>
+        <input type="number" id="motion" name="motion" value="{{ template.motion }}" min="0" max="1" step="0.01" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter the percentage of motion required to trigger an alert">
+
+        <label for="popup_xpath" style="color: #fff;">Popup XPath:</label>
+        <div class="xpath-input-container">
+            <input type="text" id="popup_xpath" name="popup_xpath" value="{{ template.popup_xpath }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc; width: 70%;">
+            <button type="button" onclick="showStructuredInput('popup_xpath')" style="padding: 5px; border-radius: 5px; background-color: #4CAF50; color: #fff; border: none; cursor: pointer;">Structured</button>
+        </div>
+
+        <label for="dedicated_xpath" style="color: #fff;">Dedicated XPath:</label>
+        <div class="xpath-input-container">
+            <input type="text" id="dedicated_xpath" name="dedicated_xpath" value="{{ template.dedicated_xpath }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc; width: 70%;">
+            <button type="button" onclick="showStructuredInput('dedicated_xpath')" style="padding: 5px; border-radius: 5px; background-color: #4CAF50; color: #fff; border: none; cursor: pointer;">Structured</button>
+        </div>
+
+        <label for="callback_url" style="color: #fff;" title="URL for notifications">Callback URL:</label>
+        <input type="url" id="callback_url" name="callback_url" value="{{ template.callback_url }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter URL to receive notifications">
+
+        <label for="proxy" style="color: #fff;" title="Proxy server address">Proxy:</label>
+        <input type="text" id="proxy" name="proxy" value="{{ template.proxy }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter proxy server address (optional)">
+
+        <label for="groups" style="color: #fff;" title="Groups for the template">Groups:</label>
+        <input type="text" id="groups" name="groups" value="{{ template.groups }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter comma-separated group names">
+
+        <label for="rollback_frames" style="color: #fff;" title="Number of frames to rollback">Rollback Frames:</label>
+        <input type="number" id="rollback_frames" name="rollback_frames" value="{{ template.rollback_frames }}" min="0" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter number of frames to rollback">
+    </div>
+    <br/>
+
+    <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+        <label for="invert" style="color: #fff;" title="Invert image colors">
+            <input type="checkbox" id="invert" name="invert" {% if template.invert %}checked{% endif %} title="Invert colors of the captured image"> Invert
+        </label>
+        <label for="dark" style="color: #fff;" title="Use dark mode">
+            <input type="checkbox" id="dark" name="dark" {% if template.dark %}checked{% endif %} title="Enable dark mode for the captured page"> Dark Mode
+        </label>
+        <label for="browser" style="color: #fff;" title="Use a full browser">
+            <input type="checkbox" id="browser" name="browser" {% if template.browser %}checked{% endif %} title="Use a full browser instead of a headless one"> Browser
+        </label>
+        <label for="headless" style="color: #fff;" title="Run in headless mode">
+            <input type="checkbox" id="headless" name="headless" {% if template.headless %}checked{% endif %} title="Run browser in headless mode"> Headless
+        </label>
+        <label for="stealth" style="color: #fff;" title="Use stealth mode">
+            <input type="checkbox" id="stealth" name="stealth" {% if template.stealth %}checked{% endif %} title="Use stealth mode to avoid detection"> Stealth
+        </label>
+        <label for="danger" style="color: #fff;" title="Mark as potentially dangerous">
+            <input type="checkbox" id="danger" name="danger" {% if template.danger %}checked{% endif %} title="Mark this template as potentially dangerous"> Danger
+        </label>
+    </div>
+    <br/>
+
+    <div style="text-align: center; margin-top: 20px;">
+        <input type="submit" value="{{ 'Add Template' if is_new else 'Update Template' }}" style="padding: 10px 20px; background-color: #4CAF50; color: #fff; border: none; border-radius: 5px; cursor: pointer;" title="{{ 'Add a new template' if is_new else 'Save changes to this template' }}">
+    </div>
+</form>
+
+<script>
+function validateForm() {
+    const frequency = parseInt(document.getElementById('frequency').value);
+    const timeout = parseInt(document.getElementById('timeout').value);
+    const objectFilter = document.getElementById('object_filter').value.trim();
+    const objectConfidence = parseFloat(document.getElementById('object_confidence').value);
+    const popupXpath = document.getElementById('popup_xpath').value.trim();
+    const dedicatedXpath = document.getElementById('dedicated_xpath').value.trim();
+
+    if (frequency < 1 || frequency > 525600) {
+        alert("Frequency must be between 1 and 525600 minutes (1 year).");
+        return false;
+    }
+
+    if (frequency >= 43200) {  // 43200 minutes = 30 days
+        if (!confirm("Warning: The frequency is set to " + frequency + " minutes (more than 30 days). Are you sure you want to continue?")) {
+            return false;
+        }
+    }
+
+    if (timeout < 1 || timeout >= frequency * 60) {
+        alert("Timeout must be at least 1 second and less than the frequency.");
+        return false;
+    }
+
+    if (objectFilter !== "" && (objectConfidence < 0 || objectConfidence > 1)) {
+        alert("Object Confidence must be between 0 and 1 when Object Filter is specified.");
+        return false;
+    }
+
+    if ((popupXpath !== "" && !popupXpath.startsWith('//')) || (dedicatedXpath !== "" && !dedicatedXpath.startsWith('//'))) {
+        alert("XPath expressions must start with '//'.");
+        return false;
+    }
+
+    return true;
+}
+
+function showStructuredInput(inputId) {
+    const input = document.getElementById(inputId);
+    const structuredInputHtml = `
+        <div class="structured-xpath-input">
+            <select id="${inputId}_tag">
+                <option value="div">div</option>
+                <option value="span">span</option>
+                <option value="a">a</option>
+                <option value="p">p</option>
+                <option value="*">*</option>
+            </select>
+            <select id="${inputId}_attribute">
+                <option value="class">class</option>
+                <option value="id">id</option>
+                <option value="name">name</option>
+                <option value="data-*">data-*</option>
+            </select>
+            <input type="text" id="${inputId}_value" placeholder="Attribute value">
+            <button type="button" onclick="generateXPath('${inputId}')">Generate XPath</button>
+        </div>
+    `;
+    input.insertAdjacentHTML('afterend', structuredInputHtml);
+    input.style.display = 'none';
+}
+
+function generateXPath(inputId) {
+    const tag = document.getElementById(`${inputId}_tag`).value;
+    const attribute = document.getElementById(`${inputId}_attribute`).value;
+    const value = document.getElementById(`${inputId}_value`).value;
+
+    let xpath = `//${tag}`;
+    if (attribute === 'data-*') {
+        xpath += `[starts-with(@data-,'${value}')]`;
+    } else {
+        xpath += `[contains(@${attribute},'${value}')]`;
+    }
+
+    document.getElementById(inputId).value = xpath;
+    document.getElementById(inputId).style.display = 'block';
+    document.querySelector(`#${inputId} + .structured-xpath-input`).remove();
+}
+</script>
