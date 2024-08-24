@@ -117,8 +117,12 @@ LLM_CAPTION_PROMPT = get_setting(
 # FFMPEG path setting
 FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
 
-# FFMPEG path setting
-FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
+# New settings for capture_frame_from_stream function
+NUM_FRAMES = int(get_setting("NUM_FRAMES", 3))
+CAPTURE_TIMEOUT = int(get_setting("CAPTURE_TIMEOUT", 30))
+PROBE_SIZE_DEFAULT = get_setting("PROBE_SIZE_DEFAULT", "5M")
+PROBE_SIZE_RTSP = get_setting("PROBE_SIZE_RTSP", "10M")
+PROBE_SIZE_OTHER = get_setting("PROBE_SIZE_OTHER", "20M")
 
 # experimental
 # TWILIO_SID = get_setting("TWILIO_SID","")
