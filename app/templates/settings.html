@@ -1,10 +1,14 @@
 
-{% include 'header.html' %} 
+{% include 'header.html' %}
 
 <body>
     <header>
         {% include 'nav.html' %}
     </header>
+
+    <div style="text-align: right; margin: 10px;">
+        <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+    </div>
 
     <h2>Current Settings</h2>
     <form method="POST" action="{{ url_for('settings') }}">
