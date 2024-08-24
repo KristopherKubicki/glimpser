@@ -4,16 +4,94 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('#template-form form');
 
     const groupDropdown = document.getElementById('group-dropdown');
-    if (groupDropdown)  { 
+    if (groupDropdown)  {
     groupDropdown.addEventListener('change', () => {
         loadTemplates(); // Reload templates based on the selected group
     });
 	}
 
+    function validateForm() {
+        const name = document.getElementById('name').value.trim();
+        const url = document.getElementById('url').value.trim();
+        const frequency = parseInt(document.getElementById('frequency').value);
+        const timeout = parseInt(document.getElementById('timeout').value);
+        const objectFilter = document.getElementById('object_filter').value.trim();
+        const objectConfidence = parseFloat(document.getElementById('object_confidence').value);
+        const popupXpath = document.getElementById('popup_xpath').value.trim();
+        const dedicatedXpath = document.getElementById('dedicated_xpath').value.trim();
+        const callbackUrl = document.getElementById('callback_url').value.trim();
+        const proxy = document.getElementById('proxy').value.trim();
+        const groups = document.getElementById('groups').value.trim();
+        const rollbackFrames = parseInt(document.getElementById('rollback_frames').value);
+
+        if (name === "" || url === "") {
+            alert("Template Name and URL are required fields.");
+            return false;
+        }
+
+        if (!/^[a-zA-Z0-9_\-\.]{1,32}$/.test(name)) {
+            alert("Template Name must be 1-32 characters long and contain only alphanumeric characters, underscores, hyphens, and dots.");
+            return false;
+        }
+
+        if (!/^https?:\/\/.+/.test(url)) {
+            alert("URL must start with http:// or https://");
+            return false;
+        }
+
+        if (isNaN(frequency) || frequency < 1 || frequency > 525600) {
+            alert("Frequency must be between 1 and 525600 minutes (1 year).");
+            return false;
+        }
+
+        if (frequency >= 43200) {  // 43200 minutes = 30 days
+            if (!confirm("Warning: The frequency is set to " + frequency + " minutes (more than 30 days). Are you sure you want to continue?")) {
+                return false;
+            }
+        }
+
+        if (isNaN(timeout) || timeout < 1 || timeout >= frequency * 60) {
+            alert("Timeout must be at least 1 second and less than the frequency.");
+            return false;
+        }
+
+        if (objectFilter !== "" && (isNaN(objectConfidence) || objectConfidence < 0 || objectConfidence > 1)) {
+            alert("Object Confidence must be between 0 and 1 when Object Filter is specified.");
+            return false;
+        }
+
+        if ((popupXpath !== "" && !popupXpath.startsWith('//')) || (dedicatedXpath !== "" && !dedicatedXpath.startsWith('//'))) {
+            alert("XPath expressions must start with '//'.");
+            return false;
+        }
+
+        if (callbackUrl !== "" && !/^https?:\/\/.+/.test(callbackUrl)) {
+            alert("Callback URL must start with http:// or https://");
+            return false;
+        }
+
+        if (proxy !== "" && !/^(https?:\/\/)?[\w.-]+:\d+$/.test(proxy)) {
+            alert("Proxy must be in the format 'host:port' or 'http(s)://host:port'");
+            return false;
+        }
+
+        if (groups !== "" && !/^[a-zA-Z0-9_\-,\s]+$/.test(groups)) {
+            alert("Groups must contain only alphanumeric characters, underscores, hyphens, and commas.");
+            return false;
+        }
+
+        if (isNaN(rollbackFrames) || rollbackFrames < 0) {
+            alert("Rollback Frames must be a non-negative integer.");
+            return false;
+        }
+
+        return true;
+    }
+
     const slider = document.getElementById('grid-width-slider');
     const templateList = document.getElementById('template-list');
 
-	if (slider) { 
+	if (slider) {
     slider.addEventListener('input', function () {
         const value = slider.value;
         const pxValue = value + 'px';
@@ -29,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 	}
 
-	if (form) { 
+	if (form) {
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(form);
