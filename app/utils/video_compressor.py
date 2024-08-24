@@ -16,10 +16,10 @@ def compress_and_cleanup():
             if file.endswith(".mp4") and not file.startswith("compressed_"):
                 input_path = os.path.join(root, file)
                 output_path = os.path.join(root, f"compressed_{file}")
-                
+
                 # Compress the video
                 compress_video(input_path, output_path)
-                
+
                 # Check if compression was successful
                 if os.path.exists(output_path):
                     # Delete the original file if it exceeds MAX_RAW_DATA_SIZE
@@ -30,6 +30,10 @@ def compress_and_cleanup():
                     logging.error(f"Compression failed for: {input_path}")
 
 def compress_video(input_path, output_path):
+    if not is_ffmpeg_available():
+        logging.error("ffmpeg is not available. Video compression skipped.")
+        return
+
     command = [
         "ffmpeg",
         "-i", input_path,
@@ -42,7 +46,7 @@ def compress_video(input_path, output_path):
         "-y",
         output_path
     ]
-    
+
     try:
         subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         logging.info(f"Successfully compressed: {input_path}")
