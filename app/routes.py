@@ -509,6 +509,11 @@ def init_routes(app):
         # TODO: maybe include the template details
         return render_template("index.html")
 
+    @app.route("/help")
+    @login_required
+    def help():
+        return render_template("help.html")
+
     def get_active_templates():
         templates = template_manager.get_templates()
         active_cameras = []
