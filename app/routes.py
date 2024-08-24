@@ -211,19 +211,25 @@ def get_all_settings():
 
 
 def update_setting(name: str, value: str) -> bool:
+    if not isinstance(name, str) or not isinstance(value, str):
+        raise ValueError("Name and value must be strings")
 
-    name = name.replace("'", "")[:32]
-    value = value.replace("'", "")[:1024]
+    name = name.strip()
+    value = value.strip()
 
-    if not re.findall(r"^[A-Z_]+?$", name):
-        return False
+    if not re.match(r"^[A-Z_]{1,32}$", name):
+        raise ValueError("Setting name must be 1-32 uppercase letters or underscores")
+
+    if len(value) > 1024:
+        raise ValueError("Setting value must not exceed 1024 characters")
 
     session = SessionLocal()
     try:
         existing_setting = session.execute(
-                text("SELECT value FROM settings WHERE name = :name"),
-                {"name": name}
+            text("SELECT value FROM settings WHERE name = :name"),
+            {"name": name}
         ).fetchone()
+
         if existing_setting:
             session.execute(
                 text("UPDATE settings SET value = :value WHERE name = :name"),
@@ -235,13 +241,35 @@ def update_setting(name: str, value: str) -> bool:
                 {"name": name, "value": value}
             )
         session.commit()
+
+        # Validate specific settings
+        if name == "PORT":
+            try:
+                port = int(value)
+                if port < 1 or port > 65535:
+                    raise ValueError("PORT must be between 1 and 65535")
+            except ValueError:
+                raise ValueError("PORT must be a valid integer")
+        elif name == "MAX_WORKERS":
+            try:
+                workers = int(value)
+                if workers < 1:
+                    raise ValueError("MAX_WORKERS must be a positive integer")
+            except ValueError:
+                raise ValueError("MAX_WORKERS must be a valid integer")
+        elif name in ["API_KEY", "CHATGPT_KEY", "SECRET_KEY"]:
+            if len(value) < 32:
+                raise ValueError(f"{name} should be at least 32 characters long for security")
+
+        # Trigger server restart
+        restart_server()
+
+        return True
+    except Exception as e:
+        session.rollback()
+        raise ValueError(f"Error updating setting: {str(e)}")
     finally:
         session.close()
-
-    # Trigger server restart
-    restart_server()
-
-    return True
 
 
 # TODO:
