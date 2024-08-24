@@ -1214,6 +1214,10 @@ def is_port_open(host, port, timeout=5):
             return False
 
 
+import structlog
+
+logger = structlog.get_logger(__name__)
+
 def capture_screenshot_and_har(
     url,
     output_path,
@@ -1235,17 +1239,13 @@ def capture_screenshot_and_har(
     :param output_path: Name of the screenshot.
     :param popup_xpath: Optional XPath for a popup element to remove.
     """
+    log = logger.bind(url=url, output_path=output_path, name=name)
     lsuccess = False
     ltime = time.time()
 
-    # the chrome driver isnt open?  Quit right away and log
     if danger and not is_port_open("127.0.0.1", 9222):
-        logging.warn("Danger port is not open - won't properly connect")
+        log.warning("Danger port is not open - won't properly connect")
         return False
-
-    # TODO: if danger, consider skipping this is the mouse has recently moved.
-
-    # TODO: handle the use case of opening up a stream with the browser. We want it to cancel right away when that happens. I've noticed junk files get created in the root when this happens
 
     display = None
     driver = None
@@ -1255,19 +1255,8 @@ def capture_screenshot_and_har(
     new_window_handle = None
     try:
         if danger:
-            # if headless: # try not to do this... user agent leaks and hard to unwind
-            #    chrome_options.add_argument("--headless")
-            # else:
-
-            # display = Display(visible=0, size=(1920, 1080))
-            # display.start()
-            # os.environ['DISPLAY'] = ':' + str(display.display)
-            # print(f"Virtual display started on :{display.display}")
-
-            # Connect to the existing Chrome session
             options = webdriver.ChromeOptions()
             options.page_load_strategy = "none"
-            # options = add_options(Options(), uc=True)
             options.binary_location = "/usr/bin/google-chrome"
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
@@ -1278,29 +1267,18 @@ def capture_screenshot_and_har(
             user_data_dir = os.path.expanduser("~/.config/google-chrome")
             options.add_argument(f"--user-data-dir={user_data_dir}")
             options.add_argument("--profile-directory=Default")
-            # if headless:
-            #    options.add_argument(f'--headless')
             options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
             options.set_capability(
                 "goog:loggingPrefs", {"browser": "ALL", "performance": "ALL"}
             )
-            # options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
-            # TODO: if danger mode, check if its already open and running
             driver = webdriver.Chrome(options=options)
-
-            # TODO: should we consider a different display?()
         else:
             chrome_service = Service(ChromeDriverManager().install())
             driver_path = chrome_service.path
             main_version = extract_version(driver_path)
 
-            # Note - if you're getting a lot of weird errors about the wrong chromedriver version, sometimes its best to
-            #  clear your ~/.wdm cache.
-
             if stealth:
                 options = webdriver.ChromeOptions()
-                # options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
-                # options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
                 options.set_capability(
                     "goog:loggingPrefs", {"browser": "ALL", "performance": "ALL"}
                 )
@@ -1324,9 +1302,7 @@ def capture_screenshot_and_har(
                     )
             else:
                 chrome_options = add_options(Options())
-                if (
-                    headless
-                ):  # try not to do this... user agent leaks and hard to unwind
+                if headless:
                     chrome_options.add_argument("--headless")
                 else:
                     display = Display(visible=0, size=(1920, 1080))
@@ -1337,39 +1313,25 @@ def capture_screenshot_and_har(
                 )
 
         if danger:
-
-            # TODO: test if the system is idle
-
             current_window_handle = driver.current_window_handle
             try:
-                # now, test if the browser is idle
                 script = """(function(){let l=Date.now();['mousemove','keydown','scroll','click'].forEach(e=>document.addEventListener(e,()=>l=Date.now()));window.getIdleTime=()=>Date.now()-l;})();"""
-                lret1 = driver.execute_script(script)
-                #  if there is activity, skip on this.  Don't mess up the computer for a screenshot (only when idle)
+                driver.execute_script(script)
                 time.sleep(10)
-                lret = driver.execute_script("return window.getIdleTime();")
-                print("LRET", lret1, lret)
-                if lret < 10000:
-                    print(" activity...")
-                    logging.warn("activity detected")
+                idle_time = driver.execute_script("return window.getIdleTime();")
+                if idle_time < 10000:
+                    log.info("Activity detected, skipping screenshot", idle_time=idle_time)
                     return False
-                # tmp_window_handle = driver.current_window_handle
-                # driver.switch_to.window(tmp_window_handle)
-                # driver.switch_to.window(current_window_handle)
-                # time.sleep(1)
             except Exception as e:
-                print("> dupe timeout warning", e)
+                log.error("Error checking idle time", error=str(e))
 
             current_window_handle = driver.current_window_handle
             driver.execute_script("window.open('', '_blank');")
             driver.switch_to.window(driver.window_handles[-1])
             new_window_handle = driver.current_window_handle
-            if (
-                new_window_handle is None or new_window_handle == current_window_handle
-            ):  # failed to open a new handle, I think
-                # finally() probably going to trip this up..
+            if new_window_handle is None or new_window_handle == current_window_handle:
                 driver.switch_to.window(current_window_handle)
-                logging.warn("duplicate session")
+                log.warning("Duplicate session detected")
                 return False
 
         if not danger:
@@ -1402,59 +1364,17 @@ def capture_screenshot_and_har(
         gtime = time.time()
         driver.get(url)
 
-        # TODO: switch back to the main context.
         if danger and current_window_handle:
-            # note, might not exist...
             driver.switch_to.window(current_window_handle)
 
         lret, lstatus = network_idle_condition(driver, url, timeout, stealth)
         if not lret:
             if not stealth:
-                max(timeout - (time.time() - ltime), 15)
-                logging.warn(
-                    f"Vanilla non-idle connection detected {url} at {output_path}, failing over to undetectable chromedriver"
-                )
-                """
-                if danger:
-                    try:
-                        driver.switch_to.window(new_window_handle)
-                        if driver:
-                            driver.close()
-                    except Exception as e:
-                        pass
-                    try:
-                        driver.switch_to.window(current_window_handle)
-                    except Exception as e:
-                        pass
-                if driver and not danger:
-                    driver.quit()
-                if display:
-                    display.stop()
-                # TODO: cap attempts....
-                print("RETRY!!!!")
-                return capture_screenshot_and_har(url, output_path, popup_xpath, dedicated_selector, timeout, name, invert, proxy, stealth=True, headless=headless, danger=danger)
-                """
-                return False  # dont stress on this for now
+                log.warning("Non-idle connection detected", status=lstatus)
+                return False
 
             if int(lstatus) >= 400:
-
-                """
-                if danger:
-                    try:
-                        driver.switch_to.window(new_window_handle)
-                        if driver:
-                            driver.close()
-                    except Exception as e:
-                        pass
-                    try:
-                        driver.switch_to.window(current_window_handle)
-                    except Exception as e:
-                        pass
-                if driver and not danger:
-                    driver.quit()
-                if display:
-                    display.stop()
-                """
+                log.error("HTTP error encountered", status=lstatus)
                 return False
 
         if danger and time.time() - gtime < 10:
@@ -1470,10 +1390,9 @@ def capture_screenshot_and_har(
                         """var element = arguments[0]; element.parentNode.removeChild(element); """,
                         element,
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                log.error("Error removing popup", error=str(e))
 
-        #####  screenshot
         if danger:
             current_window_handle = driver.current_window_handle
             driver.switch_to.window(new_window_handle)
@@ -1494,15 +1413,15 @@ def capture_screenshot_and_har(
 
                 if not os.path.exists(output_path):
                     element.screenshot(output_path)
-            except Exception:
+            except Exception as e:
+                log.error("Error capturing screenshot with dedicated selector", error=str(e))
                 chrome_service = Service(ChromeDriverManager().install())
 
         if not os.path.exists(output_path):
             driver.save_screenshot(output_path)
 
-        #####  screenshot
         if danger:
-            driver.close()  # close the newly opened tab so we dont have to do it again later
+            driver.close()
             new_window_handle = None
             driver.switch_to.window(current_window_handle)
 
@@ -1514,69 +1433,46 @@ def capture_screenshot_and_har(
             if os.path.exists(output_path):
                 add_timestamp(output_path, name, invert=invert)
 
-        logging.info(f"Successfully captured screenshot for {url} at {output_path}")
+        log.info("Successfully captured screenshot")
         lsuccess = True
     except TimeoutException:
-        logging.warn(f"Timed out waiting for network to be idle for {url}")
+        log.warning("Timed out waiting for network to be idle")
     except Exception as e:
-        print(f"Error capturing screenshot for {url}", e, main_version)
-        logging.error(
-            f"Error capturing screenshot for {url}: {e} stealth: %s headless: %s"
-            % (stealth, headless)
-        )
-        """
-        chrome_service = Service(ChromeDriverManager().install())
-
-        if not stealth:
-            ltimeout = max(timeout - (time.time() - ltime), 15)
-            logging.warn(f"Vanilla generic error detected {url} at {output_path}, failing over to undetectable chromedriver")
-            if danger:
-                driver.switch_to.window(new_window_handle)
-                if driver:
-                    driver.close()
-                driver.switch_to.window(current_window_handle)
-            if driver and not danger:
-                driver.quit()
-            if display:
-                display.stop()
-            return capture_screenshot_and_har(url, output_path, popup_xpath, dedicated_selector, timeout, name, invert, proxy, stealth=True, danger=danger)
-        """
+        log.error("Error capturing screenshot", 
+                  error=str(e), 
+                  main_version=main_version, 
+                  stealth=stealth, 
+                  headless=headless)
     finally:
         if danger:
             if new_window_handle:
                 try:
-                    driver.switch_to.window(
-                        new_window_handle
-                    )  # this should always fail.. there shouldnt be a new_window_handle
+                    driver.switch_to.window(new_window_handle)
                     if driver and current_window_handle != new_window_handle:
                         driver.close()
                 except Exception as e:
-                    print(">>>1", e)
-                    pass
+                    log.error("Error closing new window", error=str(e))
 
             if current_window_handle:
                 try:
                     driver.switch_to.window(current_window_handle)
                 except Exception as e:
-                    print(">>>2", e)
-                    pass
+                    log.error("Error switching to original window", error=str(e))
         if driver and not danger:
             driver.quit()
         if display:
             display.stop()
 
-        # Clean up temporary Chrome files
         try:
             temp_chrome_dirs = glob.glob('/tmp/.com.google.Chrome.*')
             current_time = time.time()
             cleaned_dirs = 0
             for temp_dir in temp_chrome_dirs:
-                # Check if the directory hasn't been modified in the last hour
-                if current_time - os.path.getmtime(temp_dir) > 3600:  # 3600 seconds = 1 hour
+                if current_time - os.path.getmtime(temp_dir) > 3600:
                     shutil.rmtree(temp_dir, ignore_errors=True)
                     cleaned_dirs += 1
-            logging.debug(f"Cleaned up {cleaned_dirs} temporary Chrome directories")
+            log.debug("Cleaned up temporary Chrome directories", cleaned_dirs=cleaned_dirs)
         except Exception as e:
-            logging.error(f"Error cleaning up temporary Chrome files: {e}")
+            log.error("Error cleaning up temporary Chrome files", error=str(e))
 
     return lsuccess

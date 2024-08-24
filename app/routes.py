@@ -984,6 +984,7 @@ def init_routes(app):
 
     @app.route("/take_screenshot/<string:template_name>", methods=["POST", "GET"])
     @login_required
+    @limiter.limit("10 per minute")
     def take_screenshot(template_name: TemplateName):
         """
         Endpoint to trigger screenshot capture manually.
@@ -1005,6 +1006,7 @@ def init_routes(app):
 
     @app.route("/update_video/<string:template_name>", methods=["POST"])
     @login_required
+    @limiter.limit("5 per minute")
     def update_video(template_name: TemplateName):
         """Endpoint to trigger screenshot capture manually."""
         template_name = validate_template_name(template_name)
@@ -1040,6 +1042,7 @@ def init_routes(app):
 
     @app.route("/templates", methods=["GET", "POST", "DELETE"])
     @login_required
+    @limiter.limit("30 per minute")
     def manage_templates():
         if request.method == "POST":
             data = request.json
@@ -1102,6 +1105,7 @@ def init_routes(app):
 
     @app.route("/screenshots/<string:name>/<string:filename>")
     @login_required
+    @limiter.limit("100 per minute")
     def uploaded_file(name: TemplateName, filename: str):
         template_name = validate_template_name(name)
         if template_name is None:
@@ -1133,6 +1137,7 @@ def init_routes(app):
 
     @app.route("/videos/<string:name>/<string:filename>")
     @login_required
+    @limiter.limit("50 per minute")
     def view_video(name: TemplateName, filename: str):
         template_name = validate_template_name(name)
         if template_name is None:
@@ -1147,6 +1152,8 @@ def init_routes(app):
 
 
     @app.route("/settings", methods=["GET", "POST"])
+    @login_required
+    @limiter.limit("20 per minute")
     def settings():
         if request.method == "POST":
             action = request.form.get("action")
@@ -1169,11 +1176,14 @@ def init_routes(app):
         return render_template("settings.html", settings=settings)
 
     @app.route('/system_metrics')
+    @login_required
+    @limiter.limit("60 per minute")
     def system_metrics():
         return jsonify(scheduling.get_system_metrics())
 
     @app.route("/update_template/<string:template_name>", methods=["POST"])
     @login_required
+    @limiter.limit("10 per minute")
     def update_template(template_name: TemplateName):
         template_name = validate_template_name(template_name)
         if template_name is None:
