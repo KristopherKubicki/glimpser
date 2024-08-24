@@ -54,7 +54,7 @@
                 <label for="proxy" style="color: #fff;" title="Proxy server address">Proxy:</label>
                 <input type="text" id="proxy" name="proxy" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter proxy server address (optional)">
 
-                <label for="groups" style="color: #fff;" title="Groups for the template">Groups:</label>
+                <label for="groups" style="color: #fff;" title="Groups for the template, comma separated ">Groups:</label>
                 <input type="text" id="groups" name="groups" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter comma-separated group names">
 
                 <label for="rollback_frames" style="color: #fff;" title="Number of frames to rollback">Rollback Frames:</label>
@@ -112,7 +112,7 @@ function validateForm() {
         }
     }
 
-    if (timeout < 1 || timeout >= frequency) {
+    if (timeout < 1 || timeout >= frequency * 60) {
         alert("Timeout must be at least 1 second and less than the frequency.");
         return false;
     }

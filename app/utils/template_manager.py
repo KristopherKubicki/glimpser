@@ -110,13 +110,18 @@ class TemplateManager:
                         if key == "rollback_frames":
                             value = int(value)
                         elif key in ["frequency", "timeout"]:
+                            if value == "":
+                                value = 30
+
                             value = int(value)
                             if key == "frequency" and value > 525600:
                                 raise ValueError("Frequency cannot be greater than 525600 (1 year)")
-                            if key == "timeout" and value >= details.get("frequency", template.frequency) * 60:
+                            if key == "timeout" and value >= int(details.get("frequency", template.frequency) * 60):
                                 value = details.get("frequency", template.frequency) * 60
                                 #raise ValueError("Timeout must be less than frequency")
                         elif key == "object_confidence":
+                            if value == "":
+                                value = 0.5
                             value = float(value)
                             if details.get("object_filter", template.object_filter) and (value < 0 or value > 1):
                                 raise ValueError("Object confidence must be between 0 and 1")

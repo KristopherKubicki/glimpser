@@ -34,7 +34,8 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
-        const submitButton = form.querySelector('button[type="submit"]');
+        const submitButton = form.querySelector('input[type="submit"]');
+	    console.log(submitButton);
         const feedbackElement = document.createElement('div');
         feedbackElement.className = 'form-feedback';
         form.appendChild(feedbackElement);
@@ -58,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function() {
             form.reset(); // Reset form after successful submission
             
             // Show success message
-            feedbackElement.innerHTML = 'Form submitted successfully!';
+            feedbackElement.innerHTML = 'Source successfully created!';
             feedbackElement.style.color = 'green';
         })
         .catch((error) => {

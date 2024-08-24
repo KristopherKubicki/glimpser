@@ -166,7 +166,7 @@ function updateVideo(templateName) {
                 <input type="number" id="object_confidence" name="object_confidence" value="{{ template_details.object_confidence }}" min="0" max="1" step="0.01" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter the minimum confidence level for object detection (0-1)">
 
                 <label for="motion" style="color: #fff;" title="Percentage of motion required to trigger an alert">Motion Percent:</label>
-                <input type="number" id="motion" name="motion" value="{{ template_details.motion }}" min="0" max="100" step="1" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter the percentage of motion required to trigger an alert">
+                <input type="number" id="motion" name="motion" value="{{ template_details.motion }}" min="0" max="1" step="0.01" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter the percentage of motion required to trigger an alert">
 
                 <label for="popup_xpath" style="color: #fff;">Popup XPath:</label>
                 <div class="xpath-input-container">
@@ -247,7 +247,7 @@ function validateForm() {
         }
     }
 
-    if (timeout < 1 || timeout >= frequency) {
+    if (timeout < 1 || timeout >= frequency * 60) {
         alert("Timeout must be at least 1 second and less than the frequency.");
         return false;
     }
