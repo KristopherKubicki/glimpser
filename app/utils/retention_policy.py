@@ -65,15 +65,15 @@ def delete_old_files(file_list, max_age, max_size, minimum=10):
                 total_size -= file_size
                 deletion_reason = "age" if file_age > max_age * 86400 else "size"
                 logging.info(
-                    f"Deleted file: {file_path} (Reason: {deletion_reason}, Size: {file_size / 1024:.2f} KB, Age: {file_age / 86400:.2f} days)"
+                    f"Deleted file: {file_path} (Reason: {deletion_reason}, Size: {file_size / 1024:.2f} KB, Age: {file_age / 86400:.2f} days, Total Size: {total_size / 1024 / 1024:.2f} MB)"
                 )
             except Exception as e:
                 logging.error(
-                    f"Failed to delete file: {file_path} (Size: {file_size / 1024:.2f} KB, Age: {file_age / 86400:.2f} days). Error: {str(e)}"
+                    f"Failed to delete file: {file_path} (Size: {file_size / 1024:.2f} KB, Age: {file_age / 86400:.2f} days, Total Size: {total_size / 1024 / 1024:.2f} MB). Error: {str(e)}"
                 )
         else:
             logging.debug(
-                f"Keeping file: {file_path} (Size: {file_size / 1024:.2f} KB, Age: {file_age / 86400:.2f} days)"
+                f"Keeping file: {file_path} (Size: {file_size / 1024:.2f} KB, Age: {file_age / 86400:.2f} days, Total Size: {total_size / 1024 / 1024:.2f} MB)"
             )
 
 
