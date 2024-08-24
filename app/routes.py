@@ -447,8 +447,44 @@ def init_routes(app):
 
     @app.route('/health')
     def health_check():
-        # should be healthy
-        return jsonify({"status": "healthy"}), 200
+        # Perform a more comprehensive health check
+        health_status = {
+            "status": "healthy",
+            "database": check_database_connection(),
+            "redis": check_redis_connection(),
+            "disk_usage": psutil.disk_usage('/').percent,
+            "memory_usage": psutil.virtual_memory().percent,
+            "cpu_usage": psutil.cpu_percent(interval=1),
+            "uptime": time.time() - scheduling.system_metrics['start_time']
+        }
+        
+        # If any critical component is unhealthy, change the overall status
+        if not all([health_status['database'], health_status['redis']]) or \
+           health_status['disk_usage'] > 90 or \
+           health_status['memory_usage'] > 90 or \
+           health_status['cpu_usage'] > 90:
+            health_status['status'] = 'unhealthy'
+            return jsonify(health_status), 503
+        
+        return jsonify(health_status), 200
+
+    def check_database_connection():
+        try:
+            # Perform a simple database query to check the connection
+            SessionLocal().execute(text('SELECT 1'))
+            return True
+        except Exception as e:
+            logging.error(f"Database connection check failed: {e}")
+            return False
+
+    def check_redis_connection():
+        try:
+            # Assuming you're using Redis, perform a simple Redis operation
+            redis_client.ping()
+            return True
+        except Exception as e:
+            logging.error(f"Redis connection check failed: {e}")
+            return False
 
     @app.route("/login", methods=["GET", "POST"])
     def login():

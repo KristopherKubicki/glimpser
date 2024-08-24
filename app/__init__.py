@@ -3,6 +3,7 @@
 import logging
 import os
 import threading
+import psutil
 
 from flask import Flask, current_app
 from flask_apscheduler import APScheduler
@@ -12,6 +13,7 @@ from app.utils.scheduling import schedule_crawlers, schedule_summarization, sche
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 from app.utils.video_compressor import compress_and_cleanup
 from app.config import backup_config, restore_config
+from app.utils import logging_utils, scheduling
 
 # needed for the llava compare
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -28,6 +30,7 @@ def create_app():
     - Initializing routes
     - Setting up the scheduler for various tasks
     - Implementing a watchdog for application monitoring
+    - Setting up logging and metrics collection
 
     Returns:
         app (Flask): The configured Flask application instance
@@ -102,27 +105,48 @@ def create_app():
     # Set up a watchdog thread to monitor the application
     def watchdog():
         """
-        Watchdog function to monitor the application's health.
-        
-        This function runs in a separate thread and periodically checks if the
-        application is responding correctly. If it detects an issue, it attempts
-        to restore the previous configuration and force restarts the application.
+        Enhanced watchdog function to monitor the application's health.
+
+        This function runs in a separate thread and periodically performs
+        comprehensive health checks. It takes appropriate actions based on
+        the system's state, including logging, alerting, and restarting.
         """
         import time
+
+        consecutive_failures = 0
         while True:
-            time.sleep(10)  # Check every 10 seconds
+            time.sleep(30)  # Check every 30 seconds
             if not app.debug:
                 try:
-                    # Try to access a simple route to check app responsiveness
+                    # Perform comprehensive health check
                     with app.test_client() as client:
                         response = client.get('/health')
-                        if response.status_code != 200:
-                            raise Exception("Application is not responding correctly")
+                        health_data = response.get_json()
+
+                        if response.status_code != 200 or health_data['status'] != 'healthy':
+                            consecutive_failures += 1
+                            logging_utils.log_warning(app, f"Health check failed. Status: {health_data['status']}")
+
+                            # Log detailed metrics
+                            for key, value in health_data.items():
+                                if key != 'status':
+                                    logging_utils.log_info(app, f"{key}: {value}")
+
+                            if consecutive_failures >= 3:
+                                logging_utils.log_error(app, "Multiple consecutive health check failures. Initiating recovery process.")
+                                # Implement recovery actions here (e.g., restart services, clear caches)
+                                restore_config()
+                                os._exit(1)  # Force restart the application
+                        else:
+                            consecutive_failures = 0
+                            logging_utils.log_info(app, "Health check passed successfully.")
                 except Exception as e:
-                    logging.error("Application error detected: %s", e)
-                    logging.info("Attempting to restore previous configuration...")
-                    restore_config()
-                    os._exit(1)  # Force restart the application
+                    logging_utils.log_error(app, f"Exception during health check: {str(e)}")
+                    consecutive_failures += 1
+                    if consecutive_failures >= 3:
+                        logging_utils.log_error(app, "Multiple consecutive exceptions. Initiating recovery process.")
+                        restore_config()
+                        os._exit(1)  # Force restart the application
 
     # Start the watchdog thread
     watchdog_thread = threading.Thread(target=watchdog)
@@ -130,7 +154,9 @@ def create_app():
     watchdog_thread.start()
 
     # Start collecting metrics
-    from .utils.scheduling import start_metrics_collection
-    start_metrics_collection()
+    scheduling.start_metrics_collection()
+
+    # Setup logging
+    logging_utils.setup_logging(app)
 
     return app

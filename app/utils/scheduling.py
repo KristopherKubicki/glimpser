@@ -747,16 +747,31 @@ import time
 system_metrics = {
     'cpu_usage': 0.0,
     'memory_usage': 0.0,
+    'disk_usage': 0.0,
+    'network_io': {'bytes_sent': 0, 'bytes_recv': 0},
     'thread_count': 0,
+    'process_count': 0,
     'start_time': time.time()
 }
 
 def collect_system_metrics():
     global system_metrics
+    last_net_io = psutil.net_io_counters()
     while True:
         system_metrics['cpu_usage'] = psutil.cpu_percent(interval=1)
-        system_metrics['memory_usage'] = psutil.virtual_memory().percent
+        vm = psutil.virtual_memory()
+        system_metrics['memory_usage'] = vm.percent
+        system_metrics['disk_usage'] = psutil.disk_usage('/').percent
+        
+        current_net_io = psutil.net_io_counters()
+        system_metrics['network_io'] = {
+            'bytes_sent': current_net_io.bytes_sent - last_net_io.bytes_sent,
+            'bytes_recv': current_net_io.bytes_recv - last_net_io.bytes_recv
+        }
+        last_net_io = current_net_io
+        
         system_metrics['thread_count'] = threading.active_count()
+        system_metrics['process_count'] = len(psutil.pids())
         time.sleep(5)  # Collect metrics every 5 seconds
 
 def start_metrics_collection():
