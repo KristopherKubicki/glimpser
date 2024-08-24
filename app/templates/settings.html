@@ -1,36 +1,29 @@
 
-{% include 'header.html' %} 
+{% extends 'base.html' %}
 
-<body>
-    <header>
-        {% include 'nav.html' %}
-    </header>
+{% block title %}Glimpser - Settings{% endblock %}
 
-
-        <form method="POST" action="{{ url_for('settings') }}" title="Configure application settings">
-        <table title="Settings configuration table">
-            <thead>
-                <tr>
-                    <th title="Name of the setting">Setting</th>
-                    <th title="Value of the setting">Value</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for setting in settings %}
-                <tr>
-                    <td title="Name of the setting: {{ setting.name }}">{{ setting.name }}</td>
-                    <td>
-                        <input type="text" name="{{ setting.name }}" value="{{ setting.value }}" title="Enter the value for {{ setting.name }}">
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <button type="submit" title="Save your settings">Save</button>
-    </form>
-
-{% include 'footer.html' %}
-
-</body>
-</html>
+{% block content %}
+<form method="POST" action="{{ url_for('settings') }}" title="Configure application settings">
+    <table title="Settings configuration table">
+        <thead>
+            <tr>
+                <th title="Name of the setting">Setting</th>
+                <th title="Value of the setting">Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for setting in settings %}
+            <tr>
+                <td title="Name of the setting: {{ setting.name }}">{{ setting.name }}</td>
+                <td>
+                    <input type="text" name="{{ setting.name }}" value="{{ setting.value }}" title="Enter the value for {{ setting.name }}">
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <button type="submit" title="Save your settings">Save</button>
+</form>
+{% endblock %}
 
