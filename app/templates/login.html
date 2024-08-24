@@ -1,48 +1,43 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Login</title>
-    <style>
-        .login-container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            display: inline-block;
-        }
-        input[type=text], input[type=password] {
-            width: 100%;
-            padding: 10px;
-            margin: 8px 0;
-            display: inline-block;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        input[type=submit] {
-            width: 100%;
-            background-color: #4CAF50;
-            color: white;
-            padding: 14px 20px;
-            margin: 8px 0;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        input[type=submit]:hover {
-            background-color: #45a049;
-        }
-    </style>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-	<header>
+{% extends 'base.html' %}
 
-	<h1><a href='/'><img src='{{ url_for('static', filename='img/glimpser_small.png') }}' title='Glimpser'></a></h1>
-	</header>
+{% block title %}Glimpser - Login{% endblock %}
 
-	<center>
+{% block extra_head %}
+<style>
+    .login-container {
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        display: inline-block;
+    }
+    input[type=text], input[type=password] {
+        width: 100%;
+        padding: 10px;
+        margin: 8px 0;
+        display: inline-block;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+    input[type=submit] {
+        width: 100%;
+        background-color: #4CAF50;
+        color: white;
+        padding: 14px 20px;
+        margin: 8px 0;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    input[type=submit]:hover {
+        background-color: #45a049;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<center>
     <div class="login-container" title="Login form">
         <h2>Login Required</h2>
         <form method="post" title="Enter your credentials to log in">
@@ -53,9 +48,6 @@
             <input type="submit" value="Login" title="Click to log in">
         </form>
     </div>
-	</center>
-
-    {% include 'footer.html' %}
-</body>
-</html>
+</center>
+{% endblock %}
 
