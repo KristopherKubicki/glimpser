@@ -133,36 +133,50 @@ def is_hash_valid(timed_hash: str) -> bool:
         return False
 
 
+from functools import wraps
+from flask import request, jsonify, session, redirect, url_for
+from werkzeug.security import check_password_hash
+import time
+from app.config import API_KEY
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Check for API key in headers, GET parameters, or POST form data
-        api_key = (
-            request.headers.get("X-API-Key")
-            or request.args.get("api_key")
-            or request.form.get("api_key")
-        )
-        timed_key = request.args.get("timed_key")
-        if timed_key:
-            if is_hash_valid(timed_key) is False:
-                return jsonify({"error": "Invalid timed key"}), 401
-            return f(*args, **kwargs)
-        elif api_key == API_KEY:
-            # Bypass session authentication if API key is valid
-            return f(*args, **kwargs)
-        elif "logged_in" in session:
-            # Proceed with session-based authentication
+        # Implement rate limiting
+        if not rate_limit():
+            return jsonify({"error": "Rate limit exceeded"}), 429
+
+        # Check for API key in headers only (more secure)
+        api_key = request.headers.get("X-API-Key")
+        
+        if api_key:
+            # Use constant time comparison to prevent timing attacks
+            if check_password_hash(API_KEY, api_key):
+                return f(*args, **kwargs)
+            else:
+                return jsonify({"error": "Invalid API key"}), 401
+        elif "logged_in" in session and session.get("expiry", 0) > time.time():
+            # Proceed with session-based authentication if session is still valid
             return f(*args, **kwargs)
         else:
-            # Return an HTTP status error if API key is invalid or missing and not logged in
-            if api_key:
-                # API key was provided but is invalid
-                return jsonify({"error": "Invalid API key"}), 401
-            else:
-                # No API key provided, and not logged in
-                return redirect(url_for("login", next=request.url))
+            # No valid API key or session, redirect to login
+            return redirect(url_for("login", next=request.url))
 
     return decorated_function
+
+def rate_limit():
+    current_time = time.time()
+    request_history = session.get("request_history", [])
+    
+    # Remove old requests
+    request_history = [t for t in request_history if current_time - t < 60]
+    
+    if len(request_history) >= 60:  # 60 requests per minute
+        return False
+    
+    request_history.append(current_time)
+    session["request_history"] = request_history
+    return True
 
 
 def get_all_settings():
@@ -523,63 +537,60 @@ def init_routes(app):
                     active_cameras.append(template)
         return active_cameras
 
-    @app.route("/submit_image/<string:template_name>", methods=["POST"])
-    @login_required
-    def submit_image(template_name: TemplateName):
-        """
-        Endpoint to receive and process an image submitted by a remote service or camera.
-        """
-        template_name = validate_template_name(template_name)
-        if template_name is None:
-            abort(404)
+from app.utils.security import validate_template_name, allowed_filename
 
-        # Check if the template exists
-        print("WARNING BRPKEN!")
-        ltemplate = template_manager.get_template(template_name)
-        if ltemplate is None:
-            return jsonify({"status": "error", "message": "Template not found"}), 404
-        template_name = ltemplate.get("name")  # todo...
+@app.route("/submit_image/<string:template_name>", methods=["POST"])
+@login_required
+def submit_image(template_name):
+    """
+    Endpoint to receive and process an image submitted by a remote service or camera.
+    """
+    template_name = validate_template_name(template_name)
+    if template_name is None:
+        abort(404)
 
-        # Check if the request has the file part
-        if "file" not in request.files:
-            return (
-                jsonify({"status": "error", "message": "No file part in the request"}),
-                400,
-            )
+    # Check if the template exists
+    ltemplate = template_manager.get_template(template_name)
+    if ltemplate is None:
+        return jsonify({"status": "error", "message": "Template not found"}), 404
 
-        file = request.files["file"]
+    # Check if the request has the file part
+    if "file" not in request.files:
+        return jsonify({"status": "error", "message": "No file part in the request"}), 400
 
-        # If the user does not select a file, the browser submits an empty file without a filename
-        if file.filename == "":
-            return jsonify({"status": "error", "message": "No selected file"}), 400
+    file = request.files["file"]
 
-        if file and allowed_filename(file.filename):
-            # Generate a unique timestamped filename
-            timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
-            filename = f"{template_name}_{timestamp}.png.tmp"
-            output_path = os.path.join(SCREENSHOT_DIRECTORY, template_name, filename)
-            #if not os.path.normpath(output_path).startswith(SCREENSHOT_DIRECTORY):
-            #    abort(400)
+    # If the user does not select a file, the browser submits an empty file without a filename
+    if file.filename == "":
+        return jsonify({"status": "error", "message": "No selected file"}), 400
 
-            # Save the file to a temporary location
-            file.save(output_path)
+    if file and allowed_filename(file.filename):
+        # Generate a unique timestamped filename
+        timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        filename = f"{template_name}_{timestamp}.png.tmp"
+        output_path = os.path.join(SCREENSHOT_DIRECTORY, template_name, filename)
 
-            # Add a timestamp to the image and remove the ".tmp" extension
-            screenshots.add_timestamp(output_path, name=template_name)
-            final_path = output_path.rstrip(".tmp")
-            os.rename(output_path, final_path)
+        # Ensure the output path is within the SCREENSHOT_DIRECTORY
+        if not os.path.normpath(output_path).startswith(os.path.normpath(SCREENSHOT_DIRECTORY)):
+            return jsonify({"status": "error", "message": "Invalid file path"}), 400
 
-            # Update the template's last screenshot time
-            template_manager.update_last_screenshot_time(template_name)
+        # Create the directory if it doesn't exist
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-            return (
-                jsonify(
-                    {"status": "success", "message": "Image submitted successfully"}
-                ),
-                200,
-            )
-        else:
-            return jsonify({"status": "error", "message": "Invalid file format"}), 400
+        # Save the file to a temporary location
+        file.save(output_path)
+
+        # Add a timestamp to the image and remove the ".tmp" extension
+        screenshots.add_timestamp(output_path, name=template_name)
+        final_path = output_path.rstrip(".tmp")
+        os.rename(output_path, final_path)
+
+        # Update the template's last screenshot time
+        template_manager.update_last_screenshot_time(template_name)
+
+        return jsonify({"status": "success", "message": "Image submitted successfully"}), 200
+    else:
+        return jsonify({"status": "error", "message": "Invalid file format"}), 400
 
     @app.route("/stream.png")
     @login_required
