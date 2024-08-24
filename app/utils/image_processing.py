@@ -97,7 +97,7 @@ class ChatGPTImageComparison:
             ltokens = result["usage"]["total_tokens"]
             # TODO: logging..
             print(
-                " total tokens $%0.5f" % (ltokens * 0.005 / 1000),
+                    " total tokens $%0.5f" % (ltokens * 0.005 / 1000), # TODO: this calculation is wrong!  Figure it out?  Also log it do the db
                 "images:",
                 len(image_paths),
                 image_paths[-1],

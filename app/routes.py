@@ -54,18 +54,40 @@ def restart_server():
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
+# todo: add this to utils so it is not duplicated in utils/video_archiver.py
 def validate_template_name(template_name: str):
-    if template_name is None:
+    if template_name is None or not isinstance(template_name, str):
         return None
-    if not isinstance(template_name, str):
+
+    # Strict whitelist of allowed characters
+    allowed_chars = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.')
+
+    # Check if all characters are in the allowed set
+    if not all(char in allowed_chars for char in template_name):
         return None
-    if ".." in template_name or "/" in template_name:
+
+    # Check length
+    if len(template_name) == 0 or len(template_name) > 32:
         return None
-    if len(template_name) > 32:
+
+    # Ensure the name doesn't start or end with a dash or underscore
+    if template_name[0] in '-_.' or template_name[-1] in '-_.':
         return None
-    for tname in re.findall(r"^[a-zA-Z0-9_\.\-]{1,32}$", template_name):
-        return secure_filename(tname)
-    return None
+    if '..' in template_name:
+        return None
+    if '--' in template_name:
+        return None
+    if '__' in template_name:
+        return None
+
+    # Use secure_filename as an additional safety measure
+    sanitized_name = secure_filename(template_name)
+
+    # Ensure secure_filename didn't change the name (which would indicate it found something suspicious)
+    if sanitized_name != template_name:
+        return None
+
+    return sanitized_name
 
 
 class TemplateName:
@@ -1089,6 +1111,23 @@ def init_routes(app):
 
         return send_from_directory(path, filename)
 
+    def delete_setting(name: str) -> bool:
+        name = name.replace("'", "")[:32]
+        if not re.findall(r"^[A-Z_]+?$", name):
+            return False
+
+        session = SessionLocal()
+        try:
+            session.execute(
+                text("DELETE FROM settings WHERE name = :name"),
+                {"name": name}
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        return True
+
     @app.route("/videos/<string:name>/<string:filename>")
     @login_required
     def view_video(name: TemplateName, filename: str):
@@ -1106,8 +1145,20 @@ def init_routes(app):
     @app.route("/settings", methods=["GET", "POST"])
     def settings():
         if request.method == "POST":
-            for name, value in request.form.items():
-                update_setting(name, value)
+            action = request.form.get("action")
+            if action == "add":
+                new_name = request.form.get("new_name")
+                new_value = request.form.get("new_value")
+                if new_name and new_value:
+                    update_setting(new_name, new_value)
+            elif action == "delete":
+                name_to_delete = request.form.get("name_to_delete")
+                if name_to_delete:
+                    delete_setting(name_to_delete)
+            else:
+                for name, value in request.form.items():
+                    if name not in ["action", "new_name", "new_value", "name_to_delete"]:
+                        update_setting(name, value)
             return redirect(url_for("settings"))
 
         settings = get_all_settings()

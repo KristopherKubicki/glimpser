@@ -61,6 +61,7 @@ def create_app():
             # remove existing schedules, particularly if the app reloads (which it does in debug mode)
             scheduler.remove_all_jobs()
 
+            # TODO: allow disable / enable of these via command line or settings? 
             schedule_crawlers()
             # Additional scheduler setup for video archiving
             scheduler.add_job(
@@ -111,5 +112,9 @@ def create_app():
     watchdog_thread = threading.Thread(target=watchdog)
     watchdog_thread.daemon = True
     watchdog_thread.start()
+
+    from .utils.scheduling import start_metrics_collection
+    start_metrics_collection()
+
 
     return app

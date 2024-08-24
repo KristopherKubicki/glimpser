@@ -1,13 +1,26 @@
 <!-- app/templates/footer.html -->
-<footer style="text-align: center; padding: 10px 0; margin-top: 20px; font-size: 14px;">
-    <p>&copy; {{ current_year }} Glimpser. All rights reserved.</p>
-    <p>For more information, visit <a href="https://glimpser.net" target="_blank">glimpser.net</a></p>
+<footer>
+    <div class="footer-content">
+        <div class="footer-logo">
+            <a href="/">
+                <img src="{{ url_for('static', filename='img/glimpser_small.png') }}" alt="Glimpser" title="Glimpser">
+            </a>
+        </div>
+        <nav class="footer-nav">
+            <a href="/help">Help</a>
+            <a href="https://glimpser.net" target="_blank">About</a>
+            <a href="https://github.com/KristopherKubicki/glimpser/blob/main/LICENSE.md" target="_blank">License</a>
+        </nav>
+    </div>
+    <div class="footer-copyright">
+        <p>&copy; <span id="current-year"></span> Glimpser. All rights reserved.</p>
+    </div>
 </footer>
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        var footer = document.querySelector('footer p:first-child');
+        var currentYearSpan = document.getElementById('current-year');
         var currentYear = new Date().getFullYear();
-        footer.innerHTML = "&copy; " + currentYear + " Glimpser. All rights reserved.";
+        currentYearSpan.textContent = currentYear;
     });
 </script>

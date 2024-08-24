@@ -1,11 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Live Camera Feed & Template Details</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% include 'header.html' %}
+
+<body>
+    <header>
+        {% include 'nav.html' %}
+    </header>
+
     <style>
-        .video-container {
+        .video-container { 
             width: 100%;
             height: 80vh; /* 80% of the viewport height */
             display: flex;
@@ -18,22 +19,21 @@
             max-width: 100%;
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-</head>
-<body>
-    <header>
-        {% include 'nav.html' %}
-    </header>
+
 
 
     <div class="video-container">
         <img id="live-image" style="width: 100%;">
         <video id="live-video" style="width: 100%; display: none;" controls autoplay muted></video>
+        <div id="video-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
+            <div id="loading-indicator" style="display: none;">Loading...</div>
+            <div id="play-pause-indicator" style="display: none; font-size: 48px;">▶</div>
+        </div>
     </div>
 
 
 <select id="camera-selector" onchange="changeCamera()">
-    <option value="All">All</option>
+    <option value="All" title="View all cameras">All</option>
     {% set all_groups = [] %}
     {% for camera, details in template_details.items() %}
         {% if details.groups %}
@@ -45,10 +45,10 @@
         {% endif %}
     {% endfor %}
     {% for group in all_groups|unique|sort %}
-        <option value="group-{{ group }}">Group: {{ group }}</option>
+        <option value="group-{{ group }}" title="View cameras in group {{ group }}">Group: {{ group }}</option>
     {% endfor %}
     {% for camera in template_details.keys()|sort %}
-        <option value="{{ camera }}">Camera: {{ camera }}</option>
+        <option value="{{ camera }}" title="View camera {{ camera }}">Camera: {{ camera }}</option>
     {% endfor %}
 </select>
 
@@ -56,12 +56,12 @@
 
 
     <select id="video-source" onchange="changeVideoSource()">
-        <option value="png">PNG Stream</option>
-        <option value="m3u8">M3U8 Stream</option>
-        <option value="loop">Loop Videos</option>
-        <option value="mp4" selected>MP4 Stream</option>
-        <option value="motion">Motion</option>
-        <option value="mjpg">MJPG</option>
+        <option value="png" title="View a series of PNG images">PNG Stream</option>
+        <option value="m3u8" title="View an HLS (HTTP Live Streaming) video stream">M3U8 Stream</option>
+        <option value="loop" title="Loop through available video clips">Loop Videos</option>
+        <option value="mp4" selected title="View an MP4 video stream">MP4 Stream</option>
+        <option value="motion" title="View motion-detected frames">Motion</option>
+        <option value="mjpg" title="View an MJPEG (Motion JPEG) stream">MJPG</option>
     </select>
 
     <div>
@@ -80,8 +80,45 @@
         let currentCamera = 'All'; // Set the default camera to "All"
         ///let currentCamera = Object.keys(templateDetails)[0];
         let pngInterval;
+        const videoOverlay = document.getElementById('video-overlay');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const playPauseIndicator = document.getElementById('play-pause-indicator');
+
+        function showLoadingIndicator() {
+            videoOverlay.style.display = 'block';
+            loadingIndicator.style.display = 'block';
+            playPauseIndicator.style.display = 'none';
+        }
+
+        function hideLoadingIndicator() {
+            loadingIndicator.style.display = 'none';
+            if (videoOverlay.style.display === 'block') {
+                setTimeout(() => {
+                    videoOverlay.style.display = 'none';
+                }, 500);
+            }
+        }
+
+        function showPlayPauseIndicator(isPaused) {
+            videoOverlay.style.display = 'block';
+            playPauseIndicator.style.display = 'block';
+            playPauseIndicator.textContent = isPaused ? '▶' : '❚❚';
+            loadingIndicator.style.display = 'none';
+            setTimeout(() => {
+                playPauseIndicator.style.display = 'none';
+                if (loadingIndicator.style.display === 'none') {
+                    videoOverlay.style.display = 'none';
+                }
+            }, 500);
+        }
+
+        video.addEventListener('waiting', showLoadingIndicator);
+        video.addEventListener('canplay', hideLoadingIndicator);
+        video.addEventListener('play', () => showPlayPauseIndicator(false));
+        video.addEventListener('pause', () => showPlayPauseIndicator(true));
 
 function changeCamera() {
+    showLoadingIndicator();
     const cameraSelector = document.getElementById('camera-selector');
     const selectedValue = cameraSelector.value;
     if (selectedValue === 'All') {

@@ -80,8 +80,8 @@ select:hover {
 
 /* If you need to maintain the aspect ratio without clipping, use object-fit: contain; */
 .templateDiv video {
-    object-fit: contain;
-    object-position: top; /* Aligns the video to the top, so the empty space, if any, will be at the bottom */
+    object-fit: cover;
+    /*object-position: center; */ /* Aligns the video to the top, so the empty space, if any, will be at the bottom */
 }
 
 
@@ -100,6 +100,11 @@ video:hover + .play-icon {
     display: block; /* Show play icon on hover */
 }
 
+:root {
+    --camera-name-font-size: 14px;
+    --timestamp-font-size: 12px;
+}
+
 .camera-name, .timestamp {
     position: absolute;
     color: white;
@@ -111,11 +116,13 @@ video:hover + .play-icon {
 .camera-name {
     top: 0;
     left: 0;
+    font-size: var(--camera-name-font-size);
 }
 
 .timestamp {
     bottom: 0;
     right: 0;
+    font-size: var(--timestamp-font-size);
 }
 
 .recent-screenshot {
@@ -152,6 +159,14 @@ nav a:hover, nav a.active {
     background-color: #555; /* Highlight for hover and active link */
 }
 
+.settings-icon {
+    font-size: 24px; /* Adjust the size of the icon */
+    text-decoration: none; /* Remove underline */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 @media screen and (max-width: 768px) { /* Responsive design for mobile */
     header h1 {
         font-size: 20px; /* Smaller font size on mobile */
@@ -164,6 +179,10 @@ nav a:hover, nav a.active {
 
     nav a {
         margin-bottom: 5px; /* Add margin for stacked items */
+    }
+
+    .settings-icon {
+        font-size: 20px; /* Slightly smaller icon on mobile */
     }
 }
 
@@ -201,6 +220,283 @@ button, a {
   margin: 0 auto; /* Center the dial */
 }
 
+/* Cool Clock Styles */
+.cool-clock {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    position: relative;
+    margin-left: 20px;
+}
+
+.clock-face {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+}
+
+.clock-hands {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+}
+
+/* Template Form Styles */
+#template-form, #edit-template {
+    background-color: #222;
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 600px;
+    margin: 20px auto;
+}
+
+#template-form h3, #edit-template h3 {
+    color: #fff;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#template-form form, #edit-template form {
+    margin-bottom: 10px;
+}
+
+#template-form label, #edit-template label {
+    color: #fff;
+}
+
+#template-form input[type="text"],
+#template-form input[type="url"],
+#template-form input[type="number"],
+#template-form textarea,
+#edit-template input[type="text"],
+#edit-template input[type="url"],
+#edit-template input[type="number"],
+#edit-template textarea {
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#template-form input[type="submit"],
+#edit-template input[type="submit"],
+#delete-btn {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#delete-btn {
+    background-color: #e74c3c;
+}
+
+.xpath-input-container {
+    display: flex;
+    gap: 5px;
+}
+
+.xpath-input-container input {
+    flex-grow: 1;
+}
+
+.xpath-input-container button {
+    padding: 5px;
+    border-radius: 5px;
+    background-color: #4CAF50;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+@media screen and (max-width: 600px) {
+    #template-form form, #edit-template form {
+        grid-template-columns: 1fr;
+    }
+}
+
+.hand {
+    position: absolute;
+    bottom: 50%;
+    left: 50%;
+    transform-origin: 50% 100%;
+    background-color: #333;
+}
+
+.hour-hand {
+    width: 4px;
+    height: 30%;
+    margin-left: -2px;
+}
+
+.minute-hand {
+    width: 3px;
+    height: 40%;
+    margin-left: -1.5px;
+}
+
+.second-hand {
+    width: 2px;
+    height: 45%;
+    margin-left: -1px;
+    background-color: #f00;
+}
+
+.clock-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+#digitalTime {
+    font-size: 14px;
+    font-weight: bold;
+    display: block;
+}
+
+#dateDisplay {
+    font-size: 10px;
+    display: block;
+}
+
+.clock-info {
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    width: 100%;
+}
+
+#timezoneDisplay, #timeAgoDisplay {
+    font-size: 10px;
+    display: block;
+}
+
+@media screen and (max-width: 768px) {
+    .cool-clock {
+        width: 25px;
+        height: 25px;
+    }
+
+    #digitalTime {
+        font-size: 12px;
+    }
+
+    #dateDisplay, #timezoneDisplay, #timeAgoDisplay {
+        font-size: 8px;
+    }
+}
+
+/* Cool Clock Styles */
+.cool-clock {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    box-shadow: 0 0 1px rgba(0, 0, 0, 0.1);
+    position: relative;
+    margin-left: 5px;
+}
+
+.clock-face {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+}
+
+.clock-hands {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+}
+
+.hand {
+    position: absolute;
+    bottom: 50%;
+    left: 50%;
+    transform-origin: 50% 100%;
+    background-color: #333;
+}
+
+.hour-hand {
+    width: 4px;
+    height: 30%;
+    margin-left: -2px;
+}
+
+.minute-hand {
+    width: 3px;
+    height: 40%;
+    margin-left: -1.5px;
+}
+
+.second-hand {
+    width: 2px;
+    height: 45%;
+    margin-left: -1px;
+    background-color: #f00;
+}
+
+.clock-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+#digitalTime {
+    font-size: 14px;
+    font-weight: bold;
+    display: block;
+}
+
+#dateDisplay {
+    font-size: 10px;
+    display: block;
+}
+
+.clock-info {
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    width: 100%;
+}
+
+#timezoneDisplay, #timeAgoDisplay {
+    font-size: 10px;
+    display: block;
+}
+
+@media screen and (max-width: 768px) {
+    .cool-clock {
+        width: 25px;
+        height: 25px;
+    }
+
+    #digitalTime {
+        font-size: 12px;
+    }
+
+    #dateDisplay, #timezoneDisplay, #timeAgoDisplay {
+        font-size: 8px;
+    }
+}
+
 .dial {
   width: 100%;
   height: 100%;
@@ -236,4 +532,61 @@ textarea {
 
 .details {
     margin-left: 20px;
+}
+
+/* Footer Styles */
+footer {
+    background-color: #000;
+    color: #fff;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 1200px;
+    margin-bottom: 20px;
+}
+
+.footer-logo img {
+    height: 30px;
+    width: auto;
+}
+
+.footer-nav {
+    display: flex;
+    gap: 20px;
+}
+
+.footer-nav a {
+    color: #fff;
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+.footer-nav a:hover {
+    background-color: #555;
+}
+
+.footer-copyright {
+    text-align: center;
+    font-size: 14px;
+}
+
+@media screen and (max-width: 768px) {
+    .footer-content {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .footer-nav {
+        flex-direction: column;
+        align-items: center;
+    }
 }

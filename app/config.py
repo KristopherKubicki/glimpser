@@ -92,16 +92,16 @@ MAX_IN_PROCESS_VIDEO_SIZE = int(
     get_setting("MAX_IN_PROCESS_VIDEO_SIZE", 100 * 1024 * 1024)
 )  # 100 MB
 
-LOG_LEVEL = get_setting("LOG_LEVEL","DEBUG")
+LOG_LEVEL = get_setting("LOG_LEVEL","INFO")
 
 # Load settings from the database
 SECRET_KEY = get_setting("SECRET_KEY", "default_secret_key")
 USER_NAME = get_setting("USER_NAME", "admin")
 USER_PASSWORD_HASH = get_setting("USER_PASSWORD_HASH", "")
 API_KEY = get_setting("API_KEY", "")
-CHATGPT_KEY = get_setting("CHATGPT_KEY", "")
+CHATGPT_KEY = get_setting("CHATGPT_KEY", "")  # maybe generalize as LLM_KEY ? 
 
-LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-4o-mini")
+LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-4o-mini") # todo setup allowed models
 
 # note that $datetime is a special keyword that will be replaced with the datetime in iso Z format
 LLM_SUMMARY_PROMPT = get_setting(

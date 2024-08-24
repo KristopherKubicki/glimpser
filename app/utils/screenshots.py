@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 import time
 from urllib.parse import urlparse
+import glob
 
 import numpy as np
 import requests
@@ -36,6 +37,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
+logging.getLogger("webdriver_manager").setLevel(logging.WARNING)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from app.config import DEBUG, LANG, SCREENSHOT_DIRECTORY, UA
@@ -91,6 +93,9 @@ def adjust_bbox_to_aspect_ratio(bbox, image_size, aspect_ratio=(16, 9)):
     left, top, right, bottom = bbox
     bbox_width = right - left
     bbox_height = bottom - top
+    if bbox_height == 0:
+        bbox_height = 1
+
     bbox_aspect_ratio = bbox_width / bbox_height
 
     target_aspect_ratio = aspect_ratio[0] / aspect_ratio[1]
@@ -431,8 +436,10 @@ def is_address_reachable(address, port=80, timeout=5):
 def parse_url(url):
     parsed_url = urlparse(url)
     domain = parsed_url.hostname
-    port = parsed_url.port
+    if parsed_url and parsed_url.scheme == '' and domain is None:
+        domain = re.sub(r'\/.+?$','', parsed_url.path)
 
+    port = parsed_url.port
     # If the port is None and the scheme is specified, infer the default port
     if port is None:
         if parsed_url.scheme == "http":
@@ -787,7 +794,7 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
         # Use yt-dlp to get the direct video URL
         output_path + ".%(ext)s"
         ytdlp_command = [
-            "yt-dlp",
+            "yt-dlp",  # TODO make this path a config
             "--get-url",
             "--format",
             "bestvideo",  # Adjust the format as needed
@@ -800,13 +807,13 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
 
         # Use ffmpeg to capture a frame from the video URL
         ffmpeg_command = [
-            "ffmpeg",
+            "ffmpeg", # TODO: make this a config
             "-analyzeduration",
             "20M",
             "-probesize",
             "20M",
             "-ec",
-            "15",
+            "15",  # todo: add -safe option
             "-i",
             video_url,  # Input stream URL from yt-dlp
             "-sn",
@@ -855,9 +862,9 @@ def capture_frame_from_stream(
         # Capture multiple frames into the temporary directory
         temp_output_pattern = os.path.join(tmpdirname, "frame_%03d.png")
         command = [
-            "ffmpeg",
+            "ffmpeg", # TODO: make this configurable
             "-hide_banner",
-            #'-hwaccel', 'auto',
+            #'-hwaccel', 'auto',  #TODO add support
         ]
 
         probe_size = "5M"
@@ -1200,6 +1207,8 @@ def apply_dark_mode(img, range_value=30, text_range_value=120):
     return img
 
 
+import shlex
+
 def capture_screenshot_and_har_light(
     url, output_path, timeout=30, name="unknown", invert=False, proxy=None, dark=True
 ):
@@ -1222,7 +1231,6 @@ def capture_screenshot_and_har_light(
 
     # Prepare the command
     command = [
-        #'time','-v',
         "wkhtmltoimage",
         "--width",
         "1920",
@@ -1230,10 +1238,7 @@ def capture_screenshot_and_har_light(
         "1080",
         "--javascript-delay",
         str(5000),
-        #'--no-stop-slow-scripts',
         "--quiet",
-        #'--window-status', 'ready',
-        #'--media-type', 'screen',
         "--zoom",
         "1",
         "--quality",
@@ -1243,14 +1248,16 @@ def capture_screenshot_and_har_light(
         "User-Agent",
         UA,
         "--custom-header-propagation",
-        url,
-        output_path,
     ]
+
+    # Safely add the URL to the command
+    command.append(shlex.quote(url))
+    command.append(shlex.quote(output_path))
 
     # Execute the command
     try:
         result = subprocess.run(
-            command, timeout=timeout, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            command, timeout=timeout, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False
         )
         result.stdout.decode("utf-8")
         result.stderr.decode("utf-8")
@@ -1272,9 +1279,8 @@ def capture_screenshot_and_har_light(
 
         if is_mostly_blank(image):
             os.unlink(output_path)
-            # print("  .. blank", output_path)
             return False
-            pass
+
         # Convert the image to RGBA mode in case it's a format that doesn't support transparency
         image = image.convert("RGB")
         image = remove_background(image)
@@ -1288,7 +1294,6 @@ def capture_screenshot_and_har_light(
             add_timestamp(output_path, name, invert=invert)
             lsuccess = True
             os.rename(output_path, output_path.replace(".tmp.png", ".png"))
-            # print(" *** writing", output_path)
         else:
             os.unlink(output_path)
             lsuccess = False
@@ -1701,5 +1706,19 @@ def capture_screenshot_and_har(
             driver.quit()
         if display:
             display.stop()
+
+        # Clean up temporary Chrome files
+        try:
+            temp_chrome_dirs = glob.glob('/tmp/.com.google.Chrome.*')
+            current_time = time.time()
+            cleaned_dirs = 0
+            for temp_dir in temp_chrome_dirs:
+                # Check if the directory hasn't been modified in the last hour
+                if current_time - os.path.getmtime(temp_dir) > 3600:  # 3600 seconds = 1 hour
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+                    cleaned_dirs += 1
+            logging.debug(f"Cleaned up {cleaned_dirs} temporary Chrome directories")
+        except Exception as e:
+            logging.error(f"Error cleaning up temporary Chrome files: {e}")
 
     return lsuccess
