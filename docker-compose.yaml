@@ -11,6 +11,7 @@ services:
       - SECRET_KEY=${SECRET_KEY:-default_secret_key}
       - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/glimpser.db}
       - CHATGPT_KEY=${CHATGPT_KEY:-}
+      - TZ=America/Chicago
       - GLIMPSER_DATABASE_PATH=/app/data/glimpser.db
     volumes:
       - ./data:/app/data
