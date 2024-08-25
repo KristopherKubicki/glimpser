@@ -37,6 +37,29 @@ class TestExceptionHandling(unittest.TestCase):
         self.assertEqual(divide(10, 2), "Result: 5.0")
         self.assertEqual(divide(10, 0), "Division by zero!")
 
+    def test_type_error(self):
+        with self.assertRaises(TypeError):
+            result = "5" + 5
+
+    def test_value_error(self):
+        with self.assertRaises(ValueError):
+            int("not a number")
+
+    def test_file_not_found_error(self):
+        with self.assertRaises(FileNotFoundError):
+            with open("non_existent_file.txt", "r", encoding="utf-8") as file:
+                content = file.read()
+
+    def test_custom_exception(self):
+        class CustomException(Exception):
+            pass
+
+        def raise_custom_exception():
+            raise CustomException("This is a custom exception")
+
+        with self.assertRaises(CustomException):
+            raise_custom_exception()
+
 class TestListOperations(unittest.TestCase):
 
     def test_list_append(self):

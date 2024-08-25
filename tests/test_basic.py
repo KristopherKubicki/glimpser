@@ -113,6 +113,28 @@ class TestDictionaryComprehension(unittest.TestCase):
         even_squared_dict = {n: n**2 for n in numbers if n % 2 == 0}
         self.assertEqual(even_squared_dict, {2: 4, 4: 16, 6: 36})
 
+    def test_dict_comprehension_with_complex_expression(self):
+        words = ['apple', 'banana', 'cherry']
+        word_length_dict = {word: len(word) for word in words}
+        self.assertEqual(word_length_dict, {'apple': 5, 'banana': 6, 'cherry': 6})
+
+class TestListComprehension(unittest.TestCase):
+
+    def test_simple_list_comprehension(self):
+        numbers = [1, 2, 3, 4, 5]
+        squared_numbers = [n**2 for n in numbers]
+        self.assertEqual(squared_numbers, [1, 4, 9, 16, 25])
+
+    def test_list_comprehension_with_condition(self):
+        numbers = [1, 2, 3, 4, 5, 6]
+        even_numbers = [n for n in numbers if n % 2 == 0]
+        self.assertEqual(even_numbers, [2, 4, 6])
+
+    def test_nested_list_comprehension(self):
+        matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+        flattened = [num for row in matrix for num in row]
+        self.assertEqual(flattened, [1, 2, 3, 4, 5, 6, 7, 8, 9])
+
 if __name__ == '__main__':
     unittest.main()
 

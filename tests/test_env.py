@@ -25,6 +25,10 @@ class TestEnvironmentVariables(unittest.TestCase):
         self.assertEqual(int(os.getenv("TEST_INT_VAR")), 42)
         self.assertAlmostEqual(float(os.getenv("TEST_FLOAT_VAR")), 3.14)
 
+    @patch.dict(os.environ, {"TEST_BOOL_VAR": "True"})
+    def test_environment_variable_boolean(self):
+        self.assertTrue(os.getenv("TEST_BOOL_VAR") == "True")
+
 class TestFileIO(unittest.TestCase):
 
     @patch("builtins.open", new_callable=mock_open, read_data="data")
@@ -52,6 +56,11 @@ class TestFileIO(unittest.TestCase):
 
         os.remove(temp_file_path)
 
+    def test_file_not_found(self):
+        with self.assertRaises(FileNotFoundError):
+            with open("non_existent_file.txt", "r") as file:
+                file.read()
+
 class TestStringProcessing(unittest.TestCase):
 
     def test_string_contains(self):
@@ -68,6 +77,11 @@ class TestStringProcessing(unittest.TestCase):
         string = "hello"
         result = string.upper()
         self.assertEqual(result, "HELLO")
+
+    def test_string_lower(self):
+        string = "WORLD"
+        result = string.lower()
+        self.assertEqual(result, "world")
 
 if __name__ == '__main__':
     unittest.main()
