@@ -35,30 +35,30 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.USER_NAME", "testuser")
     def test_login_failure(self, mock_check_password):
         mock_check_password.return_value = False
-        #response = self.client.post(
-        #    "/login", data={"username": "testuser", "password": "wrongpassword"}
-        #)
-        #self.assertEqual(response.status_code, 500)  # not sure why...
-        #self.assertEqual(response.status_code, 302) 
-        #self.assertIn(b"Invalid username or password", response.data)
+        response = self.client.post(
+            "/login", data={"username": "testuser", "password": "wrongpassword"}
+        )
+        self.assertEqual(response.status_code, 302)  # Redirect status code
+        self.assertIn("/login", response.headers["Location"])
+        self.assertIn(b"Invalid username or password", response.data)
 
-    '''
     @patch("app.routes.session")
     def test_logout(self, mock_session):
-        #response = self.client.get("/logout")
-        #self.assertEqual(response.status_code, 302)  # Redirect status code
-        #self.assertIn("/login", response.headers["Location"])
-        #mock_session.pop.assert_called_with("logged_in", None)
-        pass
-    '''
+        with self.client as c:
+            with c.session_transaction() as sess:
+                sess['logged_in'] = True
+            response = c.get("/logout")
+            self.assertEqual(response.status_code, 302)  # Redirect status code
+            self.assertIn("/login", response.headers["Location"])
+            mock_session.pop.assert_called_with("logged_in", None)
 
     @patch("app.routes.login_required")
     @patch("app.routes.render_template")
     def test_index(self, mock_render_template, mock_login_required):
         mock_login_required.return_value = lambda x: x
-        self.client.get("/")
-        #mock_render_template.assert_called_with("index.html")
-        pass
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        mock_render_template.assert_called_with("index.html")
 
     @patch("app.routes.login_required")
     @patch("app.routes.template_manager.get_templates")
@@ -68,14 +68,13 @@ class TestRoutes(unittest.TestCase):
     ):
         mock_login_required.return_value = lambda x: x
         mock_get_templates.return_value = {"template1": {}, "template2": {}}
-        self.client.get("/captions")
-        '''
+        response = self.client.get("/captions")
+        self.assertEqual(response.status_code, 200)
         mock_render_template.assert_called_with(
             "captions.html",
             template_details=mock_get_templates.return_value,
             lcaptions=[],
         )
-        '''
 
     @patch("app.routes.login_required")
     @patch("app.routes.template_manager.get_templates")
@@ -83,8 +82,8 @@ class TestRoutes(unittest.TestCase):
         mock_login_required.return_value = lambda x: x
         mock_get_templates.return_value = {"template1": {}, "template2": {}}
         response = self.client.get("/templates")
-        self.assertEqual(response.status_code, 302)
-        #self.assertEqual(response.json, {"template1": {}, "template2": {}})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json, {"template1": {}, "template2": {}})
 
     @patch("app.routes.login_required")
     @patch("app.routes.template_manager.save_template")
@@ -94,12 +93,10 @@ class TestRoutes(unittest.TestCase):
         response = self.client.post(
             "/templates", json={"name": "new_template", "url": "http://example.com"}
         )
-        self.assertEqual(response.status_code, 302)
-        '''
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.json, {"status": "success", "message": "Template saved"}
         )
-        '''
 
     @patch("app.routes.login_required")
     @patch("app.routes.template_manager.delete_template")
@@ -107,12 +104,18 @@ class TestRoutes(unittest.TestCase):
         mock_login_required.return_value = lambda x: x
         mock_delete_template.return_value = True
         response = self.client.delete("/templates", json={"name": "template_to_delete"})
-        self.assertEqual(response.status_code, 302)
-        '''
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.json, {"status": "success", "message": "Template deleted"}
         )
-        '''
+
+    @patch("app.routes.login_required")
+    @patch("app.routes.render_template")
+    def test_stream(self, mock_render_template, mock_login_required):
+        mock_login_required.return_value = lambda x: x
+        response = self.client.get("/stream")
+        self.assertEqual(response.status_code, 200)
+        mock_render_template.assert_called_with("stream.html")
 
 
 if __name__ == "__main__":
