@@ -127,13 +127,14 @@ def compile_to_teaser():
                 )
 
 
-def compile_videos(input_file, output_file):
+import asyncio
 
+async def compile_videos(input_file, output_file):
     if not os.path.exists(input_file):
         return False
 
     create_command = [
-        "ffmpeg", # TODO make this a config value
+        "ffmpeg",  # TODO make this a config value
         "-threads",
         "5",
         "-err_detect",
@@ -144,8 +145,8 @@ def compile_videos(input_file, output_file):
         "-dn",
         "-f",
         "concat",
-        "-safe",  
-        "0", 
+        "-safe",
+        "0",
         "-i",
         os.path.abspath(input_file),
         "-c",
@@ -157,22 +158,23 @@ def compile_videos(input_file, output_file):
     ]
 
     try:
-        subprocess.run(
-            create_command, check=True, 
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.PIPE
+        process = await asyncio.create_subprocess_exec(
+            *create_command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
         )
-        # print(' cmd:', ' '.join(create_command))
-        # subprocess.run(create_command)
+        stdout, stderr = await process.communicate()
+
         if os.path.exists(output_file) and os.path.getsize(output_file) > 300:
             os.rename(output_file, output_file.replace(".tmp", ""))
             return True
         # otherwise, do something? clean up the file maybe?
-    except Exception:
-        # print("FFmpeg command failed:", ' '.join(create_command), e)
-        # log to an error instead!
+    except Exception as e:
+        logging.error(f"FFmpeg command failed: {e}")
         if os.path.exists(output_file):
             os.unlink(output_file)
+
+    return False
 
 
 def get_video_duration(video_path):

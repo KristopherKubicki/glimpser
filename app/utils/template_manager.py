@@ -73,13 +73,17 @@ class Template(Base):
         return confidence
 
 
+from cachetools import TTLCache, cached
+
 class TemplateManager:
     def __init__(self):
         init_db()
+        self.cache = TTLCache(maxsize=100, ttl=300)  # Cache for 5 minutes
 
     def get_session(self):
         return SessionLocal()
 
+    @cached(cache=lambda self: self.cache)
     def get_templates(self):
         session = self.get_session()
         try:
@@ -149,6 +153,7 @@ class TemplateManager:
                         ldelta = True
             if ldelta is True:
                 session.commit()
+                self.cache.clear()  # Clear the cache when a template is updated
             return True
         except Exception as e:
             print(f"Error saving template: {str(e)}")
@@ -156,6 +161,7 @@ class TemplateManager:
         finally:
             session.close()
 
+    @cached(cache=lambda self: self.cache)
     def get_template(self, name):
         if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
             return False
@@ -180,11 +186,13 @@ class TemplateManager:
             if template:
                 session.delete(template)
                 session.commit()
+                self.cache.clear()  # Clear the cache when a template is deleted
                 return True
             return False
         finally:
             session.close()
 
+    @cached(cache=lambda self: self.cache)
     def get_template_by_id(self, template_id):
         # TODO: validate id
         session = self.get_session()
