@@ -1,10 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Bulk Update Templates</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+{% include 'header.html' %} 
+
+<body>
+    <header>
+        {% include 'nav.html' %}
+    </header>
+
     <script>
         function updateTemplate(templateName) {
             var notes = $('#notes-' + templateName).val();
@@ -21,11 +22,7 @@
             });
         }
     </script>
-</head>
-<body>
-    <header>
-        {% include 'nav.html' %}
-    </header>
+
  
 
 <details><summary>Captions</summary>

@@ -1,29 +1,67 @@
 
 		<h1><a href='/'><img src='{{ url_for('static', filename='img/glimpser_small.png') }}' title='Glimpser'></a></h1>
         <nav>
+            <div class="nav-left">
+                {% for ag in active_groups %} 
+                <a href='/group/{{ag}}'>{{ag}}</a>
+                {% endfor %}
+            </div>
 
-		{% for ag in active_groups %} 
-		<a href='/group/{{ag}}'>{{ag}}</a>
-		{% endfor %}
+	    <div class="nav-center" style='text-align:center;'>
+{% if template_name %}
+<center><h1><a href='/templates/{{template_name}}'>{{template_name}}</a></h1></center>
+    {% endif %} 
+	    </div>
 
-                <a href='/captions'>Captions</a>
-			
+            <div class="nav-right">
+		    <table>
+			    <tr>
 
-                <a href='/live'>
-		<span id="utcClock"></span>
-			Live</a>
+{% if request.path == url_for('settings') %}
+<td>
+        <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger">Logout</a>
+</td>
+    {% endif %} 
 
-                <a href='/settings'>Settings</a>
+				    <td>
+					    <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'>&#9000;</a>
+				    </td><td>
+                <a href='/live' id='live'>
+                    <div id="coolClock" class="cool-clock" title="Live">
+                        <div id="dateDisplay" class="clock-face">
+                            <div id="digitalTime" class="clock-hands" title="todo $digitalTime">
+                                <div class="hand hour-hand"></div>
+                                <div class="hand minute-hand"></div>
+                                <div class="hand second-hand"></div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+				    </td><td>
+                <a href='/settings' class="settings-icon" title="Settings" title='Update settings'>&#9881;</a>
+				    </td>
+
+
+			    </tr>
+		    </table>
+            </div>
         </nav>
 
 <script>
-    function updateClock() {
-        var now = new Date();
-        var utcString = now.toISOString().replace('T', ' ').substring(0, 19);
-        document.getElementById("utcClock").textContent = utcString;
+    function updateCoolClock() {
+        const now = new Date();
+        const secondsDegrees = (now.getSeconds() / 60) * 360 + 0;
+        const minutesDegrees = (now.getMinutes() / 60) * 360 + (now.getSeconds() / 60) * 6 + 0;
+        const hoursDegrees = (now.getHours() / 12) * 360 + (now.getMinutes() / 60) * 30 + 0;
+
+        document.querySelector('.second-hand').style.transform = `rotate(${secondsDegrees}deg)`;
+        document.querySelector('.minute-hand').style.transform = `rotate(${minutesDegrees}deg)`;
+        document.querySelector('.hour-hand').style.transform = `rotate(${hoursDegrees}deg)`;
+
+        document.getElementById('digitalTime').title = now.toLocaleTimeString() + '\n' + Intl.DateTimeFormat().resolvedOptions().timeZone + '\n' + now.toDateString() ;
     }
 
-    setInterval(updateClock, 1000);
-    updateClock(); // initial call to display the clock immediately
+    setInterval(updateCoolClock, 1000);
+    updateCoolClock(); // initial call to display the clock immediately
 </script>
 

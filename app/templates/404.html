@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="error-container">
+    <h1 class="error-title">404: Page Not Found</h1>
+    <div class="error-image">
+        <img src="{{ url_for('static', filename='img/404_camera.png') }}" alt="Broken camera">
+    </div>
+    <p class="error-message">Oops! Looks like this glimpse is out of focus.</p>
+    <p class="error-description">The page you're looking for seems to have vanished into thin air. Maybe it's hiding behind the lens?</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">Return to Home</a>
+</div>
+{% endblock %}

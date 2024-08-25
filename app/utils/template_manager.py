@@ -1,4 +1,4 @@
-# utils/template_manager.py
+# app/utils/template_manager.py
 
 import os
 import re
@@ -13,6 +13,7 @@ from app.config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY
 from .db import Base, SessionLocal, init_db
 from .video_details import get_latest_screenshot_date, get_latest_video_date
 
+from sqlalchemy.orm import validates
 
 class Template(Base):
     __tablename__ = "templates"
@@ -47,6 +48,30 @@ class Template(Base):
     motion = Column(Float, default=0.2)
     rollback_frames = Column(Integer, default=0)
 
+    @validates('frequency')
+    def validate_frequency(self, key, frequency):
+        if frequency > 525600:
+            raise ValueError("Frequency cannot be greater than 525600 (1 year)")
+        return frequency
+
+    @validates('timeout')
+    def validate_timeout(self, key, timeout):
+        if timeout >= self.frequency:
+            raise ValueError("Timeout must be less than frequency")
+        return timeout
+
+    @validates('popup_xpath', 'dedicated_xpath')
+    def validate_xpath(self, key, xpath):
+        if xpath and not xpath.startswith('//'):
+            raise ValueError(f"{key} must start with '//'")
+        return xpath
+
+    @validates('object_confidence')
+    def validate_object_confidence(self, key, confidence):
+        if self.object_filter and (confidence < 0 or confidence > 1):
+            raise ValueError("Object confidence must be between 0 and 1")
+        return confidence
+
 
 class TemplateManager:
     def __init__(self):
@@ -69,6 +94,8 @@ class TemplateManager:
             session.close()
 
     def save_template(self, name, details):
+
+        # TODO: replace this with validate_template_name instead 
         if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
             return False
 
@@ -78,19 +105,32 @@ class TemplateManager:
             if template is None:
                 template = Template()
                 session.add(template)
+            ldelta = False
             if template:
                 for key, value in details.items():
                     try:
-                        # should read from the model intead
-                        if key in [
-                            "rollback_frames",
-                            "frequency",
-                            "timeout",
-                        ]:  # HAXKCY!
+                        if key == "rollback_frames":
                             value = int(value)
-                        if key in ["object_confidence"]:  # HAXKCY!
+                        elif key in ["frequency", "timeout"]:
+                            if value == "":
+                                value = 30
+
                             value = int(value)
-                        if key in ["stealth", "headless", "dark", "invert"]:
+                            if key == "frequency" and value > 525600:
+                                raise ValueError("Frequency cannot be greater than 525600 (1 year)")
+                            if key == "timeout" and value >= int(details.get("frequency", template.frequency) * 60):
+                                value = details.get("frequency", template.frequency) * 60
+                                #raise ValueError("Timeout must be less than frequency")
+                        elif key == "object_confidence":
+                            if value == "":
+                                value = 0.5
+                            value = float(value)
+                            if details.get("object_filter", template.object_filter) and (value < 0 or value > 1):
+                                raise ValueError("Object confidence must be between 0 and 1")
+                        elif key in ["popup_xpath", "dedicated_xpath"]:
+                            if value and not value.startswith('//'):
+                                raise ValueError(f"{key} must start with '//'")
+                        elif key in ["stealth", "headless", "dark", "invert"]:
                             if value == "on":
                                 value = True
                             elif value == "off":
@@ -100,12 +140,21 @@ class TemplateManager:
                             else:
                                 print("MISSSSED", value)
                                 continue
-                    except Exception:
-                        # failing validation... TODO logging
-                        continue
+                    except ValueError as e:
+                        # Log the validation error and return False
+                        print(f"Validation error: {str(e)}", name, key, value)
+                        return False
 
-                    setattr(template, key, value)
-            session.commit()
+                    # check to make sure a change actually occurred
+                    if getattr(template, key) != value:
+                        setattr(template, key, value)
+                        ldelta = True
+            if ldelta is True:
+                session.commit()
+            return True
+        except Exception as e:
+            print(f"Error saving template: {str(e)}")
+            return False
         finally:
             session.close()
 

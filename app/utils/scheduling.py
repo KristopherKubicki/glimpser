@@ -1,9 +1,14 @@
+# app/utils/scheduling.py
+
 import datetime
 import json
 import logging
 import os
 import random
 import re
+import psutil
+import threading
+import time
 
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
@@ -586,6 +591,7 @@ def update_summary():
 
     history = None
     if True:
+        # TODO: move this to a database instead
         # Specify the directory containing the .jl files
         directory = "data/summaries/"
 
@@ -599,21 +605,22 @@ def update_summary():
             reverse=True,
         )
 
-        # Load entries from the most recent 5 .jl files
+        # for file in jl_files[:5]:
         entries = []
         steps = [1, 3, 8, 24]
-        # for file in jl_files[:5]:
         for step in steps:
-            if len(jl_files) < step:
-                break
-            file = jl_files[step]
-            file_path = os.path.join(directory, file)
-            with open(file_path, "r") as f:
-                try:
-                    data = json.load(f)
-                    entries.append(data)
-                except Exception:
-                    pass
+            if step < len(jl_files):
+                file = jl_files[step]
+                file_path = os.path.join(directory, file)
+                with open(file_path, "r") as f:
+                    try:
+                        data = json.load(f)
+                        entries.append(data)
+                    except Exception:
+                        pass
+            else:
+                break  # or continue, depending on what you want to do when there aren't enough files
+
         if len(entries) > 0:
             history = ""
             for hour in entries:
@@ -627,7 +634,7 @@ def update_summary():
     filename = f"data/summaries/{timestamp}.jl"
 
     if type(lsum) != str:
-        print(" WARNING -- missing transcript")
+        #print(" WARNING -- missing transcript") # this only matters if we have a CHATGPT KEY set 
         return
 
     # for leach in re.findall(r'({.+?\})',lsum):  # if we don't find this, then we wasted money...
@@ -735,3 +742,33 @@ def schedule_crawlers():
         )
     except Exception as e:
         logging.error(f"Error scheduling initial crawl: {e}")
+
+
+system_metrics = {
+    'cpu_usage': 0.0,
+    'memory_usage': 0.0,
+    'thread_count': 0,
+    'start_time': time.time()
+}
+
+def collect_system_metrics():
+    global system_metrics
+    while True:
+        system_metrics['cpu_usage'] = psutil.cpu_percent(interval=1)
+        system_metrics['memory_usage'] = psutil.virtual_memory().percent
+        system_metrics['thread_count'] = threading.active_count()
+        time.sleep(5)  # Collect metrics every 5 seconds
+
+def start_metrics_collection():
+    metrics_thread = threading.Thread(target=collect_system_metrics, daemon=True)
+    metrics_thread.start()
+
+def get_system_metrics():
+    global system_metrics
+    uptime = time.time() - system_metrics['start_time']
+    return {
+        'cpu_usage': system_metrics['cpu_usage'],
+        'memory_usage': system_metrics['memory_usage'],
+        'thread_count': system_metrics['thread_count'],
+        'uptime': f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s"
+    }

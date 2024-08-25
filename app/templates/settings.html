@@ -1,25 +1,66 @@
 
+{% include 'header.html' %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Settings</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-</head>
 <body>
     <header>
         {% include 'nav.html' %}
     </header>
 
+    <div id="performance-metrics">
+        <h3>System Performance</h3>
+	<table>
+		<tr>
+			<td>
+        <div class="metric">
+            <label>CPU Usage:</label>
+            <div class="progress-bar">
+                <div id="cpu-bar" class="progress"></div>
+            </div>
+            <span id="cpu-value"></span>
+        </div>
+	<td></td>
+        <div class="metric">
+            <label>Memory Usage:</label>
+            <div class="progress-bar">
+                <div id="memory-bar" class="progress"></div>
+            </div>
+            <span id="memory-value"></span>
+        </div>
+	<td></td>
+        <div class="metric">
+            <label>CPU Sparkline:</label>
+            <canvas id="cpu-sparkline"></canvas>
+        </div>
+	<td></td>
+        <div class="metric">
+            <label>Uptime:</label>
+            <span id="uptime-value"></span>
+        </div>
+			</td>
+		</tr>
+	</table>
+    </div>
 
-        <form method="POST" action="{{ url_for('settings') }}">
+
+    <h2>Current Settings</h2>
+
+    <h3>Add New Setting</h3>
+    <form method="POST" action="{{ url_for('settings') }}">
+        <input type="hidden" name="action" value="add">
+        <label for="new_name">Name:</label>
+        <input type="text" id="new_name" name="new_name" required>
+        <label for="new_value">Value:</label>
+        <input type="text" id="new_value" name="new_value" required>
+        <button type="submit">Add Setting</button>
+    </form>
+
+    <form method="POST" action="{{ url_for('settings') }}">
         <table>
             <thead>
                 <tr>
                     <th>Setting</th>
                     <th>Value</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -29,15 +70,20 @@
                     <td>
                         <input type="text" name="{{ setting.name }}" value="{{ setting.value }}">
                     </td>
+                    <td>
+                        <button type="submit" name="action" value="delete" onclick="document.getElementById('name_to_delete').value='{{ setting.name }}'">Delete</button>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        <button type="submit">Save</button>
+        <input type="hidden" id="name_to_delete" name="name_to_delete" value="">
+        <button type="submit">Save Changes</button>
     </form>
 
-{% include 'footer.html' %}
+    {% include 'footer.html' %}
 
+    <script src="{{ url_for('static', filename='js/performance.js') }}"></script>
 </body>
 </html>
 

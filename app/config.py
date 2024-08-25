@@ -1,6 +1,7 @@
 # config.py
 
 import os
+import json
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -8,16 +9,15 @@ from sqlalchemy.orm import sessionmaker
 # TODO: also consider argparse...
 DATABASE_PATH = os.getenv("GLIMPSER_DATABASE_PATH", "data/glimpser.db")
 LOGGING_PATH = os.getenv("GLIMPSER_LOGGING_PATH", "logs/glimpser.log")
+BACKUP_PATH = os.getenv("GLIMPSER_BACKUP_PATH", "data/config_backup.json")
 
 # todo.. make sure this is not duplicate loading...
 engine = create_engine(f"sqlite:///{DATABASE_PATH}")
 SessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine
-)  # settings only tthread
-
+)  # settings only thread
 
 def get_setting(name, default=None):
-
     session = SessionLocal()
     try:
         result = session.execute(
@@ -36,6 +36,35 @@ def get_setting(name, default=None):
 
     return default
 
+def backup_config() -> bool:
+    session = SessionLocal()
+    try:
+        settings = session.execute(text("SELECT name, value FROM settings")).fetchall()
+        config_dict = {name: value for name, value in settings}
+        with open(BACKUP_PATH, 'w') as f:
+            json.dump(config_dict, f)
+    except Exception as e:
+        pass
+        return False
+    finally:
+        session.close()
+        return True
+
+def restore_config():
+    if os.path.exists(BACKUP_PATH):
+        with open(BACKUP_PATH, 'r') as f:
+            config_dict = json.load(f)
+        
+        session = SessionLocal()
+        try:
+            for name, value in config_dict.items():
+                session.execute(
+                    text("INSERT OR REPLACE INTO settings (name, value) VALUES (:name, :value)"),
+                    {"name": name, "value": value}
+                )
+            session.commit()
+        finally:
+            session.close()
 
 SCHEDULER_API_ENABLED = True
 
@@ -66,16 +95,16 @@ MAX_IN_PROCESS_VIDEO_SIZE = int(
     get_setting("MAX_IN_PROCESS_VIDEO_SIZE", 100 * 1024 * 1024)
 )  # 100 MB
 
-LOG_LEVEL = get_setting("LOG_LEVEL","DEBUG")
+LOG_LEVEL = get_setting("LOG_LEVEL","INFO")
 
 # Load settings from the database
 SECRET_KEY = get_setting("SECRET_KEY", "default_secret_key")
 USER_NAME = get_setting("USER_NAME", "admin")
 USER_PASSWORD_HASH = get_setting("USER_PASSWORD_HASH", "")
 API_KEY = get_setting("API_KEY", "")
-CHATGPT_KEY = get_setting("CHATGPT_KEY", "")
+CHATGPT_KEY = get_setting("CHATGPT_KEY", "")  # maybe generalize as LLM_KEY ?
 
-LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-4o-mini")
+LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-4o-mini") # todo setup allowed models
 
 # note that $datetime is a special keyword that will be replaced with the datetime in iso Z format
 LLM_SUMMARY_PROMPT = get_setting(
@@ -87,6 +116,12 @@ LLM_CAPTION_PROMPT = get_setting(
     "LLM_CAPTION_PROMPT",
     "Write a concise caption that highlights the most significant or unique aspect of this image in 10 words or less. Avoid general descriptions, and focus on noteworthy details or anomalies. Then, provide a brief, more detailed description in a couple of sentences. The time is $datetime UTC.",
 )
+
+# FFMPEG path setting
+FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
+
+# FFMPEG path setting
+FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
 
 # experimental
 # TWILIO_SID = get_setting("TWILIO_SID","")

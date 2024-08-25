@@ -2,20 +2,35 @@
 
 import logging
 import os
+import threading
 
-from flask import Flask, current_app
+from flask import Flask, current_app, jsonify
 from flask_apscheduler import APScheduler
 
-from .utils.retention_policy import retention_cleanup
-from .utils.scheduling import schedule_crawlers, schedule_summarization, scheduler
-from .utils.video_archiver import archive_screenshots, compile_to_teaser
-from .utils.video_compressor import compress_and_cleanup
+from app.utils.retention_policy import retention_cleanup
+from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler
+from app.utils.video_archiver import archive_screenshots, compile_to_teaser
+from app.utils.video_compressor import compress_and_cleanup
+from app.config import backup_config, restore_config
 
 # needed for the llava compare
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+def create_app(watchdog=True, schedule=True):
+    """
+    Create and configure the Flask application.
 
-def create_app():
+    This function sets up the entire Flask application, including:
+    - Initializing the Flask app
+    - Setting up configuration and secret key
+    - Creating necessary directories
+    - Initializing routes
+    - Setting up the scheduler for various tasks
+    - Implementing a watchdog for application monitoring
+
+    Returns:
+        app (Flask): The configured Flask application instance
+    """
     app = Flask(__name__)
     # app.config.from_object()
 
@@ -30,37 +45,35 @@ def create_app():
         VIDEO_DIRECTORY,
     )
 
-    # Ensure the screenshot directory exists
+    # Ensure required directories exist
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)
     os.makedirs(VIDEO_DIRECTORY, exist_ok=True)
     os.makedirs(SUMMARIES_DIRECTORY, exist_ok=True)
 
-    from .routes import init_routes
+    from app.routes import init_routes
 
     init_routes(app)
 
-    # Set the executor configuration in the Flask app's config
-    # should be at least as many sources
-    app.config["SCHEDULER_EXECUTORS"] = {
-        "default": {"type": "processpool", "max_workers": MAX_WORKERS}
-    }
-    logging.info(" starting with %s workers" % str(MAX_WORKERS))
+    # Configure the scheduler executor
+    if schedule is True:
+        app.config["SCHEDULER_EXECUTORS"] = {
+            "default": {"type": "processpool", "max_workers": MAX_WORKERS}
+        }
+        logging.info("Starting with %s workers" % str(MAX_WORKERS))
+        scheduler.init_app(app)
 
-    scheduler.init_app(app)
-
-    # Scheduler setup
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+    # Set up and start the scheduler
+    if schedule is True and (os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug):
         scheduler.start()
-        logging.info("initializing...")
+        logging.info("Initializing scheduler...")
 
-        # Schedule the crawlers upon app start
+        # Schedule tasks within the application context
         with app.app_context():
-
-            # remove existing schedules, particularly if the app reloads (which it does in debug mode)
+            # Clear existing schedules to prevent duplicates on app reload
             scheduler.remove_all_jobs()
 
+            # Schedule various periodic tasks
             schedule_crawlers()
-            # Additional scheduler setup for video archiving
             scheduler.add_job(
                 id="compile_to_teaser",
                 func=compile_to_teaser,
@@ -73,14 +86,56 @@ def create_app():
                 trigger="interval",
                 minutes=1,
             )
-            # scheduler.add_job(id='compress_and_cleanup', func=compress_and_cleanup, trigger='interval', hours=1)
             scheduler.add_job(
                 id="retention_cleanup", func=retention_cleanup, trigger="cron", day="*"
             )
             schedule_summarization()
 
-        # one time cleanup..
+        # Perform initial cleanup
         retention_cleanup()
-        logging.info("initialization complete")
+        logging.info("Initialization complete")
+
+    # Backup the current configuration
+    backup_config()
+
+    # Set up a watchdog thread to monitor the application
+    def watchdog():
+        """
+        Watchdog function to monitor the application's health.
+
+        This function runs in a separate thread and periodically checks if the
+        application is responding correctly. If it detects an issue, it attempts
+        to restore the previous configuration and force restarts the application.
+        """
+        import time
+        while True:
+            time.sleep(10)  # Check every 10 seconds
+            if not app.debug:
+                try:
+                    # Try to access a simple route to check app responsiveness
+                    with app.test_client() as client:
+                        response = client.get('/health')
+                        if response.status_code != 200:
+                            raise Exception("Application is not responding correctly")
+                except Exception as e:
+                    logging.error("Application error detected: %s", e)
+                    logging.info("Attempting to restore previous configuration...")
+                    try:
+                        restore_config()
+                    except Exception as config_error:
+                        logging.error("Failed to restore configuration: %s", config_error)
+                        raise  # Re-raise the exception after logging
+                    logging.info("Forcing application restart...")
+                    os._exit(1)  # Force restart the application
+
+    # Start the watchdog thread
+    if watchdog is True:
+        watchdog_thread = threading.Thread(target=watchdog)
+        watchdog_thread.daemon = True
+        watchdog_thread.start()
+
+    # Start collecting metrics
+    from .utils.scheduling import start_metrics_collection
+    start_metrics_collection()
 
     return app

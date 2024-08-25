@@ -7,11 +7,13 @@ import io
 import json
 import os
 import re
+import sys
 import time
 import tempfile
 from datetime import datetime, timedelta
 from functools import wraps
-from threading import Lock
+from threading import Lock, Thread
+import subprocess
 
 from flask import (
     Response,
@@ -26,6 +28,8 @@ from flask import (
     session,
     url_for,
 )
+
+from flask_login import logout_user
 from PIL import Image
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
@@ -47,19 +51,55 @@ from app.utils import (
 )
 from app.utils.db import SessionLocal
 
+def restart_server():
+    print("Restarting server...")
 
+    def delayed_restart():
+        time.sleep(1)  # 1-second delay
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+
+    # Start the delayed restart in a separate thread
+    restart_thread = Thread(target=delayed_restart)
+    restart_thread.start()
+
+#def restart_server():
+#    print("Restarting server...")
+#    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+# todo: add this to utils so it is not duplicated in utils/video_archiver.py
 def validate_template_name(template_name: str):
-    if template_name is None:
+    if template_name is None or not isinstance(template_name, str):
         return None
-    if not isinstance(template_name, str):
+
+    # Strict whitelist of allowed characters
+    allowed_chars = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.')
+
+    # Check if all characters are in the allowed set
+    if not all(char in allowed_chars for char in template_name):
         return None
-    if ".." in template_name or "/" in template_name:
+
+    # Check length
+    if len(template_name) == 0 or len(template_name) > 32:
         return None
-    if len(template_name) > 32:
+
+    # Ensure the name doesn't start or end with a dash or underscore
+    if template_name[0] in '-_.' or template_name[-1] in '-_.':
         return None
-    for tname in re.findall(r"^[a-zA-Z0-9_\.\-]{1,32}$", template_name):
-        return secure_filename(tname)
-    return None
+    if '..' in template_name:
+        return None
+    if '--' in template_name:
+        return None
+    if '__' in template_name:
+        return None
+
+    # Use secure_filename as an additional safety measure
+    sanitized_name = secure_filename(template_name)
+
+    # Ensure secure_filename didn't change the name (which would indicate it found something suspicious)
+    if sanitized_name != template_name:
+        return None
+
+    return sanitized_name
 
 
 class TemplateName:
@@ -114,23 +154,32 @@ def login_required(f):
             or request.form.get("api_key")
         )
         timed_key = request.args.get("timed_key")
+
+        # Check for valid timed API key
         if timed_key:
-            if is_hash_valid(timed_key) is False:
+            if not is_hash_valid(timed_key):
                 return jsonify({"error": "Invalid timed key"}), 401
             return f(*args, **kwargs)
+
+        # Check for valid static API key
         elif api_key == API_KEY:
-            # Bypass session authentication if API key is valid
             return f(*args, **kwargs)
+
+        # Check for valid session
         elif "logged_in" in session:
-            # Proceed with session-based authentication
+            # Check for session expiry
+            expiry = session.get("expiry")
+            if expiry and datetime.now() > datetime.strptime(expiry, '%Y-%m-%d %H:%M:%S'):
+                session.pop("logged_in", None)  # Clear session
+                flash("Session expired. Please log in again.")
+                return redirect(url_for("login", next=request.url))
             return f(*args, **kwargs)
+
+        # Handle missing or invalid authentication
         else:
-            # Return an HTTP status error if API key is invalid or missing and not logged in
             if api_key:
-                # API key was provided but is invalid
                 return jsonify({"error": "Invalid API key"}), 401
             else:
-                # No API key provided, and not logged in
                 return redirect(url_for("login", next=request.url))
 
     return decorated_function
@@ -168,9 +217,9 @@ def get_all_settings():
             {"name": name, "value": value} for name, value in settings.items()
         ]
 
-        # TODO: blocklist some settings
+        # TODO: blocklist some settings - set this somewhere 
         lsettings_list = []
-        blocks = ["SECRET_KEY", "USER_PASSWORD_HASH", "DATABASE_URL"]
+        blocks = ["SECRET_KEY", "USER_PASSWORD_HASH", "DATABASE_URL"] 
         for sl in settings_list:
             if re.findall(r"^[A-Z_]+?$", sl["name"]) and sl["name"] not in blocks:
                 lsettings_list.append({"name": sl["name"], "value": sl["value"]})
@@ -190,26 +239,36 @@ def update_setting(name: str, value: str) -> bool:
         return False
 
     session = SessionLocal()
+    delta = False
     try:
         existing_setting = session.execute(
                 text("SELECT value FROM settings WHERE name = :name"),
                 {"name": name}
         ).fetchone()
         if existing_setting:
-            session.execute(
-                text("UPDATE settings SET value = :value WHERE name = :name"),
-                {"name": name, "value": value}
-            )
+            if existing_setting[0] != value:
+                session.execute(
+                    text("UPDATE settings SET value = :value WHERE name = :name"),
+                    {"name": name, "value": value}
+                )
+                delta = True
+                print("UPDATE", name, value, existing_setting)
         else:
             session.execute(
                 text("INSERT INTO settings (name, value) VALUES (:name, :value)"),
                 {"name": name, "value": value}
             )
+            delta = True
         session.commit()
     finally:
         session.close()
 
-    return True  # not exactly right
+    if delta is True:
+        # Trigger server restart
+        # is there a way to do this on a delay? 
+        restart_server()
+
+    return True
 
 
 # TODO:
@@ -413,10 +472,29 @@ def init_routes(app):
     global login_attempts
     # get_active_groups()
 
+    # Add a new route for the extended health check
     @app.route('/health')
     def health_check():
-        # should be healthy
-        return jsonify({"status": "healthy"}), 200
+        metrics = scheduling.get_system_metrics()
+
+        # Define thresholds for nominal performance
+        cpu_threshold = 80  # 80% CPU usage
+        memory_threshold = 80  # 80% memory usage
+        thread_threshold = 100  # 100 threads
+
+        # Check if metrics are nominal
+        is_nominal = (
+            metrics['cpu_usage'] < cpu_threshold and
+            metrics['memory_usage'] < memory_threshold and
+            metrics['thread_count'] < thread_threshold
+        )
+
+        return jsonify({
+            'status': 'healthy' if is_nominal else 'degraded',
+            'metrics': metrics,
+            'nominal': is_nominal
+        }), 200 if is_nominal else 503
+
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
@@ -464,10 +542,16 @@ def init_routes(app):
                 flash("Invalid username or password")
         return render_template("login.html")
 
+    @app.route("/help")
+    @login_required
+    def help_page():
+        return render_template("help.html")
+
     @app.route("/logout")
-    # @login_required
+    @login_required
     def logout():
         session.pop("logged_in", None)
+        flash("You have been logged out successfully.", "success")
         return redirect(url_for("login"))
 
     @app.route("/")
@@ -725,6 +809,7 @@ def init_routes(app):
             VIDEO_DIRECTORY,
             f"{lgroup}_in_process.mp4",
         )
+
         if not os.path.exists(video_path):
             abort(404)
         return send_file(video_path)
@@ -896,7 +981,7 @@ def init_routes(app):
 
         abort(404)
 
-    @app.route("/compile_teaser", methods=["GET"])
+    @app.route("/compile_teaser", methods=["GET"]) # todo: should probably be post? 
     @login_required
     def take_compile():
         video_archiver.compile_to_teaser()
@@ -1080,6 +1165,23 @@ def init_routes(app):
 
         return send_from_directory(path, filename)
 
+    def delete_setting(name: str) -> bool:
+        name = name.replace("'", "")[:32]
+        if not re.findall(r"^[A-Z_]+?$", name):
+            return False
+
+        session = SessionLocal()
+        try:
+            session.execute(
+                text("DELETE FROM settings WHERE name = :name"),
+                {"name": name}
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        return True
+
     @app.route("/videos/<string:name>/<string:filename>")
     @login_required
     def view_video(name: TemplateName, filename: str):
@@ -1094,15 +1196,33 @@ def init_routes(app):
 
         return send_from_directory(path, filename)
 
+
     @app.route("/settings", methods=["GET", "POST"])
     def settings():
         if request.method == "POST":
-            for name, value in request.form.items():
-                update_setting(name, value)
+            action = request.form.get("action")
+            if action == "add":
+                new_name = request.form.get("new_name")
+                new_value = request.form.get("new_value")
+                if new_name and new_value:
+                    update_setting(new_name, new_value)
+            elif action == "delete":
+                name_to_delete = request.form.get("name_to_delete")
+                if name_to_delete:
+                    delete_setting(name_to_delete)
+            else:
+                for name, value in request.form.items():
+                    if name not in ["action", "new_name", "new_value", "name_to_delete"]:
+                        update_setting(name, value)
             return redirect(url_for("settings"))
 
         settings = get_all_settings()
         return render_template("settings.html", settings=settings)
+
+    # TODO: this has been refactored to health instead.. please update
+    @app.route('/system_metrics')
+    def system_metrics():
+        return jsonify(scheduling.get_system_metrics())
 
     @app.route("/update_template/<string:template_name>", methods=["POST"])
     @login_required
@@ -1165,6 +1285,7 @@ def init_routes(app):
             template_manager.save_template(template_name, updated_data)
 
             # TODO: stop the old job.  reschedule the camera
+            # TODO: generate a blank template and insert it (like a movie reel type of thing)
             template_manager.get_template(template_name)
             try:
                 seconds = int(updated_data.get("frequency", 30 * 60))

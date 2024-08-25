@@ -1,0 +1,48 @@
+#performance-metrics {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+#performance-metrics h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.metric {
+    margin-bottom: 10px;
+}
+
+.metric label {
+    display: inline-block;
+    width: 120px;
+    font-weight: bold;
+}
+
+.progress-bar {
+    display: inline-block;
+    width: 200px;
+    height: 20px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress {
+    height: 100%;
+    background-color: #007bff;
+    transition: width 0.5s ease-in-out;
+}
+
+#cpu-sparkline {
+    display: inline-block;
+    width: 200px;
+    height: 50px;
+    vertical-align: middle;
+}
+
+#uptime-value {
+    font-weight: bold;
+}
