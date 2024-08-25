@@ -335,6 +335,8 @@ function toggleObjectConfidence() {
 // Call this function on page load to set the initial state
 document.addEventListener('DOMContentLoaded', toggleObjectConfidence);
 
+// todo, add the camera metadata template_details here too
+
 function showCameraDetails(templateName) {
     const baseUrl = window.location.origin;
     const details = {
@@ -375,9 +377,6 @@ function closeModal() {
 
 
 
-  <details><summary>Metadata</summary>
-	  {{template_details}}
-  </details>
 
     <button id="instant-screenshot-btn" onclick="takeInstantScreenshot('{{ template_name }}')" title="Take a screenshot of the template immediately">Take Instant Screenshot</button>
     <button id="update-video-btn" onclick="updateVideo('{{ template_name }}')" title="Update the video for this template">Update Video</button>

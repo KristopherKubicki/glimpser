@@ -119,6 +119,8 @@ def chatgpt_compare(image_paths, prompt):
             return "Missing image"
 
     # Use the ChatGPT API for comparison
+    if len(CHATGPT_KEY) < 1:
+        return "Missing ChatGPT key"
 
     chatgpt_comparison = ChatGPTImageComparison()
     result = chatgpt_comparison.compare_images(prompt, image_paths)

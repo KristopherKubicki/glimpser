@@ -1,3 +1,6 @@
+#!env/bin/python3
+#  main.py
+
 import logging
 import os
 import argparse
@@ -115,7 +118,7 @@ def generate_credentials_if_needed():
     """
     if not os.path.exists(config.DATABASE_PATH):
         from generate_credentials import generate_credentials
-        generate_credentials()
+        generate_credentials(args=None)
 
 def create_application():
     """

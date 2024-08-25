@@ -8,7 +8,7 @@ from flask import Flask, current_app, jsonify
 from flask_apscheduler import APScheduler
 
 from app.utils.retention_policy import retention_cleanup
-from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler, get_system_metrics
+from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 from app.utils.video_compressor import compress_and_cleanup
 from app.config import backup_config, restore_config
@@ -17,7 +17,7 @@ from app.config import backup_config, restore_config
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
-def create_app():
+def create_app(watchdog=True, schedule=True):
     """
     Create and configure the Flask application.
 
@@ -56,15 +56,15 @@ def create_app():
     init_routes(app)
 
     # Configure the scheduler executor
-    app.config["SCHEDULER_EXECUTORS"] = {
-        "default": {"type": "processpool", "max_workers": MAX_WORKERS}
-    }
-    logging.info("Starting with %s workers" % str(MAX_WORKERS))
-
-    scheduler.init_app(app)
+    if schedule is True:
+        app.config["SCHEDULER_EXECUTORS"] = {
+            "default": {"type": "processpool", "max_workers": MAX_WORKERS}
+        }
+        logging.info("Starting with %s workers" % str(MAX_WORKERS))
+        scheduler.init_app(app)
 
     # Set up and start the scheduler
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+    if schedule is True and (os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug):
         scheduler.start()
         logging.info("Initializing scheduler...")
 
@@ -129,33 +129,11 @@ def create_app():
                     logging.info("Forcing application restart...")
                     os._exit(1)  # Force restart the application
 
-    # Add a new route for the extended health check
-    @app.route('/health')
-    def health_check():
-        metrics = get_system_metrics()
-
-        # Define thresholds for nominal performance
-        cpu_threshold = 80  # 80% CPU usage
-        memory_threshold = 80  # 80% memory usage
-        thread_threshold = 100  # 100 threads
-
-        # Check if metrics are nominal
-        is_nominal = (
-            metrics['cpu_usage'] < cpu_threshold and
-            metrics['memory_usage'] < memory_threshold and
-            metrics['thread_count'] < thread_threshold
-        )
-
-        return jsonify({
-            'status': 'healthy' if is_nominal else 'degraded',
-            'metrics': metrics,
-            'nominal': is_nominal
-        }), 200 if is_nominal else 503
-
     # Start the watchdog thread
-    watchdog_thread = threading.Thread(target=watchdog)
-    watchdog_thread.daemon = True
-    watchdog_thread.start()
+    if watchdog is True:
+        watchdog_thread = threading.Thread(target=watchdog)
+        watchdog_thread.daemon = True
+        watchdog_thread.start()
 
     # Start collecting metrics
     from .utils.scheduling import start_metrics_collection

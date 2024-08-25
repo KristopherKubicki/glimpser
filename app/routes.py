@@ -12,7 +12,7 @@ import time
 import tempfile
 from datetime import datetime, timedelta
 from functools import wraps
-from threading import Lock
+from threading import Lock, Thread
 import subprocess
 
 from flask import (
@@ -28,6 +28,7 @@ from flask import (
     session,
     url_for,
 )
+
 from flask_login import logout_user
 from PIL import Image
 from sqlalchemy import text
@@ -50,10 +51,21 @@ from app.utils import (
 )
 from app.utils.db import SessionLocal
 
+
 def restart_server():
     print("Restarting server...")
-    os.execv(sys.executable, [sys.executable] + sys.argv)
 
+    def delayed_restart():
+        time.sleep(1)  # 1-second delay
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+
+    # Start the delayed restart in a separate thread
+    restart_thread = Thread(target=delayed_restart)
+    restart_thread.start()
+
+#def restart_server():
+#    print("Restarting server...")
+#    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 # todo: add this to utils so it is not duplicated in utils/video_archiver.py
 def validate_template_name(template_name: str):
@@ -143,23 +155,32 @@ def login_required(f):
             or request.form.get("api_key")
         )
         timed_key = request.args.get("timed_key")
+
+        # Check for valid timed API key
         if timed_key:
-            if is_hash_valid(timed_key) is False:
+            if not is_hash_valid(timed_key):
                 return jsonify({"error": "Invalid timed key"}), 401
             return f(*args, **kwargs)
+
+        # Check for valid static API key
         elif api_key == API_KEY:
-            # Bypass session authentication if API key is valid
             return f(*args, **kwargs)
+
+        # Check for valid session
         elif "logged_in" in session:
-            # Proceed with session-based authentication
+            # Check for session expiry
+            expiry = session.get("expiry")
+            if expiry and datetime.now() > datetime.strptime(expiry, '%Y-%m-%d %H:%M:%S'):
+                session.pop("logged_in", None)  # Clear session
+                flash("Session expired. Please log in again.")
+                return redirect(url_for("login", next=request.url))
             return f(*args, **kwargs)
+
+        # Handle missing or invalid authentication
         else:
-            # Return an HTTP status error if API key is invalid or missing and not logged in
             if api_key:
-                # API key was provided but is invalid
                 return jsonify({"error": "Invalid API key"}), 401
             else:
-                # No API key provided, and not logged in
                 return redirect(url_for("login", next=request.url))
 
     return decorated_function
@@ -197,9 +218,9 @@ def get_all_settings():
             {"name": name, "value": value} for name, value in settings.items()
         ]
 
-        # TODO: blocklist some settings
+        # TODO: blocklist some settings - set this somewhere 
         lsettings_list = []
-        blocks = ["SECRET_KEY", "USER_PASSWORD_HASH", "DATABASE_URL"]
+        blocks = ["SECRET_KEY", "USER_PASSWORD_HASH", "DATABASE_URL"] 
         for sl in settings_list:
             if re.findall(r"^[A-Z_]+?$", sl["name"]) and sl["name"] not in blocks:
                 lsettings_list.append({"name": sl["name"], "value": sl["value"]})
@@ -219,27 +240,34 @@ def update_setting(name: str, value: str) -> bool:
         return False
 
     session = SessionLocal()
+    delta = False
     try:
         existing_setting = session.execute(
                 text("SELECT value FROM settings WHERE name = :name"),
                 {"name": name}
         ).fetchone()
         if existing_setting:
-            session.execute(
-                text("UPDATE settings SET value = :value WHERE name = :name"),
-                {"name": name, "value": value}
-            )
+            if existing_setting[0] != value:
+                session.execute(
+                    text("UPDATE settings SET value = :value WHERE name = :name"),
+                    {"name": name, "value": value}
+                )
+                delta = True
+                print("UPDATE", name, value, existing_setting)
         else:
             session.execute(
                 text("INSERT INTO settings (name, value) VALUES (:name, :value)"),
                 {"name": name, "value": value}
             )
+            delta = True
         session.commit()
     finally:
         session.close()
 
-    # Trigger server restart
-    restart_server()
+    if delta is True:
+        # Trigger server restart
+        # is there a way to do this on a delay? 
+        restart_server()
 
     return True
 
@@ -445,10 +473,29 @@ def init_routes(app):
     global login_attempts
     # get_active_groups()
 
+    # Add a new route for the extended health check
     @app.route('/health')
     def health_check():
-        # should be healthy
-        return jsonify({"status": "healthy"}), 200
+        metrics = scheduling.get_system_metrics()
+
+        # Define thresholds for nominal performance
+        cpu_threshold = 80  # 80% CPU usage
+        memory_threshold = 80  # 80% memory usage
+        thread_threshold = 100  # 100 threads
+
+        # Check if metrics are nominal
+        is_nominal = (
+            metrics['cpu_usage'] < cpu_threshold and
+            metrics['memory_usage'] < memory_threshold and
+            metrics['thread_count'] < thread_threshold
+        )
+
+        return jsonify({
+            'status': 'healthy' if is_nominal else 'degraded',
+            'metrics': metrics,
+            'nominal': is_nominal
+        }), 200 if is_nominal else 503
+
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
@@ -495,6 +542,11 @@ def init_routes(app):
 
                 flash("Invalid username or password")
         return render_template("login.html")
+
+    @app.route("/help")
+    @login_required
+    def help_page():
+        return render_template("help.html")
 
     @app.route("/logout")
     @login_required
@@ -1168,6 +1220,7 @@ def init_routes(app):
         settings = get_all_settings()
         return render_template("settings.html", settings=settings)
 
+    # TODO: this has been refactored to health instead.. please update
     @app.route('/system_metrics')
     def system_metrics():
         return jsonify(scheduling.get_system_metrics())

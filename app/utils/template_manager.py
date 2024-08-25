@@ -94,6 +94,8 @@ class TemplateManager:
             session.close()
 
     def save_template(self, name, details):
+
+        # TODO: replace this with validate_template_name instead 
         if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
             return False
 

@@ -6,6 +6,9 @@ import logging
 import os
 import random
 import re
+import psutil
+import threading
+import time
 
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
@@ -631,7 +634,7 @@ def update_summary():
     filename = f"data/summaries/{timestamp}.jl"
 
     if type(lsum) != str:
-        print(" WARNING -- missing transcript")
+        #print(" WARNING -- missing transcript") # this only matters if we have a CHATGPT KEY set 
         return
 
     # for leach in re.findall(r'({.+?\})',lsum):  # if we don't find this, then we wasted money...
@@ -740,9 +743,6 @@ def schedule_crawlers():
     except Exception as e:
         logging.error(f"Error scheduling initial crawl: {e}")
 
-import psutil
-import threading
-import time
 
 system_metrics = {
     'cpu_usage': 0.0,
