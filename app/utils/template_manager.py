@@ -1,4 +1,4 @@
-# utils/template_manager.py
+# app/utils/template_manager.py
 
 import os
 import re

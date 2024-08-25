@@ -16,7 +16,6 @@ from app.config import backup_config, restore_config
 # needed for the llava compare
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-
 def create_app(watchdog=True, schedule=True):
     """
     Create and configure the Flask application.

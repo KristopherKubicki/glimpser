@@ -5,6 +5,7 @@ import secrets
 import sqlite3
 import getpass
 import argparse
+import sys
 
 import app.config
 from werkzeug.security import generate_password_hash
@@ -53,16 +54,24 @@ def generate_credentials(args):
         if args:
             username = args.username
         else:
-            username = input(f"Enter the username for login [{app.config.get_setting('USER_NAME', 'admin')}]: ") or app.config.get_setting("USER_NAME", "admin")
+            if sys.stdin.isatty():
+                username = input(f"Enter the username for login [{app.config.get_setting('USER_NAME', 'admin')}]: ") or app.config.get_setting("USER_NAME", "admin")
+            else:
+                username = app.config.get_setting("USER_NAME", "admin")
+
         upsert_setting("USER_NAME", username, conn)
 
     if args is None or args.password or args.update_password:
         password = "" # maybe populate with garbage
         if args:
-            print("PASSSS", args.password)
             password = args.password
         else:
-            password = getpass.getpass("Enter the password for login: ")
+            if sys.stdin.isatty():
+                password = getpass.getpass("Enter the password for login: ")
+            else:
+                password = secrets.token_hex(16)
+                # your password is here.  This is the only time youll be able to see it again 
+
         password_hash = generate_password_hash(password)
         upsert_setting("USER_PASSWORD_HASH", password_hash, conn)
 

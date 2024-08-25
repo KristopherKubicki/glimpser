@@ -51,7 +51,6 @@ from app.utils import (
 )
 from app.utils.db import SessionLocal
 
-
 def restart_server():
     print("Restarting server...")
 
@@ -1286,6 +1285,7 @@ def init_routes(app):
             template_manager.save_template(template_name, updated_data)
 
             # TODO: stop the old job.  reschedule the camera
+            # TODO: generate a blank template and insert it (like a movie reel type of thing)
             template_manager.get_template(template_name)
             try:
                 seconds = int(updated_data.get("frequency", 30 * 60))

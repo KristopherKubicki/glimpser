@@ -1,3 +1,5 @@
+# app/utils/image_processing.py
+
 import base64
 import datetime
 import io
@@ -9,7 +11,6 @@ from PIL import Image
 from app.config import CHATGPT_KEY, LLM_CAPTION_PROMPT, LLM_MODEL_VERSION
 
 last_429_error_time = None
-
 
 class ChatGPTImageComparison:
     def __init__(self):

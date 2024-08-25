@@ -15,8 +15,7 @@ BACKUP_PATH = os.getenv("GLIMPSER_BACKUP_PATH", "data/config_backup.json")
 engine = create_engine(f"sqlite:///{DATABASE_PATH}")
 SessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine
-)  # settings only tthread
-
+)  # settings only thread
 
 def get_setting(name, default=None):
     session = SessionLocal()
