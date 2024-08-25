@@ -1,9 +1,9 @@
 <center>
 
-    <picture>
+  
   <source srcset="app/static/img/glimpser.png" media="(prefers-color-scheme: dark)">
   <img src="https://github.com/user-attachments/assets/6113370d-f15d-4195-8ae5-2cb748afbf46" alt="Use dark mode!">
-</picture>
+
 
 </center>
 
