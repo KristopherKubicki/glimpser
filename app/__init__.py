@@ -4,11 +4,11 @@ import logging
 import os
 import threading
 
-from flask import Flask, current_app
+from flask import Flask, current_app, jsonify
 from flask_apscheduler import APScheduler
 
 from app.utils.retention_policy import retention_cleanup
-from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler
+from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler, get_system_metrics
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 from app.utils.video_compressor import compress_and_cleanup
 from app.config import backup_config, restore_config
@@ -128,6 +128,29 @@ def create_app():
                         raise  # Re-raise the exception after logging
                     logging.info("Forcing application restart...")
                     os._exit(1)  # Force restart the application
+
+    # Add a new route for the extended health check
+    @app.route('/health')
+    def health_check():
+        metrics = get_system_metrics()
+
+        # Define thresholds for nominal performance
+        cpu_threshold = 80  # 80% CPU usage
+        memory_threshold = 80  # 80% memory usage
+        thread_threshold = 100  # 100 threads
+
+        # Check if metrics are nominal
+        is_nominal = (
+            metrics['cpu_usage'] < cpu_threshold and
+            metrics['memory_usage'] < memory_threshold and
+            metrics['thread_count'] < thread_threshold
+        )
+
+        return jsonify({
+            'status': 'healthy' if is_nominal else 'degraded',
+            'metrics': metrics,
+            'nominal': is_nominal
+        }), 200 if is_nominal else 503
 
     # Start the watchdog thread
     watchdog_thread = threading.Thread(target=watchdog)
