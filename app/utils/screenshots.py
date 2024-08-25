@@ -1139,14 +1139,15 @@ def capture_screenshot_and_har_light(
         return False
 
     if os.path.exists(output_path):
-        image = Image.open(output_path)
         try:
+            image = Image.open(output_path)
             image = image.convert("RGB")
-        except Exception:
-            print(" .. image exception")
+        except Exception as e:
+            logging.error(f"Failed to open or convert image {output_path}: {str(e)}")
             return False
 
         if is_mostly_blank(image):
+            logging.info(f"Image {output_path} is mostly blank, deleting")
             os.unlink(output_path)
             return False
 
@@ -1156,14 +1157,23 @@ def capture_screenshot_and_har_light(
 
         if dark:
             image = apply_dark_mode(image)
-        image.save(output_path, "PNG")
+        
+        try:
+            image.save(output_path, "PNG")
+            logging.info(f"Saved processed image to {output_path}")
+        except Exception as e:
+            logging.error(f"Failed to save processed image to {output_path}: {str(e)}")
+            return False
 
         if os.path.exists(output_path):
             # TODO: add error mark from lerror
             add_timestamp(output_path, name, invert=invert)
             lsuccess = True
-            os.rename(output_path, output_path.replace(".tmp.png", ".png"))
+            new_path = output_path.replace(".tmp.png", ".png")
+            os.rename(output_path, new_path)
+            logging.info(f"Renamed {output_path} to {new_path}")
         else:
+            logging.warning(f"Expected file {output_path} not found after saving")
             os.unlink(output_path)
             lsuccess = False
 
