@@ -6,6 +6,7 @@ import logging
 import os
 import random
 import re
+import requests
 
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
@@ -145,6 +146,23 @@ def update_camera(name, template, image_file=None):
             SCREENSHOT_DIRECTORY, f"{name}/{name}_{timestamp}.tmp.png"
         )
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    # Implement callback functionality
+    if lsuc and template.get('callback_url'):
+        try:
+            callback_data = {
+                'name': name,
+                'timestamp': timestamp,
+                'success': True,
+                'image_path': output_path if image_file else None
+            }
+            response = requests.post(template['callback_url'], json=callback_data, timeout=10)
+            if response.status_code != 200:
+                logging.error(f"Callback failed for {name}. Status code: {response.status_code}")
+        except requests.Timeout:
+            logging.error(f"Callback request timed out for {name}")
+        except Exception as e:
+            logging.error(f"Error sending callback for {name}: {str(e)}")
         if os.path.exists(output_path):
             image = Image.open(output_path)
             # Convert the image to RGBA mode in case it's a format that doesn't support transparency
