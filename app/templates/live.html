@@ -6,25 +6,27 @@
     </header>
 
     <style>
-        .video-container { 
+        .video-container {
             width: 100%;
             height: 80vh; /* 80% of the viewport height */
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            position: relative; /* Add this line */
             overflow: hidden; /* Prevents scrolling */
         }
         #live-video, #live-image {
-            max-height: 100%;
-            max-width: 100%;
+            position: absolute; /* Add this line */
+            top: 0; /* Add this line */
+            left: 0; /* Add this line */
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Add this line */
         }
     </style>
 
 
 
     <div class="video-container">
-        <img id="live-image" style="width: 100%;">
-        <video id="live-video" style="width: 100%; display: none;" controls autoplay muted></video>
+        <img id="live-image">
+        <video id="live-video" style="display: none;" controls autoplay muted></video>
         <div id="video-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
             <div id="loading-indicator" style="display: none;">Loading...</div>
             <div id="play-pause-indicator" style="display: none; font-size: 48px;">▶</div>
