@@ -50,6 +50,7 @@ from app.utils import (
     screenshots
 )
 from app.utils.db import SessionLocal
+from app.utils.caching import cached
 
 def restart_server():
     print("Restarting server...")
@@ -954,8 +955,11 @@ def init_routes(app):
 
         abort(404)
 
+from app.utils.caching import cached
+
     @app.route("/last_screenshot/<string:template_name>")
     @login_required
+    @cached(ttl=60)  # Cache for 60 seconds
     def serve_screenshot(template_name: TemplateName):
         """
         Serve a specific screenshot by template name.
@@ -1132,6 +1136,7 @@ def init_routes(app):
 
     @app.route("/templates/<string:template_name>")
     @login_required
+    @cached(ttl=60)  # Cache for 60 seconds
     def template_details(template_name: TemplateName):
         template_name = validate_template_name(template_name)
         if template_name is None:
@@ -1153,6 +1158,7 @@ def init_routes(app):
 
     @app.route("/screenshots/<string:name>/<string:filename>")
     @login_required
+    @cached(ttl=300)  # Cache for 5 minutes
     def uploaded_file(name: TemplateName, filename: str):
         template_name = validate_template_name(name)
         if template_name is None:
@@ -1184,6 +1190,7 @@ def init_routes(app):
 
     @app.route("/videos/<string:name>/<string:filename>")
     @login_required
+    @cached(ttl=300)  # Cache for 5 minutes
     def view_video(name: TemplateName, filename: str):
         template_name = validate_template_name(name)
         if template_name is None:
