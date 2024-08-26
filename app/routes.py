@@ -469,8 +469,7 @@ def init_routes(app):
             }), 200
         except Exception as e:
             return jsonify({
-                "status": "unhealthy",
-                "error": str(e)
+                "status": "unhealthy"
             }), 500
 
     @app.route("/login", methods=["GET", "POST"])
