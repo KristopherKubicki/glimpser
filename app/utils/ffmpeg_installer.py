@@ -37,6 +37,10 @@ def install_ffmpeg():
         response = requests.get(url)
         response.raise_for_status()
 
+        # Verify the integrity of the downloaded file
+        if not response.headers.get('Content-Type') == 'application/x-xz':
+            raise ValueError("Downloaded file is not a valid tar.xz archive")
+
         # Save the tarball
         with open("ffmpeg.tar.xz", "wb") as f:
             f.write(response.content)
@@ -61,9 +65,15 @@ def install_ffmpeg():
         shutil.rmtree(extracted_dir)
 
         return True
+    except requests.RequestException as e:
+        print(f"Error downloading ffmpeg: {e}")
+    except tarfile.TarError as e:
+        print(f"Error extracting ffmpeg: {e}")
+    except (shutil.Error, OSError) as e:
+        print(f"Error moving ffmpeg files: {e}")
     except Exception as e:
         print(f"Error installing ffmpeg: {e}")
-        return False
+    return False
 
 
 def ensure_ffmpeg_installed():
