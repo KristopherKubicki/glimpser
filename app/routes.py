@@ -10,6 +10,7 @@ import re
 import sys
 import time
 import tempfile
+import shutil
 from datetime import datetime, timedelta
 from functools import wraps
 from threading import Lock
