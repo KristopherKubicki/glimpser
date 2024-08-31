@@ -1068,6 +1068,36 @@ def apply_dark_mode(img, range_value=30, text_range_value=120):
 
 import shlex
 
+def check_file_descriptor_limit():
+    """
+    Check the current file descriptor usage and limit.
+    If we're close to the limit, try to increase it or clean up resources.
+    """
+    soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
+    current_fds = psutil.Process().num_fds()
+
+    # If we're using more than 80% of our soft limit, try to increase it
+    if current_fds > soft_limit * 0.8:
+        try:
+            # Try to increase the soft limit up to the hard limit
+            new_soft_limit = min(soft_limit * 2, hard_limit)
+            resource.setrlimit(resource.RLIMIT_NOFILE, (new_soft_limit, hard_limit))
+            logging.info(f"Increased file descriptor soft limit from {soft_limit} to {new_soft_limit}")
+        except ValueError as e:
+            logging.warning(f"Failed to increase file descriptor limit: {e}")
+
+        # If we're still close to the limit, try to clean up resources
+        if current_fds > new_soft_limit * 0.8:
+            # Close any unnecessary file descriptors
+            # This is a placeholder - you might need to implement specific cleanup logic
+            logging.warning("File descriptor usage is high. Attempting to clean up resources.")
+            # Example: close all file descriptors above a certain number
+            for fd in range(3, current_fds):  # Start from 3 to avoid closing stdin, stdout, stderr
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass  # Ignore errors for descriptors that can't be closed
+
 def capture_screenshot_and_har_light(
     url, output_path, timeout=30, name="unknown", invert=False, proxy=None, dark=True
 ):
@@ -1077,6 +1107,9 @@ def capture_screenshot_and_har_light(
     :param url: URL to capture.
     :param output_path: Name of the screenshot.
     """
+    # Check and handle file descriptor limits
+    check_file_descriptor_limit()
+
     # Check if wkhtmltoimage is available
     if shutil.which("wkhtmltoimage") is None:
         print("wkhtmltoimage is not installed or not in the system path.")
@@ -1115,51 +1148,49 @@ def capture_screenshot_and_har_light(
 
     # Execute the command
     try:
-        result = subprocess.run(
-            command, timeout=timeout, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False
-        )
-        result.stdout.decode("utf-8")
-        result.stderr.decode("utf-8")
-        # consider handling failures
-        if result.returncode != 0:
-            return False
+        with subprocess.Popen(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False
+        ) as process:
+            try:
+                stdout, stderr = process.communicate(timeout=timeout)
+                if process.returncode != 0:
+                    logging.error(f"wkhtmltoimage failed: {stderr.decode('utf-8')}")
+                    return False
+            except subprocess.TimeoutExpired:
+                process.kill()
+                logging.error("wkhtmltoimage process timed out")
+                return False
     except Exception as e:
-        if "timed out" not in str(e):
-            print(" subprocess issue...", e)
+        logging.error(f"Subprocess error: {e}")
         return False
 
     if os.path.exists(output_path):
-        image = Image.open(output_path)
         try:
-            image = image.convert("RGB")
-        except Exception:
-            print(" .. image exception")
+            with Image.open(output_path) as image:
+                image = image.convert("RGB")
+
+                if is_mostly_blank(image):
+                    os.unlink(output_path)
+                    return False
+
+                image = remove_background(image)
+
+                if dark:
+                    image = apply_dark_mode(image)
+
+                image.save(output_path, "PNG")
+
+            if os.path.exists(output_path):
+                # TODO: add error mark from lerror
+                add_timestamp(output_path, name, invert=invert)
+                lsuccess = True
+                os.rename(output_path, output_path.replace(".tmp.png", ".png"))
+            else:
+                os.unlink(output_path)
+                lsuccess = False
+        except Exception as e:
+            logging.error(f"Image processing error: {e}")
             return False
-
-        if is_mostly_blank(image):
-            os.unlink(output_path)
-            return False
-
-        # Convert the image to RGBA mode in case it's a format that doesn't support transparency
-        image = image.convert("RGB")
-        image = remove_background(image)
-
-        if dark:
-            image = apply_dark_mode(image)
-        image.save(output_path, "PNG")
-
-        if os.path.exists(output_path):
-            # TODO: add error mark from lerror
-            add_timestamp(output_path, name, invert=invert)
-            lsuccess = True
-            os.rename(output_path, output_path.replace(".tmp.png", ".png"))
-        else:
-            os.unlink(output_path)
-            lsuccess = False
-
-    # Here you would also capture HAR data, but let's focus on the screenshot for simplicity
-    # Mock HAR Data (for demonstration)
-    # Normally, you would save or process HAR data here
 
     logging.info(
         f"Successfully captured light screenshot for {url} at {output_path} {round(time.time() - ltime,3)}"
