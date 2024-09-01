@@ -10,7 +10,9 @@ import re
 import sys
 import time
 import tempfile
+import shutil
 import uuid
+
 from datetime import datetime, timedelta
 from functools import wraps
 from threading import Lock, Thread
@@ -490,6 +492,31 @@ def init_routes(app):
     # Add a new route for the extended health check
     @app.route('/health')
     def health_check():
+
+        try:
+            # Check database connection
+            session = SessionLocal()
+            session.execute(text("SELECT 1"))
+            session.close()
+
+            # Check if scheduler is running
+            scheduler_status = "running" if scheduling.scheduler.running else "stopped"
+
+            # Check disk space
+            _, _, free = shutil.disk_usage("/")
+            free_gb = free // (2**30)
+
+            return jsonify({
+                "status": "healthy",
+                "database": "connected",
+                "scheduler": scheduler_status,
+                "free_disk_space_gb": free_gb
+            }), 200
+        except Exception as e:
+            return jsonify({
+                "status": "unhealthy"
+            }), 500
+
         metrics = scheduling.get_system_metrics()
 
         # Define thresholds for nominal performance
@@ -566,6 +593,7 @@ def init_routes(app):
             ]
         }
         return jsonify(api_info), 200
+
 
     @app.route("/login", methods=["GET", "POST"])
     def login():

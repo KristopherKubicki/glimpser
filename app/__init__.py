@@ -3,8 +3,12 @@
 import logging
 import os
 import threading
+import signal
+import sys
+import shutil
 import time
 import psutil
+
 
 from flask import Flask, current_app, jsonify
 from flask_apscheduler import APScheduler
@@ -156,7 +160,18 @@ def create_app(watchdog=True, schedule=True):
     from .utils.scheduling import start_metrics_collection
     start_metrics_collection()
 
+    # Set up signal handlers for graceful shutdown
+    def graceful_shutdown(signum, frame):
+        logging.info("Received shutdown signal. Shutting down gracefully...")
+        scheduler.shutdown()
+        # Add any other cleanup tasks here (e.g., closing database connections)
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, graceful_shutdown)
+    signal.signal(signal.SIGINT, graceful_shutdown)
+
     # Send an email alert when the application starts
     email_alert("Application Start", "The Glimpser application has been started successfully.")
+
 
     return app
