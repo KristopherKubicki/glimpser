@@ -541,14 +541,16 @@ def init_routes(app):
         cpu_threshold = 80  # 80% CPU usage
         memory_threshold = 80  # 80% memory usage
         thread_threshold = 100  # 100 threads # should be tied to the thread count in the config, right? 
-        open_files = 1024 # thats a lot
+        open_file_threshold = 1024 # thats a lot
+        disk_threshold = 95 # almost full 
 
         # Check if metrics are nominal
         is_nominal = (
             metrics['cpu_usage'] < cpu_threshold and
             metrics['memory_usage'] < memory_threshold and
             metrics['thread_count'] < thread_threshold and
-            metrics['open_files'] < thread_threshold
+            metrics['open_files'] < open_file_threshold and
+            metrics['disk_usage'] < disk_threshold
         )
 
         try:
@@ -579,16 +581,6 @@ def init_routes(app):
             is_nominal = False
             pass # its for the healthcheck...
         if scheduler_status != 'running':
-            is_nominal = False
-
-        try:
-            # Check disk space
-            _, _, free = shutil.disk_usage("/")
-            free_gb = free // (2**30)
-        except Exception as e:
-            is_nominal = False
-            pass # its for the healthcheck...
-        if free_gb < 8: # maybe read from config...  # WARNING hardcoded bug
             is_nominal = False
 
         #

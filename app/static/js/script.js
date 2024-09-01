@@ -331,10 +331,7 @@ function loadTemplates() {
                         video.currentTime = Math.max(0, video.duration - 10);
                     });
 
-                    video.addEventListener('error', (e) => {
-                        console.error('Error loading video:', e);
-                        // You might want to set a placeholder image or show an error message here
-                    });
+      
 
                     let playTimeout;
 
@@ -378,26 +375,6 @@ function loadTemplates() {
                         }, 2000); // Pause for 1 second
                     });
                 }
-            });
-
-            const playAllButton = document.getElementById('play-all');
-            const stopAllButton = document.getElementById('stop-all');
-
-            // Play all media elements
-            playAllButton.addEventListener('click', function () {
-                const mediaElements = templateList.querySelectorAll('video, audio');
-                mediaElements.forEach(element => {
-                    element.play();
-                });
-            });
-
-            // Stop all media elements
-            stopAllButton.addEventListener('click', function () {
-                const mediaElements = templateList.querySelectorAll('video, audio');
-                mediaElements.forEach(element => {
-                    element.pause();
-                    element.currentTime = 0; // Reset to start
-                });
             });
 
             window.addEventListener('resize', updateGridLayout);
