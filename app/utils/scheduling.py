@@ -6,6 +6,9 @@ import logging
 import os
 import random
 import re
+import psutil
+import threading
+import time
 
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
@@ -631,7 +634,7 @@ def update_summary():
     filename = f"data/summaries/{timestamp}.jl"
 
     if type(lsum) != str:
-        print(" WARNING -- missing transcript")
+        #print(" WARNING -- missing transcript") # this only matters if we have a CHATGPT KEY set 
         return
 
     # for leach in re.findall(r'({.+?\})',lsum):  # if we don't find this, then we wasted money...
@@ -740,9 +743,6 @@ def schedule_crawlers():
     except Exception as e:
         logging.error(f"Error scheduling initial crawl: {e}")
 
-import psutil
-import threading
-import time
 
 system_metrics = {
     'cpu_usage': 0.0,
@@ -766,9 +766,13 @@ def start_metrics_collection():
 def get_system_metrics():
     global system_metrics
     uptime = time.time() - system_metrics['start_time']
+    disk_usage = psutil.disk_usage('/').percent
+    open_files = len(psutil.Process().open_files())
     return {
-        'cpu_usage': system_metrics['cpu_usage'],
-        'memory_usage': system_metrics['memory_usage'],
+        'cpu_usage': round(system_metrics['cpu_usage'], 1),
+        'memory_usage': round(system_metrics['memory_usage'], 1),
+        'disk_usage': round(disk_usage, 1),
+        'open_files': open_files,
         'thread_count': system_metrics['thread_count'],
         'uptime': f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s"
     }

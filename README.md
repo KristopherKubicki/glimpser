@@ -1,5 +1,10 @@
 <center>
-<img src='app/static/img/glimpser.png'>
+
+  
+  <source srcset="app/static/img/glimpser.png" media="(prefers-color-scheme: dark)">
+  <img src="https://github.com/user-attachments/assets/6113370d-f15d-4195-8ae5-2cb748afbf46" alt="Use dark mode!">
+
+
 </center>
 
 # Glimpser
@@ -7,7 +12,7 @@
 ## Introduction
 Glimpser is a straightforward yet powerful real-time monitoring application designed to capture, analyze, and summarize live data from various sources such as cameras, dashboards, and video streams. Utilizing advanced image processing techniques and AI models, Glimpser provides insightful summaries and alerts. It’s highly configurable, allowing users to tailor it to their specific monitoring needs through an easy-to-use interface.
 
-![Peek2024-08-0721-25-ezgif com-optimize](https://github.com/user-attachments/assets/44ddcbd5-31f1-4ff9-954a-954a85479dc0)
+![Glimpser August 2024](https://github.com/user-attachments/assets/44ddcbd5-31f1-4ff9-954a-954a85479dc0)
 
 ## Features
 - **Real-time Monitoring**: Continuously captures data from multiple sources. Whether it's a traffic camera or a weather dashboard, Glimpser ensures you’re always up-to-date with the latest information.
@@ -34,23 +39,24 @@ Glimpser is a straightforward yet powerful real-time monitoring application desi
 - Python 3.8 or higher
 
 ### Steps
-1. **Clone the Repository**
-    ```sh
-    git clone https://github.com/yourusername/glimpser.git
-    cd glimpser
-    ```
+1. **Install the Package**
+   ```sh
+   pip install glimpser
+   ```
 
-2. **Install Dependencies**
-    ```sh
-    pip install -r requirements.txt
-    ```
+   Or, if you want to install from source:
+   ```sh
+   git clone https://github.com/yourusername/glimpser.git
+   cd glimpser
+   pip install .
+   ```
 
-3. **Run the Application**
-    ```sh
-    python3 main.py
-    ```
+2. **Run the Application**
+   ```sh
+   glimpser
+   ```
 
-You will be prompted to create a secret key to initialize the local sqlite database.  Follow the rest of the guided setup and then direct your browser to http://127.0.0.1:8082 to finish the rest of the setup. 
+   You will be prompted to create a secret key to initialize the local sqlite database. Follow the rest of the guided setup and then direct your browser to http://127.0.0.1:8082 to finish the rest of the setup.
 
 ## Usage
 
@@ -75,8 +81,37 @@ Using advanced AI models, Glimpser generates concise and informative captions fo
 ### Auto-summarization
 Glimpser can summarize data from multiple sources into a coherent and concise format. The summaries highlight the most important information, making it easier for users to stay informed.
 
+## Development
+
+To set up the project for development:
+
+1. Clone the repository:
+   ```sh
+   git clone https://github.com/yourusername/glimpser.git
+   cd glimpser
+   ```
+
+2. Create a virtual environment and activate it:
+   ```sh
+   python -m venv venv
+   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+   ```
+
+3. Install the package in editable mode with development dependencies:
+   ```sh
+   pip install -e ".[dev]"
+   ```
+
+4. Run tests:
+   ```sh
+   pytest
+   ```
+
 ## Contributing
-Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request. 
+Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request.
+
+## License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ### Steps to Contribute
 1. Fork the repository.

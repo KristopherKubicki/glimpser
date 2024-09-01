@@ -22,6 +22,11 @@ class TestEmptyDataStructures(unittest.TestCase):
         self.assertEqual(len(empty_string), 0)
         self.assertEqual(empty_string, "")
 
+    def test_empty_set(self):
+        empty_set = set()
+        self.assertEqual(len(empty_set), 0)
+        self.assertEqual(empty_set, set())
+
 class TestSetOperations(unittest.TestCase):
 
     def test_set_union(self):
@@ -41,6 +46,12 @@ class TestSetOperations(unittest.TestCase):
         set_b = {3, 4, 5}
         result = set_a.difference(set_b)
         self.assertEqual(result, {1, 2})
+
+    def test_set_symmetric_difference(self):
+        set_a = {1, 2, 3}
+        set_b = {3, 4, 5}
+        result = set_a.symmetric_difference(set_b)
+        self.assertEqual(result, {1, 2, 4, 5})
 
 class TestTupleOperations(unittest.TestCase):
 

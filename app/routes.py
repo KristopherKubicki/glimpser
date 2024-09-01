@@ -10,9 +10,10 @@ import re
 import sys
 import time
 import tempfile
+import uuid
 from datetime import datetime, timedelta
 from functools import wraps
-from threading import Lock
+from threading import Lock, Thread
 import subprocess
 
 from flask import (
@@ -27,7 +28,9 @@ from flask import (
     send_from_directory,
     session,
     url_for,
+    stream_with_context,
 )
+
 from flask_login import logout_user
 from PIL import Image
 from sqlalchemy import text
@@ -41,6 +44,7 @@ from app.config import (
     USER_NAME,
     USER_PASSWORD_HASH,
     VIDEO_DIRECTORY,
+    VERSION
 )
 from app.utils import (
     scheduling,
@@ -52,8 +56,18 @@ from app.utils.db import SessionLocal
 
 def restart_server():
     print("Restarting server...")
-    os.execv(sys.executable, [sys.executable] + sys.argv)
 
+    def delayed_restart():
+        time.sleep(1)  # 1-second delay
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+
+    # Start the delayed restart in a separate thread
+    restart_thread = Thread(target=delayed_restart)
+    restart_thread.start()
+
+#def restart_server():
+#    print("Restarting server...")
+#    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 # todo: add this to utils so it is not duplicated in utils/video_archiver.py
 def validate_template_name(template_name: str):
@@ -143,23 +157,32 @@ def login_required(f):
             or request.form.get("api_key")
         )
         timed_key = request.args.get("timed_key")
+
+        # Check for valid timed API key
         if timed_key:
-            if is_hash_valid(timed_key) is False:
+            if not is_hash_valid(timed_key):
                 return jsonify({"error": "Invalid timed key"}), 401
             return f(*args, **kwargs)
+
+        # Check for valid static API key
         elif api_key == API_KEY:
-            # Bypass session authentication if API key is valid
             return f(*args, **kwargs)
+
+        # Check for valid session
         elif "logged_in" in session:
-            # Proceed with session-based authentication
+            # Check for session expiry
+            expiry = session.get("expiry")
+            if expiry and datetime.now() > datetime.strptime(expiry, '%Y-%m-%d %H:%M:%S'):
+                session.pop("logged_in", None)  # Clear session
+                flash("Session expired. Please log in again.")
+                return redirect(url_for("login", next=request.url))
             return f(*args, **kwargs)
+
+        # Handle missing or invalid authentication
         else:
-            # Return an HTTP status error if API key is invalid or missing and not logged in
             if api_key:
-                # API key was provided but is invalid
                 return jsonify({"error": "Invalid API key"}), 401
             else:
-                # No API key provided, and not logged in
                 return redirect(url_for("login", next=request.url))
 
     return decorated_function
@@ -197,9 +220,9 @@ def get_all_settings():
             {"name": name, "value": value} for name, value in settings.items()
         ]
 
-        # TODO: blocklist some settings
+        # TODO: blocklist some settings - set this somewhere 
         lsettings_list = []
-        blocks = ["SECRET_KEY", "USER_PASSWORD_HASH", "DATABASE_URL"]
+        blocks = ["SECRET_KEY", "USER_PASSWORD_HASH", "DATABASE_URL","VERSION"] 
         for sl in settings_list:
             if re.findall(r"^[A-Z_]+?$", sl["name"]) and sl["name"] not in blocks:
                 lsettings_list.append({"name": sl["name"], "value": sl["value"]})
@@ -219,27 +242,34 @@ def update_setting(name: str, value: str) -> bool:
         return False
 
     session = SessionLocal()
+    delta = False
     try:
         existing_setting = session.execute(
                 text("SELECT value FROM settings WHERE name = :name"),
                 {"name": name}
         ).fetchone()
         if existing_setting:
-            session.execute(
-                text("UPDATE settings SET value = :value WHERE name = :name"),
-                {"name": name, "value": value}
-            )
+            if existing_setting[0] != value:
+                session.execute(
+                    text("UPDATE settings SET value = :value WHERE name = :name"),
+                    {"name": name, "value": value}
+                )
+                delta = True
+                print("UPDATE", name, value, existing_setting)
         else:
             session.execute(
                 text("INSERT INTO settings (name, value) VALUES (:name, :value)"),
                 {"name": name, "value": value}
             )
+            delta = True
         session.commit()
     finally:
         session.close()
 
-    # Trigger server restart
-    restart_server()
+    if delta is True:
+        # Trigger server restart
+        # is there a way to do this on a delay? 
+        restart_server()
 
     return True
 
@@ -265,6 +295,7 @@ login_attempts = {}
 last_shot = None
 last_time = None
 active_groups = []
+rtsp_sessions = {}
 
 
 def get_active_groups():
@@ -309,7 +340,7 @@ def resize_and_pad(img, size, color=(0, 0, 0)):
 lock = Lock()
 
 
-def generate(group=None, filename="latest_camera.png"):
+def generate(group=None, filename="latest_camera.png", rtsp=False):
     # pretty hacky but it works ok
     global last_time, last_shot
     boundary = b"frame"
@@ -424,8 +455,14 @@ def generate(group=None, filename="latest_camera.png"):
                             pass
 
         if frame:
-            yield b"--" + boundary + b"\r\n"
-            yield b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n\r\n"
+            if rtsp:
+                # For RTSP, we need to add RTP headers and packetize the frame
+                # This is a simplified version and may need to be adjusted based on your exact requirements
+                rtp_header = b"\x80\x60\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00"
+                yield rtp_header + frame
+            else:
+                yield b"--" + boundary + b"\r\n"
+                yield b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n\r\n"
         if time.time() - ltime > 1:
             continue
         time.sleep(1 - (time.time() - ltime))
@@ -445,10 +482,86 @@ def init_routes(app):
     global login_attempts
     # get_active_groups()
 
+    @app.context_processor
+    def inject_footer_data():
+        return dict(
+            VERSION=VERSION
+        )
+
+    # Add a new route for the extended health check
     @app.route('/health')
     def health_check():
-        # should be healthy
-        return jsonify({"status": "healthy"}), 200
+        metrics = scheduling.get_system_metrics()
+
+        # Define thresholds for nominal performance
+        cpu_threshold = 80  # 80% CPU usage
+        memory_threshold = 80  # 80% memory usage
+        thread_threshold = 100  # 100 threads
+
+        # Check if metrics are nominal
+        is_nominal = (
+            metrics['cpu_usage'] < cpu_threshold and
+            metrics['memory_usage'] < memory_threshold and
+            metrics['thread_count'] < thread_threshold
+        )
+
+        return jsonify({
+            'status': 'healthy' if is_nominal else 'degraded',
+            'metrics': metrics,
+            'nominal': is_nominal
+        }), 200 if is_nominal else 503
+
+
+    @app.route('/api/discover')
+    def api_discover():
+        api_info = {
+            "version": "1.0",
+            "endpoints": [
+                {
+                    "path": "/health",
+                    "method": "GET",
+                    "description": "Check the health status of the API",
+                    "authentication_required": False
+                },
+                {
+                    "path": "/api/discover",
+                    "method": "GET",
+                    "description": "Get information about available API endpoints",
+                    "authentication_required": False
+                },
+                {
+                    "path": "/login",
+                    "method": "GET, POST",
+                    "description": "User login endpoint",
+                    "authentication_required": False
+                },
+                {
+                    "path": "/logout",
+                    "method": "GET",
+                    "description": "User logout endpoint",
+                    "authentication_required": True
+                },
+                {
+                    "path": "/",
+                    "method": "GET",
+                    "description": "Main index page",
+                    "authentication_required": True
+                },
+                {
+                    "path": "/templates",
+                    "method": "GET, POST, DELETE",
+                    "description": "Manage templates",
+                    "authentication_required": True
+                },
+                {
+                    "path": "/settings",
+                    "method": "GET, POST",
+                    "description": "Manage application settings",
+                    "authentication_required": True
+                }
+            ]
+        }
+        return jsonify(api_info), 200
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
@@ -495,6 +608,11 @@ def init_routes(app):
 
                 flash("Invalid username or password")
         return render_template("login.html")
+
+    @app.route("/help")
+    @login_required
+    def help_page():
+        return render_template("help.html")
 
     @app.route("/logout")
     @login_required
@@ -650,52 +768,65 @@ def init_routes(app):
             return send_file(most_recent_file)
         return send_file(last_file)  # better than nothing
 
-    @app.route(
-        "/test.rtsp", methods=["OPTIONS", "DESCRIBE", "SETUP", "PLAY", "TEARDOWN"]
-    )
-    def handle_rtsp(camera_hash: str):
+    @app.route("/test.rtsp", methods=["OPTIONS", "DESCRIBE", "SETUP", "PLAY", "TEARDOWN"])
+    def handle_rtsp():
+        global rtsp_sessions
 
-        # TODO: generate_session_id() does not exist!
-        #session_id = request.headers.get("Session", generate_session_id())
-        session_id = request.headers.get("Session", '')
+        session_id = request.headers.get("Session", str(uuid.uuid4()))
+        cseq = request.headers.get("CSeq", "0")
+
         if request.method == "OPTIONS":
             return Response(
                 "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY",
-                headers={"CSeq": request.headers.get("CSeq", "0")},
+                headers={"CSeq": cseq},
             )
 
         elif request.method == "DESCRIBE":
-            # Return a mock SDP description
-            sdp = "v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\ns=No Name\r\nt=0 0\r\na=tool:libavformat 58.20.100\r\nm=video 0 RTP/AVP 96\r\na=rtpmap:96 H264/90000\r\n"
+            sdp = (
+                "v=0\r\n"
+                "o=- 0 0 IN IP4 127.0.0.1\r\n"
+                "s=Glimpser RTSP Stream\r\n"
+                "t=0 0\r\n"
+                "m=video 0 RTP/AVP 96\r\n"
+                "a=rtpmap:96 H264/90000\r\n"
+                "a=control:streamid=0\r\n"
+            )
             return Response(
                 sdp,
                 mimetype="application/sdp",
-                headers={"CSeq": request.headers.get("CSeq", "0")},
+                headers={"CSeq": cseq, "Content-Base": request.url},
             )
 
         elif request.method == "SETUP":
+            if session_id not in rtsp_sessions:
+                rtsp_sessions[session_id] = {"state": "READY"}
+            transport = request.headers.get("Transport", "")
             return Response(
                 headers={
-                    "CSeq": request.headers.get("CSeq", "0"),
+                    "CSeq": cseq,
                     "Session": session_id,
-                    "Transport": request.headers.get("Transport", ""),
+                    "Transport": transport,
                 }
             )
 
         elif request.method == "PLAY":
-            # Start streaming video (not implemented)
+            if session_id not in rtsp_sessions:
+                abort(454)  # Session Not Found
+            rtsp_sessions[session_id]["state"] = "PLAYING"
             return Response(
                 headers={
-                    "CSeq": request.headers.get("CSeq", "0"),
+                    "CSeq": cseq,
                     "Session": session_id,
+                    "RTP-Info": "url=rtsp://example.com/test.rtsp/streamid=0;seq=0;rtptime=0",
                 }
             )
 
         elif request.method == "TEARDOWN":
-            # Stop streaming video (not implemented)
+            if session_id in rtsp_sessions:
+                del rtsp_sessions[session_id]
             return Response(
                 headers={
-                    "CSeq": request.headers.get("CSeq", "0"),
+                    "CSeq": cseq,
                     "Session": session_id,
                 }
             )
@@ -734,6 +865,16 @@ def init_routes(app):
         return Response(
             generate(group=group, filename="last_motion_caption.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
+        )
+
+    @app.route("/rtsp_stream")
+    def rtsp_stream():
+        session_id = request.args.get("session")
+        if session_id not in rtsp_sessions or rtsp_sessions[session_id]["state"] != "PLAYING":
+            abort(400, "Invalid session or session not in PLAYING state")
+        return Response(
+            generate(rtsp=True),
+            mimetype="application/x-rtp"
         )
 
     @app.route("/stream.mp4")
@@ -776,29 +917,28 @@ def init_routes(app):
         if not os.path.exists(path):
             abort(404)
 
-        # Fetch all camera names or identifiers you have
-
         # Generate playlist content
-        str(datetime.utcnow())[:18].replace(" ", "").replace("-", "")
         playlist_content = "#EXTM3U\n"
-        # playlist_content += '#EXT-X-VERSION:3\n'
-        # playlist_content += '#EXT-X-TARGETDURATION:10\n'  # Assuming each segment is up to 10 seconds
-        # playlist_content += f'#EXT-X-MEDIA-SEQUENCE:{media_sequence}\n'  # Increment this with each update
+        playlist_content += "#EXT-X-VERSION:3\n"
+        playlist_content += "#EXT-X-TARGETDURATION:10\n"  # Assuming each segment is up to 10 seconds
+        playlist_content += "#EXT-X-MEDIA-SEQUENCE:0\n"
 
         templates = template_manager.get_templates()
         # Sort templates by 'last_video_time' descending
-        sorted(
+        sorted_templates = sorted(
             templates.items(),
             key=lambda x: (x[1].get("last_video_time", 0) or 0),
             reverse=True,
         )
 
-        for camera_id, template in templates.items():
+        for camera_id, template in sorted_templates:
             camera_name = template.get("name")
             # Assuming the MP4 file is the segment
             lkey = generate_timed_hash()
             video_path = f"{request.url_root}last_video/{camera_name}?timed_key={lkey}"
-            playlist_content += f"#EXTINF:-1,{camera_name}\n{video_path}\n"
+            playlist_content += f"#EXTINF:10.0,{camera_name}\n{video_path}\n"
+
+        playlist_content += "#EXT-X-ENDLIST\n"
 
         return Response(playlist_content, mimetype="application/x-mpegURL")
 
@@ -858,6 +998,35 @@ def init_routes(app):
             "live.html", template_details=template_manager.get_templates()
         )
 
+    @app.route("/latest_frame/<string:template_name>")
+    @login_required
+    def latest_frame(template_name: TemplateName):
+        """
+        Serve the latest frame for a specific camera.
+        """
+        template_name = validate_template_name(template_name)
+        if template_name is None:
+            abort(404)
+
+        path = os.path.join(
+            os.path.dirname(os.path.join(__file__)),
+            "..",
+            SCREENSHOT_DIRECTORY,
+            template_name,
+        )
+        if not os.path.exists(path):
+            abort(404)
+
+        latest_file = max(
+            (f for f in os.listdir(path) if f.endswith('.png')),
+            key=lambda f: os.path.getmtime(os.path.join(path, f))
+        )
+
+        if latest_file:
+            return send_file(os.path.join(path, latest_file), mimetype='image/png')
+
+        abort(404)
+
     # TODO: extend this for groups
     @app.route("/last_teaser")
     @login_required
@@ -881,14 +1050,13 @@ def init_routes(app):
     @login_required
     def serve_video(template_name: TemplateName):
         """
-        Serve a specific screenshot by template name.
+        Serve a specific video by template name.
         """
-
         template_name = validate_template_name(template_name)
         if template_name is None:
             abort(404)
 
-        # Placeholder logic to serve the screenshot
+        # Placeholder logic to serve the video
         path = os.path.join(
             os.path.dirname(os.path.join(__file__)),
             "..",
@@ -1159,15 +1327,26 @@ def init_routes(app):
                 name_to_delete = request.form.get("name_to_delete")
                 if name_to_delete:
                     delete_setting(name_to_delete)
+            elif action == "update_email":
+                email_settings = [
+                    "EMAIL_ENABLED", "EMAIL_SENDER", "EMAIL_RECIPIENTS",
+                    "EMAIL_SMTP_SERVER", "EMAIL_SMTP_PORT", "EMAIL_USE_TLS",
+                    "EMAIL_USERNAME", "EMAIL_PASSWORD"
+                ]
+                for setting in email_settings:
+                    value = request.form.get(setting)
+                    if value is not None:
+                        update_setting(setting, value)
             else:
                 for name, value in request.form.items():
-                    if name not in ["action", "new_name", "new_value", "name_to_delete"]:
+                    if name not in ["action", "new_name", "new_value", "name_to_delete"] + email_settings:
                         update_setting(name, value)
             return redirect(url_for("settings"))
 
         settings = get_all_settings()
         return render_template("settings.html", settings=settings)
 
+    # TODO: this has been refactored to health instead.. please update
     @app.route('/system_metrics')
     def system_metrics():
         return jsonify(scheduling.get_system_metrics())
@@ -1233,6 +1412,7 @@ def init_routes(app):
             template_manager.save_template(template_name, updated_data)
 
             # TODO: stop the old job.  reschedule the camera
+            # TODO: generate a blank template and insert it (like a movie reel type of thing)
             template_manager.get_template(template_name)
             try:
                 seconds = int(updated_data.get("frequency", 30 * 60))
