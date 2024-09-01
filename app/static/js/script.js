@@ -137,6 +137,13 @@ function timeAgo(utcDateString) {
     return 'just now';
 }
 
+function formatExactTime(utcDateString) {
+    const date = new Date(utcDateString);
+    const utcString = date.toUTCString();
+    const localString = date.toString();
+    return `UTC: ${utcString}\nLocal: ${localString}`;
+}
+
 function updateVideoSources() {
     const videos = document.querySelectorAll('.templateDiv video');
     videos.forEach(video => {
@@ -287,7 +294,7 @@ function loadTemplates() {
                                     <source src="/last_video/${name}" type='video/mp4'>
                                     Your browser does not support the video tag.
                                 </video>
-                                <div class="timestamp">${humanizedTimestamp}</div> <!-- Humanized timestamp in the bottom right corner -->
+                                <div class="timestamp" title="${formatExactTime(lastScreenshotTime)}">${humanizedTimestamp}</div> <!-- Humanized timestamp in the bottom right corner with tooltip -->
                                 <div class="play-icon">&#9658;</div> <!-- Unicode play icon -->
                             </div>
                         </a>
@@ -361,25 +368,24 @@ function loadTemplates() {
                 }
             });
 
-            const toggleAllButton = document.getElementById('toggle-all');
-            let isPlaying = false;
+            const playAllButton = document.getElementById('play-all');
+            const stopAllButton = document.getElementById('stop-all');
 
-            // Toggle all media elements
-            toggleAllButton.addEventListener('click', function () {
+            // Play all media elements
+            playAllButton.addEventListener('click', function () {
                 const mediaElements = templateList.querySelectorAll('video, audio');
-                if (isPlaying) {
-                    mediaElements.forEach(element => {
-                        element.pause();
-                        element.currentTime = 0; // Reset to start
-                    });
-                    toggleAllButton.textContent = 'Play All';
-                } else {
-                    mediaElements.forEach(element => {
-                        element.play();
-                    });
-                    toggleAllButton.textContent = 'Stop All';
-                }
-                isPlaying = !isPlaying;
+                mediaElements.forEach(element => {
+                    element.play();
+                });
+            });
+
+            // Stop all media elements
+            stopAllButton.addEventListener('click', function () {
+                const mediaElements = templateList.querySelectorAll('video, audio');
+                mediaElements.forEach(element => {
+                    element.pause();
+                    element.currentTime = 0; // Reset to start
+                });
             });
 
             window.addEventListener('resize', updateGridLayout);
