@@ -138,4 +138,17 @@ def create_app(watchdog=True, schedule=True):
     from .utils.scheduling import start_metrics_collection
     start_metrics_collection()
 
+    # Global exception handler
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        # Log the exception
+        app.logger.error(f"Unhandled Exception: {str(e)}", exc_info=True)
+
+        # You can also integrate with an error tracking service here
+        # For example, if using Sentry:
+        # sentry_sdk.capture_exception(e)
+
+        # Return a generic error response
+        return jsonify({"error": "An unexpected error occurred"}), 500
+
     return app
