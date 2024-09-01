@@ -19,6 +19,12 @@
 
 				    <td>
 				    <div id="health-status" style="width: 15px; height: 15px; border-radius: 50%; background-color: grey;"></div>
+				    </td>
+				    <td>
+				    <div id="performance-indicator" class="performance-indicator" title="System Performance">
+				        <span id="cpu-usage">CPU: --</span>
+				    </div>
+				    </td>
 	<script>
 		function checkHealth() {
     fetch('/health')
@@ -37,10 +43,25 @@
         });
 }
 
+function updatePerformanceIndicator() {
+    fetch('/system_metrics')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('cpu-usage').textContent = `CPU: ${data.cpu_usage}%`;
+            document.getElementById('performance-indicator').title = `CPU: ${data.cpu_usage}%\nMemory: ${data.memory_usage}%\nDisk: ${data.disk_usage}%\nOpen Files: ${data.open_files}`;
+        })
+        .catch(error => {
+            console.error('Error fetching system metrics:', error);
+        });
+}
+
 // Ping the health check endpoint every 5 seconds
 setInterval(checkHealth, 5000);
+// Update performance indicator every 5 seconds
+setInterval(updatePerformanceIndicator, 5000);
 
-    checkHealth();
+checkHealth();
+updatePerformanceIndicator();
 
 	</script>
 				    </td>
@@ -50,7 +71,7 @@ setInterval(checkHealth, 5000);
 <td>
         <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger">Logout</a>
 </td>
-    {% endif %} 
+    {% endif %}
 
 				    <td>
 					    <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'>&#9000;</a>
