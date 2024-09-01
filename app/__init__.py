@@ -3,6 +3,8 @@
 import logging
 import os
 import threading
+import time
+import psutil
 
 from flask import Flask, current_app, jsonify
 from flask_apscheduler import APScheduler
@@ -102,32 +104,47 @@ def create_app(watchdog=True, schedule=True):
     # Set up a watchdog thread to monitor the application
     def watchdog():
         """
-        Watchdog function to monitor the application's health.
+        Watchdog function to monitor the application's health and file handle usage.
 
         This function runs in a separate thread and periodically checks if the
-        application is responding correctly. If it detects an issue, it attempts
-        to restore the previous configuration and force restarts the application.
+        application is responding correctly and if the number of open file handles
+        is within acceptable limits. If it detects an issue, it attempts to
+        restore the previous configuration and force restarts the application.
         """
-        import time
+        last_restart_time = 0
+        restart_cooldown = 900  # 15 minutes in seconds
+        max_file_handles = 1000  # Adjust this value based on your system's limits
+
         while True:
             time.sleep(10)  # Check every 10 seconds
             if not app.debug:
                 try:
-                    # Try to access a simple route to check app responsiveness
+                    # Check app responsiveness
                     with app.test_client() as client:
                         response = client.get('/health')
                         if response.status_code != 200:
                             raise Exception("Application is not responding correctly")
+
+                    # Check file handle usage
+                    current_process = psutil.Process()
+                    open_files = current_process.open_files()
+                    if len(open_files) > max_file_handles:
+                        raise Exception(f"Too many open file handles: {len(open_files)}")
+
                 except Exception as e:
                     logging.error("Application error detected: %s", e)
-                    logging.info("Attempting to restore previous configuration...")
-                    try:
-                        restore_config()
-                    except Exception as config_error:
-                        logging.error("Failed to restore configuration: %s", config_error)
-                        raise  # Re-raise the exception after logging
-                    logging.info("Forcing application restart...")
-                    os._exit(1)  # Force restart the application
+                    current_time = time.time()
+                    if current_time - last_restart_time > restart_cooldown:
+                        logging.info("Attempting to restore previous configuration...")
+                        try:
+                            restore_config()
+                        except Exception as config_error:
+                            logging.error("Failed to restore configuration: %s", config_error)
+                        logging.info("Forcing application restart...")
+                        last_restart_time = current_time
+                        os._exit(1)  # Force restart the application
+                    else:
+                        logging.warning("Restart cooldown in effect. Skipping restart.")
 
     # Start the watchdog thread
     if watchdog is True:
