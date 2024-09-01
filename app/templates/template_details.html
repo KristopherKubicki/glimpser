@@ -193,16 +193,19 @@ function updateVideo(templateName) {
                 <label for="dark" style="color: #fff;" title="Use dark mode">
                     <input type="checkbox" id="dark" name="dark" {% if template_details.dark %}checked{% endif %} title="Enable dark mode for the captured page"> Dark Mode
                 </label>
-                <label for="browser" style="color: #fff;" title="Use a full browser">
+                <label for="browser" style="color: #fff;" title="Use a full browser: Enables a complete browser environment for more complex web interactions, potentially improving compatibility but using more resources.">
                     <input type="checkbox" id="browser" name="browser" {% if template_details.browser %}checked{% endif %} title="Use a full browser instead of a headless one"> Browser
                 </label>
-                <label for="headless" style="color: #fff;" title="Run in headless mode">
+                <label for="headless" style="color: #fff;" title="Run in headless mode: Operates the browser without a visible UI, which is faster and uses fewer resources but may be less compatible with some websites.">
                     <input type="checkbox" id="headless" name="headless" {% if template_details.headless %}checked{% endif %} title="Run browser in headless mode"> Headless
                 </label>
-                <label for="stealth" style="color: #fff;" title="Use stealth mode">
+                <label for="stealth" style="color: #fff;" title="Use stealth mode: Applies various techniques to make the browser behave more like a human user, helping to avoid detection by anti-bot systems.">
                     <input type="checkbox" id="stealth" name="stealth" {% if template_details.stealth %}checked{% endif %} title="Use stealth mode to avoid detection"> Stealth
                 </label>
-                <label for="danger" style="color: #fff;" title="Mark as potentially dangerous">
+                <label for="dark" style="color: #fff;" title="Use dark mode: Applies a dark color scheme to the captured page, which can be easier on the eyes and may reveal different UI elements.">
+                    <input type="checkbox" id="dark" name="dark" checked title="Enable dark mode for the captured page"> Dark Mode
+                </label>
+                <label for="danger" style="color: #fff;" title="Mark as potentially dangerous: Flags this template as containing potentially sensitive or risky content, adding an extra layer of caution.">
                     <input type="checkbox" id="danger" name="danger" {% if template_details.danger %}checked{% endif %} title="Mark this template as potentially dangerous"> Danger
                 </label>
             </div>
