@@ -52,13 +52,6 @@ from app.utils import (
     screenshots
 )
 from app.utils.db import SessionLocal
-from app import app
-
-@app.route("/status")
-@login_required
-def status():
-    metrics = scheduling.get_system_metrics()
-    return render_template("status.html", metrics=metrics)
 
 def restart_server():
     print("Restarting server...")
@@ -517,6 +510,11 @@ def init_routes(app):
             'nominal': is_nominal
         }), 200 if is_nominal else 503
 
+    @app.route("/status")
+    @login_required
+    def status():
+        metrics = scheduling.get_system_metrics()
+        return render_template("status.html", metrics=metrics)
 
     @app.route('/api/discover')
     def api_discover():
