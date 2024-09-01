@@ -11,6 +11,7 @@
             height: 80vh; /* 80% of the viewport height */
             position: relative; /* Add this line */
             overflow: hidden; /* Prevents scrolling */
+            position: relative;
         }
         #live-video, #live-image {
             position: absolute; /* Add this line */
@@ -20,9 +21,36 @@
             height: 100%;
             object-fit: cover; /* Add this line */
         }
+        .controls {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .controls button {
+            background-color: transparent;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        #error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
     </style>
-
-
 
     <div class="video-container">
         <img id="live-image">
@@ -30,6 +58,11 @@
         <div id="video-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
             <div id="loading-indicator" style="display: none;">Loading...</div>
             <div id="play-pause-indicator" style="display: none; font-size: 48px;">▶</div>
+        </div>
+        <div id="error-message"></div>
+        <div class="controls">
+            <button id="fullscreen-btn" title="Fullscreen">⛶</button>
+            <button id="pip-btn" title="Picture-in-Picture">⎘</button>
         </div>
     </div>
 
@@ -80,11 +113,13 @@
         const templateDetailsContainer = document.getElementById('template-details');
         const templateDetails = {{ template_details|tojson }};
         let currentCamera = 'All'; // Set the default camera to "All"
-        ///let currentCamera = Object.keys(templateDetails)[0];
         let pngInterval;
         const videoOverlay = document.getElementById('video-overlay');
         const loadingIndicator = document.getElementById('loading-indicator');
         const playPauseIndicator = document.getElementById('play-pause-indicator');
+        const errorMessage = document.getElementById('error-message');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const pipBtn = document.getElementById('pip-btn');
 
         function showLoadingIndicator() {
             videoOverlay.style.display = 'block';
@@ -114,10 +149,54 @@
             }, 500);
         }
 
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                if (video.requestFullscreen) {
+                    video.requestFullscreen();
+                } else if (video.mozRequestFullScreen) {
+                    video.mozRequestFullScreen();
+                } else if (video.webkitRequestFullscreen) {
+                    video.webkitRequestFullscreen();
+                } else if (video.msRequestFullscreen) {
+                    video.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+
+        function togglePictureInPicture() {
+            if (document.pictureInPictureElement) {
+                document.exitPictureInPicture();
+            } else if (document.pictureInPictureEnabled) {
+                video.requestPictureInPicture();
+            }
+        }
+
         video.addEventListener('waiting', showLoadingIndicator);
         video.addEventListener('canplay', hideLoadingIndicator);
         video.addEventListener('play', () => showPlayPauseIndicator(false));
         video.addEventListener('pause', () => showPlayPauseIndicator(true));
+        video.addEventListener('error', (e) => showError('Error loading video: ' + e.target.error.message));
+
+        fullscreenBtn.addEventListener('click', toggleFullscreen);
+        pipBtn.addEventListener('click', togglePictureInPicture);
 
 function changeCamera() {
     showLoadingIndicator();
