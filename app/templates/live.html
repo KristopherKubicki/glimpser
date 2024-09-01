@@ -6,29 +6,60 @@
     </header>
 
     <style>
-        .video-container { 
+        .video-container {
             width: 100%;
             height: 80vh; /* 80% of the viewport height */
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            position: relative; /* Add this line */
             overflow: hidden; /* Prevents scrolling */
+            position: relative;
         }
         #live-video, #live-image {
-            max-height: 100%;
-            max-width: 100%;
+            position: absolute; /* Add this line */
+            top: 0; /* Add this line */
+            left: 0; /* Add this line */
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Add this line */
+        }
+        .controls {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .controls button {
+            background-color: transparent;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        #error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
         }
     </style>
 
-
-
     <div class="video-container">
-        <img id="live-image" style="width: 100%;">
-        <video id="live-video" style="width: 100%; display: none;" controls autoplay muted></video>
+        <img id="live-image">
+        <video id="live-video" style="display: none;" controls autoplay muted></video>
         <div id="video-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
             <div id="loading-indicator" style="display: none;">Loading...</div>
             <div id="play-pause-indicator" style="display: none; font-size: 48px;">▶</div>
         </div>
+        <div id="error-message"></div>
     </div>
 
 
@@ -78,11 +109,11 @@
         const templateDetailsContainer = document.getElementById('template-details');
         const templateDetails = {{ template_details|tojson }};
         let currentCamera = 'All'; // Set the default camera to "All"
-        ///let currentCamera = Object.keys(templateDetails)[0];
         let pngInterval;
         const videoOverlay = document.getElementById('video-overlay');
         const loadingIndicator = document.getElementById('loading-indicator');
         const playPauseIndicator = document.getElementById('play-pause-indicator');
+        const errorMessage = document.getElementById('error-message');
 
         function showLoadingIndicator() {
             videoOverlay.style.display = 'block';
@@ -112,10 +143,19 @@
             }, 500);
         }
 
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+
         video.addEventListener('waiting', showLoadingIndicator);
         video.addEventListener('canplay', hideLoadingIndicator);
         video.addEventListener('play', () => showPlayPauseIndicator(false));
         video.addEventListener('pause', () => showPlayPauseIndicator(true));
+        video.addEventListener('error', (e) => showError('Error loading video: ' + e.target.error.message));
 
 function changeCamera() {
     showLoadingIndicator();
@@ -146,34 +186,72 @@ function changeCamera() {
         // Individual camera is selected
         currentCamera = selectedValue;
     }
-    updateTemplateDetails();
-    updateFeed(); // Make sure to update the video feed after changing the camera or group
+
+    // Check if the camera is connected
+    const isConnected = checkCameraConnection(currentCamera);
+
+    if (!isConnected) {
+        // Display a placeholder for disconnected cameras
+        const videoContainer = document.querySelector('.video-container');
+        videoContainer.innerHTML = `
+            <div class="placeholder">
+                <img src="/static/img/camera_offline.png" alt="Camera Offline">
+                <p>Camera ${currentCamera} is currently offline</p>
+            </div>
+        `;
+        hideLoadingIndicator();
+    } else {
+        updateTemplateDetails();
+        updateFeed(); // Make sure to update the video feed after changing the camera or group
+    }
 }
 
         function updateTemplateDetails() {
             const details = templateDetails[currentCamera];
-		if (details) { 
-		video.title = details.last_caption;
-            templateDetailsContainer.innerHTML = `
-                <h3>Details for ${currentCamera}</h3>
-                <p>URL: ${details.url}</p>
-                <p>Frequency: ${details.frequency} minutes</p>
-                <p>Timeout: ${details.timeout} seconds</p>
-                <p>Notes: ${details.notes || 'N/A'}</p>
-                <p>Last Screenshot Time: ${details.last_screenshot_time}</p>
-		<p>Last Caption: ${details.last_caption}</p>
-            `;
+            const isConnected = checkCameraConnection(currentCamera);
+
+            if (details) {
+                video.title = details.last_caption;
+                templateDetailsContainer.innerHTML = `
+                    <h3>Details for ${currentCamera}</h3>
+                    <p>Status: ${isConnected ? '<span class="connected">Connected</span>' : '<span class="disconnected">Disconnected</span>'}</p>
+                    <p>URL: ${details.url}</p>
+                    <p>Frequency: ${details.frequency} minutes</p>
+                    <p>Timeout: ${details.timeout} seconds</p>
+                    <p>Notes: ${details.notes || 'N/A'}</p>
+                    <p>Last Screenshot Time: ${details.last_screenshot_time || 'N/A'}</p>
+                    <p>Last Caption: ${details.last_caption || 'N/A'}</p>
+                `;
+
+                if (!isConnected) {
+                    templateDetailsContainer.innerHTML += `
+                        <p class="error-message">This camera appears to be offline. Last seen: ${details.last_screenshot_time || 'Never'}</p>
+                    `;
+                }
+            } else {
+                templateDetailsContainer.innerHTML = `
+                    <h3>Details for ${currentCamera}</h3>
+                    <p>No details available</p>
+                `;
+            }
         }
-		else {
-        templateDetailsContainer.innerHTML = `
-            <h3>Details for ${currentCamera}</h3>
-            <p>No details available</p>
-        `;
-    }
-	}
 
         function updateFeed() {
             const source = document.getElementById('video-source').value;
+            const isConnected = checkCameraConnection(currentCamera);
+
+            if (!isConnected) {
+                const videoContainer = document.querySelector('.video-container');
+                videoContainer.innerHTML = `
+                    <div class="placeholder">
+                        <img src="/static/img/camera_offline.png" alt="Camera Offline">
+                        <p>Camera ${currentCamera} is currently offline</p>
+                    </div>
+                `;
+                hideLoadingIndicator();
+                return;
+            }
+
             switch (source) {
                 case 'm3u8':
                     playM3U8();
@@ -202,18 +280,53 @@ function changeCamera() {
             video.style.display = 'block';
             image.style.display = 'none';
             clearInterval(pngInterval);
+
+            let m3u8Url;
+            if (currentCamera.startsWith('group-')) {
+                const groupName = currentCamera.split('group-')[1];
+                m3u8Url = `/stream.m3u8?group=${encodeURIComponent(groupName)}`;
+            } else if (currentCamera === 'All') {
+                m3u8Url = '/stream.m3u8';
+            } else {
+                m3u8Url = `/stream.m3u8?camera=${encodeURIComponent(currentCamera)}`;
+            }
+
             if (Hls.isSupported()) {
                 const hls = new Hls();
-                hls.loadSource('/stream/' + currentCamera + '.m3u8');
+                hls.loadSource(m3u8Url);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.play();
+                    video.play().catch(e => console.error("Error playing video:", e));
+                });
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    console.error("HLS error:", data);
+                    if (data.fatal) {
+                        switch(data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                console.error("Fatal network error encountered, trying to recover...");
+                                hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                console.error("Fatal media error encountered, trying to recover...");
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                console.error("Fatal error, cannot recover");
+                                hls.destroy();
+                                break;
+                        }
+                    }
                 });
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = '/stream/' + currentCamera + '.m3u8';
+                video.src = m3u8Url;
                 video.addEventListener('canplay', function() {
-                    video.play();
+                    video.play().catch(e => console.error("Error playing video:", e));
                 });
+                video.addEventListener('error', function(e) {
+                    console.error("Video error:", video.error);
+                });
+            } else {
+                console.error("HLS is not supported on this browser");
             }
         }
 
@@ -375,7 +488,20 @@ function playMotion() {
 
 	        speedDisplay.classList.add('highlight-speed');
     setTimeout(() => speedDisplay.classList.remove('highlight-speed'), 500);
+    }
+
+    function checkCameraConnection(cameraName) {
+        // Check if the camera has a last_screenshot_time
+        const camera = templateDetails[cameraName];
+        if (!camera || !camera.last_screenshot_time) {
+            return false;
         }
+
+        // Check if the last screenshot is within the last hour
+        const lastScreenshotTime = new Date(camera.last_screenshot_time);
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        return lastScreenshotTime > oneHourAgo;
+    }
 
         // Initially update template details and play the MP4 stream
         updateTemplateDetails();

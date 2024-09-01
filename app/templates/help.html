@@ -1,18 +1,16 @@
 
-{% include 'header.html' %} 
+{% include 'header.html' %}
 
 <body>
-
     <header>
         {% include 'nav.html' %}
     </header>
 
+    <main class="container">
+        <h2 class="page-title">Glimpser Help</h2>
 
-    <main>
-        <h2>Glimpser Help</h2>
-        
-        <section>
-            <h3>Getting Started</h3>
+        <section class="help-section">
+            <h3 class="section-title">Getting Started</h3>
             <p>Glimpser is a powerful tool for monitoring and capturing screenshots from various sources. Here's how to get started:</p>
             <ol>
                 <li>Add a new template by clicking on "Add Template" on the home page.</li>
@@ -21,13 +19,13 @@
             </ol>
         </section>
 
-        <section>
-            <h3>Adding a Template: Example with time.gov</h3>
+        <section class="help-section">
+            <h3 class="section-title">Adding a Template: Example with time.gov</h3>
             <p>Let's walk through the process of adding a template for time.gov:</p>
             <ol>
                 <li>Click on "Add Template" on the home page to open the template form.</li>
                 <li>Fill in the following details:
-                    <ul>
+                    <ul class="template-details">
                         <li><strong>Template Name:</strong> Enter "US Official Time"</li>
                         <li><strong>URL:</strong> Enter "https://time.gov"</li>
                         <li><strong>Frequency (minutes):</strong> Enter "60" to capture once per hour</li>
@@ -52,8 +50,8 @@
             </ol>
         </section>
 
-        <section>
-            <h3>Managing Templates</h3>
+        <section class="help-section">
+            <h3 class="section-title">Managing Templates</h3>
             <p>You can manage your templates from the home page:</p>
             <ul>
                 <li>View all templates in a grid layout.</li>
@@ -63,8 +61,8 @@
             </ul>
         </section>
 
-        <section>
-            <h3>Viewing Captures</h3>
+        <section class="help-section">
+            <h3 class="section-title">Viewing Captures</h3>
             <p>Glimpser provides several ways to view your captures:</p>
             <ul>
                 <li>On the home page, you can see the most recent capture for each template.</li>
@@ -74,22 +72,22 @@
             </ul>
         </section>
 
-        <section>
-            <h3>Offline Access</h3>
+        <section class="help-section">
+            <h3 class="section-title">Offline Access</h3>
             <p>This help page is available offline once you've visited it while online. You can access it anytime, even without an internet connection.</p>
         </section>
 
-        <section>
-            <h3>Need More Help?</h3>
+        <section class="help-section">
+            <h3 class="section-title">Need More Help?</h3>
             <p>If you need further assistance, please visit <a href="https://glimpser.net" target="_blank">glimpser.net</a> for more information and support.</p>
         </section>
     </main>
 
-     <footer>
+    <footer>
         {% include 'footer.html' %}
     </footer>
-
 
     <script src="/static/js/script.js"></script>
 </body>
 </html>
+

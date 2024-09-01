@@ -138,6 +138,7 @@ def is_mostly_blank(image, threshold=0.92, blank_color=(255, 255, 255)):
     blank_color = (255, 255, 255)
     blank_pixels = np.sum(np.all(np.abs(image_array - blank_color) <= 30, axis=-1))
     blank_fraction = blank_pixels / (image_array.shape[0] * image_array.shape[1])
+
     is_blank = blank_fraction >= threshold
     if is_blank:
         # print("    blank", blank_fraction)
@@ -1535,11 +1536,14 @@ def capture_screenshot_and_har(
         lsuccess = False
     except Exception as e:
         print(f"Error capturing screenshot for {url}", e, main_version)
+
         logging.error(
             f"Error capturing screenshot for {url}: {e} stealth: %s headless: %s"
             % (stealth, headless)
         )
+
         lsuccess = False
+
     finally:
         if danger:
             if new_window_handle:
@@ -1562,12 +1566,12 @@ def capture_screenshot_and_har(
 
         # Clean up temporary Chrome files
         try:
-            temp_chrome_dirs = glob.glob('/tmp/.com.google.Chrome.*')
+            temp_chrome_dirs = glob.glob('/tmp/.com.google.Chrome.*') # TODO: make this more portable, its kind of linux specific
             current_time = time.time()
             cleaned_dirs = 0
             for temp_dir in temp_chrome_dirs:
                 # Check if the directory hasn't been modified in the last hour
-                if current_time - os.path.getmtime(temp_dir) > 3600:  # 3600 seconds = 1 hour
+                if os.path.isdir(temp_dir) and current_time - os.path.getmtime(temp_dir) > 3600:  # 3600 seconds = 1 hour
                     shutil.rmtree(temp_dir, ignore_errors=True)
                     cleaned_dirs += 1
             logging.debug(f"Cleaned up {cleaned_dirs} temporary Chrome directories")
