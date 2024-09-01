@@ -218,5 +218,7 @@ def create_app(watchdog=True, schedule=True):
     # Send an email alert when the application starts
     email_alert("Application Start", "The Glimpser application has been started successfully.")
 
+    # Make scheduler accessible globally
+    app.scheduler = scheduler
 
     return app
