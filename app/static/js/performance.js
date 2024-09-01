@@ -51,3 +51,16 @@ setInterval(updatePerformanceMetrics, 5000);
 
 // Initial update
 updatePerformanceMetrics();
+
+// eslint-disable-next-line no-unused-vars
+function toggleScheduler() {
+    fetch('/toggle_scheduler', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            const statusSpan = document.getElementById('scheduler-status');
+            const toggleButton = document.getElementById('toggle-scheduler');
+            statusSpan.textContent = data.status;
+            toggleButton.textContent = data.status === 'running' ? 'Stop Scheduler' : 'Start Scheduler';
+        })
+        .catch(error => console.error('Error:', error));
+}

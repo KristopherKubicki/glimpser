@@ -32,7 +32,7 @@ from flask import (
     url_for,
     stream_with_context,
 )
-from flask_login import logout_user, login_required
+from flask_login import logout_user
 from PIL import Image
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
@@ -54,7 +54,7 @@ from app.utils import (
     screenshots
 )
 from app.utils.db import SessionLocal
-from app.models.log import Log
+from app.utils.scheduling import scheduler
 
 def restart_server():
     print("Restarting server...")
@@ -492,85 +492,101 @@ def init_routes(app):
 
     # Add a new route for the extended health check
     @app.route('/health')
+    @login_required
     def health_check():
 
-        try:
-            # Check database connection
-            session = SessionLocal()
-            session.execute(text("SELECT 1"))
-            session.close()
-
-            # Check if scheduler is running
-            scheduler_status = "running" if scheduling.scheduler.running else "stopped"
-
-            # Check disk space
-            _, _, free = shutil.disk_usage("/")
-            free_gb = free // (2**30)
-
-            return jsonify({
-                "status": "healthy",
-                "database": "connected",
-                "scheduler": scheduler_status,
-                "free_disk_space_gb": free_gb
-            }), 200
-        except Exception as e:
-            return jsonify({
-                "status": "unhealthy"
-            }), 500
-
-    @app.route('/logs')
-    @login_required
-    def view_logs():
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 50, type=int)
-        level = request.args.get('level')
-        source = request.args.get('source')
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        search = request.args.get('search')
-
-        query = Log.query
-
-        if level:
-            query = query.filter(Log.level == level)
-        if source:
-            query = query.filter(Log.source == source)
-        if start_date:
-            query = query.filter(Log.timestamp >= start_date)
-        if end_date:
-            query = query.filter(Log.timestamp <= end_date)
-        if search:
-            query = query.filter(Log.message.contains(search))
-
-        logs = query.order_by(Log.timestamp.desc()).paginate(page=page, per_page=per_page)
-
-        return render_template('logs.html', logs=logs)
+        scheduler_status = 'failed'
+        free_gb = 0
 
         metrics = scheduling.get_system_metrics()
 
         # Define thresholds for nominal performance
         cpu_threshold = 80  # 80% CPU usage
         memory_threshold = 80  # 80% memory usage
-        thread_threshold = 100  # 100 threads
+        thread_threshold = 100  # 100 threads # should be tied to the thread count in the config, right? 
+        open_files = 1024 # thats a lot
 
         # Check if metrics are nominal
         is_nominal = (
             metrics['cpu_usage'] < cpu_threshold and
             metrics['memory_usage'] < memory_threshold and
-            metrics['thread_count'] < thread_threshold
+            metrics['thread_count'] < thread_threshold and
+            metrics['open_files'] < thread_threshold
         )
+
+        try:
+            #0h 1m 6s
+            if len(metrics['uptime']) < 9: # first ten seconds... 
+                is_nominal = False
+        except Exception as e:
+            is_nominal = False
+
+        ###### 
+        #  consider rolling these into the metrics
+        try:
+            # Check database connection
+            session = SessionLocal()
+            session.execute(text("SELECT 1"))
+            session.close()
+            db_status = 'connected'
+        except Exception as e:
+            is_nominal = False
+            pass # its for the healthcheck...
+        if db_status != 'connected':
+            is_nominal = False
+
+        try:
+            # Check if scheduler is running
+            scheduler_status = "running" if scheduling.scheduler.running else "stopped"
+        except Exception as e:
+            is_nominal = False
+            pass # its for the healthcheck...
+        if scheduler_status != 'running':
+            is_nominal = False
+
+        try:
+            # Check disk space
+            _, _, free = shutil.disk_usage("/")
+            free_gb = free // (2**30)
+        except Exception as e:
+            is_nominal = False
+            pass # its for the healthcheck...
+        if free_gb < 8: # maybe read from config...  # WARNING hardcoded bug
+            is_nominal = False
+
+        #
+        ###### 
 
         return jsonify({
             'status': 'healthy' if is_nominal else 'degraded',
             'metrics': metrics,
-            'nominal': is_nominal
-        }), 200 if is_nominal else 503
+            'nominal': is_nominal,
+            "database": db_status,
+            "scheduler": scheduler_status,
+            "free_disk_space_gb": free_gb
+        }), 200 # always return 200, but might be degraded.
 
     @app.route("/status")
     @login_required
     def status():
         metrics = scheduling.get_system_metrics()
-        return render_template("status.html", metrics=metrics)
+        scheduler_status = "running" if scheduling.scheduler.running else "stopped"
+        camera_jobs = [
+            {"name": job.id, "next_run_time": job.next_run_time}
+            for job in scheduling.scheduler.get_jobs()
+            if job.id not in ["init_crawl", "compile_to_teaser", "archive_screenshots", "retention_cleanup", "summary"]
+        ]
+        return render_template("status.html", metrics=metrics, scheduler_status=scheduler_status, camera_jobs=camera_jobs)
+
+    @app.route("/toggle_scheduler", methods=["POST"])
+    @login_required
+    def toggle_scheduler():
+        if scheduling.scheduler.running:
+            scheduling.scheduler.shutdown()
+            return jsonify({"status": "stopped"})
+        else:
+            scheduling.scheduler.start()
+            return jsonify({"status": "running"})
 
     @app.route('/api/discover')
     def api_discover():
@@ -581,7 +597,7 @@ def init_routes(app):
                     "path": "/health",
                     "method": "GET",
                     "description": "Check the health status of the API",
-                    "authentication_required": False
+                    "authentication_required": True
                 },
                 {
                     "path": "/api/discover",
@@ -617,6 +633,12 @@ def init_routes(app):
                     "path": "/settings",
                     "method": "GET, POST",
                     "description": "Manage application settings",
+                    "authentication_required": True
+                },
+                {
+                    "path": "/toggle_scheduler",
+                    "method": "POST",
+                    "description": "Toggle scheduler on/off",
                     "authentication_required": True
                 }
             ]
@@ -1494,31 +1516,3 @@ def init_routes(app):
                 return jsonify({"message": "Template updated successfully!"})
 
             return redirect("/templates/" + template_name)
-
-    @app.route('/logs')
-    @login_required
-    def view_logs():
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 50, type=int)
-        level = request.args.get('level')
-        source = request.args.get('source')
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        search = request.args.get('search')
-
-        query = Log.query
-
-        if level:
-            query = query.filter(Log.level == level)
-        if source:
-            query = query.filter(Log.source == source)
-        if start_date:
-            query = query.filter(Log.timestamp >= start_date)
-        if end_date:
-            query = query.filter(Log.timestamp <= end_date)
-        if search:
-            query = query.filter(Log.message.contains(search))
-
-        logs = query.order_by(Log.timestamp.desc()).paginate(page=page, per_page=per_page)
-
-        return render_template('logs.html', logs=logs)

@@ -74,6 +74,30 @@
         </tr>
     </table>
 
+    <h2>Scheduler Status</h2>
+    <p>Current status: <span id="scheduler-status">{{ scheduler_status }}</span></p>
+    <button id="toggle-scheduler" onclick="toggleScheduler()">
+        {% if scheduler_status == 'running' %}
+        Stop Scheduler
+        {% else %}
+        Start Scheduler
+        {% endif %}
+    </button>
+
+    <h2>Camera Schedule</h2>
+    <table id="camera-schedule">
+        <tr>
+            <th>Camera Name</th>
+            <th>Next Run Time</th>
+        </tr>
+        {% for job in camera_jobs %}
+        <tr>
+            <td>{{ job.name }}</td>
+            <td>{{ job.next_run_time }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
     {% include 'footer.html' %}
 </body>
 </html>
