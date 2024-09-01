@@ -1411,6 +1411,11 @@ def init_routes(app):
     @app.route("/settings", methods=["GET", "POST"])
     def settings():
         if request.method == "POST":
+            email_settings = [
+                    "EMAIL_ENABLED", "EMAIL_SENDER", "EMAIL_RECIPIENTS",
+                    "EMAIL_SMTP_SERVER", "EMAIL_SMTP_PORT", "EMAIL_USE_TLS",
+                    "EMAIL_USERNAME", "EMAIL_PASSWORD"
+            ]
             action = request.form.get("action")
             if action == "add":
                 new_name = request.form.get("new_name")
@@ -1422,11 +1427,6 @@ def init_routes(app):
                 if name_to_delete:
                     delete_setting(name_to_delete)
             elif action == "update_email":
-                email_settings = [
-                    "EMAIL_ENABLED", "EMAIL_SENDER", "EMAIL_RECIPIENTS",
-                    "EMAIL_SMTP_SERVER", "EMAIL_SMTP_PORT", "EMAIL_USE_TLS",
-                    "EMAIL_USERNAME", "EMAIL_PASSWORD"
-                ]
                 for setting in email_settings:
                     value = request.form.get(setting)
                     if value is not None:

@@ -18,7 +18,7 @@
 			    <tr>
 
 				    <td>
-				    <div id="health-status" style="width: 15px; height: 15px; border-radius: 50%; background-color: grey;" title="System Performance"></div>
+					    <div id="health-status" style="width: 15px; height: 15px; border-radius: 50%; background-color: grey;" title="System Performance"><a href='/status'></a></div>
 				    </td>
 	<script>
 		function checkHealth() {
@@ -48,12 +48,6 @@ checkHealth();
 	</script>
 				    </td>
 
-
-{% if request.path == url_for('settings') %}
-<td>
-        <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger">Logout</a>
-</td>
-    {% endif %}
 
 				    <td>
 					    <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'>&#9000;</a>
