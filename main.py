@@ -4,6 +4,7 @@
 import logging
 import os
 import argparse
+import signal
 import app.config as config
 from app import create_app
 
@@ -147,6 +148,19 @@ def create_application():
 # Create the Flask application
 app = create_application()
 
+def signal_handler(signum, frame):
+    print("\nCtrl+C received. Initiating graceful shutdown...")
+    # Call the graceful_shutdown function from app/__init__.py
+    app.graceful_shutdown(signum, frame)
+
 if __name__ == "__main__":
-    # Run the application if this script is executed directly
-    app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True)
+    # Set up signal handler for SIGINT (Ctrl+C)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    try:
+        # Run the application if this script is executed directly
+        app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True)
+    except KeyboardInterrupt:
+        print("\nKeyboardInterrupt received. Exiting...")
+    finally:
+        print("Application has been shut down.")
