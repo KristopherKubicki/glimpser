@@ -182,10 +182,7 @@ def create_app(watchdog=True, schedule=True):
     from .utils.scheduling import start_metrics_collection
     start_metrics_collection()
 
-    # Set up signal handlers for graceful shutdown
-    def graceful_shutdown(signum, frame):
-        logging.info("Received shutdown signal. Shutting down gracefully...")
-
+    def output_shutdown_stats():
         # Get and display system metrics
         metrics = get_system_metrics()
         print("\nSystem Metrics at Shutdown:")
@@ -195,6 +192,12 @@ def create_app(watchdog=True, schedule=True):
         print(f"Open Files: {metrics['open_files']}")
         print(f"Thread Count: {metrics['thread_count']}")
         print(f"Uptime: {metrics['uptime']}")
+        print("\nGlimpser application has been shut down gracefully. All threads terminated. Goodbye!")
+
+    # Set up signal handlers for graceful shutdown
+    def graceful_shutdown(signum, frame):
+        if threading.current_thread() is threading.main_thread():
+            logging.info("Received shutdown signal. Shutting down gracefully...")
 
         # Shutdown the scheduler
         scheduler.shutdown()
@@ -202,15 +205,18 @@ def create_app(watchdog=True, schedule=True):
         # Terminate all non-daemon threads
         for thread in threading.enumerate():
             if thread != threading.current_thread() and not thread.daemon:
-                logging.info("Terminating thread: %s", thread.name)
+                if threading.current_thread() is threading.main_thread():
+                    logging.info("Terminating thread: %s", thread.name)
                 if hasattr(thread, 'terminate'):
                     thread.terminate()
-                else:
+                elif threading.current_thread() is threading.main_thread():
                     logging.warning("Unable to terminate thread: %s. No terminate method available.", thread.name)
 
         # Add any other cleanup tasks here (e.g., closing database connections)
-        print("\nGlimpser application has been shut down gracefully. All threads terminated. Goodbye!")
-        sys.exit(0)
+
+        if threading.current_thread() is threading.main_thread():
+            output_shutdown_stats()
+            sys.exit(0)
 
     signal.signal(signal.SIGTERM, graceful_shutdown)
     signal.signal(signal.SIGINT, graceful_shutdown)
