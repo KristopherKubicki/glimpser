@@ -31,6 +31,7 @@ from flask import (
     session,
     url_for,
     stream_with_context,
+    current_app,
 )
 from flask_login import logout_user, login_required
 from PIL import Image
@@ -55,6 +56,7 @@ from app.utils import (
 )
 from app.utils.db import SessionLocal
 from app.models.log import Log
+from app.utils.scheduling import scheduler
 
 def restart_server():
     print("Restarting server...")
@@ -1442,6 +1444,21 @@ def init_routes(app):
     @app.route('/system_metrics')
     def system_metrics():
         return jsonify(scheduling.get_system_metrics())
+
+    @app.route('/toggle_scheduler', methods=['POST'])
+    @login_required
+    def toggle_scheduler():
+        if scheduler.running:
+            scheduler.shutdown()
+            return jsonify({"status": "stopped"})
+        else:
+            scheduler.start()
+            return jsonify({"status": "running"})
+
+    @app.route('/scheduler_status')
+    @login_required
+    def scheduler_status():
+        return jsonify({"status": "running" if scheduler.running else "stopped"})
 
     @app.route("/update_template/<string:template_name>", methods=["POST"])
     @login_required

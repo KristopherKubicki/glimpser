@@ -411,4 +411,34 @@ if (searchInput) {
 // Set an interval to update video sources every 30 minutes
 setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
 
+    // Scheduler toggle functionality
+    const toggleSchedulerButton = document.getElementById('toggle-scheduler');
+    const schedulerStatus = document.getElementById('scheduler-status');
+
+    if (toggleSchedulerButton) {
+        toggleSchedulerButton.addEventListener('click', function() {
+            fetch('/toggle_scheduler', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    schedulerStatus.textContent = data.status;
+                    toggleSchedulerButton.textContent = data.status === 'running' ? 'Stop Scheduler' : 'Start Scheduler';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    schedulerStatus.textContent = 'Error occurred';
+                });
+        });
+
+        // Initial scheduler status check
+        fetch('/scheduler_status')
+            .then(response => response.json())
+            .then(data => {
+                schedulerStatus.textContent = data.status;
+                toggleSchedulerButton.textContent = data.status === 'running' ? 'Stop Scheduler' : 'Start Scheduler';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                schedulerStatus.textContent = 'Error occurred';
+            });
+    }
 });
