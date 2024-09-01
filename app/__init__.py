@@ -174,9 +174,20 @@ def create_app(watchdog=True, schedule=True):
         print(f"Thread Count: {metrics['thread_count']}")
         print(f"Uptime: {metrics['uptime']}")
 
+        # Shutdown the scheduler
         scheduler.shutdown()
+
+        # Terminate all non-daemon threads
+        for thread in threading.enumerate():
+            if thread != threading.current_thread() and not thread.daemon:
+                logging.info("Terminating thread: %s", thread.name)
+                if hasattr(thread, 'terminate'):
+                    thread.terminate()
+                else:
+                    logging.warning("Unable to terminate thread: %s. No terminate method available.", thread.name)
+
         # Add any other cleanup tasks here (e.g., closing database connections)
-        print("\nGlimpser application has been shut down gracefully. Goodbye!")
+        print("\nGlimpser application has been shut down gracefully. All threads terminated. Goodbye!")
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, graceful_shutdown)
