@@ -30,7 +30,6 @@ from flask import (
     url_for,
     stream_with_context,
 )
-
 from flask_login import logout_user
 from PIL import Image
 from sqlalchemy import text
@@ -53,6 +52,13 @@ from app.utils import (
     screenshots
 )
 from app.utils.db import SessionLocal
+from app import app
+
+@app.route("/status")
+@login_required
+def status():
+    metrics = scheduling.get_system_metrics()
+    return render_template("status.html", metrics=metrics)
 
 def restart_server():
     print("Restarting server...")

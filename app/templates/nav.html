@@ -18,50 +18,32 @@
 			    <tr>
 
 				    <td>
-				    <div id="health-status" style="width: 15px; height: 15px; border-radius: 50%; background-color: grey;"></div>
-				    </td>
-				    <td>
-				    <div id="performance-indicator" class="performance-indicator" title="System Performance">
-				        <span id="cpu-usage">CPU: --</span>
-				    </div>
+				    <div id="health-status" style="width: 15px; height: 15px; border-radius: 50%; background-color: grey;" title="System Performance"></div>
 				    </td>
 	<script>
 		function checkHealth() {
     fetch('/health')
-        .then(response => {
-            if (response.ok) {
-                // Server is healthy
-                document.getElementById('health-status').style.backgroundColor = 'green';
+        .then(response => response.json())
+        .then(data => {
+            const healthStatus = document.getElementById('health-status');
+            if (data.status === 'healthy') {
+                healthStatus.style.backgroundColor = 'green';
             } else {
-                // Server is down or unhealthy
-                document.getElementById('health-status').style.backgroundColor = 'red';
+                healthStatus.style.backgroundColor = 'red';
             }
+            healthStatus.title = `CPU: ${data.metrics.cpu_usage}%\nMemory: ${data.metrics.memory_usage}%\nDisk: ${data.metrics.disk_usage}%\nOpen Files: ${data.metrics.open_files}\nThreads: ${data.metrics.thread_count}\nUptime: ${data.metrics.uptime}`;
         })
         .catch(error => {
-            // Network error or server unreachable
+            console.error('Error fetching health status:', error);
             document.getElementById('health-status').style.backgroundColor = 'red';
         });
 }
 
-function updatePerformanceIndicator() {
-    fetch('/system_metrics')
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('cpu-usage').textContent = `CPU: ${data.cpu_usage}%`;
-            document.getElementById('performance-indicator').title = `CPU: ${data.cpu_usage}%\nMemory: ${data.memory_usage}%\nDisk: ${data.disk_usage}%\nOpen Files: ${data.open_files}`;
-        })
-        .catch(error => {
-            console.error('Error fetching system metrics:', error);
-        });
-}
-
-// Ping the health check endpoint every 5 seconds
+// Check health status every 5 seconds
 setInterval(checkHealth, 5000);
-// Update performance indicator every 5 seconds
-setInterval(updatePerformanceIndicator, 5000);
 
+// Initial health check
 checkHealth();
-updatePerformanceIndicator();
 
 	</script>
 				    </td>
