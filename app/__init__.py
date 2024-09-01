@@ -12,6 +12,7 @@ from app.utils.scheduling import schedule_crawlers, schedule_summarization, sche
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 from app.utils.video_compressor import compress_and_cleanup
 from app.config import backup_config, restore_config
+from app.utils.email_alerts import email_alert
 
 # needed for the llava compare
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -137,5 +138,8 @@ def create_app(watchdog=True, schedule=True):
     # Start collecting metrics
     from .utils.scheduling import start_metrics_collection
     start_metrics_collection()
+
+    # Send an email alert when the application starts
+    email_alert("Application Start", "The Glimpser application has been started successfully.")
 
     return app
