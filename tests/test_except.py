@@ -1,3 +1,5 @@
+# tests/test_except.py
+
 import unittest
 import sys
 import os
@@ -55,6 +57,11 @@ class TestDictionaryOperations(unittest.TestCase):
         del test_dict["key1"]
         self.assertNotIn("key1", test_dict)
         self.assertEqual(test_dict, {"key2": "value2"})
+
+    def test_dict_get_with_default(self):
+        test_dict = {"key1": "value1"}
+        self.assertEqual(test_dict.get("key1", "default"), "value1")
+        self.assertEqual(test_dict.get("key2", "default"), "default")
 
 if __name__ == '__main__':
     unittest.main()

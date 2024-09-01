@@ -1,4 +1,4 @@
-# utils/template_manager.py
+# app/utils/template_manager.py
 
 import os
 import re
@@ -47,6 +47,7 @@ class Template(Base):
     danger = Column(Boolean, default=False)
     motion = Column(Float, default=0.2)
     rollback_frames = Column(Integer, default=0)
+    last_ret = None
 
     @validates('frequency')
     def validate_frequency(self, key, frequency):
@@ -94,6 +95,8 @@ class TemplateManager:
             session.close()
 
     def save_template(self, name, details):
+
+        # TODO: replace this with validate_template_name instead 
         if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
             return False
 

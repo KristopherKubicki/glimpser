@@ -6,8 +6,11 @@ import threading
 import signal
 import sys
 import shutil
+import time
+import psutil
 
-from flask import Flask, current_app
+
+from flask import Flask, current_app, jsonify
 from flask_apscheduler import APScheduler
 
 from app.utils.retention_policy import retention_cleanup
@@ -15,12 +18,12 @@ from app.utils.scheduling import schedule_crawlers, schedule_summarization, sche
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 from app.utils.video_compressor import compress_and_cleanup
 from app.config import backup_config, restore_config
+from app.utils.email_alerts import email_alert
 
 # needed for the llava compare
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-
-def create_app():
+def create_app(watchdog=True, schedule=True):
     """
     Create and configure the Flask application.
 
@@ -59,15 +62,15 @@ def create_app():
     init_routes(app)
 
     # Configure the scheduler executor
-    app.config["SCHEDULER_EXECUTORS"] = {
-        "default": {"type": "processpool", "max_workers": MAX_WORKERS}
-    }
-    logging.info("Starting with %s workers" % str(MAX_WORKERS))
-
-    scheduler.init_app(app)
+    if schedule is True:
+        app.config["SCHEDULER_EXECUTORS"] = {
+            "default": {"type": "processpool", "max_workers": MAX_WORKERS}
+        }
+        logging.info("Starting with %s workers" % str(MAX_WORKERS))
+        scheduler.init_app(app)
 
     # Set up and start the scheduler
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+    if schedule is True and (os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug):
         scheduler.start()
         logging.info("Initializing scheduler...")
 
@@ -105,32 +108,53 @@ def create_app():
     # Set up a watchdog thread to monitor the application
     def watchdog():
         """
-        Watchdog function to monitor the application's health.
-        
+        Watchdog function to monitor the application's health and file handle usage.
+
         This function runs in a separate thread and periodically checks if the
-        application is responding correctly. If it detects an issue, it attempts
-        to restore the previous configuration and force restarts the application.
+        application is responding correctly and if the number of open file handles
+        is within acceptable limits. If it detects an issue, it attempts to
+        restore the previous configuration and force restarts the application.
         """
-        import time
+        last_restart_time = 0
+        restart_cooldown = 900  # 15 minutes in seconds
+        max_file_handles = 1000  # Adjust this value based on your system's limits
+
         while True:
             time.sleep(10)  # Check every 10 seconds
             if not app.debug:
                 try:
-                    # Try to access a simple route to check app responsiveness
+                    # Check app responsiveness
                     with app.test_client() as client:
                         response = client.get('/health')
                         if response.status_code != 200:
                             raise Exception("Application is not responding correctly")
+
+                    # Check file handle usage
+                    current_process = psutil.Process()
+                    open_files = current_process.open_files()
+                    if len(open_files) > max_file_handles:
+                        raise Exception(f"Too many open file handles: {len(open_files)}")
+
                 except Exception as e:
                     logging.error("Application error detected: %s", e)
-                    logging.info("Attempting to restore previous configuration...")
-                    restore_config()
-                    os._exit(1)  # Force restart the application
+                    current_time = time.time()
+                    if current_time - last_restart_time > restart_cooldown:
+                        logging.info("Attempting to restore previous configuration...")
+                        try:
+                            restore_config()
+                        except Exception as config_error:
+                            logging.error("Failed to restore configuration: %s", config_error)
+                        logging.info("Forcing application restart...")
+                        last_restart_time = current_time
+                        os._exit(1)  # Force restart the application
+                    else:
+                        logging.warning("Restart cooldown in effect. Skipping restart.")
 
     # Start the watchdog thread
-    watchdog_thread = threading.Thread(target=watchdog)
-    watchdog_thread.daemon = True
-    watchdog_thread.start()
+    if watchdog is True:
+        watchdog_thread = threading.Thread(target=watchdog)
+        watchdog_thread.daemon = True
+        watchdog_thread.start()
 
     # Start collecting metrics
     from .utils.scheduling import start_metrics_collection
@@ -145,5 +169,9 @@ def create_app():
 
     signal.signal(signal.SIGTERM, graceful_shutdown)
     signal.signal(signal.SIGINT, graceful_shutdown)
+
+    # Send an email alert when the application starts
+    email_alert("Application Start", "The Glimpser application has been started successfully.")
+
 
     return app
