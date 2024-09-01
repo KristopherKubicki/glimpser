@@ -2,9 +2,10 @@
 		<h1><a href='/'><img src='{{ url_for('static', filename='img/glimpser_small.png') }}' title='Glimpser'></a></h1>
         <nav>
             <div class="nav-left">
-                {% for ag in active_groups %} 
+                {% for ag in active_groups %}
                 <a href='/group/{{ag}}'>{{ag}}</a>
                 {% endfor %}
+                <a href="{{ url_for('view_logs') }}">Logs</a>
             </div>
 
 	    <div class="nav-center" style='text-align:center;'>
@@ -18,7 +19,7 @@
 			    <tr>
 
 				    <td>
-					    <a href='/status'><div id="health-status" style="width: 15px; height: 15px; border-radius: 50%; background-color: grey;" title="System Performance"></div></a>
+				    <div id="health-status" style="width: 15px; height: 15px; border-radius: 50%; background-color: grey;" title="System Performance"></div>
 				    </td>
 	<script>
 		function checkHealth() {
