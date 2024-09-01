@@ -23,6 +23,9 @@ from app.utils.email_alerts import email_alert
 # needed for the llava compare
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+# Global shutdown flag
+shutdown_flag = False
+
 def create_app(watchdog=True, schedule=True):
     """
     Create and configure the Flask application.
@@ -162,6 +165,11 @@ def create_app(watchdog=True, schedule=True):
 
     # Set up signal handlers for graceful shutdown
     def graceful_shutdown(signum, frame):
+        global shutdown_flag
+        if shutdown_flag:
+            return
+        shutdown_flag = True
+
         logging.info("Received shutdown signal. Shutting down gracefully...")
 
         # Get and display system metrics
