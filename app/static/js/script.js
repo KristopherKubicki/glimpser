@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('#template-form form');
 
     const groupDropdown = document.getElementById('group-dropdown');
-    if (groupDropdown)  { 
+    if (groupDropdown)  {
     groupDropdown.addEventListener('change', () => {
         loadTemplates(); // Reload templates based on the selected group
     });
@@ -13,23 +13,46 @@ document.addEventListener('DOMContentLoaded', function() {
     const slider = document.getElementById('grid-width-slider');
     const templateList = document.getElementById('template-list');
 
-	if (slider) { 
+    function isMobile() {
+        return window.matchMedia("(hover: none)").matches;
+    }
+
+    function updateGridLayout() {
+        const sliderValue = parseInt(slider.value);
+        const scaledValue = Math.pow(sliderValue / 100, 2) * 3790 + 50;
+
+        if (isMobile()) {
+            templateList.style.gridTemplateColumns = '1fr'; // Set to single column layout
+        } else {
+            const minWidth = Math.min(scaledValue, window.innerWidth);
+            templateList.style.gridTemplateColumns = `repeat(auto-fit, minmax(${minWidth}px, 1fr))`;
+        }
+    }
+
+	if (slider) {
     slider.addEventListener('input', function () {
-        const value = slider.value;
-        const pxValue = value + 'px';
+        const sliderValue = parseInt(slider.value);
+
+        // Non-linear scaling function
+        const scaledValue = Math.pow(sliderValue / 100, 2) * 3790 + 50;
+
+        const pxValue = Math.round(scaledValue) + 'px';
         templateList.style.setProperty('--grid-item-width', pxValue);
 
-        // Calculate font sizes based on the slider value
-        const cameraNameFontSize = Math.max(10, Math.min(14, value / 25)); // Min 10px, Max 14px
-        const timestampFontSize = Math.max(8, Math.min(12, value / 30)); // Min 8px, Max 12px
+        // Calculate font sizes based on the scaled value
+        const cameraNameFontSize = Math.max(10, Math.min(14, scaledValue / 25)); // Min 10px, Max 14px
+        const timestampFontSize = Math.max(8, Math.min(12, scaledValue / 30)); // Min 8px, Max 12px
 
         // Update CSS variables
         document.documentElement.style.setProperty('--camera-name-font-size', `${cameraNameFontSize}px`);
         document.documentElement.style.setProperty('--timestamp-font-size', `${timestampFontSize}px`);
+
+        // Update grid layout
+        updateGridLayout();
     });
 	}
 
-	if (form) { 
+	if (form) {
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(form);
@@ -235,8 +258,7 @@ function generateXPath(inputId) {
 if (groupDropdown) { 
 function loadTemplates() {
     const selectedGroup = document.getElementById('group-dropdown').value || 'all';
-    const searchQuery = document.getElementById('search-input').value.toLowerCase();
-    const url = `/templates?group=${selectedGroup}&search=${searchQuery}&t=${new Date().getTime()}`;
+    const url = selectedGroup === 'all' ? '/templates' : `/templates?group=${selectedGroup}&t=${new Date().getTime()}`;
 
     updateGridLayout();
 
@@ -244,7 +266,7 @@ function loadTemplates() {
     // Show loading indicator
     templateList.innerHTML = '<div class="loading">Loading templates...</div>';
 
-    fetch(url)
+    fetch('/templates')
         .then(response => response.json())
         .then(templates => {
             // Clear loading indicator
@@ -264,7 +286,7 @@ function loadTemplates() {
             });
 
             Object.entries(templates).forEach(([name, template], index) => {
-                if (templateBelongsToGroup(template, selectedGroup) && templateMatchesSearch(template, searchQuery)) {
+                if (templateBelongsToGroup(template, selectedGroup)) {
                     const lastScreenshotTime = template['last_screenshot_time'];
                     const humanizedTimestamp = timeAgo(lastScreenshotTime);
 
@@ -387,29 +409,14 @@ function loadTemplates() {
             console.error('Error loading templates:', error);
             templateList.innerHTML = '<div class="error">Error loading templates. Please try again.</div>';
         });
-}
 
-function templateMatchesSearch(template, searchQuery) {
-    if (!searchQuery) return true;
-    const name = template.name.toLowerCase();
-    const groups = template.groups ? template.groups.toLowerCase() : '';
-    return name.includes(searchQuery) || groups.includes(searchQuery);
 }
 
 // Initial load of templates
 loadTemplates();
 loadGroups();
 
-const groupDropdown = document.getElementById('group-dropdown');
-const searchInput = document.getElementById('search-input');
-
-if (groupDropdown) {
-    groupDropdown.addEventListener('change', loadTemplates);
-}
-
-if (searchInput) {
-    searchInput.addEventListener('input', loadTemplates);
-}
+groupDropdown.addEventListener('change', loadTemplates);
 }
 
 // Set an interval to update video sources every 30 minutes
