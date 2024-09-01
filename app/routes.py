@@ -42,6 +42,7 @@ from app.config import (
     USER_NAME,
     USER_PASSWORD_HASH,
     VIDEO_DIRECTORY,
+    VERSION
 )
 from app.utils import (
     scheduling,
@@ -219,7 +220,7 @@ def get_all_settings():
 
         # TODO: blocklist some settings - set this somewhere 
         lsettings_list = []
-        blocks = ["SECRET_KEY", "USER_PASSWORD_HASH", "DATABASE_URL"] 
+        blocks = ["SECRET_KEY", "USER_PASSWORD_HASH", "DATABASE_URL","VERSION"] 
         for sl in settings_list:
             if re.findall(r"^[A-Z_]+?$", sl["name"]) and sl["name"] not in blocks:
                 lsettings_list.append({"name": sl["name"], "value": sl["value"]})
@@ -471,6 +472,12 @@ def allowed_filename(filename: str) -> bool:
 def init_routes(app):
     global login_attempts
     # get_active_groups()
+
+    @app.context_processor
+    def inject_footer_data():
+        return dict(
+            VERSION=VERSION
+        )
 
     # Add a new route for the extended health check
     @app.route('/health')

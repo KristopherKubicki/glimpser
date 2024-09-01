@@ -47,6 +47,7 @@ class Template(Base):
     danger = Column(Boolean, default=False)
     motion = Column(Float, default=0.2)
     rollback_frames = Column(Integer, default=0)
+    last_ret = None
 
     @validates('frequency')
     def validate_frequency(self, key, frequency):

@@ -17,6 +17,35 @@
 		    <table>
 			    <tr>
 
+				    <td>
+				    <div id="health-status" style="width: 15px; height: 15px; border-radius: 50%; background-color: grey;"></div>
+	<script>
+		function checkHealth() {
+    fetch('/health')
+        .then(response => {
+            if (response.ok) {
+                // Server is healthy
+                document.getElementById('health-status').style.backgroundColor = 'green';
+            } else {
+                // Server is down or unhealthy
+                document.getElementById('health-status').style.backgroundColor = 'red';
+            }
+        })
+        .catch(error => {
+            // Network error or server unreachable
+            document.getElementById('health-status').style.backgroundColor = 'red';
+        });
+}
+
+// Ping the health check endpoint every 5 seconds
+setInterval(checkHealth, 5000);
+
+    checkHealth();
+
+	</script>
+				    </td>
+
+
 {% if request.path == url_for('settings') %}
 <td>
         <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger">Logout</a>

@@ -12,6 +12,9 @@ from werkzeug.security import generate_password_hash
 
 
 def upsert_setting(name, value, conn):
+    if value is None:
+        return
+
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -45,7 +48,7 @@ def generate_credentials(args):
 
     conn = sqlite3.connect(database_path)
 
-    if args is None or (not args.update_password and not args.update_key and not args.update_chatgpt_key):
+    if args is None or (not args.update_password and not args.update_key):
         create_settings(conn)
 
     # Handle each setting individually
@@ -58,8 +61,7 @@ def generate_credentials(args):
                 username = input(f"Enter the username for login [{app.config.get_setting('USER_NAME', 'admin')}]: ") or app.config.get_setting("USER_NAME", "admin")
             else:
                 username = app.config.get_setting("USER_NAME", "admin")
-
-        upsert_setting("USER_NAME", username, conn)
+        upsert_setting("USER_NAME", username.strip(), conn)
 
     if args is None or args.password or args.update_password:
         password = "" # maybe populate with garbage
@@ -72,21 +74,14 @@ def generate_credentials(args):
                 password = secrets.token_hex(16)
                 # your password is here.  This is the only time youll be able to see it again 
 
-        password_hash = generate_password_hash(password)
+        password_hash = generate_password_hash(password.strip())
         upsert_setting("USER_PASSWORD_HASH", password_hash, conn)
 
     if args is None or args.update_key or not args.update_password:
         secret_key = app.config.get_setting("SECRET_KEY", secrets.token_hex(16))
-        if args:
+        if args and args.secret_key:
              secret_key = args.secret_key
         upsert_setting("SECRET_KEY", secret_key, conn)
-
-    if args and args.api_key:
-        # TODO: is this right?  we might have to modify or improve this 
-        # probably should validate...
-        upsert_setting("API_KEY", args.api_key, conn)
-    if args is None:
-        upsert_setting("API_KEY", secrets.token_hex(32), conn)
 
     conn.close()
 
