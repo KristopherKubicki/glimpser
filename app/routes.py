@@ -67,10 +67,6 @@ def restart_server():
     restart_thread = Thread(target=delayed_restart)
     restart_thread.start()
 
-#def restart_server():
-#    print("Restarting server...")
-#    os.execv(sys.executable, [sys.executable] + sys.argv)
-
 # todo: add this to utils so it is not duplicated in utils/video_archiver.py
 def validate_template_name(template_name: str):
     if template_name is None or not isinstance(template_name, str):
@@ -188,6 +184,47 @@ def login_required(f):
                 return redirect(url_for("login", next=request.url))
 
     return decorated_function
+
+# Function to read logs from the local text file and filter them based on query parameters
+def read_logs_from_file(file_path, level=None, source=None, start_date=None, end_date=None, search=None):
+    if not os.path.exists(file_path):
+        print(f"Log file {file_path} does not exist.")
+        return []
+
+    logs = []
+    with open(file_path, "r") as file:
+        for line in file:
+            parts = line.strip().split(" - ")
+            if len(parts) < 4:
+                continue  # Skip malformed lines
+
+            # Parse the log line into components
+            timestamp_str, log_level, log_source, log_message = parts[0], parts[1], parts[2], " - ".join(parts[3:])
+            try:
+                timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S,%f")
+            except ValueError:
+                continue  # Skip lines with incorrect timestamp format
+
+            # Apply filters if specified
+            if (level and log_level != level) or (source and log_source != source):
+                continue
+            if start_date and timestamp < datetime.fromisoformat(start_date):
+                continue
+            if end_date and timestamp > datetime.fromisoformat(end_date):
+                continue
+            if search and search.lower() not in log_message.lower():
+                continue
+
+            # Append log entry as a dictionary
+            logs.append({
+                "timestamp": timestamp,
+                "level": log_level,
+                "source": log_source,
+                "message": log_message
+            })
+
+    # Return logs sorted by timestamp in descending order
+    return sorted(logs, key=lambda x: x["timestamp"], reverse=True)
 
 
 def get_all_settings():
@@ -492,79 +529,80 @@ def init_routes(app):
 
     # Add a new route for the extended health check
     @app.route('/health')
+    @login_required
     def health_check():
 
-        try:
-            # Check database connection
-            session = SessionLocal()
-            session.execute(text("SELECT 1"))
-            session.close()
-
-            # Check if scheduler is running
-            scheduler_status = "running" if scheduling.scheduler.running else "stopped"
-
-            # Check disk space
-            _, _, free = shutil.disk_usage("/")
-            free_gb = free // (2**30)
-
-            return jsonify({
-                "status": "healthy",
-                "database": "connected",
-                "scheduler": scheduler_status,
-                "free_disk_space_gb": free_gb
-            }), 200
-        except Exception as e:
-            return jsonify({
-                "status": "unhealthy"
-            }), 500
-
-    @app.route('/logs')
-    @login_required
-    def view_logs():
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 50, type=int)
-        level = request.args.get('level')
-        source = request.args.get('source')
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        search = request.args.get('search')
-
-        query = Log.query
-
-        if level:
-            query = query.filter(Log.level == level)
-        if source:
-            query = query.filter(Log.source == source)
-        if start_date:
-            query = query.filter(Log.timestamp >= start_date)
-        if end_date:
-            query = query.filter(Log.timestamp <= end_date)
-        if search:
-            query = query.filter(Log.message.contains(search))
-
-        logs = query.order_by(Log.timestamp.desc()).paginate(page=page, per_page=per_page)
-
-        return render_template('logs.html', logs=logs)
+        scheduler_status = 'failed'
+        free_gb = 0
 
         metrics = scheduling.get_system_metrics()
 
         # Define thresholds for nominal performance
         cpu_threshold = 80  # 80% CPU usage
         memory_threshold = 80  # 80% memory usage
-        thread_threshold = 100  # 100 threads
+        thread_threshold = 100  # 100 threads # should be tied to the thread count in the config, right? 
+        open_files = 1024 # thats a lot
 
         # Check if metrics are nominal
         is_nominal = (
             metrics['cpu_usage'] < cpu_threshold and
             metrics['memory_usage'] < memory_threshold and
-            metrics['thread_count'] < thread_threshold
+            metrics['thread_count'] < thread_threshold and
+            metrics['open_files'] < thread_threshold
         )
+
+        try:
+            #0h 1m 6s
+            if len(metrics['uptime']) < 9: # first ten seconds... 
+                is_nominal = False
+        except Exception as e:
+            is_nominal = False
+
+        ###### 
+        #  consider rolling these into the metrics
+        try:
+            # Check database connection
+            session = SessionLocal()
+            session.execute(text("SELECT 1"))
+            session.close()
+            db_status = 'connected'
+        except Exception as e:
+            is_nominal = False
+            pass # its for the healthcheck...
+        if db_status != 'connected':
+            is_nominal = False
+
+        try:
+            # Check if scheduler is running
+            scheduler_status = "running" if scheduling.scheduler.running else "stopped"
+        except Exception as e:
+            is_nominal = False
+            pass # its for the healthcheck...
+        if scheduler_status != 'running':
+            is_nominal = False
+
+        try:
+            # Check disk space
+            _, _, free = shutil.disk_usage("/")
+            free_gb = free // (2**30)
+        except Exception as e:
+            is_nominal = False
+            pass # its for the healthcheck...
+        if free_gb < 8: # maybe read from config...  # WARNING hardcoded bug
+            is_nominal = False
+
+        #
+        ###### 
 
         return jsonify({
             'status': 'healthy' if is_nominal else 'degraded',
             'metrics': metrics,
-            'nominal': is_nominal
-        }), 200 if is_nominal else 503
+            'nominal': is_nominal,
+            "database": db_status,
+            "scheduler": scheduler_status,
+            "free_disk_space_gb": free_gb
+        }), 200 # always return 200, but might be degraded.
+
 
     @app.route("/status")
     @login_required
@@ -1498,6 +1536,7 @@ def init_routes(app):
     @app.route('/logs')
     @login_required
     def view_logs():
+        # Get query parameters for filtering
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 50, type=int)
         level = request.args.get('level')
@@ -1506,19 +1545,20 @@ def init_routes(app):
         end_date = request.args.get('end_date')
         search = request.args.get('search')
 
-        query = Log.query
+        # Read and filter logs from the file
+        logs = read_logs_from_file(
+            file_path="logs/glimpser.log",
+            level=level,
+            source=source,
+            start_date=start_date,
+            end_date=end_date,
+            search=search
+        )
 
-        if level:
-            query = query.filter(Log.level == level)
-        if source:
-            query = query.filter(Log.source == source)
-        if start_date:
-            query = query.filter(Log.timestamp >= start_date)
-        if end_date:
-            query = query.filter(Log.timestamp <= end_date)
-        if search:
-            query = query.filter(Log.message.contains(search))
+        # Pagination logic
+        total_logs = len(logs)
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated_logs = logs[start:end]
 
-        logs = query.order_by(Log.timestamp.desc()).paginate(page=page, per_page=per_page)
-
-        return render_template('logs.html', logs=logs)
+        return render_template('logs.html', logs=paginated_logs, page=page, per_page=per_page, total_logs=total_logs)

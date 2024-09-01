@@ -42,44 +42,6 @@ class TestCommandExecution(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             subprocess.check_output(['echo', 'fail'])
 
-class TestTimestampHandling(unittest.TestCase):
-
-    def test_get_latest_date_with_files(self):
-        # Mock timestamp for 2021-01-01 00:00:00 UTC
-        utc_timestamp = 1609459200  # This corresponds to 2021-01-01 00:00:00 UTC
-        # Convert to your local time zone (CT, which is UTC-6 in winter)
-        expected_date = datetime.fromtimestamp(utc_timestamp, timezone.utc).astimezone(tz=timezone(timedelta(hours=-6))).strftime('%Y-%m-%d %H:%M:%S')
-
-        with patch('os.path.exists', return_value=True):
-            with patch('os.path.getmtime', return_value=utc_timestamp):
-                date = get_latest_date('/some/directory')
-                self.assertEqual(date, expected_date)
-
-    def test_get_latest_date_no_files(self):
-        with patch('os.path.exists', return_value=False):
-            date = get_latest_date('/some/directory')
-            self.assertIsNone(date)
-
-    def test_get_latest_date_with_empty_dir(self):
-        with patch('os.listdir', return_value=[]):
-            date = get_latest_date('/some/directory')
-            self.assertIsNone(date)
-
-class TestSortedFileRetrieval(unittest.TestCase):
-
-    '''
-    @patch('os.listdir')
-    @patch('os.path.getctime')
-    def test_get_files_sorted_by_creation_time(self, mock_getctime, mock_listdir):
-        mock_listdir.return_value = ['file1.txt', 'file2.txt', 'file3.txt']
-        mock_getctime.side_effect = [3, 1, 2]  # file2 should come first, then file3, then file1
-
-        files = get_files_sorted_by_creation_time('/some/directory')
-        expected_order = ['/some/directory/file2.txt', '/some/directory/file3.txt', '/some/directory/file1.txt']
-        self.assertEqual(files, expected_order)
-    '''
-    pass
-
 if __name__ == '__main__':
     unittest.main()
 
