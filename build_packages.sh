@@ -21,12 +21,12 @@ fi
 
 # Build Debian package
 echo "Building Debian package..."
-mkdir -p debian/glimpser/opt/glimpser
-cp -R app debian/glimpser/opt/glimpser/
-cp requirements.txt debian/glimpser/opt/glimpser/
-cp -R data debian/glimpser/opt/glimpser/
-mkdir -p debian/glimpser/etc/systemd/system
-cat > debian/glimpser/etc/systemd/system/glimpser.service << EOL
+mkdir -p debian/glimpser/opt/glimpser || { echo "Failed to create directory"; exit 1; }
+cp -R app debian/glimpser/opt/glimpser/ || { echo "Failed to copy app directory"; exit 1; }
+cp requirements.txt debian/glimpser/opt/glimpser/ || { echo "Failed to copy requirements.txt"; exit 1; }
+cp -R data debian/glimpser/opt/glimpser/ || { echo "Failed to copy data directory"; exit 1; }
+mkdir -p debian/glimpser/etc/systemd/system || { echo "Failed to create systemd directory"; exit 1; }
+cat > debian/glimpser/etc/systemd/system/glimpser.service << EOL || { echo "Failed to create service file"; exit 1; }
 [Unit]
 Description=Glimpser Web Monitoring Service
 After=network.target
