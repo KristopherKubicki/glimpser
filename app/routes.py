@@ -512,6 +512,57 @@ def init_routes(app):
         }), 200 if is_nominal else 503
 
 
+    @app.route('/api/discover')
+    def api_discover():
+        api_info = {
+            "version": "1.0",
+            "endpoints": [
+                {
+                    "path": "/health",
+                    "method": "GET",
+                    "description": "Check the health status of the API",
+                    "authentication_required": False
+                },
+                {
+                    "path": "/api/discover",
+                    "method": "GET",
+                    "description": "Get information about available API endpoints",
+                    "authentication_required": False
+                },
+                {
+                    "path": "/login",
+                    "method": "GET, POST",
+                    "description": "User login endpoint",
+                    "authentication_required": False
+                },
+                {
+                    "path": "/logout",
+                    "method": "GET",
+                    "description": "User logout endpoint",
+                    "authentication_required": True
+                },
+                {
+                    "path": "/",
+                    "method": "GET",
+                    "description": "Main index page",
+                    "authentication_required": True
+                },
+                {
+                    "path": "/templates",
+                    "method": "GET, POST, DELETE",
+                    "description": "Manage templates",
+                    "authentication_required": True
+                },
+                {
+                    "path": "/settings",
+                    "method": "GET, POST",
+                    "description": "Manage application settings",
+                    "authentication_required": True
+                }
+            ]
+        }
+        return jsonify(api_info), 200
+
     @app.route("/login", methods=["GET", "POST"])
     def login():
         ip_address = request.remote_addr
