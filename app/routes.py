@@ -565,7 +565,8 @@ def init_routes(app):
             # Save the file to a temporary location
             try:
                 file.save(output_path)
-                logging.info(f"Saved temporary file: {output_path}")
+                file_size = os.path.getsize(output_path)
+                logging.info(f"Saved temporary file: {output_path} (Size: {file_size / 1024:.2f} KB)")
             except Exception as e:
                 logging.error(f"Failed to save file: {output_path}. Error: {str(e)}")
                 return jsonify({"status": "error", "message": "Failed to save file"}), 500
@@ -575,7 +576,8 @@ def init_routes(app):
                 screenshots.add_timestamp(output_path, name=template_name)
                 final_path = output_path.rstrip(".tmp")
                 os.rename(output_path, final_path)
-                logging.info(f"Processed and renamed file: {final_path}")
+                final_size = os.path.getsize(final_path)
+                logging.info(f"Processed and renamed file: {final_path} (Size: {final_size / 1024:.2f} KB)")
             except Exception as e:
                 logging.error(f"Failed to process image: {output_path}. Error: {str(e)}")
                 return jsonify({"status": "error", "message": "Failed to process image"}), 500
@@ -583,7 +585,7 @@ def init_routes(app):
             # Update the template's last screenshot time
             template_manager.update_last_screenshot_time(template_name)
 
-            logging.info(f"Successfully submitted image for template: {template_name}")
+            logging.info(f"Successfully submitted image for template: {template_name} (Final size: {final_size / 1024:.2f} KB)")
             return (
                 jsonify(
                     {"status": "success", "message": "Image submitted successfully"}
