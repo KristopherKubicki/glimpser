@@ -2,6 +2,7 @@
 
 import os
 import time
+import logging
 
 from app.config import (
     MAX_COMPRESSED_VIDEO_AGE,
@@ -46,19 +47,23 @@ def delete_old_files(file_list, max_age, max_size, minimum=10):
         ):
             continue
 
-        file_age = current_time - os.path.getctime(file_path)
-        file_size = os.path.getsize(file_path)
-        total_size += file_size
+        try:
+            file_age = current_time - os.path.getctime(file_path)
+            file_size = os.path.getsize(file_path)
+            total_size += file_size
 
-        # Delete files older than max_age or if total size exceeds max_size
-        if file_age > max_age * 86400 or total_size > max_size:
-            try:
-                os.remove(file_path)
-                total_size -= file_size
-                # print(f"Deleted {file_path}")
-            except Exception as e:
-                # TODO: logging
-                print(f"Warning: failed to delete {file_path}", e)
+            # Delete files older than max_age or if total size exceeds max_size
+            if file_age > max_age * 86400 or total_size > max_size:
+                try:
+                    os.remove(file_path)
+                    total_size -= file_size
+                    logging.info("Deleted %s", file_path)
+                except Exception as e:
+                    logging.warning("Failed to delete %s: %s", file_path, e)
+        except FileNotFoundError:
+            logging.warning("File not found: %s", file_path)
+        except Exception as e:
+            logging.error("Error processing %s: %s", file_path, e)
 
 
 def retention_cleanup():
