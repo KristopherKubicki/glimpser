@@ -120,8 +120,15 @@ LLM_CAPTION_PROMPT = get_setting(
 # FFMPEG path setting
 FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
 
-# FFMPEG path setting
-FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
+# Email settings
+EMAIL_ENABLED = get_setting("EMAIL_ENABLED", "False")
+EMAIL_SENDER = get_setting("EMAIL_SENDER", "your-email@example.com")
+EMAIL_RECIPIENTS = get_setting("EMAIL_RECIPIENTS", "recipient1@example.com,recipient2@example.com")
+EMAIL_SMTP_SERVER = get_setting("EMAIL_SMTP_SERVER", "smtp.example.com")
+EMAIL_SMTP_PORT = get_setting("EMAIL_SMTP_PORT", "587")
+EMAIL_USE_TLS = get_setting("EMAIL_USE_TLS", "True")
+EMAIL_USERNAME = get_setting("EMAIL_USERNAME", "your-username")
+EMAIL_PASSWORD = get_setting("EMAIL_PASSWORD", "")
 
 # experimental
 # TWILIO_SID = get_setting("TWILIO_SID","")
