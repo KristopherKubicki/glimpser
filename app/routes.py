@@ -835,29 +835,28 @@ def init_routes(app):
         if not os.path.exists(path):
             abort(404)
 
-        # Fetch all camera names or identifiers you have
-
         # Generate playlist content
-        str(datetime.utcnow())[:18].replace(" ", "").replace("-", "")
         playlist_content = "#EXTM3U\n"
-        # playlist_content += '#EXT-X-VERSION:3\n'
-        # playlist_content += '#EXT-X-TARGETDURATION:10\n'  # Assuming each segment is up to 10 seconds
-        # playlist_content += f'#EXT-X-MEDIA-SEQUENCE:{media_sequence}\n'  # Increment this with each update
+        playlist_content += "#EXT-X-VERSION:3\n"
+        playlist_content += "#EXT-X-TARGETDURATION:10\n"  # Assuming each segment is up to 10 seconds
+        playlist_content += "#EXT-X-MEDIA-SEQUENCE:0\n"
 
         templates = template_manager.get_templates()
         # Sort templates by 'last_video_time' descending
-        sorted(
+        sorted_templates = sorted(
             templates.items(),
             key=lambda x: (x[1].get("last_video_time", 0) or 0),
             reverse=True,
         )
 
-        for camera_id, template in templates.items():
+        for camera_id, template in sorted_templates:
             camera_name = template.get("name")
             # Assuming the MP4 file is the segment
             lkey = generate_timed_hash()
             video_path = f"{request.url_root}last_video/{camera_name}?timed_key={lkey}"
-            playlist_content += f"#EXTINF:-1,{camera_name}\n{video_path}\n"
+            playlist_content += f"#EXTINF:10.0,{camera_name}\n{video_path}\n"
+
+        playlist_content += "#EXT-X-ENDLIST\n"
 
         return Response(playlist_content, mimetype="application/x-mpegURL")
 
