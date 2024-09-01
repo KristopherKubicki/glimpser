@@ -324,20 +324,6 @@ function confirmDelete(templateName) {
     }
 }
 
-function toggleObjectConfidence() {
-    const objectFilter = document.getElementById('object_filter');
-    const objectConfidenceContainer = document.getElementById('object_confidence_container');
-
-    if (objectFilter.value.trim() !== "") {
-        objectConfidenceContainer.style.display = 'block';
-    } else {
-        objectConfidenceContainer.style.display = 'none';
-    }
-}
-
-// Call this function on page load to set the initial state
-document.addEventListener('DOMContentLoaded', toggleObjectConfidence);
-
 // todo, add the camera metadata template_details here too
 function showCameraDetails(templateName) {
     const baseUrl = window.location.origin;

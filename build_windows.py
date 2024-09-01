@@ -1,3 +1,6 @@
+#!env/bin/python3
+#  build_windows.py
+
 import PyInstaller.__main__
 import os
 

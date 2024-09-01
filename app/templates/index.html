@@ -130,19 +130,6 @@ function validateForm() {
     return true;
 }
 
-function toggleObjectConfidence() {
-    const objectFilter = document.getElementById('object_filter');
-    const objectConfidenceContainer = document.getElementById('object_confidence_container');
-    
-    if (objectFilter.value.trim() !== "") {
-        objectConfidenceContainer.style.display = 'block';
-    } else {
-        objectConfidenceContainer.style.display = 'none';
-    }
-}
-
-// Call this function on page load to set the initial state
-document.addEventListener('DOMContentLoaded', toggleObjectConfidence);
 
 function showStructuredInput(inputId) {
     const input = document.getElementById(inputId);

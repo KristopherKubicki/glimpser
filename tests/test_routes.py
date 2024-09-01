@@ -21,7 +21,7 @@ class TestRoutes(unittest.TestCase):
     def test_health_check(self):
         login_attempts = {} # reset
         response = self.client.get("/health")
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 302) # requires a login now.  Maybe we'll add a public one one day
         # TODO: some light inspection on the endpoint
         #self.assertEqual(response.json, {"status": "healthy"})
 

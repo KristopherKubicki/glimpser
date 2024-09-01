@@ -6,7 +6,7 @@ import json
 import subprocess
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -45,10 +45,15 @@ class TestCommandExecution(unittest.TestCase):
 class TestTimestampHandling(unittest.TestCase):
 
     def test_get_latest_date_with_files(self):
+        # Mock timestamp for 2021-01-01 00:00:00 UTC
+        utc_timestamp = 1609459200  # This corresponds to 2021-01-01 00:00:00 UTC
+        # Convert to your local time zone (CT, which is UTC-6 in winter)
+        expected_date = datetime.fromtimestamp(utc_timestamp, timezone.utc).astimezone(tz=timezone(timedelta(hours=-6))).strftime('%Y-%m-%d %H:%M:%S')
+
         with patch('os.path.exists', return_value=True):
-            with patch('os.path.getmtime', return_value=1609459200):  # Mocked timestamp for 2021-01-01 00:00:00 # UTC?
+            with patch('os.path.getmtime', return_value=utc_timestamp):
                 date = get_latest_date('/some/directory')
-                self.assertEqual(date, '2021-01-01 00:00:00')
+                self.assertEqual(date, expected_date)
 
     def test_get_latest_date_no_files(self):
         with patch('os.path.exists', return_value=False):
