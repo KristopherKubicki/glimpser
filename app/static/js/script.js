@@ -314,50 +314,62 @@ function loadTemplates() {
                     const video = templateDiv.querySelector('video');
                     observer.observe(video);
 
-                    video.addEventListener('loadedmetadata', () => {
-                        // Set playback speed based on video duration
-                        if (video.duration < 1) {
-                            video.playbackRate = 0.0625;
-                        } else if (video.duration < 3) {
-                            video.playbackRate = 0.0625*2;
-                        } else if (video.duration < 7) {
-                            video.playbackRate = 0.0625*4;
-                        } else if (video.duration < 15) {
-                            video.playbackRate = 0.0625*8;
-                        } else if (video.duration < 30) {
-                            video.playbackRate = 0.0625*16;
-                        } else if (video.duration < 60) {
-                            video.playbackRate = 0.0625*32;
-                        } else if (video.duration > 120) {
-                            video.playbackRate = 0.0625*64;
-                        } else {
-                            video.playbackRate = 0.0625*128;
-                        }
+                    function calculatePlaybackRate(video) {
+                        if (video.duration < 1) return 0.0625;
+                        if (video.duration < 3) return 0.0625 * 2;
+                        if (video.duration < 7) return 0.0625 * 4;
+                        if (video.duration < 15) return 0.0625 * 8;
+                        if (video.duration < 30) return 0.0625 * 16;
+                        if (video.duration < 60) return 0.0625 * 32;
+                        if (video.duration > 120) return 0.0625 * 64;
+                        return 0.0625 * 128;
+                    }
 
+                    video.addEventListener('loadedmetadata', () => {
+                        video.playbackRate = calculatePlaybackRate(video);
                         // Start the video at t minus 10 seconds if possible
                         video.currentTime = Math.max(0, video.duration - 10);
                     });
 
+                    video.addEventListener('error', (e) => {
+                        console.error('Error loading video:', e);
+                        // You might want to set a placeholder image or show an error message here
+                    });
+
+                    let playTimeout;
+
                     if (isMobile()) {
                         video.setAttribute('playsinline', ''); // Prevent fullscreen playback on iOS
                         video.addEventListener('play', () => {
-                            video.playbackRate = calculatePlaybackRate(video); // Set appropriate playback rate
+                            video.playbackRate = calculatePlaybackRate(video);
                         });
                     } else {
                         video.addEventListener('mouseenter', () => {
-                            if (video.playbackRate * 3.0 <= 16) {
-                                video.playbackRate *= 3.0; // Set playback speed
-                            } else {
-                                video.playbackRate = 16; // Set playback rate to max value of 16
-                            }
-                            video.play();
+                            clearTimeout(playTimeout);
+                            playTimeout = setTimeout(() => {
+                                if (video.paused) {
+                                    if (video.playbackRate * 3.0 <= 16) {
+                                        video.playbackRate *= 3.0;
+                                    } else {
+                                        video.playbackRate = 16;
+                                    }
+                                    video.play().catch(e => console.error('Error playing video:', e));
+                                }
+                            }, 100); // Add a small delay before playing
                         });
 
                         video.addEventListener('mouseleave', () => {
-                            video.pause();
-                            video.load(); // Reset the video to show the poster again
+                            clearTimeout(playTimeout);
+                            if (!video.paused) {
+                                video.pause();
+                            }
                         });
                     }
+
+                    video.addEventListener('ended', () => {
+                        video.currentTime = 0; // Reset to the beginning
+                        video.load(); // Reset the video to show the poster
+                    });
 
                     video.addEventListener('ended', () => {
                         setTimeout(() => {
@@ -368,7 +380,25 @@ function loadTemplates() {
                 }
             });
 
-		 
+            const playAllButton = document.getElementById('play-all');
+            const stopAllButton = document.getElementById('stop-all');
+
+            // Play all media elements
+            playAllButton.addEventListener('click', function () {
+                const mediaElements = templateList.querySelectorAll('video, audio');
+                mediaElements.forEach(element => {
+                    element.play();
+                });
+            });
+
+            // Stop all media elements
+            stopAllButton.addEventListener('click', function () {
+                const mediaElements = templateList.querySelectorAll('video, audio');
+                mediaElements.forEach(element => {
+                    element.pause();
+                    element.currentTime = 0; // Reset to start
+                });
+            });
 
             window.addEventListener('resize', updateGridLayout);
         })
