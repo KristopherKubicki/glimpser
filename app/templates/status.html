@@ -6,6 +6,23 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="{{ url_for('static', filename='js/performance.js') }}"></script>
+    <style>
+        .camera-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .camera-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        .camera-item img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -78,6 +95,22 @@
         <h3>Scheduler Control</h3>
         <button id="toggle-scheduler" class="btn btn-primary">Toggle Scheduler</button>
         <span id="scheduler-status">Loading...</span>
+    </div>
+
+    <h2>Camera Schedules</h2>
+    <div class="camera-grid">
+        {% for camera in camera_schedules %}
+            <div class="camera-item">
+                <h3><a href="{{ camera.template_url }}">{{ camera.name }}</a></h3>
+                {% if camera.thumbnail_url %}
+                    <img src="{{ camera.thumbnail_url }}" alt="{{ camera.name }} thumbnail">
+                {% else %}
+                    <p>No thumbnail available</p>
+                {% endif %}
+                <p>Last Screenshot: {{ camera.last_screenshot.strftime('%Y-%m-%d %H:%M:%S') if camera.last_screenshot else 'N/A' }}</p>
+                <p>Next Screenshot: {{ camera.next_screenshot.strftime('%Y-%m-%d %H:%M:%S') if camera.next_screenshot else 'N/A' }}</p>
+            </div>
+        {% endfor %}
     </div>
 
     {% include 'footer.html' %}

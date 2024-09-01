@@ -11,12 +11,11 @@ import sys
 import time
 import tempfile
 import shutil
+import subprocess
 import uuid
-
 from datetime import datetime, timedelta
 from functools import wraps
 from threading import Lock, Thread
-import subprocess
 
 from flask import (
     Response,
@@ -56,6 +55,42 @@ from app.utils import (
 from app.utils.db import SessionLocal
 from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock, start_log_caching
+
+# Assuming 'app' is defined in __init__.py, we need to import it
+from app import app
+
+@app.route("/status")
+@login_required
+def status():
+    metrics = scheduling.get_system_metrics()
+    templates = template_manager.get_templates()
+
+    camera_schedules = []
+    for name, template in templates.items():
+        last_screenshot_time = template.get('last_screenshot_time')
+        frequency = int(template.get('frequency', 30))  # Default to 30 minutes if not set
+
+        if last_screenshot_time:
+            last_screenshot = datetime.strptime(last_screenshot_time, "%Y-%m-%d %H:%M:%S")
+            next_screenshot = last_screenshot + timedelta(minutes=frequency)
+        else:
+            last_screenshot = None
+            next_screenshot = None
+
+        thumbnail_path = os.path.join(app.config['SCREENSHOT_DIRECTORY'], secure_filename(name), 'latest_camera.png')
+        thumbnail_url = url_for('uploaded_file', name=name, filename='latest_camera.png') if os.path.exists(thumbnail_path) else None
+
+        camera_schedules.append({
+            'name': name,
+            'last_screenshot': last_screenshot,
+            'next_screenshot': next_screenshot,
+            'thumbnail_url': thumbnail_url,
+            'template_url': url_for('template_details', template_name=name)
+        })
+
+    return render_template("status.html", metrics=metrics, camera_schedules=camera_schedules)
+
+# ... (rest of the file content)
 
 def restart_server():
     print("Restarting server...")
@@ -541,7 +576,6 @@ def init_routes(app):
                 is_nominal = False
         except Exception as e:
             is_nominal = False
-            print("warning5")
 
         ###### 
         #  consider rolling these into the metrics
@@ -553,22 +587,18 @@ def init_routes(app):
             db_status = 'connected'
         except Exception as e:
             is_nominal = False
-            print("warning6")
             pass # its for the healthcheck...
         if db_status != 'connected':
             is_nominal = False
-            print("warning7")
 
         try:
             # Check if scheduler is running
             scheduler_status = "running" if scheduling.scheduler.running else "stopped"
         except Exception as e:
             is_nominal = False
-            print("warning8")
             pass # its for the healthcheck...
         if scheduler_status != 'running':
             is_nominal = False
-            print("warning9")
 
         #
         ###### 
