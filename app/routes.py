@@ -541,6 +541,7 @@ def init_routes(app):
                 is_nominal = False
         except Exception as e:
             is_nominal = False
+            print("warning5")
 
         ###### 
         #  consider rolling these into the metrics
@@ -552,18 +553,22 @@ def init_routes(app):
             db_status = 'connected'
         except Exception as e:
             is_nominal = False
+            print("warning6")
             pass # its for the healthcheck...
         if db_status != 'connected':
             is_nominal = False
+            print("warning7")
 
         try:
             # Check if scheduler is running
             scheduler_status = "running" if scheduling.scheduler.running else "stopped"
         except Exception as e:
             is_nominal = False
+            print("warning8")
             pass # its for the healthcheck...
         if scheduler_status != 'running':
             is_nominal = False
+            print("warning9")
 
         #
         ###### 
