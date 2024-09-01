@@ -23,32 +23,33 @@
         }
     </script>
 
- 
+    <div>
+        <label for="group-dropdown" title="Filter templates by group">Filter by Group:</label>
+        <select id="group-dropdown" title="Select a group to filter templates">
+            <!-- Options will be populated here -->
+        </select>
 
-<details><summary>Captions</summary>
-    <table border="1" style="width: 100%; border-collapse: collapse;">
-        <tr>
-            <th style="padding: 8px; background-color: #f4f4f4;">Timestamp</th>
-            <th style="padding: 8px; background-color: #f4f4f4;">Caption</th>
-        </tr>
-        {% for caption in lcaptions %}
+        <label for="search-input" title="Search for cameras or groups">Search:</label>
+        <input type="text" id="search-input" placeholder="Search cameras or groups" title="Enter search terms">
+    </div>
 
-	{% for lc in caption %} 
-	{% if caption[lc] != "" %} 
-
-        <tr>
-		<td>	{{ lc }} </td><td> {{ caption[lc] }}   </td>
-
-        </tr>
-	{% endif %} 
-
-	{% endfor %} 
-        {% endfor %}
-    </table>
-</details>
-
-
-
+    <details><summary>Captions</summary>
+        <table border="1" style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <th style="padding: 8px; background-color: #f4f4f4;">Timestamp</th>
+                <th style="padding: 8px; background-color: #f4f4f4;">Caption</th>
+            </tr>
+            {% for caption in lcaptions %}
+            {% for lc in caption %}
+            {% if caption[lc] != "" %}
+            <tr>
+                <td>{{ lc }}</td><td>{{ caption[lc] }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+            {% endfor %}
+        </table>
+    </details>
 
     <h2>Update Camera Notes</h2>
     <div class="template-container">
@@ -57,8 +58,7 @@
                 <table>
                     <tr>
                         <td>
-				<a href='/templates/{{template}}'><img src="/last_screenshot/{{template}}" alt="Thumbnail" width="256"></a>
-					
+                            <a href='/templates/{{template}}'><img src="/last_screenshot/{{template}}" alt="Thumbnail" width="256"></a>
                         </td>
                         <td>
                             <div class="details">
