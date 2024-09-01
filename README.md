@@ -39,23 +39,24 @@ Glimpser is a straightforward yet powerful real-time monitoring application desi
 - Python 3.8 or higher
 
 ### Steps
-1. **Clone the Repository**
-    ```sh
-    git clone https://github.com/yourusername/glimpser.git
-    cd glimpser
-    ```
+1. **Install the Package**
+   ```sh
+   pip install glimpser
+   ```
 
-2. **Install Dependencies**
-    ```sh
-    pip install -r requirements.txt
-    ```
+   Or, if you want to install from source:
+   ```sh
+   git clone https://github.com/yourusername/glimpser.git
+   cd glimpser
+   pip install .
+   ```
 
-3. **Run the Application**
-    ```sh
-    python3 main.py
-    ```
+2. **Run the Application**
+   ```sh
+   glimpser
+   ```
 
-You will be prompted to create a secret key to initialize the local sqlite database.  Follow the rest of the guided setup and then direct your browser to http://127.0.0.1:8082 to finish the rest of the setup. 
+   You will be prompted to create a secret key to initialize the local sqlite database. Follow the rest of the guided setup and then direct your browser to http://127.0.0.1:8082 to finish the rest of the setup.
 
 ## Usage
 
@@ -80,8 +81,37 @@ Using advanced AI models, Glimpser generates concise and informative captions fo
 ### Auto-summarization
 Glimpser can summarize data from multiple sources into a coherent and concise format. The summaries highlight the most important information, making it easier for users to stay informed.
 
+## Development
+
+To set up the project for development:
+
+1. Clone the repository:
+   ```sh
+   git clone https://github.com/yourusername/glimpser.git
+   cd glimpser
+   ```
+
+2. Create a virtual environment and activate it:
+   ```sh
+   python -m venv venv
+   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+   ```
+
+3. Install the package in editable mode with development dependencies:
+   ```sh
+   pip install -e ".[dev]"
+   ```
+
+4. Run tests:
+   ```sh
+   pytest
+   ```
+
 ## Contributing
-Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request. 
+Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request.
+
+## License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ### Steps to Contribute
 1. Fork the repository.
