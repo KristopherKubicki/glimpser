@@ -27,6 +27,7 @@ from flask import (
     send_from_directory,
     session,
     url_for,
+    stream_with_context,
 )
 
 from flask_login import logout_user
@@ -909,6 +910,35 @@ def init_routes(app):
             "live.html", template_details=template_manager.get_templates()
         )
 
+    @app.route("/latest_frame/<string:template_name>")
+    @login_required
+    def latest_frame(template_name: TemplateName):
+        """
+        Serve the latest frame for a specific camera.
+        """
+        template_name = validate_template_name(template_name)
+        if template_name is None:
+            abort(404)
+
+        path = os.path.join(
+            os.path.dirname(os.path.join(__file__)),
+            "..",
+            SCREENSHOT_DIRECTORY,
+            template_name,
+        )
+        if not os.path.exists(path):
+            abort(404)
+
+        latest_file = max(
+            (f for f in os.listdir(path) if f.endswith('.png')),
+            key=lambda f: os.path.getmtime(os.path.join(path, f))
+        )
+
+        if latest_file:
+            return send_file(os.path.join(path, latest_file), mimetype='image/png')
+
+        abort(404)
+
     # TODO: extend this for groups
     @app.route("/last_teaser")
     @login_required
@@ -932,14 +962,13 @@ def init_routes(app):
     @login_required
     def serve_video(template_name: TemplateName):
         """
-        Serve a specific screenshot by template name.
+        Serve a specific video by template name.
         """
-
         template_name = validate_template_name(template_name)
         if template_name is None:
             abort(404)
 
-        # Placeholder logic to serve the screenshot
+        # Placeholder logic to serve the video
         path = os.path.join(
             os.path.dirname(os.path.join(__file__)),
             "..",
