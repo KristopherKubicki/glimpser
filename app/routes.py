@@ -31,7 +31,6 @@ from flask import (
     session,
     url_for,
     stream_with_context,
-    current_app,
 )
 from flask_login import logout_user, login_required
 from PIL import Image
@@ -56,7 +55,7 @@ from app.utils import (
 )
 from app.utils.db import SessionLocal
 from app.models.log import Log
-from app.utils.scheduling import scheduler
+from app.utils.scheduling import log_cache, log_cache_lock, start_log_caching
 
 def restart_server():
     print("Restarting server...")
@@ -188,45 +187,26 @@ def login_required(f):
     return decorated_function
 
 # Function to read logs from the local text file and filter them based on query parameters
-def read_logs_from_file(file_path, level=None, source=None, start_date=None, end_date=None, search=None):
-    if not os.path.exists(file_path):
-        print(f"Log file {file_path} does not exist.")
-        return []
+def read_logs_from_memory(level=None, source=None, start_date=None, end_date=None, search=None):
+    global log_cache
 
-    logs = []
-    with open(file_path, "r") as file:
-        for line in file:
-            parts = line.strip().split(" - ")
-            if len(parts) < 4:
-                continue  # Skip malformed lines
-
-            # Parse the log line into components
-            timestamp_str, log_level, log_source, log_message = parts[0], parts[1], parts[2], " - ".join(parts[3:])
-            try:
-                timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S,%f")
-            except ValueError:
-                continue  # Skip lines with incorrect timestamp format
-
+    filtered_logs = []
+    with log_cache_lock:
+        for log in log_cache:
             # Apply filters if specified
-            if (level and log_level != level) or (source and log_source != source):
+            if (level and log["level"] != level) or (source and log["source"] != source):
                 continue
-            if start_date and timestamp < datetime.fromisoformat(start_date):
+            if start_date and log["timestamp"] < datetime.fromisoformat(start_date):
                 continue
-            if end_date and timestamp > datetime.fromisoformat(end_date):
+            if end_date and log["timestamp"] > datetime.fromisoformat(end_date):
                 continue
-            if search and search.lower() not in log_message.lower():
+            if search and search.lower() not in log["message"].lower():
                 continue
 
-            # Append log entry as a dictionary
-            logs.append({
-                "timestamp": timestamp,
-                "level": log_level,
-                "source": log_source,
-                "message": log_message
-            })
+            filtered_logs.append(log)
 
     # Return logs sorted by timestamp in descending order
-    return sorted(logs, key=lambda x: x["timestamp"], reverse=True)
+    return sorted(filtered_logs, key=lambda x: x["timestamp"], reverse=True)
 
 
 def get_all_settings():
@@ -261,9 +241,9 @@ def get_all_settings():
             {"name": name, "value": value} for name, value in settings.items()
         ]
 
-        # TODO: blocklist some settings - set this somewhere 
+        # TODO: blocklist some settings - set this somewhere
         lsettings_list = []
-        blocks = ["SECRET_KEY", "USER_PASSWORD_HASH", "DATABASE_URL","VERSION"] 
+        blocks = ["SECRET_KEY", "USER_PASSWORD_HASH", "DATABASE_URL","VERSION"]
         for sl in settings_list:
             if re.findall(r"^[A-Z_]+?$", sl["name"]) and sl["name"] not in blocks:
                 lsettings_list.append({"name": sl["name"], "value": sl["value"]})
@@ -309,7 +289,7 @@ def update_setting(name: str, value: str) -> bool:
 
     if delta is True:
         # Trigger server restart
-        # is there a way to do this on a delay? 
+        # is there a way to do this on a delay?
         restart_server()
 
     return True
@@ -1445,21 +1425,6 @@ def init_routes(app):
     def system_metrics():
         return jsonify(scheduling.get_system_metrics())
 
-    @app.route('/toggle_scheduler', methods=['POST'])
-    @login_required
-    def toggle_scheduler():
-        if scheduler.running:
-            scheduler.shutdown()
-            return jsonify({"status": "stopped"})
-        else:
-            scheduler.start()
-            return jsonify({"status": "running"})
-
-    @app.route('/scheduler_status')
-    @login_required
-    def scheduler_status():
-        return jsonify({"status": "running" if scheduler.running else "stopped"})
-
     @app.route("/update_template/<string:template_name>", methods=["POST"])
     @login_required
     def update_template(template_name: TemplateName):
@@ -1554,9 +1519,8 @@ def init_routes(app):
         end_date = request.args.get('end_date')
         search = request.args.get('search')
 
-        # Read and filter logs from the file
-        logs = read_logs_from_file(
-            file_path="logs/glimpser.log",
+        # Read and filter logs from memory
+        logs = read_logs_from_memory(
             level=level,
             source=source,
             start_date=start_date,
