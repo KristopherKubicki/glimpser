@@ -9,6 +9,7 @@ import re
 import psutil
 import threading
 import time
+from collections import deque
 
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
@@ -776,3 +777,43 @@ def get_system_metrics():
         'thread_count': system_metrics['thread_count'],
         'uptime': f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s"
     }
+
+log_cache = deque(maxlen=10000)  # Store last 10000 log entries
+log_cache_lock = threading.Lock()
+
+def cache_logs():
+    global log_cache
+    log_file_path = "logs/glimpser.log"
+    last_position = 0
+
+    while True:
+        with open(log_file_path, "r") as file:
+            file.seek(last_position)
+            new_logs = file.readlines()
+
+            with log_cache_lock:
+                for log in new_logs:
+                    # Truncate long log rows to 500 characters
+                    truncated_log = log[:500] + '...' if len(log) > 500 else log
+                    log_parts = truncated_log.strip().split(" - ", 3)
+                    if len(log_parts) >= 4:
+                        timestamp_str, log_level, log_source, log_message = log_parts
+                        try:
+                            timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S,%f")
+                            log_cache.append({
+                                "timestamp": timestamp,
+                                "level": log_level,
+                                "source": log_source,
+                                "message": log_message
+                            })
+                        except ValueError:
+                            continue  # Skip lines with incorrect timestamp format
+
+            last_position = file.tell()
+
+        time.sleep(10)  # Wait for 10 seconds before checking for new logs
+
+def start_log_caching():
+    log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
+    log_caching_thread.start()
+    scheduler.add_job(func=start_log_caching, trigger='interval', hours=1, id='log_caching')
