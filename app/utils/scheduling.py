@@ -25,7 +25,26 @@ from .llm import summarize
 from .screenshots import capture_or_download, remove_background, add_timestamp
 from .template_manager import get_template, get_templates, save_template
 
-scheduler = APScheduler()
+from apscheduler.schedulers.background import BackgroundScheduler
+
+class GracefulAPScheduler(APScheduler):
+    def __init__(self):
+        super().__init__()
+        self.set_scheduler(BackgroundScheduler())
+
+    def set_scheduler(self, scheduler):
+        self._scheduler = scheduler
+
+    def shutdown(self, wait=True):
+        try:
+            if self.running:
+                super().shutdown(wait)
+            else:
+                print("Scheduler is not running.")
+        except Exception as e:
+            print(f"Error during scheduler shutdown: {e}")
+
+scheduler = GracefulAPScheduler()
 
 
 clip_processor, clip_model = None, None

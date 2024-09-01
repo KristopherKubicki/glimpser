@@ -197,20 +197,21 @@ def create_app(watchdog=True, schedule=True):
     # Set up signal handlers for graceful shutdown
     def graceful_shutdown(signum, frame):
         if threading.current_thread() is threading.main_thread():
-            logging.info("Received shutdown signal. Shutting down gracefully...")
+            print("\nReceived shutdown signal. Shutting down gracefully...")
 
         # Shutdown the scheduler
-        scheduler.shutdown()
+        try:
+            scheduler.shutdown(wait=False)
+        except Exception as e:
+            print(f"Error shutting down scheduler: {e}")
 
         # Terminate all non-daemon threads
         for thread in threading.enumerate():
             if thread != threading.current_thread() and not thread.daemon:
-                if threading.current_thread() is threading.main_thread():
-                    logging.info("Terminating thread: %s", thread.name)
-                if hasattr(thread, 'terminate'):
-                    thread.terminate()
-                elif threading.current_thread() is threading.main_thread():
-                    logging.warning("Unable to terminate thread: %s. No terminate method available.", thread.name)
+                try:
+                    thread.join(timeout=1)
+                except Exception as e:
+                    print(f"Error terminating thread {thread.name}: {e}")
 
         # Add any other cleanup tasks here (e.g., closing database connections)
 
