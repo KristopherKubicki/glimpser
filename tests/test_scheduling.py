@@ -62,7 +62,7 @@ class TestScheduler(unittest.TestCase):
         # Ensure job2 still runs
         job_func2 = scheduler.get_job('test_job2').func
         job_func2()
-        #job2.assert_called_once() # TODO: fix this ...
+        job2.assert_called_once()
 
     @patch('time.sleep', return_value=None)
     def test_remove_scheduled_job(self, mock_sleep):
@@ -79,6 +79,41 @@ class TestScheduler(unittest.TestCase):
 
         # Verify the job is removed
         self.assertIsNone(scheduler.get_job('test_job'))
+
+    @patch('time.sleep', return_value=None)
+    def test_modify_scheduled_job(self, mock_sleep):
+        job = MagicMock()
+
+        # Schedule a job
+        scheduler.add_job(func=job, trigger='interval', seconds=5, id='test_job')
+
+        # Modify the job
+        scheduler.modify_job(job_id='test_job', trigger='interval', seconds=10)
+
+        # Verify the job is modified
+        modified_job = scheduler.get_job('test_job')
+        self.assertEqual(modified_job.trigger.interval.seconds, 10)
+
+    @patch('time.sleep', return_value=None)
+    def test_pause_and_resume_job(self, mock_sleep):
+        job = MagicMock()
+
+        # Schedule a job
+        scheduler.add_job(func=job, trigger='interval', seconds=5, id='test_job')
+
+        # Pause the job
+        scheduler.pause_job('test_job')
+
+        # Verify the job is paused
+        paused_job = scheduler.get_job('test_job')
+        self.assertTrue(paused_job.next_run_time is None)
+
+        # Resume the job
+        scheduler.resume_job('test_job')
+
+        # Verify the job is resumed
+        resumed_job = scheduler.get_job('test_job')
+        self.assertTrue(resumed_job.next_run_time is not None)
 
     '''
     @patch('app.utils.scheduling.scheduler.add_job')
