@@ -166,6 +166,7 @@ function changeCamera() {
         currentCamera = 'All';
         templateDetails['All'] = {
             url: '/stream.mp4', // Set the URL for the MP4 stream without a group
+            groupCameras: Object.keys(templateDetails).filter(key => key !== 'All'), // Add all cameras to groupCameras
             // Add other necessary properties for the "All" group, if needed
         };
     } else if (selectedValue.startsWith('group-')) {
@@ -397,11 +398,25 @@ function playMP4() {
     video.load();
     video.play();
 
+    // Remove any existing 'ended' event listeners
+    video.removeEventListener('ended', handleVideoEnded);
+
     // Add an event listener for the 'ended' event
-    video.addEventListener('ended', () => {
-        video.load(); // Reload the video
-        video.play(); // Play the video again
-    });
+    video.addEventListener('ended', handleVideoEnded);
+}
+
+function handleVideoEnded() {
+    if (currentCamera === 'All' || currentCamera.startsWith('group-')) {
+        // For "All" or group options, move to the next camera
+        const groupCameras = templateDetails[currentCamera].groupCameras;
+        const currentIndex = groupCameras.indexOf(video.dataset.currentCamera);
+        const nextIndex = (currentIndex + 1) % groupCameras.length;
+        const nextCamera = groupCameras[nextIndex];
+        video.src = '/last_video/' + nextCamera;
+        video.dataset.currentCamera = nextCamera;
+    }
+    video.load();
+    video.play();
 }
 
 function playPNG() {
