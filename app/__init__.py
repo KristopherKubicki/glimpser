@@ -9,9 +9,9 @@ import shutil
 import time
 import psutil
 
-
 from flask import Flask, current_app, jsonify
 from flask_apscheduler import APScheduler
+from sqlalchemy.orm import scoped_session
 
 from app.utils.retention_policy import retention_cleanup
 from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler, get_system_metrics
@@ -19,9 +19,25 @@ from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 from app.utils.video_compressor import compress_and_cleanup
 from app.config import backup_config, restore_config
 from app.utils.email_alerts import email_alert
+from app.utils.db import SessionLocal
+from app.models.log import Log
 
 # needed for the llava compare
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+class SQLAlchemyHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.session = scoped_session(SessionLocal)
+
+    def emit(self, record):
+        log_entry = Log(
+            level=record.levelname,
+            message=record.getMessage(),
+            source=record.name
+        )
+        self.session.add(log_entry)
+        self.session.commit()
 
 def create_app(watchdog=True, schedule=True):
     """
@@ -44,6 +60,12 @@ def create_app(watchdog=True, schedule=True):
     from app.config import SECRET_KEY
 
     app.secret_key = SECRET_KEY
+
+    # Set up logging
+    handler = SQLAlchemyHandler()
+    handler.setLevel(logging.INFO)
+    app.logger.addHandler(handler)
+    app.logger.setLevel(logging.INFO)
 
     from app.config import (
         MAX_WORKERS,
