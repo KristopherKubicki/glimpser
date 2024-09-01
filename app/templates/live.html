@@ -227,34 +227,72 @@ function changeCamera() {
         // Individual camera is selected
         currentCamera = selectedValue;
     }
-    updateTemplateDetails();
-    updateFeed(); // Make sure to update the video feed after changing the camera or group
+    
+    // Check if the camera is connected
+    const isConnected = checkCameraConnection(currentCamera);
+    
+    if (!isConnected) {
+        // Display a placeholder for disconnected cameras
+        const videoContainer = document.querySelector('.video-container');
+        videoContainer.innerHTML = `
+            <div class="placeholder">
+                <img src="/static/img/camera_offline.png" alt="Camera Offline">
+                <p>Camera ${currentCamera} is currently offline</p>
+            </div>
+        `;
+        hideLoadingIndicator();
+    } else {
+        updateTemplateDetails();
+        updateFeed(); // Make sure to update the video feed after changing the camera or group
+    }
 }
 
         function updateTemplateDetails() {
             const details = templateDetails[currentCamera];
-		if (details) { 
-		video.title = details.last_caption;
-            templateDetailsContainer.innerHTML = `
-                <h3>Details for ${currentCamera}</h3>
-                <p>URL: ${details.url}</p>
-                <p>Frequency: ${details.frequency} minutes</p>
-                <p>Timeout: ${details.timeout} seconds</p>
-                <p>Notes: ${details.notes || 'N/A'}</p>
-                <p>Last Screenshot Time: ${details.last_screenshot_time}</p>
-		<p>Last Caption: ${details.last_caption}</p>
-            `;
+            const isConnected = checkCameraConnection(currentCamera);
+
+            if (details) {
+                video.title = details.last_caption;
+                templateDetailsContainer.innerHTML = `
+                    <h3>Details for ${currentCamera}</h3>
+                    <p>Status: ${isConnected ? '<span class="connected">Connected</span>' : '<span class="disconnected">Disconnected</span>'}</p>
+                    <p>URL: ${details.url}</p>
+                    <p>Frequency: ${details.frequency} minutes</p>
+                    <p>Timeout: ${details.timeout} seconds</p>
+                    <p>Notes: ${details.notes || 'N/A'}</p>
+                    <p>Last Screenshot Time: ${details.last_screenshot_time || 'N/A'}</p>
+                    <p>Last Caption: ${details.last_caption || 'N/A'}</p>
+                `;
+
+                if (!isConnected) {
+                    templateDetailsContainer.innerHTML += `
+                        <p class="error-message">This camera appears to be offline. Last seen: ${details.last_screenshot_time || 'Never'}</p>
+                    `;
+                }
+            } else {
+                templateDetailsContainer.innerHTML = `
+                    <h3>Details for ${currentCamera}</h3>
+                    <p>No details available</p>
+                `;
+            }
         }
-		else {
-        templateDetailsContainer.innerHTML = `
-            <h3>Details for ${currentCamera}</h3>
-            <p>No details available</p>
-        `;
-    }
-	}
 
         function updateFeed() {
             const source = document.getElementById('video-source').value;
+            const isConnected = checkCameraConnection(currentCamera);
+
+            if (!isConnected) {
+                const videoContainer = document.querySelector('.video-container');
+                videoContainer.innerHTML = `
+                    <div class="placeholder">
+                        <img src="/static/img/camera_offline.png" alt="Camera Offline">
+                        <p>Camera ${currentCamera} is currently offline</p>
+                    </div>
+                `;
+                hideLoadingIndicator();
+                return;
+            }
+
             switch (source) {
                 case 'm3u8':
                     playM3U8();
@@ -456,7 +494,20 @@ function playMotion() {
 
 	        speedDisplay.classList.add('highlight-speed');
     setTimeout(() => speedDisplay.classList.remove('highlight-speed'), 500);
+    }
+
+    function checkCameraConnection(cameraName) {
+        // Check if the camera has a last_screenshot_time
+        const camera = templateDetails[cameraName];
+        if (!camera || !camera.last_screenshot_time) {
+            return false;
         }
+
+        // Check if the last screenshot is within the last hour
+        const lastScreenshotTime = new Date(camera.last_screenshot_time);
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        return lastScreenshotTime > oneHourAgo;
+    }
 
         // Initially update template details and play the MP4 stream
         updateTemplateDetails();
