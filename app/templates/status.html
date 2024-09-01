@@ -5,21 +5,7 @@
     <title>System Status</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script>
-        function updateMetrics() {
-            $.getJSON('/api/metrics', function(data) {
-                $('#cpu-usage').text(data.cpu_usage.toFixed(2) + '%');
-                $('#memory-usage').text(data.memory_usage.toFixed(2) + '%');
-                $('#thread-count').text(data.thread_count);
-                $('#uptime').text(data.uptime);
-            });
-        }
-
-        $(document).ready(function() {
-            updateMetrics();
-            setInterval(updateMetrics, 5000);  // Update every 5 seconds
-        });
-    </script>
+    <script src="{{ url_for('static', filename='js/performance.js') }}"></script>
 </head>
 <body>
     <header>
@@ -28,26 +14,63 @@
 
     <h1>System Status</h1>
 
+    <div id="performance-metrics">
+        <h3>System Performance</h3>
+        <table>
+            <tr>
+                <td>
+                    <div class="metric">
+                        <label>CPU Usage:</label>
+                        <div class="progress-bar">
+                            <div id="cpu-bar" class="progress"></div>
+                        </div>
+                        <span id="cpu-value"></span>
+                    </div>
+                </td>
+                <td>
+                    <div class="metric">
+                        <label>Memory Usage:</label>
+                        <div class="progress-bar">
+                            <div id="memory-bar" class="progress"></div>
+                        </div>
+                        <span id="memory-value"></span>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <div class="metric">
+                        <label>CPU Sparkline:</label>
+                        <canvas id="cpu-sparkline"></canvas>
+                    </div>
+                </td>
+                <td>
+                    <div class="metric">
+                        <label>Uptime:</label>
+                        <span id="uptime-value"></span>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <h2>Additional Metrics</h2>
     <table>
         <tr>
             <th>Metric</th>
             <th>Value</th>
         </tr>
         <tr>
-            <td>CPU Usage</td>
-            <td id="cpu-usage"></td>
+            <td>Disk Usage</td>
+            <td id="disk-usage"></td>
         </tr>
         <tr>
-            <td>Memory Usage</td>
-            <td id="memory-usage"></td>
+            <td>Open Files</td>
+            <td id="open-files"></td>
         </tr>
         <tr>
             <td>Thread Count</td>
             <td id="thread-count"></td>
-        </tr>
-        <tr>
-            <td>Uptime</td>
-            <td id="uptime"></td>
         </tr>
     </table>
 
