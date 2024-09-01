@@ -8,7 +8,7 @@ mkdir -p /opt/glimpser/data/summaries
 mkdir -p /opt/glimpser/logs
 
 # Install Python dependencies
-pip3 install -r /opt/glimpser/requirements.txt
+python3 -m pip install -r /opt/glimpser/requirements.txt
 
 # Set up the Glimpser service
 systemctl daemon-reload
