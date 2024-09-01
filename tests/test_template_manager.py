@@ -122,6 +122,79 @@ class TestTemplateManager(unittest.TestCase):
         mock_session_instance.delete.assert_called_once()  # Should not be called again
         mock_session_instance.commit.assert_called_once()  # Should not be called again
 
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_invalid_template_names(self, _):
+        invalid_names = [
+            "",
+            "invalid name",
+            "too_long_name_" * 5,
+            "name_with_$pecial_chars",
+        ]
+
+        for name in invalid_names:
+            result = self.template_manager.save_template(name, {"frequency": 60})
+            self.assertFalse(result, f"Expected False for invalid name: {name}")
+
+            result = self.template_manager.get_template(name)
+            self.assertFalse(result, f"Expected False for invalid name: {name}")
+
+            result = self.template_manager.delete_template(name)
+            self.assertFalse(result, f"Expected False for invalid name: {name}")
+
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_save_template_edge_cases(self, mock_session):
+        mock_session_instance = MagicMock()
+        mock_session.return_value = mock_session_instance
+        mock_query = mock_session_instance.query.return_value
+        mock_filter_by = mock_query.filter_by
+        mock_first = mock_filter_by.return_value.first
+        mock_first.return_value = None  # Simulate creating a new template
+
+        # Test saving with invalid frequency
+        result = self.template_manager.save_template(
+            "test_template", {"frequency": 525601}
+        )
+        self.assertFalse(result, "Expected False for frequency > 525600")
+
+        # Test saving with timeout >= frequency
+        result = self.template_manager.save_template(
+            "test_template", {"frequency": 60, "timeout": 61}
+        )
+        self.assertTrue(result, "Expected True, but timeout should be adjusted")
+        mock_session_instance.add.assert_called_once()
+        mock_session_instance.commit.assert_called_once()
+
+        # Verify that the timeout was adjusted
+        args, _ = mock_session_instance.add.call_args
+        self.assertEqual(
+            args[0].timeout, 60, "Timeout should be adjusted to match frequency"
+        )
+
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_get_template_by_id(self, mock_session):
+        mock_session_instance = MagicMock()
+        mock_session.return_value = mock_session_instance
+        mock_query = mock_session_instance.query.return_value
+        mock_filter_by = mock_query.filter_by
+        mock_first = mock_filter_by.return_value.first
+
+        # Test getting an existing template by ID
+        mock_template = Template(id=1, name="test_template", frequency=90)
+        mock_first.return_value = mock_template
+
+        result = self.template_manager.get_template_by_id(1)
+
+        self.assertEqual(result["id"], 1)
+        self.assertEqual(result["name"], "test_template")
+        self.assertEqual(result["frequency"], 90)
+
+        # Test getting a non-existent template by ID
+        mock_first.return_value = None
+
+        result = self.template_manager.get_template_by_id(999)
+
+        self.assertEqual(result, {})
+
 
 if __name__ == "__main__":
     unittest.main()
