@@ -14,7 +14,7 @@ from flask import Flask, current_app, jsonify
 from flask_apscheduler import APScheduler
 
 from app.utils.retention_policy import retention_cleanup
-from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler
+from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler, get_system_metrics
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 from app.utils.video_compressor import compress_and_cleanup
 from app.config import backup_config, restore_config
@@ -163,8 +163,20 @@ def create_app(watchdog=True, schedule=True):
     # Set up signal handlers for graceful shutdown
     def graceful_shutdown(signum, frame):
         logging.info("Received shutdown signal. Shutting down gracefully...")
+
+        # Get and display system metrics
+        metrics = get_system_metrics()
+        print("\nSystem Metrics at Shutdown:")
+        print(f"CPU Usage: {metrics['cpu_usage']}%")
+        print(f"Memory Usage: {metrics['memory_usage']}%")
+        print(f"Disk Usage: {metrics['disk_usage']}%")
+        print(f"Open Files: {metrics['open_files']}")
+        print(f"Thread Count: {metrics['thread_count']}")
+        print(f"Uptime: {metrics['uptime']}")
+
         scheduler.shutdown()
         # Add any other cleanup tasks here (e.g., closing database connections)
+        print("\nGlimpser application has been shut down gracefully. Goodbye!")
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, graceful_shutdown)
