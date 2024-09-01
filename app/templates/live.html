@@ -60,10 +60,6 @@
             <div id="play-pause-indicator" style="display: none; font-size: 48px;">▶</div>
         </div>
         <div id="error-message"></div>
-        <div class="controls">
-            <button id="fullscreen-btn" title="Fullscreen">⛶</button>
-            <button id="pip-btn" title="Picture-in-Picture">⎘</button>
-        </div>
     </div>
 
 
@@ -118,8 +114,6 @@
         const loadingIndicator = document.getElementById('loading-indicator');
         const playPauseIndicator = document.getElementById('play-pause-indicator');
         const errorMessage = document.getElementById('error-message');
-        const fullscreenBtn = document.getElementById('fullscreen-btn');
-        const pipBtn = document.getElementById('pip-btn');
 
         function showLoadingIndicator() {
             videoOverlay.style.display = 'block';
@@ -157,46 +151,11 @@
             }, 5000);
         }
 
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                if (video.requestFullscreen) {
-                    video.requestFullscreen();
-                } else if (video.mozRequestFullScreen) {
-                    video.mozRequestFullScreen();
-                } else if (video.webkitRequestFullscreen) {
-                    video.webkitRequestFullscreen();
-                } else if (video.msRequestFullscreen) {
-                    video.msRequestFullscreen();
-                }
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.mozCancelFullScreen) {
-                    document.mozCancelFullScreen();
-                } else if (document.webkitExitFullscreen) {
-                    document.webkitExitFullscreen();
-                } else if (document.msExitFullscreen) {
-                    document.msExitFullscreen();
-                }
-            }
-        }
-
-        function togglePictureInPicture() {
-            if (document.pictureInPictureElement) {
-                document.exitPictureInPicture();
-            } else if (document.pictureInPictureEnabled) {
-                video.requestPictureInPicture();
-            }
-        }
-
         video.addEventListener('waiting', showLoadingIndicator);
         video.addEventListener('canplay', hideLoadingIndicator);
         video.addEventListener('play', () => showPlayPauseIndicator(false));
         video.addEventListener('pause', () => showPlayPauseIndicator(true));
         video.addEventListener('error', (e) => showError('Error loading video: ' + e.target.error.message));
-
-        fullscreenBtn.addEventListener('click', toggleFullscreen);
-        pipBtn.addEventListener('click', togglePictureInPicture);
 
 function changeCamera() {
     showLoadingIndicator();
@@ -227,10 +186,10 @@ function changeCamera() {
         // Individual camera is selected
         currentCamera = selectedValue;
     }
-    
+
     // Check if the camera is connected
     const isConnected = checkCameraConnection(currentCamera);
-    
+
     if (!isConnected) {
         // Display a placeholder for disconnected cameras
         const videoContainer = document.querySelector('.video-container');
