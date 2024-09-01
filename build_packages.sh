@@ -47,8 +47,8 @@ echo "Debian package built successfully."
 
 # Build Windows executable
 echo "Building Windows executable..."
-python3 -m pip install pyinstaller
-python3 build_windows.py
+python3 -m pip install pyinstaller || { echo "Failed to install PyInstaller"; exit 1; }
+python3 build_windows.py || { echo "Failed to build Windows executable"; exit 1; }
 
 echo "Windows executable built successfully."
 
