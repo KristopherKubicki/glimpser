@@ -360,24 +360,25 @@ function loadTemplates() {
                 }
             });
 
-            const playAllButton = document.getElementById('play-all');
-            const stopAllButton = document.getElementById('stop-all');
+            const toggleAllButton = document.getElementById('toggle-all');
+            let isPlaying = false;
 
-            // Play all media elements
-            playAllButton.addEventListener('click', function () {
+            // Toggle all media elements
+            toggleAllButton.addEventListener('click', function () {
                 const mediaElements = templateList.querySelectorAll('video, audio');
-                mediaElements.forEach(element => {
-                    element.play();
-                });
-            });
-
-            // Stop all media elements
-            stopAllButton.addEventListener('click', function () {
-                const mediaElements = templateList.querySelectorAll('video, audio');
-                mediaElements.forEach(element => {
-                    element.pause();
-                    element.currentTime = 0; // Reset to start
-                });
+                if (isPlaying) {
+                    mediaElements.forEach(element => {
+                        element.pause();
+                        element.currentTime = 0; // Reset to start
+                    });
+                    toggleAllButton.textContent = 'Play All';
+                } else {
+                    mediaElements.forEach(element => {
+                        element.play();
+                    });
+                    toggleAllButton.textContent = 'Stop All';
+                }
+                isPlaying = !isPlaying;
             });
 
             window.addEventListener('resize', updateGridLayout);
