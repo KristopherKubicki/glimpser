@@ -235,7 +235,8 @@ function generateXPath(inputId) {
 if (groupDropdown) { 
 function loadTemplates() {
     const selectedGroup = document.getElementById('group-dropdown').value || 'all';
-    const url = selectedGroup === 'all' ? '/templates' : `/templates?group=${selectedGroup}&t=${new Date().getTime()}`;
+    const searchQuery = document.getElementById('search-input').value.toLowerCase();
+    const url = `/templates?group=${selectedGroup}&search=${searchQuery}&t=${new Date().getTime()}`;
 
     updateGridLayout();
 
@@ -243,7 +244,7 @@ function loadTemplates() {
     // Show loading indicator
     templateList.innerHTML = '<div class="loading">Loading templates...</div>';
 
-    fetch('/templates')
+    fetch(url)
         .then(response => response.json())
         .then(templates => {
             // Clear loading indicator
@@ -263,7 +264,7 @@ function loadTemplates() {
             });
 
             Object.entries(templates).forEach(([name, template], index) => {
-                if (templateBelongsToGroup(template, selectedGroup)) {
+                if (templateBelongsToGroup(template, selectedGroup) && templateMatchesSearch(template, searchQuery)) {
                     const lastScreenshotTime = template['last_screenshot_time'];
                     const humanizedTimestamp = timeAgo(lastScreenshotTime);
 
@@ -386,14 +387,29 @@ function loadTemplates() {
             console.error('Error loading templates:', error);
             templateList.innerHTML = '<div class="error">Error loading templates. Please try again.</div>';
         });
+}
 
+function templateMatchesSearch(template, searchQuery) {
+    if (!searchQuery) return true;
+    const name = template.name.toLowerCase();
+    const groups = template.groups ? template.groups.toLowerCase() : '';
+    return name.includes(searchQuery) || groups.includes(searchQuery);
 }
 
 // Initial load of templates
 loadTemplates();
 loadGroups();
 
-groupDropdown.addEventListener('change', loadTemplates);
+const groupDropdown = document.getElementById('group-dropdown');
+const searchInput = document.getElementById('search-input');
+
+if (groupDropdown) {
+    groupDropdown.addEventListener('change', loadTemplates);
+}
+
+if (searchInput) {
+    searchInput.addEventListener('input', loadTemplates);
+}
 }
 
 // Set an interval to update video sources every 30 minutes
