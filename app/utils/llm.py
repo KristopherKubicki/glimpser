@@ -102,8 +102,11 @@ def summarize(prompt, history=None, tokens=4096):
         ljson = {}
         start_time = int(time.time())
         for line in re.findall(r"(.+?)(?:[\t\n]|$)", response_text, flags=re.DOTALL):
+            # Remove asterisks and bullet points
             line = line.replace("**", "").strip()
             line = re.sub(r"^\s?[\*\-]\s?", "", line, flags=re.DOTALL)
+            # Remove any single word prefix followed by a colon
+            line = re.sub(r"^\w+:\s*", "", line)
             if len(line) > 1:
                 ljson[start_time] = line
                 start_time += 5
@@ -111,7 +114,7 @@ def summarize(prompt, history=None, tokens=4096):
         print("Processed summary:", ljson)
         return json.dumps(ljson)
     except Exception as e:
-        # TODO add logging 
+        # TODO add logging
         print("GPT response processing exception:", e)
         if response is not None:
             print("GPT response text:", response.text)
