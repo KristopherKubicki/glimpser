@@ -1227,18 +1227,19 @@ def init_routes(app):
 
         elif request.method == "GET":
             group = request.args.get("group")
+            search_query = request.args.get("search", "").lower()
             templates = template_manager.get_templates()
 
-            if group and group != "all":
-                # Assuming each template has a 'groups' field which is a comma-separated list of groups
-                filtered_templates = {
-                    name: template
-                    for name, template in templates.items()
-                    if group in template.get("groups", "").split(",")
-                }
-                return jsonify(filtered_templates)
-            else:
-                return jsonify(templates)
+            filtered_templates = {}
+            for name, template in templates.items():
+                template_groups = template.get("groups", "").split(",")
+                if (group == "all" or group in template_groups) and \
+                   (not search_query or
+                    search_query in name.lower() or
+                    any(search_query in g.lower() for g in template_groups)):
+                    filtered_templates[name] = template
+
+            return jsonify(filtered_templates)
 
         elif request.method == "DELETE":
             data = request.json
