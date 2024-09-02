@@ -131,6 +131,22 @@ class TestRoutes(unittest.TestCase):
         #self.assertEqual(response.status_code, 200)
         #mock_render_template.assert_called_with("stream.html")
 
+    def test_api_discover(self):
+        response = self.client.get("/api/discover")
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertIsInstance(data, dict)
+        self.assertIn("version", data)
+        self.assertIn("endpoints", data)
+        self.assertIsInstance(data["endpoints"], list)
+        self.assertTrue(len(data["endpoints"]) > 0)
+        for endpoint in data["endpoints"]:
+            self.assertIn("path", endpoint)
+            self.assertIn("method", endpoint)
+            self.assertIn("description", endpoint)
+            self.assertIn("authentication_required", endpoint)
+
+
 
 if __name__ == "__main__":
     unittest.main()
