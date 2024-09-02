@@ -684,11 +684,64 @@ textarea {
 }
 
 .template-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
     margin-bottom: 20px;
 }
 
-.details {
-    margin-left: 20px;
+.templateDiv {
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%; /* 16:9 aspect ratio */
+    overflow: hidden;
+    background-color: #000;
+    border-radius: 5px;
+}
+
+.templateDiv img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.camera-name, .timestamp, .next-capture {
+    position: absolute;
+    color: white;
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.5);
+    font-size: 12px;
+}
+
+.camera-name {
+    top: 0;
+    left: 0;
+}
+
+.timestamp {
+    bottom: 0;
+    left: 0;
+}
+
+.next-capture {
+    bottom: 0;
+    right: 0;
+}
+
+.notes-textarea {
+    width: 100%;
+    height: 60px;
+    margin-top: 5px;
+    resize: vertical;
+}
+
+.update-button {
+    width: 100%;
+    padding: 5px;
+    margin-top: 5px;
 }
 
 /* Footer Styles */
