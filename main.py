@@ -198,7 +198,18 @@ def graceful_shutdown(signum, frame):
     time.sleep(0.01)
     sys.exit(0)
 
+def clear_console():
+    # For Windows
+    if os.name == 'nt':
+        _ = os.system('cls')
+    # For macOS and Linux
+    else:
+        _ = os.system('clear')
+
 if __name__ == "__main__":
+    # Clear the console before starting
+    clear_console()
+
     # Create the Flask application
     print(banner)
 
@@ -209,7 +220,7 @@ if __name__ == "__main__":
     app = create_application()
 
     # Register the cleanup function to be called at exit
-    # should just be the main thread? 
+    # should just be the main thread?
 
 
     try:
