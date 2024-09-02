@@ -52,19 +52,14 @@
         </table>
     </details>
 
-    <h2>Update Camera Notes</h2>
-    <div class="template-container">
+    <h2>Camera Notes</h2>
+    <div id="template-list" class="template-container">
         <!-- Templates will be dynamically populated here by loadTemplates() -->
     </div>
 
     {% include 'footer.html' %}
 
     <script>
-        // Update times every minute
-        //setInterval(updateHumanizedTimes, 60000); # todo , fix this
-        // Initial update
-        ///updateHumanizedTimes();
-        // Initial load of templates
         document.addEventListener('DOMContentLoaded', function() {
             loadTemplates();
             loadGroups();

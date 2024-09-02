@@ -337,6 +337,7 @@ function loadTemplates() {
                 if (templateBelongsToGroup(template, selectedGroup) && templateMatchesSearch(template, searchQuery)) {
                     const lastScreenshotTime = template['last_screenshot_time'];
                     const humanizedTimestamp = timeAgo(lastScreenshotTime);
+                    const nextCaptureTime = timeAgo(template['next_screenshot_time']);
 
                     // Check if the last screenshot is less than 1 minute ago
                     const lastScreenshotTime2 = new Date(template['last_screenshot_time']);
@@ -392,25 +393,14 @@ function loadTemplates() {
                         // ... (rest of the video event listeners)
                     } else if (isCaptionsPage) {
                         const templateDiv = document.createElement('div');
-                        templateDiv.classList.add("template");
+                        templateDiv.classList.add("templateDiv");
                         templateDiv.innerHTML = `
-                            <table>
-                                <tr>
-                                    <td>
-                                        <a href='/templates/${name}'><img src="/last_screenshot/${name}" alt="Thumbnail" width="256"></a>
-                                    </td>
-                                    <td>
-                                        <div class="details">
-                                            <p><strong>${name}</strong></p>
-                                            <textarea id="notes-${name}" name="notes">${template['notes']}</textarea>
-                                            <p>Last Caption: ${template['last_caption']} (${humanizedTimestamp})</p>
-                                            <p>Last Capture: <span class="last-capture" data-time="${template['last_screenshot_time']}">${humanizedTimestamp}</span></p>
-                                            <p>Next Capture: <span class="next-capture" data-time="${template['next_screenshot_time']}">${timeAgo(template['next_screenshot_time'])}</span></p>
-                                            <button type="button" onclick="updateTemplate('${name}')">Update</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </table>
+                            <img src="/last_screenshot/${name}" alt="${name}" style='width:100%'>
+                            <div class="camera-name">${name}</div>
+                            <div class="timestamp" title="${formatExactTime(lastScreenshotTime)}">Last: ${humanizedTimestamp}</div>
+                            <div class="next-capture">Next: ${nextCaptureTime}</div>
+                            <textarea class="notes-textarea" id="notes-${name}" name="notes">${template['notes']}</textarea>
+                            <button class="update-button" type="button" onclick="updateTemplate('${name}')">Update</button>
                         `;
                         templateContainer.appendChild(templateDiv);
                     }
