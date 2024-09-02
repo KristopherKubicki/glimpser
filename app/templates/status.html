@@ -98,20 +98,32 @@
     </div>
 
     <h2>Camera Schedules</h2>
-    <div class="camera-grid">
-        {% for camera in camera_schedules %}
-            <div class="camera-item">
-                <h3><a href="{{ camera.template_url }}">{{ camera.name }}</a></h3>
-                {% if camera.thumbnail_url %}
-                    <img src="{{ camera.thumbnail_url }}" alt="{{ camera.name }} thumbnail">
-                {% else %}
-                    <p>No thumbnail available</p>
-                {% endif %}
-                <p>Last Screenshot: {{ camera.last_screenshot.strftime('%Y-%m-%d %H:%M:%S') if camera.last_screenshot else 'N/A' }}</p>
-                <p>Next Screenshot: {{ camera.next_screenshot.strftime('%Y-%m-%d %H:%M:%S') if camera.next_screenshot else 'N/A' }}</p>
-            </div>
-        {% endfor %}
-    </div>
+    <table class="camera-list">
+        <thead>
+            <tr>
+                <th>Camera</th>
+                <th>Thumbnail</th>
+                <th>Last Screenshot</th>
+                <th>Next Screenshot</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for camera in camera_schedules %}
+                <tr class="camera-item">
+                    <td><a href="{{ camera.template_url }}">{{ camera.name }}</a></td>
+                    <td>
+                        {% if camera.thumbnail_url %}
+                            <img src="{{ camera.thumbnail_url }}" alt="{{ camera.name }} thumbnail">
+                        {% else %}
+                            <p>No thumbnail available</p>
+                        {% endif %}
+                    </td>
+                    <td>{{ camera.last_screenshot.strftime('%Y-%m-%d %H:%M:%S') if camera.last_screenshot else 'N/A' }}</td>
+                    <td>{{ camera.next_screenshot.strftime('%Y-%m-%d %H:%M:%S') if camera.next_screenshot else 'N/A' }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
     {% include 'footer.html' %}
 </body>
