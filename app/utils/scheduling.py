@@ -30,6 +30,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 class GracefulAPScheduler(APScheduler):
     def __init__(self):
         super().__init__()
+        self._scheduler = None
         self.set_scheduler(BackgroundScheduler())
 
     def set_scheduler(self, scheduler):
@@ -38,17 +39,25 @@ class GracefulAPScheduler(APScheduler):
     def shutdown(self, wait=True):
         try:
             if self.running:
+                # Stop all running jobs
+                for job in self._scheduler.get_jobs():
+                    job.remove()
+
+                # Shutdown the scheduler
                 super().shutdown(wait)
+
+                # Additional cleanup if needed
+                self._scheduler = None
             else:
-                print("Scheduler is not running.")
+                logging.info("Scheduler is not running.")
         except Exception as e:
-            print(f"Error during scheduler shutdown: {e}")
+            logging.error(f"Error during scheduler shutdown: {e}")
+        finally:
+            logging.info("Scheduler shutdown complete.")
 
 scheduler = GracefulAPScheduler()
 
-
 clip_processor, clip_model = None, None
-
 
 def find_closest_image(directory, last_caption_time):
     closest_image = None
