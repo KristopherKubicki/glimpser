@@ -56,42 +56,6 @@ from app.utils.db import SessionLocal
 from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock, start_log_caching
 
-# Assuming 'app' is defined in __init__.py, we need to import it
-from app import app
-
-@app.route("/status")
-@login_required
-def status():
-    metrics = scheduling.get_system_metrics()
-    templates = template_manager.get_templates()
-
-    camera_schedules = []
-    for name, template in templates.items():
-        last_screenshot_time = template.get('last_screenshot_time')
-        frequency = int(template.get('frequency', 30))  # Default to 30 minutes if not set
-
-        if last_screenshot_time:
-            last_screenshot = datetime.strptime(last_screenshot_time, "%Y-%m-%d %H:%M:%S")
-            next_screenshot = last_screenshot + timedelta(minutes=frequency)
-        else:
-            last_screenshot = None
-            next_screenshot = None
-
-        thumbnail_path = os.path.join(app.config['SCREENSHOT_DIRECTORY'], secure_filename(name), 'latest_camera.png')
-        thumbnail_url = url_for('uploaded_file', name=name, filename='latest_camera.png') if os.path.exists(thumbnail_path) else None
-
-        camera_schedules.append({
-            'name': name,
-            'last_screenshot': last_screenshot,
-            'next_screenshot': next_screenshot,
-            'thumbnail_url': thumbnail_url,
-            'template_url': url_for('template_details', template_name=name)
-        })
-
-    return render_template("status.html", metrics=metrics, camera_schedules=camera_schedules)
-
-# ... (rest of the file content)
-
 def restart_server():
     print("Restarting server...")
 
@@ -612,12 +576,6 @@ def init_routes(app):
             "free_disk_space_gb": free_gb
         }), 200 # always return 200, but might be degraded.
 
-
-    @app.route("/status")
-    @login_required
-    def status():
-        metrics = scheduling.get_system_metrics()
-        return render_template("status.html", metrics=metrics)
 
     @app.route('/api/discover')
     def api_discover():
@@ -1570,3 +1528,35 @@ def init_routes(app):
         paginated_logs = logs[start:end]
 
         return render_template('logs.html', logs=paginated_logs, page=page, per_page=per_page, total_logs=total_logs)
+
+    @app.route("/status")
+    @login_required
+    def status():
+        metrics = scheduling.get_system_metrics()
+        templates = template_manager.get_templates()
+
+        camera_schedules = []
+        for name, template in templates.items():
+            last_screenshot_time = template.get('last_screenshot_time')
+            frequency = int(template.get('frequency', 30))  # Default to 30 minutes if not set
+
+            if last_screenshot_time:
+                last_screenshot = datetime.strptime(last_screenshot_time, "%Y-%m-%d %H:%M:%S")
+                next_screenshot = last_screenshot + timedelta(minutes=frequency)
+            else:
+                last_screenshot = None
+                next_screenshot = None
+
+            thumbnail_path = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(name), 'latest_camera.png')
+            thumbnail_url = url_for('uploaded_file', name=name, filename='latest_camera.png') if os.path.exists(thumbnail_path) else None
+
+            camera_schedules.append({
+                'name': name,
+                'last_screenshot': last_screenshot,
+                'next_screenshot': next_screenshot,
+                'thumbnail_url': thumbnail_url,
+                'template_url': url_for('template_details', template_name=name)
+            })
+
+        return render_template("status.html", metrics=metrics, camera_schedules=camera_schedules)
+

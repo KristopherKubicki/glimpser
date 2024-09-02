@@ -145,17 +145,54 @@ def create_application():
 
     return create_app()
 
-# Create the Flask application
-app = create_application()
 
-def signal_handler(signum, frame):
-    print("\nCtrl+C received. Initiating graceful shutdown...")
-    # Call the graceful_shutdown function from app/__init__.py
-    app.graceful_shutdown(signum, frame)
+import signal, sys, threading 
+# Define your graceful_shutdown function
+def graceful_shutdown(signum, frame):
+
+    if threading.current_thread() is threading.main_thread():
+        print("\nReceived shutdown signal. Shutting down gracefully...")
+
+    from app.utils.scheduling import get_system_metrics
+    def output_shutdown_stats():
+        # Get and display system metrics
+        metrics = get_system_metrics()
+        print("\nSystem Metrics at Shutdown:")
+        print(f"CPU Usage: {metrics['cpu_usage']}%")
+        print(f"Memory Usage: {metrics['memory_usage']}%")
+        print(f"Disk Usage: {metrics['disk_usage']}%")
+        print(f"Open Files: {metrics['open_files']}")
+        print(f"Thread Count: {metrics['thread_count']}")
+        print(f"Uptime: {metrics['uptime']}")
+        print("\nGlimpser application has been shut down gracefully. All threads terminated. Goodbye!")
+
+    from app import scheduler 
+    # Shutdown the scheduler
+    try:
+        scheduler.shutdown(wait=False)
+    except Exception as e:
+        print(f"Error shutting down scheduler: {e}")
+
+    # Terminate all non-daemon threads
+    for thread in threading.enumerate():
+        if thread != threading.current_thread() and not thread.daemon:
+            try:
+                thread.join(timeout=1)
+            except Exception as e:
+                print(f"Error terminating thread {thread.name}: {e}")
+
+    # Add any other cleanup tasks here (e.g., closing database connections)
+
+    if threading.current_thread() is threading.main_thread():
+        output_shutdown_stats()
+        sys.exit(0)
 
 if __name__ == "__main__":
-    # Set up signal handler for SIGINT (Ctrl+C)
-    signal.signal(signal.SIGINT, signal_handler)
+    # Create the Flask application
+    app = create_application()
+
+    signal.signal(signal.SIGTERM, graceful_shutdown)
+    signal.signal(signal.SIGINT, graceful_shutdown)
 
     try:
         # Run the application if this script is executed directly
@@ -163,4 +200,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nKeyboardInterrupt received. Exiting...")
     finally:
-        print("Application has been shut down.")
+        print("Glimpser shut down.")

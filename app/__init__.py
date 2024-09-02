@@ -14,7 +14,7 @@ from flask_apscheduler import APScheduler
 from sqlalchemy.orm import scoped_session
 
 from app.utils.retention_policy import retention_cleanup
-from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler, get_system_metrics
+from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 from app.utils.video_compressor import compress_and_cleanup
 from app.config import backup_config, restore_config
@@ -181,46 +181,6 @@ def create_app(watchdog=True, schedule=True):
     # Start collecting metrics
     from .utils.scheduling import start_metrics_collection
     start_metrics_collection()
-
-    def output_shutdown_stats():
-        # Get and display system metrics
-        metrics = get_system_metrics()
-        print("\nSystem Metrics at Shutdown:")
-        print(f"CPU Usage: {metrics['cpu_usage']}%")
-        print(f"Memory Usage: {metrics['memory_usage']}%")
-        print(f"Disk Usage: {metrics['disk_usage']}%")
-        print(f"Open Files: {metrics['open_files']}")
-        print(f"Thread Count: {metrics['thread_count']}")
-        print(f"Uptime: {metrics['uptime']}")
-        print("\nGlimpser application has been shut down gracefully. All threads terminated. Goodbye!")
-
-    # Set up signal handlers for graceful shutdown
-    def graceful_shutdown(signum, frame):
-        if threading.current_thread() is threading.main_thread():
-            print("\nReceived shutdown signal. Shutting down gracefully...")
-
-        # Shutdown the scheduler
-        try:
-            scheduler.shutdown(wait=False)
-        except Exception as e:
-            print(f"Error shutting down scheduler: {e}")
-
-        # Terminate all non-daemon threads
-        for thread in threading.enumerate():
-            if thread != threading.current_thread() and not thread.daemon:
-                try:
-                    thread.join(timeout=1)
-                except Exception as e:
-                    print(f"Error terminating thread {thread.name}: {e}")
-
-        # Add any other cleanup tasks here (e.g., closing database connections)
-
-        if threading.current_thread() is threading.main_thread():
-            output_shutdown_stats()
-            sys.exit(0)
-
-    signal.signal(signal.SIGTERM, graceful_shutdown)
-    signal.signal(signal.SIGINT, graceful_shutdown)
 
     # Send an email alert when the application starts
     email_alert("Application Start", "The Glimpser application has been started successfully.")
