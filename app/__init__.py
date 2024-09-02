@@ -20,11 +20,12 @@ from app.utils.video_compressor import compress_and_cleanup
 from app.config import backup_config, restore_config
 from app.utils.email_alerts import email_alert
 from app.utils.db import SessionLocal
-from app.models.log import Log
+#from app.models.log import Log
 
 # needed for the llava compare
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+'''
 class SQLAlchemyHandler(logging.Handler):
     def __init__(self):
         super().__init__()
@@ -38,6 +39,7 @@ class SQLAlchemyHandler(logging.Handler):
         )
         self.session.add(log_entry)
         self.session.commit()
+'''
 
 def create_app(watchdog=True, schedule=True):
     """
@@ -62,9 +64,9 @@ def create_app(watchdog=True, schedule=True):
     app.secret_key = SECRET_KEY
 
     # Set up logging
-    handler = SQLAlchemyHandler()
-    handler.setLevel(logging.INFO)
-    app.logger.addHandler(handler)
+    #handler = SQLAlchemyHandler()
+    #handler.setLevel(logging.INFO)
+    #app.logger.addHandler(handler)
     app.logger.setLevel(logging.INFO)
 
     from app.config import (

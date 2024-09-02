@@ -53,7 +53,7 @@ from app.utils import (
     screenshots
 )
 from app.utils.db import SessionLocal
-from app.models.log import Log
+#from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock, start_log_caching
 
 
@@ -548,7 +548,7 @@ def init_routes(app):
 
         try:
             #0h 1m 6s
-            if len(metrics['uptime']) < 9: # first ten seconds...
+            if len(metrics['uptime']) < 9 and '0h 0m ' in metrics['uptime']: # first ten seconds...
                 is_nominal = False
                 error_messages.append("System just started, still initializing")
         except Exception as e:
