@@ -1,6 +1,13 @@
 
-{% extends "base.html" %}
-{% block content %}
+
+{% include 'header.html' %}
+
+<body>
+    <header>
+        {% include 'nav.html' %}
+
+    </header>
+
 <h1>System Status</h1>
 
 <!-- Display system metrics -->
@@ -47,4 +54,10 @@
         <a href="{{ url_for('status', page=page+1, per_page=per_page) }}">Next</a>
     {% endif %}
 </div>
-{% endblock %}
+
+
+
+{% include 'footer.html' %} 
+
+</body>
+

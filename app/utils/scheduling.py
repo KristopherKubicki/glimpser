@@ -832,7 +832,7 @@ def cache_logs():
                     if len(log_parts) >= 4:
                         timestamp_str, log_level, log_source, log_message = log_parts
                         try:
-                            timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S,%f")
+                            timestamp = datetime.datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S,%f")
                             log_cache.append({
                                 "timestamp": timestamp,
                                 "level": log_level,

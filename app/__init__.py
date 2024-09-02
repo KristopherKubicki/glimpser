@@ -14,7 +14,7 @@ from flask_apscheduler import APScheduler
 from sqlalchemy.orm import scoped_session
 
 from app.utils.retention_policy import retention_cleanup
-from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler
+from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler, start_log_caching
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 from app.utils.video_compressor import compress_and_cleanup
 from app.config import backup_config, restore_config
@@ -184,6 +184,8 @@ def create_app(watchdog=True, schedule=True):
     # Start collecting metrics
     from .utils.scheduling import start_metrics_collection
     start_metrics_collection()
+
+    start_log_caching()
 
     # Send an email alert when the application starts
     email_alert("Application Start", "The Glimpser application has been started successfully.")

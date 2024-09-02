@@ -71,14 +71,16 @@
             {% for camera in template_details %}
             <tr class="camera-row" data-groups="{{ template_details[camera]['groups'] }}">
                 <td class="thumbnail-video">
-                    <a href="/templates/{{ camera }}">{{ camera }}</a>
-                    <br />
+			<div class="templateDiv">
+			<div class='video-container'>
+				<div class="camera-name">{{camera}}</div>
                     <video class="hover-video" loop muted poster='/last_screenshot/{{ camera }}' style='width: 50px;'>
                         <source src="/last_video/{{ camera }}" type="video/mp4">
                         Your browser does not support the video tag.
                     </video>
-                    <br />
-                    <span class="humanized-time" data-time="{{ template_details[camera]['last_screenshot'] }}">{{ template_details[camera]['last_screenshot'] }}</span>
+		    <div class="timestamp" title='{{ template_details[camera]['last_screenshot'] }}'>{{ template_details[camera]['last_screenshot'] }}</div>
+			</div>
+			</div>
                 </td>
 
                 <td>

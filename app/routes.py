@@ -57,8 +57,7 @@ from app.utils import (
 )
 from app.utils.db import SessionLocal
 #from app.models.log import Log
-from app.utils.scheduling import log_cache, log_cache_lock, start_log_caching
-
+from app.utils.scheduling import log_cache, log_cache_lock
 
 def restart_server():
     print("Restarting server...")
@@ -1583,6 +1582,8 @@ def init_routes(app):
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         search = request.args.get('search')
+
+        # TODO: implement simple searching...
 
         # Read and filter logs from memory
         logs = read_logs_from_memory(
