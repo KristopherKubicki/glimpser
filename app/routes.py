@@ -1,4 +1,5 @@
 import glob
+from flask import jsonify, Response
 from datetime import datetime, timedelta
 import hashlib
 import inspect
@@ -17,11 +18,9 @@ from functools import wraps
 from threading import Lock, Thread
 
 from flask import (
-    Response,
     abort,
     current_app,
     flash,
-    jsonify,
     redirect,
     render_template,
     request,
@@ -1573,32 +1572,34 @@ def init_routes(app):
     @login_required
     def status():
         metrics = scheduling.get_system_metrics()
+        return render_template("status.html", metrics=metrics)
 
-        # Get query parameters for filtering logs
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 50, type=int)
-        level = request.args.get('level')
-        source = request.args.get('source')
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        search = request.args.get('search')
+    @app.route("/stream_logs")
+    @login_required
+    def stream_logs():
+        def generate():
+            while True:
+                # Get query parameters for filtering logs
+                level = request.args.get('level')
+                source = request.args.get('source')
+                start_date = request.args.get('start_date')
+                end_date = request.args.get('end_date')
+                search = request.args.get('search')
 
-        # TODO: implement simple searching...
+                # Read and filter logs from memory
+                logs = read_logs_from_memory(
+                    level=level,
+                    source=source,
+                    start_date=start_date,
+                    end_date=end_date,
+                    search=search
+                )
 
-        # Read and filter logs from memory
-        logs = read_logs_from_memory(
-            level=level,
-            source=source,
-            start_date=start_date,
-            end_date=end_date,
-            search=search
-        )
+                # Limit the number of logs sent to improve performance
+                logs = logs[:100]
 
-        # Pagination logic
-        total_logs = len(logs)
-        start = (page - 1) * per_page
-        end = start + per_page
-        paginated_logs = logs[start:end]
+                yield f"data: {json.dumps(logs)}\n\n"
+                time.sleep(1)  # Send updates every second
 
-        return render_template("status.html", metrics=metrics, logs=paginated_logs, page=page, per_page=per_page, total_logs=total_logs)
+        return Response(generate(), mimetype="text/event-stream")
 
