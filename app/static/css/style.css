@@ -392,16 +392,92 @@ button, a {
     padding: 10px; /* More padding for larger touch area */
 }
 
-/* Adjust padding and margin for better spacing */
+/* Video container and controls */
 .video-container {
-    padding: 15px; /* Add more padding around the video */
+    position: relative;
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
 }
 
-#speed-control-container {
-  position: relative;
-  width: 100px; /* Dial size */
-  height: 100px; /* Dial size */
-  margin: 0 auto; /* Center the dial */
+#live-video {
+    width: 100%;
+    height: auto;
+}
+
+.video-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    padding: 10px;
+}
+
+.control-button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 10px;
+}
+
+.seek-bar {
+    flex-grow: 1;
+    margin: 0 10px;
+}
+
+.loading-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.error-message {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    background-color: rgba(255, 0, 0, 0.7);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.player-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.speed-control {
+    display: flex;
+    align-items: center;
+}
+
+#speed-slider {
+    width: 100px;
+    margin-right: 10px;
+}
+
+@media (max-width: 768px) {
+    .player-options {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .player-options > * {
+        margin-bottom: 10px;
+    }
 }
 
 /* Cool Clock Styles */
