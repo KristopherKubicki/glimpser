@@ -82,6 +82,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     }
 
+    // Call loadGroups() when the DOM content is loaded
+    loadGroups();
+
 function loadGroups() {
     const groupDropdown = document.getElementById('group-dropdown');
     groupDropdown.innerHTML = '<option value="all">Loading groups...</option>';
@@ -396,6 +399,7 @@ function loadTemplates() {
                         templateDiv.classList.add("templateDiv");
                         templateDiv.innerHTML = `
                             <img src="/last_screenshot/${name}" alt="${name}" style='width:100%'>
+
                             <div class="camera-name">${name}</div>
                             <div class="timestamp" title="${formatExactTime(lastScreenshotTime)}">Last: ${humanizedTimestamp}</div>
                             <div class="next-capture">Next: ${nextCaptureTime}</div>
