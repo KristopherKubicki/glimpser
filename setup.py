@@ -9,8 +9,8 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 setup(
     name="glimpser",
     version="0.1.0",
-    author="Your Name",
-    author_email="your.email@example.com",
+    author="Kristopher Kubicki",
+    author_email="kristopher@glimser.net",
     description="A real-time monitoring application for capturing and analyzing live data from various sources",
     long_description=long_description,
     long_description_content_type="text/markdown",

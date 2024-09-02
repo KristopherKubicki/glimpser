@@ -177,6 +177,7 @@ def create_app(watchdog=True, schedule=True):
         watchdog_thread = threading.Thread(target=watchdog)
         watchdog_thread.daemon = True
         watchdog_thread.start()
+        app.watchdog_thread = watchdog_thread
 
     # Start collecting metrics
     from .utils.scheduling import start_metrics_collection

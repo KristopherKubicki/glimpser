@@ -5,16 +5,22 @@ import logging
 import os
 import argparse
 import signal
+import random
+import time
+import signal, sys, threading, atexit
+
 import app.config as config
 from app import create_app
+from app import scheduler
+from app.utils.scheduling import get_system_metrics
 
 banner = """
-  ____  _  _
- / ___|| |(_)_ __ ___  _ __  ___  ___ _ __
-| |  _ | || | '_ ` _ `| '_ `/ __|/ _ ` '__|
-| |_| || || | | | | | | |_) `__ '  __/ |
- `____||_||_|_| |_| |_| .__/|___/`___|_|
-                      |_|
+          ____  _  _
+         / ___|| |(_)_ __ ___  _ __  ___  ___ _ __
+        | |  _ | || | '_ ` _ `| '_ `/ __|/ _ ` '__|
+        | |_| || || | | | | | | |_) `__ '  __/ |
+         `____||_||_|_| |_| |_| .__/|___/`___|_|
+                              |_|
 """
 
 def parse_arguments():
@@ -145,11 +151,6 @@ def create_application():
 
     return create_app()
 
-
-import signal, sys, threading, atexit
-from app.utils.scheduling import get_system_metrics
-from app import scheduler
-
 def output_shutdown_stats():
     # Get and display system metrics
     metrics = get_system_metrics()
@@ -160,41 +161,56 @@ def output_shutdown_stats():
     print(f"Open Files: {metrics['open_files']}")
     print(f"Thread Count: {metrics['thread_count']}")
     print(f"Uptime: {metrics['uptime']}")
-    print("\nGlimpser application has been shut down gracefully. All threads terminated. Goodbye!")
+    print("\nThank you for running Glimpser. Goodbye!")
 
+display_note = True
 def cleanup_resources():
     # Shutdown the scheduler
     try:
-        scheduler.shutdown(wait=False)
+        scheduler.shutdown(wait=True)
     except Exception as e:
         print(f"Error shutting down scheduler: {e}")
 
     # Terminate all non-daemon threads
+    global display_note
+    time.sleep(0.01)
     for thread in threading.enumerate():
-        if thread != threading.current_thread() and not thread.daemon:
+        if thread != threading.current_thread():
+            display_note = False
             try:
-                thread.join(timeout=1)
+                # concurrent.futures.Future.cancel()
+                thread.join(timeout=0.01)
+                if thread.is_alive():
+                    # TODO: log this ...
+                    #print(" ********************* warning... stuck thread", thread)
+                    pass
             except Exception as e:
                 print(f"Error terminating thread {thread.name}: {e}")
 
+    global banner
+    print(banner)
     # Add any other cleanup tasks here (e.g., closing database connections)
+    output_shutdown_stats()
 
 def graceful_shutdown(signum, frame):
-    if threading.current_thread() is threading.main_thread():
-        print("\nReceived shutdown signal. Shutting down gracefully...")
-        cleanup_resources()
-        output_shutdown_stats()
-        sys.exit(0)
+    #time.sleep(random.randint(0,10) * 0.1)
+    #time.sleep(10)
+    time.sleep(0.01)
+    sys.exit(0)
 
 if __name__ == "__main__":
     # Create the Flask application
+    print(banner)
+
+    atexit.register(cleanup_resources)
+    signal.signal(signal.SIGTERM, graceful_shutdown)
+    signal.signal(signal.SIGINT, graceful_shutdown)
+
     app = create_application()
 
     # Register the cleanup function to be called at exit
-    atexit.register(cleanup_resources)
+    # should just be the main thread? 
 
-    signal.signal(signal.SIGTERM, graceful_shutdown)
-    signal.signal(signal.SIGINT, graceful_shutdown)
 
     try:
         # Run the application if this script is executed directly
