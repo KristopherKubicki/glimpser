@@ -517,10 +517,15 @@ document.addEventListener('DOMContentLoaded', setupStatusPageVideoHover);
         playAllButton.addEventListener('click', function() {
             const videos = document.querySelectorAll('.templateDiv video');
             if (isPlaying) {
-                videos.forEach(video => video.pause());
+                videos.forEach(video => {
+                    video.pause();
+                    video.currentTime = 0; // Reset video to start
+                });
                 playAllButton.textContent = 'Play All';
             } else {
-                videos.forEach(video => video.play());
+                videos.forEach(video => {
+                    video.play().catch(e => console.error("Error playing video:", e));
+                });
                 playAllButton.textContent = 'Stop All';
             }
             isPlaying = !isPlaying;
