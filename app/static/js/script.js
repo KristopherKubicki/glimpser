@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('#template-form form');
 
     const groupDropdown = document.getElementById('group-dropdown');
-    if (groupDropdown)  { 
+    if (groupDropdown)  {
     groupDropdown.addEventListener('change', () => {
         loadTemplates(); // Reload templates based on the selected group
     });
@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const slider = document.getElementById('grid-width-slider');
     const templateList = document.getElementById('template-list');
 
-	if (slider) { 
+	if (slider) {
     slider.addEventListener('input', function () {
         const value = slider.value;
         const pxValue = value + 'px';
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 	}
 
-	if (form) { 
+	if (form) {
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(form);
@@ -57,14 +57,14 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Success:', data);
             loadTemplates(); // Refresh the list after submission
             form.reset(); // Reset form after successful submission
-            
+
             // Show success message
             feedbackElement.innerHTML = 'Source successfully created!';
             feedbackElement.style.color = 'green';
         })
         .catch((error) => {
             console.error('Error:', error);
-            
+
             // Show error message
             feedbackElement.innerHTML = 'An error occurred. Please try again.';
             feedbackElement.style.color = 'red';
@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset button state
             submitButton.disabled = false;
             submitButton.innerHTML = 'Submit';
-            
+
             // Remove feedback message after 3 seconds
             setTimeout(() => {
                 feedbackElement.remove();
@@ -226,14 +226,14 @@ function generateXPath(inputId) {
     const tag = document.getElementById(`${inputId}_tag`).value;
     const attribute = document.getElementById(`${inputId}_attribute`).value;
     const value = document.getElementById(`${inputId}_value`).value;
-    
+
     let xpath = `//${tag}`;
     if (attribute === 'data-*') {
         xpath += `[starts-with(@data-,'${value}')]`;
     } else {
         xpath += `[contains(@${attribute},'${value}')]`;
     }
-    
+
     document.getElementById(inputId).value = xpath;
     document.getElementById(inputId).style.display = 'block';
     document.querySelector(`#${inputId} + .structured-xpath-input`).remove();
@@ -402,6 +402,7 @@ setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
 
     if (toggleSchedulerButton) {
         toggleSchedulerButton.addEventListener('click', function() {
+
             fetch('/toggle_scheduler', { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
@@ -425,5 +426,23 @@ setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
                 console.error('Error:', error);
                 schedulerStatus.textContent = 'Error occurred';
             });
+    }
+
+    // Play All / Stop All functionality
+    const toggleAllVideosButton = document.getElementById('toggle-all-videos');
+    let isPlaying = false;
+
+    if (toggleAllVideosButton) {
+        toggleAllVideosButton.addEventListener('click', function() {
+            const videos = document.querySelectorAll('.templateDiv video');
+            if (isPlaying) {
+                videos.forEach(video => video.pause());
+                toggleAllVideosButton.textContent = 'Play All';
+            } else {
+                videos.forEach(video => video.play());
+                toggleAllVideosButton.textContent = 'Stop All';
+            }
+            isPlaying = !isPlaying;
+        });
     }
 });
