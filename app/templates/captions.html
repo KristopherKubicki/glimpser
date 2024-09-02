@@ -59,69 +59,142 @@
         </table>
     </details>
 
+    <style>
+        .camera-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .camera-table th, .camera-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .camera-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .thumbnail-video {
+            width: 100px;
+        }
+        .video-container {
+            position: relative;
+        }
+        .camera-name {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 5px;
+            font-size: 12px;
+        }
+        .timestamp {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 5px;
+            font-size: 12px;
+        }
+        .hover-video {
+            width: 100px;
+            height: auto;
+        }
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .stats-table th, .stats-table td {
+            border: 1px solid #ddd;
+            padding: 4px;
+            text-align: center;
+            font-size: 12px;
+        }
+        .stats-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .notes-form {
+            margin-top: 10px;
+        }
+        .notes-textarea {
+            width: 100%;
+            min-height: 2em;
+            height: 3em;
+            max-width: 100%;
+            margin-bottom: 5px;
+        }
+        .last-caption {
+            margin-top: 5px;
+            font-style: italic;
+        }
+        .update-button {
+            margin-top: 5px;
+        }
+    </style>
+
     <h2>Camera Notes</h2>
-    <table id="camera-table">
+    <table id="camera-table" class="camera-table">
         <thead>
             <tr>
-                <th></th>
-                <th></th>
+                <th>Camera</th>
+                <th>Details</th>
             </tr>
         </thead>
-       <tbody>
+        <tbody>
             {% for camera in template_details %}
             <tr class="camera-row" data-groups="{{ template_details[camera]['groups'] }}">
                 <td class="thumbnail-video">
-			<div class="templateDiv">
-			<div class='video-container'>
-				<div class="camera-name">{{camera}}</div>
-                    <video class="hover-video" loop muted poster='/last_screenshot/{{ camera }}' style='width: 50px;'>
-                        <source src="/last_video/{{ camera }}" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
-		    <div class="timestamp" title='{{ template_details[camera]['last_screenshot'] }}'>{{ template_details[camera]['last_screenshot'] }}</div>
-			</div>
-			</div>
+                    <div class="video-container">
+                        <div class="camera-name">{{camera}}</div>
+                        <video class="hover-video" loop muted poster='/last_screenshot/{{ camera }}'>
+                            <source src="/last_video/{{ camera }}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                        <div class="timestamp" title='{{ template_details[camera]['last_screenshot'] }}'>{{ template_details[camera]['last_screenshot'] }}</div>
+                    </div>
                 </td>
-
                 <td>
-
-			<details><summary>
-		<table style='width:60vw;  max-width:60vw; min-width: 60vw;'>
-	    <tr>
-			                <td><span class="humanized-time" data-time="{{ template_details[camera]['last_screenshot'] }}">{{ template_details[camera]['last_screenshot'] }}</span></td>
-                <td><span class="humanized-time" data-time="{{ template_details[camera]['next_screenshot'] }}">{{ template_details[camera]['next_screenshot'] }}</span></td>
-                <td>{{ template_details[camera]['screenshot_count'] }}</td>
-                <td>{{ template_details[camera]['video_count'] }}</td>
-                <td>{{ template_details[camera]['storage_usage'] }}</td>
-                <td>{{ template_details[camera]['llm_response_count'] }}</td>
-                <td>{{ template_details[camera]['llm_cost_estimate'] }}</td>
-	    </tr>
-                  </table>
-				</summary>
-
-
-				<table>
-					<tr>
-						<td>
-                    <form id="form-{{ camera }}">
-                        <textarea id="notes-{{ camera }}" rows="3" cols="50" style="min-height: 2em; height: 3em; max-width:60vw;">{{ template_details[camera]['notes'] }}</textarea><br />
-
-			<div style="min-height: 2em; height: 3em; max-width:60vw;">
-                            {{ template_details[camera]['last_caption'] }}
-			</div>
-                    </form>
-						</td><td>
-                <button class="update-button" data-template="{{ camera }}">Update</button>
-						</td>
-					</tr>
-				</table>
-			</details>
+                    <details>
+                        <summary>Camera Stats</summary>
+                        <table class="stats-table">
+                            <tr>
+                                <th>Last Screenshot</th>
+                                <th>Next Screenshot</th>
+                                <th>Screenshot Count</th>
+                                <th>Video Count</th>
+                                <th>Storage Usage</th>
+                                <th>LLM Response Count</th>
+                                <th>LLM Cost Estimate</th>
+                            </tr>
+                            <tr>
+                                <td><span class="humanized-time" data-time="{{ template_details[camera]['last_screenshot'] }}">{{ template_details[camera]['last_screenshot'] }}</span></td>
+                                <td><span class="humanized-time" data-time="{{ template_details[camera]['next_screenshot'] }}">{{ template_details[camera]['next_screenshot'] }}</span></td>
+                                <td>{{ template_details[camera]['screenshot_count'] }}</td>
+                                <td>{{ template_details[camera]['video_count'] }}</td>
+                                <td>{{ template_details[camera]['storage_usage'] }}</td>
+                                <td>{{ template_details[camera]['llm_response_count'] }}</td>
+                                <td>{{ template_details[camera]['llm_cost_estimate'] }}</td>
+                            </tr>
+                        </table>
+                    </details>
+                    <details>
+                        <summary>LLM Interaction</summary>
+                        <form id="form-{{ camera }}" class="notes-form">
+                            <textarea id="notes-{{ camera }}" class="notes-textarea">{{ template_details[camera]['notes'] }}</textarea>
+                            <div class="last-caption">
+                                Last Caption: {{ template_details[camera]['last_caption'] }}
+                            </div>
+                            <button class="update-button" data-template="{{ camera }}">Update</button>
+                        </form>
+                    </details>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
-
 
     {% include 'footer.html' %}
 
