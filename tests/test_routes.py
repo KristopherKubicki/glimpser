@@ -147,5 +147,6 @@ class TestRoutes(unittest.TestCase):
             self.assertIn("authentication_required", endpoint)
 
 
+
 if __name__ == "__main__":
     unittest.main()

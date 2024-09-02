@@ -1,3 +1,5 @@
+# app/utils/llm.py
+
 import datetime
 import json
 import re
@@ -33,6 +35,15 @@ def summarize(prompt, history=None, tokens=4096):
         datetime.datetime.now() - last_429_error_time
     ) < datetime.timedelta(minutes=15):
         return None
+
+    if CHATGPT_KEY is None or len(CHATGPT_KEY) < 1 or len(CHATGPT_KEY) > 128:
+        return None
+    if LLM_MODEL_VERSION is None or len(LLM_MODEL_VERSION) < 1:
+        return None
+    if LLM_SUMMARY_PROMPT is None or len(LLM_SUMMARY_PROMPT) < 1:
+        return None
+
+    # note - if history is None or [], there isnt much to do .. 
 
     headers = {"Authorization": f"Bearer {CHATGPT_KEY}"}
     url = "https://api.openai.com/v1/chat/completions"
@@ -75,6 +86,14 @@ def summarize(prompt, history=None, tokens=4096):
 
     # Process the API response
     try:
+        if result is None or result.get('choices') is None:
+            # TODO: add logging
+            if result.get('error'):
+                print("Warning: API response issue", result['error'])
+            else:
+                print("Warning: API response issue", result)
+            return None
+
         response_text = result["choices"][0]["message"]["content"].replace("\n\n", "\t").strip()
         ltokens = result["usage"]["total_tokens"]
         print(f"Total tokens used: {ltokens} (Cost: ${ltokens * 0.005 / 1000:.5f})")
@@ -83,8 +102,11 @@ def summarize(prompt, history=None, tokens=4096):
         ljson = {}
         start_time = int(time.time())
         for line in re.findall(r"(.+?)(?:[\t\n]|$)", response_text, flags=re.DOTALL):
+            # Remove asterisks and bullet points
             line = line.replace("**", "").strip()
             line = re.sub(r"^\s?[\*\-]\s?", "", line, flags=re.DOTALL)
+            # Remove any single word prefix followed by a colon
+            line = re.sub(r"^\w+:\s*", "", line)
             if len(line) > 1:
                 ljson[start_time] = line
                 start_time += 5
@@ -92,6 +114,7 @@ def summarize(prompt, history=None, tokens=4096):
         print("Processed summary:", ljson)
         return json.dumps(ljson)
     except Exception as e:
+        # TODO add logging
         print("GPT response processing exception:", e)
         if response is not None:
             print("GPT response text:", response.text)

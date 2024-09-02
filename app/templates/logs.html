@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Logs</h1>
+
+{% if error %}
+    <div class="error-message">
+        <p>An error occurred: {{ error }}</p>
+    </div>
+{% else %}
+    <form id="log-filter-form">
+        <input type="text" name="search" placeholder="Search logs...">
+        <select name="level">
+            <option value="">All Levels</option>
+            <option value="DEBUG">DEBUG</option>
+            <option value="INFO">INFO</option>
+            <option value="WARNING">WARNING</option>
+            <option value="ERROR">ERROR</option>
+            <option value="CRITICAL">CRITICAL</option>
+        </select>
+        <input type="text" name="source" placeholder="Source">
+        <input type="date" name="start_date">
+        <input type="date" name="end_date">
+        <button type="submit">Filter</button>
+    </form>
+
+    {% if logs %}
+        <table id="log-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Level</th>
+                    <th>Source</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for log in logs %}
+                <tr>
+                    <td>{{ log.timestamp }}</td>
+                    <td>{{ log.level }}</td>
+                    <td>{{ log.source }}</td>
+                    <td>{{ log.message }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="pagination">
+            {% if logs.has_prev %}
+                <a href="{{ url_for('view_logs', page=logs.prev_num) }}">&laquo; Previous</a>
+            {% endif %}
+            {% if logs.has_next %}
+                <a href="{{ url_for('view_logs', page=logs.next_num) }}">Next &raquo;</a>
+            {% endif %}
+        </div>
+    {% else %}
+        <p>No logs found.</p>
+    {% endif %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/logs.js') }}"></script>
+{% endblock %}

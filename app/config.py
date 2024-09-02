@@ -15,8 +15,7 @@ BACKUP_PATH = os.getenv("GLIMPSER_BACKUP_PATH", "data/config_backup.json")
 engine = create_engine(f"sqlite:///{DATABASE_PATH}")
 SessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine
-)  # settings only tthread
-
+)  # settings only thread
 
 def get_setting(name, default=None):
     session = SessionLocal()
@@ -37,15 +36,19 @@ def get_setting(name, default=None):
 
     return default
 
-def backup_config():
+def backup_config() -> bool:
     session = SessionLocal()
     try:
         settings = session.execute(text("SELECT name, value FROM settings")).fetchall()
         config_dict = {name: value for name, value in settings}
         with open(BACKUP_PATH, 'w') as f:
             json.dump(config_dict, f)
+    except Exception as e:
+        pass
+        return False
     finally:
         session.close()
+        return True
 
 def restore_config():
     if os.path.exists(BACKUP_PATH):
@@ -117,8 +120,15 @@ LLM_CAPTION_PROMPT = get_setting(
 # FFMPEG path setting
 FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
 
-# FFMPEG path setting
-FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
+# Email settings
+EMAIL_ENABLED = get_setting("EMAIL_ENABLED", "False")
+EMAIL_SENDER = get_setting("EMAIL_SENDER", "your-email@example.com")
+EMAIL_RECIPIENTS = get_setting("EMAIL_RECIPIENTS", "recipient1@example.com,recipient2@example.com")
+EMAIL_SMTP_SERVER = get_setting("EMAIL_SMTP_SERVER", "smtp.example.com")
+EMAIL_SMTP_PORT = get_setting("EMAIL_SMTP_PORT", "587")
+EMAIL_USE_TLS = get_setting("EMAIL_USE_TLS", "True")
+EMAIL_USERNAME = get_setting("EMAIL_USERNAME", "your-username")
+EMAIL_PASSWORD = get_setting("EMAIL_PASSWORD", "")
 
 # experimental
 # TWILIO_SID = get_setting("TWILIO_SID","")

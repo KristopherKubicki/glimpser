@@ -130,19 +130,6 @@ function validateForm() {
     return true;
 }
 
-function toggleObjectConfidence() {
-    const objectFilter = document.getElementById('object_filter');
-    const objectConfidenceContainer = document.getElementById('object_confidence_container');
-    
-    if (objectFilter.value.trim() !== "") {
-        objectConfidenceContainer.style.display = 'block';
-    } else {
-        objectConfidenceContainer.style.display = 'none';
-    }
-}
-
-// Call this function on page load to set the initial state
-document.addEventListener('DOMContentLoaded', toggleObjectConfidence);
 
 function showStructuredInput(inputId) {
     const input = document.getElementById(inputId);
@@ -195,16 +182,22 @@ function generateXPath(inputId) {
         <!-- Options will be populated here -->
     </select>
 
+    <label for="search-input" title="Search for cameras or groups">Search:</label>
+    <input type="text" id="search-input" placeholder="Search cameras or groups" title="Enter search terms">
+
 
         <input type="range" id="grid-width-slider" min="50" max="3840" value="360" onload="this.max = window.innerWidth;" title="Adjust the width of the template grid">
-	         <button id="play-all" title="Start monitoring all templates">Play All</button>
-                <button id="stop-all" title="Stop monitoring all templates">Stop All</button>
+	         <button id="toggle-all" title="Toggle monitoring for all templates">Play All</button>
+
 
 </div>
 
     <div id="template-list" title="List of all templates">
         <!-- Template list will be populated here -->
     </div>
+
+    <button id="play-all-button" title="Play all videos">Play All</button>
+    <button id="toggle-all-videos" title="Play/Stop all videos">Toggle All</button>
 
     {% include 'footer.html' %}
 </body>

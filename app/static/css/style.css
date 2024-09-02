@@ -202,6 +202,29 @@ nav a:hover, nav a.active {
     justify-content: center;
 }
 
+.performance-indicator {
+    font-size: 12px;
+    cursor: help;
+    padding: 2px 5px;
+    background-color: #f0f0f0;
+    border-radius: 3px;
+    margin-left: 10px;
+}
+
+.performance-indicator:hover::after {
+    content: attr(title);
+    position: absolute;
+    background-color: #333;
+    color: #fff;
+    padding: 5px;
+    border-radius: 3px;
+    font-size: 12px;
+    white-space: pre-line;
+    z-index: 1000;
+    top: 100%;
+    left: 0;
+}
+
 @media screen and (max-width: 768px) { /* Responsive design for mobile */
     header h1 {
         font-size: 20px; /* Smaller font size on mobile */
@@ -218,6 +241,11 @@ nav a:hover, nav a.active {
 
     .settings-icon {
         font-size: 20px; /* Slightly smaller icon on mobile */
+    }
+
+    .performance-indicator {
+        font-size: 10px;
+        padding: 1px 3px;
     }
 
     /* Enhance touch target sizes for mobile */

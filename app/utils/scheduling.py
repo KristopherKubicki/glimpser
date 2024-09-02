@@ -6,6 +6,10 @@ import logging
 import os
 import random
 import re
+import psutil
+import threading
+import time
+from collections import deque
 
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
@@ -21,11 +25,39 @@ from .llm import summarize
 from .screenshots import capture_or_download, remove_background, add_timestamp
 from .template_manager import get_template, get_templates, save_template
 
-scheduler = APScheduler()
+from apscheduler.schedulers.background import BackgroundScheduler
 
+class GracefulAPScheduler(APScheduler):
+    def __init__(self):
+        super().__init__()
+        self._scheduler = None
+        self.set_scheduler(BackgroundScheduler())
+
+    def set_scheduler(self, scheduler):
+        self._scheduler = scheduler
+
+    def shutdown(self, wait=True):
+        try:
+            if self.running:
+                # Stop all running jobs
+                for job in self._scheduler.get_jobs():
+                    job.remove()
+
+                # Shutdown the scheduler
+                super().shutdown(wait)
+
+                # Additional cleanup if needed
+                self._scheduler = None
+            else:
+                logging.info("Scheduler is not running.")
+        except Exception as e:
+            logging.error(f"Error during scheduler shutdown: {e}")
+        finally:
+            logging.info("Scheduler shutdown complete.")
+
+scheduler = GracefulAPScheduler()
 
 clip_processor, clip_model = None, None
-
 
 def find_closest_image(directory, last_caption_time):
     closest_image = None
@@ -631,7 +663,7 @@ def update_summary():
     filename = f"data/summaries/{timestamp}.jl"
 
     if type(lsum) != str:
-        print(" WARNING -- missing transcript")
+        #print(" WARNING -- missing transcript") # this only matters if we have a CHATGPT KEY set 
         return
 
     # for leach in re.findall(r'({.+?\})',lsum):  # if we don't find this, then we wasted money...
@@ -740,9 +772,6 @@ def schedule_crawlers():
     except Exception as e:
         logging.error(f"Error scheduling initial crawl: {e}")
 
-import psutil
-import threading
-import time
 
 system_metrics = {
     'cpu_usage': 0.0,
@@ -766,9 +795,53 @@ def start_metrics_collection():
 def get_system_metrics():
     global system_metrics
     uptime = time.time() - system_metrics['start_time']
+    disk_usage = psutil.disk_usage('/').percent
+    open_files = len(psutil.Process().open_files())
     return {
-        'cpu_usage': system_metrics['cpu_usage'],
-        'memory_usage': system_metrics['memory_usage'],
+        'cpu_usage': round(system_metrics['cpu_usage'], 1),
+        'memory_usage': round(system_metrics['memory_usage'], 1),
+        'disk_usage': round(disk_usage, 1),
+        'open_files': open_files,
         'thread_count': system_metrics['thread_count'],
         'uptime': f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s"
     }
+
+log_cache = deque(maxlen=10000)  # Store last 10000 log entries
+log_cache_lock = threading.Lock()
+
+def cache_logs():
+    global log_cache
+    log_file_path = "logs/glimpser.log"
+    last_position = 0
+
+    while True:
+        with open(log_file_path, "r") as file:
+            file.seek(last_position)
+            new_logs = file.readlines()
+
+            with log_cache_lock:
+                for log in new_logs:
+                    # Truncate long log rows to 500 characters
+                    truncated_log = log[:500] + '...' if len(log) > 500 else log
+                    log_parts = truncated_log.strip().split(" - ", 3)
+                    if len(log_parts) >= 4:
+                        timestamp_str, log_level, log_source, log_message = log_parts
+                        try:
+                            timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S,%f")
+                            log_cache.append({
+                                "timestamp": timestamp,
+                                "level": log_level,
+                                "source": log_source,
+                                "message": log_message
+                            })
+                        except ValueError:
+                            continue  # Skip lines with incorrect timestamp format
+
+            last_position = file.tell()
+
+        time.sleep(10)  # Wait for 10 seconds before checking for new logs
+
+def start_log_caching():
+    log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
+    log_caching_thread.start()
+    scheduler.add_job(func=start_log_caching, trigger='interval', hours=1, id='log_caching')

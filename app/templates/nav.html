@@ -2,7 +2,7 @@
 		<h1><a href='/'><img src='{{ url_for('static', filename='img/glimpser_small.png') }}' title='Glimpser'></a></h1>
         <nav>
             <div class="nav-left">
-                {% for ag in active_groups %} 
+                {% for ag in active_groups %}
                 <a href='/group/{{ag}}'>{{ag}}</a>
                 {% endfor %}
             </div>
@@ -17,11 +17,37 @@
 		    <table>
 			    <tr>
 
-{% if request.path == url_for('settings') %}
-<td>
-        <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger">Logout</a>
-</td>
-    {% endif %} 
+				    <td>
+					    <div id="health-status" style="width: 15px; height: 15px; border-radius: 50%; background-color: grey;" title="System Performance"><a href='/status'></a></div>
+				    </td>
+	<script>
+		function checkHealth() {
+    fetch('/health')
+        .then(response => response.json())
+        .then(data => {
+            const healthStatus = document.getElementById('health-status');
+            if (data.status === 'healthy') {
+                healthStatus.style.backgroundColor = 'green';
+            } else {
+                healthStatus.style.backgroundColor = 'red';
+            }
+            healthStatus.title = `CPU: ${data.metrics.cpu_usage}%\nMemory: ${data.metrics.memory_usage}%\nDisk: ${data.metrics.disk_usage}%\nOpen Files: ${data.metrics.open_files}\nThreads: ${data.metrics.thread_count}\nUptime: ${data.metrics.uptime}`;
+        })
+        .catch(error => {
+            console.error('Error fetching health status:', error);
+            document.getElementById('health-status').style.backgroundColor = 'red';
+        });
+}
+
+// Check health status every 5 seconds
+setInterval(checkHealth, 5000);
+
+// Initial health check
+checkHealth();
+
+	</script>
+				    </td>
+
 
 				    <td>
 					    <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'>&#9000;</a>
