@@ -8,7 +8,7 @@ import logging
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.utils.scheduling import scheduler, schedule_crawlers
+from app.utils.scheduling import scheduler, schedule_crawlers, update_camera, init_crawl
 
 class TestScheduler(unittest.TestCase):
 
@@ -104,16 +104,36 @@ class TestScheduler(unittest.TestCase):
         # Verify the job is removed
         self.assertIsNone(scheduler.get_job('test_job'))
 
-    '''
     @patch('app.utils.scheduling.scheduler.add_job')
-    @patch('app.utils.scheduling.get_templates', return_value={
-        'camera1': {'name': 'camera1', 'frequency': 30},
-        'camera2': {'name': 'camera2', 'frequency': 60},
-    })
+    @patch('app.utils.scheduling.get_templates')
     def test_schedule_crawlers(self, mock_get_templates, mock_add_job):
+        mock_templates = {
+            'camera1': {'name': 'camera1', 'frequency': 30},
+            'camera2': {'name': 'camera2', 'frequency': 60},
+        }
+        mock_get_templates.return_value = mock_templates
+
         schedule_crawlers()
-        # Ensure that jobs are being scheduled
+
+        # Verify that add_job is called for each template
         self.assertEqual(mock_add_job.call_count, 2)
+
+        # Verify the arguments for each add_job call
+        calls = mock_add_job.call_args_list
+        for i, (name, template) in enumerate(mock_templates.items()):
+            call = calls[i]
+            self.assertEqual(call[1]['func'], update_camera)
+            self.assertEqual(call[1]['trigger'], 'interval')
+            self.assertEqual(call[1]['seconds'], template['frequency'] * 60)
+            self.assertEqual(call[1]['args'], [name, template])
+            self.assertEqual(call[1]['id'], name)
+            self.assertEqual(call[1]['replace_existing'], True)
+
+        # Verify that init_crawl is scheduled
+        init_crawl_call = mock_add_job.call_args_list[-1]
+        self.assertEqual(init_crawl_call[1]['func'], init_crawl)
+        self.assertEqual(init_crawl_call[1]['trigger'], 'date')
+        self.assertEqual(init_crawl_call[1]['id'], 'init_crawl')
 
     @patch('app.utils.scheduling.scheduler.add_job')
     def test_schedule_crawlers_empty_templates(self, mock_add_job):
@@ -121,7 +141,6 @@ class TestScheduler(unittest.TestCase):
             schedule_crawlers()
             # Ensure no jobs are scheduled when templates are empty
             mock_add_job.assert_not_called()
-    '''
 
 if __name__ == '__main__':
     unittest.main()
