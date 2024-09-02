@@ -402,6 +402,7 @@ loadTemplates();
 loadGroups();
 
 const groupDropdown = document.getElementById('group-dropdown');
+
 const searchInput = document.getElementById('search-input');
 
 if (groupDropdown) {
@@ -464,5 +465,41 @@ setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
             }
             isPlaying = !isPlaying;
         });
+    }
+
+    // Initialize Cast API
+    function initializeCastApi() {
+        cast.framework.CastContext.getInstance().setOptions({
+            receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+            autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+        });
+    }
+
+    // Initialize Google Cast API
+    window['__onGCastApiAvailable'] = function(isAvailable) {
+        if (isAvailable) {
+            initializeCastApi();
+        }
+    };
+
+    // Start casting
+    function startCasting() {
+        const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
+        if (castSession) {
+            const mediaInfo = new chrome.cast.media.MediaInfo(document.getElementById('live-video').src, 'video/mp4');
+            const request = new chrome.cast.media.LoadRequest(mediaInfo);
+            castSession.loadMedia(request).then(
+                function() { console.log('Cast started'); },
+                function(errorCode) { console.error('Error code: ' + errorCode); }
+            );
+        } else {
+            console.log('No active cast session');
+        }
+    }
+
+    // Add event listener for cast button
+    const castButton = document.getElementById('cast-button');
+    if (castButton) {
+        castButton.addEventListener('click', startCasting);
     }
 });
