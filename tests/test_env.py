@@ -64,6 +64,13 @@ class TestStringProcessing(unittest.TestCase):
         result = string.upper()
         self.assertEqual(result, "HELLO")
 
+    def test_string_strip(self):
+        string = "  Hello, World!  "
+        result = string.strip()
+        self.assertEqual(result, "Hello, World!")
+        self.assertEqual(string.lstrip(), "Hello, World!  ")
+        self.assertEqual(string.rstrip(), "  Hello, World!")
+
 if __name__ == '__main__':
     unittest.main()
 

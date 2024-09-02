@@ -54,7 +54,7 @@
                 <label for="proxy" style="color: #fff;" title="Proxy server address">Proxy:</label>
                 <input type="text" id="proxy" name="proxy" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter proxy server address (optional)">
 
-                <label for="groups" style="color: #fff;" title="Groups for the template">Groups:</label>
+                <label for="groups" style="color: #fff;" title="Groups for the template, comma separated ">Groups:</label>
                 <input type="text" id="groups" name="groups" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter comma-separated group names">
 
                 <label for="rollback_frames" style="color: #fff;" title="Number of frames to rollback">Rollback Frames:</label>
@@ -112,7 +112,7 @@ function validateForm() {
         }
     }
 
-    if (timeout < 1 || timeout >= frequency) {
+    if (timeout < 1 || timeout >= frequency * 60) {
         alert("Timeout must be at least 1 second and less than the frequency.");
         return false;
     }
@@ -130,31 +130,6 @@ function validateForm() {
     return true;
 }
 
-function toggleObjectConfidence() {
-    const objectFilter = document.getElementById('object_filter');
-    const objectConfidenceContainer = document.getElementById('object_confidence_container');
-    
-    if (objectFilter.value.trim() !== "") {
-        objectConfidenceContainer.style.display = 'block';
-    } else {
-        objectConfidenceContainer.style.display = 'none';
-    }
-}
-
-// Call this function on page load to set the initial state
-document.addEventListener('DOMContentLoaded', toggleObjectConfidence);
-</script>
-
-<!-- Add this to the form -->
-<div>
-    <label for="object_filter" style="color: #fff;" title="Filter for specific objects">Object Filter:</label>
-    <input type="text" id="object_filter" name="object_filter" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter object types to filter (e.g., 'person,car')" onchange="toggleObjectConfidence()">
-
-    <div id="object_confidence_container" style="display: none;">
-        <label for="object_confidence" style="color: #fff;" title="Minimum confidence for object detection">Object Confidence:</label>
-        <input type="number" id="object_confidence" name="object_confidence" min="0" max="1" step="0.01" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter the minimum confidence level for object detection (0-1)">
-    </div>
-</div>
 
 function showStructuredInput(inputId) {
     const input = document.getElementById(inputId);
@@ -207,16 +182,18 @@ function generateXPath(inputId) {
         <!-- Options will be populated here -->
     </select>
 
+    <label for="search-input" title="Search for cameras or groups">Search:</label>
+    <input type="text" id="search-input" placeholder="Search cameras or groups" title="Enter search terms">
+
 
         <input type="range" id="grid-width-slider" min="50" max="3840" value="360" onload="this.max = window.innerWidth;" title="Adjust the width of the template grid">
-	         <button id="play-all" title="Start monitoring all templates">Play All</button>
-                <button id="stop-all" title="Stop monitoring all templates">Stop All</button>
-
+    <button id="play-all-button" title="Play/Stop all videos">Play All</button>
 </div>
 
     <div id="template-list" title="List of all templates">
         <!-- Template list will be populated here -->
     </div>
+
 
     {% include 'footer.html' %}
 </body>

@@ -1,0 +1,15 @@
+Source: glimpser
+Section: utils
+Priority: optional
+Maintainer: Kristopher Kubicki <kristopher@glimpser.net>
+Build-Depends: debhelper (>= 9), python3, python3-pip
+Standards-Version: 3.9.8
+Homepage: https://github.com/KristopherKubicki/glimpser
+
+Package: glimpser
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}, python3, python3-pip
+Description: Glimpser - A web monitoring and screenshot tool
+ Glimpser is a powerful tool for monitoring websites and capturing
+ screenshots. It provides features for scheduling, archiving, and
+ analyzing web content.

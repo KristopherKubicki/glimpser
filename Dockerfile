@@ -2,38 +2,11 @@ FROM python:3.8-slim
 
 # Install runtime dependencies and networking tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \
-    libsqlite3-0 \
-    curl \
-    iputils-ping \
-    net-tools \
-    netcat-traditional \
-    libsqlite3-dev \
-    libjpeg62-turbo \
-    libpng16-16 \
-    libsqlite3-dev \
-    libtiff6 \
-    libfreetype6 \
-    libwebp7 \
-    unzip \
-    poppler-utils \
-    xvfb \
-    ffmpeg \
-    libssl3 \
-    libffi8 \
-    libbz2-1.0 \
-    libreadline8 \
-    libncurses5 \
-    libncursesw6 \
-    libxml2 \
-    libxslt1.1 \
-    build-essential \
-    gcc \
-    zlib1g \
-    wget \
-    gnupg \
-    iproute2 \
-    wkhtmltopdf \
+    libpq5 libsqlite3-0 curl iputils-ping net-tools netcat-traditional \
+    libsqlite3-dev libjpeg62-turbo libpng16-16 libtiff6 libfreetype6 \
+    libwebp7 unzip poppler-utils xvfb ffmpeg libssl3 libffi8 libbz2-1.0 \
+    libreadline8 libncurses5 libncursesw6 libxml2 libxslt1.1 \
+    build-essential gcc zlib1g wget gnupg iproute2 wkhtmltopdf \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Google Chrome
@@ -56,15 +29,15 @@ WORKDIR /app
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install -r requirements.txt gunicorn
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
 # Copy application code
 COPY . .
 
 # Set environment variables
-ENV FLASK_APP=main.py
-ENV FLASK_RUN_HOST=0.0.0.0
-ENV PYTHONUNBUFFERED=1
+ENV FLASK_APP=main.py \
+    FLASK_RUN_HOST=0.0.0.0 \
+    PYTHONUNBUFFERED=1
 
 # Expose port
 EXPOSE 8082

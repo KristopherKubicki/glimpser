@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('#template-form form');
 
     const groupDropdown = document.getElementById('group-dropdown');
-    if (groupDropdown)  { 
+    if (groupDropdown)  {
     groupDropdown.addEventListener('change', () => {
         loadTemplates(); // Reload templates based on the selected group
     });
@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const slider = document.getElementById('grid-width-slider');
     const templateList = document.getElementById('template-list');
 
-	if (slider) { 
+	if (slider) {
     slider.addEventListener('input', function () {
         const value = slider.value;
         const pxValue = value + 'px';
@@ -29,12 +29,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 	}
 
-	if (form) { 
+	if (form) {
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
-        const submitButton = form.querySelector('button[type="submit"]');
+        const submitButton = form.querySelector('input[type="submit"]');
+	    console.log(submitButton);
         const feedbackElement = document.createElement('div');
         feedbackElement.className = 'form-feedback';
         form.appendChild(feedbackElement);
@@ -56,14 +57,14 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Success:', data);
             loadTemplates(); // Refresh the list after submission
             form.reset(); // Reset form after successful submission
-            
+
             // Show success message
-            feedbackElement.innerHTML = 'Form submitted successfully!';
+            feedbackElement.innerHTML = 'Source successfully created!';
             feedbackElement.style.color = 'green';
         })
         .catch((error) => {
             console.error('Error:', error);
-            
+
             // Show error message
             feedbackElement.innerHTML = 'An error occurred. Please try again.';
             feedbackElement.style.color = 'red';
@@ -72,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset button state
             submitButton.disabled = false;
             submitButton.innerHTML = 'Submit';
-            
+
             // Remove feedback message after 3 seconds
             setTimeout(() => {
                 feedbackElement.remove();
@@ -80,6 +81,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     }
+
+    // Call loadGroups() when the DOM content is loaded
+    loadGroups();
 
 function loadGroups() {
     const groupDropdown = document.getElementById('group-dropdown');
@@ -107,9 +111,14 @@ function loadGroups() {
 }
 
 
-function timeAgo(date) {
+function timeAgo(utcDateString) {
     const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
+    const utcDate = new Date(utcDateString);
+    const diffInSeconds = Math.floor((now - utcDate) / 1000);
+
+    if (diffInSeconds < 0) {
+        return 'in the future';
+    }
 
     const intervals = [
         { label: 'year', seconds: 31536000 },
@@ -129,6 +138,13 @@ function timeAgo(date) {
     }
 
     return 'just now';
+}
+
+function formatExactTime(utcDateString) {
+    const date = new Date(utcDateString);
+    const utcString = date.toUTCString();
+    const localString = date.toString();
+    return `UTC: ${utcString}\nLocal: ${localString}`;
 }
 
 function updateVideoSources() {
@@ -159,7 +175,7 @@ function updateGridLayout() {
     const templateList = document.getElementById('template-list');
     if (isMobile()) {
         templateList.style.gridTemplateColumns = '1fr'; // Set to single column layout
-    } else {
+    } else if (templateList) {
         templateList.style.gridTemplateColumns = 'repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px)))'; // Set to dynamic column layout
     }
 }
@@ -171,6 +187,15 @@ function templateBelongsToGroup(template, group) {
     }
     const templateGroups = template['groups'] ? template['groups'].split(',') : [];
     return templateGroups.includes(group);
+}
+
+function updateHumanizedTimes() {
+    document.querySelectorAll('.humanized-time').forEach(element => {
+        const timestamp = element.getAttribute('data-time');
+        if (timestamp) {
+            element.textContent = timeAgo(timestamp);
+        }
+    });
 }
 
 // Add this function to check if an element is in the viewport
@@ -213,35 +238,92 @@ function generateXPath(inputId) {
     const tag = document.getElementById(`${inputId}_tag`).value;
     const attribute = document.getElementById(`${inputId}_attribute`).value;
     const value = document.getElementById(`${inputId}_value`).value;
-    
+
     let xpath = `//${tag}`;
     if (attribute === 'data-*') {
         xpath += `[starts-with(@data-,'${value}')]`;
     } else {
         xpath += `[contains(@${attribute},'${value}')]`;
     }
-    
+
     document.getElementById(inputId).value = xpath;
     document.getElementById(inputId).style.display = 'block';
     document.querySelector(`#${inputId} + .structured-xpath-input`).remove();
 }
 
-if (groupDropdown) { 
+function loadGroups() {
+    fetch('/groups')
+        .then(response => response.json())
+        .then(groups => {
+            const groupDropdown = document.getElementById('group-dropdown');
+	    if (groupDropdown) { 
+            groupDropdown.innerHTML = '<option value="all">All Groups</option>';
+            groups.forEach(group => {
+                const option = document.createElement('option');
+                option.value = group;
+                option.textContent = group;
+                groupDropdown.appendChild(option);
+            });
+	    }
+        })
+        .catch(error => console.error('Error loading groups:', error));
+}
+
+function setupSearch() {
+    const searchInput = document.getElementById('search-input');
+    const groupDropdown = document.getElementById('group-dropdown');
+    const cameraRows = document.querySelectorAll('.camera-row');
+
+    function filterCameras() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedGroup = groupDropdown.value;
+
+        cameraRows.forEach(row => {
+            const name = row.querySelector('td:first-child').textContent.toLowerCase();
+            const groups = row.dataset.groups.split(',');
+            const matchesSearch = name.includes(searchTerm);
+            const matchesGroup = selectedGroup === 'all' || groups.includes(selectedGroup);
+
+            row.style.display = matchesSearch && matchesGroup ? '' : 'none';
+        });
+    }
+
+    searchInput.addEventListener('input', filterCameras);
+    groupDropdown.addEventListener('change', filterCameras);
+}
+
+if (groupDropdown) {
 function loadTemplates() {
     const selectedGroup = document.getElementById('group-dropdown').value || 'all';
-    const url = selectedGroup === 'all' ? '/templates' : `/templates?group=${selectedGroup}&t=${new Date().getTime()}`;
+    const searchQuery = document.getElementById('search-input').value.toLowerCase();
+    const url = `/templates?group=${selectedGroup}&search=${searchQuery}&t=${new Date().getTime()}`;
 
     updateGridLayout();
 
     const templateList = document.getElementById('template-list');
-    // Show loading indicator
-    templateList.innerHTML = '<div class="loading">Loading templates...</div>';
+    const captionsTable = document.querySelector('details table');
+    const templateContainer = document.querySelector('.template-container');
 
-    fetch('/templates')
+    // Determine which page we're on
+    const isIndexPage = !!templateList;
+    const isCaptionsPage = !!captionsTable && !!templateContainer;
+
+    // Show loading indicator
+    if (isIndexPage) {
+        templateList.innerHTML = '<div class="loading">Loading templates...</div>';
+    } else if (isCaptionsPage) {
+        templateContainer.innerHTML = '<div class="loading">Loading templates...</div>';
+    }
+
+    fetch(url)
         .then(response => response.json())
         .then(templates => {
             // Clear loading indicator
-            templateList.innerHTML = '';
+            if (isIndexPage) {
+                templateList.innerHTML = '';
+            } else if (isCaptionsPage) {
+                templateContainer.innerHTML = '';
+            }
 
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
@@ -257,9 +339,10 @@ function loadTemplates() {
             });
 
             Object.entries(templates).forEach(([name, template], index) => {
-                if (templateBelongsToGroup(template, selectedGroup)) {
+                if (templateBelongsToGroup(template, selectedGroup) && templateMatchesSearch(template, searchQuery)) {
                     const lastScreenshotTime = template['last_screenshot_time'];
                     const humanizedTimestamp = timeAgo(lastScreenshotTime);
+                    const nextCaptureTime = timeAgo(template['next_screenshot_time']);
 
                     // Check if the last screenshot is less than 1 minute ago
                     const lastScreenshotTime2 = new Date(template['last_screenshot_time']);
@@ -267,130 +350,282 @@ function loadTemplates() {
                     const isRecent = lastScreenshotTime2 > oneMinuteAgo;
                     const videoContainerClass = isRecent ? "video-container recent-screenshot" : "video-container";
 
-                    const templateDiv = document.createElement('div');
-                    templateDiv.classList.add("templateDiv"); // Add class to div
-                    templateDiv.style.opacity = '0';
-                    templateDiv.style.transform = 'translateY(20px)';
-                    templateDiv.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-                    templateDiv.innerHTML = `
-                        <a href='/templates/${name}'>
-                            <div class="${videoContainerClass}">
-                                <div class="camera-name">${name}</div> <!-- Camera name -->
-                                <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style='width:100%' muted title='${template["last_caption"]} (${humanizedTimestamp})' preload="none">
-                                    <source src="/last_video/${name}" type='video/mp4'>
-                                    Your browser does not support the video tag.
-                                </video>
-                                <div class="timestamp">${humanizedTimestamp}</div> <!-- Humanized timestamp in the bottom right corner -->
-                                <div class="play-icon">&#9658;</div> <!-- Unicode play icon -->
-                            </div>
-                        </a>
-                    `;
-                    templateList.appendChild(templateDiv);
+                    if (isIndexPage) {
+                        const templateDiv = document.createElement('div');
+                        templateDiv.classList.add("templateDiv");
+                        templateDiv.style.opacity = '0';
+                        templateDiv.style.transform = 'translateY(20px)';
+                        templateDiv.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                        templateDiv.innerHTML = `
+                            <a href='/templates/${name}'>
+                                <div class="${videoContainerClass}">
+                                    <div class="camera-name">${name}</div>
+                                    <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style='width:100%' muted title='${template["last_caption"]} (${humanizedTimestamp})' preload="none">
+                                        <source src="/last_video/${name}" type='video/mp4'>
+                                        Your browser does not support the video tag.
+                                    </video>
+                                    <div class="timestamp" title="${formatExactTime(lastScreenshotTime)}">${humanizedTimestamp}</div>
+                                    <div class="play-icon">&#9658;</div>
+                                </div>
+                            </a>
+                        `;
+                        templateList.appendChild(templateDiv);
 
-                    // Trigger reflow to enable transition
-                    void templateDiv.offsetWidth;
+                        // Trigger reflow to enable transition
+                        void templateDiv.offsetWidth;
 
-                    // Add fade-in effect with delay based on index
-                    setTimeout(() => {
-                        templateDiv.style.opacity = '1';
-                        templateDiv.style.transform = 'translateY(0)';
-                    }, index * 100);
+                        // Add fade-in effect with delay based on index
+                        setTimeout(() => {
+                            templateDiv.style.opacity = '1';
+                            templateDiv.style.transform = 'translateY(0)';
+                        }, index * 100);
 
-                    // Add event listeners for hover
-                    const video = templateDiv.querySelector('video');
-                    observer.observe(video);
+                        // Add event listeners for hover
+                        const video = templateDiv.querySelector('video');
+                        observer.observe(video);
 
-                    video.addEventListener('loadedmetadata', () => {
-                        // Set playback speed based on video duration
-                        if (video.duration < 1) {
-                            video.playbackRate = 0.0625;
-                        } else if (video.duration < 3) {
-                            video.playbackRate = 0.0625*2;
-                        } else if (video.duration < 7) {
-                            video.playbackRate = 0.0625*4;
-                        } else if (video.duration < 15) {
-                            video.playbackRate = 0.0625*8;
-                        } else if (video.duration < 30) {
-                            video.playbackRate = 0.0625*16;
-                        } else if (video.duration < 60) {
-                            video.playbackRate = 0.0625*32;
-                        } else if (video.duration > 120) {
-                            video.playbackRate = 0.0625*64;
-                        } else {
-                            video.playbackRate = 0.0625*128;
-                        }
-
-                        // Start the video at t minus 10 seconds if possible
-                        video.currentTime = Math.max(0, video.duration - 10);
-                    });
-
-                    if (isMobile()) {
-                        video.setAttribute('playsinline', ''); // Prevent fullscreen playback on iOS
-                        video.addEventListener('play', () => {
-                            video.playbackRate = calculatePlaybackRate(video); // Set appropriate playback rate
-                        });
-                    } else {
+                        // Add mouseenter and mouseleave event listeners for fast playback
                         video.addEventListener('mouseenter', () => {
-                            if (video.playbackRate * 3.0 <= 16) {
-                                video.playbackRate *= 3.0; // Set playback speed
-                            } else {
-                                video.playbackRate = 16; // Set playback rate to max value of 16
-                            }
+                            video.playbackRate = 2.0; // Play at 2x speed on hover
                             video.play();
                         });
 
                         video.addEventListener('mouseleave', () => {
+                            video.playbackRate = 1.0; // Reset to normal speed
                             video.pause();
-                            video.load(); // Reset the video to show the poster again
                         });
-                    }
 
-                    video.addEventListener('ended', () => {
-                        setTimeout(() => {
-                            video.load(); // Reset the video to show the poster
-                            video.play(); // Resume autoplay after 1 second
-                        }, 2000); // Pause for 1 second
-                    });
+                        // ... (rest of the video event listeners)
+                    } else if (isCaptionsPage) {
+                        const templateDiv = document.createElement('div');
+                        templateDiv.classList.add("templateDiv");
+                        templateDiv.innerHTML = `
+                            <img src="/last_screenshot/${name}" alt="${name}" style='width:100%'>
+
+                            <div class="camera-name">${name}</div>
+                            <div class="timestamp" title="${formatExactTime(lastScreenshotTime)}">Last: ${humanizedTimestamp}</div>
+                            <div class="next-capture">Next: ${nextCaptureTime}</div>
+                            <textarea class="notes-textarea" id="notes-${name}" name="notes">${template['notes']}</textarea>
+                            <button class="update-button" type="button" onclick="updateTemplate('${name}')">Update</button>
+                        `;
+                        templateContainer.appendChild(templateDiv);
+                    }
                 }
             });
 
-            const playAllButton = document.getElementById('play-all');
-            const stopAllButton = document.getElementById('stop-all');
+            if (isIndexPage) {
+                window.addEventListener('resize', updateGridLayout);
+            }
 
-            // Play all media elements
-            playAllButton.addEventListener('click', function () {
-                const mediaElements = templateList.querySelectorAll('video, audio');
-                mediaElements.forEach(element => {
-                    element.play();
-                });
-            });
-
-            // Stop all media elements
-            stopAllButton.addEventListener('click', function () {
-                const mediaElements = templateList.querySelectorAll('video, audio');
-                mediaElements.forEach(element => {
-                    element.pause();
-                    element.currentTime = 0; // Reset to start
-                });
-            });
-
-            window.addEventListener('resize', updateGridLayout);
+            // Update humanized times for captions page
+            if (isCaptionsPage) {
+                updateHumanizedTimes();
+            }
         })
         .catch(error => {
             console.error('Error loading templates:', error);
-            templateList.innerHTML = '<div class="error">Error loading templates. Please try again.</div>';
+            if (isIndexPage) {
+                templateList.innerHTML = '<div class="error">Error loading templates. Please try again.</div>';
+            } else if (isCaptionsPage) {
+                templateContainer.innerHTML = '<div class="error">Error loading templates. Please try again.</div>';
+            }
         });
+}
 
+function templateMatchesSearch(template, searchQuery) {
+    if (!searchQuery) return true;
+    const name = template.name.toLowerCase();
+    const groups = template.groups ? template.groups.toLowerCase() : '';
+    return name.includes(searchQuery) || groups.includes(searchQuery);
 }
 
 // Initial load of templates
 loadTemplates();
-loadGroups();
 
-groupDropdown.addEventListener('change', loadTemplates);
+const groupDropdown = document.getElementById('group-dropdown');
+
+const searchInput = document.getElementById('search-input');
+
+if (groupDropdown) {
+    groupDropdown.addEventListener('change', loadTemplates);
+}
+
+if (searchInput) {
+    searchInput.addEventListener('input', loadTemplates);
+}
 }
 
 // Set an interval to update video sources every 30 minutes
 setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
 
+// Mouseover video playback for status page
+function setupStatusPageVideoHover() {
+    const thumbnailVideoCells = document.querySelectorAll('.thumbnail-video');
+    thumbnailVideoCells.forEach(cell => {
+        const img = cell.querySelector('img.thumbnail');
+        const video = cell.querySelector('video.hover-video');
+        if (img && video) {
+            cell.addEventListener('mouseenter', () => {
+                img.style.display = 'none';
+                video.style.display = 'block';
+                video.play();
+            });
+            cell.addEventListener('mouseleave', () => {
+                video.pause();
+                video.currentTime = 0;
+                video.style.display = 'none';
+                img.style.display = 'block';
+            });
+        }
+    });
+}
+
+// Call the setup function when the DOM is loaded
+document.addEventListener('DOMContentLoaded', setupStatusPageVideoHover);
+
+    // Scheduler toggle functionality
+    const toggleSchedulerButton = document.getElementById('toggle-scheduler');
+    const schedulerStatus = document.getElementById('scheduler-status');
+
+    if (toggleSchedulerButton) {
+        toggleSchedulerButton.addEventListener('click', function() {
+
+            fetch('/toggle_scheduler', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    schedulerStatus.textContent = data.status;
+                    toggleSchedulerButton.textContent = data.status === 'running' ? 'Stop Scheduler' : 'Start Scheduler';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    schedulerStatus.textContent = 'Error occurred';
+                });
+        });
+
+        // Initial scheduler status check
+        fetch('/scheduler_status')
+            .then(response => response.json())
+            .then(data => {
+                schedulerStatus.textContent = data.status;
+                toggleSchedulerButton.textContent = data.status === 'running' ? 'Stop Scheduler' : 'Start Scheduler';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                schedulerStatus.textContent = 'Error occurred';
+            });
+    }
+
+    // Play All / Stop All functionality
+    const playAllButton = document.getElementById('play-all-button');
+    let isPlaying = false;
+
+    if (playAllButton) {
+        playAllButton.addEventListener('click', function() {
+            const videos = document.querySelectorAll('.templateDiv video');
+            if (isPlaying) {
+                videos.forEach(video => {
+                    video.pause();
+                    video.currentTime = 0; // Reset video to start
+                });
+                playAllButton.textContent = 'Play All';
+            } else {
+                videos.forEach(video => {
+                    video.play().catch(e => console.error("Error playing video:", e));
+                });
+                playAllButton.textContent = 'Stop All';
+            }
+            isPlaying = !isPlaying;
+        });
+    }
+
+    // Initialize Cast API
+    function initializeCastApi() {
+        cast.framework.CastContext.getInstance().setOptions({
+            receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+            autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+        });
+    }
+
+    // Initialize Google Cast API
+    window['__onGCastApiAvailable'] = function(isAvailable) {
+        if (isAvailable) {
+            initializeCastApi();
+        }
+    };
+
+    // Start casting
+    function startCasting() {
+        const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
+        if (castSession) {
+            const mediaInfo = new chrome.cast.media.MediaInfo(document.getElementById('live-video').src, 'video/mp4');
+            const request = new chrome.cast.media.LoadRequest(mediaInfo);
+            castSession.loadMedia(request).then(
+                function() { console.log('Cast started'); },
+                function(errorCode) { console.error('Error code: ' + errorCode); }
+            );
+        } else {
+            console.log('No active cast session');
+        }
+    }
+
+    // Add event listeners for custom video controls
+    const video = document.getElementById('live-video');
+    const playPauseButton = document.getElementById('play-pause');
+    const muteButton = document.getElementById('mute');
+    const fullScreenButton = document.getElementById('full-screen');
+    const seekBar = document.getElementById('seek-bar');
+    const volumeBar = document.getElementById('volume-bar');
+    const castButton = document.getElementById('cast-button');
+
+    if (playPauseButton) {
+        playPauseButton.addEventListener('click', () => {
+            if (video.paused) {
+                video.play();
+            } else {
+                video.pause();
+            }
+        });
+    }
+
+    if (muteButton) {
+        muteButton.addEventListener('click', () => {
+            video.muted = !video.muted;
+        });
+    }
+
+    if (fullScreenButton) {
+        fullScreenButton.addEventListener('click', () => {
+            if (video.requestFullscreen) {
+                video.requestFullscreen();
+            } else if (video.mozRequestFullScreen) {
+                video.mozRequestFullScreen();
+            } else if (video.webkitRequestFullscreen) {
+                video.webkitRequestFullscreen();
+            } else if (video.msRequestFullscreen) {
+                video.msRequestFullscreen();
+            }
+        });
+    }
+
+    if (seekBar) {
+        seekBar.addEventListener('change', () => {
+            const time = video.duration * (seekBar.value / 100);
+            video.currentTime = time;
+        });
+
+        video.addEventListener('timeupdate', () => {
+            const value = (100 / video.duration) * video.currentTime;
+            seekBar.value = value;
+        });
+    }
+
+    if (volumeBar) {
+        volumeBar.addEventListener('change', () => {
+            video.volume = volumeBar.value;
+        });
+    }
+
+    if (castButton) {
+        castButton.addEventListener('click', startCasting);
+    }
 });

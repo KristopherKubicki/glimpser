@@ -1,3 +1,5 @@
+# app/utils/image_processing.py
+
 import base64
 import datetime
 import io
@@ -9,7 +11,6 @@ from PIL import Image
 from app.config import CHATGPT_KEY, LLM_CAPTION_PROMPT, LLM_MODEL_VERSION
 
 last_429_error_time = None
-
 
 class ChatGPTImageComparison:
     """
@@ -154,6 +155,9 @@ def chatgpt_compare(image_paths, prompt):
             return "Missing image"
 
     # Use the ChatGPT API for comparison
+    if len(CHATGPT_KEY) < 1: # TODO validate better
+        return "Missing ChatGPT key"
+
     chatgpt_comparison = ChatGPTImageComparison()
     result = chatgpt_comparison.compare_images(prompt, image_paths)
 

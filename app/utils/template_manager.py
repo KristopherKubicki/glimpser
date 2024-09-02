@@ -1,8 +1,9 @@
-# utils/template_manager.py
+# app/utils/template_manager.py
 
 import os
 import re
 import shutil
+import random
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, Float, Integer, String, Text
@@ -19,6 +20,7 @@ class Template(Base):
     __tablename__ = "templates"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+
     name = Column(String, unique=True, nullable=False)
     frequency = Column(Integer, default=60)
     timeout = Column(Integer, default=10)
@@ -47,6 +49,7 @@ class Template(Base):
     danger = Column(Boolean, default=False)
     motion = Column(Float, default=0.2)
     rollback_frames = Column(Integer, default=0)
+    last_ret = None
 
     @validates('frequency')
     def validate_frequency(self, key, frequency):
@@ -94,6 +97,8 @@ class TemplateManager:
             session.close()
 
     def save_template(self, name, details):
+
+        # TODO: replace this with validate_template_name instead
         if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
             return False
 
@@ -103,18 +108,25 @@ class TemplateManager:
             if template is None:
                 template = Template()
                 session.add(template)
+            ldelta = False
             if template:
                 for key, value in details.items():
                     try:
                         if key == "rollback_frames":
                             value = int(value)
                         elif key in ["frequency", "timeout"]:
+                            if value == "":
+                                value = 30
+
                             value = int(value)
                             if key == "frequency" and value > 525600:
                                 raise ValueError("Frequency cannot be greater than 525600 (1 year)")
-                            if key == "timeout" and value >= details.get("frequency", template.frequency):
-                                raise ValueError("Timeout must be less than frequency")
+                            if key == "timeout" and value >= int(details.get("frequency", template.frequency) * 60):
+                                value = details.get("frequency", template.frequency) * 60
+                                #raise ValueError("Timeout must be less than frequency")
                         elif key == "object_confidence":
+                            if value == "":
+                                value = 0.5
                             value = float(value)
                             if details.get("object_filter", template.object_filter) and (value < 0 or value > 1):
                                 raise ValueError("Object confidence must be between 0 and 1")
@@ -133,11 +145,15 @@ class TemplateManager:
                                 continue
                     except ValueError as e:
                         # Log the validation error and return False
-                        print(f"Validation error: {str(e)}")
+                        print(f"Validation error: {str(e)}", name, key, value)
                         return False
 
-                    setattr(template, key, value)
-            session.commit()
+                    # check to make sure a change actually occurred
+                    if getattr(template, key) != value:
+                        setattr(template, key, value)
+                        ldelta = True
+            if ldelta is True:
+                session.commit()
             return True
         except Exception as e:
             print(f"Error saving template: {str(e)}")
@@ -276,3 +292,52 @@ def get_videos_for_template(name: str):
         reverse=True,
     )
     return sorted_videos[:10]
+
+def get_screenshot_count(name: str) -> int:
+    if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+        return 0
+    screenshot_path = os.path.join(SCREENSHOT_DIRECTORY, name)
+    if not os.path.exists(screenshot_path):
+        return 0
+    return len([f for f in os.listdir(screenshot_path) if f.endswith('.png')])
+
+def get_video_count(name: str) -> int:
+    if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+        return 0
+    video_path = os.path.join(VIDEO_DIRECTORY, name)
+    if not os.path.exists(video_path):
+        return 0
+    return len([f for f in os.listdir(video_path) if f.endswith('.mp4')])
+
+def get_storage_usage(name: str) -> str:
+    if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+        return "0 B"
+    screenshot_path = os.path.join(SCREENSHOT_DIRECTORY, name)
+    video_path = os.path.join(VIDEO_DIRECTORY, name)
+    total_size = 0
+
+    for path in [screenshot_path, video_path]:
+        if os.path.exists(path):
+            for dirpath, _, filenames in os.walk(path):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    if os.path.exists(fp):
+                        total_size += os.path.getsize(fp)
+
+    # Convert to human-readable format
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if total_size < 1024.0:
+            break
+        total_size /= 1024.0
+    return f"{total_size:.1f} {unit}"
+
+def get_llm_response_count(name: str) -> int:
+    # This is a placeholder. You'll need to implement a way to track LLM responses per template.
+    # For now, we'll return a random number as an example.
+    return random.randint(10, 100)
+
+def get_llm_cost_estimate(name: str) -> str:
+    # This is a placeholder. You'll need to implement a way to track LLM costs per template.
+    # For now, we'll return a random cost as an example.
+    cost = random.uniform(0.5, 5.0)
+    return f"${cost:.2f}"

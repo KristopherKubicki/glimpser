@@ -144,8 +144,8 @@ def compile_videos(input_file, output_file):
         "-dn",
         "-f",
         "concat",
-        #"-safe",   # TODO: notworking?
-        #"0",  # no relative paths...
+        "-safe",  
+        "0", 
         "-i",
         os.path.abspath(input_file),
         "-c",
@@ -158,7 +158,9 @@ def compile_videos(input_file, output_file):
 
     try:
         subprocess.run(
-            create_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            create_command, check=True, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE
         )
         # print(' cmd:', ' '.join(create_command))
         # subprocess.run(create_command)
@@ -180,7 +182,7 @@ def get_video_duration(video_path):
 
     """Get the duration of a video in seconds."""
     command = [
-        "ffprobe",
+        "ffprobe", # TODO: make this a config 
         "-v",
         "error",
         "-show_entries",
@@ -267,9 +269,9 @@ def concatenate_videos(in_process_video, temp_video, video_path) -> bool:
 
             except Exception as e:
                 handle_concat_error(e, temp_video, in_process_video)
-        elif os.path.getsize(temp_video) > 0:
+        elif os.path.exists(temp_video) and os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
-    elif os.path.getsize(temp_video) > 0:
+    elif os.path.exists(temp_video) and os.path.getsize(temp_video) > 0:
         os.rename(temp_video, in_process_video)
 
     # TODO: check timestamp, should be current...
@@ -327,12 +329,10 @@ def compile_to_video(camera_path, video_path) -> bool:
             # this is going to generate overlapping segments, which is OK for now .
 
     # Get the modification time of the in-process video
-    video_mod_time = (
-        os.path.getmtime(in_process_video) if os.path.exists(in_process_video) else 0
-    )
-
+    video_mod_time = 0
     ldur = 0
     if os.path.exists(in_process_video):
+        video_mod_time = os.path.getmtime(in_process_video)
         ldur = get_video_duration(in_process_video)
         if (
             ldur < 10 and time.time() - video_mod_time > 60 * 60

@@ -64,5 +64,7 @@ def get_latest_date(directory, ext="png"):
         return None
 
     # Convert the timestamp to UTC datetime string
-    return datetime.utcfromtimestamp(latest_file_mtime).strftime("%Y-%m-%d %H:%M:%S")
+    #return datetime.utcfromtimestamp(latest_file_mtime).strftime("%Y-%m-%d %H:%M:%S") 
+    #  I think there is a risk of double timestamping here, so I removed the UTC conversion
+    return datetime.fromtimestamp(latest_file_mtime).strftime("%Y-%m-%d %H:%M:%S")
 

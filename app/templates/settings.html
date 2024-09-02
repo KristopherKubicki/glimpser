@@ -1,12 +1,27 @@
 
-{% include 'header.html' %} 
+{% include 'header.html' %}
 
 <body>
     <header>
         {% include 'nav.html' %}
     </header>
 
+
+        <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger">Logout</a>
+
+
     <h2>Current Settings</h2>
+
+    <h3>Add New Setting</h3>
+    <form method="POST" action="{{ url_for('settings') }}">
+        <input type="hidden" name="action" value="add">
+        <label for="new_name">Name:</label>
+        <input type="text" id="new_name" name="new_name" required>
+        <label for="new_value">Value:</label>
+        <input type="text" id="new_value" name="new_value" required>
+        <button type="submit">Add Setting</button>
+    </form>
+
     <form method="POST" action="{{ url_for('settings') }}">
         <table>
             <thead>
@@ -34,18 +49,17 @@
         <button type="submit">Save Changes</button>
     </form>
 
-    <h2>Add New Setting</h2>
-    <form method="POST" action="{{ url_for('settings') }}">
-        <input type="hidden" name="action" value="add">
-        <label for="new_name">Name:</label>
-        <input type="text" id="new_name" name="new_name" required>
-        <label for="new_value">Value:</label>
-        <input type="text" id="new_value" name="new_value" required>
-        <button type="submit">Add Setting</button>
+    <h3>Configuration Management</h3>
+    <form method="POST" action="{{ url_for('settings') }}" enctype="multipart/form-data">
+        <button type="submit" name="action" value="backup">Backup Configuration</button>
+        <button type="submit" name="action" value="download">Download Configuration</button>
+        <input type="file" name="file" accept=".json">
+        <button type="submit" name="action" value="upload">Upload Configuration</button>
     </form>
 
     {% include 'footer.html' %}
 
+    <script src="{{ url_for('static', filename='js/performance.js') }}"></script>
 </body>
 </html>
 

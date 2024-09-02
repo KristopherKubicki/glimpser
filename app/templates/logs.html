@@ -1,0 +1,33 @@
+
+<h1>Logs</h1>
+
+    <form id="log-filter-form">
+        <input type="text" id="search-input" name="search" placeholder="Search logs...">
+        <select id="level-select" name="level">
+            <option value="">All Levels</option>
+            <option value="DEBUG">DEBUG</option>
+            <option value="INFO">INFO</option>
+            <option value="WARNING">WARNING</option>
+            <option value="ERROR">ERROR</option>
+            <option value="CRITICAL">CRITICAL</option>
+        </select>
+        <input type="text" name="source" placeholder="Source">
+        <input type="date" name="start_date">
+        <input type="date" name="end_date">
+        <button type="submit">Apply Filters</button>
+    </form>
+
+    <table id="log-table">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Level</th>
+                <th>Source</th>
+                <th>Message</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+<script src="{{ url_for('static', filename='js/logs.js') }}"></script>

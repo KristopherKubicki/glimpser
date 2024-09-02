@@ -1,9 +1,10 @@
 
-{% include 'header.html' %} 
+{% include 'header.html' %}
 
 <body>
     <header>
         {% include 'nav.html' %}
+
     </header>
 
     <script>
@@ -21,58 +22,105 @@
                 }
             });
         }
+        // Event listener for Update button clicks
+        $(document).ready(function () {
+            $('#camera-table').on('click', '.update-button', function () {
+                var templateName = $(this).data('template');
+                updateTemplate(templateName);
+            });
+        });
     </script>
 
- 
+    <div>
+        <label for="group-dropdown" title="Filter templates by group">Filter by Group:</label>
+        <select id="group-dropdown" title="Select a group to filter templates">
+            <!-- Options will be populated here -->
+        </select>
 
-<details><summary>Captions</summary>
-    <table border="1" style="width: 100%; border-collapse: collapse;">
+        <label for="search-input" title="Search for cameras or groups">Search:</label>
+        <input type="text" id="search-input" placeholder="Search cameras or groups" title="Enter search terms">
+    </div>
+
+    <details><summary>Captions</summary>
+        <table border="1" style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <th style="padding: 8px; background-color: #f4f4f4;">Timestamp</th>
+                <th style="padding: 8px; background-color: #f4f4f4;">Caption</th>
+            </tr>
+            {% for caption in lcaptions %}
+            {% for lc in caption %}
+            {% if caption[lc] != "" %}
+            <tr>
+                <td>{{ lc }}</td><td>{{ caption[lc] }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+            {% endfor %}
+        </table>
+    </details>
+
+<h2>Camera Notes</h2>
+<table id="camera-table" class="camera-table" style="min-width:90%; max-width: 90%;">
+    <thead>
         <tr>
-            <th style="padding: 8px; background-color: #f4f4f4;">Timestamp</th>
-            <th style="padding: 8px; background-color: #f4f4f4;">Caption</th>
+            <th>Camera</th>
+            <th>Details</th>
         </tr>
-        {% for caption in lcaptions %}
-
-	{% for lc in caption %} 
-	{% if caption[lc] != "" %} 
-
-        <tr>
-		<td>	{{ lc }} </td><td> {{ caption[lc] }}   </td>
-
-        </tr>
-	{% endif %} 
-
-	{% endfor %} 
-        {% endfor %}
-    </table>
-</details>
-
-
-
-
-    <h2>Update Camera Notes</h2>
-    <div class="template-container">
-        {% for template in template_details %}
-            <div class="template">
+    </thead>
+    <tbody>
+        {% for camera in template_details %}
+        <tr class="camera-row" data-groups="{{ template_details[camera]['groups'] }}">
+            <td>
+                <div class="templateDiv" style="max-width: 10vh; max-height:1em;">
+                    <div class="video-container">
+                        <div class="camera-name">{{camera}}</div>
+                        <video class="hover-video" loop muted poster="/last_screenshot/{{ camera }}">
+                            <source src="/last_video/{{ camera }}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                        <div class="timestamp" title="{{ template_details[camera]['last_screenshot'] }}">
+                            {{ template_details[camera]['last_screenshot'] }}
+                        </div>
+                    </div>
+                </div>
+            </td>
+            <td style="align: top left;">
                 <table>
                     <tr>
-                        <td>
-				<a href='/templates/{{template}}'><img src="/last_screenshot/{{template}}" alt="Thumbnail" width="256"></a>
-					
-                        </td>
-                        <td>
-                            <div class="details">
-                                <p><strong>{{ template }}</strong></p>
-                                <textarea id="notes-{{ template }}" name="notes">{{ template_details[template]['notes'] }}</textarea>
-                                <p>Last Caption: {{ template_details[template]['last_caption'] }} ({{ template_details[template]['last_caption_date'] }})</p>
-                                <button type="button" onclick="updateTemplate('{{ template }}')">Update</button>
-                            </div>
-                        </td>
+                        <td><span class="humanized-time" data-time="{{ template_details[camera]['last_screenshot'] }}">{{ template_details[camera]['last_screenshot'] }}</span></td>
+                        <td><span class="humanized-time" data-time="{{ template_details[camera]['next_screenshot'] }}">{{ template_details[camera]['next_screenshot'] }}</span></td>
+                        <td>{{ template_details[camera]['screenshot_count'] }}</td>
+                        <td>{{ template_details[camera]['video_count'] }}</td>
+                        <td>{{ template_details[camera]['storage_usage'] }}</td>
+                        <td>{{ template_details[camera]['llm_response_count'] }}</td>
+                        <td>{{ template_details[camera]['llm_cost_estimate'] }}</td>
                     </tr>
                 </table>
-            </div>
+                <details>
+                    <summary>Caption</summary>
+                    <form id="form-{{ camera }}" class="notes-form" style="display: flex; flex-direction: column;">
+                        <div class="chat-box" style="display: flex; flex-direction: column; border: 1px solid #ccc; border-radius: 8px; padding: 10px; background-color: #f9f9f9;">
+                            <div class="chat-prompt" style="margin-bottom: 8px;">
+                                <label for="notes-{{ camera }}" style="display: block; font-weight: bold;">Prompt:</label>
+                                <textarea id="notes-{{ camera }}" class="notes-textarea" style="width: 100%; border-radius: 4px; padding: 8px; border: 1px solid #ddd;">{{ template_details[camera]['notes'] }}</textarea>
+                            </div>
+                            <div class="chat-response" style="margin-top: 8px;">
+                                <label style="display: block; font-weight: bold;">Response:</label>
+                                <div class="last-caption" style="border: 1px solid #ddd; border-radius: 4px; padding: 8px; background-color: #fff;">
+                                    {{ template_details[camera]['last_caption'] }}
+                                </div>
+                            </div>
+                        </div>
+                        <button class="update-button" data-template="{{ camera }}" style="align-self: flex-end; margin-top: 10px; border: none; background-color: #4CAF50; color: white; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                            Send
+                        </button>
+                    </form>
+                </details>
+            </td>
+        </tr>
         {% endfor %}
-    </div>
+    </tbody>
+</table>
 
     {% include 'footer.html' %}
 
