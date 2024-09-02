@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('#template-form form');
 
     const groupDropdown = document.getElementById('group-dropdown');
-    if (groupDropdown)  { 
+    if (groupDropdown)  {
     groupDropdown.addEventListener('change', () => {
         loadTemplates(); // Reload templates based on the selected group
     });
@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const slider = document.getElementById('grid-width-slider');
     const templateList = document.getElementById('template-list');
 
-	if (slider) { 
+	if (slider) {
     slider.addEventListener('input', function () {
         const value = slider.value;
         const pxValue = value + 'px';
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 	}
 
-	if (form) { 
+	if (form) {
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(form);
@@ -57,14 +57,14 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Success:', data);
             loadTemplates(); // Refresh the list after submission
             form.reset(); // Reset form after successful submission
-            
+
             // Show success message
             feedbackElement.innerHTML = 'Source successfully created!';
             feedbackElement.style.color = 'green';
         })
         .catch((error) => {
             console.error('Error:', error);
-            
+
             // Show error message
             feedbackElement.innerHTML = 'An error occurred. Please try again.';
             feedbackElement.style.color = 'red';
@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset button state
             submitButton.disabled = false;
             submitButton.innerHTML = 'Submit';
-            
+
             // Remove feedback message after 3 seconds
             setTimeout(() => {
                 feedbackElement.remove();
@@ -112,8 +112,10 @@ function timeAgo(utcDateString) {
     const now = new Date();
     const utcDate = new Date(utcDateString);
     const diffInSeconds = Math.floor((now - utcDate) / 1000);
-    const isFuture = diffInSeconds < 0;
-    const absDiffInSeconds = Math.abs(diffInSeconds);
+
+    if (diffInSeconds < 0) {
+        return 'in the future';
+    }
 
     const intervals = [
         { label: 'year', seconds: 31536000 },
@@ -126,17 +128,13 @@ function timeAgo(utcDateString) {
 
     for (let i = 0; i < intervals.length; i++) {
         const interval = intervals[i];
-        const count = Math.floor(absDiffInSeconds / interval.seconds);
+        const count = Math.floor(diffInSeconds / interval.seconds);
         if (count >= 1) {
-            if (isFuture) {
-                return `in ${count} ${interval.label}${count > 1 ? 's' : ''}`;
-            } else {
-                return `${count} ${interval.label}${count > 1 ? 's' : ''} ago`;
-            }
+            return `${count} ${interval.label}${count > 1 ? 's' : ''} ago`;
         }
     }
 
-    return isFuture ? 'in a moment' : 'just now';
+    return 'just now';
 }
 
 function formatExactTime(utcDateString) {
@@ -186,6 +184,15 @@ function templateBelongsToGroup(template, group) {
     }
     const templateGroups = template['groups'] ? template['groups'].split(',') : [];
     return templateGroups.includes(group);
+}
+
+function updateHumanizedTimes() {
+    document.querySelectorAll('.last-capture, .next-capture').forEach(element => {
+        const timestamp = element.getAttribute('data-time');
+        if (timestamp) {
+            element.textContent = timeAgo(timestamp);
+        }
+    });
 }
 
 // Add this function to check if an element is in the viewport
@@ -332,16 +339,16 @@ function loadTemplates() {
                         const video = templateDiv.querySelector('video');
                         observer.observe(video);
 
-                        // Add mouse over to play functionality
-                        if (!isMobile()) {
-                            video.addEventListener('mouseenter', function() {
-                                this.play();
-                            });
-                            video.addEventListener('mouseleave', function() {
-                                this.pause();
-                                this.currentTime = 0;
-                            });
-                        }
+                        // Add mouseenter and mouseleave event listeners for fast playback
+                        video.addEventListener('mouseenter', () => {
+                            video.playbackRate = 2.0; // Play at 2x speed on hover
+                            video.play();
+                        });
+
+                        video.addEventListener('mouseleave', () => {
+                            video.playbackRate = 1.0; // Reset to normal speed
+                            video.pause();
+                        });
 
                         // ... (rest of the video event listeners)
                     } else if (isCaptionsPage) {
@@ -358,7 +365,7 @@ function loadTemplates() {
                                             <p><strong>${name}</strong></p>
                                             <textarea id="notes-${name}" name="notes">${template['notes']}</textarea>
                                             <p>Last Caption: ${template['last_caption']} (${humanizedTimestamp})</p>
-                                            <button type="button" onclick="updateTemplate('${name}')">Update</button>
+                            <button type="button" onclick="updateTemplate('${name}')">Update</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -415,6 +422,7 @@ setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
 
     if (toggleSchedulerButton) {
         toggleSchedulerButton.addEventListener('click', function() {
+
             fetch('/toggle_scheduler', { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
@@ -437,17 +445,24 @@ setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
             .catch(error => {
                 console.error('Error:', error);
                 schedulerStatus.textContent = 'Error occurred';
-        });
+            });
     }
 
-    // Play All button functionality
-    const playAllButton = document.getElementById('play-all-button');
-    if (playAllButton) {
-        playAllButton.addEventListener('click', function() {
+    // Play All / Stop All functionality
+    const toggleAllVideosButton = document.getElementById('toggle-all-videos');
+    let isPlaying = false;
+
+    if (toggleAllVideosButton) {
+        toggleAllVideosButton.addEventListener('click', function() {
             const videos = document.querySelectorAll('.templateDiv video');
-            videos.forEach(video => {
-                video.play();
-            });
+            if (isPlaying) {
+                videos.forEach(video => video.pause());
+                toggleAllVideosButton.textContent = 'Play All';
+            } else {
+                videos.forEach(video => video.play());
+                toggleAllVideosButton.textContent = 'Stop All';
+            }
+            isPlaying = !isPlaying;
         });
     }
 });

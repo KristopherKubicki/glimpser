@@ -1,4 +1,5 @@
 import glob
+from datetime import datetime, timedelta
 import hashlib
 import inspect
 import io
@@ -12,7 +13,6 @@ import tempfile
 import shutil
 import subprocess
 import uuid
-from datetime import datetime, timedelta
 from functools import wraps
 from threading import Lock, Thread
 
@@ -1050,10 +1050,23 @@ def init_routes(app):
                 except Exception:
                     pass
 
+        # Get templates and calculate next capture time
+        templates = template_manager.get_templates()
+        for name, template in templates.items():
+            last_screenshot_time = template.get('last_screenshot_time')
+            frequency = int(template.get('frequency', 30))  # Default to 30 minutes if not set
+
+            if last_screenshot_time:
+                last_screenshot = datetime.strptime(last_screenshot_time, "%Y-%m-%d %H:%M:%S")
+                next_screenshot = last_screenshot + timedelta(minutes=frequency)
+                template['next_screenshot_time'] = next_screenshot.strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                template['next_screenshot_time'] = None
+
         # Get a list of active cameras (with updates within the last 1 day)
         return render_template(
             "captions.html",
-            template_details=template_manager.get_templates(),
+            template_details=templates,
             lcaptions=entries,
         )
 
