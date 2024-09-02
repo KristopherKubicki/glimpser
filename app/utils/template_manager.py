@@ -321,7 +321,8 @@ def get_storage_usage(name: str) -> str:
             for dirpath, _, filenames in os.walk(path):
                 for f in filenames:
                     fp = os.path.join(dirpath, f)
-                    total_size += os.path.getsize(fp)
+                    if os.path.exists(fp):
+                        total_size += os.path.getsize(fp)
 
     # Convert to human-readable format
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:

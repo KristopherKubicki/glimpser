@@ -4,6 +4,7 @@
 <body>
     <header>
         {% include 'nav.html' %}
+
     </header>
 
     <script>
@@ -58,12 +59,11 @@
 
     {% include 'footer.html' %}
 
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     <script>
         // Update times every minute
-        setInterval(updateHumanizedTimes, 60000);
+        //setInterval(updateHumanizedTimes, 60000); # todo , fix this
         // Initial update
-        updateHumanizedTimes();
+        ///updateHumanizedTimes();
         // Initial load of templates
         document.addEventListener('DOMContentLoaded', function() {
             loadTemplates();

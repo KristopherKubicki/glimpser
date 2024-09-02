@@ -172,7 +172,7 @@ function updateGridLayout() {
     const templateList = document.getElementById('template-list');
     if (isMobile()) {
         templateList.style.gridTemplateColumns = '1fr'; // Set to single column layout
-    } else {
+    } else if (templateList) {
         templateList.style.gridTemplateColumns = 'repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px)))'; // Set to dynamic column layout
     }
 }

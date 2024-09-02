@@ -1,13 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Status Page</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-</head>
+
+{% include 'header.html' %} 
+
 <body>
+    <header>
+        {% include 'nav.html' %}
+
+    </header>
+
+
     <h1>System Status</h1>
 
     <div>
@@ -76,7 +76,6 @@
         </tbody>
     </table>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     <script>
         $(document).ready(function() {
             updateHumanizedTimes();
