@@ -462,6 +462,31 @@ if (searchInput) {
 // Set an interval to update video sources every 30 minutes
 setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
 
+// Mouseover video playback for status page
+function setupStatusPageVideoHover() {
+    const thumbnailVideoCells = document.querySelectorAll('.thumbnail-video');
+    thumbnailVideoCells.forEach(cell => {
+        const img = cell.querySelector('img.thumbnail');
+        const video = cell.querySelector('video.hover-video');
+        if (img && video) {
+            cell.addEventListener('mouseenter', () => {
+                img.style.display = 'none';
+                video.style.display = 'block';
+                video.play();
+            });
+            cell.addEventListener('mouseleave', () => {
+                video.pause();
+                video.currentTime = 0;
+                video.style.display = 'none';
+                img.style.display = 'block';
+            });
+        }
+    });
+}
+
+// Call the setup function when the DOM is loaded
+document.addEventListener('DOMContentLoaded', setupStatusPageVideoHover);
+
     // Scheduler toggle functionality
     const toggleSchedulerButton = document.getElementById('toggle-scheduler');
     const schedulerStatus = document.getElementById('scheduler-status');

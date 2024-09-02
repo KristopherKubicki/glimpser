@@ -32,8 +32,7 @@
         <thead>
             <tr>
                 <th>Name</th>
-                <th>Thumbnail</th>
-                <th>Last Video</th>
+                <th>Thumbnail/Video</th>
                 <th>Last Screenshot</th>
                 <th>Next Screenshot</th>
                 <th>Screenshot Count</th>
@@ -41,27 +40,27 @@
                 <th>Storage Usage</th>
                 <th>LLM Responses</th>
                 <th>LLM Cost Estimate</th>
+                <th>FPS</th>
+                <th>Resolution</th>
+                <th>Bitrate</th>
+                <th>Uptime</th>
             </tr>
         </thead>
         <tbody>
         {% for camera in camera_schedules %}
             <tr class="camera-row" data-groups="{{ camera.groups }}">
                 <td><a href="{{ camera.template_url }}">{{ camera.name }}</a></td>
-                <td>
+                <td class="thumbnail-video">
                     {% if camera.thumbnail_url %}
-                        <img src="{{ camera.thumbnail_url }}" alt="{{ camera.name }} thumbnail" style="width: 100px; height: auto;">
+                        <img src="{{ camera.thumbnail_url }}" alt="{{ camera.name }} thumbnail" class="thumbnail">
+                        {% if camera.last_video_url %}
+                            <video class="hover-video" loop muted>
+                                <source src="{{ camera.last_video_url }}" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        {% endif %}
                     {% else %}
                         No thumbnail
-                    {% endif %}
-                </td>
-                <td>
-                    {% if camera.last_video_url %}
-                        <video width="100" height="auto" controls>
-                            <source src="{{ camera.last_video_url }}" type="video/mp4">
-                            Your browser does not support the video tag.
-                        </video>
-                    {% else %}
-                        No video
                     {% endif %}
                 </td>
                 <td><span class="humanized-time" data-time="{{ camera.last_screenshot }}">{{ camera.last_screenshot }}</span></td>
@@ -71,6 +70,10 @@
                 <td>{{ camera.storage_usage }}</td>
                 <td>{{ camera.llm_response_count }}</td>
                 <td>{{ camera.llm_cost_estimate }}</td>
+                <td>{{ camera.fps }}</td>
+                <td>{{ camera.resolution }}</td>
+                <td>{{ camera.bitrate }}</td>
+                <td>{{ camera.uptime }}</td>
             </tr>
         {% endfor %}
         </tbody>
