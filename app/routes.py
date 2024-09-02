@@ -1,10 +1,9 @@
-# app/routes.py
-
 import glob
 import hashlib
 import inspect
 import io
 import json
+import logging
 import os
 import re
 import sys
@@ -20,6 +19,7 @@ from threading import Lock, Thread
 from flask import (
     Response,
     abort,
+    current_app,
     flash,
     jsonify,
     redirect,
@@ -55,6 +55,42 @@ from app.utils import (
 from app.utils.db import SessionLocal
 from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock, start_log_caching
+
+# Assuming 'app' is defined in __init__.py, import it here
+from app import app
+
+@app.route('/logs')
+@login_required
+def view_logs():
+    try:
+        # Get query parameters for filtering
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        level = request.args.get('level')
+        source = request.args.get('source')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        search = request.args.get('search')
+
+        # Read and filter logs from memory
+        logs = read_logs_from_memory(
+            level=level,
+            source=source,
+            start_date=start_date,
+            end_date=end_date,
+            search=search
+        )
+
+        # Pagination logic
+        total_logs = len(logs)
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated_logs = logs[start:end]
+
+        return render_template('logs.html', logs=paginated_logs, page=page, per_page=per_page, total_logs=total_logs)
+    except Exception as e:
+        current_app.logger.error(f"Error in view_logs: {str(e)}")
+        return render_template('logs.html', error=str(e)), 500
 
 def restart_server():
     print("Restarting server...")
