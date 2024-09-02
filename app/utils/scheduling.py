@@ -31,29 +31,66 @@ class GracefulAPScheduler(APScheduler):
     def __init__(self):
         super().__init__()
         self._scheduler = None
+        self._executor = None
         self.set_scheduler(BackgroundScheduler())
 
     def set_scheduler(self, scheduler):
         self._scheduler = scheduler
 
+    def init_app(self, app):
+        super().init_app(app)
+        if isinstance(self._scheduler.executor, ProcessPoolExecutor):
+            self._executor = self._scheduler.executor
+
     def shutdown(self, wait=True):
         try:
             if self.running:
+                logging.info("Initiating scheduler shutdown...")
+
                 # Stop all running jobs
                 for job in self._scheduler.get_jobs():
-                    job.remove()
+                    try:
+                        job.remove()
+                        logging.info(f"Removed job: {job.id}")
+                    except Exception as e:
+                        logging.error(f"Error removing job {job.id}: {e}")
 
                 # Shutdown the scheduler
                 super().shutdown(wait)
 
-                # Additional cleanup if needed
+                # Shutdown the executor if it's a ProcessPoolExecutor
+                if self._executor:
+                    logging.info("Shutting down ProcessPoolExecutor...")
+                    self._executor.shutdown(wait=wait)
+                    logging.info("ProcessPoolExecutor shutdown complete.")
+
+                # Additional cleanup
                 self._scheduler = None
+                self._executor = None
             else:
                 logging.info("Scheduler is not running.")
         except Exception as e:
             logging.error(f"Error during scheduler shutdown: {e}")
         finally:
             logging.info("Scheduler shutdown complete.")
+
+    def add_job(self, *args, **kwargs):
+        # Wrap the job function to handle any exceptions
+        original_func = kwargs.get('func') or args[0]
+
+        def wrapped_func(*a, **kw):
+            try:
+                return original_func(*a, **kw)
+            except Exception as e:
+                logging.error(f"Error in job {kwargs.get('id', 'unknown')}: {e}")
+                # You might want to implement some retry logic here
+
+        if 'func' in kwargs:
+            kwargs['func'] = wrapped_func
+        else:
+            args = (wrapped_func,) + args[1:]
+
+        return super().add_job(*args, **kwargs)
 
 scheduler = GracefulAPScheduler()
 

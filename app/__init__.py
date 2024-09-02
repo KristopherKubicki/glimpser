@@ -88,6 +88,10 @@ def create_app(watchdog=True, schedule=True):
         app.config["SCHEDULER_EXECUTORS"] = {
             "default": {"type": "processpool", "max_workers": MAX_WORKERS}
         }
+        app.config["SCHEDULER_JOB_DEFAULTS"] = {
+            "coalesce": False,
+            "max_instances": 3
+        }
         logging.info("Starting with %s workers" % str(MAX_WORKERS))
         scheduler.init_app(app)
 
@@ -108,15 +112,21 @@ def create_app(watchdog=True, schedule=True):
                 func=compile_to_teaser,
                 trigger="interval",
                 minutes=3,
+                misfire_grace_time=300
             )
             scheduler.add_job(
                 id="archive_screenshots",
                 func=archive_screenshots,
                 trigger="interval",
                 minutes=1,
+                misfire_grace_time=60
             )
             scheduler.add_job(
-                id="retention_cleanup", func=retention_cleanup, trigger="cron", day="*"
+                id="retention_cleanup",
+                func=retention_cleanup,
+                trigger="cron",
+                day="*",
+                misfire_grace_time=3600
             )
             schedule_summarization()
 
@@ -157,6 +167,10 @@ def create_app(watchdog=True, schedule=True):
                     if len(open_files) > max_file_handles:
                         raise Exception(f"Too many open file handles: {len(open_files)}")
 
+                    # Check scheduler health
+                    if not scheduler.running:
+                        raise Exception("Scheduler is not running")
+
                 except Exception as e:
                     logging.error("Application error detected: %s", e)
                     current_time = time.time()
@@ -174,7 +188,7 @@ def create_app(watchdog=True, schedule=True):
 
     # Start the watchdog thread
     if watchdog is True:
-        watchdog_thread = threading.Thread(target=watchdog)
+        watchdog_thread = threading.Thread(target=watchdog, name="Watchdog")
         watchdog_thread.daemon = True
         watchdog_thread.start()
 
@@ -187,5 +201,13 @@ def create_app(watchdog=True, schedule=True):
 
     # Make scheduler accessible globally
     app.scheduler = scheduler
+
+    # Register cleanup function
+    @app.teardown_appcontext
+    def shutdown_scheduler(exception=None):  # pylint: disable=unused-argument
+        if scheduler.running:
+            logging.info("Shutting down scheduler...")
+            scheduler.shutdown(wait=True)
+        logging.info("Application context is being torn down")
 
     return app

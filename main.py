@@ -146,7 +146,8 @@ def create_application():
     return create_app()
 
 
-import signal, sys, threading, atexit
+import signal, sys, threading, atexit, multiprocessing
+from concurrent.futures import ProcessPoolExecutor
 from app.utils.scheduling import get_system_metrics
 from app import scheduler
 
@@ -163,9 +164,12 @@ def output_shutdown_stats():
     print("\nGlimpser application has been shut down gracefully. All threads terminated. Goodbye!")
 
 def cleanup_resources():
+    print("Starting cleanup process...")
+
     # Shutdown the scheduler
     try:
-        scheduler.shutdown(wait=False)
+        scheduler.shutdown(wait=True)
+        print("Scheduler shutdown complete.")
     except Exception as e:
         print(f"Error shutting down scheduler: {e}")
 
@@ -173,11 +177,32 @@ def cleanup_resources():
     for thread in threading.enumerate():
         if thread != threading.current_thread() and not thread.daemon:
             try:
-                thread.join(timeout=1)
+                thread.join(timeout=5)
+                if thread.is_alive():
+                    print(f"Thread {thread.name} did not terminate gracefully.")
             except Exception as e:
                 print(f"Error terminating thread {thread.name}: {e}")
 
-    # Add any other cleanup tasks here (e.g., closing database connections)
+    # Terminate all active processes
+    for process in multiprocessing.active_children():
+        try:
+            process.terminate()
+            process.join(timeout=5)
+            if process.is_alive():
+                print(f"Process {process.name} did not terminate gracefully. Forcing termination.")
+                process.kill()
+        except Exception as e:
+            print(f"Error terminating process {process.name}: {e}")
+
+    # Shutdown the ProcessPoolExecutor
+    if hasattr(scheduler, 'executor') and isinstance(scheduler.executor, ProcessPoolExecutor):
+        try:
+            scheduler.executor.shutdown(wait=True)
+            print("ProcessPoolExecutor shutdown complete.")
+        except Exception as e:
+            print(f"Error shutting down ProcessPoolExecutor: {e}")
+
+    print("Cleanup process completed.")
 
 def graceful_shutdown(signum, frame):
     if threading.current_thread() is threading.main_thread():
