@@ -1,0 +1,16 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@ --with python3
+
+override_dh_auto_install:
+	dh_auto_install
+	mkdir -p debian/glimpser/opt/glimpser
+	cp -r * debian/glimpser/opt/glimpser/
+	rm -rf debian/glimpser/opt/glimpser/debian
+
+override_dh_installinit:
+	dh_installinit --name=glimpser
+
+override_dh_python3:
+	dh_python3 --shebang=/usr/bin/python3
