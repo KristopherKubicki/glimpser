@@ -40,7 +40,11 @@ from webdriver_manager.chrome import ChromeDriverManager
 logging.getLogger("webdriver_manager").setLevel(logging.WARNING)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-from app.config import DEBUG, LANG, SCREENSHOT_DIRECTORY, UA, FFMPEG_PATH
+from app.config import (
+    DEBUG, LANG, SCREENSHOT_DIRECTORY, UA, FFMPEG_PATH,
+    NUM_FRAMES, CAPTURE_TIMEOUT, PROBE_SIZE_DEFAULT,
+    PROBE_SIZE_RTSP, PROBE_SIZE_OTHER
+)
 
 last_camera_test = {}
 last_camera_test_time = {}
@@ -710,7 +714,7 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
 
 
 def capture_frame_from_stream(
-    url, output_path, num_frames=3, timeout=30, name="unknown", invert=False
+    url, output_path, name="unknown", invert=False
 ):
     """Use ffmpeg to capture multiple frames from a video stream and save the last one."""
     if shutil.which(FFMPEG_PATH) is None:
@@ -726,7 +730,7 @@ def capture_frame_from_stream(
             #'-hwaccel', 'auto',  #TODO add support
         ]
 
-        probe_size = "5M"
+        probe_size = PROBE_SIZE_DEFAULT
         if "http:" in url or "https:" in url:
             parsed_url = urlparse(url)
             base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
@@ -735,17 +739,17 @@ def capture_frame_from_stream(
             command.extend(["-headers", f"referer: {base_url}\r\n"])
             command.extend(["-headers", f"origin: {base_url}\r\n"])
             command.extend(["-seekable", "0"])
-            # command.extend(['-timeout', str(timeout-1)])  # not sure why, but this causes us a lot of issues, dont set a timetout
-            probe_size = "5M"
+            # command.extend(['-timeout', str(CAPTURE_TIMEOUT-1)])  # not sure why, but this causes us a lot of issues, dont set a timetout
+            probe_size = PROBE_SIZE_DEFAULT
         elif "rtsp:" in url:
             command.extend(["-rtsp_transport", "tcp"])
-            probe_size = "10M"
+            probe_size = PROBE_SIZE_RTSP
             if "/streaming/" in url.lower():  # alittle bit of a hack
                 command.extend(["-c:v", "h264"])
                 command.extend(["-r", "1"])
-                probe_size = "20M"
+                probe_size = PROBE_SIZE_OTHER
         else:
-            probe_size = "20M"
+            probe_size = PROBE_SIZE_OTHER
 
         # todo: make this configurable instead
         command.extend(["-analyzeduration", probe_size])
@@ -769,7 +773,7 @@ def capture_frame_from_stream(
                 "-pix_fmt",
                 "rgb24",
                 "-frames:v",
-                str(num_frames),  # Capture 'num_frames' frames
+                str(NUM_FRAMES),  # Capture 'NUM_FRAMES' frames
                 "-fflags",
                 "+igndts+ignidx+genpts+fastseek+discardcorrupt",
                 "-q:v",
@@ -788,10 +792,10 @@ def capture_frame_from_stream(
                     check=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    timeout=17,
-                )  # wanring hardcoded
+                    timeout=CAPTURE_TIMEOUT,
+                )
                 # print("mmm", ' '.join(command))
-                # subprocess.run(command, check=True, timeout=timeout) # wanring hardcoded
+                # subprocess.run(command, check=True, timeout=CAPTURE_TIMEOUT)
             except Exception:
                 # print("<<naye timeout...", e)
                 pass
