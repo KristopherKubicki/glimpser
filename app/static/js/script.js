@@ -510,18 +510,18 @@ document.addEventListener('DOMContentLoaded', setupStatusPageVideoHover);
     }
 
     // Play All / Stop All functionality
-    const toggleAllVideosButton = document.getElementById('toggle-all-videos');
+    const playAllButton = document.getElementById('play-all-button');
     let isPlaying = false;
 
-    if (toggleAllVideosButton) {
-        toggleAllVideosButton.addEventListener('click', function() {
+    if (playAllButton) {
+        playAllButton.addEventListener('click', function() {
             const videos = document.querySelectorAll('.templateDiv video');
             if (isPlaying) {
                 videos.forEach(video => video.pause());
-                toggleAllVideosButton.textContent = 'Play All';
+                playAllButton.textContent = 'Play All';
             } else {
                 videos.forEach(video => video.play());
-                toggleAllVideosButton.textContent = 'Stop All';
+                playAllButton.textContent = 'Stop All';
             }
             isPlaying = !isPlaying;
         });
