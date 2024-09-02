@@ -65,6 +65,8 @@
                                 <p><strong>{{ template }}</strong></p>
                                 <textarea id="notes-{{ template }}" name="notes">{{ template_details[template]['notes'] }}</textarea>
                                 <p>Last Caption: {{ template_details[template]['last_caption'] }} ({{ template_details[template]['last_caption_date'] }})</p>
+                                <p>Last Capture: <span class="last-capture" data-time="{{ template_details[template]['last_screenshot_time'] }}">{{ template_details[template]['last_screenshot_time'] }}</span></p>
+                                <p>Next Capture: <span class="next-capture" data-time="{{ template_details[template]['next_screenshot_time'] }}">{{ template_details[template]['next_screenshot_time'] }}</span></p>
                                 <button type="button" onclick="updateTemplate('{{ template }}')">Update</button>
                             </div>
                         </td>
@@ -76,6 +78,13 @@
 
     {% include 'footer.html' %}
 
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        // Update times every minute
+        setInterval(updateHumanizedTimes, 60000);
+        // Initial update
+        updateHumanizedTimes();
+    </script>
 </body>
 
 </html>

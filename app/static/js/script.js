@@ -188,6 +188,15 @@ function templateBelongsToGroup(template, group) {
     return templateGroups.includes(group);
 }
 
+function updateHumanizedTimes() {
+    document.querySelectorAll('.last-capture, .next-capture').forEach(element => {
+        const timestamp = element.getAttribute('data-time');
+        if (timestamp) {
+            element.textContent = timeAgo(timestamp);
+        }
+    });
+}
+
 // Add this function to check if an element is in the viewport
 function isInViewport(element) {
     const rect = element.getBoundingClientRect();
