@@ -1,5 +1,48 @@
 /* app/static/css/style.css */
 
+/* Existing styles... */
+
+/* Settings page styles */
+.settings-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.settings-search {
+    margin-bottom: 20px;
+}
+
+.settings-card {
+    margin-bottom: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.settings-card .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.settings-table {
+    margin-bottom: 0;
+}
+
+.settings-table th {
+    background-color: #f8f9fa;
+}
+
+.settings-table td {
+    vertical-align: middle;
+}
+
+.btn-settings-delete {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.btn-settings-save {
+    margin-top: 20px;
+}
+
 body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     margin: 0;

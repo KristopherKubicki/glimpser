@@ -1441,11 +1441,12 @@ def init_routes(app):
                     if value is not None:
                         update_setting(setting, value)
             else:
-                for name, value in request.form.items():
-                    if name not in ["action", "new_name", "new_value", "name_to_delete"] + email_settings:
-                        update_setting(name, value)
+                settings_to_update = {name: value for name, value in request.form.items()
+                                      if name not in ["action", "new_name", "new_value", "name_to_delete"] + email_settings}
+                for name, value in settings_to_update.items():
+                    update_setting(name, value)
             return redirect(url_for("settings"))
-
+    
         settings = get_all_settings()
         return render_template("settings.html", settings=settings)
 
