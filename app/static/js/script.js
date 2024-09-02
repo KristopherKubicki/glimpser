@@ -557,8 +557,63 @@ document.addEventListener('DOMContentLoaded', setupStatusPageVideoHover);
         }
     }
 
-    // Add event listener for cast button
+    // Add event listeners for custom video controls
+    const video = document.getElementById('live-video');
+    const playPauseButton = document.getElementById('play-pause');
+    const muteButton = document.getElementById('mute');
+    const fullScreenButton = document.getElementById('full-screen');
+    const seekBar = document.getElementById('seek-bar');
+    const volumeBar = document.getElementById('volume-bar');
     const castButton = document.getElementById('cast-button');
+
+    if (playPauseButton) {
+        playPauseButton.addEventListener('click', () => {
+            if (video.paused) {
+                video.play();
+            } else {
+                video.pause();
+            }
+        });
+    }
+
+    if (muteButton) {
+        muteButton.addEventListener('click', () => {
+            video.muted = !video.muted;
+        });
+    }
+
+    if (fullScreenButton) {
+        fullScreenButton.addEventListener('click', () => {
+            if (video.requestFullscreen) {
+                video.requestFullscreen();
+            } else if (video.mozRequestFullScreen) {
+                video.mozRequestFullScreen();
+            } else if (video.webkitRequestFullscreen) {
+                video.webkitRequestFullscreen();
+            } else if (video.msRequestFullscreen) {
+                video.msRequestFullscreen();
+            }
+        });
+    }
+
+    if (seekBar) {
+        seekBar.addEventListener('change', () => {
+            const time = video.duration * (seekBar.value / 100);
+            video.currentTime = time;
+        });
+
+        video.addEventListener('timeupdate', () => {
+            const value = (100 / video.duration) * video.currentTime;
+            seekBar.value = value;
+        });
+    }
+
+    if (volumeBar) {
+        volumeBar.addEventListener('change', () => {
+            video.volume = volumeBar.value;
+        });
+    }
+
     if (castButton) {
         castButton.addEventListener('click', startCasting);
     }
