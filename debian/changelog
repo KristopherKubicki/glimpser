@@ -1,0 +1,8 @@
+glimpser (1.0.0) unstable; urgency=medium
+
+  * Initial release of Glimpser
+  * Implemented web monitoring and screenshot functionality
+  * Added scheduling and archiving features
+  * Integrated web content analysis capabilities
+
+ -- Kristopher Kubicki <kristopher@glimpser.net>  Wed, 13 Mar 2024 12:00:00 +0000

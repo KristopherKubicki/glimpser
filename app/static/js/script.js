@@ -337,6 +337,7 @@ function loadTemplates() {
                 if (templateBelongsToGroup(template, selectedGroup) && templateMatchesSearch(template, searchQuery)) {
                     const lastScreenshotTime = template['last_screenshot_time'];
                     const humanizedTimestamp = timeAgo(lastScreenshotTime);
+                    const nextCaptureTime = timeAgo(template['next_screenshot_time']);
 
                     // Check if the last screenshot is less than 1 minute ago
                     const lastScreenshotTime2 = new Date(template['last_screenshot_time']);
@@ -392,25 +393,14 @@ function loadTemplates() {
                         // ... (rest of the video event listeners)
                     } else if (isCaptionsPage) {
                         const templateDiv = document.createElement('div');
-                        templateDiv.classList.add("template");
+                        templateDiv.classList.add("templateDiv");
                         templateDiv.innerHTML = `
-                            <table>
-                                <tr>
-                                    <td>
-                                        <a href='/templates/${name}'><img src="/last_screenshot/${name}" alt="Thumbnail" width="256"></a>
-                                    </td>
-                                    <td>
-                                        <div class="details">
-                                            <p><strong>${name}</strong></p>
-                                            <textarea id="notes-${name}" name="notes">${template['notes']}</textarea>
-                                            <p>Last Caption: ${template['last_caption']} (${humanizedTimestamp})</p>
-                                            <p>Last Capture: <span class="last-capture" data-time="${template['last_screenshot_time']}">${humanizedTimestamp}</span></p>
-                                            <p>Next Capture: <span class="next-capture" data-time="${template['next_screenshot_time']}">${timeAgo(template['next_screenshot_time'])}</span></p>
-                                            <button type="button" onclick="updateTemplate('${name}')">Update</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </table>
+                            <img src="/last_screenshot/${name}" alt="${name}" style='width:100%'>
+                            <div class="camera-name">${name}</div>
+                            <div class="timestamp" title="${formatExactTime(lastScreenshotTime)}">Last: ${humanizedTimestamp}</div>
+                            <div class="next-capture">Next: ${nextCaptureTime}</div>
+                            <textarea class="notes-textarea" id="notes-${name}" name="notes">${template['notes']}</textarea>
+                            <button class="update-button" type="button" onclick="updateTemplate('${name}')">Update</button>
                         `;
                         templateContainer.appendChild(templateDiv);
                     }
@@ -462,6 +452,31 @@ if (searchInput) {
 // Set an interval to update video sources every 30 minutes
 setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
 
+// Mouseover video playback for status page
+function setupStatusPageVideoHover() {
+    const thumbnailVideoCells = document.querySelectorAll('.thumbnail-video');
+    thumbnailVideoCells.forEach(cell => {
+        const img = cell.querySelector('img.thumbnail');
+        const video = cell.querySelector('video.hover-video');
+        if (img && video) {
+            cell.addEventListener('mouseenter', () => {
+                img.style.display = 'none';
+                video.style.display = 'block';
+                video.play();
+            });
+            cell.addEventListener('mouseleave', () => {
+                video.pause();
+                video.currentTime = 0;
+                video.style.display = 'none';
+                img.style.display = 'block';
+            });
+        }
+    });
+}
+
+// Call the setup function when the DOM is loaded
+document.addEventListener('DOMContentLoaded', setupStatusPageVideoHover);
+
     // Scheduler toggle functionality
     const toggleSchedulerButton = document.getElementById('toggle-scheduler');
     const schedulerStatus = document.getElementById('scheduler-status');
@@ -495,18 +510,18 @@ setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
     }
 
     // Play All / Stop All functionality
-    const toggleAllVideosButton = document.getElementById('toggle-all-videos');
+    const playAllButton = document.getElementById('play-all-button');
     let isPlaying = false;
 
-    if (toggleAllVideosButton) {
-        toggleAllVideosButton.addEventListener('click', function() {
+    if (playAllButton) {
+        playAllButton.addEventListener('click', function() {
             const videos = document.querySelectorAll('.templateDiv video');
             if (isPlaying) {
                 videos.forEach(video => video.pause());
-                toggleAllVideosButton.textContent = 'Play All';
+                playAllButton.textContent = 'Play All';
             } else {
                 videos.forEach(video => video.play());
-                toggleAllVideosButton.textContent = 'Stop All';
+                playAllButton.textContent = 'Stop All';
             }
             isPlaying = !isPlaying;
         });
@@ -542,8 +557,63 @@ setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
         }
     }
 
-    // Add event listener for cast button
+    // Add event listeners for custom video controls
+    const video = document.getElementById('live-video');
+    const playPauseButton = document.getElementById('play-pause');
+    const muteButton = document.getElementById('mute');
+    const fullScreenButton = document.getElementById('full-screen');
+    const seekBar = document.getElementById('seek-bar');
+    const volumeBar = document.getElementById('volume-bar');
     const castButton = document.getElementById('cast-button');
+
+    if (playPauseButton) {
+        playPauseButton.addEventListener('click', () => {
+            if (video.paused) {
+                video.play();
+            } else {
+                video.pause();
+            }
+        });
+    }
+
+    if (muteButton) {
+        muteButton.addEventListener('click', () => {
+            video.muted = !video.muted;
+        });
+    }
+
+    if (fullScreenButton) {
+        fullScreenButton.addEventListener('click', () => {
+            if (video.requestFullscreen) {
+                video.requestFullscreen();
+            } else if (video.mozRequestFullScreen) {
+                video.mozRequestFullScreen();
+            } else if (video.webkitRequestFullscreen) {
+                video.webkitRequestFullscreen();
+            } else if (video.msRequestFullscreen) {
+                video.msRequestFullscreen();
+            }
+        });
+    }
+
+    if (seekBar) {
+        seekBar.addEventListener('change', () => {
+            const time = video.duration * (seekBar.value / 100);
+            video.currentTime = time;
+        });
+
+        video.addEventListener('timeupdate', () => {
+            const value = (100 / video.duration) * video.currentTime;
+            seekBar.value = value;
+        });
+    }
+
+    if (volumeBar) {
+        volumeBar.addEventListener('change', () => {
+            video.volume = volumeBar.value;
+        });
+    }
+
     if (castButton) {
         castButton.addEventListener('click', startCasting);
     }
