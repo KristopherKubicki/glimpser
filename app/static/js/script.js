@@ -365,7 +365,9 @@ function loadTemplates() {
                                             <p><strong>${name}</strong></p>
                                             <textarea id="notes-${name}" name="notes">${template['notes']}</textarea>
                                             <p>Last Caption: ${template['last_caption']} (${humanizedTimestamp})</p>
-                            <button type="button" onclick="updateTemplate('${name}')">Update</button>
+                                            <p>Last Capture: <span class="last-capture" data-time="${template['last_screenshot_time']}">${humanizedTimestamp}</span></p>
+                                            <p>Next Capture: <span class="next-capture" data-time="${template['next_screenshot_time']}">${timeAgo(template['next_screenshot_time'])}</span></p>
+                                            <button type="button" onclick="updateTemplate('${name}')">Update</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -378,6 +380,11 @@ function loadTemplates() {
 
             if (isIndexPage) {
                 window.addEventListener('resize', updateGridLayout);
+            }
+
+            // Update humanized times for captions page
+            if (isCaptionsPage) {
+                updateHumanizedTimes();
             }
         })
         .catch(error => {
