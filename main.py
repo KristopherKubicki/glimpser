@@ -8,6 +8,7 @@ import signal
 import random
 import time
 import signal, sys, threading, atexit
+import socket
 
 import app.config as config
 from app import create_app
@@ -206,6 +207,10 @@ def clear_console():
     else:
         _ = os.system('clear')
 
+def is_port_in_use(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+
 if __name__ == "__main__":
     # Clear the console before starting
     clear_console()
@@ -219,6 +224,11 @@ if __name__ == "__main__":
 
     print("Initializing...")
     app = create_application()
+
+    # Check if the port is already in use
+    if is_port_in_use(config.PORT):
+        print(f"Error: Port {config.PORT} is already in use. Please choose a different port.")
+        sys.exit(1)
 
     # Register the cleanup function to be called at exit
     # should just be the main thread?
