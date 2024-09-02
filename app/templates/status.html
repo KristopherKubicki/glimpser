@@ -2,6 +2,94 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status Page</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>System Status</h1>
+
+    <div>
+        <label for="group-dropdown">Filter by Group:</label>
+        <select id="group-dropdown">
+            <option value="all">All Groups</option>
+        </select>
+
+        <label for="search-input">Search:</label>
+        <input type="text" id="search-input" placeholder="Search cameras or groups">
+    </div>
+
+    <h2>System Metrics</h2>
+    <ul>
+        {% for key, value in metrics.items() %}
+            <li>{{ key }}: {{ value }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Camera Schedules</h2>
+    <table id="camera-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Thumbnail</th>
+                <th>Last Video</th>
+                <th>Last Screenshot</th>
+                <th>Next Screenshot</th>
+                <th>Screenshot Count</th>
+                <th>Video Count</th>
+                <th>Storage Usage</th>
+                <th>LLM Responses</th>
+                <th>LLM Cost Estimate</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for camera in camera_schedules %}
+            <tr class="camera-row" data-groups="{{ camera.groups }}">
+                <td><a href="{{ camera.template_url }}">{{ camera.name }}</a></td>
+                <td>
+                    {% if camera.thumbnail_url %}
+                        <img src="{{ camera.thumbnail_url }}" alt="{{ camera.name }} thumbnail" style="width: 100px; height: auto;">
+                    {% else %}
+                        No thumbnail
+                    {% endif %}
+                </td>
+                <td>
+                    {% if camera.last_video_url %}
+                        <video width="100" height="auto" controls>
+                            <source src="{{ camera.last_video_url }}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    {% else %}
+                        No video
+                    {% endif %}
+                </td>
+                <td><span class="humanized-time" data-time="{{ camera.last_screenshot }}">{{ camera.last_screenshot }}</span></td>
+                <td><span class="humanized-time" data-time="{{ camera.next_screenshot }}">{{ camera.next_screenshot }}</span></td>
+                <td>{{ camera.screenshot_count }}</td>
+                <td>{{ camera.video_count }}</td>
+                <td>{{ camera.storage_usage }}</td>
+                <td>{{ camera.llm_response_count }}</td>
+                <td>{{ camera.llm_cost_estimate }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        $(document).ready(function() {
+            updateHumanizedTimes();
+            setInterval(updateHumanizedTimes, 60000);
+            loadGroups();
+            setupSearch();
+        });
+    </script>
+</body>
+</html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
     <title>System Status</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>

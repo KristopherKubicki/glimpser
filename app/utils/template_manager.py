@@ -3,6 +3,7 @@
 import os
 import re
 import shutil
+import random
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, Float, Integer, String, Text
@@ -19,6 +20,7 @@ class Template(Base):
     __tablename__ = "templates"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+
     name = Column(String, unique=True, nullable=False)
     frequency = Column(Integer, default=60)
     timeout = Column(Integer, default=10)
@@ -96,7 +98,7 @@ class TemplateManager:
 
     def save_template(self, name, details):
 
-        # TODO: replace this with validate_template_name instead 
+        # TODO: replace this with validate_template_name instead
         if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
             return False
 
@@ -290,3 +292,51 @@ def get_videos_for_template(name: str):
         reverse=True,
     )
     return sorted_videos[:10]
+
+def get_screenshot_count(name: str) -> int:
+    if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+        return 0
+    screenshot_path = os.path.join(SCREENSHOT_DIRECTORY, name)
+    if not os.path.exists(screenshot_path):
+        return 0
+    return len([f for f in os.listdir(screenshot_path) if f.endswith('.png')])
+
+def get_video_count(name: str) -> int:
+    if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+        return 0
+    video_path = os.path.join(VIDEO_DIRECTORY, name)
+    if not os.path.exists(video_path):
+        return 0
+    return len([f for f in os.listdir(video_path) if f.endswith('.mp4')])
+
+def get_storage_usage(name: str) -> str:
+    if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+        return "0 B"
+    screenshot_path = os.path.join(SCREENSHOT_DIRECTORY, name)
+    video_path = os.path.join(VIDEO_DIRECTORY, name)
+    total_size = 0
+
+    for path in [screenshot_path, video_path]:
+        if os.path.exists(path):
+            for dirpath, _, filenames in os.walk(path):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    total_size += os.path.getsize(fp)
+
+    # Convert to human-readable format
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if total_size < 1024.0:
+            break
+        total_size /= 1024.0
+    return f"{total_size:.1f} {unit}"
+
+def get_llm_response_count(name: str) -> int:
+    # This is a placeholder. You'll need to implement a way to track LLM responses per template.
+    # For now, we'll return a random number as an example.
+    return random.randint(10, 100)
+
+def get_llm_cost_estimate(name: str) -> str:
+    # This is a placeholder. You'll need to implement a way to track LLM costs per template.
+    # For now, we'll return a random cost as an example.
+    cost = random.uniform(0.5, 5.0)
+    return f"${cost:.2f}"

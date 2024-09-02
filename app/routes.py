@@ -1599,12 +1599,28 @@ def init_routes(app):
             thumbnail_path = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(name), 'latest_camera.png')
             thumbnail_url = url_for('uploaded_file', name=name, filename='latest_camera.png') if os.path.exists(thumbnail_path) else None
 
+            last_video_path = os.path.join(VIDEO_DIRECTORY, secure_filename(name), 'in_process.mp4')
+            last_video_url = url_for('serve_video', template_name=name) if os.path.exists(last_video_path) else None
+
+            screenshot_count = template_manager.get_screenshot_count(name)
+            video_count = template_manager.get_video_count(name)
+            storage_usage = template_manager.get_storage_usage(name)
+            llm_response_count = template_manager.get_llm_response_count(name)
+            llm_cost_estimate = template_manager.get_llm_cost_estimate(name)
+
             camera_schedules.append({
                 'name': name,
                 'last_screenshot': last_screenshot,
                 'next_screenshot': next_screenshot,
                 'thumbnail_url': thumbnail_url,
-                'template_url': url_for('template_details', template_name=name)
+                'last_video_url': last_video_url,
+                'template_url': url_for('template_details', template_name=name),
+                'screenshot_count': screenshot_count,
+                'video_count': video_count,
+                'storage_usage': storage_usage,
+                'llm_response_count': llm_response_count,
+                'llm_cost_estimate': llm_cost_estimate,
+                'groups': template.get('groups', '')
             })
 
         return render_template("status.html", metrics=metrics, camera_schedules=camera_schedules)

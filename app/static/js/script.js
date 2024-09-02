@@ -187,7 +187,7 @@ function templateBelongsToGroup(template, group) {
 }
 
 function updateHumanizedTimes() {
-    document.querySelectorAll('.last-capture, .next-capture').forEach(element => {
+    document.querySelectorAll('.humanized-time').forEach(element => {
         const timestamp = element.getAttribute('data-time');
         if (timestamp) {
             element.textContent = timeAgo(timestamp);
@@ -246,6 +246,45 @@ function generateXPath(inputId) {
     document.getElementById(inputId).value = xpath;
     document.getElementById(inputId).style.display = 'block';
     document.querySelector(`#${inputId} + .structured-xpath-input`).remove();
+}
+
+function loadGroups() {
+    fetch('/groups')
+        .then(response => response.json())
+        .then(groups => {
+            const groupDropdown = document.getElementById('group-dropdown');
+            groupDropdown.innerHTML = '<option value="all">All Groups</option>';
+            groups.forEach(group => {
+                const option = document.createElement('option');
+                option.value = group;
+                option.textContent = group;
+                groupDropdown.appendChild(option);
+            });
+        })
+        .catch(error => console.error('Error loading groups:', error));
+}
+
+function setupSearch() {
+    const searchInput = document.getElementById('search-input');
+    const groupDropdown = document.getElementById('group-dropdown');
+    const cameraRows = document.querySelectorAll('.camera-row');
+
+    function filterCameras() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedGroup = groupDropdown.value;
+
+        cameraRows.forEach(row => {
+            const name = row.querySelector('td:first-child').textContent.toLowerCase();
+            const groups = row.dataset.groups.split(',');
+            const matchesSearch = name.includes(searchTerm);
+            const matchesGroup = selectedGroup === 'all' || groups.includes(selectedGroup);
+
+            row.style.display = matchesSearch && matchesGroup ? '' : 'none';
+        });
+    }
+
+    searchInput.addEventListener('input', filterCameras);
+    groupDropdown.addEventListener('change', filterCameras);
 }
 
 if (groupDropdown) {
@@ -399,7 +438,6 @@ function templateMatchesSearch(template, searchQuery) {
 
 // Initial load of templates
 loadTemplates();
-loadGroups();
 
 const groupDropdown = document.getElementById('group-dropdown');
 const searchInput = document.getElementById('search-input');
