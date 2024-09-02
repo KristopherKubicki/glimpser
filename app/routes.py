@@ -1526,6 +1526,7 @@ def init_routes(app):
         start = (page - 1) * per_page
         end = start + per_page
         paginated_logs = logs[start:end]
+        print("OK", len(paginated_logs))
 
         return render_template('logs.html', logs=paginated_logs, page=page, per_page=per_page, total_logs=total_logs)
 
