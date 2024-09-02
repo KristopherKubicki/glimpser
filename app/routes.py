@@ -1541,10 +1541,12 @@ def init_routes(app):
 
             return redirect("/templates/" + template_name)
 
-    @app.route('/logs')
+    @app.route("/status")
     @login_required
-    def view_logs():
-        # Get query parameters for filtering
+    def status():
+        metrics = scheduling.get_system_metrics()
+
+        # Get query parameters for filtering logs
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 50, type=int)
         level = request.args.get('level')
@@ -1567,14 +1569,6 @@ def init_routes(app):
         start = (page - 1) * per_page
         end = start + per_page
         paginated_logs = logs[start:end]
-        print("OK", len(logs))
 
-        return render_template('logs.html', logs=paginated_logs, page=page, per_page=per_page, total_logs=total_logs)
-
-    @app.route("/status")
-    @login_required
-    def status():
-        metrics = scheduling.get_system_metrics()
-
-        return render_template("status.html", metrics=metrics)
+        return render_template("status.html", metrics=metrics, logs=paginated_logs, page=page, per_page=per_page, total_logs=total_logs)
 
