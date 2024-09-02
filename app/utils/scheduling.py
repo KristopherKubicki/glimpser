@@ -24,6 +24,7 @@ from .image_processing import chatgpt_compare
 from .llm import summarize
 from .screenshots import capture_or_download, remove_background, add_timestamp
 from .template_manager import get_template, get_templates, save_template
+from .email_alerts import email_alert
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -663,7 +664,7 @@ def update_summary():
     filename = f"data/summaries/{timestamp}.jl"
 
     if type(lsum) != str:
-        #print(" WARNING -- missing transcript") # this only matters if we have a CHATGPT KEY set 
+        #print(" WARNING -- missing transcript") # this only matters if we have a CHATGPT KEY set
         return
 
     # for leach in re.findall(r'({.+?\})',lsum):  # if we don't find this, then we wasted money...
@@ -677,6 +678,10 @@ def update_summary():
             lsuc = True
     if lsuc is False:
         print("WARNING MISSED CAPTION ($$$)", lsum)
+
+    # Send email alert with the summary
+    if lsuc:
+        email_alert("LLM Summary Update", f"New summary generated:\n\n{lsum}")
 
 
 def schedule_summarization():
