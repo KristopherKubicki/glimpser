@@ -1,5 +1,5 @@
 
-{% include 'header.html' %} 
+{% include 'header.html' %}
 
 <body>
     <header>
@@ -53,27 +53,7 @@
 
     <h2>Update Camera Notes</h2>
     <div class="template-container">
-        {% for template in template_details %}
-            <div class="template">
-                <table>
-                    <tr>
-                        <td>
-                            <a href='/templates/{{template}}'><img src="/last_screenshot/{{template}}" alt="Thumbnail" width="256"></a>
-                        </td>
-                        <td>
-                            <div class="details">
-                                <p><strong>{{ template }}</strong></p>
-                                <textarea id="notes-{{ template }}" name="notes">{{ template_details[template]['notes'] }}</textarea>
-                                <p>Last Caption: {{ template_details[template]['last_caption'] }} ({{ template_details[template]['last_caption_date'] }})</p>
-                                <p>Last Capture: <span class="last-capture" data-time="{{ template_details[template]['last_screenshot_time'] }}">{{ template_details[template]['last_screenshot_time'] }}</span></p>
-                                <p>Next Capture: <span class="next-capture" data-time="{{ template_details[template]['next_screenshot_time'] }}">{{ template_details[template]['next_screenshot_time'] }}</span></p>
-                                <button type="button" onclick="updateTemplate('{{ template }}')">Update</button>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        {% endfor %}
+        <!-- Templates will be dynamically populated here by loadTemplates() -->
     </div>
 
     {% include 'footer.html' %}
@@ -84,6 +64,11 @@
         setInterval(updateHumanizedTimes, 60000);
         // Initial update
         updateHumanizedTimes();
+        // Initial load of templates
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTemplates();
+            loadGroups();
+        });
     </script>
 </body>
 
