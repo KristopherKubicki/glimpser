@@ -28,14 +28,22 @@
             const healthStatus = document.getElementById('health-status');
             if (data.status === 'healthy') {
                 healthStatus.style.backgroundColor = 'green';
+                healthStatus.title = 'System Status: Healthy\n\n';
             } else {
                 healthStatus.style.backgroundColor = 'red';
+                healthStatus.title = 'System Status: Degraded\n\n';
             }
-            healthStatus.title = `CPU: ${data.metrics.cpu_usage}%\nMemory: ${data.metrics.memory_usage}%\nDisk: ${data.metrics.disk_usage}%\nOpen Files: ${data.metrics.open_files}\nThreads: ${data.metrics.thread_count}\nUptime: ${data.metrics.uptime}`;
+            healthStatus.title += `CPU: ${data.metrics.cpu_usage}%\nMemory: ${data.metrics.memory_usage}%\nDisk: ${data.metrics.disk_usage}%\nOpen Files: ${data.metrics.open_files}\nThreads: ${data.metrics.thread_count}\nUptime: ${data.metrics.uptime}\n`;
+
+            if (data.error_messages && data.error_messages.length > 0) {
+                healthStatus.title += '\nErrors:\n' + data.error_messages.join('\n');
+            }
         })
         .catch(error => {
             console.error('Error fetching health status:', error);
-            document.getElementById('health-status').style.backgroundColor = 'red';
+            const healthStatus = document.getElementById('health-status');
+            healthStatus.style.backgroundColor = 'red';
+            healthStatus.title = 'Error: Unable to fetch health status';
         });
 }
 
