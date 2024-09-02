@@ -21,43 +21,14 @@
     <li>Uptime: {{ metrics.uptime }}</li>
 </ul>
 
-<!-- Display logs -->
-<h2>Logs</h2>
-<table>
-    <thead>
-        <tr>
-            <th>Timestamp</th>
-            <th>Level</th>
-            <th>Source</th>
-            <th>Message</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for log in logs %}
-        <tr>
-            <td>{{ log.timestamp }}</td>
-            <td>{{ log.level }}</td>
-            <td>{{ log.source }}</td>
-            <td>{{ log.message }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
 
-<!-- Pagination -->
-<div class="pagination">
-    {% if page > 1 %}
-        <a href="{{ url_for('status', page=page-1, per_page=per_page) }}">Previous</a>
-    {% endif %}
-    <span>Page {{ page }} of {{ (total_logs / per_page)|round(0, 'ceil')|int }}</span>
-    {% if page < (total_logs / per_page)|round(0, 'ceil')|int %}
-        <a href="{{ url_for('status', page=page+1, per_page=per_page) }}">Next</a>
-    {% endif %}
-</div>
+{% include 'logs.html' %} 
 
 
-
+<footer>
 {% include 'footer.html' %} 
+</footer>
 
 </body>
 
+</html>

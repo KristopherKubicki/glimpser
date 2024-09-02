@@ -1,13 +1,6 @@
-{% extends "base.html" %}
 
-{% block content %}
 <h1>Logs</h1>
 
-{% if error %}
-    <div class="error-message">
-        <p>An error occurred: {{ error }}</p>
-    </div>
-{% else %}
     <form id="log-filter-form">
         <input type="text" id="search-input" name="search" placeholder="Search logs...">
         <select id="level-select" name="level">
@@ -36,9 +29,5 @@
         <tbody>
         </tbody>
     </table>
-{% endif %}
-{% endblock %}
 
-{% block scripts %}
 <script src="{{ url_for('static', filename='js/logs.js') }}"></script>
-{% endblock %}

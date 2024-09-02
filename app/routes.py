@@ -1574,17 +1574,24 @@ def init_routes(app):
         metrics = scheduling.get_system_metrics()
         return render_template("status.html", metrics=metrics)
 
+    @app.route("/logs")
+    @login_required
+    def logs():
+        return render_template("logs.html")
+
     @app.route("/stream_logs")
     @login_required
     def stream_logs():
+
+        level = request.args.get('level')
+        source = request.args.get('source')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        search = request.args.get('search')
+
         def generate():
             while True:
                 # Get query parameters for filtering logs
-                level = request.args.get('level')
-                source = request.args.get('source')
-                start_date = request.args.get('start_date')
-                end_date = request.args.get('end_date')
-                search = request.args.get('search')
 
                 # Read and filter logs from memory
                 logs = read_logs_from_memory(
@@ -1596,9 +1603,9 @@ def init_routes(app):
                 )
 
                 # Limit the number of logs sent to improve performance
-                logs = logs[:100]
+                logs = logs[:50]
 
-                yield f"data: {json.dumps(logs)}\n\n"
+                yield f"data: {json.dumps(logs, default=str)}\n\n"
                 time.sleep(1)  # Send updates every second
 
         return Response(generate(), mimetype="text/event-stream")

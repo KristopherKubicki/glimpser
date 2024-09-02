@@ -256,6 +256,7 @@ function loadGroups() {
         .then(response => response.json())
         .then(groups => {
             const groupDropdown = document.getElementById('group-dropdown');
+	    if (groupDropdown) { 
             groupDropdown.innerHTML = '<option value="all">All Groups</option>';
             groups.forEach(group => {
                 const option = document.createElement('option');
@@ -263,6 +264,7 @@ function loadGroups() {
                 option.textContent = group;
                 groupDropdown.appendChild(option);
             });
+	    }
         })
         .catch(error => console.error('Error loading groups:', error));
 }
