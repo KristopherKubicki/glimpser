@@ -1,52 +1,59 @@
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Logs page loaded');
     const form = document.getElementById('log-filter-form');
     const table = document.getElementById('log-table');
+    const tbody = table.querySelector('tbody');
+    const searchInput = document.getElementById('search-input');
+    const levelSelect = document.getElementById('level-select');
 
-    if (!form) {
-        console.error('Log filter form not found');
-        return;
+    let eventSource;
+
+    function updateTable(logs) {
+        tbody.innerHTML = '';
+        logs.forEach(log => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${log.timestamp}</td>
+                <td>${log.level}</td>
+                <td>${log.source}</td>
+                <td>${log.message}</td>
+            `;
+            tbody.appendChild(row);
+        });
     }
 
-    if (!table) {
-        console.error('Log table not found');
-        return;
+    function startEventStream() {
+        if (eventSource) {
+            eventSource.close();
+        }
+
+        const formData = new FormData(form);
+        const searchParams = new URLSearchParams(formData);
+        eventSource = new EventSource(`/stream_logs?${searchParams.toString()}`);
+
+        eventSource.onmessage = function(event) {
+            const logs = JSON.parse(event.data);
+            updateTable(logs);
+        };
+
+        eventSource.onerror = function(error) {
+            console.error('EventSource failed:', error);
+            eventSource.close();
+        };
     }
 
     form.addEventListener('submit', function(e) {
         e.preventDefault();
-        console.log('Form submitted');
-        const formData = new FormData(form);
-        const searchParams = new URLSearchParams(formData);
-
-        fetch(`/logs?${searchParams.toString()}`)
-            .then(response => {
-                console.log('Response status:', response.status);
-                return response.text();
-            })
-            .then(html => {
-                console.log('Response received');
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const newTable = doc.getElementById('log-table');
-                const newPagination = doc.querySelector('.pagination');
-
-                if (newTable) {
-                    table.innerHTML = newTable.innerHTML;
-                } else {
-                    console.error('New log table not found in response');
-                }
-
-                const paginationElement = document.querySelector('.pagination');
-                if (newPagination && paginationElement) {
-                    paginationElement.innerHTML = newPagination.innerHTML;
-                } else {
-                    console.error('Pagination element not found');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while fetching logs. Please try again.');
-            });
+        startEventStream();
     });
+
+    searchInput.addEventListener('input', function() {
+        startEventStream();
+    });
+
+    levelSelect.addEventListener('change', function() {
+        startEventStream();
+    });
+
+    // Start the initial event stream
+    startEventStream();
 });
