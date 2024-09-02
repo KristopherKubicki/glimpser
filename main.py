@@ -217,14 +217,15 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, graceful_shutdown)
     signal.signal(signal.SIGINT, graceful_shutdown)
 
+    print("Initializing...")
     app = create_application()
 
     # Register the cleanup function to be called at exit
     # should just be the main thread?
 
-
     try:
         # Run the application if this script is executed directly
+        print("Starting web...")
         app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True)
     except KeyboardInterrupt:
         print("\nKeyboardInterrupt received. Exiting...")

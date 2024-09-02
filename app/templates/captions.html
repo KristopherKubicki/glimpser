@@ -22,6 +22,13 @@
                 }
             });
         }
+        // Event listener for Update button clicks
+        $(document).ready(function () {
+            $('#camera-table').on('click', '.update-button', function () {
+                var templateName = $(this).data('template');
+                updateTemplate(templateName);
+            });
+        });
     </script>
 
     <div>
@@ -53,18 +60,69 @@
     </details>
 
     <h2>Camera Notes</h2>
-    <div id="template-list" class="template-container">
-        <!-- Templates will be dynamically populated here by loadTemplates() -->
-    </div>
+    <table id="camera-table">
+        <thead>
+            <tr>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+       <tbody>
+            {% for camera in template_details %}
+            <tr class="camera-row" data-groups="{{ template_details[camera]['groups'] }}">
+                <td class="thumbnail-video">
+                    <a href="/templates/{{ camera }}">{{ camera }}</a>
+                    <br />
+                    <video class="hover-video" loop muted poster='/last_screenshot/{{ camera }}' style='width: 50px;'>
+                        <source src="/last_video/{{ camera }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <br />
+                    <span class="humanized-time" data-time="{{ template_details[camera]['last_screenshot'] }}">{{ template_details[camera]['last_screenshot'] }}</span>
+                </td>
+
+                <td>
+
+			<details><summary>
+		<table style='width:60vw;  max-width:60vw; min-width: 60vw;'>
+	    <tr>
+			                <td><span class="humanized-time" data-time="{{ template_details[camera]['last_screenshot'] }}">{{ template_details[camera]['last_screenshot'] }}</span></td>
+                <td><span class="humanized-time" data-time="{{ template_details[camera]['next_screenshot'] }}">{{ template_details[camera]['next_screenshot'] }}</span></td>
+                <td>{{ template_details[camera]['screenshot_count'] }}</td>
+                <td>{{ template_details[camera]['video_count'] }}</td>
+                <td>{{ template_details[camera]['storage_usage'] }}</td>
+                <td>{{ template_details[camera]['llm_response_count'] }}</td>
+                <td>{{ template_details[camera]['llm_cost_estimate'] }}</td>
+	    </tr>
+                  </table>
+				</summary>
+
+
+				<table>
+					<tr>
+						<td>
+                    <form id="form-{{ camera }}">
+                        <textarea id="notes-{{ camera }}" rows="3" cols="50" style="min-height: 2em; height: 3em; max-width:60vw;">{{ template_details[camera]['notes'] }}</textarea><br />
+
+			<div style="min-height: 2em; height: 3em; max-width:60vw;">
+                            {{ template_details[camera]['last_caption'] }}
+			</div>
+                    </form>
+						</td><td>
+                <button class="update-button" data-template="{{ camera }}">Update</button>
+						</td>
+					</tr>
+				</table>
+			</details>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
 
     {% include 'footer.html' %}
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            loadTemplates();
-            loadGroups();
-        });
-    </script>
 </body>
 
 </html>
