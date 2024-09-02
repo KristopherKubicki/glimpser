@@ -1,27 +1,50 @@
 
-{% include 'header.html' %} 
+{% extends "base.html" %}
+{% block content %}
+<h1>System Status</h1>
 
-<body>
-    <header>
-        {% include 'nav.html' %}
+<!-- Display system metrics -->
+<h2>System Metrics</h2>
+<ul>
+    <li>CPU Usage: {{ metrics.cpu_usage }}%</li>
+    <li>Memory Usage: {{ metrics.memory_usage }}%</li>
+    <li>Disk Usage: {{ metrics.disk_usage }}%</li>
+    <li>Open Files: {{ metrics.open_files }}</li>
+    <li>Thread Count: {{ metrics.thread_count }}</li>
+    <li>Uptime: {{ metrics.uptime }}</li>
+</ul>
 
-    </header>
-
-
-    <h1>System Status</h1>
-
-    <h2>System Metrics</h2>
-    <ul>
-        {% for key, value in metrics.items() %}
-            <li>{{ key }}: {{ value }}</li>
+<!-- Display logs -->
+<h2>Logs</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Timestamp</th>
+            <th>Level</th>
+            <th>Source</th>
+            <th>Message</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in logs %}
+        <tr>
+            <td>{{ log.timestamp }}</td>
+            <td>{{ log.level }}</td>
+            <td>{{ log.source }}</td>
+            <td>{{ log.message }}</td>
+        </tr>
         {% endfor %}
-    </ul>
+    </tbody>
+</table>
 
-
-   {% include 'footer.html' %}
-
-
-
-</body>
-
-</html>
+<!-- Pagination -->
+<div class="pagination">
+    {% if page > 1 %}
+        <a href="{{ url_for('status', page=page-1, per_page=per_page) }}">Previous</a>
+    {% endif %}
+    <span>Page {{ page }} of {{ (total_logs / per_page)|round(0, 'ceil')|int }}</span>
+    {% if page < (total_logs / per_page)|round(0, 'ceil')|int %}
+        <a href="{{ url_for('status', page=page+1, per_page=per_page) }}">Next</a>
+    {% endif %}
+</div>
+{% endblock %}
