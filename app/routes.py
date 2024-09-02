@@ -44,7 +44,10 @@ from app.config import (
     USER_NAME,
     USER_PASSWORD_HASH,
     VIDEO_DIRECTORY,
-    VERSION
+    VERSION,
+    BACKUP_PATH,
+    backup_config,
+    restore_config
 )
 from app.utils import (
     scheduling,
@@ -1445,6 +1448,29 @@ def init_routes(app):
                     value = request.form.get(setting)
                     if value is not None:
                         update_setting(setting, value)
+            elif action == "backup":
+                if backup_config():
+                    flash("Configuration backed up successfully", "success")
+                else:
+                    flash("Failed to backup configuration", "error")
+            elif action == "download":
+                if os.path.exists(BACKUP_PATH):
+                    return send_file(BACKUP_PATH, as_attachment=True, download_name="config_backup.json")
+                else:
+                    flash("No backup file found", "error")
+            elif action == "upload":
+                if 'file' not in request.files:
+                    flash('No file part', 'error')
+                else:
+                    file = request.files['file']
+                    if file.filename == '':
+                        flash('No selected file', 'error')
+                    elif file and allowed_file(file.filename):
+                        file.save(BACKUP_PATH)
+                        restore_config()
+                        flash("Configuration restored successfully", "success")
+                    else:
+                        flash("Invalid file type", "error")
             else:
                 for name, value in request.form.items():
                     if name not in ["action", "new_name", "new_value", "name_to_delete"] + email_settings:
@@ -1458,6 +1484,9 @@ def init_routes(app):
     @app.route('/system_metrics')
     def system_metrics():
         return jsonify(scheduling.get_system_metrics())
+
+    def allowed_file(filename):
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() == 'json'
 
     @app.route("/update_template/<string:template_name>", methods=["POST"])
     @login_required
