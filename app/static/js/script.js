@@ -112,10 +112,8 @@ function timeAgo(utcDateString) {
     const now = new Date();
     const utcDate = new Date(utcDateString);
     const diffInSeconds = Math.floor((now - utcDate) / 1000);
-
-    if (diffInSeconds < 0) {
-        return 'in the future';
-    }
+    const isFuture = diffInSeconds < 0;
+    const absDiffInSeconds = Math.abs(diffInSeconds);
 
     const intervals = [
         { label: 'year', seconds: 31536000 },
@@ -128,13 +126,17 @@ function timeAgo(utcDateString) {
 
     for (let i = 0; i < intervals.length; i++) {
         const interval = intervals[i];
-        const count = Math.floor(diffInSeconds / interval.seconds);
+        const count = Math.floor(absDiffInSeconds / interval.seconds);
         if (count >= 1) {
-            return `${count} ${interval.label}${count > 1 ? 's' : ''} ago`;
+            if (isFuture) {
+                return `in ${count} ${interval.label}${count > 1 ? 's' : ''}`;
+            } else {
+                return `${count} ${interval.label}${count > 1 ? 's' : ''} ago`;
+            }
         }
     }
 
-    return 'just now';
+    return isFuture ? 'in a moment' : 'just now';
 }
 
 function formatExactTime(utcDateString) {
@@ -226,14 +228,14 @@ function generateXPath(inputId) {
     const tag = document.getElementById(`${inputId}_tag`).value;
     const attribute = document.getElementById(`${inputId}_attribute`).value;
     const value = document.getElementById(`${inputId}_value`).value;
-    
+
     let xpath = `//${tag}`;
     if (attribute === 'data-*') {
         xpath += `[starts-with(@data-,'${value}')]`;
     } else {
         xpath += `[contains(@${attribute},'${value}')]`;
     }
-    
+
     document.getElementById(inputId).value = xpath;
     document.getElementById(inputId).style.display = 'block';
     document.querySelector(`#${inputId} + .structured-xpath-input`).remove();
@@ -445,21 +447,6 @@ setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
             const videos = document.querySelectorAll('.templateDiv video');
             videos.forEach(video => {
                 video.play();
-            });
-        });
-    }
-
-    // Toggle All Videos button functionality
-    const toggleAllVideosButton = document.getElementById('toggle-all-videos');
-    if (toggleAllVideosButton) {
-        toggleAllVideosButton.addEventListener('click', function() {
-            const videos = document.querySelectorAll('.templateDiv video');
-            videos.forEach(video => {
-                if (video.paused) {
-                    video.play();
-                } else {
-                    video.pause();
-                }
             });
         });
     }
