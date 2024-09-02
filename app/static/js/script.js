@@ -448,4 +448,19 @@ setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
             });
         });
     }
+
+    // Toggle All Videos button functionality
+    const toggleAllVideosButton = document.getElementById('toggle-all-videos');
+    if (toggleAllVideosButton) {
+        toggleAllVideosButton.addEventListener('click', function() {
+            const videos = document.querySelectorAll('.templateDiv video');
+            videos.forEach(video => {
+                if (video.paused) {
+                    video.play();
+                } else {
+                    video.pause();
+                }
+            });
+        });
+    }
 });
