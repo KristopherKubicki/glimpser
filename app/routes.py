@@ -522,27 +522,40 @@ def init_routes(app):
         # Define thresholds for nominal performance
         cpu_threshold = 80  # 80% CPU usage
         memory_threshold = 80  # 80% memory usage
-        thread_threshold = 100  # 100 threads # should be tied to the thread count in the config, right? 
+        thread_threshold = 100  # 100 threads # should be tied to the thread count in the config, right?
         open_file_threshold = 1024 # thats a lot
-        disk_threshold = 95 # almost full 
+        disk_threshold = 95 # almost full
 
-        # Check if metrics are nominal
-        is_nominal = (
-            metrics['cpu_usage'] < cpu_threshold and
-            metrics['memory_usage'] < memory_threshold and
-            metrics['thread_count'] < thread_threshold and
-            metrics['open_files'] < open_file_threshold and
-            metrics['disk_usage'] < disk_threshold
-        )
+        # Check if metrics are nominal and collect error messages
+        error_messages = []
+        is_nominal = True
+
+        if metrics['cpu_usage'] >= cpu_threshold:
+            is_nominal = False
+            error_messages.append(f"CPU usage is high: {metrics['cpu_usage']}%")
+        if metrics['memory_usage'] >= memory_threshold:
+            is_nominal = False
+            error_messages.append(f"Memory usage is high: {metrics['memory_usage']}%")
+        if metrics['thread_count'] >= thread_threshold:
+            is_nominal = False
+            error_messages.append(f"Thread count is high: {metrics['thread_count']}")
+        if metrics['open_files'] >= open_file_threshold:
+            is_nominal = False
+            error_messages.append(f"Too many open files: {metrics['open_files']}")
+        if metrics['disk_usage'] >= disk_threshold:
+            is_nominal = False
+            error_messages.append(f"Disk usage is high: {metrics['disk_usage']}%")
 
         try:
             #0h 1m 6s
-            if len(metrics['uptime']) < 9: # first ten seconds... 
+            if len(metrics['uptime']) < 9: # first ten seconds...
                 is_nominal = False
+                error_messages.append("System just started, still initializing")
         except Exception as e:
             is_nominal = False
+            error_messages.append("Error getting system uptime")
 
-        ###### 
+        ######
         #  consider rolling these into the metrics
         try:
             # Check database connection
@@ -552,21 +565,22 @@ def init_routes(app):
             db_status = 'connected'
         except Exception as e:
             is_nominal = False
-            pass # its for the healthcheck...
-        if db_status != 'connected':
-            is_nominal = False
+            db_status = 'disconnected'
+            error_messages.append("Database connection failed")
 
         try:
             # Check if scheduler is running
             scheduler_status = "running" if scheduling.scheduler.running else "stopped"
+            if scheduler_status != 'running':
+                is_nominal = False
+                error_messages.append("Scheduler is not running")
         except Exception as e:
             is_nominal = False
-            pass # its for the healthcheck...
-        if scheduler_status != 'running':
-            is_nominal = False
+            scheduler_status = 'failed'
+            error_messages.append("Error checking scheduler status")
 
         #
-        ###### 
+        ######
 
         return jsonify({
             'status': 'healthy' if is_nominal else 'degraded',
@@ -574,7 +588,8 @@ def init_routes(app):
             'nominal': is_nominal,
             "database": db_status,
             "scheduler": scheduler_status,
-            "free_disk_space_gb": free_gb
+            "free_disk_space_gb": free_gb,
+            "error_messages": error_messages
         }), 200 # always return 200, but might be degraded.
 
 
@@ -1565,12 +1580,28 @@ def init_routes(app):
             thumbnail_path = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(name), 'latest_camera.png')
             thumbnail_url = url_for('uploaded_file', name=name, filename='latest_camera.png') if os.path.exists(thumbnail_path) else None
 
+            last_video_path = os.path.join(VIDEO_DIRECTORY, secure_filename(name), 'in_process.mp4')
+            last_video_url = url_for('serve_video', template_name=name) if os.path.exists(last_video_path) else None
+
+            screenshot_count = template_manager.get_screenshot_count(name)
+            video_count = template_manager.get_video_count(name)
+            storage_usage = template_manager.get_storage_usage(name)
+            llm_response_count = template_manager.get_llm_response_count(name)
+            llm_cost_estimate = template_manager.get_llm_cost_estimate(name)
+
             camera_schedules.append({
                 'name': name,
                 'last_screenshot': last_screenshot,
                 'next_screenshot': next_screenshot,
                 'thumbnail_url': thumbnail_url,
-                'template_url': url_for('template_details', template_name=name)
+                'last_video_url': last_video_url,
+                'template_url': url_for('template_details', template_name=name),
+                'screenshot_count': screenshot_count,
+                'video_count': video_count,
+                'storage_usage': storage_usage,
+                'llm_response_count': llm_response_count,
+                'llm_cost_estimate': llm_cost_estimate,
+                'groups': template.get('groups', '')
             })
 
         return render_template("status.html", metrics=metrics, camera_schedules=camera_schedules)

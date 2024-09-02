@@ -187,7 +187,7 @@ function templateBelongsToGroup(template, group) {
 }
 
 function updateHumanizedTimes() {
-    document.querySelectorAll('.last-capture, .next-capture').forEach(element => {
+    document.querySelectorAll('.humanized-time').forEach(element => {
         const timestamp = element.getAttribute('data-time');
         if (timestamp) {
             element.textContent = timeAgo(timestamp);
@@ -246,6 +246,45 @@ function generateXPath(inputId) {
     document.getElementById(inputId).value = xpath;
     document.getElementById(inputId).style.display = 'block';
     document.querySelector(`#${inputId} + .structured-xpath-input`).remove();
+}
+
+function loadGroups() {
+    fetch('/groups')
+        .then(response => response.json())
+        .then(groups => {
+            const groupDropdown = document.getElementById('group-dropdown');
+            groupDropdown.innerHTML = '<option value="all">All Groups</option>';
+            groups.forEach(group => {
+                const option = document.createElement('option');
+                option.value = group;
+                option.textContent = group;
+                groupDropdown.appendChild(option);
+            });
+        })
+        .catch(error => console.error('Error loading groups:', error));
+}
+
+function setupSearch() {
+    const searchInput = document.getElementById('search-input');
+    const groupDropdown = document.getElementById('group-dropdown');
+    const cameraRows = document.querySelectorAll('.camera-row');
+
+    function filterCameras() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedGroup = groupDropdown.value;
+
+        cameraRows.forEach(row => {
+            const name = row.querySelector('td:first-child').textContent.toLowerCase();
+            const groups = row.dataset.groups.split(',');
+            const matchesSearch = name.includes(searchTerm);
+            const matchesGroup = selectedGroup === 'all' || groups.includes(selectedGroup);
+
+            row.style.display = matchesSearch && matchesGroup ? '' : 'none';
+        });
+    }
+
+    searchInput.addEventListener('input', filterCameras);
+    groupDropdown.addEventListener('change', filterCameras);
 }
 
 if (groupDropdown) {
@@ -365,7 +404,9 @@ function loadTemplates() {
                                             <p><strong>${name}</strong></p>
                                             <textarea id="notes-${name}" name="notes">${template['notes']}</textarea>
                                             <p>Last Caption: ${template['last_caption']} (${humanizedTimestamp})</p>
-                            <button type="button" onclick="updateTemplate('${name}')">Update</button>
+                                            <p>Last Capture: <span class="last-capture" data-time="${template['last_screenshot_time']}">${humanizedTimestamp}</span></p>
+                                            <p>Next Capture: <span class="next-capture" data-time="${template['next_screenshot_time']}">${timeAgo(template['next_screenshot_time'])}</span></p>
+                                            <button type="button" onclick="updateTemplate('${name}')">Update</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -378,6 +419,11 @@ function loadTemplates() {
 
             if (isIndexPage) {
                 window.addEventListener('resize', updateGridLayout);
+            }
+
+            // Update humanized times for captions page
+            if (isCaptionsPage) {
+                updateHumanizedTimes();
             }
         })
         .catch(error => {
@@ -399,9 +445,9 @@ function templateMatchesSearch(template, searchQuery) {
 
 // Initial load of templates
 loadTemplates();
-loadGroups();
 
 const groupDropdown = document.getElementById('group-dropdown');
+
 const searchInput = document.getElementById('search-input');
 
 if (groupDropdown) {
@@ -464,5 +510,41 @@ setInterval(updateVideoSources, 60000*30); // 60000 milliseconds = 1 minute
             }
             isPlaying = !isPlaying;
         });
+    }
+
+    // Initialize Cast API
+    function initializeCastApi() {
+        cast.framework.CastContext.getInstance().setOptions({
+            receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+            autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+        });
+    }
+
+    // Initialize Google Cast API
+    window['__onGCastApiAvailable'] = function(isAvailable) {
+        if (isAvailable) {
+            initializeCastApi();
+        }
+    };
+
+    // Start casting
+    function startCasting() {
+        const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
+        if (castSession) {
+            const mediaInfo = new chrome.cast.media.MediaInfo(document.getElementById('live-video').src, 'video/mp4');
+            const request = new chrome.cast.media.LoadRequest(mediaInfo);
+            castSession.loadMedia(request).then(
+                function() { console.log('Cast started'); },
+                function(errorCode) { console.error('Error code: ' + errorCode); }
+            );
+        } else {
+            console.log('No active cast session');
+        }
+    }
+
+    // Add event listener for cast button
+    const castButton = document.getElementById('cast-button');
+    if (castButton) {
+        castButton.addEventListener('click', startCasting);
     }
 });

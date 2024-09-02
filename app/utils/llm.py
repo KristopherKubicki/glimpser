@@ -8,6 +8,7 @@ import time
 import requests
 
 from app.config import CHATGPT_KEY, LLM_MODEL_VERSION, LLM_SUMMARY_PROMPT
+from app.utils.email_alerts import email_alert
 
 last_429_error_time = None
 
@@ -29,7 +30,7 @@ def summarize(prompt, history=None, tokens=4096):
         str: A JSON string containing the summarized content, or None if an error occurs.
     """
     global last_429_error_time
-    
+
     # Rate limiting: Check if a 429 error occurred in the last 15 minutes
     if last_429_error_time and (
         datetime.datetime.now() - last_429_error_time
@@ -43,7 +44,7 @@ def summarize(prompt, history=None, tokens=4096):
     if LLM_SUMMARY_PROMPT is None or len(LLM_SUMMARY_PROMPT) < 1:
         return None
 
-    # note - if history is None or [], there isnt much to do .. 
+    # note - if history is None or [], there isnt much to do ..
 
     headers = {"Authorization": f"Bearer {CHATGPT_KEY}"}
     url = "https://api.openai.com/v1/chat/completions"

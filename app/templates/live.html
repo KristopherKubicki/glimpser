@@ -60,6 +60,9 @@
             <div id="play-pause-indicator" style="display: none; font-size: 48px;">▶</div>
         </div>
         <div id="error-message"></div>
+        <div class="controls">
+            <button id="cast-button">Cast</button>
+        </div>
     </div>
 
 
@@ -102,7 +105,7 @@
 
     <div id="template-details"></div>
 
-
+    <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
     <script>
         const video = document.getElementById('live-video');
         const image = document.getElementById('live-image');
