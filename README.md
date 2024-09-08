@@ -69,7 +69,7 @@ The preferred method for capturing screenshots is through the Glimpser web inter
 ### Running Tests
 To ensure everything works as expected, you can run the included unit tests:
 ```sh
-python -m unittest discover tests
+python -m coverage run -m pytest
 ```
 
 ### Motion Detection
