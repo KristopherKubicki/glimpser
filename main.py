@@ -208,6 +208,10 @@ def clear_console():
         _ = os.system('clear')
 
 def is_port_in_use(port):
+    # Skip the check if running in Docker
+    if os.environ.get('IN_DOCKER'):
+        return False
+    
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(('localhost', port)) == 0
 
