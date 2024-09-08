@@ -46,7 +46,7 @@ Glimpser is a straightforward yet powerful real-time monitoring application desi
 
    Or, if you want to install from source:
    ```sh
-   git clone https://github.com/yourusername/glimpser.git
+   git clone https://github.com/KristopherKubicki/glimpser.git
    cd glimpser
    pip install .
    ```
