@@ -87,7 +87,7 @@ To set up the project for development:
 
 1. Clone the repository:
    ```sh
-   git clone https://github.com/yourusername/glimpser.git
+   git clone https://github.com/KristopherKubicki/glimpser.git
    cd glimpser
    ```
 
