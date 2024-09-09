@@ -46,7 +46,7 @@ Glimpser is a straightforward yet powerful real-time monitoring application desi
 
    Or, if you want to install from source:
    ```sh
-   git clone https://github.com/yourusername/glimpser.git
+   git clone https://github.com/KristopherKubicki/glimpser.git
    cd glimpser
    pip install .
    ```
@@ -69,7 +69,7 @@ The preferred method for capturing screenshots is through the Glimpser web inter
 ### Running Tests
 To ensure everything works as expected, you can run the included unit tests:
 ```sh
-python -m unittest discover tests
+python -m coverage run -m pytest
 ```
 
 ### Motion Detection
@@ -87,7 +87,7 @@ To set up the project for development:
 
 1. Clone the repository:
    ```sh
-   git clone https://github.com/yourusername/glimpser.git
+   git clone https://github.com/KristopherKubicki/glimpser.git
    cd glimpser
    ```
 

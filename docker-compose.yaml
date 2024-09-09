@@ -13,6 +13,7 @@ services:
       - CHATGPT_KEY=${CHATGPT_KEY:-}
       - TZ=America/Chicago
       - GLIMPSER_DATABASE_PATH=/app/data/glimpser.db
+      - IN_DOCKER=1
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs

@@ -1,6 +1,7 @@
+# Use an official Python runtime as a parent image
 FROM python:3.8-slim
 
-# Install runtime dependencies and networking tools
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 libsqlite3-0 curl iputils-ping net-tools netcat-traditional \
     libsqlite3-dev libjpeg62-turbo libpng16-16 libtiff6 libfreetype6 \
@@ -39,8 +40,11 @@ ENV FLASK_APP=main.py \
     FLASK_RUN_HOST=0.0.0.0 \
     PYTHONUNBUFFERED=1
 
+# Create necessary directories
+RUN mkdir -p /app/db /app/logs /app/screenshots /app/videos /app/summaries
+
 # Expose port
 EXPOSE 8082
 
-# Run the application with Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8082", "--workers", "4", "main:app"]
+# Run the application
+CMD ["python", "main.py", "--host", "0.0.0.0", "--port", "8082", "--console-log"]
