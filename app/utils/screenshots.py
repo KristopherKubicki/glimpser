@@ -243,7 +243,7 @@ def add_timestamp(image_path, name="unknown", invert=False):
 
 
 def download_image(
-    url, output_path, timeout=30, name="unknown", invert=False, dark=False
+    url, output_path, timeout=CAPTURE_TIMEOUT, name="unknown", invert=False, dark=False
 ):
     """Attempt to download an image directly from the URL and convert it to PNG format."""
 
@@ -302,7 +302,7 @@ def download_image(
 
 
 def download_pdf(
-    url, output_path, timeout=30, name="unknown", invert=False, dark=False
+    url, output_path, timeout=CAPTURE_TIMEOUT, name="unknown", invert=False, dark=False
 ):
     """Attempt to download the first page of a PDF from the URL and convert it to PNG format."""
 
@@ -712,9 +712,8 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
         logging.error(f"Error capturing frame with yt-dlp and ffmpeg: {e}")
     return False
 
-
 def capture_frame_from_stream(
-    url, output_path, name="unknown", invert=False
+    url, output_path, timeout=CAPTURE_TIMEOUT, name="unknown", invert=False
 ):
     """Use ffmpeg to capture multiple frames from a video stream and save the last one."""
     if shutil.which(FFMPEG_PATH) is None:
@@ -792,7 +791,7 @@ def capture_frame_from_stream(
                     check=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    timeout=CAPTURE_TIMEOUT,
+                    timeout=timeout,
                 )
                 # print("mmm", ' '.join(command))
                 # subprocess.run(command, check=True, timeout=CAPTURE_TIMEOUT)
@@ -977,7 +976,7 @@ def add_options(options, uc=False):
     return options
 
 
-def network_idle_condition(driver, url, timeout=30, idle_time=0.25, stealth=False):
+def network_idle_condition(driver, url, timeout=CAPTURE_TIMEOUT, idle_time=0.25, stealth=False):
     """
     Returns a function that can be used as a condition for WebDriverWait.
     It checks if the network has been idle for a specified amount of time.
@@ -1073,7 +1072,7 @@ def apply_dark_mode(img, range_value=30, text_range_value=120):
 import shlex
 
 def capture_screenshot_and_har_light(
-    url, output_path, timeout=30, name="unknown", invert=False, proxy=None, dark=True
+    url, output_path, timeout=CAPTURE_TIMEOUT, name="unknown", invert=False, proxy=None, dark=True
 ):
     """
     Capture a screenshot of a URL using wkhtmltoimage (WebKit).
@@ -1224,7 +1223,7 @@ def capture_screenshot_and_har(
     output_path,
     popup_xpath=None,
     dedicated_selector=None,
-    timeout=30,
+    timeout=CAPTURE_TIMEOUT,
     name="unknown",
     invert=False,
     proxy=None,
