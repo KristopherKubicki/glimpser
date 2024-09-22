@@ -3,8 +3,9 @@
 import unittest
 import os
 import sys
-from unittest.mock import patch
-from flask import Flask
+from unittest.mock import patch, MagicMock
+from flask import Flask, url_for
+import werkzeug
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -33,7 +34,7 @@ class TestRoutes(unittest.TestCase):
         response = self.client.post(
             "/login", data={"username": "testuser", "password": "testpassword"}
         )
-        # note, we might trip 429 on this if its not reset 
+        # note, we might trip 429 on this if its not reset
         #self.assertEqual(response.status_code, 302)  # Redirect status code
         #self.assertIn("/", response.headers["Location"])
 
@@ -45,7 +46,7 @@ class TestRoutes(unittest.TestCase):
         response = self.client.post(
             "/login", data={"username": "testuser", "password": "wrongpassword"}
         )
-        # ugh, returns 500?  or 200? Why? 
+        # ugh, returns 500?  or 200? Why?
         #self.assertEqual(response.status_code, 302)  # Redirect status code
         #self.assertIn("/login", response.headers["Location"])
         #self.assertIn(b"Invalid username or password", response.data)
@@ -53,7 +54,7 @@ class TestRoutes(unittest.TestCase):
     '''
     @patch("app.routes.session")
     def test_logout(self, mock_session):
-        # not sure why this one isnt working ! 
+        # not sure why this one isnt working !
         with self.client as c:
             with c.session_transaction() as sess:
                 sess['logged_in'] = True
@@ -146,7 +147,34 @@ class TestRoutes(unittest.TestCase):
             self.assertIn("description", endpoint)
             self.assertIn("authentication_required", endpoint)
 
+    @patch('app.routes.login_required', lambda x: x)
+    def test_all_routes(self):
+        with self.app.test_request_context():
+            for rule in self.app.url_map.iter_rules():
+                if rule.endpoint != 'static':
+                    url = url_for(rule.endpoint, **{arg: 'test' for arg in rule.arguments})
+                    methods = set(rule.methods) - {'OPTIONS', 'HEAD'}
+                    for method in methods:
+                        with self.subTest(url=url, method=method):
+                            try:
+                                response = getattr(self.client, method.lower())(url)
+                                self.assertIn(response.status_code, [200, 302, 400, 401, 404, 405])
+                            except werkzeug.routing.BuildError:
+                                # Skip routes that require additional parameters
+                                pass
 
+                    # Basic fuzzing
+                    fuzz_params = {'': '', 'test': 'test', '1': '1', 'None': 'None', 'True': 'True', 'False': 'False'}
+                    for key, value in fuzz_params.items():
+                        fuzz_url = url + f'?{key}={value}'
+                        for method in methods:
+                            with self.subTest(url=fuzz_url, method=method):
+                                try:
+                                    response = getattr(self.client, method.lower())(fuzz_url)
+                                    self.assertIn(response.status_code, [200, 302, 400, 401, 404, 405])
+                                except werkzeug.routing.BuildError:
+                                    # Skip routes that require additional parameters
+                                    pass
 
 if __name__ == "__main__":
     unittest.main()
