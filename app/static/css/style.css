@@ -105,9 +105,9 @@ body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     margin: 0;
     padding: 0;
-    #background-color: #f7f7f7; /* Lighter background for better contrast */
-    background-color: rgb(16, 16, 16); /* Lighter background for better contrast */
+    background: linear-gradient(135deg, rgb(16, 16, 16) 0%, rgb(32, 32, 32) 100%);
     color: rgb(191, 191, 191); /* Darker text for better readability */
+    min-height: 100vh; /* Ensure the gradient covers the entire viewport height */
 }
 
 
@@ -123,10 +123,10 @@ h1, h2 {
 #template-form {
     margin: 20px;
     padding: 20px;
-    background-color: white;
+    background-color: rgba(255, 255, 255, 0.1); /* Semi-transparent white background */
     border-radius: 8px;
-    color: rgb(91, 91, 91);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    color: rgb(191, 191, 191);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 #template-list {
@@ -178,15 +178,15 @@ h1, h2 {
 
 select:hover {
     cursor: pointer;
-    background-color: #f7f7f7;
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .templateDiv {
-    background-color: black;
+    background-color: rgba(0, 0, 0, 0.5);
     overflow: hidden;
     position: relative;
     border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     width: 100%;
     /* No fixed height here; it will be set by padding-top in the ::before pseudo-element */
 }
@@ -266,7 +266,7 @@ video:hover + .play-icon {
 }
 
 header {
-    background-color: #000; /* Dark background for better contrast */
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black background */
     color: #fff; /* White text */
     padding: 10px 20px; /* Padding for spacing */
     display: flex; /* Flexbox for layout */
@@ -292,7 +292,7 @@ nav a {
 }
 
 nav a:hover, nav a.active {
-    background-color: #555; /* Highlight for hover and active link */
+    background-color: rgba(255, 255, 255, 0.2); /* Highlight for hover and active link */
 }
 
 .settings-icon {
@@ -377,7 +377,7 @@ nav a:hover, nav a.active {
 }
 
 @keyframes highlight {
-    0% { background-color: yellow; }
+    0% { background-color: rgba(255, 255, 0, 0.5); }
     100% { background-color: transparent; }
 }
 
@@ -409,8 +409,8 @@ button, a {
     width: 25px;
     height: 25px;
     border-radius: 50%;
-    background-color: #f0f0f0;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    background-color: rgba(240, 240, 240, 0.1);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
     position: relative;
     margin-left: 20px;
 }
@@ -431,7 +431,7 @@ button, a {
 
 /* Template Form Styles */
 #template-form, #edit-template {
-    background-color: #222;
+    background-color: rgba(34, 34, 34, 0.8);
     padding: 20px;
     border-radius: 10px;
     max-width: 600px;
@@ -465,6 +465,8 @@ button, a {
     border: 1px solid #ccc;
     width: 100%;
     box-sizing: border-box;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
 }
 
 #template-form input[type="submit"],
@@ -511,7 +513,7 @@ button, a {
     bottom: 50%;
     left: 50%;
     transform-origin: 50% 100%;
-    background-color: #333;
+    background-color: #fff;
 }
 
 .hour-hand {
@@ -545,11 +547,13 @@ button, a {
     font-size: 14px;
     font-weight: bold;
     display: block;
+    color: #fff;
 }
 
 #dateDisplay {
     font-size: 10px;
     display: block;
+    color: #fff;
 }
 
 .clock-info {
@@ -564,6 +568,7 @@ button, a {
 #timezoneDisplay, #timeAgoDisplay {
     font-size: 10px;
     display: block;
+    color: #fff;
 }
 
 @media screen and (max-width: 768px) {
@@ -586,8 +591,8 @@ button, a {
     width: 25px;
     height: 25px;
     border-radius: 50%;
-    background-color: #f0f0f0;
-    box-shadow: 0 0 1px rgba(0, 0, 0, 0.1);
+    background-color: rgba(240, 240, 240, 0.1);
+    box-shadow: 0 0 1px rgba(0, 0, 0, 0.2);
     position: relative;
     margin-left: 5px;
 }
@@ -611,7 +616,7 @@ button, a {
     bottom: 50%;
     left: 50%;
     transform-origin: 50% 100%;
-    background-color: #333;
+    background-color: #fff;
 }
 
 .hour-hand {
@@ -645,11 +650,13 @@ button, a {
     font-size: 14px;
     font-weight: bold;
     display: block;
+    color: #fff;
 }
 
 #dateDisplay {
     font-size: 10px;
     display: block;
+    color: #fff;
 }
 
 .clock-info {
@@ -664,6 +671,7 @@ button, a {
 #timezoneDisplay, #timeAgoDisplay {
     font-size: 10px;
     display: block;
+    color: #fff;
 }
 
 @media screen and (max-width: 768px) {
@@ -700,13 +708,16 @@ textarea {
     margin-bottom: 10px; /* Space below the textarea */
     border: 1px solid #ccc; /* Add a border to make it more visible */
     box-sizing: border-box; /* Includes padding and border in the element's total width and height */
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
 }
 
 .update-button {
     width: 100%;
     padding: 10px; /* Add padding to increase the clickable area */
     border: 1px solid #ccc; /* Add a border for better visibility */
-    background-color: #f8f8f8; /* Optional: style to match your site's theme */
+    background-color: rgba(248, 248, 248, 0.1); /* Semi-transparent light background */
+    color: #fff;
     margin-bottom: 15px; /* Space below the button */
 }
 
@@ -773,7 +784,7 @@ textarea {
 
 /* Footer Styles */
 footer {
-    background-color: #000;
+    background-color: rgba(0, 0, 0, 0.5);
     color: #fff;
     padding: 20px;
     display: flex;
@@ -808,7 +819,7 @@ footer {
 }
 
 .footer-nav a:hover {
-    background-color: #555;
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
 .footer-copyright {
