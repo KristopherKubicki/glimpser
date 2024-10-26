@@ -18,5 +18,5 @@ torch==2.4.0
 transformers==4.44.0
 undetected-chromedriver==3.5.5
 webdriver_manager==4.0.2
-Werkzeug==3.0.3
+Werkzeug==3.0.6
 yt-dlp==2024.8.6
