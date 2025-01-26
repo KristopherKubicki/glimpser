@@ -59,8 +59,12 @@ class Template(Base):
 
     @validates('timeout')
     def validate_timeout(self, key, timeout):
-        if timeout >= self.frequency:
-            raise ValueError("Timeout must be less than frequency")
+        if timeout < 1:
+            print("warning negative timeout....")
+            timeout = 10
+        if timeout >= float(self.frequency) * 60:
+            timeout = float(self.frequency) * 60
+            raise ValueError(f"timeout calculation error {timeout} {self.frequency}")
         return timeout
 
     @validates('popup_xpath', 'dedicated_xpath')
@@ -121,9 +125,10 @@ class TemplateManager:
                             value = int(value)
                             if key == "frequency" and value > 525600:
                                 raise ValueError("Frequency cannot be greater than 525600 (1 year)")
-                            if key == "timeout" and value >= int(details.get("frequency", template.frequency) * 60):
-                                value = details.get("frequency", template.frequency) * 60
-                                #raise ValueError("Timeout must be less than frequency")
+                            if key == "timeout" and value >= float(details.get("frequency", template.frequency)) * 60:
+                                value = int(details.get("frequency", template.frequency)) * 60 # adjust the timeout down 
+                            if key == "timeout" and value < 1:
+                                value = 10
                         elif key == "object_confidence":
                             if value == "":
                                 value = 0.5
@@ -269,11 +274,17 @@ def get_screenshots_for_template(name: str) -> list:
         for f in os.listdir(os.path.join(SCREENSHOT_DIRECTORY, name))
         if f.startswith(name) and f.endswith(".png") and ".tmp" not in f
     ]
-    sorted_screenshots = sorted(
-        screenshots,
-        key=lambda x: datetime.strptime(x[len(name) + 1 : -4], "%Y%m%d%H%M%S"),
-        reverse=True,
-    )
+
+    try:
+        sorted_screenshots = sorted(
+            screenshots,
+            key=lambda x: datetime.strptime(x[len(name) + 1 : -4], "%Y%m%d%H%M%S"),
+            reverse=True,
+        )
+    except Exception as e:
+        print(" crazy sorting issue", e)
+        return[]
+
     return sorted_screenshots[:10]
 
 

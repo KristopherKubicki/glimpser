@@ -849,4 +849,4 @@ def cache_logs():
 def start_log_caching():
     log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
     log_caching_thread.start()
-    scheduler.add_job(func=start_log_caching, trigger='interval', hours=1, id='log_caching')
+    scheduler.add_job(func=start_log_caching, trigger='interval', hours=1, id='log_caching', replace_existing=True)

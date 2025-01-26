@@ -192,6 +192,9 @@ function changeCamera() {
     showLoadingIndicator();
     const cameraSelector = document.getElementById('camera-selector');
     const selectedValue = cameraSelector.value;
+    // Check if the camera is connected
+    let isConnected = checkCameraConnection(currentCamera);
+
     if (selectedValue === 'All') {
         // Handle the "All" option separately
         currentCamera = 'All';
@@ -200,6 +203,7 @@ function changeCamera() {
             groupCameras: Object.keys(templateDetails).filter(key => key !== 'All'), // Add all cameras to groupCameras
             // Add other necessary properties for the "All" group, if needed
         };
+	isConnected = true;
     } else if (selectedValue.startsWith('group-')) {
         // Group is selected
         const groupName = selectedValue.split('group-')[1];
@@ -214,15 +218,15 @@ function changeCamera() {
             groupName: groupName, // Add the groupName property
             // Add other necessary properties for the group
         };
+	isConnected = true;
     } else {
         // Individual camera is selected
         currentCamera = selectedValue;
+        isConnected = checkCameraConnection(currentCamera);
     }
 
-    // Check if the camera is connected
-    const isConnected = checkCameraConnection(currentCamera);
-
-    if (!isConnected) {
+    if (1==2) {
+	// TODO: even if the camera is offline, we still want to display the old stuff
         // Display a placeholder for disconnected cameras
         const videoContainer = document.querySelector('.video-container');
         videoContainer.innerHTML = `
@@ -272,7 +276,7 @@ function changeCamera() {
             const source = document.getElementById('video-source').value;
             const isConnected = checkCameraConnection(currentCamera);
 
-            if (!isConnected) {
+		if (1==2) { 
                 const videoContainer = document.querySelector('.video-container');
                 videoContainer.innerHTML = `
                     <div class="placeholder">

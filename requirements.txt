@@ -20,3 +20,4 @@ undetected-chromedriver==3.5.5
 webdriver_manager==4.0.2
 Werkzeug==3.0.3
 yt-dlp==2024.8.6
+pynput==1.7.7
