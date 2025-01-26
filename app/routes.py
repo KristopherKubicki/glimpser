@@ -1574,6 +1574,28 @@ def init_routes(app):
         metrics = scheduling.get_system_metrics()
         return render_template("status.html", metrics=metrics)
 
+    @app.route("/toggle_scheduler", methods=["POST"])
+    @login_required
+    def toggle_scheduler():
+        try:
+            if scheduler.running:
+                scheduler.shutdown(wait=True)
+                return jsonify({"status": "stopped"})
+            else:
+                scheduler.start()
+                with app.app_context():
+                    scheduler.remove_all_jobs()
+                    schedule_crawlers()
+                    schedule_summarization()
+                return jsonify({"status": "running"})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    @app.route("/scheduler_status")
+    @login_required
+    def get_scheduler_status():
+        return jsonify({"status": "running" if scheduler.running else "stopped"})
+
     @app.route("/logs")
     @login_required
     def logs():

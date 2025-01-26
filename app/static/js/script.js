@@ -486,10 +486,9 @@ document.addEventListener('DOMContentLoaded', setupStatusPageVideoHover);
     // Scheduler toggle functionality
     const toggleSchedulerButton = document.getElementById('toggle-scheduler');
     const schedulerStatus = document.getElementById('scheduler-status');
-
+    
     if (toggleSchedulerButton) {
         toggleSchedulerButton.addEventListener('click', function() {
-
             fetch('/toggle_scheduler', { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
@@ -501,7 +500,7 @@ document.addEventListener('DOMContentLoaded', setupStatusPageVideoHover);
                     schedulerStatus.textContent = 'Error occurred';
                 });
         });
-
+    
         // Initial scheduler status check
         fetch('/scheduler_status')
             .then(response => response.json())
