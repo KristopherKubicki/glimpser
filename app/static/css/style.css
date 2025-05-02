@@ -105,11 +105,16 @@ body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     margin: 0;
     padding: 0;
-    #background-color: #f7f7f7; /* Lighter background for better contrast */
-    background-color: rgb(16, 16, 16); /* Lighter background for better contrast */
-    color: rgb(191, 191, 191); /* Darker text for better readability */
+    background-color: rgb(16, 16, 16);
+    color: rgb(191, 191, 191);
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
+/* Add a universal box-sizing rule */
+*, *:before, *:after {
+    box-sizing: inherit;
+}
 
 .link color: {  rgb( 192, 192, 192) }
 .link:hover color: {  rgb( 193, 193, 193) }
@@ -136,6 +141,9 @@ h1, h2 {
     padding: 20px;
     justify-content: center;
     max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 auto;
 }
 
 @media (max-width: 767px) { /* Adjust this value based on your testing */
@@ -188,6 +196,7 @@ select:hover {
     border-radius: 5px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     width: 100%;
+    box-sizing: border-box;
     /* No fixed height here; it will be set by padding-top in the ::before pseudo-element */
 }
 
