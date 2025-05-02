@@ -1,6 +1,9 @@
 /* app/static/css/style.css */
 
-/* ... (existing styles) ... */
+html {
+    overflow-x: hidden;
+    max-width: 100vw;
+}
 
 /* Camera list styles */
 .camera-list {
@@ -108,6 +111,8 @@ body {
     #background-color: #f7f7f7; /* Lighter background for better contrast */
     background-color: rgb(16, 16, 16); /* Lighter background for better contrast */
     color: rgb(191, 191, 191); /* Darker text for better readability */
+    overflow-x: hidden;
+    max-width: 100vw;
 }
 
 
@@ -268,7 +273,7 @@ video:hover + .play-icon {
 header {
     background-color: #000; /* Dark background for better contrast */
     color: #fff; /* White text */
-    padding: 10px 20px; /* Padding for spacing */
+    padding: 2px 2px; /* Padding for spacing */
     display: flex; /* Flexbox for layout */
     align-items: center; /* Vertically align items */
     justify-content: space-between; /* Space out the title and navigation */
@@ -365,7 +370,7 @@ nav a:hover, nav a.active {
 
     /* Improve spacing for mobile */
     .video-container {
-        padding: 10px; /* Slightly reduce padding for smaller screens */
+        padding: 5px; /* Slightly reduce padding for smaller screens */
     }
 
     /* Adjust slider for mobile */
@@ -387,14 +392,12 @@ nav a:hover, nav a.active {
 
 /* Increase the size of buttons and links for all screen sizes */
 button, a {
-    min-width: 44px; /* Minimum touch target size */
-    min-height: 44px; /* Minimum touch target size */
-    padding: 10px; /* More padding for larger touch area */
+    padding: 5px; /* More padding for larger touch area */
 }
 
 /* Adjust padding and margin for better spacing */
 .video-container {
-    padding: 15px; /* Add more padding around the video */
+    padding: 5px; /* Add more padding around the video */
 }
 
 #speed-control-container {
@@ -773,9 +776,10 @@ textarea {
 
 /* Footer Styles */
 footer {
+    max-width: 100vw;
     background-color: #000;
     color: #fff;
-    padding: 20px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -787,7 +791,7 @@ footer {
     align-items: center;
     width: 100%;
     max-width: 1200px;
-    margin-bottom: 20px;
+    margin-bottom: 2px;
 }
 
 .footer-logo img {
@@ -803,8 +807,8 @@ footer {
 .footer-nav a {
     color: #fff;
     text-decoration: none;
-    padding: 5px 10px;
-    border-radius: 5px;
+    padding: 2px 5px;
+    border-radius: 2px;
 }
 
 .footer-nav a:hover {

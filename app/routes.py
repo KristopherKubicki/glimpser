@@ -36,6 +36,8 @@ from sqlalchemy import text
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
+logging.getLogger("werkzeug").setLevel(logging.WARNING)
+
 import app.config as config
 from app.config import (
     API_KEY,
@@ -1185,8 +1187,19 @@ def init_routes(app):
         """
         Serve a specific screenshot by template name.
         """
+ 
         template_name = validate_template_name(template_name)
         if template_name is None:
+            abort(404)
+
+        for group_camera in re.findall(r'^group-(.+?)$', template_name):
+            path = os.path.join(
+                os.path.dirname(os.path.join(__file__)),
+                "..",
+                SCREENSHOT_DIRECTORY,
+                '%s_latest_camera.png' % group_camera)
+            if os.path.exists(path):
+                return send_file(path)
             abort(404)
 
         # Placeholder logic to serve the screenshot
@@ -1252,7 +1265,8 @@ def init_routes(app):
             # potentially trigger motion too...
 
         # Clean up the temporary file
-        os.unlink(temp_file.name)
+        if temp_file and os.path.exists(temp_file.name):
+            os.unlink(temp_file.name)
 
         return jsonify(
             {"status": "success", "message": f"Screenshot for {template_name} uploaded"}
@@ -1338,6 +1352,7 @@ def init_routes(app):
                 if (group == "all" or group in template_groups) and \
                    (not search_query or
                     search_query in name.lower() or
+                    search_query in template.get('url','').lower() or
                     any(search_query in g.lower() for g in template_groups)):
                     filtered_templates[name] = template
 
@@ -1610,3 +1625,24 @@ def init_routes(app):
 
         return Response(generate(), mimetype="text/event-stream")
 
+    @app.route("/toggle_scheduler", methods=["POST"])
+    @login_required
+    def toggle_scheduler():
+        try:
+            if scheduling.scheduler.running:
+                scheduling.scheduler.shutdown(wait=True)
+                return jsonify({"status": "stopped"})
+            else:
+                scheduling.scheduler.start()
+                with app.app_context():
+                    scheduling.scheduler.remove_all_jobs()
+                    scheduling.schedule_crawlers()
+                    scheduling.schedule_summarization()
+                return jsonify({"status": "running"})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    @app.route("/scheduler_status")
+    @login_required
+    def get_scheduler_status():
+        return jsonify({"status": "running" if scheduling.scheduler.running else "stopped"})

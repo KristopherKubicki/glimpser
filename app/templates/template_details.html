@@ -11,7 +11,7 @@
 
     </script>
 
-            <video controls poster="/last_screenshot/{{ template_name }}" autoplay muted autoplay style='max-height: 100%; max-width: 100%;' width='100%'
+            <video controls poster="/last_screenshot/{{ template_name }}" autoplay muted autoplay style='display: block; height: 90vh; width: 90vw;' width='90%'
 			    {% if template_details.last_caption %}
 			    title='{{template_details.last_caption}}'
 			    {% else %}
@@ -201,9 +201,6 @@ function updateVideo(templateName) {
                 </label>
                 <label for="stealth" style="color: #fff;" title="Use stealth mode: Applies various techniques to make the browser behave more like a human user, helping to avoid detection by anti-bot systems.">
                     <input type="checkbox" id="stealth" name="stealth" {% if template_details.stealth %}checked{% endif %} title="Use stealth mode to avoid detection"> Stealth
-                </label>
-                <label for="dark" style="color: #fff;" title="Use dark mode: Applies a dark color scheme to the captured page, which can be easier on the eyes and may reveal different UI elements.">
-                    <input type="checkbox" id="dark" name="dark" checked title="Enable dark mode for the captured page"> Dark Mode
                 </label>
                 <label for="danger" style="color: #fff;" title="Mark as potentially dangerous: Flags this template as containing potentially sensitive or risky content, adding an extra layer of caution.">
                     <input type="checkbox" id="danger" name="danger" {% if template_details.danger %}checked{% endif %} title="Mark this template as potentially dangerous"> Danger

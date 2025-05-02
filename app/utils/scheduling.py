@@ -9,6 +9,7 @@ import re
 import psutil
 import threading
 import time
+import multiprocessing
 from collections import deque
 
 from apscheduler.triggers.cron import CronTrigger
@@ -27,6 +28,12 @@ from .template_manager import get_template, get_templates, save_template
 from .email_alerts import email_alert
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from concurrent.futures import ProcessPoolExecutor, TimeoutError
+
+logging.getLogger("apscheduler").setLevel(logging.WARNING)
+
+clip_processor, clip_model = None, None
+
 
 class GracefulAPScheduler(APScheduler):
     def __init__(self):
@@ -58,7 +65,16 @@ class GracefulAPScheduler(APScheduler):
 
 scheduler = GracefulAPScheduler()
 
-clip_processor, clip_model = None, None
+
+def run_with_timeout(func, args=(), timeout=300):
+    process = multiprocessing.Process(target=func, args=args)
+    process.start()
+    process.join(timeout)
+    if process.is_alive():
+        process.terminate()
+        process.join()
+        logging.warning("Process terminated due to timeout")
+
 
 def find_closest_image(directory, last_caption_time):
     closest_image = None
@@ -142,7 +158,7 @@ def add_motion_and_caption(image_path, caption=None, motion=False):
                     )  # White text
 
                 if caption is not None:
-                    caption = caption[:64]
+                    caption = caption[:64].replace('\n',' ')
                     # Calculate text size and position
                     text_w = int(draw.textlength(caption, font=font))
                     text_h = font_size
@@ -160,7 +176,7 @@ def add_motion_and_caption(image_path, caption=None, motion=False):
                 # Save the image
                 image.save(image_path, "PNG")
         except Exception as e:
-            logging.error(f"Error determining frequency for: {e}")
+            logging.error(f"Error updating image {image_path} : {e}")
 
 
 def update_camera(name, template, image_file=None):
@@ -265,6 +281,7 @@ def update_camera(name, template, image_file=None):
             )
             if (percentage_difference or 0) >= float(template.get("motion", 0)):
                 lsum = True
+            # TODO: check if blank -- don't trigger motion on blank files! 
 
         elif png_files == 1:
             lsum = True
@@ -544,6 +561,7 @@ def update_camera(name, template, image_file=None):
 
 def init_crawl():
     templates = get_templates()  # Make sure to fetch the templates within this function
+    # TODO: randomize 
     for name, template in templates.items():
         update_camera(name, template)
 
@@ -753,6 +771,17 @@ def schedule_crawlers():
         # Apply the incremental delay to space out job scheduling
         try:
             scheduler.add_job(
+                func=run_with_timeout,
+                trigger="interval",
+                seconds=seconds,
+                start_date=datetime.datetime.now() + datetime.timedelta(seconds=offset_delay_seconds),
+                args=(update_camera, (name, template), seconds-1),
+                id=name,
+                replace_existing=True,
+            )
+
+            '''
+            scheduler.add_job(
                 func=update_camera,
                 trigger="interval",
                 seconds=seconds,
@@ -762,6 +791,7 @@ def schedule_crawlers():
                 id=name,
                 replace_existing=True,
             )
+            '''
         except Exception as e:
             print("job schedule error:", e)
             logging.error(f"Error scheduling job for {name}: {e}")
@@ -769,11 +799,20 @@ def schedule_crawlers():
     # Schedule init_crawl to run once, slightly offset as well
     try:
         scheduler.add_job(
+            func=run_with_timeout,
+            trigger="date",
+            run_date=datetime.datetime.now() + datetime.timedelta(minutes=3),
+            args=(init_crawl, (), 300),
+            id="init_crawl",
+        )
+        '''
+        scheduler.add_job(
             func=init_crawl,
             trigger="date",
             run_date=datetime.datetime.now() + datetime.timedelta(minutes=3),
             id="init_crawl",
         )
+        '''
     except Exception as e:
         logging.error(f"Error scheduling initial crawl: {e}")
 
@@ -814,6 +853,7 @@ def get_system_metrics():
 log_cache = deque(maxlen=10000)  # Store last 10000 log entries
 log_cache_lock = threading.Lock()
 
+'''
 def cache_logs():
     global log_cache
     log_file_path = "logs/glimpser.log"
@@ -845,8 +885,50 @@ def cache_logs():
             last_position = file.tell()
 
         time.sleep(10)  # Wait for 10 seconds before checking for new logs
+'''
+
+def cache_logs():
+    global log_cache
+    log_file_path = "logs/glimpser.log"
+
+    try:
+        with open(log_file_path, "r") as file:
+            file.seek(0, os.SEEK_END)  # Start at end of file
+            while True:
+                new_log = file.readline()
+                if new_log:
+                    with log_cache_lock:
+                        truncated_log = new_log[:500] + '...' if len(new_log) > 500 else new_log
+                        log_parts = truncated_log.strip().split(" - ", 3)
+                        if len(log_parts) >= 4:
+                            timestamp_str, log_level, log_source, log_message = log_parts
+                            try:
+                                timestamp = datetime.datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S,%f")
+                                log_cache.append({
+                                    "timestamp": timestamp,
+                                    "level": log_level,
+                                    "source": log_source,
+                                    "message": log_message
+                                })
+                            except ValueError:
+                                continue  # Skip incorrect timestamp format
+                else:
+                    time.sleep(1)  # Sleep briefly to avoid high CPU usage
+    except Exception as e:
+        logger.error(f"Error in cache_logs: {e}")
 
 def start_log_caching():
     log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
     log_caching_thread.start()
+
+    # Ensure the job is only scheduled ONCE
+    if not scheduler.get_job('log_caching'):
+        scheduler.add_job(func=cache_logs, trigger='interval', hours=1, id='log_caching', replace_existing=True)
+
+
+'''
+def start_log_caching():
+    log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
+    log_caching_thread.start()
     scheduler.add_job(func=start_log_caching, trigger='interval', hours=1, id='log_caching', replace_existing=True)
+'''

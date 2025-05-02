@@ -76,9 +76,10 @@ SUMMARIES_DIRECTORY = "data/summaries/"
 # Load settings from the database
 UA = get_setting(
     "UA",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
 )
 LANG = get_setting("LANG", "en-US")
+TZ = get_setting("TZ","UTC")
 VERSION = float(get_setting("VERSION", 0.1))
 NAME = get_setting("NAME", "glimpser")
 HOST = get_setting("HOST", "0.0.0.0")
@@ -95,7 +96,7 @@ MAX_IN_PROCESS_VIDEO_SIZE = int(
     get_setting("MAX_IN_PROCESS_VIDEO_SIZE", 100 * 1024 * 1024)
 )  # 100 MB
 
-LOG_LEVEL = get_setting("LOG_LEVEL","INFO")
+LOG_LEVEL = get_setting("LOG_LEVEL","WARN")
 
 # Load settings from the database
 SECRET_KEY = get_setting("SECRET_KEY", "default_secret_key")
@@ -104,7 +105,7 @@ USER_PASSWORD_HASH = get_setting("USER_PASSWORD_HASH", "")
 API_KEY = get_setting("API_KEY", "")
 CHATGPT_KEY = get_setting("CHATGPT_KEY", "")  # maybe generalize as LLM_KEY ?
 
-LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-4o-mini") # todo setup allowed models
+LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-4.1-mini") # todo setup allowed models
 
 # note that $datetime is a special keyword that will be replaced with the datetime in iso Z format
 LLM_SUMMARY_PROMPT = get_setting(

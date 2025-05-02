@@ -57,7 +57,7 @@ def delete_old_files(file_list, max_age, max_size, minimum=10):
                 try:
                     os.remove(file_path)
                     total_size -= file_size
-                    logging.info("Deleted %s", file_path)
+                    logging.debug("Deleted %s", file_path)
                 except Exception as e:
                     logging.warning("Failed to delete %s: %s", file_path, e)
         except FileNotFoundError:

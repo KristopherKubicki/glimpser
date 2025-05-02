@@ -56,25 +56,18 @@ def create_app(watchdog=True, schedule=True):
     Returns:
         app (Flask): The configured Flask application instance
     """
-    app = Flask(__name__)
-    # app.config.from_object()
-
-    from app.config import SECRET_KEY
-
-    app.secret_key = SECRET_KEY
-
-    # Set up logging
-    #handler = SQLAlchemyHandler()
-    #handler.setLevel(logging.INFO)
-    #app.logger.addHandler(handler)
-    app.logger.setLevel(logging.INFO)
-
     from app.config import (
+        SECRET_KEY,
         MAX_WORKERS,
         SCREENSHOT_DIRECTORY,
         SUMMARIES_DIRECTORY,
         VIDEO_DIRECTORY,
     )
+
+    app = Flask(__name__)
+    app.secret_key = SECRET_KEY
+    # Set up logging
+    app.logger.setLevel(logging.WARN) # todo: read from config.... 
 
     # Ensure required directories exist
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)
@@ -104,7 +97,7 @@ def create_app(watchdog=True, schedule=True):
             scheduler.remove_all_jobs()
 
             # Schedule various periodic tasks
-            schedule_crawlers()
+            schedule_crawlers() # TODO: make this a command line argument
             scheduler.add_job(
                 id="compile_to_teaser",
                 func=compile_to_teaser,

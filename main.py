@@ -188,8 +188,8 @@ def cleanup_resources():
             except Exception as e:
                 print(f"Error terminating thread {thread.name}: {e}")
 
-    global banner
-    print(banner)
+    #global banner
+    #print(banner)
     # Add any other cleanup tasks here (e.g., closing database connections)
     output_shutdown_stats()
 
