@@ -464,259 +464,13 @@ button, a {
 #edit-template input[type="number"],
 #edit-template textarea {
     padding: 5px;
+    }
+
+/* TSV Controls for Captions Page */
+.tsv-controls {
+    background-color: #f8f9fa;
+    padding: 15px;
     border-radius: 5px;
-    border: 1px solid #ccc;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-#template-form input[type="submit"],
-#edit-template input[type="submit"],
-#delete-btn {
-    padding: 10px 20px;
-    background-color: #4CAF50;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-#delete-btn {
-    background-color: #e74c3c;
-}
-
-.xpath-input-container {
-    display: flex;
-    gap: 5px;
-}
-
-.xpath-input-container input {
-    flex-grow: 1;
-}
-
-.xpath-input-container button {
-    padding: 5px;
-    border-radius: 5px;
-    background-color: #4CAF50;
-    color: #fff;
-    border: none;
-    cursor: pointer;
-}
-
-@media screen and (max-width: 600px) {
-    #template-form form, #edit-template form {
-        grid-template-columns: 1fr;
-    }
-}
-
-.hand {
-    position: absolute;
-    bottom: 50%;
-    left: 50%;
-    transform-origin: 50% 100%;
-    background-color: #333;
-}
-
-.hour-hand {
-    width: 4px;
-    height: 30%;
-    margin-left: -2px;
-}
-
-.minute-hand {
-    width: 3px;
-    height: 40%;
-    margin-left: -1.5px;
-}
-
-.second-hand {
-    width: 2px;
-    height: 45%;
-    margin-left: -1px;
-    background-color: #f00;
-}
-
-.clock-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-}
-
-#digitalTime {
-    font-size: 14px;
-    font-weight: bold;
-    display: block;
-}
-
-#dateDisplay {
-    font-size: 10px;
-    display: block;
-}
-
-.clock-info {
-    position: absolute;
-    bottom: -30px;
-    left: 50%;
-    transform: translateX(-50%);
-    text-align: center;
-    width: 100%;
-}
-
-#timezoneDisplay, #timeAgoDisplay {
-    font-size: 10px;
-    display: block;
-}
-
-@media screen and (max-width: 768px) {
-    .cool-clock {
-        width: 25px;
-        height: 25px;
-    }
-
-    #digitalTime {
-        font-size: 12px;
-    }
-
-    #dateDisplay, #timezoneDisplay, #timeAgoDisplay {
-        font-size: 8px;
-    }
-}
-
-/* Cool Clock Styles */
-.cool-clock {
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    background-color: #f0f0f0;
-    box-shadow: 0 0 1px rgba(0, 0, 0, 0.1);
-    position: relative;
-    margin-left: 5px;
-}
-
-.clock-face {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    position: relative;
-    overflow: hidden;
-}
-
-.clock-hands {
-    width: 100%;
-    height: 100%;
-    position: absolute;
-}
-
-.hand {
-    position: absolute;
-    bottom: 50%;
-    left: 50%;
-    transform-origin: 50% 100%;
-    background-color: #333;
-}
-
-.hour-hand {
-    width: 4px;
-    height: 30%;
-    margin-left: -2px;
-}
-
-.minute-hand {
-    width: 3px;
-    height: 40%;
-    margin-left: -1.5px;
-}
-
-.second-hand {
-    width: 2px;
-    height: 45%;
-    margin-left: -1px;
-    background-color: #f00;
-}
-
-.clock-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-}
-
-#digitalTime {
-    font-size: 14px;
-    font-weight: bold;
-    display: block;
-}
-
-#dateDisplay {
-    font-size: 10px;
-    display: block;
-}
-
-.clock-info {
-    position: absolute;
-    bottom: -30px;
-    left: 50%;
-    transform: translateX(-50%);
-    text-align: center;
-    width: 100%;
-}
-
-#timezoneDisplay, #timeAgoDisplay {
-    font-size: 10px;
-    display: block;
-}
-
-@media screen and (max-width: 768px) {
-    .cool-clock {
-        width: 25px;
-        height: 25px;
-    }
-
-    #digitalTime {
-        font-size: 12px;
-    }
-
-    #dateDisplay, #timezoneDisplay, #timeAgoDisplay {
-        font-size: 8px;
-    }
-}
-
-.dial {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: url('path-to-dial-image.png') no-repeat center center; /* Replace with your dial image */
-  background-size: contain;
-  transform-origin: center;
-  cursor: pointer; /* Indicate the dial is interactive */
-}
-
-/* Add this to your existing CSS file */
-textarea {
-    width: calc(100% - 20px); /* Subtracting the total left and right padding */
-    height: 100px; /* You can adjust this to your liking */
-    padding: 10px; /* Add padding for text inside textarea */
-    margin-top: 5px; /* Give some space above the textarea */
-    margin-bottom: 10px; /* Space below the textarea */
-    border: 1px solid #ccc; /* Add a border to make it more visible */
-    box-sizing: border-box; /* Includes padding and border in the element's total width and height */
-}
-
-.update-button {
-    width: 100%;
-    padding: 10px; /* Add padding to increase the clickable area */
-    border: 1px solid #ccc; /* Add a border for better visibility */
-    background-color: #f8f8f8; /* Optional: style to match your site's theme */
-    margin-bottom: 15px; /* Space below the button */
-}
-
-.template-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
     margin-bottom: 20px;
 }
 
@@ -780,28 +534,32 @@ footer {
     background-color: #000;
     color: #fff;
     padding: 10px;
+    }
+
+.tsv-buttons {
     display: flex;
-    flex-direction: column;
+    gap: 15px;
+    margin: 10px 0;
     align-items: center;
 }
 
-.footer-content {
+.tsv-upload-form {
     display: flex;
-    justify-content: space-between;
+    gap: 10px;
     align-items: center;
     width: 100%;
     max-width: 1200px;
     margin-bottom: 2px;
 }
 
-.footer-logo img {
-    height: 30px;
-    width: auto;
+.tsv-help {
+    font-size: 0.9em;
+    color: #6c757d;
+    margin-top: 5px;
 }
 
-.footer-nav {
-    display: flex;
-    gap: 20px;
+.flash-messages {
+    margin: 15px 0;
 }
 
 .footer-nav a {
@@ -809,25 +567,18 @@ footer {
     text-decoration: none;
     padding: 2px 5px;
     border-radius: 2px;
+.alert-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+    padding: 10px;
+    border-radius: 5px;
 }
 
-.footer-nav a:hover {
-    background-color: #555;
-}
-
-.footer-copyright {
-    text-align: center;
-    font-size: 14px;
-}
-
-@media screen and (max-width: 768px) {
-    .footer-content {
-        flex-direction: column;
-        gap: 20px;
-    }
-
-    .footer-nav {
-        flex-direction: column;
-        align-items: center;
-    }
+.alert-error {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+    padding: 10px;
+    border-radius: 5px;
 }

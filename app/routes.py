@@ -7,6 +7,21 @@ import io
 import json
 import logging
 import os
+import random
+import re
+import time
+import uuid
+import glob
+import io
+import csv
+from datetime import datetime, timedelta
+
+import hashlib
+import inspect
+import io
+import json
+import logging
+import os
 import re
 import sys
 import time
@@ -191,7 +206,7 @@ def login_required(f):
 
 # Function to read logs from the local text file and filter them based on query parameters
 def read_logs_from_memory(level=None, source=None, start_date=None, end_date=None, search=None):
-    global log_cache
+    #global log_cache
 
     filtered_logs = []
     with log_cache_lock:
@@ -503,7 +518,6 @@ def allowed_filename(filename: str) -> bool:
     return False
 
 def init_routes(app):
-    global login_attempts
     # get_active_groups()
 
     @app.context_processor
@@ -650,6 +664,7 @@ def init_routes(app):
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
+        global login_attempts
         ip_address = request.remote_addr
         now = datetime.now()
 
@@ -1099,6 +1114,93 @@ def init_routes(app):
             template_details=templates,
             lcaptions=entries,
         )
+
+    @app.route("/download_captions_tsv")
+    @login_required
+    def download_captions_tsv():
+        """Download all template captions as a TSV file."""
+        templates = template_manager.get_templates()
+        
+        # Create a StringIO object to write the TSV data
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter='\t')
+        
+        # Write header row
+        writer.writerow(['name', 'groups', 'notes', 'last_caption'])
+        
+        # Write data rows
+        for name, template in templates.items():
+            writer.writerow([
+                name,
+                template.get('groups', ''),
+                template.get('notes', ''),
+                template.get('last_caption', '')
+            ])
+        
+        # Create response with TSV file
+        output.seek(0)
+        return Response(
+            output.getvalue(),
+            mimetype="text/tab-separated-values",
+            headers={"Content-Disposition": "attachment;filename=captions.tsv"}
+        )
+    
+    @app.route("/upload_captions_tsv", methods=["POST"])
+    @login_required
+    def upload_captions_tsv():
+        """Upload and process a TSV file to update template captions."""
+        if 'tsv_file' not in request.files:
+            flash("No file part", "error")
+            return redirect(url_for('captions'))
+            
+        file = request.files['tsv_file']
+        
+        if file.filename == '':
+            flash("No selected file", "error")
+            return redirect(url_for('captions'))
+            
+        if file and file.filename.endswith('.tsv'):
+            # Read the TSV file
+            stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+            reader = csv.reader(stream, delimiter='\t')
+            
+            # Skip header row
+            next(reader, None)
+            
+            # Process each row
+            updated_count = 0
+            for row in reader:
+                if len(row) >= 4:
+                    name, groups, notes, last_caption = row[:4]
+                    
+                    # Validate template name
+                    template_name = validate_template_name(name)
+                    if template_name is None:
+                        continue
+                        
+                    # Get existing template
+                    template = template_manager.get_template(template_name)
+                    if template:
+                        # Update template fields
+                        updates = {
+                            'groups': groups,
+                            'notes': notes
+                        }
+                        
+                        # Only update last_caption if it's different
+                        if last_caption and last_caption != template.get('last_caption', ''):
+                            updates['last_caption'] = last_caption
+                            updates['last_caption_time'] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                            
+                        # Save the updated template
+                        if template_manager.save_template(template_name, updates):
+                            updated_count += 1
+            
+            flash(f"Successfully updated {updated_count} templates", "success")
+            return redirect(url_for('captions'))
+        
+        flash("Invalid file format. Please upload a TSV file.", "error")
+        return redirect(url_for('captions'))
 
     @app.route("/live")
     @login_required

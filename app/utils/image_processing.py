@@ -34,14 +34,18 @@ class ChatGPTImageComparison:
         if low_res is True:
             detail = "low"
 
+        llm_prompt = LLM_CAPTION_PROMPT
+        llm_prompt = llm_prompt.replace('$datetime', str(datetime.datetime.utcnow()))
+
         # Load, downsample while preserving aspect ratio, and convert images to base64
         messages = [
             {
                 "role": "system",
-                "content": [{"type": "text", "text": LLM_CAPTION_PROMPT}],
+                "content": [{"type": "text", "text": llm_prompt}],
             }
         ]
         messages.append({"role": "user", "content": [{"type": "text", "text": prompt}]})
+
         for image_path in reversed(image_paths):
             if not os.path.exists(image_path):
                 continue

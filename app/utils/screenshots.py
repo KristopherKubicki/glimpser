@@ -1539,10 +1539,16 @@ def get_chrome_version(chrome_path):
         return int(chrome_version[chrome_path][0])
 
     command = "%s --version" % chrome_path
-    result = subprocess.run(command.split(), capture_output=True, text=True, timeout=3)
-    version = result.stdout.strip().split()[-1]
-    version = int(version.split(".")[0])  # Return the major version
-    chrome_version[chrome_path] = (version, time.time())
+
+    try:
+        result = subprocess.run(command.split(), capture_output=True, text=True, timeout=3)
+        version = result.stdout.strip().split()[-1]
+        version = int(version.split(".")[0])  # Return the major version
+        chrome_version[chrome_path] = (version, time.time())
+    except Exception as e:
+        logging.error(f"Chrome version exception error: {e}")
+        return chrome_version.get(chrome_path,extract_version())
+
     return int(version)
 
 
@@ -2067,7 +2073,7 @@ def capture_screenshot_and_har(
            logging.warning("User is active; skipping Danger screenshot to avoid messing with user’s browser.")
            return False
 
-        print("not skipping danger mode", name)
+        #print("not skipping danger mode", name)
         return _capture_danger_mode(
             url, partial_screenshot, popup_xpath, dedicated_selector,
             timeout, name, invert, dark
