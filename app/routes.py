@@ -1,21 +1,5 @@
-import glob
-from flask import jsonify, Response
-from datetime import datetime, timedelta
-import hashlib
-import inspect
-import io
-import json
-import logging
-import os
-import random
-import re
-import time
-import uuid
-import glob
-import io
 import csv
-from datetime import datetime, timedelta
-
+import glob
 import hashlib
 import inspect
 import io
@@ -24,17 +8,17 @@ import logging
 import os
 import re
 import sys
-import time
 import tempfile
-import shutil
-import subprocess
+import time
 import uuid
+from datetime import datetime, timedelta
+
 from functools import wraps
 from threading import Lock, Thread
 
 from flask import (
     abort,
-    current_app,
+    jsonify,
     flash,
     redirect,
     render_template,
@@ -43,9 +27,9 @@ from flask import (
     send_from_directory,
     session,
     url_for,
-    stream_with_context,
+    Response,
 )
-from flask_login import logout_user, login_required
+
 from PIL import Image
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
@@ -568,7 +552,7 @@ def init_routes(app):
             if len(metrics['uptime']) < 9 and '0h 0m ' in metrics['uptime']: # first ten seconds...
                 is_nominal = False
                 error_messages.append("System just started, still initializing")
-        except Exception as e:
+        except Exception:
             is_nominal = False
             error_messages.append("Error getting system uptime")
 
@@ -580,7 +564,7 @@ def init_routes(app):
             session.execute(text("SELECT 1"))
             session.close()
             db_status = 'connected'
-        except Exception as e:
+        except Exception:
             is_nominal = False
             db_status = 'disconnected'
             error_messages.append("Database connection failed")
@@ -591,7 +575,7 @@ def init_routes(app):
             if scheduler_status != 'running':
                 is_nominal = False
                 error_messages.append("Scheduler is not running")
-        except Exception as e:
+        except Exception:
             is_nominal = False
             scheduler_status = 'failed'
             error_messages.append("Error checking scheduler status")
@@ -664,7 +648,6 @@ def init_routes(app):
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
-        global login_attempts
         ip_address = request.remote_addr
         now = datetime.now()
 
@@ -870,8 +853,7 @@ def init_routes(app):
 
     @app.route("/test.rtsp", methods=["OPTIONS", "DESCRIBE", "SETUP", "PLAY", "TEARDOWN"])
     def handle_rtsp():
-        global rtsp_sessions
-
+        
         session_id = request.headers.get("Session", str(uuid.uuid4()))
         cseq = request.headers.get("CSeq", "0")
 
@@ -1096,11 +1078,6 @@ def init_routes(app):
             else:
                 template['next_screenshot_time'] = None
 
-            screenshot_count = template_manager.get_screenshot_count(name)
-            video_count = template_manager.get_video_count(name)
-            storage_usage = template_manager.get_storage_usage(name)
-            llm_response_count = template_manager.get_llm_response_count(name)
-            llm_cost_estimate = template_manager.get_llm_cost_estimate(name)
 
             templates[name]['screenshot_count'] = template_manager.get_screenshot_count(name)
             templates[name]['video_count'] = template_manager.get_video_count(name)
