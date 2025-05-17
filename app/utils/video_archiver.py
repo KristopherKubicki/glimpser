@@ -17,6 +17,8 @@ from app.config import (
     SCREENSHOT_DIRECTORY,
     VERSION,
     VIDEO_DIRECTORY,
+    FFMPEG_PATH,
+    FFPROBE_PATH,
 )
 
 from .template_manager import get_templates
@@ -133,7 +135,7 @@ def compile_videos(input_file, output_file):
         return False
 
     create_command = [
-        "ffmpeg", # TODO make this a config value
+        FFMPEG_PATH,
         "-threads",
         "5",
         "-err_detect",
@@ -182,7 +184,7 @@ def get_video_duration(video_path):
 
     """Get the duration of a video in seconds."""
     command = [
-        "ffprobe", # TODO: make this a config 
+        FFPROBE_PATH,
         "-v",
         "error",
         "-show_entries",
@@ -216,7 +218,7 @@ def concatenate_videos(in_process_video, temp_video, video_path) -> bool:
         if in_process_duration > 0 and temp_video_duration > 0:
             concat_video = os.path.join(video_path, "in_process.concat.mp4")
             concat_command = [
-                "ffmpeg",
+                FFMPEG_PATH,
                 "-threads",
                 "5", # todo, make this a config
                 #"-safe",  Option not found?  But it is found and used elsewhere?  Not surewhy this is..
@@ -384,7 +386,7 @@ def compile_to_video(camera_path, video_path) -> bool:
         temp_video = os.path.join(video_path, "in_process.tmp.mp4")
 
         create_command = [
-            "ffmpeg",
+            FFMPEG_PATH,
             "-threads",
             "5",
             "-f",
