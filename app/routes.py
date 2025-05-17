@@ -664,7 +664,6 @@ def init_routes(app):
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
-        global login_attempts
         ip_address = request.remote_addr
         now = datetime.now()
 
@@ -870,8 +869,7 @@ def init_routes(app):
 
     @app.route("/test.rtsp", methods=["OPTIONS", "DESCRIBE", "SETUP", "PLAY", "TEARDOWN"])
     def handle_rtsp():
-        global rtsp_sessions
-
+        
         session_id = request.headers.get("Session", str(uuid.uuid4()))
         cseq = request.headers.get("CSeq", "0")
 
