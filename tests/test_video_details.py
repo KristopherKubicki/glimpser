@@ -81,6 +81,9 @@ class TestVideoDetails(unittest.TestCase):
         self.assertEqual(latest_file, expected_path)
 
     def test_get_latest_date(self):
+        """
+        Tests that get_latest_date returns the most recent modification date for files with a given extension in the temporary directory.
+        """
         self.create_dummy_file("file1.txt", days_ago=2)
         self.create_dummy_file("file2.txt", days_ago=1)
         self.create_dummy_file("file3.txt", days_ago=3)
