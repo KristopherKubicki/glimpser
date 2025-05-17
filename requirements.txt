@@ -19,6 +19,6 @@ transformers==4.44.0
 undetected-chromedriver==3.5.5
 webdriver_manager==4.0.2
 Werkzeug==3.0.3
-yt-dlp-2024.10.22
+yt-dlp==2024.10.22
 pynput==1.7.7
 dateutil
