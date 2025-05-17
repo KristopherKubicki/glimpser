@@ -16,7 +16,7 @@ def get_latest_file(directory, ext="png"):
         return None
 
     # rather than search through the files, lets just check the symlink
-    lpath = os.path.join(directory + "latest_camera." + ext)
+    lpath = os.path.join(directory, f"latest_camera.{ext}")
     if os.path.exists(lpath):
         return lpath
 
