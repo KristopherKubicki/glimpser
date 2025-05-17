@@ -73,7 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setupSearch();
   setupStatusPageVideoHover();
   setupVideoControls();
-  
+  setupTemplateVideo();
+
   // Update video sources every 30 minutes
   setInterval(updateVideoSources, 60000 * 30);
 });
@@ -531,5 +532,191 @@ function startCasting() {
   } else {
     console.log('No active cast session');
   }
+}
+
+// ------------------------
+// Template management utils
+// ------------------------
+
+function validateForm() {
+  const nameField = document.getElementById('name');
+  const urlField = document.getElementById('url');
+  const name = nameField ? nameField.value.trim() : '';
+  const url = urlField ? urlField.value.trim() : '';
+
+  const frequency = parseInt(document.getElementById('frequency').value);
+  const timeout = parseInt(document.getElementById('timeout').value);
+  const objectFilter = document.getElementById('object_filter').value.trim();
+  const objectConfidence = parseFloat(document.getElementById('object_confidence').value);
+  const popupXpath = document.getElementById('popup_xpath').value.trim();
+  const dedicatedXpath = document.getElementById('dedicated_xpath').value.trim();
+
+  if (nameField && name === '') {
+    alert('Template Name is a required field.');
+    return false;
+  }
+  if (urlField && url === '') {
+    alert('URL is a required field.');
+    return false;
+  }
+
+  if (frequency < 1 || frequency > 525600) {
+    alert('Frequency must be between 1 and 525600 minutes (1 year).');
+    return false;
+  }
+
+  if (frequency >= 43200) {
+    if (!confirm(`Warning: The frequency is set to ${frequency} minutes (more than 30 days). Are you sure you want to continue?`)) {
+      return false;
+    }
+  }
+
+  if (timeout < 1 || timeout >= frequency * 60) {
+    alert('Timeout must be at least 1 second and less than the frequency.');
+    return false;
+  }
+
+  if (objectFilter !== '' && (objectConfidence < 0 || objectConfidence > 1)) {
+    alert('Object Confidence must be between 0 and 1 when Object Filter is specified.');
+    return false;
+  }
+
+  if ((popupXpath !== '' && !popupXpath.startsWith('//')) || (dedicatedXpath !== '' && !dedicatedXpath.startsWith('//'))) {
+    alert("XPath expressions must start with '//'.");
+    return false;
+  }
+
+  return true;
+}
+
+function takeInstantScreenshot(templateName) {
+  fetch(`/take_screenshot/${templateName}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({})
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'success') {
+        location.reload();
+      }
+    })
+    .catch(error => console.error('Error taking instant screenshot:', error));
+}
+
+function updateVideo(templateName) {
+  fetch(`/update_video/${templateName}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({})
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'success') {
+        location.reload();
+      }
+    })
+    .catch(error => console.error('Error taking instant screenshot:', error));
+}
+
+function confirmDelete(templateName) {
+  const confirmed = confirm('Are you sure you want to delete this template?');
+  if (confirmed) {
+    fetch('/templates', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: templateName })
+    })
+      .then(response => response.json())
+      .then(data => {
+        alert(data.message);
+        if (data.status === 'success') {
+          window.location.href = '/';
+        }
+      })
+      .catch(error => console.error('Error:', error));
+  }
+}
+
+function showCameraDetails(templateName) {
+  const baseUrl = window.location.origin;
+  const details = {
+    'Camera Name': templateName,
+    'Last Screenshot URL': `${baseUrl}/last_screenshot/${templateName}`,
+    'Last Video URL': `${baseUrl}/last_video/${templateName}`,
+    'Stream URL': `${baseUrl}/stream.mjpg?group=${templateName}`,
+    'Motion Stream URL': `${baseUrl}/motion.mjpg?group=${templateName}`,
+    'Caption Stream URL': `${baseUrl}/caption.mjpg?group=${templateName}`,
+    'Motion Caption Stream URL': `${baseUrl}/motion_caption.mjpg?group=${templateName}`,
+    'Template Details URL': `${baseUrl}/templates/${templateName}`
+  };
+
+  let detailsHtml = '<h3>Camera Details</h3><pre>';
+  for (const [key, value] of Object.entries(details)) {
+    detailsHtml += `${key}: ${value}\n`;
+  }
+  detailsHtml += '</pre>';
+  detailsHtml += '<button onclick="copyToClipboard()">Copy to Clipboard</button>';
+
+  document.getElementById('camera-details-content').innerHTML = detailsHtml;
+  document.getElementById('camera-details-modal').style.display = 'block';
+}
+
+function copyToClipboard() {
+  const detailsText = document.querySelector('#camera-details-content pre').innerText;
+  navigator.clipboard.writeText(detailsText).then(() => {
+    alert('Camera details copied to clipboard!');
+  }).catch(err => {
+    console.error('Failed to copy text: ', err);
+  });
+}
+
+function closeModal() {
+  document.getElementById('camera-details-modal').style.display = 'none';
+}
+
+function calculatePauseTime(duration) {
+  if (duration < 1) {
+    return 10000; // 10 seconds for videos shorter than 1 second
+  } if (duration > 120) {
+    return 3000; // 3 seconds for videos longer than 2 minutes
+  }
+  // For videos between 1 second and 2 minutes, decrease pause time with duration
+  return 10000 - (duration - 1) * (7000 / 119);
+}
+
+function setupTemplateVideo() {
+  const video = document.querySelector('video[controls]');
+  if (!video) return;
+
+  video.addEventListener('loadedmetadata', () => {
+    if (video.duration < 1) {
+      video.playbackRate = 0.0625;
+    } else if (video.duration < 3) {
+      video.playbackRate = 0.0625 * 2;
+    } else if (video.duration < 7) {
+      video.playbackRate = 0.0625 * 4;
+    } else if (video.duration < 15) {
+      video.playbackRate = 0.0625 * 8;
+    } else if (video.duration < 30) {
+      video.playbackRate = 0.0625 * 16;
+    } else if (video.duration < 60) {
+      video.playbackRate = 0.0625 * 32;
+    } else if (video.duration > 120) {
+      video.playbackRate = 0.0625 * 64;
+    } else {
+      video.playbackRate = 0.0625 * 128;
+    }
+
+    video.currentTime = Math.max(0, video.duration - 10);
+  });
+
+  video.addEventListener('ended', () => {
+    const pauseTime = calculatePauseTime(video.duration);
+    setTimeout(() => {
+      video.load();
+      video.play();
+    }, pauseTime);
+  });
 }
 
