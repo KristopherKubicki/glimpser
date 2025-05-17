@@ -15,6 +15,8 @@ import time
 from urllib.parse import urlparse
 import glob
 import shlex
+import base64
+import nodriver
 import psutil
 import urllib3
 from dateutil import tz
@@ -796,7 +798,6 @@ def parse_url(url):
 
 def cas_error(url):
 
-        global throttle_cache
         if throttle_cache.get(url) is None:
             throttle_cache[url] = {}
             throttle_cache[url]['errors'] = 1
@@ -833,7 +834,6 @@ def capture_or_download(name: str, template: str) -> bool:
         return False
 
 
-    global lurl_cache, lurl_cache_time, throttle_cache
     # Extract parameters from the template
     url = template.get("url")
     if throttle_cache.get(url) and throttle_cache[url].get('timeout',0) > time.time():
@@ -986,8 +986,6 @@ def get_content_type(url, danger, stealth=False) -> (str, bool):
     Returns:
         str: The determined content type, or an empty string if not determined.
     """
-    global last_camera_header, last_camera_header_time
-
     # Check cache first
     if (last_camera_header.get(url) and
         last_camera_header_time.get(url, 0) > time.time() - 60 * 60):
@@ -1154,7 +1152,6 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
         logging.error("yt-dlp is not installed or not in the system path.")
         return False
 
-    global lurl_cache, lurl_cache_time
     if lurl_cache.get(url,'none') != "good" and time.time() - lurl_cache_time.get(url,0) < 3600: # try every 1 hour no matter what??
         # don't keep retrying on known bad
         print("  skipping", lurl_cache[url], url)
@@ -1531,7 +1528,6 @@ def get_chrome_path():
 
 def get_chrome_version(chrome_path):
     # Command to get the installed version of Chrome
-    global chrome_version
     if (
         chrome_version.get(chrome_path) is not None
         and chrome_version[chrome_path][1] > time.time() - 60 * 60
@@ -2137,7 +2133,7 @@ def capture_screenshot_and_har(
         driver = launch_headless_chrome(driver_options, version=version)
         if driver is None:
             _purge_driver_cache()
-            driver = launch_headless_chrome(opts, version)
+            driver = launch_headless_chrome(driver_options, version)
             if driver is None:
                 print("warning missing driver!")
                 raise ValueError('missing driver!')

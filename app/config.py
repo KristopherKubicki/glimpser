@@ -43,8 +43,7 @@ def backup_config() -> bool:
         config_dict = {name: value for name, value in settings}
         with open(BACKUP_PATH, 'w') as f:
             json.dump(config_dict, f)
-    except Exception as e:
-        pass
+    except Exception:
         return False
     finally:
         session.close()
