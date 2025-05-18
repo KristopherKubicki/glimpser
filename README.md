@@ -108,7 +108,7 @@ To set up the project for development:
    ```
 
 ## Contributing
-Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request.
+Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request. Please read our [Code of Conduct](CODE_OF_CONDUCT.md) to understand the expectations for participants and how to report issues.
 
 ## License
 This project is licensed under the MIT License. See the [LICENSE.md](LICENSE.md) file for details.
