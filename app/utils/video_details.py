@@ -12,6 +12,18 @@ def get_latest_screenshot_date(directory):
 
 def get_latest_file(directory, ext="png"):
 
+    """
+    Returns the path to the latest file with the specified extension in a directory.
+    
+    If a file or symlink named 'latest_camera.<ext>' exists, its path is returned. Otherwise, searches for files with the given extension and returns the one with the most recent modification time. Returns None if the directory does not exist, no matching files are found, or an error occurs during file access.
+    
+    Args:
+        directory: Path to the directory to search.
+        ext: File extension to filter by (default is "png").
+    
+    Returns:
+        The path to the latest file as a string, or None if not found.
+    """
     if not os.path.exists(directory):
         return None
 
