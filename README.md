@@ -108,10 +108,10 @@ To set up the project for development:
    ```
 
 ## Contributing
-Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request.
+Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request. Please read our [Code of Conduct](CODE_OF_CONDUCT.md) to understand the expectations for participants and how to report issues.
 
 ## License
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE.md](LICENSE.md) file for details.
 
 ### Steps to Contribute
 1. Fork the repository.
@@ -133,7 +133,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 For detailed suggestions on how to use Glimpser effectively, please check out our [Recommendations](docs/recommendations.md) guide.
 
 ## License
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE.md](LICENSE.md) file for details.
 
 ## Acknowledgements
 We are grateful to the contributors and the open-source community. Special thanks to OpenAI for their powerful models that enable Glimpser's advanced features.
