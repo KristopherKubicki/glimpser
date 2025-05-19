@@ -22,3 +22,5 @@ Werkzeug==3.0.3
 yt-dlp==2024.10.22
 pynput==1.7.7
 python-dateutil
+
+nodriver
