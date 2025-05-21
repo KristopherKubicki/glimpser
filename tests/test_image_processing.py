@@ -133,7 +133,7 @@ class TestChatGPTImageComparison(unittest.TestCase):
             mock_post.assert_called_once()
             call_args = mock_post.call_args[1]
             self.assertEqual(call_args['headers']['Authorization'], f"Bearer {comparison.api_key}")
-            self.assertEqual(call_args['json']['model'], "gpt-4o-mini")  # Assuming this is the default model
+            self.assertEqual(call_args['json']['model'], "gpt-4.1-mini")  # Assuming this is the default model
             self.assertIn("Test prompt", str(call_args['json']['messages']))
 
             # Test with low_res=True
