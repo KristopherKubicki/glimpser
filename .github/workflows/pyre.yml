@@ -37,10 +37,22 @@ jobs:
         with:
           submodules: true
 
-      - name: Run Pyre
-        uses: facebook/pyre-action@60697a7858f7cc8470d8cc494a3cf2ad6b06560d
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          # To customize these inputs:
-          # See https://github.com/facebook/pyre-action#inputs
-          repo-directory: './'
-          requirements-path: 'requirements.txt'
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyre-check
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run Pyre
+        run: pyre --noninteractive
+
+      - name: Upload Pyre results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyre-results
+          path: .pyre/
