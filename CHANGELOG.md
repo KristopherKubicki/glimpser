@@ -8,13 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- New feature placeholder
+- Bulk caption management with TSV import and export
+- Configuration backup and restore
+- System status and log viewing pages
+- Real-time log streaming with improved filtering
+- Console clearing command
+- Google Cast support
+- Integration with Blue Iris, Home Assistant and Hubitat
+- Custom video controls including Play All/Stop All
+- Automatic group loading for cameras
+- API discovery and paginated log view
+- LLM summary generation with email alerts
+- Capture time tracking for templates
+- FFprobe path configuration
 
 ### Changed
-- Change placeholder
+- Improved screenshot reliability
+- Enhanced camera list UI and video player controls
+- Updated package requirements and cleaned up imports
 
 ### Fixed
-- Fix placeholder
+- Addressed Python build issues and string concatenation errors
+- Fixed screenshot timeouts and setup script problems
 
 ## [1.0.0] - 2023-06-15
 
