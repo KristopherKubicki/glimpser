@@ -14,7 +14,7 @@ setup(
     description="A real-time monitoring application for capturing and analyzing live data from various sources",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/glimpser",
+    url="https://github.com/KristopherKubicki/glimpser",
     packages=find_packages(),
     install_requires=requirements,
     classifiers=[
