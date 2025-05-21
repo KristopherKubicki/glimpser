@@ -93,8 +93,8 @@ To set up the project for development:
 
 2. Create a virtual environment and activate it:
    ```sh
-   python -m venv venv
-   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+   python -m venv env
+   source env/bin/activate  # On Windows, use `env\Scripts\activate`
    ```
 
 3. Install the package in editable mode with development dependencies:

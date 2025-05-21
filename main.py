@@ -1,4 +1,4 @@
-#!env/bin/python3
+#!./env/bin/python3            
 #  main.py
 
 import logging
