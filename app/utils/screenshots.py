@@ -15,6 +15,8 @@ import time
 from urllib.parse import urlparse
 import glob
 import shlex
+import base64
+import nodriver
 import psutil
 import urllib3
 from dateutil import tz
@@ -43,7 +45,12 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
-from pynput import mouse, keyboard
+try:
+    from pynput import mouse, keyboard
+except Exception as e:  # pragma: no cover - optional dependency
+    mouse = None
+    keyboard = None
+    logging.warning("pynput not available: %s", e)
 
 
 from app.config import (
@@ -228,17 +235,22 @@ def check_user_activity(timeout=10):
     #    print("<<<< irq not idle", liq)
     #    user_active = True  # allow to check on listeners for the 0 second case
     #    return user_active
-    idle_seconds_x = idle_seconds_x11()
-    #print("SSS", idle_seconds_x)
-    if idle_seconds_x < 120:
-        user_active = True  # allow to check on listeners for the 0 second case
-        return user_active
+    try:
+        idle_seconds_x = idle_seconds_x11()
+        if idle_seconds_x < 120:
+            user_active = True  # user recently active
+            return user_active
+    except Exception as e:
+        logging.debug(f"idle_seconds_x11 failed: {e}")
 
     #idle_seconds = idle_seconds_loginctl()
     #print(" user idle for", idle_seconds)
     #if 1 < idle_seconds < 120:
     #    user_active = True  # allow to check on listeners for the 0 second case
     #    return user_active
+
+    if mouse is None or keyboard is None:
+        return user_active
 
     # Create listeners for keyboard and mouse
     mouse_listener = mouse.Listener(on_move=on_move, on_click=on_click, on_scroll=on_scroll)
@@ -796,7 +808,6 @@ def parse_url(url):
 
 def cas_error(url):
 
-        global throttle_cache
         if throttle_cache.get(url) is None:
             throttle_cache[url] = {}
             throttle_cache[url]['errors'] = 1
@@ -833,7 +844,6 @@ def capture_or_download(name: str, template: str) -> bool:
         return False
 
 
-    global lurl_cache, lurl_cache_time, throttle_cache
     # Extract parameters from the template
     url = template.get("url")
     if throttle_cache.get(url) and throttle_cache[url].get('timeout',0) > time.time():
@@ -986,8 +996,6 @@ def get_content_type(url, danger, stealth=False) -> (str, bool):
     Returns:
         str: The determined content type, or an empty string if not determined.
     """
-    global last_camera_header, last_camera_header_time
-
     # Check cache first
     if (last_camera_header.get(url) and
         last_camera_header_time.get(url, 0) > time.time() - 60 * 60):
@@ -1154,7 +1162,6 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
         logging.error("yt-dlp is not installed or not in the system path.")
         return False
 
-    global lurl_cache, lurl_cache_time
     if lurl_cache.get(url,'none') != "good" and time.time() - lurl_cache_time.get(url,0) < 3600: # try every 1 hour no matter what??
         # don't keep retrying on known bad
         print("  skipping", lurl_cache[url], url)
@@ -1531,7 +1538,6 @@ def get_chrome_path():
 
 def get_chrome_version(chrome_path):
     # Command to get the installed version of Chrome
-    global chrome_version
     if (
         chrome_version.get(chrome_path) is not None
         and chrome_version[chrome_path][1] > time.time() - 60 * 60
@@ -2137,7 +2143,7 @@ def capture_screenshot_and_har(
         driver = launch_headless_chrome(driver_options, version=version)
         if driver is None:
             _purge_driver_cache()
-            driver = launch_headless_chrome(opts, version)
+            driver = launch_headless_chrome(driver_options, version)
             if driver is None:
                 print("warning missing driver!")
                 raise ValueError('missing driver!')

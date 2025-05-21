@@ -43,8 +43,7 @@ def backup_config() -> bool:
         config_dict = {name: value for name, value in settings}
         with open(BACKUP_PATH, 'w') as f:
             json.dump(config_dict, f)
-    except Exception as e:
-        pass
+    except Exception:
         return False
     finally:
         session.close()
@@ -122,8 +121,9 @@ LLM_CAPTION_PROMPT = get_setting(
     #"Write a concise caption that highlights the most significant or unique aspect of this image in 10 words or less. Avoid general descriptions, and focus on noteworthy details or anomalies. Then, provide a brief, more detailed description in a couple of sentences. The time is $datetime UTC.",
 )
 
-# FFMPEG path setting
+# FFMPEG/FFPROBE path settings
 FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
+FFPROBE_PATH = get_setting("FFPROBE_PATH", "ffprobe")
 
 
 # New settings for capture_frame_from_stream function

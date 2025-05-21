@@ -825,7 +825,6 @@ system_metrics = {
 }
 
 def collect_system_metrics():
-    global system_metrics
     while True:
         system_metrics['cpu_usage'] = psutil.cpu_percent(interval=1)
         system_metrics['memory_usage'] = psutil.virtual_memory().percent
@@ -837,7 +836,6 @@ def start_metrics_collection():
     metrics_thread.start()
 
 def get_system_metrics():
-    global system_metrics
     uptime = time.time() - system_metrics['start_time']
     disk_usage = psutil.disk_usage('/').percent
     open_files = len(psutil.Process().open_files())
@@ -855,7 +853,6 @@ log_cache_lock = threading.Lock()
 
 '''
 def cache_logs():
-    global log_cache
     log_file_path = "logs/glimpser.log"
     last_position = 0
 
@@ -888,7 +885,6 @@ def cache_logs():
 '''
 
 def cache_logs():
-    global log_cache
     log_file_path = "logs/glimpser.log"
 
     try:
@@ -915,7 +911,7 @@ def cache_logs():
                 else:
                     time.sleep(1)  # Sleep briefly to avoid high CPU usage
     except Exception as e:
-        logger.error(f"Error in cache_logs: {e}")
+        logging.error(f"Error in cache_logs: {e}")
 
 def start_log_caching():
     log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
