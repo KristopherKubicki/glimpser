@@ -45,7 +45,12 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
-from pynput import mouse, keyboard
+try:
+    from pynput import mouse, keyboard
+except Exception as e:  # pragma: no cover - optional dependency
+    mouse = None
+    keyboard = None
+    logging.warning("pynput not available: %s", e)
 
 
 from app.config import (
@@ -230,17 +235,22 @@ def check_user_activity(timeout=10):
     #    print("<<<< irq not idle", liq)
     #    user_active = True  # allow to check on listeners for the 0 second case
     #    return user_active
-    idle_seconds_x = idle_seconds_x11()
-    #print("SSS", idle_seconds_x)
-    if idle_seconds_x < 120:
-        user_active = True  # allow to check on listeners for the 0 second case
-        return user_active
+    try:
+        idle_seconds_x = idle_seconds_x11()
+        if idle_seconds_x < 120:
+            user_active = True  # user recently active
+            return user_active
+    except Exception as e:
+        logging.debug(f"idle_seconds_x11 failed: {e}")
 
     #idle_seconds = idle_seconds_loginctl()
     #print(" user idle for", idle_seconds)
     #if 1 < idle_seconds < 120:
     #    user_active = True  # allow to check on listeners for the 0 second case
     #    return user_active
+
+    if mouse is None or keyboard is None:
+        return user_active
 
     # Create listeners for keyboard and mouse
     mouse_listener = mouse.Listener(on_move=on_move, on_click=on_click, on_scroll=on_scroll)
