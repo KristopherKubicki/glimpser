@@ -93,8 +93,8 @@ To set up the project for development:
 
 2. Create a virtual environment and activate it:
    ```sh
-   python -m venv venv
-   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+   python -m venv env
+   source env/bin/activate  # On Windows, use `env\Scripts\activate`
    ```
 
 3. Install the package in editable mode with development dependencies:
@@ -109,9 +109,6 @@ To set up the project for development:
 
 ## Contributing
 Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request. Please read our [Code of Conduct](CODE_OF_CONDUCT.md) to understand the expectations for participants and how to report issues.
-
-## License
-This project is licensed under the MIT License. See the [LICENSE.md](LICENSE.md) file for details.
 
 ### Steps to Contribute
 1. Fork the repository.
