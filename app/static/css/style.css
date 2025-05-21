@@ -432,6 +432,32 @@ button, a {
     position: absolute;
 }
 
+.hand {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: 50% 0;
+    transform: translateX(-50%);
+    background-color: #333;
+    pointer-events: none;
+}
+
+.hour-hand {
+    width: 2px;
+    height: 30%;
+}
+
+.minute-hand {
+    width: 2px;
+    height: 40%;
+}
+
+.second-hand {
+    width: 1px;
+    height: 45%;
+    background-color: #ff0000;
+}
+
 /* Template Form Styles */
 #template-form, #edit-template {
     background-color: #222;
