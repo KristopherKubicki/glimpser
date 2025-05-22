@@ -73,7 +73,8 @@ def generate_credentials(args):
                 password = getpass.getpass("Enter the password for login: ")
             else:
                 password = secrets.token_hex(16)
-                # your password is here.  This is the only time youll be able to see it again 
+                print(f"Generated password: {password}")
+                # your password is here.  This is the only time you'll be able to see it again
 
         password_hash = generate_password_hash(password.strip())
         upsert_setting("USER_PASSWORD_HASH", password_hash, conn)

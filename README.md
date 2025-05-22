@@ -61,7 +61,23 @@ For more documentation, see the [documentation index](docs/index.md).
    glimpser
    ```
 
-   You will be prompted to create a secret key to initialize the local sqlite database. Follow the rest of the guided setup and then direct your browser to http://127.0.0.1:8082 to finish the rest of the setup.
+   You will be prompted to create a secret key to initialize the local sqlite database.
+
+## Quick Start
+
+Verify that required system tools are available:
+
+```sh
+python3 check_prereqs.py
+```
+
+Then launch Glimpser:
+
+```sh
+glimpser
+```
+
+Your browser will open to [http://127.0.0.1:8082](http://127.0.0.1:8082) to complete setup.
 
 ## Usage
 

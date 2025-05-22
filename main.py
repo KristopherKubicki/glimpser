@@ -8,6 +8,7 @@ import random
 import time
 import signal, sys, threading, atexit
 import socket
+import webbrowser
 
 import app.config as config
 from app import create_app
@@ -208,15 +209,15 @@ def is_port_in_use(port):
     # Skip the check if running in Docker
     if os.environ.get('IN_DOCKER'):
         return False
-    
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(('localhost', port)) == 0
 
-if __name__ == "__main__":
+def main():
+    """Entry point for the Glimpser application."""
     # Clear the console before starting
     clear_console()
 
-    # Create the Flask application
     logging.info(banner)
 
     atexit.register(cleanup_resources)
@@ -242,11 +243,9 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    # Register the cleanup function to be called at exit
-    # should just be the main thread?
+    threading.Timer(1, lambda: webbrowser.open(f"http://{config.HOST}:{config.PORT}")).start()
 
     try:
-        # Run the application if this script is executed directly
         logging.info("Starting web...")
         app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True)
     except KeyboardInterrupt:
@@ -255,3 +254,7 @@ if __name__ == "__main__":
         logging.error("An error occurred while running the application: %s", e)
     finally:
         logging.info("Glimpser shut down.")
+
+
+if __name__ == "__main__":
+    main()
