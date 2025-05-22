@@ -533,3 +533,12 @@ function startCasting() {
   }
 }
 
+// Export functions for Node-based tests
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    loadTemplates,
+    updateGridLayout,
+    timeAgo,
+  };
+}
+
