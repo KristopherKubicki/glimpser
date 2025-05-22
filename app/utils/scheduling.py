@@ -23,7 +23,12 @@ from app.config import DEBUG, SCREENSHOT_DIRECTORY, SUMMARIES_DIRECTORY, VIDEO_D
 from .detect import calculate_difference_fast
 from .image_processing import chatgpt_compare
 from .llm import summarize
-from .screenshots import capture_or_download, remove_background, add_timestamp
+from .screenshots import (
+    capture_or_download,
+    remove_background,
+    add_timestamp,
+    is_mostly_blank,
+)
 from .template_manager import get_template, get_templates, save_template
 from .email_alerts import email_alert
 
@@ -274,16 +279,30 @@ def update_camera(name, template, image_file=None):
 
         lsum = False
         percentage_difference = 0
+
+        latest_image_path = os.path.join(directory, png_files[-1])
+        try:
+            with Image.open(latest_image_path) as img:
+                if is_mostly_blank(img):
+                    logging.info(
+                        "Skipping blank frame for motion detection: %s",
+                        latest_image_path,
+                    )
+                    return
+        except Exception as e:
+            logging.warning(
+                "Error checking blank frame %s: %s", latest_image_path, e
+            )
+            return
+
         if len(png_files) > 1:
             percentage_difference = calculate_difference_fast(
                 os.path.join(directory, png_files[-2]),
-                os.path.join(directory, png_files[-1]),
+                latest_image_path,
             )
             if (percentage_difference or 0) >= float(template.get("motion", 0)):
                 lsum = True
-            # TODO: check if blank -- don't trigger motion on blank files! 
-
-        elif png_files == 1:
+        elif len(png_files) == 1:
             lsum = True
 
         prev_motion = os.path.join(directory, "last_motion.png")
