@@ -14,7 +14,7 @@ This guide provides detailed instructions for installing and setting up Glimpser
 ### 1. Clone the Repository
 
 ```sh
-git clone https://github.com/yourusername/glimpser.git
+git clone https://github.com/KristopherKubicki/glimpser.git
 cd glimpser
 ```
 

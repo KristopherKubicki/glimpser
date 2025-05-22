@@ -8,7 +8,7 @@ import logging
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.utils.scheduling import scheduler, schedule_crawlers
+from app.utils.scheduling import scheduler, schedule_crawlers, start_log_caching
 
 class TestScheduler(unittest.TestCase):
 
@@ -103,6 +103,17 @@ class TestScheduler(unittest.TestCase):
 
         # Verify the job is removed
         self.assertIsNone(scheduler.get_job('test_job'))
+
+    @patch('threading.Thread')
+    @patch('app.utils.scheduling.scheduler.add_job')
+    def test_start_log_caching_only_spawns_thread(self, mock_add_job, mock_thread):
+        mock_thread.return_value.start = MagicMock()
+
+        start_log_caching()
+
+        mock_thread.assert_called_once()
+        mock_thread.return_value.start.assert_called_once()
+        mock_add_job.assert_not_called()
 
     '''
     @patch('app.utils.scheduling.scheduler.add_job')

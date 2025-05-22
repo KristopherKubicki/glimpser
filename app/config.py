@@ -2,6 +2,7 @@
 
 import os
 import json
+import logging
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -26,11 +27,11 @@ def get_setting(name, default=None):
         return result[0] if result else default
     except Exception as e:
         if 'no such table' in str(e):
-            # this is ok if its the first time only... 
-            print("warning! table does not exist")
+            # this is ok if its the first time only...
+            logging.warning("table does not exist")
             pass
         else:
-            print("warning! initialization error", e)
+            logging.warning("initialization error %s", e)
     finally:
         session.close()
 
@@ -43,8 +44,7 @@ def backup_config() -> bool:
         config_dict = {name: value for name, value in settings}
         with open(BACKUP_PATH, 'w') as f:
             json.dump(config_dict, f)
-    except Exception as e:
-        pass
+    except Exception:
         return False
     finally:
         session.close()
@@ -85,6 +85,8 @@ NAME = get_setting("NAME", "glimpser")
 HOST = get_setting("HOST", "0.0.0.0")
 PORT = int(get_setting("PORT", 8082))
 DEBUG = get_setting("DEBUG", "True") == "True"
+# Provide a separate attribute for runtime checks
+DEBUG_MODE = DEBUG
 MAX_WORKERS = get_setting("MAX_WORKERS", 8)
 
 # Thresholds
@@ -122,8 +124,9 @@ LLM_CAPTION_PROMPT = get_setting(
     #"Write a concise caption that highlights the most significant or unique aspect of this image in 10 words or less. Avoid general descriptions, and focus on noteworthy details or anomalies. Then, provide a brief, more detailed description in a couple of sentences. The time is $datetime UTC.",
 )
 
-# FFMPEG path setting
+# FFMPEG/FFPROBE path settings
 FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
+FFPROBE_PATH = get_setting("FFPROBE_PATH", "ffprobe")
 
 
 # New settings for capture_frame_from_stream function

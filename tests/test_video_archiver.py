@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from app.utils.validators import validate_template_name
 from app.utils.video_archiver import (
-    validate_template_name,
     touch,
     trim_group_name,
     compile_to_teaser,

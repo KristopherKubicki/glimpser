@@ -23,7 +23,12 @@ from app.config import DEBUG, SCREENSHOT_DIRECTORY, SUMMARIES_DIRECTORY, VIDEO_D
 from .detect import calculate_difference_fast
 from .image_processing import chatgpt_compare
 from .llm import summarize
-from .screenshots import capture_or_download, remove_background, add_timestamp
+from .screenshots import (
+    capture_or_download,
+    remove_background,
+    add_timestamp,
+    is_mostly_blank,
+)
 from .template_manager import get_template, get_templates, save_template
 from .email_alerts import email_alert
 
@@ -118,7 +123,7 @@ def add_motion_and_caption(image_path, caption=None, motion=False):
                     else:
                         # unlink the offending image
                         os.unlink(image_path)
-                    print(" warning : image load issue:", image_path, e)
+                    logging.warning("image load issue: %s %s", image_path, e)
                     logging.error(f"Error saving image: {image_path} {e}")
                     return
 
@@ -274,16 +279,30 @@ def update_camera(name, template, image_file=None):
 
         lsum = False
         percentage_difference = 0
+
+        latest_image_path = os.path.join(directory, png_files[-1])
+        try:
+            with Image.open(latest_image_path) as img:
+                if is_mostly_blank(img):
+                    logging.info(
+                        "Skipping blank frame for motion detection: %s",
+                        latest_image_path,
+                    )
+                    return
+        except Exception as e:
+            logging.warning(
+                "Error checking blank frame %s: %s", latest_image_path, e
+            )
+            return
+
         if len(png_files) > 1:
             percentage_difference = calculate_difference_fast(
                 os.path.join(directory, png_files[-2]),
-                os.path.join(directory, png_files[-1]),
+                latest_image_path,
             )
             if (percentage_difference or 0) >= float(template.get("motion", 0)):
                 lsum = True
-            # TODO: check if blank -- don't trigger motion on blank files! 
-
-        elif png_files == 1:
+        elif len(png_files) == 1:
             lsum = True
 
         prev_motion = os.path.join(directory, "last_motion.png")
@@ -423,10 +442,10 @@ def update_camera(name, template, image_file=None):
                         closest_image_path = os.path.join(
                             directory, closest_image_filename
                         )
-                        print("last caption....", closest_image_path)
+                        logging.debug("last caption.... %s", closest_image_path)
                         image_paths.append(closest_image_path)
                 except Exception as e:
-                    print(" warning caption parsing error", e)
+                    logging.warning("caption parsing error %s", e)
                     pass
 
             image_paths.append(os.path.join(directory, png_files[-1]))
@@ -615,9 +634,9 @@ def update_summary():
                 try:
                     gnotes = " ".join([note for note in gnotes if note.strip()][0:-1])
                 except Exception as e:
-                    print("error ", e, template)
-                    print("NOTES:", fnotes)
-                    print("GNTES:", fnotes)
+                    logging.error("error %s %s", e, template)
+                    logging.debug("NOTES: %s", fnotes)
+                    logging.debug("GNTES: %s", fnotes)
                     pass
 
             lstring += (
@@ -695,7 +714,7 @@ def update_summary():
             file.write(leach + "\n")
             lsuc = True
     if lsuc is False:
-        print("WARNING MISSED CAPTION ($$$)", lsum)
+        logging.warning("MISSED CAPTION ($$$) %s", lsum)
 
     # Send email alert with the summary
     if lsuc:
@@ -713,7 +732,7 @@ def schedule_summarization():
             replace_existing=True,
         )
     except Exception as e:
-        print("job schedule error:", e)
+        logging.error("job schedule error: %s", e)
     update_summary()
 
 
@@ -793,7 +812,7 @@ def schedule_crawlers():
             )
             '''
         except Exception as e:
-            print("job schedule error:", e)
+            logging.error("job schedule error: %s", e)
             logging.error(f"Error scheduling job for {name}: {e}")
 
     # Schedule init_crawl to run once, slightly offset as well
@@ -825,7 +844,6 @@ system_metrics = {
 }
 
 def collect_system_metrics():
-    global system_metrics
     while True:
         system_metrics['cpu_usage'] = psutil.cpu_percent(interval=1)
         system_metrics['memory_usage'] = psutil.virtual_memory().percent
@@ -837,7 +855,6 @@ def start_metrics_collection():
     metrics_thread.start()
 
 def get_system_metrics():
-    global system_metrics
     uptime = time.time() - system_metrics['start_time']
     disk_usage = psutil.disk_usage('/').percent
     open_files = len(psutil.Process().open_files())
@@ -855,7 +872,6 @@ log_cache_lock = threading.Lock()
 
 '''
 def cache_logs():
-    global log_cache
     log_file_path = "logs/glimpser.log"
     last_position = 0
 
@@ -888,7 +904,6 @@ def cache_logs():
 '''
 
 def cache_logs():
-    global log_cache
     log_file_path = "logs/glimpser.log"
 
     try:
@@ -915,20 +930,13 @@ def cache_logs():
                 else:
                     time.sleep(1)  # Sleep briefly to avoid high CPU usage
     except Exception as e:
-        logger.error(f"Error in cache_logs: {e}")
+        logging.error(f"Error in cache_logs: {e}")
 
 def start_log_caching():
     log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
     log_caching_thread.start()
 
-    # Ensure the job is only scheduled ONCE
-    if not scheduler.get_job('log_caching'):
-        scheduler.add_job(func=cache_logs, trigger='interval', hours=1, id='log_caching', replace_existing=True)
+    # No longer schedule cache_logs via the APScheduler.  The background thread
+    # itself handles continuous log caching and avoids spawning additional
+    # threads on scheduler restarts.
 
-
-'''
-def start_log_caching():
-    log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
-    log_caching_thread.start()
-    scheduler.add_job(func=start_log_caching, trigger='interval', hours=1, id='log_caching', replace_existing=True)
-'''

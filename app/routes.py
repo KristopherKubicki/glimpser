@@ -1,21 +1,5 @@
-import glob
-from flask import jsonify, Response
-from datetime import datetime, timedelta
-import hashlib
-import inspect
-import io
-import json
-import logging
-import os
-import random
-import re
-import time
-import uuid
-import glob
-import io
 import csv
-from datetime import datetime, timedelta
-
+import glob
 import hashlib
 import inspect
 import io
@@ -24,17 +8,17 @@ import logging
 import os
 import re
 import sys
-import time
 import tempfile
-import shutil
-import subprocess
+import time
 import uuid
+from datetime import datetime, timedelta
+
 from functools import wraps
 from threading import Lock, Thread
 
 from flask import (
     abort,
-    current_app,
+    jsonify,
     flash,
     redirect,
     render_template,
@@ -43,9 +27,9 @@ from flask import (
     send_from_directory,
     session,
     url_for,
-    stream_with_context,
+    Response,
 )
-from flask_login import logout_user, login_required
+
 from PIL import Image
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
@@ -74,9 +58,10 @@ from app.utils import (
 from app.utils.db import SessionLocal
 #from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock
+from app.utils.validators import validate_template_name
 
 def restart_server():
-    print("Restarting server...")
+    logging.info("Restarting server...")
 
     def delayed_restart():
         time.sleep(1)  # 1-second delay
@@ -86,40 +71,6 @@ def restart_server():
     restart_thread = Thread(target=delayed_restart)
     restart_thread.start()
 
-# todo: add this to utils so it is not duplicated in utils/video_archiver.py
-def validate_template_name(template_name: str):
-    if template_name is None or not isinstance(template_name, str):
-        return None
-
-    # Strict whitelist of allowed characters
-    allowed_chars = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.')
-
-    # Check if all characters are in the allowed set
-    if not all(char in allowed_chars for char in template_name):
-        return None
-
-    # Check length
-    if len(template_name) == 0 or len(template_name) > 32:
-        return None
-
-    # Ensure the name doesn't start or end with a dash or underscore
-    if template_name[0] in '-_.' or template_name[-1] in '-_.':
-        return None
-    if '..' in template_name:
-        return None
-    if '--' in template_name:
-        return None
-    if '__' in template_name:
-        return None
-
-    # Use secure_filename as an additional safety measure
-    sanitized_name = secure_filename(template_name)
-
-    # Ensure secure_filename didn't change the name (which would indicate it found something suspicious)
-    if sanitized_name != template_name:
-        return None
-
-    return sanitized_name
 
 
 class TemplateName:
@@ -294,7 +245,7 @@ def update_setting(name: str, value: str) -> bool:
                     {"name": name, "value": value}
                 )
                 delta = True
-                print("UPDATE", name, value, existing_setting)
+                logging.debug("UPDATE %s %s %s", name, value, existing_setting)
         else:
             session.execute(
                 text("INSERT INTO settings (name, value) VALUES (:name, :value)"),
@@ -324,9 +275,7 @@ def generate_video_stream(video_path: str):
                 yield chunk
                 chunk = video.read(1024 * 1024)
         #
-        print(
-            "sleeping...",
-        )
+        logging.debug("sleeping...")
         time.sleep(30)  # Wait for 5 minutes before streaming the video again
 
 
@@ -490,7 +439,6 @@ def generate(group=None, filename="latest_camera.png", rtsp=False):
                                 # only do this if the files are different.  otherwise, just freshen up maybe?
                                 os.rename(last_path, last_path.replace(".tmp", ""))
                         except Exception:
-                            # print(" warning: png error", e)
                             pass
 
         if frame:
@@ -568,7 +516,7 @@ def init_routes(app):
             if len(metrics['uptime']) < 9 and '0h 0m ' in metrics['uptime']: # first ten seconds...
                 is_nominal = False
                 error_messages.append("System just started, still initializing")
-        except Exception as e:
+        except Exception:
             is_nominal = False
             error_messages.append("Error getting system uptime")
 
@@ -580,7 +528,7 @@ def init_routes(app):
             session.execute(text("SELECT 1"))
             session.close()
             db_status = 'connected'
-        except Exception as e:
+        except Exception:
             is_nominal = False
             db_status = 'disconnected'
             error_messages.append("Database connection failed")
@@ -591,7 +539,7 @@ def init_routes(app):
             if scheduler_status != 'running':
                 is_nominal = False
                 error_messages.append("Scheduler is not running")
-        except Exception as e:
+        except Exception:
             is_nominal = False
             scheduler_status = 'failed'
             error_messages.append("Error checking scheduler status")
@@ -664,7 +612,6 @@ def init_routes(app):
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
-        global login_attempts
         ip_address = request.remote_addr
         now = datetime.now()
 
@@ -752,7 +699,7 @@ def init_routes(app):
             abort(404)
 
         # Check if the template exists
-        print("WARNING BRPKEN!")
+        logging.debug("WARNING BRPKEN!")
         ltemplate = template_manager.get_template(template_name)
         if ltemplate is None:
             return jsonify({"status": "error", "message": "Template not found"}), 404
@@ -842,7 +789,9 @@ def init_routes(app):
         most_recent_file = None
         last_file = None
         for template in sorted_templates:
-            name = secure_filename(template.get("name"))
+            name = validate_template_name(template.get("name"))
+            if name is None:
+                continue
             path = os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
                 "..",
@@ -870,8 +819,7 @@ def init_routes(app):
 
     @app.route("/test.rtsp", methods=["OPTIONS", "DESCRIBE", "SETUP", "PLAY", "TEARDOWN"])
     def handle_rtsp():
-        global rtsp_sessions
-
+        
         session_id = request.headers.get("Session", str(uuid.uuid4()))
         cseq = request.headers.get("CSeq", "0")
 
@@ -952,7 +900,7 @@ def init_routes(app):
     @app.route("/caption.mjpg", methods=["GET"])
     def caption_mjpg():
         group = request.args.get("group")
-        print("last caption")
+        logging.debug("last caption")
         return Response(
             generate(group=group, filename="last_caption.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -961,7 +909,7 @@ def init_routes(app):
     @app.route("/motion_caption.mjpg", methods=["GET"])
     def motion_caption_mjpg():
         group = request.args.get("group")
-        print("last motion caption")
+        logging.debug("last motion caption")
         return Response(
             generate(group=group, filename="last_motion_caption.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -1032,7 +980,9 @@ def init_routes(app):
         )
 
         for camera_id, template in sorted_templates:
-            camera_name = template.get("name")
+            camera_name = validate_template_name(template.get("name"))
+            if camera_name is None:
+                continue
             # Assuming the MP4 file is the segment
             lkey = generate_timed_hash()
             video_path = f"{request.url_root}last_video/{camera_name}?timed_key={lkey}"
@@ -1096,11 +1046,6 @@ def init_routes(app):
             else:
                 template['next_screenshot_time'] = None
 
-            screenshot_count = template_manager.get_screenshot_count(name)
-            video_count = template_manager.get_video_count(name)
-            storage_usage = template_manager.get_storage_usage(name)
-            llm_response_count = template_manager.get_llm_response_count(name)
-            llm_cost_estimate = template_manager.get_llm_cost_estimate(name)
 
             templates[name]['screenshot_count'] = template_manager.get_screenshot_count(name)
             templates[name]['video_count'] = template_manager.get_video_count(name)
@@ -1351,7 +1296,7 @@ def init_routes(app):
                 400,
             )
 
-        print("TODO: rewrite")
+        logging.debug("TODO: rewrite")
         templates = template_manager.get_templates()
         if templates.get(template_name) is None:
             abort(404)
@@ -1677,8 +1622,7 @@ def init_routes(app):
                     replace_existing=True,
                 )
             except Exception as e:
-                print("job schedule error:", e)
-                # logging.error(f"Error scheduling job for {name}: {e}")
+                logging.error("job schedule error: %s", e)
 
             if request.is_json:
                 return jsonify({"message": "Template updated successfully!"})

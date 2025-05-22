@@ -6,6 +6,7 @@ import re
 import time
 
 import requests
+import logging
 
 from app.config import CHATGPT_KEY, LLM_MODEL_VERSION, LLM_SUMMARY_PROMPT
 from app.utils.email_alerts import email_alert
@@ -79,11 +80,11 @@ def summarize(prompt, history=None, tokens=4096):
         response = requests.post(url, headers=headers, json=payload)
         if response.status_code == 429:
             last_429_error_time = datetime.datetime.now()
-            print("429 error encountered. Blocking requests for 15 minutes.")
+            logging.warning("429 error encountered. Blocking requests for 15 minutes.")
             return None
         result = response.json()
     except Exception as e:
-        print("Warning: API response issue", e)
+        logging.warning("API response issue %s", e)
         return None
 
     # Process the API response
@@ -91,14 +92,14 @@ def summarize(prompt, history=None, tokens=4096):
         if result is None or result.get('choices') is None:
             # TODO: add logging
             if result.get('error'):
-                print("Warning: API response issue", result['error'])
+                logging.warning("API response issue %s", result['error'])
             else:
-                print("Warning: API response issue", result)
+                logging.warning("API response issue %s", result)
             return None
 
         response_text = result["choices"][0]["message"]["content"].replace("\n\n", "\t").strip()
         ltokens = result["usage"]["total_tokens"]
-        print(f"Total tokens used: {ltokens} (Cost: ${ltokens * 0.005 / 1000:.5f})")
+        logging.info("Total tokens used: %s (Cost: $%0.5f)", ltokens, ltokens * 0.005 / 1000)
 
         # Convert the response text to a JSON format
         ljson = {}
@@ -113,11 +114,11 @@ def summarize(prompt, history=None, tokens=4096):
                 ljson[start_time] = line
                 start_time += 5
 
-        print("Processed summary:", ljson)
+        logging.debug("Processed summary: %s", ljson)
         return json.dumps(ljson)
     except Exception as e:
         # TODO add logging
-        print("GPT response processing exception:", e)
+        logging.error("GPT response processing exception: %s", e)
         if response is not None:
-            print("GPT response text:", response.text)
+            logging.debug("GPT response text: %s", response.text)
         return None
