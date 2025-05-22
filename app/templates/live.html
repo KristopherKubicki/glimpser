@@ -1,6 +1,10 @@
 {% include 'header.html' %}
 
 <body>
+    <script>
+        // Track the last time the health endpoint failed
+        window.lastHealthFailed = false;
+    </script>
     <header>
         {% include 'nav.html' %}
     </header>
@@ -200,7 +204,21 @@
         video.addEventListener('canplay', hideLoadingIndicator);
         video.addEventListener('play', () => showPlayPauseIndicator(false));
         video.addEventListener('pause', () => showPlayPauseIndicator(true));
-        video.addEventListener('error', (e) => showError('Error loading video: ' + e.target.error.message));
+        video.addEventListener('error', (e) => {
+            showError('Error loading video: ' + e.target.error.message);
+            setTimeout(() => {
+                if (typeof updateFeed === 'function') {
+                    updateFeed();
+                }
+            }, 2000);
+        });
+        image.addEventListener('error', () => {
+            setTimeout(() => {
+                if (typeof updateFeed === 'function') {
+                    updateFeed();
+                }
+            }, 2000);
+        });
 
 function changeCamera() {
     showLoadingIndicator();
