@@ -80,7 +80,7 @@ This guide addresses common issues that users might encounter while using Glimps
 If you're still experiencing issues after trying these solutions, please:
 
 1. Check our [FAQ](faq.md) for more information
-2. Search for similar issues in our [GitHub Issues](https://github.com/yourusername/glimpser/issues)
+2. Search for similar issues in our [GitHub Issues](https://github.com/KristopherKubicki/glimpser/issues)
 3. Post a new issue on GitHub with detailed information about your problem
 4. Reach out to our community support forum for assistance
 

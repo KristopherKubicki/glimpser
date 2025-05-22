@@ -96,6 +96,8 @@ function validateForm() {
     const popupXpath = document.getElementById('popup_xpath').value.trim();
     const dedicatedXpath = document.getElementById('dedicated_xpath').value.trim();
 
+     // make sure the browser is set if there is a popup or dedicated xpath
+
     if (name === "" || url === "") {
         alert("Template Name and URL are required fields.");
         return false;

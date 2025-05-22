@@ -68,7 +68,8 @@ def summarize(prompt, history=None, tokens=4096):
 
     # Prepare the payload for the API request
     payload = {
-        "model": LLM_MODEL_VERSION,
+        #"model": LLM_MODEL_VERSION,
+        "model": "gpt-4.1", # warning, hardcoded # consider just doing this occassionally? 
         "messages": messages,
         "max_tokens": tokens,
     }

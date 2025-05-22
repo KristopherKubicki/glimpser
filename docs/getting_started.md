@@ -11,7 +11,7 @@ This guide will walk you through the process of setting up Glimpser and running 
 
 1. Clone the Glimpser repository:
    ```
-   git clone https://github.com/yourusername/glimpser.git
+   git clone https://github.com/KristopherKubicki/glimpser.git
    cd glimpser
    ```
 

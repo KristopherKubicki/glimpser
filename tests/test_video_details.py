@@ -2,16 +2,22 @@ import unittest
 import tempfile
 import os
 import sys
+import importlib.util
 from datetime import datetime, timedelta
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from app.utils.video_details import (
-    get_latest_video_date,
-    get_latest_screenshot_date,
-    get_latest_file,
-    get_latest_date,
+# Dynamically load the video_details module without importing the full
+# ``app`` package and its heavy dependencies.
+module_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "app", "utils", "video_details.py")
 )
+spec = importlib.util.spec_from_file_location("video_details", module_path)
+video_details = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(video_details)
+
+get_latest_video_date = video_details.get_latest_video_date
+get_latest_screenshot_date = video_details.get_latest_screenshot_date
+get_latest_file = video_details.get_latest_file
+get_latest_date = video_details.get_latest_date
 
 
 class TestVideoDetails(unittest.TestCase):
@@ -65,11 +71,14 @@ class TestVideoDetails(unittest.TestCase):
 
         latest_file = get_latest_file(self.temp_dir, ext="txt")
         self.assertEqual(latest_file, "file2.txt")
+
         self.create_dummy_file("latest_camera.png", days_ago=5)
         latest_file = get_latest_file(self.temp_dir, ext="txt")
         self.assertEqual(latest_file, "file2.txt")
+
         latest_file = get_latest_file(self.temp_dir, ext="png")
-        self.assertEqual(latest_file, "latest_camera.png")
+        expected_path = os.path.join(self.temp_dir, "latest_camera.png")
+        self.assertEqual(latest_file, expected_path)
 
     def test_get_latest_date(self):
         self.create_dummy_file("file1.txt", days_ago=2)

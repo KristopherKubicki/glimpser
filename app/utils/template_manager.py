@@ -102,8 +102,11 @@ class TemplateManager:
 
     def save_template(self, name, details):
 
+        # embed the validators here... 
         # TODO: replace this with validate_template_name instead
         if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+            return False
+        if '..' in name:
             return False
 
         session = self.get_session()
@@ -124,11 +127,16 @@ class TemplateManager:
 
                             value = int(value)
                             if key == "frequency" and value > 525600:
-                                raise ValueError("Frequency cannot be greater than 525600 (1 year)")
+                                value = 525600
+                            if key == "frequency" and value < 0.01: # that's less than 1 fps...
+                                value = 0.01
+                            # TODO: adjust for browsers-stealth-etc?  increase the frequency and timeout for those by default??
+
                             if key == "timeout" and value >= float(details.get("frequency", template.frequency)) * 60:
                                 value = int(details.get("frequency", template.frequency)) * 60 # adjust the timeout down 
                             if key == "timeout" and value < 1:
-                                value = 10
+                                value = 1
+
                         elif key == "object_confidence":
                             if value == "":
                                 value = 0.5
@@ -272,7 +280,7 @@ def get_screenshots_for_template(name: str) -> list:
     screenshots = [
         f
         for f in os.listdir(os.path.join(SCREENSHOT_DIRECTORY, name))
-        if f.startswith(name) and f.endswith(".png") and ".tmp" not in f
+        if f.startswith(name) and f.endswith(".png") and ".tmp" not in f and '.partial' not in f
     ]
 
     try:
@@ -285,7 +293,7 @@ def get_screenshots_for_template(name: str) -> list:
         print(" crazy sorting issue", e)
         return[]
 
-    return sorted_screenshots[:10]
+    return sorted_screenshots[:100]
 
 
 def get_videos_for_template(name: str):

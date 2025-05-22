@@ -93,6 +93,78 @@ Response:
 }
 ```
 
+### 5. Manage Templates
+
+**GET /templates**
+
+Fetch a JSON list of configured templates. Optional query parameters `group` and `search` can be used to filter results.
+
+Example response:
+```json
+{
+  "camera1": {"url": "rtsp://example"}
+}
+```
+
+**POST /templates**
+
+Create or update a template. Provide template details as JSON.
+
+Example request:
+```json
+{
+  "name": "camera1",
+  "url": "rtsp://example"
+}
+```
+Example response:
+```json
+{"status": "success", "message": "Template saved"}
+```
+
+**DELETE /templates**
+
+Remove a template by name.
+
+Example request:
+```json
+{"name": "camera1"}
+```
+Example response:
+```json
+{"status": "success", "message": "Template deleted"}
+```
+
+### 6. View and Update Settings
+
+**GET /settings**
+
+Return the settings page in HTML format.
+
+**POST /settings**
+
+Submit form data to modify configuration values. A successful update redirects back to the settings page.
+
+### 7. Download MP4 Stream
+
+**GET /stream.mp4**
+
+Download the most recent MP4 video for a group. Specify `group` as a query parameter.
+
+Example: `/stream.mp4?group=frontdoor`
+
+### 8. Trigger Screenshot Capture
+
+**GET /take_screenshot/<template_name>**
+**POST /take_screenshot/<template_name>**
+
+Manually capture a screenshot for the specified template.
+
+Example response:
+```json
+{"status": "success", "message": "Screenshot for camera1 taken"}
+```
+
 ## Error Handling
 
 All endpoints may return the following error responses:

@@ -3,23 +3,17 @@
 import logging
 import os
 import threading
-import signal
-import sys
-import shutil
 import time
 import psutil
 
-from flask import Flask, current_app, jsonify
-from flask_apscheduler import APScheduler
-from sqlalchemy.orm import scoped_session
+from flask import Flask
 
 from app.utils.retention_policy import retention_cleanup
 from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler, start_log_caching
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
-from app.utils.video_compressor import compress_and_cleanup
 from app.config import backup_config, restore_config
 from app.utils.email_alerts import email_alert
-from app.utils.db import SessionLocal
+#from app.utils.db import SessionLocal
 #from app.models.log import Log
 
 # needed for the llava compare
@@ -56,25 +50,18 @@ def create_app(watchdog=True, schedule=True):
     Returns:
         app (Flask): The configured Flask application instance
     """
-    app = Flask(__name__)
-    # app.config.from_object()
-
-    from app.config import SECRET_KEY
-
-    app.secret_key = SECRET_KEY
-
-    # Set up logging
-    #handler = SQLAlchemyHandler()
-    #handler.setLevel(logging.INFO)
-    #app.logger.addHandler(handler)
-    app.logger.setLevel(logging.INFO)
-
     from app.config import (
+        SECRET_KEY,
         MAX_WORKERS,
         SCREENSHOT_DIRECTORY,
         SUMMARIES_DIRECTORY,
         VIDEO_DIRECTORY,
     )
+
+    app = Flask(__name__)
+    app.secret_key = SECRET_KEY
+    # Set up logging
+    app.logger.setLevel(logging.WARN) # todo: read from config.... 
 
     # Ensure required directories exist
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)
@@ -104,7 +91,7 @@ def create_app(watchdog=True, schedule=True):
             scheduler.remove_all_jobs()
 
             # Schedule various periodic tasks
-            schedule_crawlers()
+            schedule_crawlers() # TODO: make this a command line argument
             scheduler.add_job(
                 id="compile_to_teaser",
                 func=compile_to_teaser,

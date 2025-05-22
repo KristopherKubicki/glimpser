@@ -1,14 +1,21 @@
 {% include 'header.html' %}
 
 <body>
+    <script>
+        // Track the last time the health endpoint failed
+        window.lastHealthFailed = false;
+    </script>
     <header>
         {% include 'nav.html' %}
     </header>
 
     <style>
         .video-container {
-            width: 100%;
-            height: 80vh; /* 80% of the viewport height */
+            max-width: 100vw;
+            max-height: 96vh; /* 80% of the viewport height */
+	    width: 100%;
+	    min-height: 85vh;
+	    height: 100%;
             position: relative;
             overflow: hidden; /* Prevents scrolling */
         }
@@ -16,9 +23,10 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+	    width: 100%;
+            max-width: 100vw;
+            max-height: 92vh;
+            #object-fit: cover;
         }
         .video-controls {
             position: absolute;
@@ -32,6 +40,7 @@
             align-items: center;
             opacity: 0;
             transition: opacity 0.3s;
+            max-width: 100vw;
         }
         .video-container:hover .video-controls {
             opacity: 1;
@@ -83,19 +92,24 @@
         <div class="video-controls">
             <input type="range" id="seek-bar" value="0">
             <div class="control-row">
-                <button id="play-pause">Play/Pause</button>
-                <button id="mute">Mute</button>
-                <input type="range" id="volume-bar" min="0" max="1" step="0.1" value="1">
-                <button id="cast-button">Cast</button>
-                <button id="full-screen">Fullscreen</button>
-            </div>
-        </div>
-        <div id="video-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
-            <div id="loading-indicator" style="display: none;">Loading...</div>
-            <div id="play-pause-indicator" style="display: none; font-size: 48px;">▶</div>
-        </div>
-        <div id="error-message"></div>
-    </div>
+                <button id="play-pause"><i class="fa-play-pause"></i> Test
+		</button>
+
+	<input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()">
+        <label for="speed-slider">Speed: <span id="speed-value">1x</span></label>
+
+	<!-- <button id="cast-button">Cast</button> -->
+                <button id="full-screen" title='fullscreen'><i class="fas fa-expand"></i></button>
+
+    <select id="video-source" onchange="changeVideoSource()">
+        <option value="png" title="View a series of PNG images">PNG Stream</option>
+	<!-- <option value="m3u8" title="View an HLS (HTTP Live Streaming) video stream">M3U8 Stream</option> -->
+        <option value="loop" title="Loop through available video clips">Loop Videos</option>
+        <option value="mp4" selected title="View an MP4 video stream">MP4 Stream</option>
+        <option value="motion" title="View motion-detected frames">Motion</option>
+        <option value="mjpg" title="View an MJPEG (Motion JPEG) stream">MJPG</option>
+    </select>
+
 
     <select id="camera-selector" onchange="changeCamera()">
         <option value="All" title="View all cameras">All</option>
@@ -117,19 +131,21 @@
         {% endfor %}
     </select>
 
-    <select id="video-source" onchange="changeVideoSource()">
-        <option value="png" title="View a series of PNG images">PNG Stream</option>
-        <option value="m3u8" title="View an HLS (HTTP Live Streaming) video stream">M3U8 Stream</option>
-        <option value="loop" title="Loop through available video clips">Loop Videos</option>
-        <option value="mp4" selected title="View an MP4 video stream">MP4 Stream</option>
-        <option value="motion" title="View motion-detected frames">Motion</option>
-        <option value="mjpg" title="View an MJPEG (Motion JPEG) stream">MJPG</option>
-    </select>
+     <div style='width:40vw;'> &nbsp;</div>
 
-    <div>
-	<input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()">
-        <label for="speed-slider">Playback Speed: <span id="speed-value">1x</span></label>
+
+            </div>
+
+
+        </div>
+        <div id="video-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
+            <div id="loading-indicator" style="display: none;">Loading...</div>
+            <div id="play-pause-indicator" style="display: none; font-size: 48px;">▶</div>
+        </div>
+        <div id="error-message"></div>
     </div>
+
+
 
     <div id="template-details"></div>
 
@@ -145,6 +161,7 @@
         const loadingIndicator = document.getElementById('loading-indicator');
         const playPauseIndicator = document.getElementById('play-pause-indicator');
         const errorMessage = document.getElementById('error-message');
+        const playButton = document.getElementById('play-pause');
 
         function showLoadingIndicator() {
             videoOverlay.style.display = 'block';
@@ -164,7 +181,8 @@
         function showPlayPauseIndicator(isPaused) {
             videoOverlay.style.display = 'block';
             playPauseIndicator.style.display = 'block';
-            playPauseIndicator.textContent = isPaused ? '▶' : '❚❚';
+            playPauseIndicator.textContent = isPaused ? ' ▶ ' : '▷';
+            playButton.textContent = isPaused ? ' ▶ ' : '▷';
             loadingIndicator.style.display = 'none';
             setTimeout(() => {
                 playPauseIndicator.style.display = 'none';
@@ -186,7 +204,21 @@
         video.addEventListener('canplay', hideLoadingIndicator);
         video.addEventListener('play', () => showPlayPauseIndicator(false));
         video.addEventListener('pause', () => showPlayPauseIndicator(true));
-        video.addEventListener('error', (e) => showError('Error loading video: ' + e.target.error.message));
+        video.addEventListener('error', (e) => {
+            showError('Error loading video: ' + e.target.error.message);
+            setTimeout(() => {
+                if (typeof updateFeed === 'function') {
+                    updateFeed();
+                }
+            }, 2000);
+        });
+        image.addEventListener('error', () => {
+            setTimeout(() => {
+                if (typeof updateFeed === 'function') {
+                    updateFeed();
+                }
+            }, 2000);
+        });
 
 function changeCamera() {
     showLoadingIndicator();
@@ -249,25 +281,7 @@ function changeCamera() {
             if (details) {
                 video.title = details.last_caption;
                 templateDetailsContainer.innerHTML = `
-                    <h3>Details for ${currentCamera}</h3>
-                    <p>Status: ${isConnected ? '<span class="connected">Connected</span>' : '<span class="disconnected">Disconnected</span>'}</p>
-                    <p>URL: ${details.url}</p>
-                    <p>Frequency: ${details.frequency} minutes</p>
-                    <p>Timeout: ${details.timeout} seconds</p>
-                    <p>Notes: ${details.notes || 'N/A'}</p>
-                    <p>Last Screenshot Time: ${details.last_screenshot_time || 'N/A'}</p>
-                    <p>Last Caption: ${details.last_caption || 'N/A'}</p>
-                `;
-
-                if (!isConnected) {
-                    templateDetailsContainer.innerHTML += `
-                        <p class="error-message">This camera appears to be offline. Last seen: ${details.last_screenshot_time || 'Never'}</p>
-                    `;
-                }
-            } else {
-                templateDetailsContainer.innerHTML = `
-                    <h3>Details for ${currentCamera}</h3>
-                    <p>No details available</p>
+			    <a href='/camera/${currentCamera}'></a>
                 `;
             }
         }
@@ -418,6 +432,7 @@ function refreshPNG() {
 function playMP4() {
     video.style.display = 'block';
     image.style.display = 'none';
+	document.getElementById("seek-bar").style.display = "block";
     clearInterval(pngInterval);
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
@@ -457,6 +472,10 @@ function handleVideoEnded() {
 function playPNG() {
     video.style.display = 'none';
     image.style.display = 'block';
+        const slider = document.getElementById('speed-slider');
+        const speed = Math.pow(2, slider.value);
+	document.getElementById("seek-bar").style.display = "none";
+	console.log( document.getElementById("seek-bar"), speed);
     clearInterval(pngInterval);
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
@@ -472,7 +491,7 @@ function playPNG() {
         };
         refreshGroupPNG();
         clearInterval(pngInterval);
-        pngInterval = setInterval(refreshGroupPNG, 1000);
+        pngInterval = setInterval(refreshGroupPNG, 10000 / speed);
     } else if (currentCamera === 'All') {
         // Special handling for the "All" option
         image.src = '/stream.png';
@@ -480,13 +499,14 @@ function playPNG() {
         // Original behavior for individual cameras
         refreshPNG();
         clearInterval(pngInterval);
-        pngInterval = setInterval(refreshPNG, 1000);
+        pngInterval = setInterval(refreshPNG, 10000 / speed);
     }
 }
 
 function playMJPG() {
     video.style.display = 'none';
     image.style.display = 'block';
+	document.getElementById("seek-bar").style.display = "block";
     clearInterval(pngInterval);
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
@@ -504,6 +524,7 @@ function playMJPG() {
 function playMotion() {
     video.style.display = 'none';
     image.style.display = 'block';
+	document.getElementById("seek-bar").style.display = "none";
     clearInterval(pngInterval);
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
@@ -533,12 +554,13 @@ function playMotion() {
             // Adjust the refresh rate for the PNG stream based on the playback speed
             if (pngInterval) {
                 clearInterval(pngInterval);
-                pngInterval = setInterval(refreshPNG, 1000 / speed);
+                pngInterval = setInterval(refreshPNG, 10000 / speed);
             }
 
 	        speedDisplay.classList.add('highlight-speed');
     setTimeout(() => speedDisplay.classList.remove('highlight-speed'), 500);
     }
+    // todo: stop the old playing png stream
 
     function checkCameraConnection(cameraName) {
         // Check if the camera has a last_screenshot_time

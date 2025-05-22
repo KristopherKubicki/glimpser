@@ -1,3 +1,497 @@
+/* app/static/css/style.css */
+
+html {
+    overflow-x: hidden;
+    max-width: 100vw;
+}
+
+/* Camera list styles */
+.camera-list {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.camera-list th,
+.camera-list td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+.camera-list th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+.camera-list img.thumbnail {
+    max-width: 100px;
+    height: auto;
+}
+
+.camera-list .thumbnail-video {
+    position: relative;
+    width: 100px;
+    height: 56px; /* 16:9 aspect ratio */
+    overflow: hidden;
+}
+
+.camera-list .thumbnail-video img.thumbnail,
+.camera-list .thumbnail-video video.hover-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.camera-list .thumbnail-video video.hover-video {
+    display: none;
+}
+
+.camera-item:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.camera-item:hover {
+    background-color: #f5f5f5;
+}
+
+/* Responsive styles for smaller screens */
+@media screen and (max-width: 600px) {
+    .camera-list,
+    .camera-list thead,
+    .camera-list tbody,
+    .camera-list th,
+    .camera-list td,
+    .camera-list tr {
+        display: block;
+    }
+
+    .camera-list thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+
+    .camera-list tr {
+        border: 1px solid #ccc;
+        margin-bottom: 10px;
+    }
+
+    .camera-list td {
+        border: none;
+        position: relative;
+        padding-left: 50%;
+    }
+
+    .camera-list td:before {
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        content: attr(data-label);
+        font-weight: bold;
+    }
+
+    .camera-list .thumbnail-video {
+        width: 100%;
+        height: auto;
+        padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    }
+}
+
+body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    #background-color: #f7f7f7; /* Lighter background for better contrast */
+    background-color: rgb(16, 16, 16); /* Lighter background for better contrast */
+    color: rgb(191, 191, 191); /* Darker text for better readability */
+    overflow-x: hidden;
+    max-width: 100vw;
+}
+
+
+.link color: {  rgb( 192, 192, 192) }
+.link:hover color: {  rgb( 193, 193, 193) }
+
+h1, h2 {
+    color: rgb(191, 191, 191);
+    text-align: center; /* Center the headings */
+}
+
+
+#template-form {
+    margin: 20px;
+    padding: 20px;
+    background-color: white;
+    border-radius: 8px;
+    color: rgb(91, 91, 91);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#template-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px))); /* Use CSS variable */
+    gap: 10px;
+    padding: 20px;
+    justify-content: center;
+    max-width: 100%;
+}
+
+@media (max-width: 767px) { /* Adjust this value based on your testing */
+    select {
+        font-size: 16px; /* Larger font size for easier interaction */
+        padding: 10px; /* Larger padding for a taller dropdown */
+        width: 100%; /* Full width on mobile */
+        margin-bottom: 10px;
+    }
+    #template-list {
+        grid-template-columns: 1fr; /* Single column layout on mobile */
+        padding: 10px; /* Reduce padding on mobile */
+    }
+
+    /* Improve form layout on mobile */
+    #template-form, #edit-template {
+        padding: 15px;
+    }
+
+    #template-form input[type="text"],
+    #template-form input[type="url"],
+    #template-form input[type="number"],
+    #template-form textarea,
+    #edit-template input[type="text"],
+    #edit-template input[type="url"],
+    #edit-template input[type="number"],
+    #edit-template textarea {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    /* Adjust button layout on mobile */
+    #template-form input[type="submit"],
+    #edit-template input[type="submit"],
+    #delete-btn {
+        width: 100%;
+        margin-top: 10px;
+    }
+}
+
+select:hover {
+    cursor: pointer;
+    background-color: #f7f7f7;
+}
+
+.templateDiv {
+    background-color: black;
+    overflow: hidden;
+    position: relative;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    width: 100%;
+    /* No fixed height here; it will be set by padding-top in the ::before pseudo-element */
+}
+
+.templateDiv::before {
+    content: '';
+    display: block;
+    width: 100%;
+    padding-top: 56.25%; /* Aspect ratio of 16:9 */
+}
+
+.templateDiv video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* This will cover the area of the .templateDiv, potentially clipping the video */
+}
+
+/* If you need to maintain the aspect ratio without clipping, use object-fit: contain; */
+.templateDiv video {
+    object-fit: cover;
+    /*object-position: center; */ /* Aligns the video to the top, so the empty space, if any, will be at the bottom */
+}
+
+.play-icon {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent white background */
+    border-radius: 50%;
+    padding: 5px;
+    display: none; /* Hide by default */
+    z-index: 5;
+}
+
+video:hover + .play-icon {
+    display: block; /* Show play icon on hover */
+}
+
+:root {
+    --camera-name-font-size: 14px;
+    --timestamp-font-size: 12px;
+}
+
+.camera-name, .timestamp {
+    position: absolute;
+    color: white;
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black background */
+    z-index: 5;
+}
+
+.camera-name {
+    top: 0;
+    left: 0;
+    font-size: var(--camera-name-font-size);
+}
+
+.timestamp {
+    bottom: 0;
+    right: 0;
+    font-size: var(--timestamp-font-size);
+}
+
+.recent-screenshot {
+    border: 5px solid rgba(255, 255, 255, 0.9); /* Faint white border */
+}
+
+/* Improve video controls on mobile */
+@media (max-width: 767px) {
+    .templateDiv video::-webkit-media-controls-panel {
+        display: flex !important;
+        opacity: 1 !important;
+    }
+}
+
+header {
+    background-color: #000; /* Dark background for better contrast */
+    color: #fff; /* White text */
+    padding: 2px 2px; /* Padding for spacing */
+    display: flex; /* Flexbox for layout */
+    align-items: center; /* Vertically align items */
+    justify-content: space-between; /* Space out the title and navigation */
+}
+
+header h1 {
+    font-size: 24px; /* Larger font size for title */
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5); /* Text shadow for readability */
+}
+
+nav {
+    display: flex; /* Flexbox for layout */
+    gap: 10px; /* Space between navigation items */
+}
+
+nav a {
+    color: #fff; /* White text */
+    text-decoration: none; /* No underline */
+    padding: 5px 10px; /* Padding */
+    border-radius: 5px; /* Rounded corners */
+}
+
+nav a:hover, nav a.active {
+    background-color: #555; /* Highlight for hover and active link */
+}
+
+.settings-icon {
+    font-size: 24px; /* Adjust the size of the icon */
+    text-decoration: none; /* Remove underline */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.performance-indicator {
+    font-size: 12px;
+    cursor: help;
+    padding: 2px 5px;
+    background-color: #f0f0f0;
+    border-radius: 3px;
+    margin-left: 10px;
+}
+
+.performance-indicator:hover::after {
+    content: attr(title);
+    position: absolute;
+    background-color: #333;
+    color: #fff;
+    padding: 5px;
+    border-radius: 3px;
+    font-size: 12px;
+    white-space: pre-line;
+    z-index: 1000;
+    top: 100%;
+    left: 0;
+}
+
+@media screen and (max-width: 768px) { /* Responsive design for mobile */
+    header h1 {
+        font-size: 20px; /* Smaller font size on mobile */
+    }
+
+    nav {
+        flex-direction: column; /* Stack navigation items on mobile */
+        align-items: flex-start;
+    }
+
+    nav a {
+        margin-bottom: 5px; /* Add margin for stacked items */
+    }
+
+    .settings-icon {
+        font-size: 20px; /* Slightly smaller icon on mobile */
+    }
+
+    .performance-indicator {
+        font-size: 10px;
+        padding: 1px 3px;
+    }
+
+    /* Enhance touch target sizes for mobile */
+    button, a, input[type="submit"], select, .templateDiv {
+        min-width: 48px; /* Increased minimum touch target size */
+        min-height: 48px; /* Increased minimum touch target size */
+        padding: 12px; /* More padding for larger touch area */
+    }
+
+    /* Adjust form elements for better mobile interaction */
+    input[type="text"], input[type="url"], input[type="number"], textarea {
+        font-size: 16px; /* Prevent zoom on focus in iOS */
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+    /* Improve spacing for mobile */
+    .video-container {
+        padding: 5px; /* Slightly reduce padding for smaller screens */
+    }
+
+    /* Adjust slider for mobile */
+    #speed-slider {
+        width: 100%; /* Use the full width for the slider */
+        height: 30px; /* Increase the height for a larger touch area */
+        margin: 10px 0; /* Add some vertical margin */
+    }
+}
+
+@keyframes highlight {
+    0% { background-color: yellow; }
+    100% { background-color: transparent; }
+}
+
+.highlight-speed {
+    animation: highlight 0.5s;
+}
+
+/* Increase the size of buttons and links for all screen sizes */
+button, a {
+    padding: 5px; /* More padding for larger touch area */
+}
+
+/* Adjust padding and margin for better spacing */
+.video-container {
+    padding: 5px; /* Add more padding around the video */
+}
+
+#speed-control-container {
+  position: relative;
+  width: 100px; /* Dial size */
+  height: 100px; /* Dial size */
+  margin: 0 auto; /* Center the dial */
+}
+
+/* Cool Clock Styles */
+.cool-clock {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    position: relative;
+    margin-left: 20px;
+}
+
+.clock-face {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+}
+
+.clock-hands {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+}
+
+.hand {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: 50% 0;
+    transform: translateX(-50%);
+    background-color: #333;
+    pointer-events: none;
+}
+
+.hour-hand {
+    width: 2px;
+    height: 30%;
+}
+
+.minute-hand {
+    width: 2px;
+    height: 40%;
+}
+
+.second-hand {
+    width: 1px;
+    height: 45%;
+    background-color: #ff0000;
+}
+
+/* Template Form Styles */
+#template-form, #edit-template {
+    background-color: #222;
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 600px;
+    margin: 20px auto;
+}
+
+#template-form h3, #edit-template h3 {
+    color: #fff;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#template-form form, #edit-template form {
+    margin-bottom: 10px;
+}
+
+#template-form label, #edit-template label {
+    color: #fff;
+}
+
+#template-form input[type="text"],
+#template-form input[type="url"],
+#template-form input[type="number"],
+#template-form textarea,
+#edit-template input[type="text"],
+#edit-template input[type="url"],
+#edit-template input[type="number"],
+#edit-template textarea {
+    padding: 5px;
+    }
+
 /* TSV Controls for Captions Page */
 .tsv-controls {
     background-color: #f8f9fa;
@@ -5,6 +499,68 @@
     border-radius: 5px;
     margin-bottom: 20px;
 }
+
+.templateDiv {
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%; /* 16:9 aspect ratio */
+    overflow: hidden;
+    background-color: #000;
+    border-radius: 5px;
+}
+
+.templateDiv img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.camera-name, .timestamp, .next-capture {
+    position: absolute;
+    color: white;
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.5);
+    font-size: 12px;
+}
+
+.camera-name {
+    top: 0;
+    left: 0;
+}
+
+.timestamp {
+    bottom: 0;
+    left: 0;
+}
+
+.next-capture {
+    bottom: 0;
+    right: 0;
+}
+
+.notes-textarea {
+    width: 100%;
+    height: 60px;
+    margin-top: 5px;
+    resize: vertical;
+}
+
+.update-button {
+    width: 100%;
+    padding: 5px;
+    margin-top: 5px;
+}
+
+/* Footer Styles */
+footer {
+    max-width: 100vw;
+    background-color: #000;
+    color: #fff;
+    padding: 10px;
+    }
 
 .tsv-buttons {
     display: flex;
@@ -17,6 +573,9 @@
     display: flex;
     gap: 10px;
     align-items: center;
+    width: 100%;
+    max-width: 1200px;
+    margin-bottom: 2px;
 }
 
 .tsv-help {
@@ -29,6 +588,11 @@
     margin: 15px 0;
 }
 
+.footer-nav a {
+    color: #fff;
+    text-decoration: none;
+    padding: 2px 5px;
+    border-radius: 2px;
 .alert-success {
     background-color: #d4edda;
     border-color: #c3e6cb;
@@ -43,4 +607,39 @@
     color: #721c24;
     padding: 10px;
     border-radius: 5px;
+}
+
+/* Login Page Styles */
+.login-container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    display: inline-block;
+}
+
+input[type=text],
+input[type=password] {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+input[type=submit] {
+    width: 100%;
+    background-color: #4CAF50;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+input[type=submit]:hover {
+    background-color: #45a049;
 }

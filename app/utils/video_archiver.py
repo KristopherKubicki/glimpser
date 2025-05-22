@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 import time
 
-from werkzeug.utils import secure_filename
+from .validators import validate_template_name
 
 from app.config import (
     MAX_COMPRESSED_VIDEO_AGE,
@@ -17,45 +17,11 @@ from app.config import (
     SCREENSHOT_DIRECTORY,
     VERSION,
     VIDEO_DIRECTORY,
+    FFMPEG_PATH,
+    FFPROBE_PATH,
 )
 
 from .template_manager import get_templates
-
-
-# TODO: move this to utils so it is not duplicated in routes.py
-def validate_template_name(template_name: str):
-    if template_name is None or not isinstance(template_name, str):
-        return None
-
-    # Strict whitelist of allowed characters
-    allowed_chars = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.')
-
-    # Check if all characters are in the allowed set
-    if not all(char in allowed_chars for char in template_name):
-        return None
-
-    # Check length
-    if len(template_name) == 0 or len(template_name) > 32:
-        return None
-
-    # Ensure the name doesn't start or end with a dash or underscore
-    if template_name[0] in '-_.' or template_name[-1] in '-_.':
-        return None
-    if '..' in template_name:
-        return None
-    if '--' in template_name:
-        return None
-    if '__' in template_name:
-        return None
-
-    # Use secure_filename as an additional safety measure
-    sanitized_name = secure_filename(template_name)
-
-    # Ensure secure_filename didn't change the name (which would indicate it found something suspicious)
-    if sanitized_name != template_name:
-        return None
-
-    return sanitized_name
 
 
 
@@ -133,7 +99,7 @@ def compile_videos(input_file, output_file):
         return False
 
     create_command = [
-        "ffmpeg", # TODO make this a config value
+        FFMPEG_PATH,
         "-threads",
         "5",
         "-err_detect",
@@ -182,7 +148,7 @@ def get_video_duration(video_path):
 
     """Get the duration of a video in seconds."""
     command = [
-        "ffprobe", # TODO: make this a config 
+        FFPROBE_PATH,
         "-v",
         "error",
         "-show_entries",
@@ -216,7 +182,7 @@ def concatenate_videos(in_process_video, temp_video, video_path) -> bool:
         if in_process_duration > 0 and temp_video_duration > 0:
             concat_video = os.path.join(video_path, "in_process.concat.mp4")
             concat_command = [
-                "ffmpeg",
+                FFMPEG_PATH,
                 "-threads",
                 "5", # todo, make this a config
                 #"-safe",  Option not found?  But it is found and used elsewhere?  Not surewhy this is..
@@ -384,7 +350,7 @@ def compile_to_video(camera_path, video_path) -> bool:
         temp_video = os.path.join(video_path, "in_process.tmp.mp4")
 
         create_command = [
-            "ffmpeg",
+            FFMPEG_PATH,
             "-threads",
             "5",
             "-f",
