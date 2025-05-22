@@ -25,6 +25,18 @@ pytest
 ```
 Running the full test suite helps ensure that your changes do not introduce regressions.
 
+### Test Fixtures
+
+Reusable pytest fixtures are defined in `tests/conftest.py`. A helpful one is
+`temp_media_dirs`, which creates temporary screenshot and video directories and
+patches the configuration paths. Use it in your tests by accepting the fixture
+as an argument:
+
+```python
+def test_something(temp_media_dirs):
+    pass
+```
+
 ## Contribution Workflow
 
 We follow a standard GitHub Flow:
