@@ -4,7 +4,6 @@
 import logging
 import os
 import argparse
-import signal
 import random
 import time
 import signal, sys, threading, atexit
