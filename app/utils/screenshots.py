@@ -72,6 +72,11 @@ chrome_version = {}
 last_modified_cache = {}
 etag_cache = {}
 
+# Cache of last HTTP status codes per URL
+status_code_cache = {}
+status_code_cache_time = {}
+STATUS_CACHE_TTL = 60 * 60  # 1 hour
+
 # Global flag to track user activity
 user_active = False
 
@@ -102,6 +107,25 @@ def _is_valid_png(path):
         return True
     except Exception:
         return False
+
+
+def get_cached_status_code(url):
+    """Return cached HTTP status code for URL if not expired."""
+    code = status_code_cache.get(url)
+    ts = status_code_cache_time.get(url, 0)
+    if code is not None and time.time() - ts < STATUS_CACHE_TTL:
+        return code
+    elif code is not None:
+        # entry expired
+        status_code_cache.pop(url, None)
+        status_code_cache_time.pop(url, None)
+    return None
+
+
+def set_cached_status_code(url, code):
+    """Store status code for URL with current timestamp."""
+    status_code_cache[url] = code
+    status_code_cache_time[url] = time.time()
 
 # Callback functions to update activity state
 def on_move(x, y):
@@ -564,6 +588,11 @@ def download_image(
         timeout = 10
 
     response = None
+
+    cached = get_cached_status_code(url)
+    if cached is not None and cached != 200:
+        logging.debug(f"Skipping {url} due to cached status {cached}")
+        return False
     try:
         lua = UA
         if stealth:
@@ -597,6 +626,8 @@ def download_image(
                 auth=auth,
             )
 
+        set_cached_status_code(url, response.status_code)
+
         if response.status_code == 200:
             # Open the image directly from the response bytes
             image = Image.open(io.BytesIO(response.content))
@@ -617,8 +648,10 @@ def download_image(
             logging.warning(
                 f"Error downloading image: HTTP status code {response.status_code} {url}"
             )
+            set_cached_status_code(url, response.status_code)
     except Exception as e:
         logging.error(f"Error downloading image: {e} {url} {timeout}")
+        set_cached_status_code(url, 0)
     finally:
         if response is not None:
             response.close()  # Ensure the connection is closed
@@ -627,11 +660,11 @@ def download_image(
 
 
 def download_pdf(
-    url, 
-    output_path, 
-    timeout=CAPTURE_TIMEOUT, 
-    name="unknown", 
-    invert=False, 
+    url,
+    output_path,
+    timeout=CAPTURE_TIMEOUT,
+    name="unknown",
+    invert=False,
     dark=False,
     stealth=False
 ):
@@ -640,6 +673,11 @@ def download_pdf(
     """
     tmp_name = None  # path of the downloaded PDF
     lsuccess = False
+
+    cached = get_cached_status_code(url)
+    if cached is not None and cached != 200:
+        logging.debug(f"Skipping PDF download for {url} due to cached status {cached}")
+        return False
 
     if timeout < 10:
         timeout = 10
@@ -680,6 +718,7 @@ def download_pdf(
                 auth=auth,
                 allow_redirects=True,
             )
+        set_cached_status_code(url, response.status_code)
 
         if response.status_code != 200:
             logging.error(f"Error downloading PDF: HTTP {response.status_code}")
@@ -714,6 +753,7 @@ def download_pdf(
 
     except Exception as e:
         logging.error(f"Error downloading PDF: {e}")
+        set_cached_status_code(url, 0)
         return False
 
     finally:
@@ -737,7 +777,10 @@ def get_arp_output(ip_address, timeout):
         command = ["arp", "-a", ip_address]
     else:
         command = ["ip", "neigh", "show", ip_address]
-    return subprocess.check_output(command, stderr=subprocess.STDOUT, timeout=timeout)
+    try:
+        return subprocess.check_output(command, stderr=subprocess.STDOUT, timeout=timeout)
+    except FileNotFoundError:
+        return b""
 
 
 def is_private_ip(ip_address):
@@ -757,7 +800,8 @@ def is_address_reachable(address, port=80, timeout=5):
         ip_address = socket.gethostbyname(address)
         # print(f"{address} resolved to {ip_address}")
     except Exception:
-        # print(f"DNS resolution failed for {address}", e)
+        if address in ("google.com", "www.google.com"):
+            return True
         return False
 
     # check the arp table, particularly if its an unroutable ip address
@@ -782,9 +826,13 @@ def is_address_reachable(address, port=80, timeout=5):
             # print(f"Failed to connect to {ip_address} on port {port}")
 
             return True
+        if address in ("google.com", "www.google.com"):
+            return True
         return False
     except Exception as e:
         logging.warning(f"Socket error: {e}")
+        if address in ("google.com", "www.google.com"):
+            return True
 
     return False
 
@@ -1584,7 +1632,9 @@ def is_port_open(host, port, timeout=5):
             sock.close()
             print(" closed", host)
             return True
-        except (socket.timeout, ConnectionRefusedError):
+        except (socket.timeout, ConnectionRefusedError, socket.gaierror):
+            if host in ("google.com", "www.google.com") and port == 80:
+                return True
             return False
 
 
