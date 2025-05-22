@@ -14,7 +14,6 @@ import subprocess
 import time
 from urllib.parse import urlparse
 import glob
-import shlex
 import base64
 import nodriver
 import psutil
@@ -1455,8 +1454,8 @@ def capture_screenshot_and_har_light(
         "User-Agent",
         lua,
         "--custom-header-propagation",
-        shlex.quote(url),
-        shlex.quote(tmp_path),
+        url,
+        tmp_path,
     ]
 
     try:
@@ -1491,9 +1490,9 @@ def capture_screenshot_and_har_light(
             image.save(tmp_path, "PNG")
 
         # Rename from .tmp.png to final .png
-        if os.path.exists(tmp_path) and _is_valid_png(output_path):
+        if os.path.exists(tmp_path) and _is_valid_png(tmp_path):
             add_timestamp(tmp_path, name, invert=invert)
-            os.rename(tmp_path, output_path)
+            os.replace(tmp_path, output_path)
             lsuccess = True
 
         # If you capture HAR data, do that here as well...
