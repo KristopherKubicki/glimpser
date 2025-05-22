@@ -146,6 +146,26 @@ class TestRoutes(unittest.TestCase):
             self.assertIn("description", endpoint)
             self.assertIn("authentication_required", endpoint)
 
+    @patch("app.routes.camera_discovery.discover_cameras")
+    @patch("app.routes.render_template")
+    def test_discover_route(self, mock_render_template, mock_discover):
+        mock_discover.return_value = [{"ip": "1.2.3.4", "protocol": "rtsp", "port": 554, "info": {}}]
+        with self.client.session_transaction() as sess:
+            sess['logged_in'] = True
+        response = self.client.get("/discover")
+        self.assertEqual(response.status_code, 200)
+        mock_render_template.assert_called_with("discover.html", cameras=mock_discover.return_value)
+
+    @patch("app.routes.template_manager.save_template")
+    def test_discover_add(self, mock_save_template):
+        mock_save_template.return_value = True
+        payload = {"name": "cam", "ip": "1.2.3.4", "protocol": "rtsp", "port": 554}
+        with self.client.session_transaction() as sess:
+            sess['logged_in'] = True
+        response = self.client.post("/discover/add", json=payload)
+        self.assertEqual(response.status_code, 200)
+        mock_save_template.assert_called()
+
 
 
 if __name__ == "__main__":

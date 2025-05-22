@@ -53,7 +53,8 @@ from app.utils import (
     scheduling,
     template_manager,
     video_archiver,
-    screenshots
+    screenshots,
+    camera_discovery
 )
 from app.utils.db import SessionLocal
 #from app.models.log import Log
@@ -1628,6 +1629,29 @@ def init_routes(app):
                 return jsonify({"message": "Template updated successfully!"})
 
             return redirect("/templates/" + template_name)
+
+    @app.route('/discover', methods=['GET'])
+    @login_required
+    def discover_cameras_route():
+        cameras = camera_discovery.discover_cameras()
+        return render_template('discover.html', cameras=cameras)
+
+    @app.route('/discover/add', methods=['POST'])
+    @login_required
+    def add_discovered_camera():
+        data = request.form if request.form else request.get_json(force=True)
+        name = data.get('name') or data.get('ip')
+        protocol = data.get('protocol', 'rtsp')
+        port = int(data.get('port', 554))
+        url = data.get('url') or f"{protocol}://{data.get('ip')}:{port}"
+        template = {
+            'name': name,
+            'url': url,
+            'frequency': data.get('frequency', 30),
+            'timeout': data.get('timeout', 10)
+        }
+        template_manager.save_template(name, template)
+        return jsonify({'status': 'success'})
 
     @app.route("/status")
     @login_required
