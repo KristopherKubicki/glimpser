@@ -50,11 +50,13 @@ from app.config import (
     restore_config
 )
 from app.utils import (
-    scheduling,
     template_manager,
     video_archiver,
     screenshots
 )
+import app.utils.scheduler as scheduler
+import app.utils.metrics as metrics
+import app.utils.image_update as image_update
 from app.utils.db import SessionLocal
 #from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock
@@ -482,7 +484,7 @@ def init_routes(app):
         scheduler_status = 'failed'
         free_gb = 0
 
-        metrics = scheduling.get_system_metrics()
+        metrics = metrics.get_system_metrics()
 
         # Define thresholds for nominal performance
         cpu_threshold = 80  # 80% CPU usage
@@ -535,7 +537,7 @@ def init_routes(app):
 
         try:
             # Check if scheduler is running
-            scheduler_status = "running" if scheduling.scheduler.running else "stopped"
+            scheduler_status = "running" if scheduler.scheduler.running else "stopped"
             if scheduler_status != 'running':
                 is_nominal = False
                 error_messages.append("Scheduler is not running")
@@ -1306,7 +1308,7 @@ def init_routes(app):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             image_file.save(temp_file.name)
             # Call the update_camera function with the temporary file path
-            scheduling.update_camera(
+            image_update.update_camera(
                 template_name, templates.get(template_name), image_file=temp_file.name
             )
             # potentially trigger motion too...
@@ -1335,7 +1337,7 @@ def init_routes(app):
             abort(404)
 
         # TODO: consider adding motion control
-        scheduling.update_camera(template_name, templates.get(template_name))
+        image_update.update_camera(template_name, templates.get(template_name))
         return jsonify(
             {"status": "success", "message": f"Screenshot for {template_name} taken"}
         )
@@ -1543,7 +1545,7 @@ def init_routes(app):
     # TODO: this has been refactored to health instead.. please update
     @app.route('/system_metrics')
     def system_metrics():
-        return jsonify(scheduling.get_system_metrics())
+        return jsonify(metrics.get_system_metrics())
 
     def allowed_file(filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() == 'json'
@@ -1613,8 +1615,8 @@ def init_routes(app):
             template_manager.get_template(template_name)
             try:
                 seconds = int(updated_data.get("frequency", 30 * 60))
-                scheduling.scheduler.add_job(
-                    func=scheduling.update_camera,
+                scheduler.scheduler.add_job(
+                    func=image_update.update_camera,
                     trigger="interval",
                     seconds=seconds,
                     args=[template_name, updated_data],
@@ -1632,7 +1634,7 @@ def init_routes(app):
     @app.route("/status")
     @login_required
     def status():
-        metrics = scheduling.get_system_metrics()
+        metrics = metrics.get_system_metrics()
         return render_template("status.html", metrics=metrics)
 
     @app.route("/logs")
@@ -1675,15 +1677,15 @@ def init_routes(app):
     @login_required
     def toggle_scheduler():
         try:
-            if scheduling.scheduler.running:
-                scheduling.scheduler.shutdown(wait=True)
+            if scheduler.scheduler.running:
+                scheduler.scheduler.shutdown(wait=True)
                 return jsonify({"status": "stopped"})
             else:
-                scheduling.scheduler.start()
+                scheduler.scheduler.start()
                 with app.app_context():
-                    scheduling.scheduler.remove_all_jobs()
-                    scheduling.schedule_crawlers()
-                    scheduling.schedule_summarization()
+                    scheduler.scheduler.remove_all_jobs()
+                    scheduler.schedule_crawlers()
+                    scheduler.schedule_summarization()
                 return jsonify({"status": "running"})
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
@@ -1691,4 +1693,4 @@ def init_routes(app):
     @app.route("/scheduler_status")
     @login_required
     def get_scheduler_status():
-        return jsonify({"status": "running" if scheduling.scheduler.running else "stopped"})
+        return jsonify({"status": "running" if scheduler.scheduler.running else "stopped"})
