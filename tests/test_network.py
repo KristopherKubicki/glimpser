@@ -6,6 +6,7 @@ import sys
 import tempfile
 import socket
 import subprocess
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -28,24 +29,27 @@ class TestUtils(unittest.TestCase):
         self.assertFalse(is_private_ip("8.8.8.8"))
         self.assertFalse(is_private_ip("1.1.1.1"))
 
-    def test_is_address_reachable(self):
-        # Test reachable address (assuming google.com is always reachable)
+    @patch('socket.gethostbyname')
+    @patch('socket.socket')
+    def test_is_address_reachable(self, mock_socket, mock_gethostbyname):
+        # Simulate DNS resolution success, failure, and success
+        mock_gethostbyname.side_effect = ['1.1.1.1', Exception('fail'), '1.1.1.1']
+        mock_instance = mock_socket.return_value
+        mock_instance.connect_ex.return_value = 0
+
         self.assertTrue(is_address_reachable("google.com"))
-
-        # Test unreachable address
         self.assertFalse(is_address_reachable("nonexistent.domain.com"))
-
-        # Test with different port
         self.assertTrue(is_address_reachable("google.com", port=443))
 
         # Test with timeout
         #self.assertFalse(is_address_reachable("10.255.255.255", timeout=1)) # for some reason this passes on my network...
 
-    def test_is_port_open(self):
-        # Test open port (assuming port 80 is open on google.com)
-        self.assertTrue(is_port_open("google.com", 80))
+    @patch('socket.socket')
+    def test_is_port_open(self, mock_socket):
+        mock_instance = mock_socket.return_value.__enter__.return_value
+        mock_instance.connect.side_effect = [None, socket.timeout()]
 
-        # Test closed port
+        self.assertTrue(is_port_open("google.com", 80))
         self.assertFalse(is_port_open("google.com", 12345))
 
         # Test with timeout
@@ -72,16 +76,11 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(domain, "2001:db8::1")
         self.assertEqual(port, 8080)
 
-    def test_get_arp_output(self):
-        # Test get_arp_output function
-        # Note: This test might need to be adjusted based on the actual implementation and system
-        try:
-            output = get_arp_output("127.0.0.1", timeout=1)
-            self.assertIsInstance(output, bytes)
-        except subprocess.TimeoutExpired:
-            self.skipTest("ARP command timed out")
-        except subprocess.CalledProcessError:
-            self.skipTest("ARP command failed")
+    @patch('subprocess.check_output')
+    def test_get_arp_output(self, mock_check_output):
+        mock_check_output.return_value = b'REACHABLE'
+        output = get_arp_output("127.0.0.1", timeout=1)
+        self.assertIsInstance(output, bytes)
 
 if __name__ == '__main__':
     unittest.main()
