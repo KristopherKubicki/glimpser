@@ -792,7 +792,9 @@ def init_routes(app):
         most_recent_file = None
         last_file = None
         for template in sorted_templates:
-            name = secure_filename(template.get("name"))
+            name = validate_template_name(template.get("name"))
+            if name is None:
+                continue
             path = os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
                 "..",
@@ -981,7 +983,9 @@ def init_routes(app):
         )
 
         for camera_id, template in sorted_templates:
-            camera_name = template.get("name")
+            camera_name = validate_template_name(template.get("name"))
+            if camera_name is None:
+                continue
             # Assuming the MP4 file is the segment
             lkey = generate_timed_hash()
             video_path = f"{request.url_root}last_video/{camera_name}?timed_key={lkey}"
