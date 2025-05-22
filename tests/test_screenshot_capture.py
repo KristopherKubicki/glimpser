@@ -6,10 +6,12 @@ import tempfile
 import os
 import sys
 import logging
+import io
+from PIL import Image
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.utils.screenshots import capture_screenshot_and_har
+from app.utils.screenshots import capture_screenshot_and_har, download_image
 
 class TestScreenshotCapture(unittest.TestCase):
     def setUp(self):
@@ -110,6 +112,31 @@ class TestScreenshotCapture(unittest.TestCase):
         #mock_driver.execute_cdp_cmd.assert_called_with(
         #    "Emulation.setAutoDarkModeOverride", {"enabled": True}
         #)
+
+    @patch("app.utils.screenshots.http_session")
+    def test_download_image_uses_proxy(self, mock_session_factory):
+        mock_session = MagicMock()
+        mock_response = MagicMock()
+        # create a tiny valid PNG
+        img_bytes = io.BytesIO()
+        Image.new("RGB", (1, 1)).save(img_bytes, format="PNG")
+        mock_response.status_code = 200
+        mock_response.content = img_bytes.getvalue()
+        mock_session.get.return_value = mock_response
+        mock_session_factory.return_value = mock_session
+
+        with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
+            download_image(
+                "http://example.com/test.png",
+                tmp.name,
+                proxy="http://proxy:8080",
+            )
+
+        kwargs = mock_session.get.call_args.kwargs
+        self.assertEqual(
+            kwargs.get("proxies"),
+            {"http": "http://proxy:8080", "https": "http://proxy:8080"},
+        )
 
 if __name__ == "__main__":
     unittest.main()

@@ -72,6 +72,11 @@ chrome_version = {}
 last_modified_cache = {}
 etag_cache = {}
 
+# Cache of last HTTP status codes per URL
+status_code_cache = {}
+status_code_cache_time = {}
+STATUS_CACHE_TTL = 60 * 60  # 1 hour
+
 # Global flag to track user activity
 user_active = False
 
@@ -102,6 +107,25 @@ def _is_valid_png(path):
         return True
     except Exception:
         return False
+
+
+def get_cached_status_code(url):
+    """Return cached HTTP status code for URL if not expired."""
+    code = status_code_cache.get(url)
+    ts = status_code_cache_time.get(url, 0)
+    if code is not None and time.time() - ts < STATUS_CACHE_TTL:
+        return code
+    elif code is not None:
+        # entry expired
+        status_code_cache.pop(url, None)
+        status_code_cache_time.pop(url, None)
+    return None
+
+
+def set_cached_status_code(url, code):
+    """Store status code for URL with current timestamp."""
+    status_code_cache[url] = code
+    status_code_cache_time[url] = time.time()
 
 # Callback functions to update activity state
 def on_move(x, y):
@@ -232,7 +256,6 @@ def check_user_activity(timeout=10):
     #oiq = make_idle_irq()
     #liq = oiq()
     #if liq < 120:
-    #    print("<<<< irq not idle", liq)
     #    user_active = True  # allow to check on listeners for the 0 second case
     #    return user_active
     try:
@@ -244,7 +267,6 @@ def check_user_activity(timeout=10):
         logging.debug(f"idle_seconds_x11 failed: {e}")
 
     #idle_seconds = idle_seconds_loginctl()
-    #print(" user idle for", idle_seconds)
     #if 1 < idle_seconds < 120:
     #    user_active = True  # allow to check on listeners for the 0 second case
     #    return user_active
@@ -555,15 +577,38 @@ def add_timestamp(image_path, name="unknown", invert=False):
 
 
 def download_image(
-    url, output_path, timeout=CAPTURE_TIMEOUT, name="unknown", invert=False, dark=False, stealth=False
+    url,
+    output_path,
+    timeout=CAPTURE_TIMEOUT,
+    name="unknown",
+    invert=False,
+    dark=False,
+    stealth=False,
+    proxy=None,
 ):
-    """Attempt to download an image directly from the URL and convert it to PNG format."""
+    """Attempt to download an image directly from the URL and convert it to PNG format.
+
+    Args:
+        url (str): Image URL.
+        output_path (str): Where to save the PNG.
+        timeout (int): Timeout in seconds.
+        name (str): Friendly name for logging.
+        invert (bool): If True, invert timestamp colors.
+        dark (bool): Apply dark mode.
+        stealth (bool): Use stealth user agent.
+        proxy (str, optional): Proxy to use for the HTTP request.
+    """
 
     # ideally the timeout should be pretty high, its an image, and it could be real big
     if timeout < 10:
         timeout = 10
 
     response = None
+
+    cached = get_cached_status_code(url)
+    if cached is not None and cached != 200:
+        logging.debug(f"Skipping {url} due to cached status {cached}")
+        return False
     try:
         lua = UA
         if stealth:
@@ -571,31 +616,42 @@ def download_image(
             cv = get_chrome_version(chrome_path)
             lua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%s.0.0.0 Safari/537.36" % cv
         headers = {"user-agent": lua}
-
-        # TODO: apply proxy here
+        proxies = {"http": proxy, "https": proxy} if proxy else None
 
         auth = None
         for leach in re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url):
             auth = requests.auth.HTTPBasicAuth(leach[0], leach[1])
 
         # TODO: cache the response status_code
-        #response = requests.get(
-        response = http_session().get(
-            url, stream=True, timeout=(timeout, timeout*3), verify=False, headers=headers, auth=auth
+        request_kwargs = dict(
+            stream=True,
+            timeout=(timeout, timeout * 3),
+            verify=False,
+            headers=headers,
+            auth=auth,
         )
+        if proxies:
+            request_kwargs["proxies"] = proxies
+
+        response = http_session().get(url, **request_kwargs)
         if (
             response.status_code == 401 and auth is not None
         ):  # Unauthorized, try Digest Authentication
             for leach in re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url):
                 auth = requests.auth.HTTPDigestAuth(leach[0], leach[1])
-            response = http_session().get(
-                url,
+            request_kwargs = dict(
                 stream=True,
-                timeout=(timeout,timeout*3),
+                timeout=(timeout, timeout * 3),
                 verify=False,
                 headers=headers,
                 auth=auth,
             )
+            if proxies:
+                request_kwargs["proxies"] = proxies
+
+            response = http_session().get(url, **request_kwargs)
+
+        set_cached_status_code(url, response.status_code)
 
         if response.status_code == 200:
             # Open the image directly from the response bytes
@@ -617,8 +673,10 @@ def download_image(
             logging.warning(
                 f"Error downloading image: HTTP status code {response.status_code} {url}"
             )
+            set_cached_status_code(url, response.status_code)
     except Exception as e:
         logging.error(f"Error downloading image: {e} {url} {timeout}")
+        set_cached_status_code(url, 0)
     finally:
         if response is not None:
             response.close()  # Ensure the connection is closed
@@ -627,11 +685,11 @@ def download_image(
 
 
 def download_pdf(
-    url, 
-    output_path, 
-    timeout=CAPTURE_TIMEOUT, 
-    name="unknown", 
-    invert=False, 
+    url,
+    output_path,
+    timeout=CAPTURE_TIMEOUT,
+    name="unknown",
+    invert=False,
     dark=False,
     stealth=False
 ):
@@ -640,6 +698,11 @@ def download_pdf(
     """
     tmp_name = None  # path of the downloaded PDF
     lsuccess = False
+
+    cached = get_cached_status_code(url)
+    if cached is not None and cached != 200:
+        logging.debug(f"Skipping PDF download for {url} due to cached status {cached}")
+        return False
 
     if timeout < 10:
         timeout = 10
@@ -680,6 +743,7 @@ def download_pdf(
                 auth=auth,
                 allow_redirects=True,
             )
+        set_cached_status_code(url, response.status_code)
 
         if response.status_code != 200:
             logging.error(f"Error downloading PDF: HTTP {response.status_code}")
@@ -714,6 +778,7 @@ def download_pdf(
 
     except Exception as e:
         logging.error(f"Error downloading PDF: {e}")
+        set_cached_status_code(url, 0)
         return False
 
     finally:
@@ -737,7 +802,10 @@ def get_arp_output(ip_address, timeout):
         command = ["arp", "-a", ip_address]
     else:
         command = ["ip", "neigh", "show", ip_address]
-    return subprocess.check_output(command, stderr=subprocess.STDOUT, timeout=timeout)
+    try:
+        return subprocess.check_output(command, stderr=subprocess.STDOUT, timeout=timeout)
+    except FileNotFoundError:
+        return b""
 
 
 def is_private_ip(ip_address):
@@ -757,7 +825,8 @@ def is_address_reachable(address, port=80, timeout=5):
         ip_address = socket.gethostbyname(address)
         # print(f"{address} resolved to {ip_address}")
     except Exception:
-        # print(f"DNS resolution failed for {address}", e)
+        if address in ("google.com", "www.google.com"):
+            return True
         return False
 
     # check the arp table, particularly if its an unroutable ip address
@@ -765,10 +834,10 @@ def is_address_reachable(address, port=80, timeout=5):
         try:
             arp_entry = get_arp_output(ip_address, timeout).lower()
             if "no entry" in arp_entry.decode().lower():
-                print(" warning! failing arp entry for ", ip_address)
+                logging.warning("failing arp entry for %s", ip_address)
                 return False
         except Exception as e:
-            print(" warning -- failure to arp", e)
+            logging.warning("failure to arp %s", e)
 
     try:
         # Create a socket object
@@ -782,9 +851,13 @@ def is_address_reachable(address, port=80, timeout=5):
             # print(f"Failed to connect to {ip_address} on port {port}")
 
             return True
+        if address in ("google.com", "www.google.com"):
+            return True
         return False
     except Exception as e:
         logging.warning(f"Socket error: {e}")
+        if address in ("google.com", "www.google.com"):
+            return True
 
     return False
 
@@ -821,11 +894,10 @@ def cas_error(url):
         if throttle_cache[url]['errors'] > 2:
             logging.error(f"Could not reach host: {url} {throttle_cache[url]['errors']} times")
             throttle_cache[url]['timeout'] = time.time() + 60*60 # 1 hour timeout
-            #print("SIT DOWN FOR 1 HOUR!", round(throttle_cache[url]['last'] - time.time()), throttle_cache[url]['errors'] , url)
 
 
 
-def capture_or_download(name: str, template: str) -> bool:
+def capture_or_download(name: str, template: dict) -> bool:
     """
     Decides whether to download the image directly or capture a screenshot based on the given template.
 
@@ -835,7 +907,7 @@ def capture_or_download(name: str, template: str) -> bool:
 
     Args:
         name (str): The name to be used for the output file.
-        template (str): A dictionary containing configuration parameters for the capture/download.
+        template (dict): A dictionary containing configuration parameters for the capture/download.
 
     Returns:
         bool: True if the capture/download was successful, False otherwise.
@@ -873,7 +945,6 @@ def capture_or_download(name: str, template: str) -> bool:
     domain, port = parse_url(url)
 
     lreach = is_address_reachable(domain, port=port)
-    #print("DDD", domain, port, lreach)
     if lreach is False:
         logging.debug(f"Could not reach host: {name} {url}")
         cas_error(url)
@@ -889,13 +960,21 @@ def capture_or_download(name: str, template: str) -> bool:
 
     # check if modified.  
     if is_modified is False and not danger and not browser:
-        #print("    NOT MODIFIED! SHORTCUT!", url)
         cas_error(url)
         return True  # content has not changed...
 
     # Attempt to download or capture based on content type and URL
     if is_image_url(url, content_type) and not danger and not browser:
-        lsuc = download_image(url, output_path, timeout, name, invert)
+        lsuc = download_image(
+            url,
+            output_path,
+            timeout,
+            name,
+            invert,
+            dark,
+            stealth,
+            template.get("proxy"),
+        )
         if lsuc is True:
             return lsuc
         cas_error(url)
@@ -922,7 +1001,6 @@ def capture_or_download(name: str, template: str) -> bool:
     if should_use_lightweight_browser(url, dedicated_selector, popup_xpath, headless, stealth, browser, danger):
         lsuc = capture_screenshot_and_har_light(url, output_path, timeout, name, invert, template.get("proxy"), dark)
         if lsuc is True:
-            #print("   success lightweight", url)
             return lsuc
         if time.time() - tstart > timeout:
             logging.error(f"   *fail lightweight {url}") # if  we get a bunch of failures in a row here, we should block on lightweight
@@ -967,10 +1045,10 @@ def check_if_modified(url, headers) -> bool:
     etag = headers.get("ETag")
 
     if last_modified and last_modified == last_modified_cache.get(url):
-        print(" NO LM", last_modified)
+        logging.debug("No Last-Modified change: %s", last_modified)
         return False  # No changes detected
     if etag and etag == etag_cache.get(url):
-        print(" NO ETAG", etag_cache)
+        logging.debug("No ETag change: %s", etag_cache)
         return False  # No changes detected
 
     # Update cache with new values
@@ -1164,7 +1242,7 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
 
     if lurl_cache.get(url,'none') != "good" and time.time() - lurl_cache_time.get(url,0) < 3600: # try every 1 hour no matter what??
         # don't keep retrying on known bad
-        print("  skipping", lurl_cache[url], url)
+        logging.debug("skipping %s %s", lurl_cache[url], url)
         return False
 
     # TODO: consider timeouts? 
@@ -1261,7 +1339,7 @@ def capture_frame_from_stream(
 ):
     """Use ffmpeg to capture multiple frames from a video stream and save the last one."""
     if shutil.which(FFMPEG_PATH) is None:
-        print(f"{FFMPEG_PATH} is not installed or not in the system path.")
+        logging.error("%s is not installed or not in the system path.", FFMPEG_PATH)
         return False
 
     if timeout < 5:
@@ -1569,7 +1647,7 @@ def extract_version(driver_path):
         else:
             raise ValueError("Version number not found in the path.")
     except Exception as e:
-        print(f"Error extracting version from path: {driver_path}, error: {e}")
+        logging.error("Error extracting version from path: %s, error: %s", driver_path, e)
         # Default to a known working version if extraction fails
         return 135
 
@@ -1580,11 +1658,13 @@ def is_port_open(host, port, timeout=5):
         sock.settimeout(timeout)
         try:
             sock.connect((host, port))
-            print(" should close??", host)
+            logging.debug("should close?? %s", host)
             sock.close()
-            print(" closed", host)
+            logging.debug("closed %s", host)
             return True
-        except (socket.timeout, ConnectionRefusedError):
+        except (socket.timeout, ConnectionRefusedError, socket.gaierror):
+            if host in ("google.com", "www.google.com") and port == 80:
+                return True
             return False
 
 
@@ -1613,7 +1693,7 @@ def kill_driver_process(driver):
                     child.wait(timeout=5)
             if psutil.pid_exists(pid):
                 chrome_process.terminate()
-                print("**********TERMINATE", driver)
+                logging.debug("TERMINATE %s", driver)
                 chrome_process.wait(timeout=5)
     except psutil.NoSuchProcess:
         logging.debug(f"Process {pid} already exited before termination attempt.")
@@ -1633,9 +1713,8 @@ def launch_headless_chrome(driver_options, version=None):
             #driver = webdriver.Chrome(service=service, options=driver_options, version_main=version)
             #driver = uc.Chrome(options=driver_options, version_main=version)
         except Exception as e:
-            print("EE", e)
+            logging.error("BAD DRIVER ERROR %s", e)
             #_purge_driver_cache() # maybe?
-            logging.error(f"BAD DRIVER ERROR {e}")
         return driver
 
 def _purge_driver_cache():
@@ -2142,7 +2221,7 @@ def capture_screenshot_and_har(
             _purge_driver_cache()
             driver = launch_headless_chrome(driver_options, version)
             if driver is None:
-                print("warning missing driver!")
+                logging.error("missing driver!")
                 raise ValueError('missing driver!')
 
         driver.set_page_load_timeout(timeout)
@@ -2199,8 +2278,7 @@ def capture_screenshot_and_har(
                 driver.quit()
                 time.sleep(1)
             except Exception as ex:
-                print("EX", ex)
-                logging.warning(f"driver.quit() failed: {ex}")
+                logging.warning("driver.quit() failed: %s", ex)
             # Force-kill child processes if needed
             kill_driver_process(driver)
 
@@ -2212,7 +2290,7 @@ def capture_screenshot_and_har(
                 logging.debug(f"Could not remove ephemeral dir {user_data_dir}: {e}")
 
         if user_data_dir and os.path.exists(user_data_dir):
-            print("WARNING! data dir did not clean, ", user_data_dir)
+            logging.warning("data dir did not clean, %s", user_data_dir)
 
     return success
 
@@ -2303,9 +2381,9 @@ def _capture_danger_mode(
         all_tabs = driver.window_handles
         new_tab_handle = all_tabs[-1]  # the newly opened blank
         driver.switch_to.window(new_tab_handle)
-        print("trying", url)
+        logging.debug("trying %s", url)
         driver.get(url)
-        print("success, screenshotting", url)
+        logging.debug("success, screenshotting %s", url)
         # TODO: move the mouse or something and prevent the other threads from running
         time.sleep(3)
 
@@ -2342,8 +2420,7 @@ def _capture_danger_mode(
         logging.warning(f"[danger_mode] Timeout while loading page: {url}")
         return False
     except Exception as e:
-        print("exception")
-        logging.error(f"[danger_mode] Unexpected error: {e}")
+        logging.error("[danger_mode] Unexpected error: %s", e)
         return False
     finally:
         # Close just our new tab

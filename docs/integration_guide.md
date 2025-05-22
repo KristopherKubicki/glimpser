@@ -1,6 +1,6 @@
 # Glimpser Integration Guide
 
-This guide provides instructions on how to integrate Glimpser with Blue Iris, Home Assistant, and Hubitat. These integrations allow you to leverage Glimpser's powerful image processing and analysis capabilities within your existing smart home or surveillance setup.
+This guide provides instructions on how to integrate Glimpser with Blue Iris, Home Assistant, Hubitat, and IFTTT. These integrations allow you to leverage Glimpser's powerful image processing and analysis capabilities within your existing smart home or surveillance setup.
 
 ## Table of Contents
 
@@ -8,6 +8,7 @@ This guide provides instructions on how to integrate Glimpser with Blue Iris, Ho
 2. [Blue Iris Integration](#blue-iris-integration)
 3. [Home Assistant Integration](#home-assistant-integration)
 4. [Hubitat Integration](#hubitat-integration)
+5. [IFTTT Integration](#ifttt-integration)
 
 ## General Integration Concepts
 
@@ -120,14 +121,35 @@ Hubitat is a home automation hub. Here's how to integrate it with Glimpser:
          # Send to Hubitat using the Maker API
          pass
 
-     scheduler.add_job(
-         id="send_to_hubitat",
-         func=send_to_hubitat,
-         trigger="interval",
-         minutes=5
-     )
+    scheduler.add_job(
+        id="send_to_hubitat",
+        func=send_to_hubitat,
+        trigger="interval",
+        minutes=5
+    )
+    ```
+
+## IFTTT Integration
+
+IFTTT (If This Then That) allows you to connect different services using webhooks. You can use IFTTT to call Glimpser's REST API endpoints.
+
+1. **Create a Webhooks Applet**:
+   - In IFTTT, use the Webhooks service and create an applet triggered by `Receive a web request`.
+   - Pick an event name, for example `glimpser_capture`.
+
+2. **Make a Web Request to Glimpser**:
+   - For the action, choose Webhooks → `Make a web request` and configure it as follows:
      ```
+     URL: http://<glimpser_ip>:<port>/take_screenshot/<template_name>?api_key=YOUR_API_KEY
+     Method: POST
+     Content Type: application/json
+     ```
+   - This calls the Glimpser REST endpoint to capture a screenshot.
+
+3. **Use the Results**:
+   - You can chain additional actions in IFTTT, such as notifications or logging.
+   - If you need analysis data, poll Glimpser's `/captions` endpoint in another step.
 
 ## Conclusion
 
-These integration guides provide a starting point for connecting Glimpser with Blue Iris, Home Assistant, and Hubitat. Depending on your specific use case and setup, you may need to adjust and expand upon these instructions. Remember to always use secure authentication methods and follow best practices for API usage and network security.
+These integration guides provide a starting point for connecting Glimpser with Blue Iris, Home Assistant, Hubitat, and IFTTT. Depending on your specific use case and setup, you may need to adjust and expand upon these instructions. Remember to always use secure authentication methods and follow best practices for API usage and network security.

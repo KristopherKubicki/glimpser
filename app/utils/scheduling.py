@@ -123,7 +123,7 @@ def add_motion_and_caption(image_path, caption=None, motion=False):
                     else:
                         # unlink the offending image
                         os.unlink(image_path)
-                    print(" warning : image load issue:", image_path, e)
+                    logging.warning("image load issue: %s %s", image_path, e)
                     logging.error(f"Error saving image: {image_path} {e}")
                     return
 
@@ -442,10 +442,10 @@ def update_camera(name, template, image_file=None):
                         closest_image_path = os.path.join(
                             directory, closest_image_filename
                         )
-                        print("last caption....", closest_image_path)
+                        logging.debug("last caption.... %s", closest_image_path)
                         image_paths.append(closest_image_path)
                 except Exception as e:
-                    print(" warning caption parsing error", e)
+                    logging.warning("caption parsing error %s", e)
                     pass
 
             image_paths.append(os.path.join(directory, png_files[-1]))
@@ -634,9 +634,9 @@ def update_summary():
                 try:
                     gnotes = " ".join([note for note in gnotes if note.strip()][0:-1])
                 except Exception as e:
-                    print("error ", e, template)
-                    print("NOTES:", fnotes)
-                    print("GNTES:", fnotes)
+                    logging.error("error %s %s", e, template)
+                    logging.debug("NOTES: %s", fnotes)
+                    logging.debug("GNTES: %s", fnotes)
                     pass
 
             lstring += (
@@ -714,7 +714,7 @@ def update_summary():
             file.write(leach + "\n")
             lsuc = True
     if lsuc is False:
-        print("WARNING MISSED CAPTION ($$$)", lsum)
+        logging.warning("MISSED CAPTION ($$$) %s", lsum)
 
     # Send email alert with the summary
     if lsuc:
@@ -732,7 +732,7 @@ def schedule_summarization():
             replace_existing=True,
         )
     except Exception as e:
-        print("job schedule error:", e)
+        logging.error("job schedule error: %s", e)
     update_summary()
 
 
@@ -812,7 +812,7 @@ def schedule_crawlers():
             )
             '''
         except Exception as e:
-            print("job schedule error:", e)
+            logging.error("job schedule error: %s", e)
             logging.error(f"Error scheduling job for {name}: {e}")
 
     # Schedule init_crawl to run once, slightly offset as well
@@ -936,14 +936,7 @@ def start_log_caching():
     log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
     log_caching_thread.start()
 
-    # Ensure the job is only scheduled ONCE
-    if not scheduler.get_job('log_caching'):
-        scheduler.add_job(func=cache_logs, trigger='interval', hours=1, id='log_caching', replace_existing=True)
+    # No longer schedule cache_logs via the APScheduler.  The background thread
+    # itself handles continuous log caching and avoids spawning additional
+    # threads on scheduler restarts.
 
-
-'''
-def start_log_caching():
-    log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
-    log_caching_thread.start()
-    scheduler.add_job(func=start_log_caching, trigger='interval', hours=1, id='log_caching', replace_existing=True)
-'''
