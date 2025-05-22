@@ -25,7 +25,7 @@ def get_files_sorted_by_creation_time(directory):
         ]
         files.sort(key=lambda x: os.path.getctime(x))
     except Exception as e:
-        print("Warning: file sort error", e)
+        logging.warning("file sort error %s", e)
         return []
     return files
 

@@ -4,10 +4,12 @@ import os
 import re
 import shutil
 import random
+import logging
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, Float, Integer, String, Text
 from werkzeug.utils import secure_filename
+from .validators import validate_template_name
 
 from app.config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY
 
@@ -60,7 +62,7 @@ class Template(Base):
     @validates('timeout')
     def validate_timeout(self, key, timeout):
         if timeout < 1:
-            print("warning negative timeout....")
+            logging.warning("negative timeout")
             timeout = 10
         if timeout >= float(self.frequency) * 60:
             timeout = float(self.frequency) * 60
@@ -102,11 +104,8 @@ class TemplateManager:
 
     def save_template(self, name, details):
 
-        # embed the validators here... 
-        # TODO: replace this with validate_template_name instead
-        if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
-            return False
-        if '..' in name:
+        name = validate_template_name(name)
+        if name is None:
             return False
 
         session = self.get_session()
@@ -154,11 +153,11 @@ class TemplateManager:
                             elif type(value) == bool:
                                 pass
                             else:
-                                print("MISSSSED", value)
+                                logging.debug("MISSSSED %s", value)
                                 continue
                     except ValueError as e:
                         # Log the validation error and return False
-                        print(f"Validation error: {str(e)}", name, key, value)
+                        logging.warning("Validation error: %s %s %s", str(e), name, key)
                         return False
 
                     # check to make sure a change actually occurred
@@ -169,13 +168,14 @@ class TemplateManager:
                 session.commit()
             return True
         except Exception as e:
-            print(f"Error saving template: {str(e)}")
+            logging.error("Error saving template: %s", str(e))
             return False
         finally:
             session.close()
 
     def get_template(self, name):
-        if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+        name = validate_template_name(name)
+        if name is None:
             return False
 
         session = self.get_session()
@@ -189,7 +189,8 @@ class TemplateManager:
             session.close()
 
     def delete_template(self, name):
-        if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+        name = validate_template_name(name)
+        if name is None:
             return False
 
         session = self.get_session()
@@ -222,15 +223,19 @@ def get_templates():
     for template_name, details in templates.items():
         if template_name is None or template_name == "":
             continue
-        camera_path = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(template_name))
-        video_path = os.path.join(VIDEO_DIRECTORY, secure_filename(template_name))
+        valid_name = validate_template_name(template_name)
+        if valid_name is None:
+            continue
+        camera_path = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(valid_name))
+        video_path = os.path.join(VIDEO_DIRECTORY, secure_filename(valid_name))
         details["last_screenshot_time"] = get_latest_screenshot_date(camera_path)
         details["last_video_time"] = get_latest_video_date(video_path)
     return templates
 
 
 def get_template(name):
-    if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+    name = validate_template_name(name)
+    if name is None:
         return None
 
     manager = TemplateManager()
@@ -238,7 +243,8 @@ def get_template(name):
 
 
 def save_template(name: str, template_data) -> bool:
-    if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+    name = validate_template_name(name)
+    if name is None:
         return False
 
     manager = TemplateManager()
@@ -252,7 +258,8 @@ def save_template(name: str, template_data) -> bool:
 
 
 def delete_template(name: str) -> bool:
-    if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+    name = validate_template_name(name)
+    if name is None:
         return False
 
     manager = TemplateManager()
@@ -273,7 +280,8 @@ def get_template_by_id(template_id: int):
 
 
 def get_screenshots_for_template(name: str) -> list:
-    if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+    name = validate_template_name(name)
+    if name is None:
         return []
     if not os.path.exists(os.path.join(SCREENSHOT_DIRECTORY, name)):
         return []
@@ -290,14 +298,15 @@ def get_screenshots_for_template(name: str) -> list:
             reverse=True,
         )
     except Exception as e:
-        print(" crazy sorting issue", e)
-        return[]
+        logging.error("sorting issue %s", e)
+        return []
 
     return sorted_screenshots[:100]
 
 
 def get_videos_for_template(name: str):
-    if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+    name = validate_template_name(name)
+    if name is None:
         return []
     if not os.path.exists(os.path.join(VIDEO_DIRECTORY, name)):
         return []
@@ -313,7 +322,8 @@ def get_videos_for_template(name: str):
     return sorted_videos[:10]
 
 def get_screenshot_count(name: str) -> int:
-    if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+    name = validate_template_name(name)
+    if name is None:
         return 0
     screenshot_path = os.path.join(SCREENSHOT_DIRECTORY, name)
     if not os.path.exists(screenshot_path):
@@ -321,7 +331,8 @@ def get_screenshot_count(name: str) -> int:
     return len([f for f in os.listdir(screenshot_path) if f.endswith('.png')])
 
 def get_video_count(name: str) -> int:
-    if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+    name = validate_template_name(name)
+    if name is None:
         return 0
     video_path = os.path.join(VIDEO_DIRECTORY, name)
     if not os.path.exists(video_path):
@@ -329,7 +340,8 @@ def get_video_count(name: str) -> int:
     return len([f for f in os.listdir(video_path) if f.endswith('.mp4')])
 
 def get_storage_usage(name: str) -> str:
-    if not re.findall(r"^[a-zA-Z0-9_\-\.]{1,32}$", name):
+    name = validate_template_name(name)
+    if name is None:
         return "0 B"
     screenshot_path = os.path.join(SCREENSHOT_DIRECTORY, name)
     video_path = os.path.join(VIDEO_DIRECTORY, name)

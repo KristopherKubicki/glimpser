@@ -1,5 +1,5 @@
 include README.md
-include LICENSE
+include LICENSE.md
 include requirements.txt
 recursive-include glimpser/static *
 recursive-include glimpser/templates *
