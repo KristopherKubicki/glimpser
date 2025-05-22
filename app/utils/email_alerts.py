@@ -1,6 +1,7 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import logging
 from app.config import (
     EMAIL_ENABLED,
     EMAIL_SENDER,
@@ -15,7 +16,7 @@ from app.config import (
 
 def send_email_alert(subject, body):
     if not EMAIL_ENABLED.lower() == "true":
-        print("Email alerts are disabled.")
+        logging.info("Email alerts are disabled.")
         return
 
     sender_email = EMAIL_SENDER
@@ -34,9 +35,9 @@ def send_email_alert(subject, body):
                 server.starttls()
             server.login(EMAIL_USERNAME, EMAIL_PASSWORD)
             server.sendmail(sender_email, receiver_emails, message.as_string())
-        print("Email alert sent successfully")
+        logging.info("Email alert sent successfully")
     except Exception as e:
-        print(f"Error sending email alert: {e}")
+        logging.error("Error sending email alert: %s", e)
 
 
 def email_alert(event_type, details):

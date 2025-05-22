@@ -2,6 +2,7 @@
 
 import os
 import json
+import logging
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -26,11 +27,11 @@ def get_setting(name, default=None):
         return result[0] if result else default
     except Exception as e:
         if 'no such table' in str(e):
-            # this is ok if its the first time only... 
-            print("warning! table does not exist")
+            # this is ok if its the first time only...
+            logging.warning("table does not exist")
             pass
         else:
-            print("warning! initialization error", e)
+            logging.warning("initialization error %s", e)
     finally:
         session.close()
 

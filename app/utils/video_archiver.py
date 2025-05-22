@@ -7,6 +7,7 @@ import re
 import subprocess
 import tempfile
 import time
+import logging
 
 from .validators import validate_template_name
 
@@ -250,12 +251,12 @@ def handle_concat_error(e, temp_video, in_process_video) -> bool:
     """Handle errors that occur during the concatenation process."""
 
     if "/in_process.mp4: Invalid data found" in str(e):
-        print("Warning: invalid in_process file", e)
+        logging.warning("invalid in_process file %s", e)
         if os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
             # TODO: consider truth
     else:
-        print("FFmpeg concat command failed:", e) # TODO: handle this better... why non zero exit?
+        logging.error("FFmpeg concat command failed: %s", e) # TODO: handle this better... why non zero exit?
         if os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
 
