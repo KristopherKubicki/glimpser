@@ -1,4 +1,5 @@
 import os
+import logging
 from datetime import datetime
 
 
@@ -32,7 +33,7 @@ def get_latest_file(directory, ext="png"):
             files, key=lambda x: os.path.getmtime(os.path.join(directory, x))
         )
     except Exception as e:
-        print("Warning: file error", e)
+        logging.warning("file error %s", e)
         return None
     return latest_file
 
@@ -60,7 +61,7 @@ def get_latest_date(directory, ext="png"):
         # Get the creation time of the latest file
         latest_file_mtime = os.path.getmtime(latest_file_path)
     except Exception as e:
-        print("Warning: file error", e)
+        logging.warning("file error %s", e)
         return None
 
     # Convert the timestamp to UTC datetime string

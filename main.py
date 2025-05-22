@@ -154,14 +154,14 @@ def create_application():
 def output_shutdown_stats():
     # Get and display system metrics
     metrics = get_system_metrics()
-    print("\nSystem Metrics at Shutdown:")
-    print(f"CPU Usage: {metrics['cpu_usage']}%")
-    print(f"Memory Usage: {metrics['memory_usage']}%")
-    print(f"Disk Usage: {metrics['disk_usage']}%")
-    print(f"Open Files: {metrics['open_files']}")
-    print(f"Thread Count: {metrics['thread_count']}")
-    print(f"Uptime: {metrics['uptime']}")
-    print("\nThank you for running Glimpser. Goodbye!")
+    logging.info("System Metrics at Shutdown:")
+    logging.info("CPU Usage: %s%%", metrics['cpu_usage'])
+    logging.info("Memory Usage: %s%%", metrics['memory_usage'])
+    logging.info("Disk Usage: %s%%", metrics['disk_usage'])
+    logging.info("Open Files: %s", metrics['open_files'])
+    logging.info("Thread Count: %s", metrics['thread_count'])
+    logging.info("Uptime: %s", metrics['uptime'])
+    logging.info("Thank you for running Glimpser. Goodbye!")
 
 display_note = True
 def cleanup_resources():
@@ -169,7 +169,7 @@ def cleanup_resources():
     try:
         scheduler.shutdown(wait=True)
     except Exception as e:
-        print(f"Error shutting down scheduler: {e}")
+        logging.error("Error shutting down scheduler: %s", e)
 
     # Terminate all non-daemon threads
     global display_note
@@ -182,13 +182,11 @@ def cleanup_resources():
                 thread.join(timeout=0.01)
                 if thread.is_alive():
                     # TODO: log this ...
-                    #print(" ********************* warning... stuck thread", thread)
                     pass
             except Exception as e:
-                print(f"Error terminating thread {thread.name}: {e}")
+                logging.error("Error terminating thread %s: %s", thread.name, e)
 
     #global banner
-    #print(banner)
     # Add any other cleanup tasks here (e.g., closing database connections)
     output_shutdown_stats()
 
@@ -219,18 +217,18 @@ if __name__ == "__main__":
     clear_console()
 
     # Create the Flask application
-    print(banner)
+    logging.info(banner)
 
     atexit.register(cleanup_resources)
     signal.signal(signal.SIGTERM, graceful_shutdown)
     signal.signal(signal.SIGINT, graceful_shutdown)
 
-    print("Initializing...")
+    logging.info("Initializing...")
     app = create_application()
 
     # Check if the port is already in use
     if is_port_in_use(config.PORT):
-        print(f"Error: Port {config.PORT} is already in use. Please choose a different port.")
+        logging.error("Error: Port %s is already in use. Please choose a different port.", config.PORT)
         sys.exit(1)
 
     # Register the cleanup function to be called at exit
@@ -238,11 +236,11 @@ if __name__ == "__main__":
 
     try:
         # Run the application if this script is executed directly
-        print("Starting web...")
+        logging.info("Starting web...")
         app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True)
     except KeyboardInterrupt:
-        print("\nKeyboardInterrupt received. Exiting...")
+        logging.info("KeyboardInterrupt received. Exiting...")
     except Exception as e:
-        print(f"An error occurred while running the application: {e}")
+        logging.error("An error occurred while running the application: %s", e)
     finally:
-        print("Glimpser shut down.")
+        logging.info("Glimpser shut down.")

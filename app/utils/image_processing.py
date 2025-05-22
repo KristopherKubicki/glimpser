@@ -4,6 +4,7 @@ import base64
 import datetime
 import io
 import os
+import logging
 
 import requests
 from PIL import Image
@@ -27,7 +28,6 @@ class ChatGPTImageComparison:
         if last_429_error_time and (
             datetime.datetime.now() - last_429_error_time
         ) < datetime.timedelta(minutes=15):
-            # print("Request blocked due to a recent 429 error.")
             return None
 
         detail = "high"
@@ -87,11 +87,11 @@ class ChatGPTImageComparison:
             response = requests.post(self.url, headers=self.headers, json=payload)
             if response.status_code == 429:
                 last_429_error_time = datetime.datetime.now()
-                print("429 error encountered. Blocking requests for 30 minutes.")
+                logging.warning("429 error encountered. Blocking requests for 30 minutes.")
                 return None
             result = response.json()
         except Exception as e:
-            print(" warning! response issue", e)
+            logging.warning("API response issue: %s", e)
 
         # Process the response
         # For demonstration, we'll just return the text response
@@ -100,19 +100,15 @@ class ChatGPTImageComparison:
                 result["choices"][0]["message"]["content"].replace("\n\n", "\t").strip()
             )
             ltokens = result["usage"]["total_tokens"]
-            # TODO: logging..
-            print(
-                    " total tokens $%0.5f" % (ltokens * 0.005 / 1000), # TODO: this calculation is wrong!  Figure it out?  Also log it do the db
-                "images:",
+            logging.info(
+                " total tokens $%0.5f images: %d %s",
+                ltokens * 0.005 / 1000,
                 len(image_paths),
                 image_paths[-1],
-            )  # todo, out of date...
+            )
             # TODO: store the result , we paid for it
             return response_text
         except Exception:
-            # print(" gpt exception", e, response)
-            # if response is not None:
-            #    print(" gpt exception text:", response.text)
             pass
 
 

@@ -256,7 +256,6 @@ def check_user_activity(timeout=10):
     #oiq = make_idle_irq()
     #liq = oiq()
     #if liq < 120:
-    #    print("<<<< irq not idle", liq)
     #    user_active = True  # allow to check on listeners for the 0 second case
     #    return user_active
     try:
@@ -268,7 +267,6 @@ def check_user_activity(timeout=10):
         logging.debug(f"idle_seconds_x11 failed: {e}")
 
     #idle_seconds = idle_seconds_loginctl()
-    #print(" user idle for", idle_seconds)
     #if 1 < idle_seconds < 120:
     #    user_active = True  # allow to check on listeners for the 0 second case
     #    return user_active
@@ -809,10 +807,10 @@ def is_address_reachable(address, port=80, timeout=5):
         try:
             arp_entry = get_arp_output(ip_address, timeout).lower()
             if "no entry" in arp_entry.decode().lower():
-                print(" warning! failing arp entry for ", ip_address)
+                logging.warning("failing arp entry for %s", ip_address)
                 return False
         except Exception as e:
-            print(" warning -- failure to arp", e)
+            logging.warning("failure to arp %s", e)
 
     try:
         # Create a socket object
@@ -869,11 +867,10 @@ def cas_error(url):
         if throttle_cache[url]['errors'] > 2:
             logging.error(f"Could not reach host: {url} {throttle_cache[url]['errors']} times")
             throttle_cache[url]['timeout'] = time.time() + 60*60 # 1 hour timeout
-            #print("SIT DOWN FOR 1 HOUR!", round(throttle_cache[url]['last'] - time.time()), throttle_cache[url]['errors'] , url)
 
 
 
-def capture_or_download(name: str, template: str) -> bool:
+def capture_or_download(name: str, template: dict) -> bool:
     """
     Decides whether to download the image directly or capture a screenshot based on the given template.
 
@@ -883,7 +880,7 @@ def capture_or_download(name: str, template: str) -> bool:
 
     Args:
         name (str): The name to be used for the output file.
-        template (str): A dictionary containing configuration parameters for the capture/download.
+        template (dict): A dictionary containing configuration parameters for the capture/download.
 
     Returns:
         bool: True if the capture/download was successful, False otherwise.
@@ -921,7 +918,6 @@ def capture_or_download(name: str, template: str) -> bool:
     domain, port = parse_url(url)
 
     lreach = is_address_reachable(domain, port=port)
-    #print("DDD", domain, port, lreach)
     if lreach is False:
         logging.debug(f"Could not reach host: {name} {url}")
         cas_error(url)
@@ -937,7 +933,6 @@ def capture_or_download(name: str, template: str) -> bool:
 
     # check if modified.  
     if is_modified is False and not danger and not browser:
-        #print("    NOT MODIFIED! SHORTCUT!", url)
         cas_error(url)
         return True  # content has not changed...
 
@@ -970,7 +965,6 @@ def capture_or_download(name: str, template: str) -> bool:
     if should_use_lightweight_browser(url, dedicated_selector, popup_xpath, headless, stealth, browser, danger):
         lsuc = capture_screenshot_and_har_light(url, output_path, timeout, name, invert, template.get("proxy"), dark)
         if lsuc is True:
-            #print("   success lightweight", url)
             return lsuc
         if time.time() - tstart > timeout:
             logging.error(f"   *fail lightweight {url}") # if  we get a bunch of failures in a row here, we should block on lightweight
@@ -1015,10 +1009,10 @@ def check_if_modified(url, headers) -> bool:
     etag = headers.get("ETag")
 
     if last_modified and last_modified == last_modified_cache.get(url):
-        print(" NO LM", last_modified)
+        logging.debug("No Last-Modified change: %s", last_modified)
         return False  # No changes detected
     if etag and etag == etag_cache.get(url):
-        print(" NO ETAG", etag_cache)
+        logging.debug("No ETag change: %s", etag_cache)
         return False  # No changes detected
 
     # Update cache with new values
@@ -1212,7 +1206,7 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
 
     if lurl_cache.get(url,'none') != "good" and time.time() - lurl_cache_time.get(url,0) < 3600: # try every 1 hour no matter what??
         # don't keep retrying on known bad
-        print("  skipping", lurl_cache[url], url)
+        logging.debug("skipping %s %s", lurl_cache[url], url)
         return False
 
     # TODO: consider timeouts? 
@@ -1309,7 +1303,7 @@ def capture_frame_from_stream(
 ):
     """Use ffmpeg to capture multiple frames from a video stream and save the last one."""
     if shutil.which(FFMPEG_PATH) is None:
-        print(f"{FFMPEG_PATH} is not installed or not in the system path.")
+        logging.error("%s is not installed or not in the system path.", FFMPEG_PATH)
         return False
 
     if timeout < 5:
@@ -1617,7 +1611,7 @@ def extract_version(driver_path):
         else:
             raise ValueError("Version number not found in the path.")
     except Exception as e:
-        print(f"Error extracting version from path: {driver_path}, error: {e}")
+        logging.error("Error extracting version from path: %s, error: %s", driver_path, e)
         # Default to a known working version if extraction fails
         return 135
 
@@ -1628,9 +1622,9 @@ def is_port_open(host, port, timeout=5):
         sock.settimeout(timeout)
         try:
             sock.connect((host, port))
-            print(" should close??", host)
+            logging.debug("should close?? %s", host)
             sock.close()
-            print(" closed", host)
+            logging.debug("closed %s", host)
             return True
         except (socket.timeout, ConnectionRefusedError, socket.gaierror):
             if host in ("google.com", "www.google.com") and port == 80:
@@ -1663,7 +1657,7 @@ def kill_driver_process(driver):
                     child.wait(timeout=5)
             if psutil.pid_exists(pid):
                 chrome_process.terminate()
-                print("**********TERMINATE", driver)
+                logging.debug("TERMINATE %s", driver)
                 chrome_process.wait(timeout=5)
     except psutil.NoSuchProcess:
         logging.debug(f"Process {pid} already exited before termination attempt.")
@@ -1683,9 +1677,8 @@ def launch_headless_chrome(driver_options, version=None):
             #driver = webdriver.Chrome(service=service, options=driver_options, version_main=version)
             #driver = uc.Chrome(options=driver_options, version_main=version)
         except Exception as e:
-            print("EE", e)
+            logging.error("BAD DRIVER ERROR %s", e)
             #_purge_driver_cache() # maybe?
-            logging.error(f"BAD DRIVER ERROR {e}")
         return driver
 
 def _purge_driver_cache():
@@ -2192,7 +2185,7 @@ def capture_screenshot_and_har(
             _purge_driver_cache()
             driver = launch_headless_chrome(driver_options, version)
             if driver is None:
-                print("warning missing driver!")
+                logging.error("missing driver!")
                 raise ValueError('missing driver!')
 
         driver.set_page_load_timeout(timeout)
@@ -2249,8 +2242,7 @@ def capture_screenshot_and_har(
                 driver.quit()
                 time.sleep(1)
             except Exception as ex:
-                print("EX", ex)
-                logging.warning(f"driver.quit() failed: {ex}")
+                logging.warning("driver.quit() failed: %s", ex)
             # Force-kill child processes if needed
             kill_driver_process(driver)
 
@@ -2262,7 +2254,7 @@ def capture_screenshot_and_har(
                 logging.debug(f"Could not remove ephemeral dir {user_data_dir}: {e}")
 
         if user_data_dir and os.path.exists(user_data_dir):
-            print("WARNING! data dir did not clean, ", user_data_dir)
+            logging.warning("data dir did not clean, %s", user_data_dir)
 
     return success
 
@@ -2353,9 +2345,9 @@ def _capture_danger_mode(
         all_tabs = driver.window_handles
         new_tab_handle = all_tabs[-1]  # the newly opened blank
         driver.switch_to.window(new_tab_handle)
-        print("trying", url)
+        logging.debug("trying %s", url)
         driver.get(url)
-        print("success, screenshotting", url)
+        logging.debug("success, screenshotting %s", url)
         # TODO: move the mouse or something and prevent the other threads from running
         time.sleep(3)
 
@@ -2392,8 +2384,7 @@ def _capture_danger_mode(
         logging.warning(f"[danger_mode] Timeout while loading page: {url}")
         return False
     except Exception as e:
-        print("exception")
-        logging.error(f"[danger_mode] Unexpected error: {e}")
+        logging.error("[danger_mode] Unexpected error: %s", e)
         return False
     finally:
         # Close just our new tab
