@@ -936,14 +936,7 @@ def start_log_caching():
     log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
     log_caching_thread.start()
 
-    # Ensure the job is only scheduled ONCE
-    if not scheduler.get_job('log_caching'):
-        scheduler.add_job(func=cache_logs, trigger='interval', hours=1, id='log_caching', replace_existing=True)
+    # No longer schedule cache_logs via the APScheduler.  The background thread
+    # itself handles continuous log caching and avoids spawning additional
+    # threads on scheduler restarts.
 
-
-'''
-def start_log_caching():
-    log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
-    log_caching_thread.start()
-    scheduler.add_job(func=start_log_caching, trigger='interval', hours=1, id='log_caching', replace_existing=True)
-'''
