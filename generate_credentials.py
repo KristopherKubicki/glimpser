@@ -8,6 +8,7 @@ import argparse
 import sys
 
 import app.config
+import logging
 from werkzeug.security import generate_password_hash
 
 
@@ -85,7 +86,7 @@ def generate_credentials(args):
 
     conn.close()
 
-    print("Credentials and settings updated in the database.")
+    logging.info("Credentials and settings updated in the database.")
 
 
 if __name__ == "__main__":
