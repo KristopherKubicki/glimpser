@@ -116,8 +116,12 @@ body {
 }
 
 
-.link color: {  rgb( 192, 192, 192) }
-.link:hover color: {  rgb( 193, 193, 193) }
+.link {
+    color: rgb(192, 192, 192);
+}
+.link:hover {
+    color: rgb(193, 193, 193);
+}
 
 h1, h2 {
     color: rgb(191, 191, 191);
