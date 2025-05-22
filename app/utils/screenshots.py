@@ -1819,16 +1819,13 @@ def capture_screenshot_phantom(
             return False
 
         try:
-            with Image.open(screenshot_tmp) as img:
-                img = img.convert("RGB")
-                os.makedirs(os.path.dirname(output_path), exist_ok=True)
-                img.save(output_path, "PNG")
-
-            if os.path.exists(output_path):
-                add_timestamp(output_path, name=name, invert=invert)
-
-            logging.debug(f"PhantomJS screenshot saved -> {output_path}")
-            return True
+            return _finalize_screenshot(
+                screenshot_tmp,
+                output_path,
+                name=name,
+                invert=invert,
+                dark=dark,
+            )
         except Exception as e:
             logging.error(f"Error post-processing Phantom screenshot for {url}: {e}")
             return False
