@@ -825,7 +825,7 @@ def cas_error(url):
 
 
 
-def capture_or_download(name: str, template: str) -> bool:
+def capture_or_download(name: str, template: dict) -> bool:
     """
     Decides whether to download the image directly or capture a screenshot based on the given template.
 
@@ -835,7 +835,7 @@ def capture_or_download(name: str, template: str) -> bool:
 
     Args:
         name (str): The name to be used for the output file.
-        template (str): A dictionary containing configuration parameters for the capture/download.
+        template (dict): A dictionary containing configuration parameters for the capture/download.
 
     Returns:
         bool: True if the capture/download was successful, False otherwise.
