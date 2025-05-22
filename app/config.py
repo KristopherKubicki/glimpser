@@ -84,6 +84,8 @@ NAME = get_setting("NAME", "glimpser")
 HOST = get_setting("HOST", "0.0.0.0")
 PORT = int(get_setting("PORT", 8082))
 DEBUG = get_setting("DEBUG", "True") == "True"
+# Provide a separate attribute for runtime checks
+DEBUG_MODE = DEBUG
 MAX_WORKERS = get_setting("MAX_WORKERS", 8)
 
 # Thresholds
