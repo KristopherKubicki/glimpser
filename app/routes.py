@@ -61,7 +61,7 @@ from app.utils.scheduling import log_cache, log_cache_lock
 from app.utils.validators import validate_template_name
 
 def restart_server():
-    print("Restarting server...")
+    logging.info("Restarting server...")
 
     def delayed_restart():
         time.sleep(1)  # 1-second delay
@@ -245,7 +245,7 @@ def update_setting(name: str, value: str) -> bool:
                     {"name": name, "value": value}
                 )
                 delta = True
-                print("UPDATE", name, value, existing_setting)
+                logging.debug("UPDATE %s %s %s", name, value, existing_setting)
         else:
             session.execute(
                 text("INSERT INTO settings (name, value) VALUES (:name, :value)"),
@@ -275,9 +275,7 @@ def generate_video_stream(video_path: str):
                 yield chunk
                 chunk = video.read(1024 * 1024)
         #
-        print(
-            "sleeping...",
-        )
+        logging.debug("sleeping...")
         time.sleep(30)  # Wait for 5 minutes before streaming the video again
 
 
@@ -441,7 +439,6 @@ def generate(group=None, filename="latest_camera.png", rtsp=False):
                                 # only do this if the files are different.  otherwise, just freshen up maybe?
                                 os.rename(last_path, last_path.replace(".tmp", ""))
                         except Exception:
-                            # print(" warning: png error", e)
                             pass
 
         if frame:
@@ -702,7 +699,7 @@ def init_routes(app):
             abort(404)
 
         # Check if the template exists
-        print("WARNING BRPKEN!")
+        logging.debug("WARNING BRPKEN!")
         ltemplate = template_manager.get_template(template_name)
         if ltemplate is None:
             return jsonify({"status": "error", "message": "Template not found"}), 404
@@ -901,7 +898,7 @@ def init_routes(app):
     @app.route("/caption.mjpg", methods=["GET"])
     def caption_mjpg():
         group = request.args.get("group")
-        print("last caption")
+        logging.debug("last caption")
         return Response(
             generate(group=group, filename="last_caption.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -910,7 +907,7 @@ def init_routes(app):
     @app.route("/motion_caption.mjpg", methods=["GET"])
     def motion_caption_mjpg():
         group = request.args.get("group")
-        print("last motion caption")
+        logging.debug("last motion caption")
         return Response(
             generate(group=group, filename="last_motion_caption.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -1295,7 +1292,7 @@ def init_routes(app):
                 400,
             )
 
-        print("TODO: rewrite")
+        logging.debug("TODO: rewrite")
         templates = template_manager.get_templates()
         if templates.get(template_name) is None:
             abort(404)
@@ -1621,8 +1618,7 @@ def init_routes(app):
                     replace_existing=True,
                 )
             except Exception as e:
-                print("job schedule error:", e)
-                # logging.error(f"Error scheduling job for {name}: {e}")
+                logging.error("job schedule error: %s", e)
 
             if request.is_json:
                 return jsonify({"message": "Template updated successfully!"})
