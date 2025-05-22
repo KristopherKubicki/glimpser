@@ -553,9 +553,27 @@ def add_timestamp(image_path, name="unknown", invert=False):
 
 
 def download_image(
-    url, output_path, timeout=CAPTURE_TIMEOUT, name="unknown", invert=False, dark=False, stealth=False
+    url,
+    output_path,
+    timeout=CAPTURE_TIMEOUT,
+    name="unknown",
+    invert=False,
+    dark=False,
+    stealth=False,
+    proxy=None,
 ):
-    """Attempt to download an image directly from the URL and convert it to PNG format."""
+    """Attempt to download an image directly from the URL and convert it to PNG format.
+
+    Args:
+        url (str): Image URL.
+        output_path (str): Where to save the PNG.
+        timeout (int): Timeout in seconds.
+        name (str): Friendly name for logging.
+        invert (bool): If True, invert timestamp colors.
+        dark (bool): Apply dark mode.
+        stealth (bool): Use stealth user agent.
+        proxy (str, optional): Proxy to use for the HTTP request.
+    """
 
     # ideally the timeout should be pretty high, its an image, and it could be real big
     if timeout < 10:
@@ -569,31 +587,40 @@ def download_image(
             cv = get_chrome_version(chrome_path)
             lua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%s.0.0.0 Safari/537.36" % cv
         headers = {"user-agent": lua}
-
-        # TODO: apply proxy here
+        proxies = {"http": proxy, "https": proxy} if proxy else None
 
         auth = None
         for leach in re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url):
             auth = requests.auth.HTTPBasicAuth(leach[0], leach[1])
 
         # TODO: cache the response status_code
-        #response = requests.get(
-        response = http_session().get(
-            url, stream=True, timeout=(timeout, timeout*3), verify=False, headers=headers, auth=auth
+        request_kwargs = dict(
+            stream=True,
+            timeout=(timeout, timeout * 3),
+            verify=False,
+            headers=headers,
+            auth=auth,
         )
+        if proxies:
+            request_kwargs["proxies"] = proxies
+
+        response = http_session().get(url, **request_kwargs)
         if (
             response.status_code == 401 and auth is not None
         ):  # Unauthorized, try Digest Authentication
             for leach in re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url):
                 auth = requests.auth.HTTPDigestAuth(leach[0], leach[1])
-            response = http_session().get(
-                url,
+            request_kwargs = dict(
                 stream=True,
-                timeout=(timeout,timeout*3),
+                timeout=(timeout, timeout * 3),
                 verify=False,
                 headers=headers,
                 auth=auth,
             )
+            if proxies:
+                request_kwargs["proxies"] = proxies
+
+            response = http_session().get(url, **request_kwargs)
 
         if response.status_code == 200:
             # Open the image directly from the response bytes
@@ -890,7 +917,16 @@ def capture_or_download(name: str, template: dict) -> bool:
 
     # Attempt to download or capture based on content type and URL
     if is_image_url(url, content_type) and not danger and not browser:
-        lsuc = download_image(url, output_path, timeout, name, invert)
+        lsuc = download_image(
+            url,
+            output_path,
+            timeout,
+            name,
+            invert,
+            dark,
+            stealth,
+            template.get("proxy"),
+        )
         if lsuc is True:
             return lsuc
         cas_error(url)
