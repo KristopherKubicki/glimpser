@@ -1,37 +1,54 @@
 # Glimpser Configuration Guide
 
-This guide describes the configuration options available in Glimpser. Most settings can be modified from the web interface. Some can also be controlled with environment variables before starting the application.
+This guide describes the configuration options available in Glimpser. Most
+settings can be modified from the web interface. A few can be overridden with
+environment variables before starting the application.
 
 ## Environment Variables
 
-The following variables can be set to override default paths:
+The following environment variables are read in `app/config.py` and allow you to
+change where runtime data is stored. If not provided, the defaults shown below
+are used.
 
-| Variable | Description | Default |
+| Variable | Default | Purpose |
 | --- | --- | --- |
-| `GLIMPSER_DATABASE_PATH` | Location of the SQLite database file | `data/glimpser.db` |
-| `GLIMPSER_LOGGING_PATH` | Path to the main log file | `logs/glimpser.log` |
-| `GLIMPSER_BACKUP_PATH` | Path for configuration backups | `data/config_backup.json` |
-
-These variables are read in `app/config.py` and allow you to place data or logs in custom locations.
+| `GLIMPSER_DATABASE_PATH` | `data/glimpser.db` | Location of the SQLite database file |
+| `GLIMPSER_LOGGING_PATH` | `logs/glimpser.log` | Path to the main log file |
+| `GLIMPSER_BACKUP_PATH` | `data/config_backup.json` | File used when backing up configuration |
 
 ## Core Settings
 
-Below are key settings loaded from the database with their default values. You can modify them in the application interface or directly in the database.
+Below are key settings loaded from the database with their default values. You
+can modify them in the application interface or directly in the database.
 
+- `NAME` – application name (default `glimpser`)
+- `VERSION` – configuration version number (default `0.1`)
+- `LANG` – default language (default `en-US`)
+- `TZ` – timezone used for logs (default `UTC`)
 - `HOST` – address to bind the server (default `0.0.0.0`)
 - `PORT` – port for the web interface (default `8082`)
-- `DEBUG` – enable debug mode (`True` or `False`)
-- `SECRET_KEY` – secret key for session management
-- `API_KEY` – key used to access the API
-- `CHATGPT_KEY` – API key for AI captioning and summarization
-- `MAX_WORKERS` – number of worker threads
+- `DEBUG` – enable debug mode (default `True`)
+- `MAX_WORKERS` – number of worker threads (default `8`)
 - `LOG_LEVEL` – logging level (`INFO`, `WARN`, `DEBUG`, etc.)
+
+## User Credentials
+
+Glimpser stores login details in the settings database. These values can be
+updated with `generate_credentials.py` or through the web interface.
+
+- `USER_NAME` – default login name (default `admin`)
+- `USER_PASSWORD_HASH` – hashed password string (empty by default)
+- `SECRET_KEY` – secret key used for session management (default
+  `default_secret_key`)
+- `API_KEY` – key used to access the API (empty by default)
+- `CHATGPT_KEY` – API key for AI captioning and summarization (empty by
+  default)
 
 ## File Locations
 
-- `SCREENSHOT_DIRECTORY` – directory for raw screenshots
-- `VIDEO_DIRECTORY` – directory for recorded videos
-- `SUMMARIES_DIRECTORY` – directory where summaries are written
+- `SCREENSHOT_DIRECTORY` – directory for raw screenshots (default `data/screenshots/`)
+- `VIDEO_DIRECTORY` – directory for recorded videos (default `data/video/`)
+- `SUMMARIES_DIRECTORY` – directory where summaries are written (default `data/summaries/`)
 
 You can change these paths via the settings table or by editing `app/config.py` if you maintain a custom build.
 
@@ -39,20 +56,32 @@ You can change these paths via the settings table or by editing `app/config.py` 
 
 To enable email notifications, configure the following:
 
-- `EMAIL_ENABLED` – set to `True` to enable sending emails
-- `EMAIL_SENDER` – the "from" address
-- `EMAIL_RECIPIENTS` – comma-separated list of recipients
-- `EMAIL_SMTP_SERVER` – SMTP server address
-- `EMAIL_SMTP_PORT` – server port
-- `EMAIL_USE_TLS` – whether to use TLS (`True`/`False`)
-- `EMAIL_USERNAME` and `EMAIL_PASSWORD` – authentication credentials
+- `EMAIL_ENABLED` – set to `True` to enable sending emails (default `False`)
+- `EMAIL_SENDER` – the "from" address (default `your-email@example.com`)
+- `EMAIL_RECIPIENTS` – comma-separated list of recipients (default `recipient1@example.com,recipient2@example.com`)
+- `EMAIL_SMTP_SERVER` – SMTP server address (default `smtp.example.com`)
+- `EMAIL_SMTP_PORT` – server port (default `587`)
+- `EMAIL_USE_TLS` – whether to use TLS (default `True`)
+- `EMAIL_USERNAME` and `EMAIL_PASSWORD` – authentication credentials (default user name `your-username`)
+
+## Capture Parameters
+
+Settings controlling how frames are captured from video sources:
+
+- `NUM_FRAMES` – number of frames to grab from each stream (default `3`)
+- `CAPTURE_TIMEOUT` – maximum seconds to wait for a frame (default `30`)
+- `PROBE_SIZE_DEFAULT` – probe size for HTTP/HTTPS streams (default `5M`)
+- `PROBE_SIZE_RTSP` – probe size for RTSP streams (default `10M`)
+- `PROBE_SIZE_OTHER` – probe size for other protocols (default `20M`)
 
 ## Advanced Options
 
-Additional variables in `app/config.py` control video capture and AI behavior:
+Additional variables control AI behaviour and external tools:
 
-- `NUM_FRAMES`, `CAPTURE_TIMEOUT`, and probe size settings for video capture
-- `LLM_MODEL_VERSION`, `LLM_SUMMARY_PROMPT`, and `LLM_CAPTION_PROMPT` for summarization and captioning
-- `FFMPEG_PATH` and `FFPROBE_PATH` for specifying custom binaries
+- `LLM_MODEL_VERSION` – language model version to use (default `gpt-4.1-mini`)
+- `LLM_SUMMARY_PROMPT` – default prompt used for log summaries
+- `LLM_CAPTION_PROMPT` – default prompt used for image captions
+- `FFMPEG_PATH` – path to the `ffmpeg` binary (default `ffmpeg`)
+- `FFPROBE_PATH` – path to the `ffprobe` binary (default `ffprobe`)
 
 Refer to the code comments in `app/config.py` for full details on each setting.
