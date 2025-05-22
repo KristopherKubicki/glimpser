@@ -266,17 +266,24 @@ def update_setting(name: str, value: str) -> bool:
 
 # TODO:
 def generate_video_stream(video_path: str):
+    """Stream a video file in chunks until the client disconnects."""
 
     # TODO: make sure it exists
-    while True:
-        with open(video_path, "rb") as video:
-            chunk = video.read(1024 * 1024)  # Read 1 MB at a time
-            while chunk:
-                yield chunk
-                chunk = video.read(1024 * 1024)
-        #
-        logging.debug("sleeping...")
-        time.sleep(30)  # Wait for 5 minutes before streaming the video again
+    try:
+        while True:
+            with open(video_path, "rb") as video:
+                chunk = video.read(1024 * 1024)  # Read 1 MB at a time
+                while chunk:
+                    try:
+                        yield chunk
+                    except GeneratorExit:
+                        logging.debug("Video client disconnected")
+                        return
+                    chunk = video.read(1024 * 1024)
+            logging.debug("sleeping...")
+            time.sleep(30)  # Wait for 5 minutes before streaming the video again
+    except GeneratorExit:
+        logging.debug("Generator closed for video stream")
 
 
 login_attempts = {}
@@ -329,48 +336,50 @@ lock = Lock()
 
 
 def generate(group=None, filename="latest_camera.png", rtsp=False):
+    """Yield MJPEG frames until the client disconnects."""
     # pretty hacky but it works ok
     global last_time, last_shot
     boundary = b"frame"
-    while True:
-        ltime = time.time()
-        last_path = os.path.join(
-            os.path.dirname(os.path.join(__file__)),
-            "..",
-            SCREENSHOT_DIRECTORY,
-            filename,
-        ).replace(".png", ".jpg")
+    try:
+        while True:
+            ltime = time.time()
+            last_path = os.path.join(
+                os.path.dirname(os.path.join(__file__)),
+                "..",
+                SCREENSHOT_DIRECTORY,
+                filename,
+            ).replace(".png", ".jpg")
 
-        frame = None
-        if (
-            os.path.exists(last_path)
-            and os.path.getsize(last_path) > 0
-            and os.path.getctime(last_path) > time.time() - 1
-        ):
-            # just read this image instead...
-            with open(last_path, "rb") as f:
-                frame = f.read()
-        else:
-            with lock:
-                if (
-                    group is None
-                    and last_time
-                    and time.time() - last_time < 1
-                    and last_shot
-                    and os.path.exists(last_shot)
-                ):
-                    # warning - todo, this needs to be completed still
-                    try:
-                        with Image.open(last_shot) as img:
-                            img = resize_and_pad(img, (1280, 720))
-                            buffer = io.BytesIO()
-                            img.save(buffer, format="JPEG")
-                            frame = buffer.getvalue()
-                    except Exception:
-                        pass  # TODO logging
-                else:
-                    # Replace this with your actual template manager code
-                    templates = template_manager.get_templates()
+            frame = None
+            if (
+                os.path.exists(last_path)
+                and os.path.getsize(last_path) > 0
+                and os.path.getctime(last_path) > time.time() - 1
+            ):
+                # just read this image instead...
+                with open(last_path, "rb") as f:
+                    frame = f.read()
+            else:
+                with lock:
+                    if (
+                        group is None
+                        and last_time
+                        and time.time() - last_time < 1
+                        and last_shot
+                        and os.path.exists(last_shot)
+                    ):
+                        # warning - todo, this needs to be completed still
+                        try:
+                            with Image.open(last_shot) as img:
+                                img = resize_and_pad(img, (1280, 720))
+                                buffer = io.BytesIO()
+                                img.save(buffer, format="JPEG")
+                                frame = buffer.getvalue()
+                        except Exception:
+                            pass  # TODO logging
+                    else:
+                        # Replace this with your actual template manager code
+                        templates = template_manager.get_templates()
 
                     # sorted_templates = sorted(templates.items(), key=lambda x: int(x[1].get('last_video_time', 0) or 0), reverse=True)
                     sorted_templates = (
@@ -441,18 +450,28 @@ def generate(group=None, filename="latest_camera.png", rtsp=False):
                         except Exception:
                             pass
 
-        if frame:
-            if rtsp:
-                # For RTSP, we need to add RTP headers and packetize the frame
-                # This is a simplified version and may need to be adjusted based on your exact requirements
-                rtp_header = b"\x80\x60\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00"
-                yield rtp_header + frame
-            else:
-                yield b"--" + boundary + b"\r\n"
-                yield b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n\r\n"
-        if time.time() - ltime > 1:
-            continue
-        time.sleep(1 - (time.time() - ltime))
+            if frame:
+                if rtsp:
+                    # For RTSP, we need to add RTP headers and packetize the frame
+                    # This is a simplified version and may need to be adjusted based on your exact requirements
+                    rtp_header = b"\x80\x60\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00"
+                    try:
+                        yield rtp_header + frame
+                    except GeneratorExit:
+                        logging.debug("RTSP client disconnected")
+                        break
+                else:
+                    try:
+                        yield b"--" + boundary + b"\r\n"
+                        yield b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n\r\n"
+                    except GeneratorExit:
+                        logging.debug("MJPEG client disconnected")
+                        break
+            if time.time() - ltime > 1:
+                continue
+            time.sleep(1 - (time.time() - ltime))
+    except GeneratorExit:
+        logging.debug("Generator closed for image stream")
 
 def allowed_filename(filename: str) -> bool:
 
