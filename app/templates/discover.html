@@ -1,0 +1,31 @@
+{% include 'header.html' %}
+<body>
+    <header>
+        {% include 'nav.html' %}
+    </header>
+    <h2>Discovered Cameras</h2>
+    <table>
+        <thead>
+            <tr><th>IP</th><th>Protocol</th><th>Port</th><th>Info</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for cam in cameras %}
+            <tr>
+                <td>{{ cam.ip }}</td>
+                <td>{{ cam.protocol }}</td>
+                <td>{{ cam.port }}</td>
+                <td>{{ cam.info }}</td>
+                <td>
+                    <form action="/discover/add" method="post">
+                        <input type="hidden" name="ip" value="{{ cam.ip }}">
+                        <input type="hidden" name="protocol" value="{{ cam.protocol }}">
+                        <input type="hidden" name="port" value="{{ cam.port }}">
+                        <input type="hidden" name="name" value="{{ cam.ip }}">
+                        <button type="submit">Add</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</body>
