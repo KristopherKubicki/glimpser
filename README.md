@@ -114,6 +114,13 @@ To set up the project for development:
    pytest
    ```
 
+## Releases
+Release packages are built automatically by GitHub Actions.
+When a release is published, the workflow runs `build_packages.sh`
+to create a Debian package and, if possible, a Windows executable.
+These files are attached to the GitHub release and can be downloaded
+from the Releases page.
+
 ## Contributing
 Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request. Please read our [Code of Conduct](CODE_OF_CONDUCT.md) to understand the expectations for participants and how to report issues.
 
