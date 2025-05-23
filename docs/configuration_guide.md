@@ -15,6 +15,9 @@ are used.
 | `GLIMPSER_DATABASE_PATH` | `data/glimpser.db` | Location of the SQLite database file |
 | `GLIMPSER_LOGGING_PATH` | `logs/glimpser.log` | Path to the main log file |
 | `GLIMPSER_BACKUP_PATH` | `data/config_backup.json` | File used when backing up configuration |
+| `GLIMPSER_AWS_BUCKET` | *none* | S3 bucket used for configuration backups |
+| `GLIMPSER_AWS_ACCESS_KEY` | *none* | AWS access key for uploads |
+| `GLIMPSER_AWS_SECRET_KEY` | *none* | AWS secret key for uploads |
 
 ## Core Settings
 
@@ -64,6 +67,14 @@ To enable email notifications, configure the following:
 - `EMAIL_SMTP_PORT` – server port (default `587`)
 - `EMAIL_USE_TLS` – whether to use TLS (default `True`)
 - `EMAIL_USERNAME` and `EMAIL_PASSWORD` – authentication credentials (default user name `your-username`)
+
+## Cloud Backup
+
+If AWS credentials and a bucket name are provided, Glimpser uploads configuration backups to S3 when you perform a backup through the settings page.
+
+- `AWS_ACCESS_KEY` – AWS access key ID
+- `AWS_SECRET_KEY` – AWS secret key
+- `AWS_BUCKET_NAME` – S3 bucket to store backups
 
 ## Capture Parameters
 

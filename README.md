@@ -35,6 +35,7 @@ For more documentation, see the [documentation index](docs/index.md).
 - **Customizable Configuration**: Easily configure different data sources and processing rules through the user-friendly interface. Glimpser’s configuration is fully database-driven, ensuring flexibility and ease of use.
 
 - **Data Retention Policies**: Automatically manages storage by cleaning up old data, ensuring the system remains efficient without requiring constant manual intervention.
+- **Cloud Backup**: Optionally uploads configuration backups to an S3 bucket using your AWS credentials.
 - **HTTP Callbacks**: When a template specifies a callback URL, Glimpser sends a JSON webhook with caption or motion updates to that endpoint.
 
 - **Web Interface**: A user-friendly web interface allows for easy monitoring and configuration. Users can view live feeds, summaries, and configure settings without delving into the code.

@@ -12,6 +12,11 @@ DATABASE_PATH = os.getenv("GLIMPSER_DATABASE_PATH", "data/glimpser.db")
 LOGGING_PATH = os.getenv("GLIMPSER_LOGGING_PATH", "logs/glimpser.log")
 BACKUP_PATH = os.getenv("GLIMPSER_BACKUP_PATH", "data/config_backup.json")
 
+# Optional AWS credentials for cloud backups
+AWS_ACCESS_KEY = os.getenv("GLIMPSER_AWS_ACCESS_KEY", "")
+AWS_SECRET_KEY = os.getenv("GLIMPSER_AWS_SECRET_KEY", "")
+AWS_BUCKET_NAME = os.getenv("GLIMPSER_AWS_BUCKET", "")
+
 # todo.. make sure this is not duplicate loading...
 engine = create_engine(f"sqlite:///{DATABASE_PATH}")
 SessionLocal = sessionmaker(
@@ -44,13 +49,41 @@ def backup_config() -> bool:
         config_dict = {name: value for name, value in settings}
         with open(BACKUP_PATH, 'w') as f:
             json.dump(config_dict, f)
+        success = True
     except Exception:
-        return False
+        success = False
     finally:
         session.close()
-        return True
+
+    if success and AWS_ACCESS_KEY and AWS_SECRET_KEY and AWS_BUCKET_NAME:
+        try:
+            import boto3
+
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=AWS_ACCESS_KEY,
+                aws_secret_access_key=AWS_SECRET_KEY,
+            )
+            s3_client.upload_file(BACKUP_PATH, AWS_BUCKET_NAME, os.path.basename(BACKUP_PATH))
+        except Exception as e:
+            logging.warning("Failed to upload backup to S3: %s", e)
+
+    return success
 
 def restore_config():
+    if not os.path.exists(BACKUP_PATH) and AWS_ACCESS_KEY and AWS_SECRET_KEY and AWS_BUCKET_NAME:
+        try:
+            import boto3
+
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=AWS_ACCESS_KEY,
+                aws_secret_access_key=AWS_SECRET_KEY,
+            )
+            s3_client.download_file(AWS_BUCKET_NAME, os.path.basename(BACKUP_PATH), BACKUP_PATH)
+        except Exception as e:
+            logging.warning("Failed to download backup from S3: %s", e)
+
     if os.path.exists(BACKUP_PATH):
         with open(BACKUP_PATH, 'r') as f:
             config_dict = json.load(f)
@@ -106,6 +139,9 @@ USER_NAME = get_setting("USER_NAME", "admin")
 USER_PASSWORD_HASH = get_setting("USER_PASSWORD_HASH", "")
 API_KEY = get_setting("API_KEY", "")
 CHATGPT_KEY = get_setting("CHATGPT_KEY", "")  # maybe generalize as LLM_KEY ?
+AWS_ACCESS_KEY = AWS_ACCESS_KEY or get_setting("AWS_ACCESS_KEY", "")
+AWS_SECRET_KEY = AWS_SECRET_KEY or get_setting("AWS_SECRET_KEY", "")
+AWS_BUCKET_NAME = AWS_BUCKET_NAME or get_setting("AWS_BUCKET_NAME", "")
 
 LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-4.1-mini") # todo setup allowed models
 
