@@ -89,12 +89,13 @@ def summarize(prompt, history=None, tokens=4096):
 
     # Process the API response
     try:
-        if result is None or result.get('choices') is None:
-            # TODO: add logging
-            if result.get('error'):
-                logging.warning("API response issue %s", result['error'])
-            else:
-                logging.warning("API response issue %s", result)
+        if (
+            result is None
+            or not result.get("choices")
+            or not result.get("usage")
+            or not result["usage"].get("total_tokens")
+        ):
+            logging.warning("API response missing expected fields: %s", result)
             return None
 
         response_text = result["choices"][0]["message"]["content"].replace("\n\n", "\t").strip()
@@ -117,8 +118,7 @@ def summarize(prompt, history=None, tokens=4096):
         logging.debug("Processed summary: %s", ljson)
         return json.dumps(ljson)
     except Exception as e:
-        # TODO add logging
-        logging.error("GPT response processing exception: %s", e)
+        logging.exception("GPT response processing exception: %s", e)
         if response is not None:
             logging.debug("GPT response text: %s", response.text)
         return None
