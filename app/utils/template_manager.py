@@ -205,7 +205,12 @@ class TemplateManager:
             session.close()
 
     def get_template_by_id(self, template_id):
-        # TODO: validate id
+        """Return template details for ``template_id`` if valid."""
+
+        # Validate ``template_id`` before opening a session
+        if not isinstance(template_id, int) or template_id <= 0:
+            return {}
+
         session = self.get_session()
         try:
             template = session.query(Template).filter_by(id=template_id).first()
@@ -275,6 +280,11 @@ def delete_template(name: str) -> bool:
 
 
 def get_template_by_id(template_id: int):
+    """Return template details by ``template_id`` if ``template_id`` is valid."""
+
+    if not isinstance(template_id, int) or template_id <= 0:
+        return {}
+
     manager = TemplateManager()
     return manager.get_template_by_id(template_id)
 

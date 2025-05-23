@@ -145,11 +145,12 @@ Return the settings page in HTML format.
 
 Submit form data to modify configuration values. A successful update redirects back to the settings page.
 
-### 7. Download MP4 Stream
+### 7. Stream MP4 Video
 
 **GET /stream.mp4**
 
-Download the most recent MP4 video for a group. Specify `group` as a query parameter.
+Stream the most recent MP4 video for a group. Specify `group` as a query parameter. The
+video is served in small chunks and loops continuously.
 
 Example: `/stream.mp4?group=frontdoor`
 
