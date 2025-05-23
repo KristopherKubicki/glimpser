@@ -727,7 +727,7 @@ def init_routes(app):
 
         if file and allowed_filename(file.filename):
             # Generate a unique timestamped filename
-            timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+            timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
             filename = f"{template_name}_{timestamp}.png.tmp"
             output_path = os.path.join(SCREENSHOT_DIRECTORY, template_name, filename)
             #if not os.path.normpath(output_path).startswith(SCREENSHOT_DIRECTORY):

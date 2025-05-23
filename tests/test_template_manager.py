@@ -201,6 +201,21 @@ class TestTemplateManager(unittest.TestCase):
 
         self.assertEqual(result, {})
 
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_update_last_screenshot_time(self, mock_session):
+        mock_session_instance = MagicMock()
+        mock_session.return_value = mock_session_instance
+        mock_query = mock_session_instance.query.return_value
+        mock_filter_by = mock_query.filter_by
+        mock_first = mock_filter_by.return_value.first
+
+        mock_template = Template(name="cam1")
+        mock_first.return_value = mock_template
+
+        result = self.template_manager.update_last_screenshot_time("cam1")
+        self.assertTrue(result)
+        mock_session_instance.commit.assert_called()
+
 
 class TestValidateTemplateName(unittest.TestCase):
     """Tests for the ``validate_template_name`` utility."""

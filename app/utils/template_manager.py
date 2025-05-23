@@ -216,6 +216,29 @@ class TemplateManager:
         finally:
             session.close()
 
+    def update_last_screenshot_time(self, name):
+        """Update the ``last_screenshot_time`` for a template."""
+        name = validate_template_name(name)
+        if name is None:
+            return False
+
+        session = self.get_session()
+        try:
+            template = session.query(Template).filter_by(name=name).first()
+            if not template:
+                return False
+
+            template.last_screenshot_time = datetime.utcnow().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+            session.commit()
+            return True
+        except Exception as e:
+            logging.error("Error updating last screenshot time: %s", e)
+            return False
+        finally:
+            session.close()
+
 
 def get_templates():
     manager = TemplateManager()
