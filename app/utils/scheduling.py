@@ -31,6 +31,7 @@ from .screenshots import (
 )
 from .template_manager import get_template, get_templates, save_template
 from .email_alerts import email_alert
+from .http_callbacks import send_http_callback
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from concurrent.futures import ProcessPoolExecutor, TimeoutError
@@ -495,6 +496,15 @@ def update_camera(name, template, image_file=None):
                 add_motion_and_caption(lpath, caption=lcap, motion=lsum)
 
             save_template(name, template)
+            if template.get("callback_url"):
+                payload = {
+                    "name": name,
+                    "caption": template.get("last_caption"),
+                    "timestamp": lctime,
+                    "motion": bool(lsum),
+                }
+                event = "caption" if last_caption_trigger else "motion"
+                send_http_callback(template.get("callback_url"), event, payload)
 
             if last_motion_trigger or lsum:
                 if os.path.exists(
@@ -550,6 +560,14 @@ def update_camera(name, template, image_file=None):
             lctime = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
             template["last_motion_time"] = lctime
             save_template(name, template)
+            if template.get("callback_url"):
+                payload = {
+                    "name": name,
+                    "caption": template.get("last_caption"),
+                    "timestamp": lctime,
+                    "motion": True,
+                }
+                send_http_callback(template.get("callback_url"), "motion", payload)
 
             if os.path.exists(prev_motion):
                 destination = os.readlink(prev_motion)
