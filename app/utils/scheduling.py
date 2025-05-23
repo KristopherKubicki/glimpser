@@ -579,9 +579,12 @@ def update_camera(name, template, image_file=None):
 
 
 def init_crawl():
-    templates = get_templates()  # Make sure to fetch the templates within this function
-    # TODO: randomize 
-    for name, template in templates.items():
+    templates = list(
+        get_templates().items()
+    )  # Make sure to fetch the templates within this function
+
+    random.shuffle(templates)
+    for name, template in templates:
         update_camera(name, template)
 
 
