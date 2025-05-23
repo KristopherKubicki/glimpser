@@ -45,6 +45,11 @@ updated with `generate_credentials.py` or through the web interface.
 - `CHATGPT_KEY` – API key for AI captioning and summarization (empty by
   default)
 
+User accounts are stored in the `users` table. Each record contains the
+`username`, `password_hash`, and an optional `role` that can be used for future
+permission checks. The `generate_credentials.py` utility keeps the settings and
+user table in sync.
+
 ## File Locations
 
 - `SCREENSHOT_DIRECTORY` – directory for raw screenshots (default `data/screenshots/`)

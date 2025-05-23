@@ -41,6 +41,33 @@ def create_settings(conn):
     conn.commit()
 
 
+def create_users(conn):
+    create_users_table = '''
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT
+    );
+    '''
+    cursor = conn.cursor()
+    cursor.execute(create_users_table)
+    conn.commit()
+
+
+def upsert_user(username, password_hash, role, conn):
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT INTO users (username, password_hash, role)
+        VALUES (?, ?, ?)
+        ON CONFLICT(username) DO UPDATE SET password_hash=excluded.password_hash, role=excluded.role;
+        """,
+        (username, password_hash, role),
+    )
+    conn.commit()
+
+
 def generate_credentials(args):
     # Use the provided or default database path
     database_path = app.config.get_setting("DATABASE_PATH", "data/glimpser.db")
@@ -51,6 +78,8 @@ def generate_credentials(args):
 
     if args is None or (not args.update_password and not args.update_key):
         create_settings(conn)
+
+    create_users(conn)
 
     # Handle each setting individually
     if args is None or args.username:
@@ -63,7 +92,7 @@ def generate_credentials(args):
             else:
                 username = app.config.get_setting("USER_NAME", "admin")
         upsert_setting("USER_NAME", username.strip(), conn)
-
+    
     if args is None or args.password or args.update_password:
         password = "" # maybe populate with garbage
         if args:
@@ -77,12 +106,17 @@ def generate_credentials(args):
 
         password_hash = generate_password_hash(password.strip())
         upsert_setting("USER_PASSWORD_HASH", password_hash, conn)
+    else:
+        password_hash = app.config.get_setting("USER_PASSWORD_HASH", "")
 
     if args is None or args.update_key or not args.update_password:
         secret_key = app.config.get_setting("SECRET_KEY", secrets.token_hex(16))
         if args and args.secret_key:
              secret_key = args.secret_key
         upsert_setting("SECRET_KEY", secret_key, conn)
+
+    # Mirror settings into the users table
+    upsert_user(username.strip(), password_hash, "admin", conn)
 
     conn.close()
 

@@ -77,7 +77,7 @@ class TestSettingsRoute(unittest.TestCase):
         return row[0] if row else None
 
     def test_add_and_delete_setting(self):
-        with patch("app.routes.session", {"logged_in": True}):
+        with patch("app.routes.session", {"user_id": 1}), patch("app.routes.login_required", lambda x: x):
             response = self.client.post(
                 "/settings",
                 data={"action": "add", "new_name": "TEST", "new_value": "1"},
@@ -86,7 +86,7 @@ class TestSettingsRoute(unittest.TestCase):
         self.assertIn("/settings", response.headers["Location"])
         self.assertEqual(self._get_value("TEST"), "1")
 
-        with patch("app.routes.session", {"logged_in": True}):
+        with patch("app.routes.session", {"user_id": 1}), patch("app.routes.login_required", lambda x: x):
             response = self.client.post(
                 "/settings", data={"action": "delete", "name_to_delete": "TEST"}
             )
@@ -105,7 +105,7 @@ class TestSettingsRoute(unittest.TestCase):
             "EMAIL_USERNAME": "user",
             "EMAIL_PASSWORD": "pass",
         }
-        with patch("app.routes.session", {"logged_in": True}):
+        with patch("app.routes.session", {"user_id": 1}), patch("app.routes.login_required", lambda x: x):
             response = self.client.post("/settings", data=payload)
         self.assertEqual(response.status_code, 302)
         self.assertEqual(self._get_value("EMAIL_SENDER"), "user@example.com")
@@ -118,7 +118,7 @@ class TestSettingsRoute(unittest.TestCase):
         conn.commit()
         conn.close()
 
-        with patch("app.routes.session", {"logged_in": True}):
+        with patch("app.routes.session", {"user_id": 1}), patch("app.routes.login_required", lambda x: x):
             response = self.client.post("/settings", data={"action": "backup"})
         self.assertEqual(response.status_code, 302)
         self.assertTrue(os.path.exists(self.backup_path))
@@ -133,7 +133,7 @@ class TestSettingsRoute(unittest.TestCase):
         with open(upload_path, "w") as f:
             json.dump(config, f)
 
-        with patch("app.routes.session", {"logged_in": True}):
+        with patch("app.routes.session", {"user_id": 1}), patch("app.routes.login_required", lambda x: x):
             with open(upload_path, "rb") as file_data:
                 response = self.client.post(
                     "/settings",
