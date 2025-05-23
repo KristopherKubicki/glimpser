@@ -201,6 +201,25 @@ class TestTemplateManager(unittest.TestCase):
 
         self.assertEqual(result, {})
 
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_get_template_by_id_invalid(self, mock_session):
+        """Invalid IDs should short circuit and not hit the DB."""
+
+        # Negative ID
+        result = self.template_manager.get_template_by_id(-1)
+        self.assertEqual(result, {})
+        mock_session.assert_not_called()
+
+        # Zero ID
+        result = self.template_manager.get_template_by_id(0)
+        self.assertEqual(result, {})
+        mock_session.assert_not_called()
+
+        # Non integer ID
+        result = self.template_manager.get_template_by_id("abc")
+        self.assertEqual(result, {})
+        mock_session.assert_not_called()
+
 
 class TestValidateTemplateName(unittest.TestCase):
     """Tests for the ``validate_template_name`` utility."""

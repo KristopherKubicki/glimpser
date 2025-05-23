@@ -72,7 +72,7 @@ This guide addresses common issues that users might encounter while using Glimps
 
 **Solution:**
 - Ensure you're using the correct username and password
-- Check if the `USER_NAME` setting is correctly configured
+- Verify that the account exists in the `users` table
 - Try resetting your password through the recovery process
 
 ## Getting Further Help

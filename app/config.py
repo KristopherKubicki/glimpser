@@ -4,6 +4,11 @@ import os
 import json
 import logging
 
+from dotenv import load_dotenv, find_dotenv
+
+# Load variables from a `.env` file if present
+load_dotenv(find_dotenv())
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
@@ -24,10 +29,16 @@ SessionLocal = sessionmaker(
 )  # settings only thread
 
 def get_setting(name, default=None):
+    """Return a setting from the environment or the database."""
+    env_val = os.getenv(name)
+    if env_val is not None:
+        return env_val
+
     session = SessionLocal()
     try:
         result = session.execute(
-            text("SELECT value FROM settings WHERE name = '%s'" % name)
+            text("SELECT value FROM settings WHERE name = :name"),
+            {"name": name},
         ).fetchone()
         return result[0] if result else default
     except Exception as e:
@@ -183,7 +194,8 @@ EMAIL_USERNAME = get_setting("EMAIL_USERNAME", "your-username")
 EMAIL_PASSWORD = get_setting("EMAIL_PASSWORD", "")
 
 
-# experimental
-# TWILIO_SID = get_setting("TWILIO_SID","")
-# TWILIO_TOKEN = get_setting("TWILIO_TOKEN","")
-# TWILIO_NUMBER = get_setting("TWILIO_NUMBER","")
+
+# SMS/Twilio settings
+TWILIO_SID = get_setting("TWILIO_SID", "")
+TWILIO_TOKEN = get_setting("TWILIO_TOKEN", "")
+TWILIO_NUMBER = get_setting("TWILIO_NUMBER", "")

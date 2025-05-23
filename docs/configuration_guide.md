@@ -48,6 +48,11 @@ updated with `generate_credentials.py` or through the web interface.
 - `CHATGPT_KEY` – API key for AI captioning and summarization (empty by
   default)
 
+User accounts are stored in the `users` table. Each record contains the
+`username`, `password_hash`, and an optional `role` that can be used for future
+permission checks. The `generate_credentials.py` utility keeps the settings and
+user table in sync.
+
 ## File Locations
 
 - `SCREENSHOT_DIRECTORY` – directory for raw screenshots (default `data/screenshots/`)
@@ -68,6 +73,7 @@ To enable email notifications, configure the following:
 - `EMAIL_USE_TLS` – whether to use TLS (default `True`)
 - `EMAIL_USERNAME` and `EMAIL_PASSWORD` – authentication credentials (default user name `your-username`)
 
+
 ## Cloud Backup
 
 If AWS credentials and a bucket name are provided, Glimpser uploads configuration backups to S3 when you perform a backup through the settings page.
@@ -75,6 +81,15 @@ If AWS credentials and a bucket name are provided, Glimpser uploads configuratio
 - `AWS_ACCESS_KEY` – AWS access key ID
 - `AWS_SECRET_KEY` – AWS secret key
 - `AWS_BUCKET_NAME` – S3 bucket to store backups
+
+## SMS Settings
+
+Configure these values to enable Twilio SMS alerts:
+
+- `TWILIO_SID` – your Twilio account SID
+- `TWILIO_TOKEN` – your Twilio auth token
+- `TWILIO_NUMBER` – phone number that receives alerts
+
 
 ## Capture Parameters
 

@@ -35,6 +35,7 @@ from PIL import Image
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
+import subprocess
 
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
@@ -42,14 +43,13 @@ import app.config as config
 from app.config import (
     API_KEY,
     SCREENSHOT_DIRECTORY,
-    USER_NAME,
-    USER_PASSWORD_HASH,
     VIDEO_DIRECTORY,
     VERSION,
     BACKUP_PATH,
     backup_config,
     restore_config
 )
+from app.models import User
 from app.utils import (
     scheduling,
     template_manager,
@@ -139,13 +139,25 @@ def login_required(f):
             return f(*args, **kwargs)
 
         # Check for valid session
-        elif "logged_in" in session:
-            # Check for session expiry
+        elif session.get("user_id"):
             expiry = session.get("expiry")
             if expiry and datetime.now() > datetime.strptime(expiry, '%Y-%m-%d %H:%M:%S'):
-                session.pop("logged_in", None)  # Clear session
+                session.pop("user_id", None)
                 flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
+
+            db_session = SessionLocal()
+            try:
+                user = db_session.query(User).filter_by(id=session["user_id"]).first()
+            finally:
+                db_session.close()
+
+            if not user:
+                session.pop("user_id", None)
+                flash("Session expired. Please log in again.")
+                return redirect(url_for("login", next=request.url))
+
+            # Optional role checks could be added here
             return f(*args, **kwargs)
 
         # Handle missing or invalid authentication
@@ -284,6 +296,39 @@ def generate_video_stream(video_path: str):
 
         logging.debug("Restarting video stream")
         time.sleep(30)  # Wait before streaming again
+
+
+def generate_live_stream(url: str):
+    """Yield video data directly from a remote URL using ffmpeg."""
+
+    command = [
+        config.FFMPEG_PATH,
+        "-i",
+        url,
+        "-loglevel",
+        "error",
+        "-an",
+        "-c:v",
+        "copy",
+        "-f",
+        "mp4",
+        "-movflags",
+        "frag_keyframe+empty_moov",
+        "pipe:1",
+    ]
+
+    process = subprocess.Popen(command, stdout=subprocess.PIPE)
+
+    try:
+        while True:
+            chunk = process.stdout.read(1024 * 1024)
+            if not chunk:
+                break
+            yield chunk
+    except GeneratorExit:
+        pass
+    finally:
+        process.kill()
 
 
 login_attempts = {}
@@ -635,10 +680,14 @@ def init_routes(app):
             username = request.form["username"]
             password = request.form["password"]
 
-            if username == USER_NAME and check_password_hash(
-                USER_PASSWORD_HASH, password
-            ):
-                session["logged_in"] = True
+            db_session = SessionLocal()
+            try:
+                user = db_session.query(User).filter_by(username=username).first()
+            finally:
+                db_session.close()
+
+            if user and check_password_hash(user.password_hash, password):
+                session["user_id"] = user.id
                 login_attempts.pop(
                     ip_address, None
                 )  # Reset attempts on successful login
@@ -673,7 +722,7 @@ def init_routes(app):
     @app.route("/logout")
     @login_required
     def logout():
-        session.pop("logged_in", None)
+        session.pop("user_id", None)
         flash("You have been logged out successfully.", "success")
         return redirect(url_for("login"))
 
@@ -963,6 +1012,23 @@ def init_routes(app):
         # Stream the video in small chunks for continuous playback
         return Response(
             stream_with_context(generate_video_stream(video_path)),
+            mimetype="video/mp4",
+        )
+
+    @app.route("/live_video")
+    @login_required
+    def live_video():
+        camera = request.args.get("camera")
+        if not camera:
+            abort(400, "camera parameter required")
+        details = template_manager.get_template(camera)
+        if not details:
+            abort(404)
+        url = details.get("url")
+        if not url:
+            abort(404)
+        return Response(
+            stream_with_context(generate_live_stream(url)),
             mimetype="video/mp4",
         )
 

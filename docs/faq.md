@@ -18,6 +18,9 @@ Set the `GLIMPSER_DATABASE_PATH` environment variable before starting the app. T
 ### How do I enable email notifications?
 Ensure the `EMAIL_ENABLED` setting is set to `True` and configure the remaining email settings (SMTP server, username, password). These options can be adjusted from the web interface or the configuration file.
 
+### How do I enable SMS alerts?
+Set `TWILIO_SID`, `TWILIO_TOKEN`, and `TWILIO_NUMBER` in the configuration. When these values are present, Glimpser will send important alerts via text message as well as email.
+
 ## Troubleshooting
 
 ### I'm unable to log in
