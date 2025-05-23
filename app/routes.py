@@ -42,14 +42,13 @@ import app.config as config
 from app.config import (
     API_KEY,
     SCREENSHOT_DIRECTORY,
-    USER_NAME,
-    USER_PASSWORD_HASH,
     VIDEO_DIRECTORY,
     VERSION,
     BACKUP_PATH,
     backup_config,
     restore_config
 )
+from app.models import User
 from app.utils import (
     scheduling,
     template_manager,
@@ -139,13 +138,25 @@ def login_required(f):
             return f(*args, **kwargs)
 
         # Check for valid session
-        elif "logged_in" in session:
-            # Check for session expiry
+        elif session.get("user_id"):
             expiry = session.get("expiry")
             if expiry and datetime.now() > datetime.strptime(expiry, '%Y-%m-%d %H:%M:%S'):
-                session.pop("logged_in", None)  # Clear session
+                session.pop("user_id", None)
                 flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
+
+            db_session = SessionLocal()
+            try:
+                user = db_session.query(User).filter_by(id=session["user_id"]).first()
+            finally:
+                db_session.close()
+
+            if not user:
+                session.pop("user_id", None)
+                flash("Session expired. Please log in again.")
+                return redirect(url_for("login", next=request.url))
+
+            # Optional role checks could be added here
             return f(*args, **kwargs)
 
         # Handle missing or invalid authentication
@@ -635,10 +646,14 @@ def init_routes(app):
             username = request.form["username"]
             password = request.form["password"]
 
-            if username == USER_NAME and check_password_hash(
-                USER_PASSWORD_HASH, password
-            ):
-                session["logged_in"] = True
+            db_session = SessionLocal()
+            try:
+                user = db_session.query(User).filter_by(username=username).first()
+            finally:
+                db_session.close()
+
+            if user and check_password_hash(user.password_hash, password):
+                session["user_id"] = user.id
                 login_attempts.pop(
                     ip_address, None
                 )  # Reset attempts on successful login
@@ -673,7 +688,7 @@ def init_routes(app):
     @app.route("/logout")
     @login_required
     def logout():
-        session.pop("logged_in", None)
+        session.pop("user_id", None)
         flash("You have been logged out successfully.", "success")
         return redirect(url_for("login"))
 
