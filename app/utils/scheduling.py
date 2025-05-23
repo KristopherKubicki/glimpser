@@ -31,6 +31,7 @@ from .screenshots import (
 )
 from .template_manager import get_template, get_templates, save_template
 from .email_alerts import email_alert
+from .sms_alerts import sms_alert
 from .http_callbacks import send_http_callback
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -737,9 +738,10 @@ def update_summary():
     if lsuc is False:
         logging.warning("MISSED CAPTION ($$$) %s", lsum)
 
-    # Send email alert with the summary
+    # Send alerts with the summary
     if lsuc:
         email_alert("LLM Summary Update", f"New summary generated:\n\n{lsum}")
+        sms_alert("LLM Summary Update", f"New summary generated:\n\n{lsum}")
 
 
 def schedule_summarization():

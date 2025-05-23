@@ -13,6 +13,7 @@ from app.utils.scheduling import schedule_crawlers, schedule_summarization, sche
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 from app.config import backup_config, restore_config
 from app.utils.email_alerts import email_alert
+from app.utils.sms_alerts import sms_alert
 #from app.utils.db import SessionLocal
 #from app.models.log import Log
 
@@ -174,8 +175,9 @@ def create_app(watchdog=True, schedule=True):
 
     start_log_caching()
 
-    # Send an email alert when the application starts
+    # Send alerts when the application starts
     email_alert("Application Start", "The Glimpser application has been started successfully.")
+    sms_alert("Application Start", "The Glimpser application has been started successfully.")
 
     # Make scheduler accessible globally
     app.scheduler = scheduler

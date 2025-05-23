@@ -65,6 +65,14 @@ To enable email notifications, configure the following:
 - `EMAIL_USE_TLS` – whether to use TLS (default `True`)
 - `EMAIL_USERNAME` and `EMAIL_PASSWORD` – authentication credentials (default user name `your-username`)
 
+## SMS Settings
+
+Configure these values to enable Twilio SMS alerts:
+
+- `TWILIO_SID` – your Twilio account SID
+- `TWILIO_TOKEN` – your Twilio auth token
+- `TWILIO_NUMBER` – phone number that receives alerts
+
 ## Capture Parameters
 
 Settings controlling how frames are captured from video sources:
