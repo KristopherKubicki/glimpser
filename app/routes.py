@@ -373,8 +373,10 @@ def generate(group=None, filename="latest_camera.png", rtsp=False):
                             buffer = io.BytesIO()
                             img.save(buffer, format="JPEG")
                             frame = buffer.getvalue()
-                    except Exception:
-                        pass  # TODO logging
+                    except Exception as e:
+                        logging.error(
+                            "Failed to open last shot %s: %s", last_shot, e
+                        )
                 else:
                     # Replace this with your actual template manager code
                     templates = template_manager.get_templates()
