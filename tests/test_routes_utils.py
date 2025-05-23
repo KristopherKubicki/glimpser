@@ -3,6 +3,8 @@ import time
 import hashlib
 import sys
 import types
+import tempfile
+import os
 from unittest.mock import patch
 
 # Provide a dummy psutil module if it's not installed
@@ -94,7 +96,7 @@ for sub in ['scheduling', 'template_manager', 'video_archiver', 'screenshots', '
         if sub == 'email_alerts':
             mod.email_alert = lambda *a, **k: None
 
-from app.routes import generate_timed_hash, is_hash_valid
+from app.routes import generate_timed_hash, is_hash_valid, generate_video_stream
 
 
 class TestRoutesUtils(unittest.TestCase):
@@ -122,6 +124,21 @@ class TestRoutesUtils(unittest.TestCase):
             # Malformed strings -> invalid
             self.assertFalse(is_hash_valid("noperiod"))
             self.assertFalse(is_hash_valid("one.two.three"))
+
+
+class TestGenerateVideoStream(unittest.TestCase):
+    @patch("app.routes.time.sleep", return_value=None)
+    def test_generate_video_stream(self, _):
+        with tempfile.NamedTemporaryFile(delete=False) as temp:
+            temp.write(b"data")
+            temp.flush()
+            path = temp.name
+
+        gen = generate_video_stream(path)
+        chunk = next(gen)
+        self.assertEqual(chunk, b"data")
+        gen.close()
+        os.remove(path)
 
 
 if __name__ == "__main__":

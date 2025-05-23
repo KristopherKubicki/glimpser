@@ -28,6 +28,7 @@ from flask import (
     session,
     url_for,
     Response,
+    stream_with_context,
 )
 
 from PIL import Image
@@ -267,17 +268,22 @@ def update_setting(name: str, value: str) -> bool:
 
 # TODO:
 def generate_video_stream(video_path: str):
+    """Yield video data in chunks, looping continuously."""
 
-    # TODO: make sure it exists
+    chunk_size = 1024 * 1024  # 1 MB
     while True:
+        if not os.path.exists(video_path):
+            logging.warning("Video path does not exist: %s", video_path)
+            break
+
         with open(video_path, "rb") as video:
-            chunk = video.read(1024 * 1024)  # Read 1 MB at a time
+            chunk = video.read(chunk_size)
             while chunk:
                 yield chunk
-                chunk = video.read(1024 * 1024)
-        #
-        logging.debug("sleeping...")
-        time.sleep(30)  # Wait for 5 minutes before streaming the video again
+                chunk = video.read(chunk_size)
+
+        logging.debug("Restarting video stream")
+        time.sleep(30)  # Wait before streaming again
 
 
 login_attempts = {}
@@ -951,9 +957,12 @@ def init_routes(app):
 
         if not os.path.exists(video_path):
             abort(404)
-        return send_file(video_path)
-        # TODO: implement slowstreaming and continuous streaming
-        # return Response(stream_with_context(generate_video_stream(video_path)), mimetype='video/mp4')
+
+        # Stream the video in small chunks for continuous playback
+        return Response(
+            stream_with_context(generate_video_stream(video_path)),
+            mimetype="video/mp4",
+        )
 
     @app.route("/stream.m3u8")
     @login_required
