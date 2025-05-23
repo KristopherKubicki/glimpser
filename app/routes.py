@@ -28,6 +28,7 @@ from flask import (
     session,
     url_for,
     Response,
+    stream_with_context,
 )
 
 from PIL import Image
@@ -53,7 +54,8 @@ from app.utils import (
     scheduling,
     template_manager,
     video_archiver,
-    screenshots
+    screenshots,
+    camera_discovery
 )
 from app.utils.db import SessionLocal
 #from app.models.log import Log
@@ -266,17 +268,22 @@ def update_setting(name: str, value: str) -> bool:
 
 # TODO:
 def generate_video_stream(video_path: str):
+    """Yield video data in chunks, looping continuously."""
 
-    # TODO: make sure it exists
+    chunk_size = 1024 * 1024  # 1 MB
     while True:
+        if not os.path.exists(video_path):
+            logging.warning("Video path does not exist: %s", video_path)
+            break
+
         with open(video_path, "rb") as video:
-            chunk = video.read(1024 * 1024)  # Read 1 MB at a time
+            chunk = video.read(chunk_size)
             while chunk:
                 yield chunk
-                chunk = video.read(1024 * 1024)
-        #
-        logging.debug("sleeping...")
-        time.sleep(30)  # Wait for 5 minutes before streaming the video again
+                chunk = video.read(chunk_size)
+
+        logging.debug("Restarting video stream")
+        time.sleep(30)  # Wait before streaming again
 
 
 login_attempts = {}
@@ -950,9 +957,12 @@ def init_routes(app):
 
         if not os.path.exists(video_path):
             abort(404)
-        return send_file(video_path)
-        # TODO: implement slowstreaming and continuous streaming
-        # return Response(stream_with_context(generate_video_stream(video_path)), mimetype='video/mp4')
+
+        # Stream the video in small chunks for continuous playback
+        return Response(
+            stream_with_context(generate_video_stream(video_path)),
+            mimetype="video/mp4",
+        )
 
     @app.route("/stream.m3u8")
     @login_required
@@ -1628,6 +1638,29 @@ def init_routes(app):
                 return jsonify({"message": "Template updated successfully!"})
 
             return redirect("/templates/" + template_name)
+
+    @app.route('/discover', methods=['GET'])
+    @login_required
+    def discover_cameras_route():
+        cameras = camera_discovery.discover_cameras()
+        return render_template('discover.html', cameras=cameras)
+
+    @app.route('/discover/add', methods=['POST'])
+    @login_required
+    def add_discovered_camera():
+        data = request.form if request.form else request.get_json(force=True)
+        name = data.get('name') or data.get('ip')
+        protocol = data.get('protocol', 'rtsp')
+        port = int(data.get('port', 554))
+        url = data.get('url') or f"{protocol}://{data.get('ip')}:{port}"
+        template = {
+            'name': name,
+            'url': url,
+            'frequency': data.get('frequency', 30),
+            'timeout': data.get('timeout', 10)
+        }
+        template_manager.save_template(name, template)
+        return jsonify({'status': 'success'})
 
     @app.route("/status")
     @login_required

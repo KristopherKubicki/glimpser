@@ -230,12 +230,7 @@ if __name__ == "__main__":
     # reloader will execute this block twice. The WERKZEUG_RUN_MAIN environment
     # variable is only set for the reloader's second (real) run, so we skip the
     # check on the initial bootstrap to avoid false positives.
-    should_check_port = (
-        not config.DEBUG_MODE
-        or os.environ.get("WERKZEUG_RUN_MAIN") == "true"
-    )
-
-    if should_check_port and is_port_in_use(config.PORT):
+    if is_port_in_use(config.PORT) and config.DEBUG_MODE is False:
         logging.error(
             "Error: Port %s is already in use. Please choose a different port.",
             config.PORT,
