@@ -6,6 +6,7 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.utils.template_manager import TemplateManager, Template
+from app.utils.validators import validate_template_name
 
 
 class TestTemplateManager(unittest.TestCase):
@@ -199,6 +200,34 @@ class TestTemplateManager(unittest.TestCase):
         result = self.template_manager.get_template_by_id(999)
 
         self.assertEqual(result, {})
+
+
+class TestValidateTemplateName(unittest.TestCase):
+    """Tests for the ``validate_template_name`` utility."""
+
+    def test_valid_names(self):
+        """Names containing allowed characters should be returned unchanged."""
+        self.assertEqual(validate_template_name("cam1"), "cam1")
+        self.assertEqual(validate_template_name("cam-02"), "cam-02")
+
+    def test_invalid_names(self):
+        """Invalid names should return ``None``."""
+        invalid = [
+            "",
+            "-cam",
+            "cam-",
+            "_cam",
+            "cam_",
+            "cam name",
+            "cam$name",
+            "cam..01",
+            "cam--01",
+        ]
+        for name in invalid:
+            self.assertIsNone(
+                validate_template_name(name),
+                msg=f"{name} should be invalid",
+            )
 
 
 if __name__ == "__main__":
