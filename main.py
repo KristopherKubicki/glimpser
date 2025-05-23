@@ -181,8 +181,9 @@ def cleanup_resources():
                 # concurrent.futures.Future.cancel()
                 thread.join(timeout=0.01)
                 if thread.is_alive():
-                    # TODO: log this ...
-                    pass
+                    logging.warning(
+                        "Thread %s is still alive after join", thread.name
+                    )
             except Exception as e:
                 logging.error("Error terminating thread %s: %s", thread.name, e)
 
