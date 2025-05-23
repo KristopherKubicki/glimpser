@@ -35,6 +35,7 @@ from PIL import Image
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
+import subprocess
 
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
@@ -284,6 +285,39 @@ def generate_video_stream(video_path: str):
 
         logging.debug("Restarting video stream")
         time.sleep(30)  # Wait before streaming again
+
+
+def generate_live_stream(url: str):
+    """Yield video data directly from a remote URL using ffmpeg."""
+
+    command = [
+        config.FFMPEG_PATH,
+        "-i",
+        url,
+        "-loglevel",
+        "error",
+        "-an",
+        "-c:v",
+        "copy",
+        "-f",
+        "mp4",
+        "-movflags",
+        "frag_keyframe+empty_moov",
+        "pipe:1",
+    ]
+
+    process = subprocess.Popen(command, stdout=subprocess.PIPE)
+
+    try:
+        while True:
+            chunk = process.stdout.read(1024 * 1024)
+            if not chunk:
+                break
+            yield chunk
+    except GeneratorExit:
+        pass
+    finally:
+        process.kill()
 
 
 login_attempts = {}
@@ -963,6 +997,23 @@ def init_routes(app):
         # Stream the video in small chunks for continuous playback
         return Response(
             stream_with_context(generate_video_stream(video_path)),
+            mimetype="video/mp4",
+        )
+
+    @app.route("/live_video")
+    @login_required
+    def live_video():
+        camera = request.args.get("camera")
+        if not camera:
+            abort(400, "camera parameter required")
+        details = template_manager.get_template(camera)
+        if not details:
+            abort(404)
+        url = details.get("url")
+        if not url:
+            abort(404)
+        return Response(
+            stream_with_context(generate_live_stream(url)),
             mimetype="video/mp4",
         )
 

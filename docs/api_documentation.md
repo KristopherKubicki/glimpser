@@ -154,7 +154,15 @@ video is served in small chunks and loops continuously.
 
 Example: `/stream.mp4?group=frontdoor`
 
-### 8. Trigger Screenshot Capture
+### 8. Stream Live Video
+
+**GET /live_video**
+
+Stream a camera directly from its configured URL in real time. Specify `camera` as a query parameter.
+
+Example: `/live_video?camera=frontdoor`
+
+### 9. Trigger Screenshot Capture
 
 **GET /take_screenshot/<template_name>**
 **POST /take_screenshot/<template_name>**
