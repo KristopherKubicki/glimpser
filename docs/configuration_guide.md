@@ -15,6 +15,10 @@ are used.
 | `GLIMPSER_DATABASE_PATH` | `data/glimpser.db` | Location of the SQLite database file |
 | `GLIMPSER_LOGGING_PATH` | `logs/glimpser.log` | Path to the main log file |
 | `GLIMPSER_BACKUP_PATH` | `data/config_backup.json` | File used when backing up configuration |
+| `GLIMPSER_S3_BUCKET` | *(empty)* | S3 bucket for backups |
+| `AWS_ACCESS_KEY_ID` | *(empty)* | AWS access key for S3 backups |
+| `AWS_SECRET_ACCESS_KEY` | *(empty)* | AWS secret key for S3 backups |
+| `AWS_DEFAULT_REGION` | `us-east-1` | AWS region for S3 |
 
 ## Core Settings
 

@@ -11,11 +11,16 @@ load_dotenv(find_dotenv())
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
+from app.utils import s3_backup
 
 # TODO: also consider argparse...
 DATABASE_PATH = os.getenv("GLIMPSER_DATABASE_PATH", "data/glimpser.db")
 LOGGING_PATH = os.getenv("GLIMPSER_LOGGING_PATH", "logs/glimpser.log")
 BACKUP_PATH = os.getenv("GLIMPSER_BACKUP_PATH", "data/config_backup.json")
+S3_BUCKET = os.getenv("GLIMPSER_S3_BUCKET")
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 
 # todo.. make sure this is not duplicate loading...
 engine = create_engine(f"sqlite:///{DATABASE_PATH}")
@@ -55,6 +60,11 @@ def backup_config() -> bool:
         config_dict = {name: value for name, value in settings}
         with open(BACKUP_PATH, 'w') as f:
             json.dump(config_dict, f)
+        if S3_BUCKET:
+            s3_backup.upload_file(BACKUP_PATH, 'config_backup.json')
+            if os.path.exists(DATABASE_PATH):
+                s3_backup.upload_file(DATABASE_PATH, os.path.basename(DATABASE_PATH))
+            s3_backup.upload_media_archive()
     except Exception:
         return False
     finally:
@@ -62,6 +72,9 @@ def backup_config() -> bool:
         return True
 
 def restore_config():
+    if not os.path.exists(BACKUP_PATH) and S3_BUCKET:
+        s3_backup.download_file('config_backup.json', BACKUP_PATH)
+
     if os.path.exists(BACKUP_PATH):
         with open(BACKUP_PATH, 'r') as f:
             config_dict = json.load(f)
