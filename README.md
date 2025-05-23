@@ -36,6 +36,7 @@ For more documentation, see the [documentation index](docs/index.md).
 
 - **Data Retention Policies**: Automatically manages storage by cleaning up old data, ensuring the system remains efficient without requiring constant manual intervention.
 - **HTTP Callbacks**: When a template specifies a callback URL, Glimpser sends a JSON webhook with caption or motion updates to that endpoint.
+- **SMS Alerts**: Configure Twilio credentials to receive important notifications by text message.
 
 - **Web Interface**: A user-friendly web interface allows for easy monitoring and configuration. Users can view live feeds, summaries, and configure settings without delving into the code.
 
@@ -67,7 +68,7 @@ For more documentation, see the [documentation index](docs/index.md).
 ## Usage
 
 ### Configuration
-Glimpser uses a database-driven configuration to manage data sources and processing rules. Users can easily add, update, or remove configurations through the web interface.
+Glimpser uses a database-driven configuration to manage data sources and processing rules. Users can easily add, update, or remove configurations through the web interface. SMS alerts can be enabled by setting `TWILIO_SID`, `TWILIO_TOKEN`, and `TWILIO_NUMBER` in the configuration.
 
 ### Capturing Screenshots
 The preferred method for capturing screenshots is through the Glimpser web interface. Simply navigate to the capture section, select your desired source, and click the capture button. This ensures a seamless and user-friendly experience.

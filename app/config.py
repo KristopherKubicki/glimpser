@@ -158,7 +158,8 @@ EMAIL_USERNAME = get_setting("EMAIL_USERNAME", "your-username")
 EMAIL_PASSWORD = get_setting("EMAIL_PASSWORD", "")
 
 
-# experimental
-# TWILIO_SID = get_setting("TWILIO_SID","")
-# TWILIO_TOKEN = get_setting("TWILIO_TOKEN","")
-# TWILIO_NUMBER = get_setting("TWILIO_NUMBER","")
+
+# SMS/Twilio settings
+TWILIO_SID = get_setting("TWILIO_SID", "")
+TWILIO_TOKEN = get_setting("TWILIO_TOKEN", "")
+TWILIO_NUMBER = get_setting("TWILIO_NUMBER", "")
