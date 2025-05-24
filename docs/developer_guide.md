@@ -15,6 +15,11 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    ```sh
    pip install -e ".[dev]"
    ```
+3. Install pre-commit and set up the Git hooks:
+   ```sh
+   pip install pre-commit
+   pre-commit install
+   ```
 
 ## Running Tests
 
