@@ -37,6 +37,7 @@ For more documentation, see the [documentation index](docs/index.md).
 - **Data Retention Policies**: Automatically manages storage by cleaning up old data, ensuring the system remains efficient without requiring constant manual intervention.
 - **HTTP Callbacks**: When a template specifies a callback URL, Glimpser sends a JSON webhook with caption or motion updates to that endpoint.
 - **SMS Alerts**: Configure Twilio credentials to receive important notifications by text message.
+- **Camera Discovery**: Use the `/discover` page to automatically scan the local network for ONVIF or RTSP cameras.
 
 - **Web Interface**: A user-friendly web interface allows for easy monitoring and configuration. Users can view live feeds, summaries, and configure settings without delving into the code.
 
