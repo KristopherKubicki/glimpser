@@ -89,45 +89,19 @@ Home Assistant is an open-source home automation platform. Here's how to integra
 
 ## Hubitat Integration
 
-Hubitat is a home automation hub. Here's how to integrate it with Glimpser:
+Hubitat is a home automation hub. Glimpser does not include a built-in Hubitat
+webhook endpoint, but you can still connect the two systems using webhooks:
 
 1. **Create a Maker API**:
    - In Hubitat, install the Maker API app if not already present.
    - Create a new Maker API instance and note down the API URL and access token.
 
-2. **Set Up Glimpser Webhook**:
-   - In Glimpser, create a new route in `app/routes.py` to receive webhooks from Hubitat:
-     ```python
-     @app.route('/hubitat_webhook', methods=['POST'])
-     def hubitat_webhook():
-         data = request.json
-         # Process the data and trigger appropriate Glimpser actions
-         return jsonify({"status": "success"}), 200
-     ```
-
-3. **Configure Hubitat Rule Machine**:
+2. **Configure Hubitat Rule Machine**:
    - In Hubitat, use Rule Machine to create rules that send webhooks to Glimpser.
    - Example: When motion is detected, send a webhook to Glimpser to trigger a screenshot:
      ```
      http://<glimpser_ip>:<port>/take_screenshot/<template_name>
      ```
-
-4. **Glimpser to Hubitat Communication**:
-   - Use Glimpser's scheduling capabilities to periodically send analysis results to Hubitat.
-   - Add a new scheduled job in `app/utils/scheduling.py`:
-     ```python
-     def send_to_hubitat():
-         # Get latest analysis from Glimpser
-         # Send to Hubitat using the Maker API
-         pass
-
-    scheduler.add_job(
-        id="send_to_hubitat",
-        func=send_to_hubitat,
-        trigger="interval",
-        minutes=5
-    )
-    ```
 
 ## IFTTT Integration
 
