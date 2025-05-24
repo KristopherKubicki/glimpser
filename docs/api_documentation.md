@@ -174,6 +174,18 @@ Example response:
 {"status": "success", "message": "Screenshot for camera1 taken"}
 ```
 
+### 10. View System Status
+
+**GET /status**
+
+Returns an HTML dashboard displaying metrics such as CPU, memory, and disk usage along with open file count, thread count, and uptime. These metrics are gathered in a background thread (see `app/utils/scheduling.py`).
+
+### 11. Stream Logs
+
+**GET /stream_logs**
+
+Streams log records via Server-Sent Events. Optional query parameters `level`, `source`, `start_date`, `end_date`, and `search` allow filtering. The `/logs` and `/status` pages use this endpoint for the live log viewer.
+
 ## Error Handling
 
 All endpoints may return the following error responses:
