@@ -23,7 +23,7 @@ banner = """
                               |_|
 """
 
-def parse_arguments():
+def parse_arguments(arg_list=None):
     """
     Parse command-line arguments for the Glimpser application.
 
@@ -46,13 +46,25 @@ def parse_arguments():
     parser.add_argument("--console-log", action="store_true", help="Enable logging to the console", default=False)
     parser.add_argument("--debug", action="store_true", default=config.DEBUG,
                         help="Enable debug mode")
+    parser.add_argument(
+        "--no-scheduler",
+        action="store_true",
+        help="Disable the background scheduler",
+        default=False,
+    )
+    parser.add_argument(
+        "--no-watchdog",
+        action="store_true",
+        help="Disable the watchdog thread",
+        default=False,
+    )
     parser.add_argument("--screenshot-dir", default=config.SCREENSHOT_DIRECTORY,
                         help="Directory for storing screenshots")
     parser.add_argument("--video-dir", default=config.VIDEO_DIRECTORY,
                         help="Directory for storing video files")
     parser.add_argument("--summaries-dir", default=config.SUMMARIES_DIRECTORY,
                         help="Directory for storing summaries")
-    return parser.parse_args()
+    return parser.parse_args(arg_list)
 
 def setup_config(args=None):
     """
@@ -127,7 +139,7 @@ def generate_credentials_if_needed():
         from generate_credentials import generate_credentials
         generate_credentials(args=None)
 
-def create_application():
+def create_application(args=None):
     """
     Create and configure the Flask application.
 
@@ -137,19 +149,27 @@ def create_application():
     Returns:
         Flask: The configured Flask application instance.
     """
-    if __name__ == "__main__":
-        args = parse_arguments()
+    if args is None:
+        if __name__ == "__main__":
+            args = parse_arguments()
+        # When running via Gunicorn or tests without CLI
+        else:
+            args = None
+
+    if args:
         setup_config(args)
         setup_logging(args)
     else:
-        # Running via Gunicorn
         setup_config()
         setup_logging()
 
     ensure_directories()
     generate_credentials_if_needed()
 
-    return create_app()
+    schedule = not getattr(args, "no_scheduler", False)
+    watchdog = not getattr(args, "no_watchdog", False)
+
+    return create_app(watchdog=watchdog, schedule=schedule)
 
 def output_shutdown_stats():
     # Get and display system metrics
@@ -213,11 +233,11 @@ def is_port_in_use(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(('localhost', port)) == 0
 
-if __name__ == "__main__":
+def main(argv=None):
+    """Entry point for the ``glimpser`` command."""
     # Clear the console before starting
     clear_console()
 
-    # Create the Flask application
     logging.info(banner)
 
     atexit.register(cleanup_resources)
@@ -225,12 +245,9 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, graceful_shutdown)
 
     logging.info("Initializing...")
-    app = create_application()
+    args = parse_arguments(argv)
+    app = create_application(args)
 
-    # Check if the port is already in use. When debug mode is enabled, Flask's
-    # reloader will execute this block twice. The WERKZEUG_RUN_MAIN environment
-    # variable is only set for the reloader's second (real) run, so we skip the
-    # check on the initial bootstrap to avoid false positives.
     if is_port_in_use(config.PORT) and config.DEBUG_MODE is False:
         logging.error(
             "Error: Port %s is already in use. Please choose a different port.",
@@ -238,11 +255,7 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    # Register the cleanup function to be called at exit
-    # should just be the main thread?
-
     try:
-        # Run the application if this script is executed directly
         logging.info("Starting web...")
         app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True)
     except KeyboardInterrupt:
@@ -251,3 +264,7 @@ if __name__ == "__main__":
         logging.error("An error occurred while running the application: %s", e)
     finally:
         logging.info("Glimpser shut down.")
+
+
+if __name__ == "__main__":
+    main()

@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 import time
 import logging
+from enum import Enum, auto
 
 from .validators import validate_template_name
 
@@ -23,6 +24,14 @@ from app.config import (
 )
 
 from .template_manager import get_templates
+
+
+class ConcatStatus(Enum):
+    """Return codes for concatenation handling."""
+
+    RECOVERED = auto()
+    RETRY = auto()
+    FATAL = auto()
 
 
 
@@ -169,7 +178,7 @@ def get_video_duration(video_path):
     return duration
 
 
-def concatenate_videos(in_process_video, temp_video, video_path) -> bool:
+def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> bool:
     """Concatenate the temporary video with the existing in-process video."""
     if (
         os.path.exists(in_process_video)
@@ -235,7 +244,15 @@ def concatenate_videos(in_process_video, temp_video, video_path) -> bool:
                 )
 
             except Exception as e:
-                handle_concat_error(e, temp_video, in_process_video)
+                status = handle_concat_error(e, temp_video, in_process_video)
+                if status == ConcatStatus.RETRY and retries > 0:
+                    logging.info("Retrying concatenation due to transient error")
+                    time.sleep(1)
+                    return concatenate_videos(in_process_video, temp_video, video_path, retries=retries - 1)
+                elif status == ConcatStatus.RECOVERED:
+                    return True
+                else:
+                    return False
         elif os.path.exists(temp_video) and os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
     elif os.path.exists(temp_video) and os.path.getsize(temp_video) > 0:
@@ -247,18 +264,28 @@ def concatenate_videos(in_process_video, temp_video, video_path) -> bool:
     return False
 
 
-def handle_concat_error(e, temp_video, in_process_video) -> bool:
-    """Handle errors that occur during the concatenation process."""
+def handle_concat_error(e, temp_video, in_process_video) -> ConcatStatus:
+    """Handle errors that occur during the concatenation process.
 
-    if "/in_process.mp4: Invalid data found" in str(e):
-        logging.warning("invalid in_process file %s", e)
+    Returns a :class:`ConcatStatus` indicating how the caller should proceed.
+    """
+
+    message = str(e)
+
+    if "Invalid data found" in message:
+        logging.warning("invalid in_process file %s", message)
         if os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
-            # TODO: consider truth
-    else:
-        logging.error("FFmpeg concat command failed: %s", e) # TODO: handle this better... why non zero exit?
-        if os.path.getsize(temp_video) > 0:
-            os.rename(temp_video, in_process_video)
+        return ConcatStatus.RECOVERED
+
+    if "temporarily unavailable" in message or "Resource busy" in message:
+        logging.warning("transient ffmpeg error: %s", message)
+        return ConcatStatus.RETRY
+
+    logging.error("FFmpeg concat command failed: %s", message)
+    if os.path.getsize(temp_video) > 0:
+        os.rename(temp_video, in_process_video)
+    return ConcatStatus.FATAL
 
 
 def compile_to_video(camera_path, video_path) -> bool:
