@@ -112,6 +112,25 @@ class TestMain(unittest.TestCase):
         mock_create_app.assert_called_once()
         self.assertEqual(result, mock_create_app.return_value)
 
+    @patch("main.create_app")
+    def test_create_application_scheduler_flag(self, mock_create_app):
+        args = MagicMock()
+        args.db_path = config.DATABASE_PATH
+        args.host = config.HOST
+        args.port = config.PORT
+        args.log_path = config.LOGGING_PATH
+        args.log_level = config.LOG_LEVEL
+        args.console_log = False
+        args.debug = False
+        args.screenshot_dir = config.SCREENSHOT_DIRECTORY
+        args.video_dir = config.VIDEO_DIRECTORY
+        args.summaries_dir = config.SUMMARIES_DIRECTORY
+        args.no_scheduler = True
+        args.no_watchdog = True
+
+        main.create_application(args)
+        mock_create_app.assert_called_with(watchdog=False, schedule=False)
+
 
 if __name__ == "__main__":
     unittest.main()
