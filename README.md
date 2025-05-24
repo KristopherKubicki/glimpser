@@ -59,9 +59,22 @@ For more documentation, see the [documentation index](docs/index.md).
    ```
 
 2. **Run the Application**
-   ```sh
-   glimpser
-   ```
+```sh
+glimpser
+```
+
+You can pass command-line options to customize the runtime configuration. The most
+common flags are:
+
+```sh
+# Start without the background scheduler
+glimpser --no-scheduler
+
+# Disable the watchdog thread
+glimpser --no-watchdog
+```
+
+Run `glimpser --help` to see all available options.
 
    You will be prompted to create a secret key to initialize the local sqlite database. Follow the rest of the guided setup and then direct your browser to http://127.0.0.1:8082 to finish the rest of the setup.
 
