@@ -43,6 +43,7 @@ Read a high-level [Architecture Overview](docs/architecture_overview.md) to unde
   examples.
 - **SMS Alerts**: Configure Twilio credentials to receive important notifications by text message.
 - **Camera Discovery**: Use the `/discover` page to automatically scan the local network for ONVIF or RTSP cameras.
+- **Local Cameras**: `/discover` also lists any available `/dev/video*` devices for easy webcam integration.
 
 - **Web Interface**: A user-friendly web interface allows for easy monitoring and configuration. Users can view live feeds, summaries, and configure settings without delving into the code.
 
