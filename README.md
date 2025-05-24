@@ -36,7 +36,10 @@ Read a high-level [Architecture Overview](docs/architecture_overview.md) to unde
 - **Customizable Configuration**: Easily configure different data sources and processing rules through the user-friendly interface. Glimpser’s configuration is fully database-driven, ensuring flexibility and ease of use.
 
 - **Data Retention Policies**: Automatically manages storage by cleaning up old data, ensuring the system remains efficient without requiring constant manual intervention.
-- **HTTP Callbacks**: When a template specifies a callback URL, Glimpser sends a JSON webhook with caption or motion updates to that endpoint.
+- **HTTP Callbacks**: When a template specifies a callback URL, Glimpser sends a
+  JSON webhook with caption or motion updates to that endpoint. See the
+  [HTTP Callback Guide](docs/http_callbacks.md) for setup details and payload
+  examples.
 - **SMS Alerts**: Configure Twilio credentials to receive important notifications by text message.
 
 - **Web Interface**: A user-friendly web interface allows for easy monitoring and configuration. Users can view live feeds, summaries, and configure settings without delving into the code.
