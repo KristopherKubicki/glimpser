@@ -37,8 +37,7 @@ class SQLAlchemyHandler(logging.Handler):
 '''
 
 def create_app(watchdog=True, schedule=True):
-    """
-    Create and configure the Flask application.
+    """Create and configure the Flask application.
 
     This function sets up the entire Flask application, including:
     - Initializing the Flask app
@@ -48,8 +47,20 @@ def create_app(watchdog=True, schedule=True):
     - Setting up the scheduler for various tasks
     - Implementing a watchdog for application monitoring
 
-    Returns:
-        app (Flask): The configured Flask application instance
+    Parameters
+    ----------
+    watchdog : bool, optional
+        When ``True`` (the default) a background thread periodically
+        polls the ``/health`` endpoint and checks the number of open file
+        handles.  If either check fails it restores the last known good
+        configuration using :func:`restore_config` and exits the process so
+        an external supervisor can restart it.  Pass ``False`` to disable
+        this thread entirely, which is useful when running unit tests.
+
+    Returns
+    -------
+    Flask
+        The configured Flask application instance.
     """
     from app.config import (
         SECRET_KEY,
@@ -119,13 +130,13 @@ def create_app(watchdog=True, schedule=True):
 
     # Set up a watchdog thread to monitor the application
     def watchdog():
-        """
-        Watchdog function to monitor the application's health and file handle usage.
+        """Background health monitor.
 
-        This function runs in a separate thread and periodically checks if the
-        application is responding correctly and if the number of open file handles
-        is within acceptable limits. If it detects an issue, it attempts to
-        restore the previous configuration and force restarts the application.
+        The thread issues requests to ``/health`` and inspects the number of
+        open file handles every 10 seconds.  When either check fails it first
+        restores the backed-up configuration and then exits the process so that
+        an external supervisor can restart it.  A 15 minute cooldown prevents
+        rapid restart loops.
         """
         last_restart_time = 0
         restart_cooldown = 900  # 15 minutes in seconds
