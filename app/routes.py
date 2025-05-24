@@ -338,6 +338,20 @@ last_shot = None
 last_time = None
 active_groups = []
 rtsp_sessions = {}
+rtsp_lock = Lock()
+
+
+def cleanup_rtsp_sessions(timeout=300):
+    """Remove RTSP sessions that have been inactive for ``timeout`` seconds."""
+    current_time = time.time()
+    with rtsp_lock:
+        inactive = [
+            sid
+            for sid, sess in rtsp_sessions.items()
+            if current_time - sess.get("last_activity", current_time) > timeout
+        ]
+        for sid in inactive:
+            del rtsp_sessions[sid]
 
 
 def get_active_groups():
@@ -886,7 +900,7 @@ def init_routes(app):
 
     @app.route("/test.rtsp", methods=["OPTIONS", "DESCRIBE", "SETUP", "PLAY", "TEARDOWN"])
     def handle_rtsp():
-        
+
         session_id = request.headers.get("Session", str(uuid.uuid4()))
         cseq = request.headers.get("CSeq", "0")
 
@@ -913,14 +927,16 @@ def init_routes(app):
             )
 
         elif request.method == "SETUP":
-            if session_id not in rtsp_sessions:
-                rtsp_sessions[session_id] = {
-                    "state": "READY",
-                    "seq": random.randint(0, 65535),
-                    "timestamp": random.randint(0, 0xFFFFFFFF),
-                    "ssrc": random.randint(0, 0xFFFFFFFF),
-                }
             transport = request.headers.get("Transport", "")
+            with rtsp_lock:
+                if session_id not in rtsp_sessions:
+                    rtsp_sessions[session_id] = {
+                        "state": "READY",
+                        "seq": random.randint(0, 65535),
+                        "timestamp": random.randint(0, 0xFFFFFFFF),
+                        "ssrc": random.randint(0, 0xFFFFFFFF),
+                    }
+                rtsp_sessions[session_id]["last_activity"] = time.time()
             return Response(
                 headers={
                     "CSeq": cseq,
@@ -930,9 +946,11 @@ def init_routes(app):
             )
 
         elif request.method == "PLAY":
-            if session_id not in rtsp_sessions:
-                abort(454)  # Session Not Found
-            rtsp_sessions[session_id]["state"] = "PLAYING"
+            with rtsp_lock:
+                if session_id not in rtsp_sessions:
+                    abort(454)  # Session Not Found
+                rtsp_sessions[session_id]["state"] = "PLAYING"
+                rtsp_sessions[session_id]["last_activity"] = time.time()
             return Response(
                 headers={
                     "CSeq": cseq,
@@ -942,8 +960,10 @@ def init_routes(app):
             )
 
         elif request.method == "TEARDOWN":
-            if session_id in rtsp_sessions:
-                del rtsp_sessions[session_id]
+            with rtsp_lock:
+                if session_id in rtsp_sessions:
+                    del rtsp_sessions[session_id]
+                cleanup_rtsp_sessions()
             return Response(
                 headers={
                     "CSeq": cseq,
@@ -990,8 +1010,11 @@ def init_routes(app):
     @app.route("/rtsp_stream")
     def rtsp_stream():
         session_id = request.args.get("session")
-        if session_id not in rtsp_sessions or rtsp_sessions[session_id]["state"] != "PLAYING":
-            abort(400, "Invalid session or session not in PLAYING state")
+        with rtsp_lock:
+            session = rtsp_sessions.get(session_id)
+            if not session or session.get("state") != "PLAYING":
+                abort(400, "Invalid session or session not in PLAYING state")
+            session["last_activity"] = time.time()
         return Response(
             generate(rtsp=True, session_id=session_id),
             mimetype="application/x-rtp"
