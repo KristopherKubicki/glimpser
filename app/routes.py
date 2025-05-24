@@ -489,11 +489,15 @@ def generate(group=None, filename="latest_camera.png", rtsp=False, session_id=No
                                 frame = buffer.getvalue()
                                 # file sizes the same size?  maybe just touch the file instead?
 
-                                # write this to a file! cache it.  read that cache if possible
-                                with open(last_path, "wb") as f:
+                                # Write to a temporary file first, then atomically
+                                # replace the cached JPEG. This avoids serving
+                                # partially written files when new screenshots
+                                # are generated.
+                                temp_path = last_path + ".tmp"
+                                with open(temp_path, "wb") as f:
                                     f.write(frame)
-                                # only do this if the files are different.  otherwise, just freshen up maybe?
-                                os.rename(last_path, last_path.replace(".tmp", ""))
+                                # Atomically move the temp file into place
+                                os.replace(temp_path, last_path)
                         except Exception:
                             pass
 
