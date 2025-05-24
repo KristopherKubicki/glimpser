@@ -78,6 +78,13 @@ Configure these values to enable Twilio SMS alerts:
 - `TWILIO_TOKEN` – your Twilio auth token
 - `TWILIO_NUMBER` – phone number that receives alerts
 
+## ONVIF Server
+
+These options enable a small ONVIF compatible device service:
+
+- `ONVIF_ENABLE` – start the server when set to `True`.
+- `ONVIF_PORT` – HTTP port used for the device service (default `50080`).
+
 ## Capture Parameters
 
 Settings controlling how frames are captured from video sources:

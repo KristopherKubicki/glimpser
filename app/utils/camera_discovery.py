@@ -23,7 +23,7 @@ def _local_subnets():
     return subnets
 
 
-def _probe_onvif(timeout=2):
+def _probe_onvif(timeout=2, host="239.255.255.250", port=3702):
     cameras = []
     message_id = uuid.uuid4()
     probe = f"""<?xml version='1.0' encoding='UTF-8'?>
@@ -44,7 +44,7 @@ def _probe_onvif(timeout=2):
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
     sock.settimeout(timeout)
     try:
-        sock.sendto(probe.encode(), ("239.255.255.250", 3702))
+        sock.sendto(probe.encode(), (host, port))
         while True:
             try:
                 data, addr = sock.recvfrom(4096)
@@ -59,14 +59,14 @@ def _probe_onvif(timeout=2):
                     uri = xaddr.text.split()[0]
                     parsed = urlparse(uri)
                     ip = parsed.hostname or ip
-                    port = parsed.port or 80
+                    port_num = parsed.port or 80
                     info['xaddr'] = uri
                 else:
-                    port = 80
+                    port_num = 80
             except Exception as e:
                 logging.debug("parse error: %s", e)
-                port = 80
-            cameras.append({"ip": ip, "protocol": "onvif", "port": port, "info": info})
+                port_num = 80
+            cameras.append({"ip": ip, "protocol": "onvif", "port": port_num, "info": info})
     except Exception as e:
         logging.warning("ONVIF discovery error: %s", e)
     finally:

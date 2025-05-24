@@ -33,6 +33,7 @@ from .template_manager import get_template, get_templates, save_template
 from .email_alerts import email_alert
 from .sms_alerts import sms_alert
 from .http_callbacks import send_http_callback
+from .onvif_device import send_motion_event
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from concurrent.futures import ProcessPoolExecutor, TimeoutError
@@ -508,6 +509,7 @@ def update_camera(name, template, image_file=None):
                 send_http_callback(template.get("callback_url"), event, payload)
 
             if last_motion_trigger or lsum:
+                send_motion_event()
                 if os.path.exists(
                     os.path.join(directory, "last_motion_caption.png.tmp")
                 ):
@@ -569,6 +571,7 @@ def update_camera(name, template, image_file=None):
                     "motion": True,
                 }
                 send_http_callback(template.get("callback_url"), "motion", payload)
+                send_motion_event()
 
             if os.path.exists(prev_motion):
                 destination = os.readlink(prev_motion)

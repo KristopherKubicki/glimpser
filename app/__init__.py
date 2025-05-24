@@ -10,6 +10,7 @@ from flask import Flask
 
 from app.utils.retention_policy import retention_cleanup
 from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler, start_log_caching
+from app.utils.onvif_device import start_server as start_onvif_server
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 from app.config import backup_config, restore_config
 from app.utils.email_alerts import email_alert
@@ -68,6 +69,9 @@ def create_app(watchdog=True, schedule=True):
         SCREENSHOT_DIRECTORY,
         SUMMARIES_DIRECTORY,
         VIDEO_DIRECTORY,
+        ONVIF_ENABLE,
+        ONVIF_PORT,
+        HOST,
     )
 
     app = Flask(__name__)
@@ -183,6 +187,9 @@ def create_app(watchdog=True, schedule=True):
     # Start collecting metrics
     from .utils.scheduling import start_metrics_collection
     start_metrics_collection()
+
+    if ONVIF_ENABLE:
+        threading.Thread(target=start_onvif_server, args=(HOST, ONVIF_PORT), daemon=True).start()
 
     start_log_caching()
 

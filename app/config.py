@@ -163,3 +163,7 @@ EMAIL_PASSWORD = get_setting("EMAIL_PASSWORD", "")
 TWILIO_SID = get_setting("TWILIO_SID", "")
 TWILIO_TOKEN = get_setting("TWILIO_TOKEN", "")
 TWILIO_NUMBER = get_setting("TWILIO_NUMBER", "")
+
+# ONVIF server settings
+ONVIF_ENABLE = get_setting("ONVIF_ENABLE", "False") == "True"
+ONVIF_PORT = int(get_setting("ONVIF_PORT", 50080))

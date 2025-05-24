@@ -972,10 +972,7 @@ def init_routes(app):
             return Response(headers={"CSeq": cseq, "Session": session_id})
 
         elif request.method == "GET_PARAMETER":
-            return Response(
-                "session=alive",
-                headers={"CSeq": cseq, "Session": session_id}
-            )
+            return "Method Not Allowed", 405
 
         elif request.method == "TEARDOWN":
             if session_id in rtsp_sessions:
