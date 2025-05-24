@@ -36,6 +36,8 @@ from sqlalchemy import text
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 import subprocess
+import struct
+import random
 
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
@@ -380,7 +382,7 @@ def resize_and_pad(img, size, color=(0, 0, 0)):
 lock = Lock()
 
 
-def generate(group=None, filename="latest_camera.png", rtsp=False):
+def generate(group=None, filename="latest_camera.png", rtsp=False, session_id=None):
     # pretty hacky but it works ok
     global last_time, last_shot
     boundary = b"frame"
@@ -497,9 +499,16 @@ def generate(group=None, filename="latest_camera.png", rtsp=False):
 
         if frame:
             if rtsp:
-                # For RTSP, we need to add RTP headers and packetize the frame
-                # This is a simplified version and may need to be adjusted based on your exact requirements
-                rtp_header = b"\x80\x60\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00"
+                if session_id and session_id in rtsp_sessions:
+                    session = rtsp_sessions[session_id]
+                    seq = session.get("seq", 0)
+                    timestamp = session.get("timestamp", 0)
+                    ssrc = session.get("ssrc", 0)
+                    rtp_header = struct.pack("!BBHII", 0x80, 96, seq, timestamp, ssrc)
+                    session["seq"] = (seq + 1) % 65536
+                    session["timestamp"] = (timestamp + 3600) % 0x100000000
+                else:
+                    rtp_header = b"\x80\x60\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00"
                 yield rtp_header + frame
             else:
                 yield b"--" + boundary + b"\r\n"
@@ -893,8 +902,8 @@ def init_routes(app):
                 "o=- 0 0 IN IP4 127.0.0.1\r\n"
                 "s=Glimpser RTSP Stream\r\n"
                 "t=0 0\r\n"
-                "m=video 0 RTP/AVP 96\r\n"
-                "a=rtpmap:96 H264/90000\r\n"
+                "m=video 0 RTP/AVP 26\r\n"
+                "a=rtpmap:26 JPEG/90000\r\n"
                 "a=control:streamid=0\r\n"
             )
             return Response(
@@ -905,7 +914,12 @@ def init_routes(app):
 
         elif request.method == "SETUP":
             if session_id not in rtsp_sessions:
-                rtsp_sessions[session_id] = {"state": "READY"}
+                rtsp_sessions[session_id] = {
+                    "state": "READY",
+                    "seq": random.randint(0, 65535),
+                    "timestamp": random.randint(0, 0xFFFFFFFF),
+                    "ssrc": random.randint(0, 0xFFFFFFFF),
+                }
             transport = request.headers.get("Transport", "")
             return Response(
                 headers={
@@ -979,7 +993,7 @@ def init_routes(app):
         if session_id not in rtsp_sessions or rtsp_sessions[session_id]["state"] != "PLAYING":
             abort(400, "Invalid session or session not in PLAYING state")
         return Response(
-            generate(rtsp=True),
+            generate(rtsp=True, session_id=session_id),
             mimetype="application/x-rtp"
         )
 
