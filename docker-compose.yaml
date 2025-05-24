@@ -9,6 +9,7 @@ services:
       - "8082:8082"
     environment:
       - SECRET_KEY=${SECRET_KEY:-default_secret_key}
+      - API_KEY=${API_KEY:-glimpser}
       - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/glimpser.db}
       - CHATGPT_KEY=${CHATGPT_KEY:-}
       - TZ=America/Chicago
@@ -18,7 +19,7 @@ services:
       - ./data:/app/data
       - ./logs:/app/logs
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/health || exit 1"]
+      test: ["CMD", "sh", "-c", "curl -f http://localhost:8082/health?api_key=$API_KEY || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
