@@ -18,9 +18,11 @@ jobs:
       - name: Install build dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install build
+          pip install .
       - name: Build packages
         run: |
+          python -m build
           ./build_packages.sh
       - name: Upload release assets
         uses: softprops/action-gh-release@v1

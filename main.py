@@ -213,7 +213,8 @@ def is_port_in_use(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(('localhost', port)) == 0
 
-if __name__ == "__main__":
+def main():
+    """Entry point for the ``glimpser`` console script."""
     # Clear the console before starting
     clear_console()
 
@@ -242,7 +243,7 @@ if __name__ == "__main__":
     # should just be the main thread?
 
     try:
-        # Run the application if this script is executed directly
+        # Run the application
         logging.info("Starting web...")
         app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True)
     except KeyboardInterrupt:
@@ -251,3 +252,7 @@ if __name__ == "__main__":
         logging.error("An error occurred while running the application: %s", e)
     finally:
         logging.info("Glimpser shut down.")
+
+
+if __name__ == "__main__":
+    main()
