@@ -96,6 +96,8 @@ To ensure everything works as expected, you can run the included unit tests:
 ```sh
 python -m coverage run -m pytest
 ```
+The GitHub Actions workflow runs the test suite with coverage enabled and
+uploads the resulting report as a build artifact.
 
 ### Motion Detection
 Glimpser automatically detects motion in the captured images and videos. When motion is detected, the system can trigger alerts, capture additional data, and generate relevant summaries and captions.
