@@ -1531,6 +1531,18 @@ def init_routes(app):
             videos=lvideos,
         )
 
+    @app.route("/screenshots/<string:name>")
+    @login_required
+    def list_screenshots(name: TemplateName):
+        """Return a JSON list of screenshot files for ``name``."""
+
+        template_name = validate_template_name(name)
+        if template_name is None:
+            abort(404)
+
+        lscreens = template_manager.get_screenshots_for_template(template_name)
+        return jsonify({"screenshots": lscreens})
+
     @app.route("/screenshots/<string:name>/<string:filename>")
     @login_required
     def uploaded_file(name: TemplateName, filename: str):
@@ -1561,6 +1573,18 @@ def init_routes(app):
             session.close()
 
         return True
+
+    @app.route("/videos/<string:name>")
+    @login_required
+    def list_videos(name: TemplateName):
+        """Return a JSON list of video files for ``name``."""
+
+        template_name = validate_template_name(name)
+        if template_name is None:
+            abort(404)
+
+        lvideos = template_manager.get_videos_for_template(template_name)
+        return jsonify({"videos": lvideos})
 
     @app.route("/videos/<string:name>/<string:filename>")
     @login_required

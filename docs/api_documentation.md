@@ -110,6 +110,28 @@ Returns an HTML dashboard displaying metrics such as CPU, memory, and disk usage
 
 Streams log records via Server-Sent Events. Optional query parameters `level`, `source`, `start_date`, `end_date`, and `search` allow filtering. The `/logs` and `/status` pages use this endpoint for the live log viewer.
 
+### 8. List Stored Videos
+
+**GET /videos/<template_name>**
+
+Return a JSON array of archived MP4 filenames for the specified template. Combine with `/videos/<template_name>/<filename>` to download a particular file.
+
+Example response:
+```json
+{"videos": ["cam1_20240101.mp4", "cam1_20240102.mp4"]}
+```
+
+### 9. List Stored Screenshots
+
+**GET /screenshots/<template_name>**
+
+Return a JSON array of screenshot filenames for the specified template. Individual files can be downloaded via `/screenshots/<template_name>/<filename>`.
+
+Example response:
+```json
+{"screenshots": ["cam1_20240101.png", "cam1_20240102.png"]}
+```
+
 ## Error Handling
 
 All endpoints may return the following error responses:
