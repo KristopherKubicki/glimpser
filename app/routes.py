@@ -884,7 +884,7 @@ def init_routes(app):
             return send_file(most_recent_file)
         return send_file(last_file)  # better than nothing
 
-    @app.route("/test.rtsp", methods=["OPTIONS", "DESCRIBE", "SETUP", "PLAY", "TEARDOWN"])
+    @app.route("/test.rtsp", methods=["OPTIONS", "DESCRIBE", "SETUP", "PLAY", "PAUSE", "GET_PARAMETER", "TEARDOWN"])
     def handle_rtsp():
         
         session_id = request.headers.get("Session", str(uuid.uuid4()))
@@ -892,7 +892,7 @@ def init_routes(app):
 
         if request.method == "OPTIONS":
             return Response(
-                "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY",
+                "Public: OPTIONS, DESCRIBE, SETUP, PLAY, PAUSE, GET_PARAMETER, TEARDOWN",
                 headers={"CSeq": cseq},
             )
 
@@ -920,12 +920,32 @@ def init_routes(app):
                     "timestamp": random.randint(0, 0xFFFFFFFF),
                     "ssrc": random.randint(0, 0xFFFFFFFF),
                 }
+
             transport = request.headers.get("Transport", "")
+            client_ports = (0, 0)
+            match = re.search(r"client_port=(\d+)(?:-(\d+))?", transport)
+            if match:
+                first = int(match.group(1))
+                second = int(match.group(2) or first + 1)
+                client_ports = (first, second)
+
+            server_ports = (5004, 5005)
+            session = rtsp_sessions[session_id]
+            session["client_ports"] = client_ports
+            session["server_ports"] = server_ports
+
+            transport_response = transport
+            if transport_response and not transport_response.endswith(";"):
+                transport_response += ";"
+            transport_response += (
+                f"server_port={server_ports[0]}-{server_ports[1]};ssrc={session['ssrc']}"
+            )
+
             return Response(
                 headers={
                     "CSeq": cseq,
                     "Session": session_id,
-                    "Transport": transport,
+                    "Transport": transport_response,
                 }
             )
 
@@ -939,6 +959,18 @@ def init_routes(app):
                     "Session": session_id,
                     "RTP-Info": "url=rtsp://example.com/test.rtsp/streamid=0;seq=0;rtptime=0",
                 }
+            )
+
+        elif request.method == "PAUSE":
+            if session_id not in rtsp_sessions:
+                abort(454)
+            rtsp_sessions[session_id]["state"] = "PAUSED"
+            return Response(headers={"CSeq": cseq, "Session": session_id})
+
+        elif request.method == "GET_PARAMETER":
+            return Response(
+                "session=alive",
+                headers={"CSeq": cseq, "Session": session_id}
             )
 
         elif request.method == "TEARDOWN":

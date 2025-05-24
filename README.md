@@ -32,7 +32,7 @@ Read a high-level [Architecture Overview](docs/architecture_overview.md) to unde
 - **Auto-captioning**: Automatically generates concise and informative captions for images and videos, providing quick insights into the content.
 
 - **Auto-summarization**: Summarizes data from multiple sources into a coherent and concise format, highlighting the most important information.
-- **RTSP Streaming**: Exposes a basic RTSP endpoint (`/test.rtsp`) so external NVRs can ingest the MJPEG stream.
+- **RTSP Streaming**: Exposes a basic RTSP endpoint (`/test.rtsp`) so external NVRs can ingest the MJPEG stream. Supported verbs are `OPTIONS`, `DESCRIBE`, `SETUP`, `PLAY`, `PAUSE`, `GET_PARAMETER`, and `TEARDOWN`.
 
 - **Customizable Configuration**: Easily configure different data sources and processing rules through the user-friendly interface. Glimpser’s configuration is fully database-driven, ensuring flexibility and ease of use.
 
@@ -107,7 +107,19 @@ Using advanced AI models, Glimpser generates concise and informative captions fo
 Glimpser can summarize data from multiple sources into a coherent and concise format. The summaries highlight the most important information, making it easier for users to stay informed.
 
 ### RTSP Streaming
-Glimpser exposes a simple RTSP endpoint at `/test.rtsp`. When a client issues the standard RTSP verbs (`OPTIONS`, `DESCRIBE`, `SETUP`, `PLAY`), the `/rtsp_stream` route serves MJPEG frames packetized with RTP headers. This allows external NVR software to ingest the stream as a basic camera source.
+Glimpser exposes a simple RTSP endpoint at `/test.rtsp`. When a client issues the standard RTSP verbs, the `/rtsp_stream` route serves MJPEG frames packetized with RTP headers.
+
+Typical sequence:
+
+1. `OPTIONS`
+2. `DESCRIBE`
+3. `SETUP`
+4. `PLAY`
+5. (optional) `PAUSE` / `PLAY`
+6. Periodic `GET_PARAMETER` to keep the session alive
+7. `TEARDOWN` to close the session
+
+This allows external NVR software to ingest the stream as a basic camera source.
 
 ## Development
 
