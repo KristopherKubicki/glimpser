@@ -8,9 +8,31 @@ from app.utils.scheduling import update_summary
 class TestFuzzUpdateSummary(unittest.TestCase):
     @patch("app.utils.scheduling.get_templates")
     @patch("app.utils.scheduling.summarize")
-    def test_fuzz_update_summary(self, mock_summarize, mock_get_templates):
+    @patch("app.utils.scheduling.SessionLocal")
+    def test_fuzz_update_summary(self, mock_session_local, mock_summarize, mock_get_templates):
         # Number of fuzz test iterations
         num_iterations = 100
+
+        class DummyQuery:
+            def order_by(self, *args, **kwargs):
+                return self
+            def offset(self, *args, **kwargs):
+                return self
+            def limit(self, *args, **kwargs):
+                return self
+            def first(self):
+                return None
+        class DummySession:
+            def query(self, model):
+                return DummyQuery()
+            def add(self, obj):
+                pass
+            def commit(self):
+                pass
+            def close(self):
+                pass
+
+        mock_session_local.return_value = DummySession()
 
         for _ in range(num_iterations):
             # Generate random templates

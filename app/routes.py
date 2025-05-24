@@ -51,7 +51,7 @@ from app.config import (
     backup_config,
     restore_config
 )
-from app.models import User
+from app.models import User, Summary
 from app.utils import (
     scheduling,
     template_manager,
@@ -972,10 +972,7 @@ def init_routes(app):
             return Response(headers={"CSeq": cseq, "Session": session_id})
 
         elif request.method == "GET_PARAMETER":
-            return Response(
-                "session=alive",
-                headers={"CSeq": cseq, "Session": session_id}
-            )
+            return Response(status=405, headers={"CSeq": cseq, "Session": session_id})
 
         elif request.method == "TEARDOWN":
             if session_id in rtsp_sessions:
@@ -1137,29 +1134,23 @@ def init_routes(app):
     @login_required
     def captions():
 
-        # Specify the directory containing the .jl files
-        directory = "data/summaries/"
-
-        # Get all files in the directory
-        files = os.listdir(directory)
-
-        # Filter out only .jl files and sort them by last modified time in descending order
-        jl_files = sorted(
-            [file for file in files if file.endswith(".jl")],
-            key=lambda x: os.path.getmtime(os.path.join(directory, x)),
-            reverse=True,
-        )
-
-        # Load entries from the most recent 5 .jl files
+        # Load the 5 most recent summaries from the database
+        session = SessionLocal()
         entries = []
-        for file in jl_files[:5]:
-            file_path = os.path.join(directory, file)
-            with open(file_path, "r") as f:
+        try:
+            results = (
+                session.query(Summary)
+                .order_by(Summary.created_at.desc())
+                .limit(5)
+                .all()
+            )
+            for row in results:
                 try:
-                    data = json.load(f)
-                    entries.append(data)
+                    entries.append(json.loads(row.content))
                 except Exception:
                     pass
+        finally:
+            session.close()
 
         # Get templates and calculate next capture time
         templates = template_manager.get_templates()

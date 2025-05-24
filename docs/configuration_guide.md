@@ -54,7 +54,7 @@ user table in sync.
 
 - `SCREENSHOT_DIRECTORY` – directory for raw screenshots (default `data/screenshots/`)
 - `VIDEO_DIRECTORY` – directory for recorded videos (default `data/video/`)
-- `SUMMARIES_DIRECTORY` – directory where summaries are written (default `data/summaries/`)
+- `SUMMARIES_DIRECTORY` – (legacy) unused path for summaries now stored in the database
 
 You can change these paths via the settings table or by editing `app/config.py` if you maintain a custom build.
 

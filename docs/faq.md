@@ -8,7 +8,7 @@ This document answers frequently asked questions about using Glimpser.
 Glimpser is a monitoring and summarization tool that captures screenshots or video streams, then produces concise captions and summaries using AI models.
 
 ### Where is data stored?
-By default, data such as screenshots, videos, and summaries are stored inside the `data/` directory. You can change the paths using the configuration options described in the [Configuration Guide](configuration_guide.md).
+Screenshots and videos are stored inside the `data/` directory. Generated summaries are kept in the database. You can change other paths using the configuration options described in the [Configuration Guide](configuration_guide.md).
 
 ## Configuration
 

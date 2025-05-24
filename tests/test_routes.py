@@ -109,12 +109,26 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.login_required")
     @patch("app.routes.template_manager.get_templates")
     @patch("app.routes.render_template")
+    @patch("app.routes.SessionLocal")
     def test_captions(
-        self, mock_render_template, mock_get_templates, mock_login_required
+        self, mock_session_local, mock_render_template, mock_get_templates, mock_login_required
     ):
         login_attempts = {} # reset
         mock_login_required.return_value = lambda x: x
         mock_get_templates.return_value = {"template1": {}, "template2": {}}
+        class DummyQuery:
+            def order_by(self, *args, **kwargs):
+                return self
+            def limit(self, *args, **kwargs):
+                return self
+            def all(self):
+                return []
+        class DummySession:
+            def query(self, model):
+                return DummyQuery()
+            def close(self):
+                pass
+        mock_session_local.return_value = DummySession()
         response = self.client.get("/captions")
         #self.assertEqual(response.status_code, 200)
         #mock_render_template.assert_called_with(
