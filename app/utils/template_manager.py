@@ -89,13 +89,32 @@ class Template(Base):
 
 
 class TemplateManager:
+    """Manage :class:`Template` records stored in the database.
+
+    The manager initializes the SQLite database on construction and
+    provides helper methods for retrieving a database session. Public
+    methods perform validation and commit changes when updating or
+    deleting templates.
+    """
+
     def __init__(self):
         init_db()
 
     def get_session(self):
+        """Return a new SQLAlchemy session bound to the app database."""
+
         return SessionLocal()
 
     def get_templates(self):
+        """Return all templates from the database as a dictionary.
+
+        Returns
+        -------
+        dict
+            Mapping of template name to its stored attributes with
+            SQLAlchemy internal state removed.
+        """
+
         session = self.get_session()
         try:
             templates = session.query(Template).all()
@@ -109,6 +128,21 @@ class TemplateManager:
             session.close()
 
     def save_template(self, name, details):
+        """Create or update a template in the database.
+
+        Parameters
+        ----------
+        name : str
+            Template name to validate and store.
+        details : dict
+            Dictionary of template attributes.
+
+        Returns
+        -------
+        bool
+            ``True`` when the template was saved successfully,
+            ``False`` if validation failed or an error occurred.
+        """
 
         name = validate_template_name(name)
         if name is None:
@@ -194,6 +228,19 @@ class TemplateManager:
             session.close()
 
     def get_template(self, name):
+        """Return a single template by name.
+
+        Parameters
+        ----------
+        name : str
+            Template name to fetch from the database.
+
+        Returns
+        -------
+        dict
+            Stored template attributes or an empty ``dict`` when the
+            name fails validation or is not present.
+        """
         name = validate_template_name(name)
         if name is None:
             return False
@@ -209,6 +256,19 @@ class TemplateManager:
             session.close()
 
     def delete_template(self, name):
+        """Delete a template from the database.
+
+        Parameters
+        ----------
+        name : str
+            Template name to remove.
+
+        Returns
+        -------
+        bool
+            ``True`` if the template existed and was deleted,
+            otherwise ``False``.
+        """
         name = validate_template_name(name)
         if name is None:
             return False
@@ -225,7 +285,19 @@ class TemplateManager:
             session.close()
 
     def get_template_by_id(self, template_id):
-        """Return template details for ``template_id`` if valid."""
+        """Return template details for ``template_id`` if valid.
+
+        Parameters
+        ----------
+        template_id : int
+            Primary key of the template record.
+
+        Returns
+        -------
+        dict
+            Template attributes or an empty ``dict`` if the ID is
+            invalid or not found.
+        """
 
         # Validate ``template_id`` before opening a session
         if not isinstance(template_id, int) or template_id <= 0:
@@ -243,6 +315,16 @@ class TemplateManager:
 
 
 def get_templates():
+    """Return all templates enriched with filesystem metadata.
+
+    Returns
+    -------
+    dict
+        Template attributes keyed by name with additional
+        ``last_screenshot_time`` and ``last_video_time`` fields
+        populated from the screenshot and video directories.
+    """
+
     manager = TemplateManager()
     templates = manager.get_templates()
     for template_name, details in templates.items():
@@ -259,6 +341,8 @@ def get_templates():
 
 
 def get_template(name):
+    """Return template details for ``name`` using :class:`TemplateManager`."""
+
     name = validate_template_name(name)
     if name is None:
         return None
@@ -268,6 +352,22 @@ def get_template(name):
 
 
 def save_template(name: str, template_data) -> bool:
+    """Save a template and ensure storage directories exist.
+
+    Parameters
+    ----------
+    name : str
+        Template name to create or update.
+    template_data : dict
+        Attributes used when saving the template.
+
+    Returns
+    -------
+    bool
+        ``True`` when the template is persisted, ``False`` if the
+        provided name fails validation.
+    """
+
     name = validate_template_name(name)
     if name is None:
         return False
@@ -283,6 +383,19 @@ def save_template(name: str, template_data) -> bool:
 
 
 def delete_template(name: str) -> bool:
+    """Delete ``name`` from the database and remove associated files.
+
+    Parameters
+    ----------
+    name : str
+        Template identifier.
+
+    Returns
+    -------
+    bool
+        ``True`` if the template was removed, otherwise ``False``.
+    """
+
     name = validate_template_name(name)
     if name is None:
         return False
@@ -300,7 +413,7 @@ def delete_template(name: str) -> bool:
 
 
 def get_template_by_id(template_id: int):
-    """Return template details by ``template_id`` if ``template_id`` is valid."""
+    """Return template details by ``template_id`` if valid."""
 
     if not isinstance(template_id, int) or template_id <= 0:
         return {}
@@ -310,6 +423,19 @@ def get_template_by_id(template_id: int):
 
 
 def get_screenshots_for_template(name: str) -> list:
+    """Return a list of screenshot filenames for ``name``.
+
+    Parameters
+    ----------
+    name : str
+        Template name used when locating the screenshot directory.
+
+    Returns
+    -------
+    list
+        Up to 100 screenshot filenames sorted newest first.
+    """
+
     name = validate_template_name(name)
     if name is None:
         return []
@@ -338,6 +464,19 @@ def get_screenshots_for_template(name: str) -> list:
 
 
 def get_videos_for_template(name: str):
+    """Return a list of video filenames for ``name``.
+
+    Parameters
+    ----------
+    name : str
+        Template name whose video directory will be inspected.
+
+    Returns
+    -------
+    list
+        Up to 10 video filenames sorted newest first.
+    """
+
     name = validate_template_name(name)
     if name is None:
         return []
@@ -356,6 +495,8 @@ def get_videos_for_template(name: str):
 
 
 def get_screenshot_count(name: str) -> int:
+    """Return the number of stored screenshots for ``name``."""
+
     name = validate_template_name(name)
     if name is None:
         return 0
@@ -366,6 +507,8 @@ def get_screenshot_count(name: str) -> int:
 
 
 def get_video_count(name: str) -> int:
+    """Return the number of stored videos for ``name``."""
+
     name = validate_template_name(name)
     if name is None:
         return 0
@@ -376,6 +519,19 @@ def get_video_count(name: str) -> int:
 
 
 def get_storage_usage(name: str) -> str:
+    """Calculate disk usage for ``name``.
+
+    Parameters
+    ----------
+    name : str
+        Template name to measure on disk.
+
+    Returns
+    -------
+    str
+        Human readable size of all screenshots and videos.
+    """
+
     name = validate_template_name(name)
     if name is None:
         return "0 B"
@@ -400,7 +556,15 @@ def get_storage_usage(name: str) -> str:
 
 
 def record_llm_usage(name: str, tokens: int) -> None:
-    """Record token usage for ``name`` in ``LLM_USAGE_PATH``."""
+    """Record token usage for ``name`` in ``LLM_USAGE_PATH``.
+
+    Parameters
+    ----------
+    name : str
+        Template name the tokens were used for.
+    tokens : int
+        Number of tokens consumed.
+    """
     name = validate_template_name(name)
     if name is None or tokens <= 0:
         return
@@ -422,12 +586,17 @@ def record_llm_usage(name: str, tokens: int) -> None:
 
 
 def get_llm_response_count(name: str) -> int:
-    # This is a placeholder. You'll need to implement a way to track LLM responses per template.
-    # For now, we'll return a random number as an example.
+    """Return the number of LLM responses recorded for ``name``.
+
+    This is currently a placeholder that returns a random number.
+    """
+
     return random.randint(10, 100)
 
 
 def get_llm_cost_estimate(name: str) -> str:
+    """Estimate LLM cost for ``name`` based on recorded token usage."""
+
     name = validate_template_name(name)
     if name is None:
         return "$0.00"
