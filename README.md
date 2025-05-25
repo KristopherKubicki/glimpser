@@ -88,6 +88,16 @@ Run `glimpser --help` to see all available options.
 
    You will be prompted to create a secret key to initialize the local sqlite database. Follow the rest of the guided setup and then direct your browser to http://127.0.0.1:8082 to finish the rest of the setup.
 
+### Docker Quick Start
+
+If you prefer to run Glimpser in Docker, copy `.env.example` to `.env` and set at least `SECRET_KEY` and `API_KEY`. Then build and start the container:
+
+```sh
+docker-compose up --build
+```
+
+The web interface will be available at [http://localhost:8082](http://localhost:8082).
+
 ## Usage
 
 ### Configuration
