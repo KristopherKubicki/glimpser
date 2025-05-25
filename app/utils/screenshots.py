@@ -881,19 +881,18 @@ def parse_url(url):
 
 def cas_error(url):
 
-        if throttle_cache.get(url) is None:
-            throttle_cache[url] = {}
-            throttle_cache[url]['errors'] = 1
-        else:
-            if throttle_cache[url].get('last',0) > time.time() - 60*5: # happened in the last 5 minutes?  Error again
-                throttle_cache[url]['errors'] += 1
-            else:
-                throttle_cache[url]['errors'] = 1
-            throttle_cache[url]['last'] = time.time()
+        entry = throttle_cache.setdefault(url, {'errors': 0, 'first': time.time()})
 
-        if throttle_cache[url]['errors'] > 2:
-            logging.error(f"Could not reach host: {url} {throttle_cache[url]['errors']} times")
-            throttle_cache[url]['timeout'] = time.time() + 60*60 # 1 hour timeout
+        if entry.get('last', 0) > time.time() - 60 * 5:
+            entry['errors'] += 1
+        else:
+            entry['errors'] = 1
+            entry['first'] = time.time()
+        entry['last'] = time.time()
+
+        if entry['errors'] > 2:
+            logging.error(f"Could not reach host: {url} {entry['errors']} times")
+            entry['timeout'] = time.time() + 60 * 60  # 1 hour timeout
 
 
 

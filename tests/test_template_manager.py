@@ -5,7 +5,12 @@ from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.utils.template_manager import TemplateManager, Template
+from app.utils.template_manager import (
+    TemplateManager,
+    Template,
+    mark_offline,
+    update_last_screenshot_time,
+)
 from app.utils.validators import validate_template_name
 
 
@@ -247,6 +252,33 @@ class TestValidateTemplateName(unittest.TestCase):
                 validate_template_name(name),
                 msg=f"{name} should be invalid",
             )
+
+
+class TestOfflineHandling(unittest.TestCase):
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_mark_offline_sets_timestamp(self, mock_session):
+        mock_sess = MagicMock()
+        mock_session.return_value = mock_sess
+        template = Template(name="cam1")
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = template
+
+        mark_offline("cam1")
+
+        self.assertNotEqual(template.offline_since, "")
+        mock_sess.commit.assert_called_once()
+
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_update_last_screenshot_time_clears_offline(self, mock_session):
+        mock_sess = MagicMock()
+        mock_session.return_value = mock_sess
+        template = Template(name="cam1", offline_since="yesterday")
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = template
+
+        update_last_screenshot_time("cam1")
+
+        self.assertEqual(template.offline_since, "")
+        self.assertNotEqual(template.last_screenshot_time, "")
+        mock_sess.commit.assert_called_once()
 
 
 if __name__ == "__main__":
