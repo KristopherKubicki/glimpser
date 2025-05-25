@@ -303,8 +303,10 @@ def generate_video_stream(video_path: str):
 def generate_live_stream(url: str):
     """Yield video data directly from a remote URL using ffmpeg."""
 
-    command = [
-        config.FFMPEG_PATH,
+    command = [config.FFMPEG_PATH]
+    if config.FFMPEG_HWACCEL and config.FFMPEG_HWACCEL.lower() != "false":
+        command.extend(["-hwaccel", config.FFMPEG_HWACCEL])
+    command.extend([
         "-i",
         url,
         "-loglevel",
@@ -317,7 +319,7 @@ def generate_live_stream(url: str):
         "-movflags",
         "frag_keyframe+empty_moov",
         "pipe:1",
-    ]
+    ])
 
     process = subprocess.Popen(command, stdout=subprocess.PIPE)
 
