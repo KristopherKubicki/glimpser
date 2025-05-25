@@ -40,8 +40,6 @@ def summarize(prompt, history=None, tokens=4096):
 
     if CHATGPT_KEY is None or len(CHATGPT_KEY) < 1 or len(CHATGPT_KEY) > 128:
         return None
-    if LLM_MODEL_VERSION is None or len(LLM_MODEL_VERSION) < 1:
-        return None
     if LLM_SUMMARY_PROMPT is None or len(LLM_SUMMARY_PROMPT) < 1:
         return None
 
@@ -51,26 +49,33 @@ def summarize(prompt, history=None, tokens=4096):
     url = "https://api.openai.com/v1/chat/completions"
 
     # Prepare the summary prompt
-    lsummary_prompt = LLM_SUMMARY_PROMPT.replace("$datetime", str(datetime.datetime.now()))
+    lsummary_prompt = LLM_SUMMARY_PROMPT.replace(
+        "$datetime", str(datetime.datetime.now())
+    )
 
     # Construct the messages for the API request
     messages = [
         {"role": "system", "content": [{"type": "text", "text": lsummary_prompt}]},
-        {"role": "user", "content": [{"type": "text", "text": prompt}]}
+        {"role": "user", "content": [{"type": "text", "text": prompt}]},
     ]
     if history:
-        messages.append({
-            "role": "user",
-            "content": [{
-                "type": "text",
-                "text": "Also, please note the previous transcripts. Try to build on the history if you can, without repeating the older content. \n: " + history,
-            }],
-        })
+        messages.append(
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Also, please note the previous transcripts. Try to build on the history if you can, without repeating the older content. \n: "
+                        + history,
+                    }
+                ],
+            }
+        )
 
     # Prepare the payload for the API request
+    model_version = LLM_MODEL_VERSION or "gpt-4.1"  # fallback to gpt-4.1 if unset
     payload = {
-        #"model": LLM_MODEL_VERSION,
-        "model": "gpt-4.1", # warning, hardcoded # consider just doing this occassionally? 
+        "model": model_version,
         "messages": messages,
         "max_tokens": tokens,
     }
@@ -98,9 +103,13 @@ def summarize(prompt, history=None, tokens=4096):
             logging.warning("API response missing expected fields: %s", result)
             return None
 
-        response_text = result["choices"][0]["message"]["content"].replace("\n\n", "\t").strip()
+        response_text = (
+            result["choices"][0]["message"]["content"].replace("\n\n", "\t").strip()
+        )
         ltokens = result["usage"]["total_tokens"]
-        logging.info("Total tokens used: %s (Cost: $%0.5f)", ltokens, ltokens * 0.005 / 1000)
+        logging.info(
+            "Total tokens used: %s (Cost: $%0.5f)", ltokens, ltokens * 0.005 / 1000
+        )
 
         # Convert the response text to a JSON format
         ljson = {}
