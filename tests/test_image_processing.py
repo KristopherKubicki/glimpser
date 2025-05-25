@@ -84,13 +84,12 @@ class TestImageProcessing(unittest.TestCase):
         blank_image = Image.new("RGB", (100, 100), color="white")
         self.assertTrue(is_mostly_blank(blank_image))
 
-        # Test with a non-blank image
+        # Test with a non-blank image (large dark region)
         non_blank_image = Image.new("RGB", (100, 100), color="white")
-        for x in range(40, 60):
-            for y in range(40, 60):
+        for x in range(25, 75):
+            for y in range(25, 75):
                 non_blank_image.putpixel((x, y), (0, 0, 0))
-        # TODO: fix this!
-        #self.assertFalse(is_mostly_blank(non_blank_image))
+        self.assertFalse(is_mostly_blank(non_blank_image))
 
         # Test with a dark image
         dark_image = Image.new("RGB", (100, 100), color="black")

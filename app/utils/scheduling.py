@@ -28,8 +28,15 @@ from .screenshots import (
     remove_background,
     add_timestamp,
     is_mostly_blank,
+    throttle_cache,
 )
-from .template_manager import get_template, get_templates, save_template
+from .template_manager import (
+    get_template,
+    get_templates,
+    save_template,
+    update_last_screenshot_time,
+    mark_offline,
+)
 from .email_alerts import email_alert
 from .sms_alerts import sms_alert
 from .http_callbacks import send_http_callback
@@ -212,6 +219,17 @@ def update_camera(name, template, image_file=None):
                 add_timestamp(output_path, name, invert=template.get('invert',False))
                 os.rename(output_path, output_path.replace(".tmp.png", ".png"))
                 lsuc = True
+
+    url = template.get("url")
+
+    if lsuc is True:
+        update_last_screenshot_time(name)
+    else:
+        entry = throttle_cache.get(url)
+        if entry and entry.get("errors", 0) >= 10 and time.time() - entry.get(
+            "first", time.time()
+        ) > 60 * 60 * 24:
+            mark_offline(name)
 
     if lsuc is True:
         directory = os.path.join(SCREENSHOT_DIRECTORY, name)
