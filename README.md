@@ -19,6 +19,7 @@
 Glimpser is a straightforward yet powerful real-time monitoring application designed to capture, analyze, and summarize live data from various sources such as cameras, dashboards, and video streams. Utilizing advanced image processing techniques and AI models, Glimpser provides insightful summaries and alerts. It’s highly configurable, allowing users to tailor it to their specific monitoring needs through an easy-to-use interface.
 
 For more documentation, see the [documentation index](docs/index.md).
+You can find an overview of the docs folder in [docs/README.md](docs/README.md).
 Read a high-level [Architecture Overview](docs/architecture_overview.md) to understand how the pieces fit together.
 
 ![Glimpser August 2024](https://github.com/user-attachments/assets/44ddcbd5-31f1-4ff9-954a-954a85479dc0)
@@ -30,7 +31,7 @@ Read a high-level [Architecture Overview](docs/architecture_overview.md) to unde
 
 - **Motion Detection**: Automatically detects motion in the captured images and videos, triggering alerts and actions as configured by the user.
 
-- **AI Integration**: Integrates with models like LLaVA and ChatGPT to provide intelligent insights. It can summarize data, detect anomalies, and generate alerts based on predefined rules.
+- **AI Integration**: Integrates with models like ChatGPT to provide intelligent insights. It can summarize data, detect anomalies, and generate alerts based on predefined rules.
 
 - **Auto-captioning**: Automatically generates concise and informative captions for images and videos, providing quick insights into the content.
 
@@ -87,6 +88,16 @@ glimpser --no-watchdog
 Run `glimpser --help` to see all available options.
 
    You will be prompted to create a secret key to initialize the local sqlite database. Follow the rest of the guided setup and then direct your browser to http://127.0.0.1:8082 to finish the rest of the setup.
+
+### Docker Quick Start
+
+If you prefer to run Glimpser in Docker, copy `.env.example` to `.env` and set at least `SECRET_KEY` and `API_KEY`. Then build and start the container:
+
+```sh
+docker-compose up --build
+```
+
+The web interface will be available at [http://localhost:8082](http://localhost:8082).
 
 ## Usage
 
@@ -154,10 +165,13 @@ To set up the project for development:
 
 ## Releases
 Release packages are built automatically when a version tag is pushed.
-The release workflow installs dependencies, runs the tests, and then executes
-`build_packages.sh`. If all steps succeed, a GitHub release is created for that
-tag and the resulting Debian package and Windows executable are uploaded.
-These files can be downloaded from the Releases page.
+The workflow runs tests and creates the Debian package on an Ubuntu runner.
+The Windows executable is built separately on a Windows runner using
+`build_windows.py`. When both steps finish, the resulting Debian package and
+Windows binary are uploaded to the GitHub release for that tag.
+If the repository contains a `PYPI_API_TOKEN` secret, the workflow also
+builds Python distributions and publishes them to PyPI. These files can be
+downloaded from the Releases page or installed with `pip`.
 
 ## Contributing
 Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request. Please read our [Code of Conduct](CODE_OF_CONDUCT.md) to understand the expectations for participants and how to report issues.

@@ -33,6 +33,7 @@ To filter logs by level and message text, you could request:
 
 1. Navigate to `/status` or `/logs` after logging in.
 2. Use the search box and dropdowns to filter log output.
-3. Results update automatically via `/stream_logs`.
+3. Hover over each field for a tooltip explaining the filter.
+4. Results update automatically via `/stream_logs`.
 
 The log viewer reads log lines from memory, ensuring minimal disk overhead.

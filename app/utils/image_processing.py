@@ -13,6 +13,7 @@ from app.config import CHATGPT_KEY, LLM_CAPTION_PROMPT, LLM_MODEL_VERSION
 
 last_429_error_time = None
 
+
 class ChatGPTImageComparison:
     def __init__(self):
         self.api_key = CHATGPT_KEY
@@ -28,14 +29,14 @@ class ChatGPTImageComparison:
         if last_429_error_time and (
             datetime.datetime.now() - last_429_error_time
         ) < datetime.timedelta(minutes=15):
-            return None
+            return None, 0
 
         detail = "high"
         if low_res is True:
             detail = "low"
 
         llm_prompt = LLM_CAPTION_PROMPT
-        llm_prompt = llm_prompt.replace('$datetime', str(datetime.datetime.utcnow()))
+        llm_prompt = llm_prompt.replace("$datetime", str(datetime.datetime.utcnow()))
 
         # Load, downsample while preserving aspect ratio, and convert images to base64
         messages = [
@@ -87,8 +88,10 @@ class ChatGPTImageComparison:
             response = requests.post(self.url, headers=self.headers, json=payload)
             if response.status_code == 429:
                 last_429_error_time = datetime.datetime.now()
-                logging.warning("429 error encountered. Blocking requests for 30 minutes.")
-                return None
+                logging.warning(
+                    "429 error encountered. Blocking requests for 30 minutes."
+                )
+                return None, 0
             result = response.json()
         except Exception as e:
             logging.warning("API response issue: %s", e)
@@ -106,13 +109,12 @@ class ChatGPTImageComparison:
                 len(image_paths),
                 image_paths[-1],
             )
-            # TODO: store the result , we paid for it
-            return response_text
+            return response_text, ltokens
         except Exception:
-            pass
+            return None, 0
 
 
-def chatgpt_compare(image_paths, prompt):
+def chatgpt_compare(prompt, image_paths, template_name=None):
 
     # Check if all images exist
     for image in image_paths:
@@ -124,7 +126,14 @@ def chatgpt_compare(image_paths, prompt):
         return "Missing ChatGPT key"
 
     chatgpt_comparison = ChatGPTImageComparison()
-    result = chatgpt_comparison.compare_images(prompt, image_paths)
+    result, tokens = chatgpt_comparison.compare_images(prompt, image_paths)
 
-    # You can write the result to logging as needed
+    if template_name and tokens:
+        try:
+            from app.utils.template_manager import record_llm_usage
+
+            record_llm_usage(template_name, tokens)
+        except Exception as e:
+            logging.error("Failed to record token usage: %s", e)
+
     return result

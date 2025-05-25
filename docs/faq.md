@@ -10,6 +10,9 @@ Glimpser is a monitoring and summarization tool that captures screenshots or vid
 ### Where is data stored?
 By default, data such as screenshots, videos, and summaries are stored inside the `data/` directory. You can change the paths using the configuration options described in the [Configuration Guide](configuration_guide.md).
 
+### How do I learn what each control does in the web interface?
+Hover your mouse over any control in the web interface to reveal a tooltip describing its function.
+
 ## Configuration
 
 ### How do I change the database location?
