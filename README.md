@@ -165,9 +165,10 @@ To set up the project for development:
 
 ## Releases
 Release packages are built automatically when a version tag is pushed.
-The release workflow installs dependencies, runs the tests, and then executes
-`build_packages.sh`. If all steps succeed, a GitHub release is created for that
-tag and the resulting Debian package and Windows executable are uploaded.
+The workflow runs tests and creates the Debian package on an Ubuntu runner.
+The Windows executable is built separately on a Windows runner using
+`build_windows.py`. When both steps finish, the resulting Debian package and
+Windows binary are uploaded to the GitHub release for that tag.
 If the repository contains a `PYPI_API_TOKEN` secret, the workflow also
 builds Python distributions and publishes them to PyPI. These files can be
 downloaded from the Releases page or installed with `pip`.

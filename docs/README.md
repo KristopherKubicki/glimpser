@@ -7,5 +7,4 @@ If you're looking for the list of available documents, see [index.md](index.md).
   to improve accessibility.
 - Unit tests now cover configuration retrieval and Chrome debug port detection.
 - Retention policy file sorting is also verified by tests.
-- LLM summaries now use `LLM_MODEL_VERSION`, falling back to `gpt-4.1` when unset.
-
+- Screenshot utility functions now have dedicated unit tests.
