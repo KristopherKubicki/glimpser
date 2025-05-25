@@ -31,7 +31,7 @@ Read a high-level [Architecture Overview](docs/architecture_overview.md) to unde
 
 - **Motion Detection**: Automatically detects motion in the captured images and videos, triggering alerts and actions as configured by the user.
 
-- **AI Integration**: Integrates with models like LLaVA and ChatGPT to provide intelligent insights. It can summarize data, detect anomalies, and generate alerts based on predefined rules.
+- **AI Integration**: Integrates with models like ChatGPT to provide intelligent insights. It can summarize data, detect anomalies, and generate alerts based on predefined rules.
 
 - **Auto-captioning**: Automatically generates concise and informative captions for images and videos, providing quick insights into the content.
 
