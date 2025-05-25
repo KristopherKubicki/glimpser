@@ -12,88 +12,12 @@ Authorization: Bearer YOUR_API_KEY
 
 ## Endpoints
 
-### 1. List Data Sources
+The current build exposes a limited API focused on template management and
+capturing images. Earlier versions of this documentation referenced a more
+comprehensive `/api/v1/*` interface, but those endpoints are not implemented.
+Below are the available routes.
 
-**GET /api/v1/sources**
-
-Retrieves a list of all configured data sources.
-
-Response:
-```json
-{
-  "sources": [
-    {
-      "id": "source_id",
-      "name": "Source Name",
-      "type": "camera",
-      "url": "http://example.com/camera1"
-    },
-    ...
-  ]
-}
-```
-
-### 2. Add Data Source
-
-**POST /api/v1/sources**
-
-Adds a new data source to Glimpser.
-
-Request Body:
-```json
-{
-  "name": "New Camera",
-  "type": "camera",
-  "url": "http://example.com/new_camera",
-  "refresh_rate": 60
-}
-```
-
-Response:
-```json
-{
-  "id": "new_source_id",
-  "name": "New Camera",
-  "type": "camera",
-  "url": "http://example.com/new_camera",
-  "refresh_rate": 60
-}
-```
-
-### 3. Get Latest Data
-
-**GET /api/v1/data/{source_id}**
-
-Retrieves the latest data from a specific source.
-
-Response:
-```json
-{
-  "source_id": "source_id",
-  "timestamp": "2023-06-15T14:30:00Z",
-  "data": {
-    "image_url": "http://example.com/latest_image.jpg",
-    "caption": "A busy intersection with cars and pedestrians",
-    "summary": "Traffic appears normal with moderate vehicle and foot traffic"
-  }
-}
-```
-
-### 4. Get Summary
-
-**GET /api/v1/summary**
-
-Retrieves a summary of recent data across all sources.
-
-Response:
-```json
-{
-  "timestamp": "2023-06-15T14:35:00Z",
-  "summary": "Overall, traffic conditions are normal across monitored areas. Weather remains clear with no significant events detected."
-}
-```
-
-### 5. Manage Templates
+### 1. Manage Templates
 
 **GET /templates**
 
@@ -135,7 +59,7 @@ Example response:
 {"status": "success", "message": "Template deleted"}
 ```
 
-### 6. View and Update Settings
+### 2. View and Update Settings
 
 **GET /settings**
 
@@ -145,7 +69,7 @@ Return the settings page in HTML format.
 
 Submit form data to modify configuration values. A successful update redirects back to the settings page.
 
-### 7. Stream MP4 Video
+### 3. Stream MP4 Video
 
 **GET /stream.mp4**
 
@@ -154,7 +78,7 @@ video is served in small chunks and loops continuously.
 
 Example: `/stream.mp4?group=frontdoor`
 
-### 8. Stream Live Video
+### 4. Stream Live Video
 
 **GET /live_video**
 
@@ -162,7 +86,7 @@ Stream a camera directly from its configured URL in real time. Specify `camera` 
 
 Example: `/live_video?camera=frontdoor`
 
-### 9. Trigger Screenshot Capture
+### 5. Trigger Screenshot Capture
 
 **GET /take_screenshot/<template_name>**
 **POST /take_screenshot/<template_name>**
@@ -172,6 +96,40 @@ Manually capture a screenshot for the specified template.
 Example response:
 ```json
 {"status": "success", "message": "Screenshot for camera1 taken"}
+```
+
+### 6. View System Status
+
+**GET /status**
+
+Returns an HTML dashboard displaying metrics such as CPU, memory, and disk usage along with open file count, thread count, and uptime. These metrics are gathered in a background thread (see `app/utils/scheduling.py`).
+
+### 7. Stream Logs
+
+**GET /stream_logs**
+
+Streams log records via Server-Sent Events. Optional query parameters `level`, `source`, `start_date`, `end_date`, and `search` allow filtering. The `/logs` and `/status` pages use this endpoint for the live log viewer.
+
+### 8. List Stored Videos
+
+**GET /videos/<template_name>**
+
+Return a JSON array of archived MP4 filenames for the specified template. Combine with `/videos/<template_name>/<filename>` to download a particular file.
+
+Example response:
+```json
+{"videos": ["cam1_20240101.mp4", "cam1_20240102.mp4"]}
+```
+
+### 9. List Stored Screenshots
+
+**GET /screenshots/<template_name>**
+
+Return a JSON array of screenshot filenames for the specified template. Individual files can be downloaded via `/screenshots/<template_name>/<filename>`.
+
+Example response:
+```json
+{"screenshots": ["cam1_20240101.png", "cam1_20240102.png"]}
 ```
 
 ## Error Handling

@@ -27,6 +27,16 @@ class TestCameraDiscovery(unittest.TestCase):
             ('10.0.0.6', 8554)
         }
 
+    @patch('app.utils.camera_discovery.glob.glob')
+    def test_local_video_devices(self, mock_glob):
+        mock_glob.return_value = ['/dev/video0', '/dev/video1']
+        result = camera_discovery._local_video_devices()
+        expected = [
+            {'ip': '/dev/video0', 'protocol': 'local', 'port': 0, 'info': {}},
+            {'ip': '/dev/video1', 'protocol': 'local', 'port': 0, 'info': {}}
+        ]
+        self.assertEqual(result, expected)
+
     @patch('app.utils.camera_discovery.psutil.net_if_addrs')
     def test_local_subnets(self, mock_addrs):
         mock_addrs.return_value = self._mock_interfaces()

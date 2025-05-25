@@ -15,6 +15,7 @@ from app.utils.video_archiver import (
     get_video_duration,
     concatenate_videos,
     handle_concat_error,
+    ConcatStatus,
     compile_to_video,
     archive_screenshots,
 )
@@ -103,17 +104,51 @@ class TestVideoArchiver(unittest.TestCase):
         mock_get_video_duration.return_value = 10
         mock_subprocess_run.return_value.returncode = 0
         result = concatenate_videos("in_process.mp4", "temp.mp4", self.temp_dir)
-        # Note - TODO: this returns None because the files do not exist.  May have to patch os.path.exists 
+        # Note - TODO: this returns None because the files do not exist.  May have to patch os.path.exists
         #self.assertTrue(result)
+
+    @patch("app.utils.video_archiver.get_video_duration")
+    @patch("subprocess.run")
+    def test_concatenate_videos_retry(self, mock_subprocess_run, mock_get_video_duration):
+        mock_get_video_duration.return_value = 10
+        mock_subprocess_run.side_effect = [RuntimeError("Resource temporarily unavailable"), None]
+        with (
+            patch("app.utils.video_archiver.handle_concat_error", return_value=ConcatStatus.RETRY) as mock_handle,
+            patch("os.path.exists", return_value=True),
+            patch("os.path.getsize", return_value=1),
+            patch("os.rename"),
+            patch("os.symlink"),
+        ):
+            result = concatenate_videos("in.mp4", "tmp.mp4", self.temp_dir)
+        self.assertEqual(mock_subprocess_run.call_count, 2)
 
     def test_handle_concat_error(self):
         with patch("os.path.getsize", return_value=100), patch(
             "os.rename"
         ) as mock_rename:
-            handle_concat_error(
+            status = handle_concat_error(
                 Exception("Invalid data found"), "temp.mp4", "in_process.mp4"
             )
             mock_rename.assert_called_once_with("temp.mp4", "in_process.mp4")
+            self.assertEqual(status, ConcatStatus.RECOVERED)
+
+        with patch("os.path.getsize", return_value=100), patch(
+            "os.rename"
+        ) as mock_rename:
+            status = handle_concat_error(
+                Exception("Resource temporarily unavailable"), "temp.mp4", "in_process.mp4"
+            )
+            mock_rename.assert_not_called()
+            self.assertEqual(status, ConcatStatus.RETRY)
+
+        with patch("os.path.getsize", return_value=100), patch(
+            "os.rename"
+        ) as mock_rename:
+            status = handle_concat_error(
+                Exception("Some fatal error"), "temp.mp4", "in_process.mp4"
+            )
+            mock_rename.assert_called_once_with("temp.mp4", "in_process.mp4")
+            self.assertEqual(status, ConcatStatus.FATAL)
 
     @patch("app.utils.video_archiver.get_video_duration")
     @patch("app.utils.video_archiver.concatenate_videos")

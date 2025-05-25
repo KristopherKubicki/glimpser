@@ -138,6 +138,8 @@ LLM_CAPTION_PROMPT = get_setting(
 # FFMPEG/FFPROBE path settings
 FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
 FFPROBE_PATH = get_setting("FFPROBE_PATH", "ffprobe")
+# Enable GPU acceleration if supported (e.g. "auto", "cuda", etc.)
+FFMPEG_HWACCEL = get_setting("FFMPEG_HWACCEL", "False")
 
 
 # New settings for capture_frame_from_stream function
