@@ -4,6 +4,7 @@ import unittest
 import tempfile
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -13,20 +14,21 @@ class TestRetentionPolicy(unittest.TestCase):
 
     def test_delete_old_files(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Create dummy files with different ages
+            # Create dummy files in sequence so creation times increase
+            file_paths = []
             for i in range(5):
                 file_path = os.path.join(temp_dir, f"file{i}.txt")
                 with open(file_path, 'w') as f:
                     f.write("Some content")
-                os.utime(file_path, (i * 1000, i * 1000))  # Modify file creation time
+                file_paths.append(file_path)
+                time.sleep(0.01)  # ensure distinct timestamps
             
             # Run the delete function
-            files = os.listdir(temp_dir)
-            delete_old_files([os.path.join(temp_dir, f) for f in files], max_age=0, max_size=0, minimum=2)
-            
-            # Check that only two files remain
+            delete_old_files(file_paths, max_age=0, max_size=0, minimum=2)
+
+            # Check that only the two newest files remain
             remaining_files = os.listdir(temp_dir)
-            self.assertEqual(len(remaining_files), 2)
+            self.assertEqual(set(remaining_files), {"file3.txt", "file4.txt"})
 
 if __name__ == '__main__':
     unittest.main()
