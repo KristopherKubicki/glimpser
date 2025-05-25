@@ -52,3 +52,4 @@ For more details, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 When adding new features, include corresponding tests under the `tests/` directory.
 - Utilities for network testing now have dedicated tests in `tests/test_network_testing_utils.py`.
 - Configuration lookup logic is verified by `tests/test_config_get_setting.py`.
+- Retention policy behavior is checked by tests in `tests/test_retention_policy.py`.
