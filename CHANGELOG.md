@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - FFprobe path configuration
 - Live video streaming endpoint `/live_video`
 - Python 3.11 compatibility
+- Python 3.12 compatibility
 
 ### Changed
 - Improved screenshot reliability

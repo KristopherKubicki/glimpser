@@ -53,7 +53,7 @@ Read a high-level [Architecture Overview](docs/architecture_overview.md) to unde
 ## Installation
 
 ### Prerequisites
-- Python 3.8 to 3.11
+- Python 3.8 to 3.12
 
 ### Steps
 1. **Install the Package**
