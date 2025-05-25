@@ -98,6 +98,12 @@ class TestCameraDiscovery(unittest.TestCase):
             {"ip": "192.168.1.6", "protocol": "rtsp", "port": 554, "info": {}},
             {"ip": "10.0.0.6", "protocol": "rtsp", "port": 8554, "info": {}},
             {"ip": "192.168.1.7", "protocol": "mdns", "port": 8080, "info": {}},
+            {
+                "ip": "127.0.0.1",
+                "protocol": "http",
+                "port": 8082,
+                "info": {"name": "System Status"},
+            },
         ]
         # convert to set of tuples for comparison ignoring order
         self.assertEqual(

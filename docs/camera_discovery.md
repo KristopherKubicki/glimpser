@@ -56,6 +56,11 @@ After scanning, `discover_cameras()` removes duplicates and returns the final li
 You can then add a discovered camera to your configuration directly from the `/discover` page.
 The "Add" button on this page now includes a tooltip (title attribute) for improved accessibility.
 
+The discovery list also shows a **System Status** entry pointing at your local
+`/status` page (`http://127.0.0.1:8082/status`). You can add this item like any
+other camera to have Glimpser periodically capture screenshots of its own
+metrics page.
+
 ## Common cameras to try
 
 Any IP camera that supports **ONVIF** or exposes an **RTSP** stream should show
