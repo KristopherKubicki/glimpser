@@ -1,0 +1,22 @@
+{% include 'header.html' %}
+{% include 'nav.html' %}
+<h2>User Management</h2>
+<table border="1">
+<tr><th>ID</th><th>Username</th><th>Role</th><th>Actions</th></tr>
+{% for u in users %}
+<tr>
+    <td>{{ u.id }}</td>
+    <td>{{ u.username }}</td>
+    <td>{{ u.role }}</td>
+    <td>
+        <a href="{{ url_for('edit_user', user_id=u.id) }}">Edit</a>
+        <form action="{{ url_for('edit_user', user_id=u.id) }}" method="post" style="display:inline;">
+            <input type="hidden" name="_method" value="delete">
+            <button type="submit">Delete</button>
+        </form>
+    </td>
+</tr>
+{% endfor %}
+</table>
+<a href="{{ url_for('new_user') }}">Add User</a>
+{% include 'footer.html' %}

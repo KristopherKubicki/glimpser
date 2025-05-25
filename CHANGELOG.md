@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Real-time log streaming with improved filtering
 - Console clearing command
 - Google Cast support
+- Multi-user management with role enforcement
 - Integration with Blue Iris, Home Assistant and Hubitat
 - Custom video controls including Play All/Stop All
 - Automatic group loading for cameras

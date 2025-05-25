@@ -1,0 +1,15 @@
+{% include 'header.html' %}
+{% include 'nav.html' %}
+<h2>{{ 'Edit' if user else 'New' }} User</h2>
+<form method="post">
+    <label>Username <input type="text" name="username" value="{{ user.username if user else '' }}"></label><br>
+    <label>Password <input type="password" name="password"></label><br>
+    <label>Role
+        <select name="role">
+            <option value="admin" {% if user and user.role=='admin' %}selected{% endif %}>admin</option>
+            <option value="viewer" {% if user and user.role=='viewer' %}selected{% endif %}>viewer</option>
+        </select>
+    </label><br>
+    <button type="submit">Save</button>
+</form>
+{% include 'footer.html' %}

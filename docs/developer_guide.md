@@ -58,3 +58,8 @@ When adding new features, include corresponding tests under the `tests/` directo
 - Utilities for network testing now have dedicated tests in `tests/test_network_testing_utils.py`.
 - Configuration lookup logic is verified by `tests/test_config_get_setting.py`.
 - Scheduler helpers are tested in `tests/test_scheduling_more.py`.
+
+### User Management
+
+Use the `/users` route to add or edit accounts. Protect sensitive views by
+decorating them with `admin_required` which checks the `User.role`.

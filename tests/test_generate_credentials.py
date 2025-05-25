@@ -8,6 +8,7 @@ import sqlite3
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import generate_credentials
+import argparse
 import app.config as config
 
 
@@ -18,13 +19,13 @@ class TestGenerateCredentials(unittest.TestCase):
         config.DATABASE_PATH = os.path.join(self.temp_dir, "test.db")
         self.conn = sqlite3.connect(config.DATABASE_PATH)
 
-        create_settings_table = '''
+        create_settings_table = """
         CREATE TABLE IF NOT EXISTS settings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
             value TEXT NOT NULL
         );
-        '''
+        """
         cursor = self.conn.cursor()
         cursor.execute(create_settings_table)
         self.conn.commit()
@@ -56,6 +57,25 @@ class TestGenerateCredentials(unittest.TestCase):
         result = cursor.fetchone()
         self.assertIsNotNone(result)
 
+    @patch("generate_credentials.getpass.getpass", return_value="pw")
+    @patch("generate_credentials.generate_password_hash", return_value="hash")
+    def test_multiple_users(self, mock_hash, mock_getpass):
+        args = argparse.Namespace(
+            db_path=config.DATABASE_PATH,
+            username="admin",
+            password="pw",
+            update_password=False,
+            secret_key=None,
+            update_key=False,
+            create_user=[("bob", "viewer"), ("alice", "admin")],
+        )
+        generate_credentials.generate_credentials(args)
+        cur = self.conn.cursor()
+        cur.execute("SELECT username, role FROM users ORDER BY id")
+        rows = cur.fetchall()
+        self.assertIn(("bob", "viewer"), rows)
+        self.assertIn(("alice", "admin"), rows)
+
     @patch("generate_credentials.input")
     @patch("generate_credentials.getpass.getpass")
     @patch("generate_credentials.secrets.token_hex")
@@ -69,20 +89,20 @@ class TestGenerateCredentials(unittest.TestCase):
         mock_hash.return_value = "hashed_password"
 
         # something wrong with previous mocks is messing this one up
-        #generate_credentials.generate_credentials(args=None)
+        # generate_credentials.generate_credentials(args=None)
 
         cursor = self.conn.cursor()
         cursor.execute("SELECT value FROM settings WHERE name='USER_NAME'")
-        #self.assertEqual(cursor.fetchone()[0], "testuser")
+        # self.assertEqual(cursor.fetchone()[0], "testuser")
 
         cursor.execute("SELECT value FROM settings WHERE name='USER_PASSWORD_HASH'")
-        #self.assertEqual(cursor.fetchone()[0], "hashed_password")
+        # self.assertEqual(cursor.fetchone()[0], "hashed_password")
 
         cursor.execute("SELECT value FROM settings WHERE name='SECRET_KEY'")
-        #self.assertEqual(cursor.fetchone()[0], "secretkey")
+        # self.assertEqual(cursor.fetchone()[0], "secretkey")
 
         cursor.execute("SELECT value FROM settings WHERE name='API_KEY'")
-        #self.assertEqual(cursor.fetchone()[0], "apikey")
+        # self.assertEqual(cursor.fetchone()[0], "apikey")
 
 
 if __name__ == "__main__":

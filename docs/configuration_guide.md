@@ -46,9 +46,12 @@ updated with `generate_credentials.py` or through the web interface.
   default)
 
 User accounts are stored in the `users` table. Each record contains the
-`username`, `password_hash`, and an optional `role` that can be used for future
-permission checks. The `generate_credentials.py` utility keeps the settings and
-user table in sync.
+`username`, `password_hash`, and a `role`.
+The application defines two default roles: `admin` and `viewer`.
+Run `migrations/add_default_roles.py` once after upgrading to create the `roles`
+table and seed these defaults.
+The `generate_credentials.py` utility now accepts the `--create-user` option to
+add additional users with a specified role.
 
 ## File Locations
 
