@@ -167,7 +167,9 @@ Release packages are built automatically when a version tag is pushed.
 The release workflow installs dependencies, runs the tests, and then executes
 `build_packages.sh`. If all steps succeed, a GitHub release is created for that
 tag and the resulting Debian package and Windows executable are uploaded.
-These files can be downloaded from the Releases page.
+If the repository contains a `PYPI_API_TOKEN` secret, the workflow also
+builds Python distributions and publishes them to PyPI. These files can be
+downloaded from the Releases page or installed with `pip`.
 
 ## Contributing
 Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request. Please read our [Code of Conduct](CODE_OF_CONDUCT.md) to understand the expectations for participants and how to report issues.
