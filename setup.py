@@ -5,6 +5,8 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 with open("requirements.txt", "r", encoding="utf-8") as fh:
     requirements = fh.read().splitlines()
+    if "pyttsx3" not in requirements:
+        requirements.append("pyttsx3")
 
 setup(
     name="glimpser",
@@ -35,4 +37,3 @@ setup(
         ],
     },
 )
-

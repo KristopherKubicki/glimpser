@@ -78,6 +78,15 @@ Configure these values to enable Twilio SMS alerts:
 - `TWILIO_TOKEN` – your Twilio auth token
 - `TWILIO_NUMBER` – phone number that receives alerts
 
+## Text-to-Speech Settings
+
+The scheduler can now generate audio summaries using pyttsx3. Configure these
+options to control the voice output:
+
+- `TTS_ENABLED` – set to `True` to save an mp3 file for each summary (default `False`)
+- `TTS_VOICE` – optional voice id string recognised by pyttsx3
+- `TTS_RATE` – speech rate in words per minute (default `200`)
+
 ## Capture Parameters
 
 Settings controlling how frames are captured from video sources:

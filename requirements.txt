@@ -25,3 +25,4 @@ python-dateutil
 python-dotenv
 nodriver
 pytest
+pyttsx3

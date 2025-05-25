@@ -40,6 +40,7 @@ from .template_manager import (
 from .email_alerts import email_alert
 from .sms_alerts import sms_alert
 from .http_callbacks import send_http_callback
+from .tts import generate_tts
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from concurrent.futures import ProcessPoolExecutor, TimeoutError
@@ -760,6 +761,8 @@ def update_summary():
             lsuc = True
     if lsuc is False:
         logging.warning("MISSED CAPTION ($$$) %s", lsum)
+    else:
+        generate_tts(lsum, f"data/summaries/{timestamp}.mp3")
 
     # Send alerts with the summary
     if lsuc:
