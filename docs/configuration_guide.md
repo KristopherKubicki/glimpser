@@ -104,5 +104,6 @@ Additional variables control AI behaviour and external tools:
 - `LLM_CAPTION_PROMPT` – default prompt used for image captions
 - `FFMPEG_PATH` – path to the `ffmpeg` binary (default `ffmpeg`)
 - `FFPROBE_PATH` – path to the `ffprobe` binary (default `ffprobe`)
+- `FFMPEG_HWACCEL` – hardware acceleration mode for ffmpeg (`False` disables)
 
 Refer to the code comments in `app/config.py` for full details on each setting.

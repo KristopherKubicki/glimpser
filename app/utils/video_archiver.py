@@ -21,6 +21,7 @@ from app.config import (
     VIDEO_DIRECTORY,
     FFMPEG_PATH,
     FFPROBE_PATH,
+    FFMPEG_HWACCEL,
 )
 
 from .template_manager import get_templates
@@ -108,8 +109,10 @@ def compile_videos(input_file, output_file):
     if not os.path.exists(input_file):
         return False
 
-    create_command = [
-        FFMPEG_PATH,
+    create_command = [FFMPEG_PATH]
+    if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
+        create_command.extend(["-hwaccel", FFMPEG_HWACCEL])
+    create_command.extend([
         "-threads",
         "5",
         "-err_detect",
@@ -130,7 +133,7 @@ def compile_videos(input_file, output_file):
         "+faststart",
         "-y",
         os.path.abspath(output_file),
-    ]
+    ])
 
     try:
         subprocess.run(
@@ -191,8 +194,10 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
         temp_video_duration = get_video_duration(temp_video)
         if in_process_duration > 0 and temp_video_duration > 0:
             concat_video = os.path.join(video_path, "in_process.concat.mp4")
-            concat_command = [
-                FFMPEG_PATH,
+            concat_command = [FFMPEG_PATH]
+            if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
+                concat_command.extend(["-hwaccel", FFMPEG_HWACCEL])
+            concat_command.extend([
                 "-threads",
                 "5", # todo, make this a config
                 #"-safe",  Option not found?  But it is found and used elsewhere?  Not surewhy this is..
@@ -221,7 +226,7 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
                 "+faststart",
                 "-y",
                 os.path.abspath(concat_video),  # Overwrite the in-process video
-            ]
+            ])
             try:
                 # TODO: check stdout and stderr
                 subprocess.run(
@@ -377,8 +382,10 @@ def compile_to_video(camera_path, video_path) -> bool:
         # Create a temporary video with the new frames
         temp_video = os.path.join(video_path, "in_process.tmp.mp4")
 
-        create_command = [
-            FFMPEG_PATH,
+        create_command = [FFMPEG_PATH]
+        if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
+            create_command.extend(["-hwaccel", FFMPEG_HWACCEL])
+        create_command.extend([
             "-threads",
             "5",
             "-f",
@@ -407,7 +414,7 @@ def compile_to_video(camera_path, video_path) -> bool:
             "fps=30,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
             "-movflags",
             "+faststart",
-        ]
+        ])
         create_command.extend(
             ["-metadata", "creation_time=%sZ" % datetime.datetime.utcnow()]
         )

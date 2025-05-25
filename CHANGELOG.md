@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Capture time tracking for templates
 - FFprobe path configuration
 - Live video streaming endpoint `/live_video`
+- Python 3.11 compatibility
 
 ### Changed
 - Improved screenshot reliability
