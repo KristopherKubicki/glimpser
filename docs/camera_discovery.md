@@ -22,9 +22,10 @@ The discovery code combines multiple approaches:
 
 1. **ONVIF probe** – `_probe_onvif()` broadcasts a WS-Discovery probe and parses any replies to extract camera IP addresses and ONVIF service URLs.
 2. **RTSP port scan** – `_scan_rtsp_ports()` walks through the host's local subnets and checks common RTSP ports (`554` and `8554`) using `is_port_open`.
-3. **Local devices** – `_local_video_devices()` lists available `/dev/video*` entries for webcams or other direct-attached cameras.
+3. **mDNS/Zeroconf** – `_probe_mdns()` looks for services like `_onvif._tcp` and `_rtsp._tcp` advertised on the local network.
+4. **Local devices** – `_local_video_devices()` lists available `/dev/video*` entries for webcams or other direct-attached cameras.
 
-Both sets of results are merged and returned. The key parts of the implementation are shown below:
+All discovered entries are merged and returned. The key parts of the implementation are shown below:
 
 ```python
 # app/utils/camera_discovery.py
@@ -54,3 +55,22 @@ After scanning, `discover_cameras()` removes duplicates and returns the final li
 
 You can then add a discovered camera to your configuration directly from the `/discover` page.
 The "Add" button on this page now includes a tooltip (title attribute) for improved accessibility.
+
+## Common cameras to try
+
+Any IP camera that supports **ONVIF** or exposes an **RTSP** stream should show
+up in the discovery list. The following brands are frequently used and respond
+well to the existing discovery methods:
+
+- **Amcrest** – consumer-grade cameras with reliable ONVIF support.
+- **Hikvision/Dahua** – widely deployed security cameras that offer RTSP
+  streams.
+- **Axis** – enterprise cameras known for robust network features.
+- **Foscam** – budget-friendly cameras often found in home setups.
+
+Locally attached USB webcams (for example, Logitech devices) will appear under
+`/dev/video*`.
+
+Remote sources such as **GOES16**, **ZoomEarth**, and **Dopler** can be added
+manually, but they are not discovered automatically because they are hosted
+outside the local network.
