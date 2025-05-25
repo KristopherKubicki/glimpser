@@ -54,7 +54,7 @@ except Exception as e:  # pragma: no cover - optional dependency
 
 
 from app.config import (
-    DEBUG, LANG, SCREENSHOT_DIRECTORY, UA, FFMPEG_PATH,
+    DEBUG, LANG, SCREENSHOT_DIRECTORY, UA, FFMPEG_PATH, FFMPEG_HWACCEL,
     NUM_FRAMES, CAPTURE_TIMEOUT, PROBE_SIZE_DEFAULT,
     PROBE_SIZE_RTSP, PROBE_SIZE_OTHER, TZ
 )
@@ -881,19 +881,18 @@ def parse_url(url):
 
 def cas_error(url):
 
-        if throttle_cache.get(url) is None:
-            throttle_cache[url] = {}
-            throttle_cache[url]['errors'] = 1
-        else:
-            if throttle_cache[url].get('last',0) > time.time() - 60*5: # happened in the last 5 minutes?  Error again
-                throttle_cache[url]['errors'] += 1
-            else:
-                throttle_cache[url]['errors'] = 1
-            throttle_cache[url]['last'] = time.time()
+        entry = throttle_cache.setdefault(url, {'errors': 0, 'first': time.time()})
 
-        if throttle_cache[url]['errors'] > 2:
-            logging.error(f"Could not reach host: {url} {throttle_cache[url]['errors']} times")
-            throttle_cache[url]['timeout'] = time.time() + 60*60 # 1 hour timeout
+        if entry.get('last', 0) > time.time() - 60 * 5:
+            entry['errors'] += 1
+        else:
+            entry['errors'] = 1
+            entry['first'] = time.time()
+        entry['last'] = time.time()
+
+        if entry['errors'] > 2:
+            logging.error(f"Could not reach host: {url} {entry['errors']} times")
+            entry['timeout'] = time.time() + 60 * 60  # 1 hour timeout
 
 
 
@@ -1278,8 +1277,10 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
         lurl_cache[url] = "good"
         video_url = result.stdout.decode().strip()
         # 2) Use ffmpeg to capture a single frame
-        ffmpeg_command = [
-            "ffmpeg",
+        ffmpeg_command = [FFMPEG_PATH]
+        if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
+            ffmpeg_command += ["-hwaccel", FFMPEG_HWACCEL]
+        ffmpeg_command += [
             "-analyzeduration",
             "20M",
             "-probesize",
@@ -1353,8 +1354,9 @@ def capture_frame_from_stream(
         command = [
             FFMPEG_PATH,  # Use the configurable FFMPEG_PATH
             "-hide_banner",
-            #'-hwaccel', 'auto',  #TODO add support
         ]
+        if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
+            command.extend(["-hwaccel", FFMPEG_HWACCEL])
 
         lua = UA
         if stealth:

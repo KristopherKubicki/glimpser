@@ -5,6 +5,8 @@ import logging
 import xml.etree.ElementTree as ET
 from urllib.parse import urlparse
 from ipaddress import ip_network
+import os
+import glob
 from .screenshots import is_port_open
 
 
@@ -89,6 +91,14 @@ def _scan_rtsp_ports(subnets):
     return found
 
 
+def _local_video_devices(base_path="/dev"):
+    """List available local video devices like /dev/video0."""
+    devices = []
+    for path in sorted(glob.glob(os.path.join(base_path, "video*"))):
+        devices.append({"ip": path, "protocol": "local", "port": 0, "info": {}})
+    return devices
+
+
 def discover_cameras():
     """Discover cameras on the local network via ONVIF and RTSP scanning."""
     cameras = []
@@ -98,6 +108,10 @@ def discover_cameras():
         cameras.extend(_scan_rtsp_ports(subnets))
     except Exception as e:
         logging.warning("RTSP scan error: %s", e)
+    try:
+        cameras.extend(_local_video_devices())
+    except Exception as e:
+        logging.debug("local video scan error: %s", e)
     # remove duplicates
     unique = {}
     for cam in cameras:

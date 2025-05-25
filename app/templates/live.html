@@ -258,9 +258,7 @@ function changeCamera() {
         isConnected = checkCameraConnection(currentCamera);
     }
 
-    if (1==2) {
-	// TODO: even if the camera is offline, we still want to display the old stuff
-        // Display a placeholder for disconnected cameras
+    if (!isConnected) {
         const videoContainer = document.querySelector('.video-container');
         videoContainer.innerHTML = `
             <div class="placeholder">
@@ -291,7 +289,7 @@ function changeCamera() {
             const source = document.getElementById('video-source').value;
             const isConnected = checkCameraConnection(currentCamera);
 
-		if (1==2) { 
+            if (!isConnected) {
                 const videoContainer = document.querySelector('.video-container');
                 videoContainer.innerHTML = `
                     <div class="placeholder">
@@ -584,13 +582,19 @@ function playMotion() {
     // todo: stop the old playing png stream
 
     function checkCameraConnection(cameraName) {
-        // Check if the camera has a last_screenshot_time
         const camera = templateDetails[cameraName];
-        if (!camera || !camera.last_screenshot_time) {
+        if (!camera) {
             return false;
         }
 
-        // Check if the last screenshot is within the last hour
+        if (camera.offline_since && camera.offline_since !== "") {
+            return false;
+        }
+
+        if (!camera.last_screenshot_time) {
+            return false;
+        }
+
         const lastScreenshotTime = new Date(camera.last_screenshot_time);
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
         return lastScreenshotTime > oneHourAgo;

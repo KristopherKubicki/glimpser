@@ -11,6 +11,7 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [Getting Started](getting_started.md)
 - [Installation Guide](installation.md)
 - [Integration Guide](integration_guide.md)
+- [Camera Discovery](camera_discovery.md)
 - [HTTP Callback Guide](http_callbacks.md)
 - [Recommendations](recommendations.md)
 - [Troubleshooting](troubleshooting.md)
