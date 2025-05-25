@@ -50,3 +50,4 @@ For more details, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Configuration defaults are defined in `app/config.py`.
 
 When adding new features, include corresponding tests under the `tests/` directory.
+- Utilities for network testing now have dedicated tests in `tests/test_network_testing_utils.py`.
