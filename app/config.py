@@ -50,16 +50,17 @@ def get_setting(name, default=None):
 
 def backup_config() -> bool:
     session = SessionLocal()
+    success = True
     try:
         settings = session.execute(text("SELECT name, value FROM settings")).fetchall()
         config_dict = {name: value for name, value in settings}
-        with open(BACKUP_PATH, 'w') as f:
+        with open(BACKUP_PATH, "w") as f:
             json.dump(config_dict, f)
     except Exception:
-        return False
+        success = False
     finally:
         session.close()
-        return True
+    return success
 
 def restore_config():
     if os.path.exists(BACKUP_PATH):

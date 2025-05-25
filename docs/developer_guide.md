@@ -15,7 +15,12 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    ```sh
    pip install -e ".[dev]"
    ```
-3. Copy the provided example environment file and update the values. Important
+3. Install the `pre-commit` tool and set up the Git hooks:
+   ```sh
+   pip install pre-commit
+   pre-commit install
+   ```
+4. Copy the provided example environment file and update the values. Important
    variables include `SECRET_KEY` for session management, `CHATGPT_KEY` for AI
    features, and the various path settings used by the application.
    ```sh
@@ -50,3 +55,6 @@ For more details, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Configuration defaults are defined in `app/config.py`.
 
 When adding new features, include corresponding tests under the `tests/` directory.
+- Utilities for network testing now have dedicated tests in `tests/test_network_testing_utils.py`.
+- Configuration lookup logic is verified by `tests/test_config_get_setting.py`.
+- Scheduler helpers are tested in `tests/test_scheduling_more.py`.

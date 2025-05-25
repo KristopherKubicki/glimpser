@@ -10,6 +10,8 @@ This guide addresses common issues that users might encounter while using Glimps
 - Ensure you're using Python 3.8 or newer (tested up to 3.11): `python --version`
 - Update pip: `pip install --upgrade pip`
 - If you're on Windows, make sure you have the necessary C++ build tools installed for certain packages.
+- Double-check that you're working in the correct virtual environment.
+- Review the output of the install command for missing system libraries.
 
 ## 2. Configuration Issues
 
@@ -20,6 +22,7 @@ This guide addresses common issues that users might encounter while using Glimps
 - Verify the URL of the data source
 - Ensure you have the necessary permissions to access the data source
 - Check if the data source requires authentication
+- Ensure your `.env` file is loaded if you rely on environment variables
 
 ### Problem: API key not working
 
@@ -35,6 +38,7 @@ This guide addresses common issues that users might encounter while using Glimps
 - Reduce the number of concurrent data sources
 - Increase the refresh interval for less critical sources
 - Check the `MAX_WORKERS` setting and adjust if necessary
+- Review the `/status` page to watch CPU and memory usage in real time
 
 ### Problem: Out of memory errors
 
@@ -42,6 +46,7 @@ This guide addresses common issues that users might encounter while using Glimps
 - Reduce the `MAX_RAW_DATA_SIZE` setting
 - Increase the system's available memory
 - Consider using a database instead of in-memory storage for large datasets
+- Lower the capture resolution or frame rate if possible
 
 ## 4. Data Processing Issues
 
@@ -67,6 +72,7 @@ This guide addresses common issues that users might encounter while using Glimps
 - Check if the Glimpser server is running
 - Verify you're using the correct port (default is 8082)
 - Clear your browser cache and cookies
+- Confirm that WebSocket connections are allowed on your network
 
 ### Problem: Can't log in to the web interface
 
@@ -85,3 +91,70 @@ If you're still experiencing issues after trying these solutions, please:
 4. Reach out to our community support forum for assistance
 
 Remember to always include relevant log files, error messages, and your Glimpser version when seeking help.
+
+## 6. Database Issues
+
+### Problem: Unable to connect to the database
+
+**Solution:**
+- Ensure the database path in `GLIMPSER_DB` is correct.
+- Check file permissions so the process can read and write to the database.
+- For remote servers verify network connectivity and credentials.
+
+### Problem: Database locked errors
+
+**Solution:**
+- Stop other Glimpser instances that might be using the same database file.
+- If using SQLite, ensure the volume is mounted with proper locking support.
+- Consider switching to a server database like PostgreSQL for multi‑user setups.
+
+## 7. Docker Deployment Issues
+
+### Problem: Containers fail to start
+
+**Solution:**
+- Build images again with `docker compose build --no-cache`.
+- Inspect the container logs with `docker compose logs` for errors.
+- Confirm that environment variables in `docker-compose.yaml` match your setup.
+
+### Problem: Port conflicts
+
+**Solution:**
+- Make sure no other service is using port 8082.
+- Change the `ports` mapping in `docker-compose.yaml` if needed.
+
+### Problem: Permission denied on volumes
+
+**Solution:**
+- Verify that the host directories mapped as volumes are writable by Docker.
+- On Linux you may need to adjust ownership with `chown` or use Docker's `user` option.
+
+## 8. Environment Variable Issues
+
+### Problem: Settings not loading
+
+**Solution:**
+- Confirm variables are defined in your shell or `.env` file before starting.
+- Use `printenv | grep GLIMPSER` to check that values are present.
+
+### Problem: Missing secrets
+
+**Solution:**
+- Ensure `CHATGPT_KEY` and any other credentials are exported in your environment.
+- When running under Docker, set these values in `docker-compose.yaml`.
+
+## 9. Logging and Debugging Tips
+
+Glimpser writes logs to the console and exposes them via the `/status` page. If something goes wrong:
+- Use the **System Monitoring and Logs** guide to access live logs.
+- Increase the `LOG_LEVEL` environment variable to `DEBUG` for more details.
+- Review recent entries for stack traces or connection errors.
+
+## 10. Upgrade Issues
+
+### Problem: Errors after pulling a new version
+
+**Solution:**
+- Run `pip install -r requirements.txt --upgrade` to update dependencies.
+- Apply any new database migrations as described in the release notes.
+- Clear your browser cache to avoid stale JavaScript files.
