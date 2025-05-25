@@ -157,6 +157,19 @@ def discover_cameras():
         cameras.extend(_local_video_devices())
     except Exception as e:
         logging.debug("local video scan error: %s", e)
+
+    # Always include the internal status page so the system can monitor itself
+    from app.config import PORT
+
+    cameras.append(
+        {
+            "ip": "127.0.0.1",
+            "protocol": "http",
+            "port": PORT,
+            "info": {"name": "System Status"},
+            "url": f"http://127.0.0.1:{PORT}/status",
+        }
+    )
     # remove duplicates
     unique = {}
     for cam in cameras:

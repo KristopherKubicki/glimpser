@@ -37,3 +37,7 @@ To filter logs by level and message text, you could request:
 4. Results update automatically via `/stream_logs`.
 
 The log viewer reads log lines from memory, ensuring minimal disk overhead.
+
+The `/status` page also appears on the `/discover` screen as a **System Status**
+camera. Adding it lets Glimpser capture periodic screenshots of its own health
+metrics.
