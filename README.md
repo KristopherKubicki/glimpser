@@ -19,6 +19,7 @@
 Glimpser is a straightforward yet powerful real-time monitoring application designed to capture, analyze, and summarize live data from various sources such as cameras, dashboards, and video streams. Utilizing advanced image processing techniques and AI models, Glimpser provides insightful summaries and alerts. It’s highly configurable, allowing users to tailor it to their specific monitoring needs through an easy-to-use interface.
 
 For more documentation, see the [documentation index](docs/index.md).
+You can find an overview of the docs folder in [docs/README.md](docs/README.md).
 Read a high-level [Architecture Overview](docs/architecture_overview.md) to understand how the pieces fit together.
 
 ![Glimpser August 2024](https://github.com/user-attachments/assets/44ddcbd5-31f1-4ff9-954a-954a85479dc0)
