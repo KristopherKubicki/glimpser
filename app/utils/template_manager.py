@@ -34,6 +34,7 @@ class Template(Base):
     last_motion_time = Column(Text, default="")
     last_screenshot_time = Column(Text, default="")
     last_video_time = Column(Text, default="")
+    offline_since = Column(Text, default="")
     object_filter = Column(String, default="")
     object_confidence = Column(Float, default=0.5)
     popup_xpath = Column(String, default="")
@@ -382,3 +383,42 @@ def get_llm_cost_estimate(name: str) -> str:
     # For now, we'll return a random cost as an example.
     cost = random.uniform(0.5, 5.0)
     return f"${cost:.2f}"
+
+
+def update_last_screenshot_time(name: str) -> None:
+    """Set ``last_screenshot_time`` to now and clear ``offline_since``."""
+    name = validate_template_name(name)
+    if name is None:
+        return
+
+    manager = TemplateManager()
+    session = manager.get_session()
+    try:
+        template = session.query(Template).filter_by(name=name).first()
+        if template:
+            template.last_screenshot_time = datetime.utcnow().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+            template.offline_since = ""
+            session.commit()
+    finally:
+        session.close()
+
+
+def mark_offline(name: str) -> None:
+    """Record the time a camera was first detected offline."""
+    name = validate_template_name(name)
+    if name is None:
+        return
+
+    manager = TemplateManager()
+    session = manager.get_session()
+    try:
+        template = session.query(Template).filter_by(name=name).first()
+        if template and not template.offline_since:
+            template.offline_since = datetime.utcnow().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+            session.commit()
+    finally:
+        session.close()
