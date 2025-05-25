@@ -6,7 +6,13 @@
     <h2>Discovered Cameras</h2>
     <table>
         <thead>
-            <tr><th>IP</th><th>Protocol</th><th>Port</th><th>Info</th><th></th></tr>
+            <tr>
+                <th title="Camera IP address">IP</th>
+                <th title="Protocol type">Protocol</th>
+                <th title="Port number">Port</th>
+                <th title="Additional information">Info</th>
+                <th title="Add camera"></th>
+            </tr>
         </thead>
         <tbody>
         {% for cam in cameras %}
@@ -21,7 +27,7 @@
                         <input type="hidden" name="protocol" value="{{ cam.protocol }}">
                         <input type="hidden" name="port" value="{{ cam.port }}">
                         <input type="hidden" name="name" value="{{ cam.ip }}">
-                        <button type="submit">Add</button>
+                        <button type="submit" title="Add this camera">Add</button>
                     </form>
                 </td>
             </tr>
