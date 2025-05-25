@@ -18,10 +18,11 @@ When you visit `/discover`, Glimpser calls `discover_cameras()` to scan the netw
 
 ## Camera scanning logic
 
-The discovery code combines two approaches:
+The discovery code combines multiple approaches:
 
 1. **ONVIF probe** – `_probe_onvif()` broadcasts a WS-Discovery probe and parses any replies to extract camera IP addresses and ONVIF service URLs.
 2. **RTSP port scan** – `_scan_rtsp_ports()` walks through the host's local subnets and checks common RTSP ports (`554` and `8554`) using `is_port_open`.
+3. **Local devices** – `_local_video_devices()` lists available `/dev/video*` entries for webcams or other direct-attached cameras.
 
 Both sets of results are merged and returned. The key parts of the implementation are shown below:
 
@@ -42,6 +43,11 @@ def _scan_rtsp_ports(subnets):
             for port in (554, 8554):
                 if is_port_open(ip, port, timeout=1):
                     found.append({"ip": ip, "protocol": "rtsp", "port": port, "info": {}})
+
+
+def _local_video_devices(base_path="/dev"):
+    for path in glob.glob(os.path.join(base_path, "video*")):
+        found.append({"ip": path, "protocol": "local", "port": 0, "info": {}})
 ```
 
 After scanning, `discover_cameras()` removes duplicates and returns the final list of cameras.
