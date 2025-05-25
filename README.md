@@ -11,6 +11,9 @@
 
 [![Python application](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml)
 [![Pylint](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+[![GitHub release](https://img.shields.io/github/v/release/KristopherKubicki/glimpser)](https://github.com/KristopherKubicki/glimpser/releases/latest)
+[![Coverage](https://codecov.io/gh/KristopherKubicki/glimpser/branch/main/graph/badge.svg)](https://codecov.io/gh/KristopherKubicki/glimpser)
 
 ## Introduction
 Glimpser is a straightforward yet powerful real-time monitoring application designed to capture, analyze, and summarize live data from various sources such as cameras, dashboards, and video streams. Utilizing advanced image processing techniques and AI models, Glimpser provides insightful summaries and alerts. It’s highly configurable, allowing users to tailor it to their specific monitoring needs through an easy-to-use interface.
@@ -43,13 +46,14 @@ Read a high-level [Architecture Overview](docs/architecture_overview.md) to unde
   examples.
 - **SMS Alerts**: Configure Twilio credentials to receive important notifications by text message.
 - **Camera Discovery**: Use the `/discover` page to automatically scan the local network for ONVIF or RTSP cameras.
+- **Local Cameras**: `/discover` also lists any available `/dev/video*` devices for easy webcam integration.
 
 - **Web Interface**: A user-friendly web interface allows for easy monitoring and configuration. Users can view live feeds, summaries, and configure settings without delving into the code.
 
 ## Installation
 
 ### Prerequisites
-- Python 3.8 or higher
+- Python 3.8 to 3.11
 
 ### Steps
 1. **Install the Package**

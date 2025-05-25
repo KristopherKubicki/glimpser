@@ -54,7 +54,7 @@ except Exception as e:  # pragma: no cover - optional dependency
 
 
 from app.config import (
-    DEBUG, LANG, SCREENSHOT_DIRECTORY, UA, FFMPEG_PATH,
+    DEBUG, LANG, SCREENSHOT_DIRECTORY, UA, FFMPEG_PATH, FFMPEG_HWACCEL,
     NUM_FRAMES, CAPTURE_TIMEOUT, PROBE_SIZE_DEFAULT,
     PROBE_SIZE_RTSP, PROBE_SIZE_OTHER, TZ
 )
@@ -1277,8 +1277,10 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
         lurl_cache[url] = "good"
         video_url = result.stdout.decode().strip()
         # 2) Use ffmpeg to capture a single frame
-        ffmpeg_command = [
-            "ffmpeg",
+        ffmpeg_command = [FFMPEG_PATH]
+        if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
+            ffmpeg_command += ["-hwaccel", FFMPEG_HWACCEL]
+        ffmpeg_command += [
             "-analyzeduration",
             "20M",
             "-probesize",
@@ -1352,8 +1354,9 @@ def capture_frame_from_stream(
         command = [
             FFMPEG_PATH,  # Use the configurable FFMPEG_PATH
             "-hide_banner",
-            #'-hwaccel', 'auto',  #TODO add support
         ]
+        if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
+            command.extend(["-hwaccel", FFMPEG_HWACCEL])
 
         lua = UA
         if stealth:
