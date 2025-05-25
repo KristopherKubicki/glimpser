@@ -35,6 +35,9 @@ from PIL import Image
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
+import subprocess
+import struct
+import random
 
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
@@ -42,14 +45,13 @@ import app.config as config
 from app.config import (
     API_KEY,
     SCREENSHOT_DIRECTORY,
-    USER_NAME,
-    USER_PASSWORD_HASH,
     VIDEO_DIRECTORY,
     VERSION,
     BACKUP_PATH,
     backup_config,
     restore_config
 )
+from app.models import User
 from app.utils import (
     scheduling,
     template_manager,
@@ -139,13 +141,25 @@ def login_required(f):
             return f(*args, **kwargs)
 
         # Check for valid session
-        elif "logged_in" in session:
-            # Check for session expiry
+        elif session.get("user_id"):
             expiry = session.get("expiry")
             if expiry and datetime.now() > datetime.strptime(expiry, '%Y-%m-%d %H:%M:%S'):
-                session.pop("logged_in", None)  # Clear session
+                session.pop("user_id", None)
                 flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
+
+            db_session = SessionLocal()
+            try:
+                user = db_session.query(User).filter_by(id=session["user_id"]).first()
+            finally:
+                db_session.close()
+
+            if not user:
+                session.pop("user_id", None)
+                flash("Session expired. Please log in again.")
+                return redirect(url_for("login", next=request.url))
+
+            # Optional role checks could be added here
             return f(*args, **kwargs)
 
         # Handle missing or invalid authentication
@@ -286,6 +300,41 @@ def generate_video_stream(video_path: str):
         time.sleep(30)  # Wait before streaming again
 
 
+def generate_live_stream(url: str):
+    """Yield video data directly from a remote URL using ffmpeg."""
+
+    command = [config.FFMPEG_PATH]
+    if config.FFMPEG_HWACCEL and config.FFMPEG_HWACCEL.lower() != "false":
+        command.extend(["-hwaccel", config.FFMPEG_HWACCEL])
+    command.extend([
+        "-i",
+        url,
+        "-loglevel",
+        "error",
+        "-an",
+        "-c:v",
+        "copy",
+        "-f",
+        "mp4",
+        "-movflags",
+        "frag_keyframe+empty_moov",
+        "pipe:1",
+    ])
+
+    process = subprocess.Popen(command, stdout=subprocess.PIPE)
+
+    try:
+        while True:
+            chunk = process.stdout.read(1024 * 1024)
+            if not chunk:
+                break
+            yield chunk
+    except GeneratorExit:
+        pass
+    finally:
+        process.kill()
+
+
 login_attempts = {}
 last_shot = None
 last_time = None
@@ -335,7 +384,7 @@ def resize_and_pad(img, size, color=(0, 0, 0)):
 lock = Lock()
 
 
-def generate(group=None, filename="latest_camera.png", rtsp=False):
+def generate(group=None, filename="latest_camera.png", rtsp=False, session_id=None):
     # pretty hacky but it works ok
     global last_time, last_shot
     boundary = b"frame"
@@ -442,19 +491,30 @@ def generate(group=None, filename="latest_camera.png", rtsp=False):
                                 frame = buffer.getvalue()
                                 # file sizes the same size?  maybe just touch the file instead?
 
-                                # write this to a file! cache it.  read that cache if possible
-                                with open(last_path, "wb") as f:
+                                # Write to a temporary file first, then atomically
+                                # replace the cached JPEG. This avoids serving
+                                # partially written files when new screenshots
+                                # are generated.
+                                temp_path = last_path + ".tmp"
+                                with open(temp_path, "wb") as f:
                                     f.write(frame)
-                                # only do this if the files are different.  otherwise, just freshen up maybe?
-                                os.rename(last_path, last_path.replace(".tmp", ""))
+                                # Atomically move the temp file into place
+                                os.replace(temp_path, last_path)
                         except Exception:
                             pass
 
         if frame:
             if rtsp:
-                # For RTSP, we need to add RTP headers and packetize the frame
-                # This is a simplified version and may need to be adjusted based on your exact requirements
-                rtp_header = b"\x80\x60\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00"
+                if session_id and session_id in rtsp_sessions:
+                    session = rtsp_sessions[session_id]
+                    seq = session.get("seq", 0)
+                    timestamp = session.get("timestamp", 0)
+                    ssrc = session.get("ssrc", 0)
+                    rtp_header = struct.pack("!BBHII", 0x80, 96, seq, timestamp, ssrc)
+                    session["seq"] = (seq + 1) % 65536
+                    session["timestamp"] = (timestamp + 3600) % 0x100000000
+                else:
+                    rtp_header = b"\x80\x60\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00"
                 yield rtp_header + frame
             else:
                 yield b"--" + boundary + b"\r\n"
@@ -635,10 +695,14 @@ def init_routes(app):
             username = request.form["username"]
             password = request.form["password"]
 
-            if username == USER_NAME and check_password_hash(
-                USER_PASSWORD_HASH, password
-            ):
-                session["logged_in"] = True
+            db_session = SessionLocal()
+            try:
+                user = db_session.query(User).filter_by(username=username).first()
+            finally:
+                db_session.close()
+
+            if user and check_password_hash(user.password_hash, password):
+                session["user_id"] = user.id
                 login_attempts.pop(
                     ip_address, None
                 )  # Reset attempts on successful login
@@ -673,7 +737,7 @@ def init_routes(app):
     @app.route("/logout")
     @login_required
     def logout():
-        session.pop("logged_in", None)
+        session.pop("user_id", None)
         flash("You have been logged out successfully.", "success")
         return redirect(url_for("login"))
 
@@ -826,7 +890,7 @@ def init_routes(app):
             return send_file(most_recent_file)
         return send_file(last_file)  # better than nothing
 
-    @app.route("/test.rtsp", methods=["OPTIONS", "DESCRIBE", "SETUP", "PLAY", "TEARDOWN"])
+    @app.route("/test.rtsp", methods=["OPTIONS", "DESCRIBE", "SETUP", "PLAY", "PAUSE", "GET_PARAMETER", "TEARDOWN"])
     def handle_rtsp():
         
         session_id = request.headers.get("Session", str(uuid.uuid4()))
@@ -834,7 +898,7 @@ def init_routes(app):
 
         if request.method == "OPTIONS":
             return Response(
-                "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY",
+                "Public: OPTIONS, DESCRIBE, SETUP, PLAY, PAUSE, GET_PARAMETER, TEARDOWN",
                 headers={"CSeq": cseq},
             )
 
@@ -844,8 +908,8 @@ def init_routes(app):
                 "o=- 0 0 IN IP4 127.0.0.1\r\n"
                 "s=Glimpser RTSP Stream\r\n"
                 "t=0 0\r\n"
-                "m=video 0 RTP/AVP 96\r\n"
-                "a=rtpmap:96 H264/90000\r\n"
+                "m=video 0 RTP/AVP 26\r\n"
+                "a=rtpmap:26 JPEG/90000\r\n"
                 "a=control:streamid=0\r\n"
             )
             return Response(
@@ -856,13 +920,38 @@ def init_routes(app):
 
         elif request.method == "SETUP":
             if session_id not in rtsp_sessions:
-                rtsp_sessions[session_id] = {"state": "READY"}
+                rtsp_sessions[session_id] = {
+                    "state": "READY",
+                    "seq": random.randint(0, 65535),
+                    "timestamp": random.randint(0, 0xFFFFFFFF),
+                    "ssrc": random.randint(0, 0xFFFFFFFF),
+                }
+
             transport = request.headers.get("Transport", "")
+            client_ports = (0, 0)
+            match = re.search(r"client_port=(\d+)(?:-(\d+))?", transport)
+            if match:
+                first = int(match.group(1))
+                second = int(match.group(2) or first + 1)
+                client_ports = (first, second)
+
+            server_ports = (5004, 5005)
+            session = rtsp_sessions[session_id]
+            session["client_ports"] = client_ports
+            session["server_ports"] = server_ports
+
+            transport_response = transport
+            if transport_response and not transport_response.endswith(";"):
+                transport_response += ";"
+            transport_response += (
+                f"server_port={server_ports[0]}-{server_ports[1]};ssrc={session['ssrc']}"
+            )
+
             return Response(
                 headers={
                     "CSeq": cseq,
                     "Session": session_id,
-                    "Transport": transport,
+                    "Transport": transport_response,
                 }
             )
 
@@ -877,6 +966,15 @@ def init_routes(app):
                     "RTP-Info": "url=rtsp://example.com/test.rtsp/streamid=0;seq=0;rtptime=0",
                 }
             )
+
+        elif request.method == "PAUSE":
+            if session_id not in rtsp_sessions:
+                abort(454)
+            rtsp_sessions[session_id]["state"] = "PAUSED"
+            return Response(headers={"CSeq": cseq, "Session": session_id})
+
+        elif request.method == "GET_PARAMETER":
+            return "Method Not Allowed", 405
 
         elif request.method == "TEARDOWN":
             if session_id in rtsp_sessions:
@@ -930,7 +1028,7 @@ def init_routes(app):
         if session_id not in rtsp_sessions or rtsp_sessions[session_id]["state"] != "PLAYING":
             abort(400, "Invalid session or session not in PLAYING state")
         return Response(
-            generate(rtsp=True),
+            generate(rtsp=True, session_id=session_id),
             mimetype="application/x-rtp"
         )
 
@@ -963,6 +1061,23 @@ def init_routes(app):
         # Stream the video in small chunks for continuous playback
         return Response(
             stream_with_context(generate_video_stream(video_path)),
+            mimetype="video/mp4",
+        )
+
+    @app.route("/live_video")
+    @login_required
+    def live_video():
+        camera = request.args.get("camera")
+        if not camera:
+            abort(400, "camera parameter required")
+        details = template_manager.get_template(camera)
+        if not details:
+            abort(404)
+        url = details.get("url")
+        if not url:
+            abort(404)
+        return Response(
+            stream_with_context(generate_live_stream(url)),
             mimetype="video/mp4",
         )
 
@@ -1451,6 +1566,18 @@ def init_routes(app):
             videos=lvideos,
         )
 
+    @app.route("/screenshots/<string:name>")
+    @login_required
+    def list_screenshots(name: TemplateName):
+        """Return a JSON list of screenshot files for ``name``."""
+
+        template_name = validate_template_name(name)
+        if template_name is None:
+            abort(404)
+
+        lscreens = template_manager.get_screenshots_for_template(template_name)
+        return jsonify({"screenshots": lscreens})
+
     @app.route("/screenshots/<string:name>/<string:filename>")
     @login_required
     def uploaded_file(name: TemplateName, filename: str):
@@ -1481,6 +1608,18 @@ def init_routes(app):
             session.close()
 
         return True
+
+    @app.route("/videos/<string:name>")
+    @login_required
+    def list_videos(name: TemplateName):
+        """Return a JSON list of video files for ``name``."""
+
+        template_name = validate_template_name(name)
+        if template_name is None:
+            abort(404)
+
+        lvideos = template_manager.get_videos_for_template(template_name)
+        return jsonify({"videos": lvideos})
 
     @app.route("/videos/<string:name>/<string:filename>")
     @login_required

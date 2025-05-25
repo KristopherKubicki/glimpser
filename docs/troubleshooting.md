@@ -7,7 +7,7 @@ This guide addresses common issues that users might encounter while using Glimps
 ### Problem: Dependencies fail to install
 
 **Solution:**
-- Ensure you're using Python 3.8 or higher: `python --version`
+- Ensure you're using Python 3.8 or newer (tested up to 3.11): `python --version`
 - Update pip: `pip install --upgrade pip`
 - If you're on Windows, make sure you have the necessary C++ build tools installed for certain packages.
 
@@ -72,7 +72,7 @@ This guide addresses common issues that users might encounter while using Glimps
 
 **Solution:**
 - Ensure you're using the correct username and password
-- Check if the `USER_NAME` setting is correctly configured
+- Verify that the account exists in the `users` table
 - Try resetting your password through the recovery process
 
 ## Getting Further Help

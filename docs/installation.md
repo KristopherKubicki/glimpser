@@ -7,7 +7,7 @@ This guide provides detailed instructions for installing and setting up Glimpser
 - **Architecture**: Glimpser is primarily designed for x86 architecture.
   - ARM support may require additional work and is not guaranteed.
 - **Operating System**: Linux (Ubuntu 20.04 LTS or later recommended)
-- **Python**: Version 3.8 or higher
+- **Python**: Version 3.8 to 3.11
 
 ## Installation Steps
 
@@ -54,7 +54,16 @@ Install the required Python packages:
 pip install -r requirements.txt
 ```
 
-### 6. Set Up the Database
+### 6. (Optional) Configure Environment Variables
+
+Copy `.env.example` to `.env` and adjust values to override defaults:
+
+```sh
+cp .env.example .env
+# edit .env as needed
+```
+
+### 7. Set Up the Database
 
 Initialize the local SQLite database:
 
@@ -64,7 +73,7 @@ python3 main.py
 
 You will be prompted to create a secret key. Follow the guided setup to complete the database initialization.
 
-### 7. Run the Application
+### 8. Run the Application
 
 After completing the setup, you can run the application:
 

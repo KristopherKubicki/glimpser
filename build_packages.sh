@@ -41,15 +41,39 @@ User=root
 WantedBy=multi-user.target
 EOL
 
+# Copy packaging metadata
+mkdir -p debian/glimpser/DEBIAN || { echo "Failed to create DEBIAN directory"; exit 1; }
+cat > debian/glimpser/DEBIAN/control <<EOF
+Package: glimpser
+Version: 1.0.0
+Section: utils
+Priority: optional
+Architecture: all
+Maintainer: Kristopher Kubicki <kristopher@glimpser.net>
+Depends: python3, python3-pip
+Description: Glimpser - A web monitoring and screenshot tool
+ Glimpser is a powerful tool for monitoring websites and capturing
+ screenshots. It provides features for scheduling, archiving, and
+ analyzing web content.
+EOF
+if [ -f debian/postinst ]; then
+    cp debian/postinst debian/glimpser/DEBIAN/postinst || { echo "Failed to copy postinst"; exit 1; }
+    chmod 755 debian/glimpser/DEBIAN/postinst
+fi
+
 dpkg-deb --build debian/glimpser
 
 echo "Debian package built successfully."
 
-# Build Windows executable
+# Build Windows executable if PyInstaller is available
 echo "Building Windows executable..."
-python3 -m pip install pyinstaller || { echo "Failed to install PyInstaller"; exit 1; }
-python3 build_windows.py || { echo "Failed to build Windows executable"; exit 1; }
+if ! python3 -m pip show pyinstaller >/dev/null 2>&1; then
+    if ! python3 -m pip install pyinstaller >/dev/null 2>&1; then
+        echo "PyInstaller not available; skipping Windows executable build."
+        exit 0
+    fi
+fi
 
-echo "Windows executable built successfully."
+python3 build_windows.py && echo "Windows executable built successfully." || echo "Failed to build Windows executable"
 
 echo "Build process completed. You can find the packages in the current directory."

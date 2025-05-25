@@ -9,6 +9,7 @@ from flask import Flask
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.routes import init_routes, login_attempts
+from types import SimpleNamespace
 
 class TestRoutes(unittest.TestCase):
     def setUp(self):
@@ -26,10 +27,26 @@ class TestRoutes(unittest.TestCase):
         #self.assertEqual(response.json, {"status": "healthy"})
 
     @patch("app.routes.check_password_hash")
-    @patch("app.routes.USER_NAME", "testuser")
-    def test_login_success(self, mock_check_password):
+    @patch("app.routes.SessionLocal")
+    def test_login_success(self, mock_session_local, mock_check_password):
         login_attempts = {} # reset
         mock_check_password.return_value = True
+        dummy_user = SimpleNamespace(id=1, username="testuser", password_hash="hash")
+
+        class DummyQuery:
+            def filter_by(self, **kwargs):
+                return self
+            def first(self):
+                return dummy_user
+
+        class DummySession:
+            def query(self, model):
+                return DummyQuery()
+            def close(self):
+                pass
+
+        mock_session_local.return_value = DummySession()
+
         response = self.client.post(
             "/login", data={"username": "testuser", "password": "testpassword"}
         )
@@ -38,10 +55,26 @@ class TestRoutes(unittest.TestCase):
         #self.assertIn("/", response.headers["Location"])
 
     @patch("app.routes.check_password_hash")
-    @patch("app.routes.USER_NAME", "testuser")
-    def test_login_failure(self, mock_check_password):
+    @patch("app.routes.SessionLocal")
+    def test_login_failure(self, mock_session_local, mock_check_password):
         login_attempts = {} # reset
         mock_check_password.return_value = False
+        dummy_user = SimpleNamespace(id=1, username="testuser", password_hash="hash")
+
+        class DummyQuery:
+            def filter_by(self, **kwargs):
+                return self
+            def first(self):
+                return dummy_user
+
+        class DummySession:
+            def query(self, model):
+                return DummyQuery()
+            def close(self):
+                pass
+
+        mock_session_local.return_value = DummySession()
+
         response = self.client.post(
             "/login", data={"username": "testuser", "password": "wrongpassword"}
         )
@@ -56,7 +89,7 @@ class TestRoutes(unittest.TestCase):
         # not sure why this one isnt working ! 
         with self.client as c:
             with c.session_transaction() as sess:
-                sess['logged_in'] = True
+                sess['user_id'] = 1
             #response = c.get("/logout")
             #self.assertEqual(response.status_code, 302)  # Redirect status code
             #self.assertIn("/login", response.headers["Location"])
@@ -146,22 +179,50 @@ class TestRoutes(unittest.TestCase):
             self.assertIn("description", endpoint)
             self.assertIn("authentication_required", endpoint)
 
+    @patch("app.routes.SessionLocal")
     @patch("app.routes.camera_discovery.discover_cameras")
     @patch("app.routes.render_template")
-    def test_discover_route(self, mock_render_template, mock_discover):
+    def test_discover_route(self, mock_render_template, mock_discover, mock_session_local):
         mock_discover.return_value = [{"ip": "1.2.3.4", "protocol": "rtsp", "port": 554, "info": {}}]
+        dummy_user = SimpleNamespace(id=1)
+        class DummyQuery:
+            def filter_by(self, **kwargs):
+                return self
+            def first(self):
+                return dummy_user
+        class DummySession:
+            def query(self, model):
+                return DummyQuery()
+            def close(self):
+                pass
+        mock_session_local.return_value = DummySession()
+
         with self.client.session_transaction() as sess:
-            sess['logged_in'] = True
+            sess['user_id'] = 1
         response = self.client.get("/discover")
         self.assertEqual(response.status_code, 200)
         mock_render_template.assert_called_with("discover.html", cameras=mock_discover.return_value)
 
+    @patch("app.routes.SessionLocal")
     @patch("app.routes.template_manager.save_template")
-    def test_discover_add(self, mock_save_template):
+    def test_discover_add(self, mock_save_template, mock_session_local):
         mock_save_template.return_value = True
         payload = {"name": "cam", "ip": "1.2.3.4", "protocol": "rtsp", "port": 554}
+        dummy_user = SimpleNamespace(id=1)
+        class DummyQuery:
+            def filter_by(self, **kwargs):
+                return self
+            def first(self):
+                return dummy_user
+        class DummySession:
+            def query(self, model):
+                return DummyQuery()
+            def close(self):
+                pass
+        mock_session_local.return_value = DummySession()
+
         with self.client.session_transaction() as sess:
-            sess['logged_in'] = True
+            sess['user_id'] = 1
         response = self.client.post("/discover/add", json=payload)
         self.assertEqual(response.status_code, 200)
         mock_save_template.assert_called()

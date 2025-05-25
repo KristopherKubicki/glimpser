@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 import time
 import logging
+from enum import Enum, auto
 
 from .validators import validate_template_name
 
@@ -20,9 +21,18 @@ from app.config import (
     VIDEO_DIRECTORY,
     FFMPEG_PATH,
     FFPROBE_PATH,
+    FFMPEG_HWACCEL,
 )
 
 from .template_manager import get_templates
+
+
+class ConcatStatus(Enum):
+    """Return codes for concatenation handling."""
+
+    RECOVERED = auto()
+    RETRY = auto()
+    FATAL = auto()
 
 
 
@@ -99,8 +109,10 @@ def compile_videos(input_file, output_file):
     if not os.path.exists(input_file):
         return False
 
-    create_command = [
-        FFMPEG_PATH,
+    create_command = [FFMPEG_PATH]
+    if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
+        create_command.extend(["-hwaccel", FFMPEG_HWACCEL])
+    create_command.extend([
         "-threads",
         "5",
         "-err_detect",
@@ -121,7 +133,7 @@ def compile_videos(input_file, output_file):
         "+faststart",
         "-y",
         os.path.abspath(output_file),
-    ]
+    ])
 
     try:
         subprocess.run(
@@ -169,7 +181,7 @@ def get_video_duration(video_path):
     return duration
 
 
-def concatenate_videos(in_process_video, temp_video, video_path) -> bool:
+def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> bool:
     """Concatenate the temporary video with the existing in-process video."""
     if (
         os.path.exists(in_process_video)
@@ -182,8 +194,10 @@ def concatenate_videos(in_process_video, temp_video, video_path) -> bool:
         temp_video_duration = get_video_duration(temp_video)
         if in_process_duration > 0 and temp_video_duration > 0:
             concat_video = os.path.join(video_path, "in_process.concat.mp4")
-            concat_command = [
-                FFMPEG_PATH,
+            concat_command = [FFMPEG_PATH]
+            if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
+                concat_command.extend(["-hwaccel", FFMPEG_HWACCEL])
+            concat_command.extend([
                 "-threads",
                 "5", # todo, make this a config
                 #"-safe",  Option not found?  But it is found and used elsewhere?  Not surewhy this is..
@@ -212,7 +226,7 @@ def concatenate_videos(in_process_video, temp_video, video_path) -> bool:
                 "+faststart",
                 "-y",
                 os.path.abspath(concat_video),  # Overwrite the in-process video
-            ]
+            ])
             try:
                 # TODO: check stdout and stderr
                 subprocess.run(
@@ -235,7 +249,15 @@ def concatenate_videos(in_process_video, temp_video, video_path) -> bool:
                 )
 
             except Exception as e:
-                handle_concat_error(e, temp_video, in_process_video)
+                status = handle_concat_error(e, temp_video, in_process_video)
+                if status == ConcatStatus.RETRY and retries > 0:
+                    logging.info("Retrying concatenation due to transient error")
+                    time.sleep(1)
+                    return concatenate_videos(in_process_video, temp_video, video_path, retries=retries - 1)
+                elif status == ConcatStatus.RECOVERED:
+                    return True
+                else:
+                    return False
         elif os.path.exists(temp_video) and os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
     elif os.path.exists(temp_video) and os.path.getsize(temp_video) > 0:
@@ -247,18 +269,28 @@ def concatenate_videos(in_process_video, temp_video, video_path) -> bool:
     return False
 
 
-def handle_concat_error(e, temp_video, in_process_video) -> bool:
-    """Handle errors that occur during the concatenation process."""
+def handle_concat_error(e, temp_video, in_process_video) -> ConcatStatus:
+    """Handle errors that occur during the concatenation process.
 
-    if "/in_process.mp4: Invalid data found" in str(e):
-        logging.warning("invalid in_process file %s", e)
+    Returns a :class:`ConcatStatus` indicating how the caller should proceed.
+    """
+
+    message = str(e)
+
+    if "Invalid data found" in message:
+        logging.warning("invalid in_process file %s", message)
         if os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
-            # TODO: consider truth
-    else:
-        logging.error("FFmpeg concat command failed: %s", e) # TODO: handle this better... why non zero exit?
-        if os.path.getsize(temp_video) > 0:
-            os.rename(temp_video, in_process_video)
+        return ConcatStatus.RECOVERED
+
+    if "temporarily unavailable" in message or "Resource busy" in message:
+        logging.warning("transient ffmpeg error: %s", message)
+        return ConcatStatus.RETRY
+
+    logging.error("FFmpeg concat command failed: %s", message)
+    if os.path.getsize(temp_video) > 0:
+        os.rename(temp_video, in_process_video)
+    return ConcatStatus.FATAL
 
 
 def compile_to_video(camera_path, video_path) -> bool:
@@ -350,8 +382,10 @@ def compile_to_video(camera_path, video_path) -> bool:
         # Create a temporary video with the new frames
         temp_video = os.path.join(video_path, "in_process.tmp.mp4")
 
-        create_command = [
-            FFMPEG_PATH,
+        create_command = [FFMPEG_PATH]
+        if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
+            create_command.extend(["-hwaccel", FFMPEG_HWACCEL])
+        create_command.extend([
             "-threads",
             "5",
             "-f",
@@ -380,7 +414,7 @@ def compile_to_video(camera_path, video_path) -> bool:
             "fps=30,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
             "-movflags",
             "+faststart",
-        ]
+        ])
         create_command.extend(
             ["-metadata", "creation_time=%sZ" % datetime.datetime.utcnow()]
         )

@@ -106,6 +106,7 @@
 	<!-- <option value="m3u8" title="View an HLS (HTTP Live Streaming) video stream">M3U8 Stream</option> -->
         <option value="loop" title="Loop through available video clips">Loop Videos</option>
         <option value="mp4" selected title="View an MP4 video stream">MP4 Stream</option>
+        <option value="live" title="View the direct live stream">Live Video</option>
         <option value="motion" title="View motion-detected frames">Motion</option>
         <option value="mjpg" title="View an MJPEG (Motion JPEG) stream">MJPG</option>
     </select>
@@ -257,9 +258,7 @@ function changeCamera() {
         isConnected = checkCameraConnection(currentCamera);
     }
 
-    if (1==2) {
-	// TODO: even if the camera is offline, we still want to display the old stuff
-        // Display a placeholder for disconnected cameras
+    if (!isConnected) {
         const videoContainer = document.querySelector('.video-container');
         videoContainer.innerHTML = `
             <div class="placeholder">
@@ -290,7 +289,7 @@ function changeCamera() {
             const source = document.getElementById('video-source').value;
             const isConnected = checkCameraConnection(currentCamera);
 
-		if (1==2) { 
+            if (!isConnected) {
                 const videoContainer = document.querySelector('.video-container');
                 videoContainer.innerHTML = `
                     <div class="placeholder">
@@ -314,6 +313,9 @@ function changeCamera() {
                     break;
                 case 'mp4':
                     playMP4();
+                    break;
+                case 'live':
+                    playLive();
                     break;
                 case 'mjpg':
                     playMJPG();
@@ -469,6 +471,23 @@ function handleVideoEnded() {
     video.play();
 }
 
+function playLive() {
+    video.style.display = 'block';
+    image.style.display = 'none';
+    document.getElementById("seek-bar").style.display = "block";
+    clearInterval(pngInterval);
+
+    if (currentCamera.startsWith('group-') || currentCamera === 'All') {
+        // Fallback to MP4 streaming for groups or All
+        playMP4();
+        return;
+    }
+
+    video.src = '/live_video?camera=' + encodeURIComponent(currentCamera);
+    video.load();
+    video.play();
+}
+
 function playPNG() {
     video.style.display = 'none';
     image.style.display = 'block';
@@ -563,13 +582,19 @@ function playMotion() {
     // todo: stop the old playing png stream
 
     function checkCameraConnection(cameraName) {
-        // Check if the camera has a last_screenshot_time
         const camera = templateDetails[cameraName];
-        if (!camera || !camera.last_screenshot_time) {
+        if (!camera) {
             return false;
         }
 
-        // Check if the last screenshot is within the last hour
+        if (camera.offline_since && camera.offline_since !== "") {
+            return false;
+        }
+
+        if (!camera.last_screenshot_time) {
+            return false;
+        }
+
         const lastScreenshotTime = new Date(camera.last_screenshot_time);
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
         return lastScreenshotTime > oneHourAgo;

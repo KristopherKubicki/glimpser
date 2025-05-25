@@ -11,11 +11,15 @@
 
 [![Python application](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml)
 [![Pylint](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+[![GitHub release](https://img.shields.io/github/v/release/KristopherKubicki/glimpser)](https://github.com/KristopherKubicki/glimpser/releases/latest)
+[![Coverage](https://codecov.io/gh/KristopherKubicki/glimpser/branch/main/graph/badge.svg)](https://codecov.io/gh/KristopherKubicki/glimpser)
 
 ## Introduction
 Glimpser is a straightforward yet powerful real-time monitoring application designed to capture, analyze, and summarize live data from various sources such as cameras, dashboards, and video streams. Utilizing advanced image processing techniques and AI models, Glimpser provides insightful summaries and alerts. It’s highly configurable, allowing users to tailor it to their specific monitoring needs through an easy-to-use interface.
 
 For more documentation, see the [documentation index](docs/index.md).
+Read a high-level [Architecture Overview](docs/architecture_overview.md) to understand how the pieces fit together.
 
 ![Glimpser August 2024](https://github.com/user-attachments/assets/44ddcbd5-31f1-4ff9-954a-954a85479dc0)
 
@@ -31,18 +35,25 @@ For more documentation, see the [documentation index](docs/index.md).
 - **Auto-captioning**: Automatically generates concise and informative captions for images and videos, providing quick insights into the content.
 
 - **Auto-summarization**: Summarizes data from multiple sources into a coherent and concise format, highlighting the most important information.
+- **RTSP Streaming**: Exposes a basic RTSP endpoint (`/test.rtsp`) so external NVRs can ingest the MJPEG stream. Supported verbs are `OPTIONS`, `DESCRIBE`, `SETUP`, `PLAY`, `PAUSE`, `GET_PARAMETER`, and `TEARDOWN`.
 
 - **Customizable Configuration**: Easily configure different data sources and processing rules through the user-friendly interface. Glimpser’s configuration is fully database-driven, ensuring flexibility and ease of use.
 
 - **Data Retention Policies**: Automatically manages storage by cleaning up old data, ensuring the system remains efficient without requiring constant manual intervention.
-- **HTTP Callbacks**: When a template specifies a callback URL, Glimpser sends a JSON webhook with caption or motion updates to that endpoint.
+- **HTTP Callbacks**: When a template specifies a callback URL, Glimpser sends a
+  JSON webhook with caption or motion updates to that endpoint. See the
+  [HTTP Callback Guide](docs/http_callbacks.md) for setup details and payload
+  examples.
+- **SMS Alerts**: Configure Twilio credentials to receive important notifications by text message.
+- **Camera Discovery**: Use the `/discover` page to automatically scan the local network for ONVIF or RTSP cameras.
+- **Local Cameras**: `/discover` also lists any available `/dev/video*` devices for easy webcam integration.
 
 - **Web Interface**: A user-friendly web interface allows for easy monitoring and configuration. Users can view live feeds, summaries, and configure settings without delving into the code.
 
 ## Installation
 
 ### Prerequisites
-- Python 3.8 or higher
+- Python 3.8 to 3.11
 
 ### Steps
 1. **Install the Package**
@@ -58,16 +69,29 @@ For more documentation, see the [documentation index](docs/index.md).
    ```
 
 2. **Run the Application**
-   ```sh
-   glimpser
-   ```
+```sh
+glimpser
+```
+
+You can pass command-line options to customize the runtime configuration. The most
+common flags are:
+
+```sh
+# Start without the background scheduler
+glimpser --no-scheduler
+
+# Disable the watchdog thread
+glimpser --no-watchdog
+```
+
+Run `glimpser --help` to see all available options.
 
    You will be prompted to create a secret key to initialize the local sqlite database. Follow the rest of the guided setup and then direct your browser to http://127.0.0.1:8082 to finish the rest of the setup.
 
 ## Usage
 
 ### Configuration
-Glimpser uses a database-driven configuration to manage data sources and processing rules. Users can easily add, update, or remove configurations through the web interface.
+Glimpser uses a database-driven configuration to manage data sources and processing rules. Users can easily add, update, or remove configurations through the web interface. SMS alerts can be enabled by setting `TWILIO_SID`, `TWILIO_TOKEN`, and `TWILIO_NUMBER` in the configuration.
 
 ### Capturing Screenshots
 The preferred method for capturing screenshots is through the Glimpser web interface. Simply navigate to the capture section, select your desired source, and click the capture button. This ensures a seamless and user-friendly experience.
@@ -86,6 +110,21 @@ Using advanced AI models, Glimpser generates concise and informative captions fo
 
 ### Auto-summarization
 Glimpser can summarize data from multiple sources into a coherent and concise format. The summaries highlight the most important information, making it easier for users to stay informed.
+
+### RTSP Streaming
+Glimpser exposes a simple RTSP endpoint at `/test.rtsp`. When a client issues the standard RTSP verbs, the `/rtsp_stream` route serves MJPEG frames packetized with RTP headers.
+
+Typical sequence:
+
+1. `OPTIONS`
+2. `DESCRIBE`
+3. `SETUP`
+4. `PLAY`
+5. (optional) `PAUSE` / `PLAY`
+6. Periodic `GET_PARAMETER` to keep the session alive
+7. `TEARDOWN` to close the session
+
+This allows external NVR software to ingest the stream as a basic camera source.
 
 ## Development
 
@@ -112,6 +151,13 @@ To set up the project for development:
    ```sh
    pytest
    ```
+
+## Releases
+Release packages are built automatically when a version tag is pushed.
+The release workflow installs dependencies, runs the tests, and then executes
+`build_packages.sh`. If all steps succeed, a GitHub release is created for that
+tag and the resulting Debian package and Windows executable are uploaded.
+These files can be downloaded from the Releases page.
 
 ## Contributing
 Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request. Please read our [Code of Conduct](CODE_OF_CONDUCT.md) to understand the expectations for participants and how to report issues.

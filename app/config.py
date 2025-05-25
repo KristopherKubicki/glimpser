@@ -4,6 +4,11 @@ import os
 import json
 import logging
 
+from dotenv import load_dotenv, find_dotenv
+
+# Load variables from a `.env` file if present
+load_dotenv(find_dotenv())
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
@@ -19,10 +24,16 @@ SessionLocal = sessionmaker(
 )  # settings only thread
 
 def get_setting(name, default=None):
+    """Return a setting from the environment or the database."""
+    env_val = os.getenv(name)
+    if env_val is not None:
+        return env_val
+
     session = SessionLocal()
     try:
         result = session.execute(
-            text("SELECT value FROM settings WHERE name = '%s'" % name)
+            text("SELECT value FROM settings WHERE name = :name"),
+            {"name": name},
         ).fetchone()
         return result[0] if result else default
     except Exception as e:
@@ -127,6 +138,8 @@ LLM_CAPTION_PROMPT = get_setting(
 # FFMPEG/FFPROBE path settings
 FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
 FFPROBE_PATH = get_setting("FFPROBE_PATH", "ffprobe")
+# Enable GPU acceleration if supported (e.g. "auto", "cuda", etc.)
+FFMPEG_HWACCEL = get_setting("FFMPEG_HWACCEL", "False")
 
 
 # New settings for capture_frame_from_stream function
@@ -147,7 +160,8 @@ EMAIL_USERNAME = get_setting("EMAIL_USERNAME", "your-username")
 EMAIL_PASSWORD = get_setting("EMAIL_PASSWORD", "")
 
 
-# experimental
-# TWILIO_SID = get_setting("TWILIO_SID","")
-# TWILIO_TOKEN = get_setting("TWILIO_TOKEN","")
-# TWILIO_NUMBER = get_setting("TWILIO_NUMBER","")
+
+# SMS/Twilio settings
+TWILIO_SID = get_setting("TWILIO_SID", "")
+TWILIO_TOKEN = get_setting("TWILIO_TOKEN", "")
+TWILIO_NUMBER = get_setting("TWILIO_NUMBER", "")
