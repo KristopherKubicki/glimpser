@@ -921,39 +921,6 @@ def get_system_metrics():
 log_cache = deque(maxlen=10000)  # Store last 10000 log entries
 log_cache_lock = threading.Lock()
 
-"""
-def cache_logs():
-    log_file_path = "logs/glimpser.log"
-    last_position = 0
-
-    while True:
-        with open(log_file_path, "r") as file:
-            file.seek(last_position)
-            new_logs = file.readlines()
-
-            with log_cache_lock:
-                for log in new_logs:
-                    # Truncate long log rows to 500 characters
-                    truncated_log = log[:500] + '...' if len(log) > 500 else log
-                    log_parts = truncated_log.strip().split(" - ", 3)
-                    if len(log_parts) >= 4:
-                        timestamp_str, log_level, log_source, log_message = log_parts
-                        try:
-                            timestamp = datetime.datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S,%f")
-                            log_cache.append({
-                                "timestamp": timestamp,
-                                "level": log_level,
-                                "source": log_source,
-                                "message": log_message
-                            })
-                        except ValueError:
-                            continue  # Skip lines with incorrect timestamp format
-
-            last_position = file.tell()
-
-        time.sleep(10)  # Wait for 10 seconds before checking for new logs
-"""
-
 
 def cache_logs():
     log_file_path = "logs/glimpser.log"
