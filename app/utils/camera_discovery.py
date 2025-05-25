@@ -7,7 +7,13 @@ from urllib.parse import urlparse
 from ipaddress import ip_network
 import os
 import glob
+import time
 from .screenshots import is_port_open
+
+try:  # optional Zeroconf support
+    from zeroconf import ServiceBrowser, Zeroconf
+except Exception:  # pragma: no cover - optional dependency may be missing
+    Zeroconf = None
 
 
 def _local_subnets():
@@ -56,13 +62,15 @@ def _probe_onvif(timeout=2):
             info = {}
             try:
                 xml = ET.fromstring(data)
-                xaddr = xml.find('.//{http://schemas.xmlsoap.org/ws/2005/04/discovery}XAddrs')
+                xaddr = xml.find(
+                    ".//{http://schemas.xmlsoap.org/ws/2005/04/discovery}XAddrs"
+                )
                 if xaddr is not None:
                     uri = xaddr.text.split()[0]
                     parsed = urlparse(uri)
                     ip = parsed.hostname or ip
                     port = parsed.port or 80
-                    info['xaddr'] = uri
+                    info["xaddr"] = uri
                 else:
                     port = 80
             except Exception as e:
@@ -73,6 +81,37 @@ def _probe_onvif(timeout=2):
         logging.warning("ONVIF discovery error: %s", e)
     finally:
         sock.close()
+    return cameras
+
+
+def _probe_mdns(timeout=2):
+    """Discover cameras advertised via mDNS/Zeroconf."""
+    cameras = []
+    if Zeroconf is None:
+        return cameras
+
+    class _Listener:
+        def add_service(self, zc, service_type, name):  # pragma: no cover - network
+            info = zc.get_service_info(service_type, name)
+            if info and info.addresses:
+                ip = socket.inet_ntoa(info.addresses[0])
+                cameras.append(
+                    {
+                        "ip": ip,
+                        "protocol": "mdns",
+                        "port": info.port,
+                        "info": {"name": name},
+                    }
+                )
+
+    zc = Zeroconf()
+    listener = _Listener()
+    services = ["_onvif._tcp.local.", "_rtsp._tcp.local."]
+    browsers = [ServiceBrowser(zc, s, listener) for s in services]
+    time.sleep(timeout)
+    for b in browsers:  # pragma: no cover - network
+        b.cancel()
+    zc.close()
     return cameras
 
 
@@ -87,7 +126,9 @@ def _scan_rtsp_ports(subnets):
             checked.add(ip)
             for port in (554, 8554):
                 if is_port_open(ip, port, timeout=1):
-                    found.append({"ip": ip, "protocol": "rtsp", "port": port, "info": {}})
+                    found.append(
+                        {"ip": ip, "protocol": "rtsp", "port": port, "info": {}}
+                    )
     return found
 
 
@@ -100,9 +141,13 @@ def _local_video_devices(base_path="/dev"):
 
 
 def discover_cameras():
-    """Discover cameras on the local network via ONVIF and RTSP scanning."""
+    """Discover cameras on the local network."""
     cameras = []
     cameras.extend(_probe_onvif())
+    try:
+        cameras.extend(_probe_mdns())
+    except Exception as e:
+        logging.debug("mDNS discovery error: %s", e)
     try:
         subnets = _local_subnets()
         cameras.extend(_scan_rtsp_ports(subnets))
@@ -115,7 +160,7 @@ def discover_cameras():
     # remove duplicates
     unique = {}
     for cam in cameras:
-        key = (cam['ip'], cam['protocol'], cam['port'])
+        key = (cam["ip"], cam["protocol"], cam["port"])
         if key not in unique:
             unique[key] = cam
     return list(unique.values())
