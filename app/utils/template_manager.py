@@ -5,6 +5,7 @@ import re
 import shutil
 import random
 import logging
+import json
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, Float, Integer, String, Text
@@ -17,6 +18,10 @@ from .db import Base, SessionLocal, init_db
 from .video_details import get_latest_screenshot_date, get_latest_video_date
 
 from sqlalchemy.orm import validates
+
+LLM_USAGE_PATH = "data/llm_usage.json"
+LLM_COST_PER_TOKEN = 0.005 / 1000  # OpenAI pricing example
+
 
 class Template(Base):
     __tablename__ = "templates"
@@ -54,13 +59,13 @@ class Template(Base):
     rollback_frames = Column(Integer, default=0)
     last_ret = None
 
-    @validates('frequency')
+    @validates("frequency")
     def validate_frequency(self, key, frequency):
         if frequency > 525600:
             raise ValueError("Frequency cannot be greater than 525600 (1 year)")
         return frequency
 
-    @validates('timeout')
+    @validates("timeout")
     def validate_timeout(self, key, timeout):
         if timeout < 1:
             logging.warning("negative timeout")
@@ -70,13 +75,13 @@ class Template(Base):
             raise ValueError(f"timeout calculation error {timeout} {self.frequency}")
         return timeout
 
-    @validates('popup_xpath', 'dedicated_xpath')
+    @validates("popup_xpath", "dedicated_xpath")
     def validate_xpath(self, key, xpath):
-        if xpath and not xpath.startswith('//'):
+        if xpath and not xpath.startswith("//"):
             raise ValueError(f"{key} must start with '//'")
         return xpath
 
-    @validates('object_confidence')
+    @validates("object_confidence")
     def validate_object_confidence(self, key, confidence):
         if self.object_filter and (confidence < 0 or confidence > 1):
             raise ValueError("Object confidence must be between 0 and 1")
@@ -128,12 +133,22 @@ class TemplateManager:
                             value = int(value)
                             if key == "frequency" and value > 525600:
                                 value = 525600
-                            if key == "frequency" and value < 0.01: # that's less than 1 fps...
+                            if (
+                                key == "frequency" and value < 0.01
+                            ):  # that's less than 1 fps...
                                 value = 0.01
                             # TODO: adjust for browsers-stealth-etc?  increase the frequency and timeout for those by default??
 
-                            if key == "timeout" and value >= float(details.get("frequency", template.frequency)) * 60:
-                                value = int(details.get("frequency", template.frequency)) * 60 # adjust the timeout down 
+                            if (
+                                key == "timeout"
+                                and value
+                                >= float(details.get("frequency", template.frequency))
+                                * 60
+                            ):
+                                value = (
+                                    int(details.get("frequency", template.frequency))
+                                    * 60
+                                )  # adjust the timeout down
                             if key == "timeout" and value < 1:
                                 value = 1
 
@@ -141,10 +156,14 @@ class TemplateManager:
                             if value == "":
                                 value = 0.5
                             value = float(value)
-                            if details.get("object_filter", template.object_filter) and (value < 0 or value > 1):
-                                raise ValueError("Object confidence must be between 0 and 1")
+                            if details.get(
+                                "object_filter", template.object_filter
+                            ) and (value < 0 or value > 1):
+                                raise ValueError(
+                                    "Object confidence must be between 0 and 1"
+                                )
                         elif key in ["popup_xpath", "dedicated_xpath"]:
-                            if value and not value.startswith('//'):
+                            if value and not value.startswith("//"):
                                 raise ValueError(f"{key} must start with '//'")
                         elif key in ["stealth", "headless", "dark", "invert"]:
                             if value == "on":
@@ -299,7 +318,10 @@ def get_screenshots_for_template(name: str) -> list:
     screenshots = [
         f
         for f in os.listdir(os.path.join(SCREENSHOT_DIRECTORY, name))
-        if f.startswith(name) and f.endswith(".png") and ".tmp" not in f and '.partial' not in f
+        if f.startswith(name)
+        and f.endswith(".png")
+        and ".tmp" not in f
+        and ".partial" not in f
     ]
 
     try:
@@ -324,13 +346,14 @@ def get_videos_for_template(name: str):
     videos = [
         f
         for f in os.listdir(os.path.join(VIDEO_DIRECTORY, name))
-        if (f.startswith(name) or f.startswith('final_')) and f.endswith(".mp4")
+        if (f.startswith(name) or f.startswith("final_")) and f.endswith(".mp4")
     ]
     sorted_videos = sorted(
         videos,
         reverse=True,
     )
     return sorted_videos[:10]
+
 
 def get_screenshot_count(name: str) -> int:
     name = validate_template_name(name)
@@ -339,7 +362,8 @@ def get_screenshot_count(name: str) -> int:
     screenshot_path = os.path.join(SCREENSHOT_DIRECTORY, name)
     if not os.path.exists(screenshot_path):
         return 0
-    return len([f for f in os.listdir(screenshot_path) if f.endswith('.png')])
+    return len([f for f in os.listdir(screenshot_path) if f.endswith(".png")])
+
 
 def get_video_count(name: str) -> int:
     name = validate_template_name(name)
@@ -348,7 +372,8 @@ def get_video_count(name: str) -> int:
     video_path = os.path.join(VIDEO_DIRECTORY, name)
     if not os.path.exists(video_path):
         return 0
-    return len([f for f in os.listdir(video_path) if f.endswith('.mp4')])
+    return len([f for f in os.listdir(video_path) if f.endswith(".mp4")])
+
 
 def get_storage_usage(name: str) -> str:
     name = validate_template_name(name)
@@ -367,21 +392,54 @@ def get_storage_usage(name: str) -> str:
                         total_size += os.path.getsize(fp)
 
     # Convert to human-readable format
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
         if total_size < 1024.0:
             break
         total_size /= 1024.0
     return f"{total_size:.1f} {unit}"
+
+
+def record_llm_usage(name: str, tokens: int) -> None:
+    """Record token usage for ``name`` in ``LLM_USAGE_PATH``."""
+    name = validate_template_name(name)
+    if name is None or tokens <= 0:
+        return
+
+    os.makedirs(os.path.dirname(LLM_USAGE_PATH), exist_ok=True)
+    try:
+        with open(LLM_USAGE_PATH, "r") as f:
+            data = json.load(f)
+    except Exception:
+        data = {}
+
+    data[name] = data.get(name, 0) + int(tokens)
+
+    try:
+        with open(LLM_USAGE_PATH, "w") as f:
+            json.dump(data, f)
+    except Exception as e:
+        logging.error("Failed to record LLM usage: %s", e)
+
 
 def get_llm_response_count(name: str) -> int:
     # This is a placeholder. You'll need to implement a way to track LLM responses per template.
     # For now, we'll return a random number as an example.
     return random.randint(10, 100)
 
+
 def get_llm_cost_estimate(name: str) -> str:
-    # This is a placeholder. You'll need to implement a way to track LLM costs per template.
-    # For now, we'll return a random cost as an example.
-    cost = random.uniform(0.5, 5.0)
+    name = validate_template_name(name)
+    if name is None:
+        return "$0.00"
+
+    try:
+        with open(LLM_USAGE_PATH, "r") as f:
+            data = json.load(f)
+    except Exception:
+        data = {}
+
+    tokens = data.get(name, 0)
+    cost = tokens * LLM_COST_PER_TOKEN
     return f"${cost:.2f}"
 
 
@@ -416,9 +474,7 @@ def mark_offline(name: str) -> None:
     try:
         template = session.query(Template).filter_by(name=name).first()
         if template and not template.offline_since:
-            template.offline_since = datetime.utcnow().strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
+            template.offline_since = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
             session.commit()
     finally:
         session.close()

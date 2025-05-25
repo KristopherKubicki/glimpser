@@ -77,6 +77,7 @@ class GracefulAPScheduler(APScheduler):
         finally:
             logging.info("Scheduler shutdown complete.")
 
+
 scheduler = GracefulAPScheduler()
 
 
@@ -172,7 +173,7 @@ def add_motion_and_caption(image_path, caption=None, motion=False):
                     )  # White text
 
                 if caption is not None:
-                    caption = caption[:64].replace('\n',' ')
+                    caption = caption[:64].replace("\n", " ")
                     # Calculate text size and position
                     text_w = int(draw.textlength(caption, font=font))
                     text_h = font_size
@@ -216,7 +217,7 @@ def update_camera(name, template, image_file=None):
             image.save(output_path, "PNG")
             if os.path.exists(output_path):
                 # TODO: add error mark from lerror
-                add_timestamp(output_path, name, invert=template.get('invert',False))
+                add_timestamp(output_path, name, invert=template.get("invert", False))
                 os.rename(output_path, output_path.replace(".tmp.png", ".png"))
                 lsuc = True
 
@@ -226,9 +227,11 @@ def update_camera(name, template, image_file=None):
         update_last_screenshot_time(name)
     else:
         entry = throttle_cache.get(url)
-        if entry and entry.get("errors", 0) >= 10 and time.time() - entry.get(
-            "first", time.time()
-        ) > 60 * 60 * 24:
+        if (
+            entry
+            and entry.get("errors", 0) >= 10
+            and time.time() - entry.get("first", time.time()) > 60 * 60 * 24
+        ):
             mark_offline(name)
 
     if lsuc is True:
@@ -310,9 +313,7 @@ def update_camera(name, template, image_file=None):
                     )
                     return
         except Exception as e:
-            logging.warning(
-                "Error checking blank frame %s: %s", latest_image_path, e
-            )
+            logging.warning("Error checking blank frame %s: %s", latest_image_path, e)
             return
 
         if len(png_files) > 1:
@@ -411,10 +412,14 @@ def update_camera(name, template, image_file=None):
             global clip_model, clip_processor
 
             if clip_model is None:
-                clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")  # TODO: make these models configurable
+                clip_model = CLIPModel.from_pretrained(
+                    "openai/clip-vit-base-patch32"
+                )  # TODO: make these models configurable
 
             if clip_processor is None:
-                clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+                clip_processor = CLIPProcessor.from_pretrained(
+                    "openai/clip-vit-base-patch32"
+                )
 
             # Load the latest image
             latest_image_path = os.path.join(directory, png_files[-1])
@@ -496,7 +501,7 @@ def update_camera(name, template, image_file=None):
                 if template.get("notes"):
                     lprompt += " " + template["notes"]
                 #  use Chatgpt_compare
-                gret = chatgpt_compare(prompt=lprompt, image_paths=image_paths)
+                gret = chatgpt_compare(lprompt, image_paths, template_name=name)
                 # TODO: add a separator?
                 # print("  oldgpt:", name, template.get('last_caption'))
                 # print("  newgpt:", name, gret)
@@ -741,7 +746,7 @@ def update_summary():
     filename = f"data/summaries/{timestamp}.jl"
 
     if type(lsum) != str:
-        #print(" WARNING -- missing transcript") # this only matters if we have a CHATGPT KEY set
+        # print(" WARNING -- missing transcript") # this only matters if we have a CHATGPT KEY set
         return
 
     # for leach in re.findall(r'({.+?\})',lsum):  # if we don't find this, then we wasted money...
@@ -834,13 +839,14 @@ def schedule_crawlers():
                 func=run_with_timeout,
                 trigger="interval",
                 seconds=seconds,
-                start_date=datetime.datetime.now() + datetime.timedelta(seconds=offset_delay_seconds),
-                args=(update_camera, (name, template), seconds-1),
+                start_date=datetime.datetime.now()
+                + datetime.timedelta(seconds=offset_delay_seconds),
+                args=(update_camera, (name, template), seconds - 1),
                 id=name,
                 replace_existing=True,
             )
 
-            '''
+            """
             scheduler.add_job(
                 func=update_camera,
                 trigger="interval",
@@ -851,7 +857,7 @@ def schedule_crawlers():
                 id=name,
                 replace_existing=True,
             )
-            '''
+            """
         except Exception as e:
             logging.error("job schedule error: %s", e)
             logging.error(f"Error scheduling job for {name}: {e}")
@@ -865,53 +871,57 @@ def schedule_crawlers():
             args=(init_crawl, (), 300),
             id="init_crawl",
         )
-        '''
+        """
         scheduler.add_job(
             func=init_crawl,
             trigger="date",
             run_date=datetime.datetime.now() + datetime.timedelta(minutes=3),
             id="init_crawl",
         )
-        '''
+        """
     except Exception as e:
         logging.error(f"Error scheduling initial crawl: {e}")
 
 
 system_metrics = {
-    'cpu_usage': 0.0,
-    'memory_usage': 0.0,
-    'thread_count': 0,
-    'start_time': time.time()
+    "cpu_usage": 0.0,
+    "memory_usage": 0.0,
+    "thread_count": 0,
+    "start_time": time.time(),
 }
+
 
 def collect_system_metrics():
     while True:
-        system_metrics['cpu_usage'] = psutil.cpu_percent(interval=1)
-        system_metrics['memory_usage'] = psutil.virtual_memory().percent
-        system_metrics['thread_count'] = threading.active_count()
+        system_metrics["cpu_usage"] = psutil.cpu_percent(interval=1)
+        system_metrics["memory_usage"] = psutil.virtual_memory().percent
+        system_metrics["thread_count"] = threading.active_count()
         time.sleep(5)  # Collect metrics every 5 seconds
+
 
 def start_metrics_collection():
     metrics_thread = threading.Thread(target=collect_system_metrics, daemon=True)
     metrics_thread.start()
 
+
 def get_system_metrics():
-    uptime = time.time() - system_metrics['start_time']
-    disk_usage = psutil.disk_usage('/').percent
+    uptime = time.time() - system_metrics["start_time"]
+    disk_usage = psutil.disk_usage("/").percent
     open_files = len(psutil.Process().open_files())
     return {
-        'cpu_usage': round(system_metrics['cpu_usage'], 1),
-        'memory_usage': round(system_metrics['memory_usage'], 1),
-        'disk_usage': round(disk_usage, 1),
-        'open_files': open_files,
-        'thread_count': system_metrics['thread_count'],
-        'uptime': f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s"
+        "cpu_usage": round(system_metrics["cpu_usage"], 1),
+        "memory_usage": round(system_metrics["memory_usage"], 1),
+        "disk_usage": round(disk_usage, 1),
+        "open_files": open_files,
+        "thread_count": system_metrics["thread_count"],
+        "uptime": f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s",
     }
+
 
 log_cache = deque(maxlen=10000)  # Store last 10000 log entries
 log_cache_lock = threading.Lock()
 
-'''
+"""
 def cache_logs():
     log_file_path = "logs/glimpser.log"
     last_position = 0
@@ -942,7 +952,8 @@ def cache_logs():
             last_position = file.tell()
 
         time.sleep(10)  # Wait for 10 seconds before checking for new logs
-'''
+"""
+
 
 def cache_logs():
     log_file_path = "logs/glimpser.log"
@@ -954,24 +965,33 @@ def cache_logs():
                 new_log = file.readline()
                 if new_log:
                     with log_cache_lock:
-                        truncated_log = new_log[:500] + '...' if len(new_log) > 500 else new_log
+                        truncated_log = (
+                            new_log[:500] + "..." if len(new_log) > 500 else new_log
+                        )
                         log_parts = truncated_log.strip().split(" - ", 3)
                         if len(log_parts) >= 4:
-                            timestamp_str, log_level, log_source, log_message = log_parts
+                            timestamp_str, log_level, log_source, log_message = (
+                                log_parts
+                            )
                             try:
-                                timestamp = datetime.datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S,%f")
-                                log_cache.append({
-                                    "timestamp": timestamp,
-                                    "level": log_level,
-                                    "source": log_source,
-                                    "message": log_message
-                                })
+                                timestamp = datetime.datetime.strptime(
+                                    timestamp_str, "%Y-%m-%d %H:%M:%S,%f"
+                                )
+                                log_cache.append(
+                                    {
+                                        "timestamp": timestamp,
+                                        "level": log_level,
+                                        "source": log_source,
+                                        "message": log_message,
+                                    }
+                                )
                             except ValueError:
                                 continue  # Skip incorrect timestamp format
                 else:
                     time.sleep(1)  # Sleep briefly to avoid high CPU usage
     except Exception as e:
         logging.error(f"Error in cache_logs: {e}")
+
 
 def start_log_caching():
     log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
@@ -980,4 +1000,3 @@ def start_log_caching():
     # No longer schedule cache_logs via the APScheduler.  The background thread
     # itself handles continuous log caching and avoids spawning additional
     # threads on scheduler restarts.
-
