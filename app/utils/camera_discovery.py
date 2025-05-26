@@ -115,6 +115,34 @@ def _probe_mdns(timeout=2):
     return cameras
 
 
+def _fetch_sdp(ip, port, timeout=2):
+    """Attempt to retrieve an SDP description from an RTSP endpoint."""
+    request = (
+        f"DESCRIBE rtsp://{ip}:{port}/ RTSP/1.0\r\n"
+        "CSeq: 1\r\n"
+        "Accept: application/sdp\r\n\r\n"
+    )
+    try:
+        with socket.create_connection((ip, port), timeout=timeout) as sock:
+            sock.sendall(request.encode())
+            response = b""
+            while True:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                response += chunk
+                if b"\r\n\r\n" in response:
+                    # headers done; assume SDP follows
+                    break
+        header, _, body = response.partition(b"\r\n\r\n")
+        if b"200" not in header.split(b"\r\n")[0]:
+            return None
+        return body.decode(errors="ignore")
+    except Exception as e:  # pragma: no cover - network
+        logging.debug("SDP fetch error for %s:%s: %s", ip, port, e)
+        return None
+
+
 def _scan_rtsp_ports(subnets):
     found = []
     checked = set()
@@ -126,8 +154,12 @@ def _scan_rtsp_ports(subnets):
             checked.add(ip)
             for port in (554, 8554):
                 if is_port_open(ip, port, timeout=1):
+                    info = {}
+                    sdp = _fetch_sdp(ip, port)
+                    if sdp:
+                        info["sdp"] = sdp
                     found.append(
-                        {"ip": ip, "protocol": "rtsp", "port": port, "info": {}}
+                        {"ip": ip, "protocol": "rtsp", "port": port, "info": info}
                     )
     return found
 
@@ -144,6 +176,42 @@ def _scan_rtmp_ports(subnets):
             checked.add(ip)
             if is_port_open(ip, 1935, timeout=1):
                 found.append({"ip": ip, "protocol": "rtmp", "port": 1935, "info": {}})
+    return found
+
+
+def _scan_sip_ports(subnets):
+    """Scan common SIP ports across subnets."""
+    found = []
+    checked = set()
+    for net in subnets:
+        for host in net.hosts():
+            ip = str(host)
+            if ip in checked:
+                continue
+            checked.add(ip)
+            for port in (5060, 5061):
+                if is_port_open(ip, port, timeout=1):
+                    found.append(
+                        {"ip": ip, "protocol": "sip", "port": port, "info": {}}
+                    )
+    return found
+
+
+def _scan_webrtc_ports(subnets):
+    """Scan common WebRTC/STUN ports across subnets."""
+    found = []
+    checked = set()
+    for net in subnets:
+        for host in net.hosts():
+            ip = str(host)
+            if ip in checked:
+                continue
+            checked.add(ip)
+            for port in (3478, 5349):
+                if is_port_open(ip, port, timeout=1):
+                    found.append(
+                        {"ip": ip, "protocol": "webrtc", "port": port, "info": {}}
+                    )
     return found
 
 
@@ -167,6 +235,8 @@ def discover_cameras():
         subnets = _local_subnets()
         cameras.extend(_scan_rtsp_ports(subnets))
         cameras.extend(_scan_rtmp_ports(subnets))
+        cameras.extend(_scan_sip_ports(subnets))
+        cameras.extend(_scan_webrtc_ports(subnets))
     except Exception as e:
         logging.warning("RTSP scan error: %s", e)
     try:

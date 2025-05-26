@@ -1,16 +1,6 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Live Camera Feed</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
-</head>
-<body>
-    <header>
-	{% include 'nav.html' %} 
-    </header>
-    <h2>Live Feed</h2>
+{% extends 'base.html' %}
+{% block content %}
+    <h2>Live Camera Feed</h2>
 
     <div class="video-container">
         <div id="camera-name" class="camera-name"></div>
@@ -33,7 +23,5 @@
             });
         }
     </script>
-
-</body>
-</html>
+{% endblock %}
 

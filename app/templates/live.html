@@ -1,6 +1,5 @@
-{% include 'header.html' %}
-
-<body>
+{% extends 'base.html' %}
+{% block content %}
     <script>
         // Track the last time the health endpoint failed
         window.lastHealthFailed = false;
@@ -605,7 +604,5 @@ function playMotion() {
         playMP4();
     </script>
 
-    {% include 'footer.html' %}
-</body>
-</html>
+{% endblock %}
 

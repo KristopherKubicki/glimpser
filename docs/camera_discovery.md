@@ -21,10 +21,12 @@ When you visit `/discover`, Glimpser calls `discover_cameras()` to scan the netw
 The discovery code combines multiple approaches:
 
 1. **ONVIF probe** – `_probe_onvif()` broadcasts a WS-Discovery probe and parses any replies to extract camera IP addresses and ONVIF service URLs.
-2. **RTSP port scan** – `_scan_rtsp_ports()` walks through the host's local subnets and checks common RTSP ports (`554` and `8554`) using `is_port_open`.
+2. **RTSP port scan** – `_scan_rtsp_ports()` checks common RTSP ports (`554` and `8554`). When a port is open it sends a DESCRIBE request to retrieve the stream's SDP, if available.
 3. **RTMP port scan** – `_scan_rtmp_ports()` checks each subnet for the default RTMP port (`1935`).
-4. **mDNS/Zeroconf** – `_probe_mdns()` looks for services like `_onvif._tcp` and `_rtsp._tcp` advertised on the local network.
-5. **Local devices** – `_local_video_devices()` lists available `/dev/video*` entries for webcams or other direct-attached cameras.
+4. **SIP port scan** – `_scan_sip_ports()` looks for SIP endpoints on ports `5060` and `5061`.
+5. **WebRTC/STUN scan** – `_scan_webrtc_ports()` detects WebRTC servers by checking ports `3478` and `5349`.
+6. **mDNS/Zeroconf** – `_probe_mdns()` looks for services like `_onvif._tcp` and `_rtsp._tcp` advertised on the local network.
+7. **Local devices** – `_local_video_devices()` lists available `/dev/video*` entries for webcams or other direct-attached cameras.
 
 All discovered entries are merged and returned. The key parts of the implementation are shown below:
 
@@ -44,7 +46,11 @@ def _scan_rtsp_ports(subnets):
             ...
             for port in (554, 8554):
                 if is_port_open(ip, port, timeout=1):
-                    found.append({"ip": ip, "protocol": "rtsp", "port": port, "info": {}})
+                    info = {}
+                    sdp = _fetch_sdp(ip, port)
+                    if sdp:
+                        info["sdp"] = sdp
+                    found.append({"ip": ip, "protocol": "rtsp", "port": port, "info": info})
 
 
 def _scan_rtmp_ports(subnets):
@@ -53,6 +59,24 @@ def _scan_rtmp_ports(subnets):
             ...
             if is_port_open(ip, 1935, timeout=1):
                 found.append({"ip": ip, "protocol": "rtmp", "port": 1935, "info": {}})
+
+
+def _scan_sip_ports(subnets):
+    for net in subnets:
+        for host in net.hosts():
+            ...
+            for port in (5060, 5061):
+                if is_port_open(ip, port, timeout=1):
+                    found.append({"ip": ip, "protocol": "sip", "port": port, "info": {}})
+
+
+def _scan_webrtc_ports(subnets):
+    for net in subnets:
+        for host in net.hosts():
+            ...
+            for port in (3478, 5349):
+                if is_port_open(ip, port, timeout=1):
+                    found.append({"ip": ip, "protocol": "webrtc", "port": port, "info": {}})
 
 
 def _local_video_devices(base_path="/dev"):
