@@ -86,7 +86,22 @@ Stream a camera directly from its configured URL in real time. Specify `camera` 
 
 Example: `/live_video?camera=frontdoor`
 
-### 5. Trigger Screenshot Capture
+### 5. Additional Streaming Endpoints
+
+Several other routes provide streaming functionality:
+
+- **GET /stream.mjpg** – Continuous MJPEG stream of the latest camera image. Optional `group` query parameter limits the feed to a group.
+- **GET /stream.png** – Returns the most recent screenshot across all cameras.
+- **GET /motion.mjpg** – MJPEG stream containing only motion frames. Accepts `group` as a query parameter.
+- **GET /caption.mjpg** – MJPEG stream of the last caption frame for a group.
+- **GET /motion_caption.mjpg** – Combines motion and caption frames in a single MJPEG stream.
+- **GET /stream.m3u8** – HLS playlist referencing the latest videos from all cameras.
+- **GET /last_video/<template_name>** – Download the most recent MP4 for the given template.
+- **GET /last_screenshot/<template_name>** – Retrieve the latest screenshot for a template.
+- **GET /last_teaser** – Returns the teaser video compiled from recent footage.
+- **GET /test.rtsp** – Basic RTSP endpoint that serves MJPEG frames when used with `/rtsp_stream`.
+
+### 6. Trigger Screenshot Capture
 
 **GET /take_screenshot/<template_name>**
 **POST /take_screenshot/<template_name>**
@@ -98,19 +113,19 @@ Example response:
 {"status": "success", "message": "Screenshot for camera1 taken"}
 ```
 
-### 6. View System Status
+### 7. View System Status
 
 **GET /status**
 
 Returns an HTML dashboard displaying metrics such as CPU, memory, and disk usage along with open file count, thread count, and uptime. These metrics are gathered in a background thread (see `app/utils/scheduling.py`).
 
-### 7. Stream Logs
+### 8. Stream Logs
 
 **GET /stream_logs**
 
 Streams log records via Server-Sent Events. Optional query parameters `level`, `source`, `start_date`, `end_date`, and `search` allow filtering. The `/logs` and `/status` pages use this endpoint for the live log viewer.
 
-### 8. List Stored Videos
+### 9. List Stored Videos
 
 **GET /videos/<template_name>**
 
@@ -121,7 +136,7 @@ Example response:
 {"videos": ["cam1_20240101.mp4", "cam1_20240102.mp4"]}
 ```
 
-### 9. List Stored Screenshots
+### 10. List Stored Screenshots
 
 **GET /screenshots/<template_name>**
 

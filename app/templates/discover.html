@@ -23,6 +23,9 @@
                         <input type="hidden" name="ip" value="{{ cam.ip }}">
                         <input type="hidden" name="protocol" value="{{ cam.protocol }}">
                         <input type="hidden" name="port" value="{{ cam.port }}">
+                        {% if cam.url %}
+                        <input type="hidden" name="url" value="{{ cam.url }}">
+                        {% endif %}
                         <input type="hidden" name="name" value="{{ cam.ip }}">
                         <button type="submit" title="Add this camera">Add</button>
                     </form>

@@ -22,9 +22,11 @@ The discovery code combines multiple approaches:
 
 1. **ONVIF probe** – `_probe_onvif()` broadcasts a WS-Discovery probe and parses any replies to extract camera IP addresses and ONVIF service URLs.
 2. **RTSP port scan** – `_scan_rtsp_ports()` walks through the host's local subnets and checks common RTSP ports (`554` and `8554`) using `is_port_open`.
-3. **Local devices** – `_local_video_devices()` lists available `/dev/video*` entries for webcams or other direct-attached cameras.
+3. **RTMP port scan** – `_scan_rtmp_ports()` checks each subnet for the default RTMP port (`1935`).
+4. **mDNS/Zeroconf** – `_probe_mdns()` looks for services like `_onvif._tcp` and `_rtsp._tcp` advertised on the local network.
+5. **Local devices** – `_local_video_devices()` lists available `/dev/video*` entries for webcams or other direct-attached cameras.
 
-Both sets of results are merged and returned. The key parts of the implementation are shown below:
+All discovered entries are merged and returned. The key parts of the implementation are shown below:
 
 ```python
 # app/utils/camera_discovery.py
@@ -45,6 +47,14 @@ def _scan_rtsp_ports(subnets):
                     found.append({"ip": ip, "protocol": "rtsp", "port": port, "info": {}})
 
 
+def _scan_rtmp_ports(subnets):
+    for net in subnets:
+        for host in net.hosts():
+            ...
+            if is_port_open(ip, 1935, timeout=1):
+                found.append({"ip": ip, "protocol": "rtmp", "port": 1935, "info": {}})
+
+
 def _local_video_devices(base_path="/dev"):
     for path in glob.glob(os.path.join(base_path, "video*")):
         found.append({"ip": path, "protocol": "local", "port": 0, "info": {}})
@@ -54,3 +64,27 @@ After scanning, `discover_cameras()` removes duplicates and returns the final li
 
 You can then add a discovered camera to your configuration directly from the `/discover` page.
 The "Add" button on this page now includes a tooltip (title attribute) for improved accessibility.
+
+The discovery list also shows a **System Status** entry pointing at your local
+`/status` page (`http://127.0.0.1:8082/status`). You can add this item like any
+other camera to have Glimpser periodically capture screenshots of its own
+metrics page.
+
+## Common cameras to try
+
+Any IP camera that supports **ONVIF**, **RTSP**, or **RTMP** streams should show
+up in the discovery list. The following brands are frequently used and respond
+well to the existing discovery methods:
+
+- **Amcrest** – consumer-grade cameras with reliable ONVIF support.
+- **Hikvision/Dahua** – widely deployed security cameras that offer RTSP
+  streams.
+- **Axis** – enterprise cameras known for robust network features.
+- **Foscam** – budget-friendly cameras often found in home setups.
+
+Locally attached USB webcams (for example, Logitech devices) will appear under
+`/dev/video*`.
+
+Remote sources such as **GOES16**, **ZoomEarth**, and **Dopler** can be added
+manually, but they are not discovered automatically because they are hosted
+outside the local network.

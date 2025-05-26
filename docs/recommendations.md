@@ -6,16 +6,16 @@ Glimpser is a powerful monitoring and data aggregation tool that can be used for
 
 Glimpser's ability to aggregate data from multiple sources makes it an excellent tool for comprehensive weather and environmental monitoring.
 
-- **Local Weather Tracking**: Use cameras like "GOES16", "ZoomEarth", and "Dopler" to get real-time updates on local weather conditions.
+- **Local Weather Tracking**: Use cameras like ["GOES16"](https://www.goes-r.gov/), ["ZoomEarth"](https://zoom.earth/), and ["Dopler"](https://weather.com/maps/current-weather) to get real-time updates on local weather conditions.
 - **Air Quality Monitoring**: The "AQI" camera can help track air quality, allowing users to make informed decisions about outdoor activities.
-- **Natural Disaster Preparedness**: Utilize "Lightning", "Storms", and "NOAA" feeds to stay ahead of severe weather events.
+- **Natural Disaster Preparedness**: Utilize ["Lightning"](https://www.lightningmaps.org/), ["Storms"](https://www.nhc.noaa.gov/), and ["NOAA"](https://www.noaa.gov/) feeds to stay ahead of severe weather events.
 - **Climate Change Research**: Long-term data from "Drought" and "Groundwater" cameras can contribute to climate change studies.
 
 ## 2. Traffic and Transportation Management
 
 Glimpser's traffic monitoring capabilities can be invaluable for both commuters and city planners.
 
-- **Commute Optimization**: Use "FlightRadar", "Trains", and various traffic cameras to plan the most efficient routes.
+- **Commute Optimization**: Use ["FlightRadar"](https://www.flightradar24.com/), ["Trains"](https://www.amtrak.com/), and various traffic cameras to plan the most efficient routes.
 - **Urban Planning**: Analyze long-term traffic patterns using data from "Interchange" and "SigAlert" to inform infrastructure decisions.
 - **Public Transportation Improvements**: Monitor "CTA" and other public transit feeds to identify areas for service enhancement.
 
@@ -25,7 +25,7 @@ For space enthusiasts and researchers, Glimpser offers a wealth of astronomical 
 
 - **Solar Activity Monitoring**: Track solar activity using "Sunspots" and "Flux" cameras for both scientific and practical (e.g., communications) purposes.
 - **Meteor Shower Tracking**: Use "Meteorshower" and "Allsky7" to observe and predict meteor shower activity.
-- **Space Exploration Updates**: Stay informed about the latest in space exploration with feeds from "NasaTV", "Hubble", and "Webb".
+- **Space Exploration Updates**: Stay informed about the latest in space exploration with feeds from ["NasaTV"](https://www.nasa.gov/multimedia/nasatv/), ["Hubble"](https://hubblesite.org/), and ["Webb"](https://webb.nasa.gov/).
 
 ## 4. Urban and Infrastructure Monitoring
 

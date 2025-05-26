@@ -15,7 +15,12 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    ```sh
    pip install -e ".[dev]"
    ```
-3. Copy the provided example environment file and update the values. Important
+3. Install the `pre-commit` tool and set up the Git hooks:
+   ```sh
+   pip install pre-commit
+   pre-commit install
+   ```
+4. Copy the provided example environment file and update the values. Important
    variables include `SECRET_KEY` for session management, `CHATGPT_KEY` for AI
    features, and the various path settings used by the application.
    ```sh
