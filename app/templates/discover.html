@@ -1,8 +1,5 @@
-{% include 'header.html' %}
-<body>
-    <header>
-        {% include 'nav.html' %}
-    </header>
+{% extends 'base.html' %}
+{% block content %}
     <h2>Discovered Cameras</h2>
     <table>
         <thead>
@@ -34,4 +31,4 @@
         {% endfor %}
         </tbody>
     </table>
-</body>
+{% endblock %}

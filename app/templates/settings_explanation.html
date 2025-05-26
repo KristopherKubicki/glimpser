@@ -1,13 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Settings Explanation</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <header>
-        {% include 'nav.html' %}
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Settings Explanation</h1>
     </header>
 
     <h1>Settings Explanation</h1>
@@ -131,6 +124,4 @@
         </tbody>
     </table>
 
-    {% include 'footer.html' %}
-</body>
-</html>
+{% endblock %}
