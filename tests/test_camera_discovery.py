@@ -41,6 +41,7 @@ class TestCameraDiscovery(unittest.TestCase):
             ("192.168.1.6", 1935),
             ("192.168.1.6", 5060),
             ("10.0.0.6", 5349),
+            ("192.168.1.6", 161),
         }
 
     @patch("app.utils.camera_discovery.glob.glob")
@@ -128,17 +129,45 @@ class TestCameraDiscovery(unittest.TestCase):
         ]
         self.assertEqual(result, expected)
 
+    @patch("app.utils.camera_discovery._fetch_snmp_sysname")
+    @patch("app.utils.camera_discovery.is_port_open")
+    def test_scan_snmp_ports(self, mock_port_open, mock_fetch_name):
+        mock_port_open.side_effect = self._port_open_side_effect
+        mock_fetch_name.return_value = "cam1"
+        subnets = [
+            ip_network("192.168.1.5/255.255.255.252", strict=False),
+            ip_network("10.0.0.5/255.255.255.252", strict=False),
+        ]
+        result = camera_discovery._scan_snmp_ports(subnets)
+        expected = [
+            {
+                "ip": "192.168.1.6",
+                "protocol": "snmp",
+                "port": 161,
+                "info": {"name": "cam1"},
+            },
+        ]
+        self.assertEqual(result, expected)
+
     @patch("app.utils.camera_discovery._probe_mdns")
     @patch("app.utils.camera_discovery._probe_onvif")
     @patch("app.utils.camera_discovery.is_port_open")
+    @patch("app.utils.camera_discovery._fetch_snmp_sysname")
     @patch("app.utils.camera_discovery._fetch_sdp")
     @patch("app.utils.camera_discovery.psutil.net_if_addrs")
     def test_discover_cameras_merge(
-        self, mock_addrs, mock_fetch_sdp, mock_port_open, mock_onvif, mock_mdns
+        self,
+        mock_addrs,
+        mock_fetch_sdp,
+        mock_fetch_snmp,
+        mock_port_open,
+        mock_onvif,
+        mock_mdns,
     ):
         mock_addrs.return_value = self._mock_interfaces()
         mock_port_open.side_effect = self._port_open_side_effect
         mock_fetch_sdp.return_value = "v=0"
+        mock_fetch_snmp.return_value = "cam1"
         mock_onvif.return_value = [
             {"ip": "192.168.1.6", "protocol": "onvif", "port": 80, "info": {}},
             {
@@ -169,6 +198,12 @@ class TestCameraDiscovery(unittest.TestCase):
             {"ip": "192.168.1.6", "protocol": "rtmp", "port": 1935, "info": {}},
             {"ip": "192.168.1.6", "protocol": "sip", "port": 5060, "info": {}},
             {"ip": "10.0.0.6", "protocol": "webrtc", "port": 5349, "info": {}},
+            {
+                "ip": "192.168.1.6",
+                "protocol": "snmp",
+                "port": 161,
+                "info": {"name": "cam1"},
+            },
             {"ip": "192.168.1.7", "protocol": "mdns", "port": 8080, "info": {}},
             {
                 "ip": "127.0.0.1",
