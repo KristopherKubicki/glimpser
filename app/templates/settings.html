@@ -1,10 +1,6 @@
 
-{% include 'header.html' %}
-
-<body>
-    <header>
-        {% include 'nav.html' %}
-    </header>
+{% extends 'base.html' %}
+{% block content %}
 
 
         <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger">Logout</a>
@@ -57,9 +53,6 @@
         <button type="submit" name="action" value="upload" title="Upload configuration">Upload Configuration</button>
     </form>
 
-    {% include 'footer.html' %}
-
     <script src="{{ url_for('static', filename='js/performance.js') }}"></script>
-</body>
-</html>
+{% endblock %}
 

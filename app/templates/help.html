@@ -1,10 +1,6 @@
 
-{% include 'header.html' %}
-
-<body>
-    <header>
-        {% include 'nav.html' %}
-    </header>
+{% extends 'base.html' %}
+{% block content %}
 
     <main class="container">
         <h2 class="page-title">Glimpser Help</h2>
@@ -83,10 +79,5 @@
         </section>
     </main>
 
-    <footer>
-        {% include 'footer.html' %}
-    </footer>
-
-</body>
-</html>
+{% endblock %}
 

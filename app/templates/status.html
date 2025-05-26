@@ -1,12 +1,7 @@
 
 
-{% include 'header.html' %}
-
-<body>
-    <header>
-        {% include 'nav.html' %}
-
-    </header>
+{% extends 'base.html' %}
+{% block content %}
 
 <div class="scheduler-controls">
     <button id="toggle-scheduler" class="btn btn-primary">
@@ -29,13 +24,5 @@
 </ul>
 
 
-{% include 'logs.html' %} 
-
-
-<footer>
-{% include 'footer.html' %} 
-</footer>
-
-</body>
-
-</html>
+{% include 'logs.html' %}
+{% endblock %}
