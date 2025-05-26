@@ -17,6 +17,6 @@ and pushes it to GitHub, which then triggers the build jobs above.
 You can still trigger a release manually by creating and pushing a tag:
 
 ```sh
-git tag v0.2.2
-git push origin v0.2.2
+git tag v0.2.3
+git push origin v0.2.3
 ```
