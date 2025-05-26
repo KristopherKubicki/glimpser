@@ -11,12 +11,12 @@ Both artifacts are attached to the GitHub release created for the tag. When the
 PyPI.
 
 Tags are normally created automatically when the version in `setup.py` is bumped
-on the `main` branch.  The `Tag Release` workflow creates a tag like `v0.2.3`
+on the `main` branch.  The `Tag Release` workflow creates a tag like `v0.2.4`
 and pushes it to GitHub, which then triggers the build jobs above.
 
 You can still trigger a release manually by creating and pushing a tag:
 
 ```sh
-git tag v0.2.3
-git push origin v0.2.3
+git tag v0.2.4
+git push origin v0.2.4
 ```
