@@ -9,4 +9,4 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Unit tests now cover configuration retrieval and Chrome debug port detection.
 - Retention policy file sorting is also verified by tests.
 - Screenshot utility functions now have dedicated unit tests.
-- Credential management helpers are validated by tests.
+

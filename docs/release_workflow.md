@@ -10,9 +10,13 @@ Both artifacts are attached to the GitHub release created for the tag. When the
 `PYPI_API_TOKEN` secret is available, Python distributions are also published to
 PyPI.
 
-To trigger a new release, create a tag and push it to GitHub:
+Tags are normally created automatically when the version in `setup.py` is bumped
+on the `main` branch.  The `Tag Release` workflow creates a tag like `v0.2.3`
+and pushes it to GitHub, which then triggers the build jobs above.
+
+You can still trigger a release manually by creating and pushing a tag:
 
 ```sh
-git tag v1.0.0
-git push origin v1.0.0
+git tag v0.2.2
+git push origin v0.2.2
 ```

@@ -132,6 +132,21 @@ def _scan_rtsp_ports(subnets):
     return found
 
 
+def _scan_rtmp_ports(subnets):
+    """Scan common RTMP port 1935 across subnets."""
+    found = []
+    checked = set()
+    for net in subnets:
+        for host in net.hosts():
+            ip = str(host)
+            if ip in checked:
+                continue
+            checked.add(ip)
+            if is_port_open(ip, 1935, timeout=1):
+                found.append({"ip": ip, "protocol": "rtmp", "port": 1935, "info": {}})
+    return found
+
+
 def _local_video_devices(base_path="/dev"):
     """List available local video devices like /dev/video0."""
     devices = []
@@ -151,6 +166,7 @@ def discover_cameras():
     try:
         subnets = _local_subnets()
         cameras.extend(_scan_rtsp_ports(subnets))
+        cameras.extend(_scan_rtmp_ports(subnets))
     except Exception as e:
         logging.warning("RTSP scan error: %s", e)
     try:
