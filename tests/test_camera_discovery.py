@@ -35,7 +35,11 @@ class TestCameraDiscovery(unittest.TestCase):
         }
 
     def _port_open_side_effect(self, ip, port, timeout=1):
-        return (ip, port) in {("192.168.1.6", 554), ("10.0.0.6", 8554)}
+        return (ip, port) in {
+            ("192.168.1.6", 554),
+            ("10.0.0.6", 8554),
+            ("192.168.1.6", 1935),
+        }
 
     @patch("app.utils.camera_discovery.glob.glob")
     def test_local_video_devices(self, mock_glob):
@@ -71,6 +75,19 @@ class TestCameraDiscovery(unittest.TestCase):
         ]
         self.assertEqual(result, expected)
 
+    @patch("app.utils.camera_discovery.is_port_open")
+    def test_scan_rtmp_ports(self, mock_port_open):
+        mock_port_open.side_effect = self._port_open_side_effect
+        subnets = [
+            ip_network("192.168.1.5/255.255.255.252", strict=False),
+            ip_network("10.0.0.5/255.255.255.252", strict=False),
+        ]
+        result = camera_discovery._scan_rtmp_ports(subnets)
+        expected = [
+            {"ip": "192.168.1.6", "protocol": "rtmp", "port": 1935, "info": {}},
+        ]
+        self.assertEqual(result, expected)
+
     @patch("app.utils.camera_discovery._probe_mdns")
     @patch("app.utils.camera_discovery._probe_onvif")
     @patch("app.utils.camera_discovery.is_port_open")
@@ -97,6 +114,7 @@ class TestCameraDiscovery(unittest.TestCase):
             {"ip": "192.168.1.6", "protocol": "onvif", "port": 80, "info": {}},
             {"ip": "192.168.1.6", "protocol": "rtsp", "port": 554, "info": {}},
             {"ip": "10.0.0.6", "protocol": "rtsp", "port": 8554, "info": {}},
+            {"ip": "192.168.1.6", "protocol": "rtmp", "port": 1935, "info": {}},
             {"ip": "192.168.1.7", "protocol": "mdns", "port": 8080, "info": {}},
             {
                 "ip": "127.0.0.1",
