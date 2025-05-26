@@ -26,7 +26,8 @@ The discovery code combines multiple approaches:
 4. **SIP port scan** – `_scan_sip_ports()` looks for SIP endpoints on ports `5060` and `5061`.
 5. **WebRTC/STUN scan** – `_scan_webrtc_ports()` detects WebRTC servers by checking ports `3478` and `5349`.
 6. **mDNS/Zeroconf** – `_probe_mdns()` looks for services like `_onvif._tcp` and `_rtsp._tcp` advertised on the local network.
-7. **Local devices** – `_local_video_devices()` lists available `/dev/video*` entries for webcams or other direct-attached cameras.
+7. **SNMP scan** – `_scan_snmp_ports()` checks port `161` for SNMP agents and reads the device name if possible.
+8. **Local devices** – `_local_video_devices()` lists available `/dev/video*` entries for webcams or other direct-attached cameras.
 
 All discovered entries are merged and returned. The key parts of the implementation are shown below:
 
@@ -77,6 +78,16 @@ def _scan_webrtc_ports(subnets):
             for port in (3478, 5349):
                 if is_port_open(ip, port, timeout=1):
                     found.append({"ip": ip, "protocol": "webrtc", "port": port, "info": {}})
+
+
+def _scan_snmp_ports(subnets):
+    for net in subnets:
+        for host in net.hosts():
+            ...
+            if is_port_open(ip, 161, timeout=1):
+                name = _fetch_snmp_sysname(ip)
+                info = {"name": name} if name else {}
+                found.append({"ip": ip, "protocol": "snmp", "port": 161, "info": info})
 
 
 def _local_video_devices(base_path="/dev"):

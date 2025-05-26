@@ -215,6 +215,53 @@ def _scan_webrtc_ports(subnets):
     return found
 
 
+def _fetch_snmp_sysname(ip, timeout=2):
+    """Attempt to retrieve the SNMP sysName value."""
+    # Minimal SNMPv1 GET request for OID 1.3.6.1.2.1.1.5.0 (sysName)
+    request = bytes.fromhex(
+        "30 2a 02 01 00 04 06 70 75 62 6c 69 63 A0 1d "
+        "02 04 00 00 00 01 02 01 00 02 01 00 30 0f 30 0d "
+        "06 08 2b 06 01 02 01 01 05 00 05 00"
+    )
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(timeout)
+    try:
+        sock.sendto(request, (ip, 161))
+        resp, _ = sock.recvfrom(4096)
+        oid = b"\x06\x08\x2b\x06\x01\x02\x01\x01\x05\x00"
+        idx = resp.find(oid)
+        if idx != -1:
+            start = idx + len(oid)
+            if start + 2 <= len(resp) and resp[start] == 0x04:
+                length = resp[start + 1]
+                end = start + 2 + length
+                return resp[start + 2 : end].decode(errors="ignore")
+    except Exception as e:  # pragma: no cover - network
+        logging.debug("SNMP fetch error for %s: %s", ip, e)
+    finally:
+        sock.close()
+    return None
+
+
+def _scan_snmp_ports(subnets):
+    """Scan SNMP port 161 across subnets."""
+    found = []
+    checked = set()
+    for net in subnets:
+        for host in net.hosts():
+            ip = str(host)
+            if ip in checked:
+                continue
+            checked.add(ip)
+            if is_port_open(ip, 161, timeout=1):
+                info = {}
+                name = _fetch_snmp_sysname(ip)
+                if name:
+                    info["name"] = name
+                found.append({"ip": ip, "protocol": "snmp", "port": 161, "info": info})
+    return found
+
+
 def _local_video_devices(base_path="/dev"):
     """List available local video devices like /dev/video0."""
     devices = []
@@ -237,6 +284,7 @@ def discover_cameras():
         cameras.extend(_scan_rtmp_ports(subnets))
         cameras.extend(_scan_sip_ports(subnets))
         cameras.extend(_scan_webrtc_ports(subnets))
+        cameras.extend(_scan_snmp_ports(subnets))
     except Exception as e:
         logging.warning("RTSP scan error: %s", e)
     try:
