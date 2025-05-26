@@ -179,6 +179,42 @@ def _scan_rtmp_ports(subnets):
     return found
 
 
+def _scan_sip_ports(subnets):
+    """Scan common SIP ports across subnets."""
+    found = []
+    checked = set()
+    for net in subnets:
+        for host in net.hosts():
+            ip = str(host)
+            if ip in checked:
+                continue
+            checked.add(ip)
+            for port in (5060, 5061):
+                if is_port_open(ip, port, timeout=1):
+                    found.append(
+                        {"ip": ip, "protocol": "sip", "port": port, "info": {}}
+                    )
+    return found
+
+
+def _scan_webrtc_ports(subnets):
+    """Scan common WebRTC/STUN ports across subnets."""
+    found = []
+    checked = set()
+    for net in subnets:
+        for host in net.hosts():
+            ip = str(host)
+            if ip in checked:
+                continue
+            checked.add(ip)
+            for port in (3478, 5349):
+                if is_port_open(ip, port, timeout=1):
+                    found.append(
+                        {"ip": ip, "protocol": "webrtc", "port": port, "info": {}}
+                    )
+    return found
+
+
 def _local_video_devices(base_path="/dev"):
     """List available local video devices like /dev/video0."""
     devices = []
@@ -199,6 +235,8 @@ def discover_cameras():
         subnets = _local_subnets()
         cameras.extend(_scan_rtsp_ports(subnets))
         cameras.extend(_scan_rtmp_ports(subnets))
+        cameras.extend(_scan_sip_ports(subnets))
+        cameras.extend(_scan_webrtc_ports(subnets))
     except Exception as e:
         logging.warning("RTSP scan error: %s", e)
     try:

@@ -39,6 +39,8 @@ class TestCameraDiscovery(unittest.TestCase):
             ("192.168.1.6", 554),
             ("10.0.0.6", 8554),
             ("192.168.1.6", 1935),
+            ("192.168.1.6", 5060),
+            ("10.0.0.6", 5349),
         }
 
     @patch("app.utils.camera_discovery.glob.glob")
@@ -100,6 +102,32 @@ class TestCameraDiscovery(unittest.TestCase):
         ]
         self.assertEqual(result, expected)
 
+    @patch("app.utils.camera_discovery.is_port_open")
+    def test_scan_sip_ports(self, mock_port_open):
+        mock_port_open.side_effect = self._port_open_side_effect
+        subnets = [
+            ip_network("192.168.1.5/255.255.255.252", strict=False),
+            ip_network("10.0.0.5/255.255.255.252", strict=False),
+        ]
+        result = camera_discovery._scan_sip_ports(subnets)
+        expected = [
+            {"ip": "192.168.1.6", "protocol": "sip", "port": 5060, "info": {}},
+        ]
+        self.assertEqual(result, expected)
+
+    @patch("app.utils.camera_discovery.is_port_open")
+    def test_scan_webrtc_ports(self, mock_port_open):
+        mock_port_open.side_effect = self._port_open_side_effect
+        subnets = [
+            ip_network("192.168.1.5/255.255.255.252", strict=False),
+            ip_network("10.0.0.5/255.255.255.252", strict=False),
+        ]
+        result = camera_discovery._scan_webrtc_ports(subnets)
+        expected = [
+            {"ip": "10.0.0.6", "protocol": "webrtc", "port": 5349, "info": {}},
+        ]
+        self.assertEqual(result, expected)
+
     @patch("app.utils.camera_discovery._probe_mdns")
     @patch("app.utils.camera_discovery._probe_onvif")
     @patch("app.utils.camera_discovery.is_port_open")
@@ -139,6 +167,8 @@ class TestCameraDiscovery(unittest.TestCase):
                 "info": {"sdp": "v=0"},
             },
             {"ip": "192.168.1.6", "protocol": "rtmp", "port": 1935, "info": {}},
+            {"ip": "192.168.1.6", "protocol": "sip", "port": 5060, "info": {}},
+            {"ip": "10.0.0.6", "protocol": "webrtc", "port": 5349, "info": {}},
             {"ip": "192.168.1.7", "protocol": "mdns", "port": 8080, "info": {}},
             {
                 "ip": "127.0.0.1",
