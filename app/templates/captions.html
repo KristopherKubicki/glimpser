@@ -1,12 +1,7 @@
 
 
- {% include 'header.html' %}
-
- <body>
-     <header>
-         {% include 'nav.html' %}
-
-     </header>
+{% extends 'base.html' %}
+{% block content %}
 
      <script>
          function updateTemplate(templateName) {
@@ -155,9 +150,5 @@
     </tbody>
 </table>
 
-    {% include 'footer.html' %}
-
-</body>
-
-</html>
+{% endblock %}
 

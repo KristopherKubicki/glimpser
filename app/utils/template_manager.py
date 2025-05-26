@@ -5,6 +5,7 @@ import re
 import shutil
 import random
 import logging
+import json
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, Float, Integer, String, Text
@@ -17,6 +18,10 @@ from .db import Base, SessionLocal, init_db
 from .video_details import get_latest_screenshot_date, get_latest_video_date
 
 from sqlalchemy.orm import validates
+
+LLM_USAGE_PATH = "data/llm_usage.json"
+LLM_COST_PER_TOKEN = 0.005 / 1000  # OpenAI pricing example
+
 
 class Template(Base):
     __tablename__ = "templates"
@@ -54,13 +59,13 @@ class Template(Base):
     rollback_frames = Column(Integer, default=0)
     last_ret = None
 
-    @validates('frequency')
+    @validates("frequency")
     def validate_frequency(self, key, frequency):
         if frequency > 525600:
             raise ValueError("Frequency cannot be greater than 525600 (1 year)")
         return frequency
 
-    @validates('timeout')
+    @validates("timeout")
     def validate_timeout(self, key, timeout):
         if timeout < 1:
             logging.warning("negative timeout")
@@ -70,13 +75,13 @@ class Template(Base):
             raise ValueError(f"timeout calculation error {timeout} {self.frequency}")
         return timeout
 
-    @validates('popup_xpath', 'dedicated_xpath')
+    @validates("popup_xpath", "dedicated_xpath")
     def validate_xpath(self, key, xpath):
-        if xpath and not xpath.startswith('//'):
+        if xpath and not xpath.startswith("//"):
             raise ValueError(f"{key} must start with '//'")
         return xpath
 
-    @validates('object_confidence')
+    @validates("object_confidence")
     def validate_object_confidence(self, key, confidence):
         if self.object_filter and (confidence < 0 or confidence > 1):
             raise ValueError("Object confidence must be between 0 and 1")
@@ -84,13 +89,32 @@ class Template(Base):
 
 
 class TemplateManager:
+    """Manage :class:`Template` records stored in the database.
+
+    The manager initializes the SQLite database on construction and
+    provides helper methods for retrieving a database session. Public
+    methods perform validation and commit changes when updating or
+    deleting templates.
+    """
+
     def __init__(self):
         init_db()
 
     def get_session(self):
+        """Return a new SQLAlchemy session bound to the app database."""
+
         return SessionLocal()
 
     def get_templates(self):
+        """Return all templates from the database as a dictionary.
+
+        Returns
+        -------
+        dict
+            Mapping of template name to its stored attributes with
+            SQLAlchemy internal state removed.
+        """
+
         session = self.get_session()
         try:
             templates = session.query(Template).all()
@@ -104,6 +128,21 @@ class TemplateManager:
             session.close()
 
     def save_template(self, name, details):
+        """Create or update a template in the database.
+
+        Parameters
+        ----------
+        name : str
+            Template name to validate and store.
+        details : dict
+            Dictionary of template attributes.
+
+        Returns
+        -------
+        bool
+            ``True`` when the template was saved successfully,
+            ``False`` if validation failed or an error occurred.
+        """
 
         name = validate_template_name(name)
         if name is None:
@@ -128,12 +167,22 @@ class TemplateManager:
                             value = int(value)
                             if key == "frequency" and value > 525600:
                                 value = 525600
-                            if key == "frequency" and value < 0.01: # that's less than 1 fps...
+                            if (
+                                key == "frequency" and value < 0.01
+                            ):  # that's less than 1 fps...
                                 value = 0.01
                             # TODO: adjust for browsers-stealth-etc?  increase the frequency and timeout for those by default??
 
-                            if key == "timeout" and value >= float(details.get("frequency", template.frequency)) * 60:
-                                value = int(details.get("frequency", template.frequency)) * 60 # adjust the timeout down 
+                            if (
+                                key == "timeout"
+                                and value
+                                >= float(details.get("frequency", template.frequency))
+                                * 60
+                            ):
+                                value = (
+                                    int(details.get("frequency", template.frequency))
+                                    * 60
+                                )  # adjust the timeout down
                             if key == "timeout" and value < 1:
                                 value = 1
 
@@ -141,10 +190,14 @@ class TemplateManager:
                             if value == "":
                                 value = 0.5
                             value = float(value)
-                            if details.get("object_filter", template.object_filter) and (value < 0 or value > 1):
-                                raise ValueError("Object confidence must be between 0 and 1")
+                            if details.get(
+                                "object_filter", template.object_filter
+                            ) and (value < 0 or value > 1):
+                                raise ValueError(
+                                    "Object confidence must be between 0 and 1"
+                                )
                         elif key in ["popup_xpath", "dedicated_xpath"]:
-                            if value and not value.startswith('//'):
+                            if value and not value.startswith("//"):
                                 raise ValueError(f"{key} must start with '//'")
                         elif key in ["stealth", "headless", "dark", "invert"]:
                             if value == "on":
@@ -175,6 +228,19 @@ class TemplateManager:
             session.close()
 
     def get_template(self, name):
+        """Return a single template by name.
+
+        Parameters
+        ----------
+        name : str
+            Template name to fetch from the database.
+
+        Returns
+        -------
+        dict
+            Stored template attributes or an empty ``dict`` when the
+            name fails validation or is not present.
+        """
         name = validate_template_name(name)
         if name is None:
             return False
@@ -190,6 +256,19 @@ class TemplateManager:
             session.close()
 
     def delete_template(self, name):
+        """Delete a template from the database.
+
+        Parameters
+        ----------
+        name : str
+            Template name to remove.
+
+        Returns
+        -------
+        bool
+            ``True`` if the template existed and was deleted,
+            otherwise ``False``.
+        """
         name = validate_template_name(name)
         if name is None:
             return False
@@ -206,7 +285,19 @@ class TemplateManager:
             session.close()
 
     def get_template_by_id(self, template_id):
-        """Return template details for ``template_id`` if valid."""
+        """Return template details for ``template_id`` if valid.
+
+        Parameters
+        ----------
+        template_id : int
+            Primary key of the template record.
+
+        Returns
+        -------
+        dict
+            Template attributes or an empty ``dict`` if the ID is
+            invalid or not found.
+        """
 
         # Validate ``template_id`` before opening a session
         if not isinstance(template_id, int) or template_id <= 0:
@@ -224,6 +315,16 @@ class TemplateManager:
 
 
 def get_templates():
+    """Return all templates enriched with filesystem metadata.
+
+    Returns
+    -------
+    dict
+        Template attributes keyed by name with additional
+        ``last_screenshot_time`` and ``last_video_time`` fields
+        populated from the screenshot and video directories.
+    """
+
     manager = TemplateManager()
     templates = manager.get_templates()
     for template_name, details in templates.items():
@@ -240,6 +341,8 @@ def get_templates():
 
 
 def get_template(name):
+    """Return template details for ``name`` using :class:`TemplateManager`."""
+
     name = validate_template_name(name)
     if name is None:
         return None
@@ -249,6 +352,22 @@ def get_template(name):
 
 
 def save_template(name: str, template_data) -> bool:
+    """Save a template and ensure storage directories exist.
+
+    Parameters
+    ----------
+    name : str
+        Template name to create or update.
+    template_data : dict
+        Attributes used when saving the template.
+
+    Returns
+    -------
+    bool
+        ``True`` when the template is persisted, ``False`` if the
+        provided name fails validation.
+    """
+
     name = validate_template_name(name)
     if name is None:
         return False
@@ -264,6 +383,19 @@ def save_template(name: str, template_data) -> bool:
 
 
 def delete_template(name: str) -> bool:
+    """Delete ``name`` from the database and remove associated files.
+
+    Parameters
+    ----------
+    name : str
+        Template identifier.
+
+    Returns
+    -------
+    bool
+        ``True`` if the template was removed, otherwise ``False``.
+    """
+
     name = validate_template_name(name)
     if name is None:
         return False
@@ -281,7 +413,7 @@ def delete_template(name: str) -> bool:
 
 
 def get_template_by_id(template_id: int):
-    """Return template details by ``template_id`` if ``template_id`` is valid."""
+    """Return template details by ``template_id`` if valid."""
 
     if not isinstance(template_id, int) or template_id <= 0:
         return {}
@@ -291,6 +423,19 @@ def get_template_by_id(template_id: int):
 
 
 def get_screenshots_for_template(name: str) -> list:
+    """Return a list of screenshot filenames for ``name``.
+
+    Parameters
+    ----------
+    name : str
+        Template name used when locating the screenshot directory.
+
+    Returns
+    -------
+    list
+        Up to 100 screenshot filenames sorted newest first.
+    """
+
     name = validate_template_name(name)
     if name is None:
         return []
@@ -299,7 +444,10 @@ def get_screenshots_for_template(name: str) -> list:
     screenshots = [
         f
         for f in os.listdir(os.path.join(SCREENSHOT_DIRECTORY, name))
-        if f.startswith(name) and f.endswith(".png") and ".tmp" not in f and '.partial' not in f
+        if f.startswith(name)
+        and f.endswith(".png")
+        and ".tmp" not in f
+        and ".partial" not in f
     ]
 
     try:
@@ -316,6 +464,19 @@ def get_screenshots_for_template(name: str) -> list:
 
 
 def get_videos_for_template(name: str):
+    """Return a list of video filenames for ``name``.
+
+    Parameters
+    ----------
+    name : str
+        Template name whose video directory will be inspected.
+
+    Returns
+    -------
+    list
+        Up to 10 video filenames sorted newest first.
+    """
+
     name = validate_template_name(name)
     if name is None:
         return []
@@ -324,7 +485,7 @@ def get_videos_for_template(name: str):
     videos = [
         f
         for f in os.listdir(os.path.join(VIDEO_DIRECTORY, name))
-        if (f.startswith(name) or f.startswith('final_')) and f.endswith(".mp4")
+        if (f.startswith(name) or f.startswith("final_")) and f.endswith(".mp4")
     ]
     sorted_videos = sorted(
         videos,
@@ -332,25 +493,45 @@ def get_videos_for_template(name: str):
     )
     return sorted_videos[:10]
 
+
 def get_screenshot_count(name: str) -> int:
+    """Return the number of stored screenshots for ``name``."""
+
     name = validate_template_name(name)
     if name is None:
         return 0
     screenshot_path = os.path.join(SCREENSHOT_DIRECTORY, name)
     if not os.path.exists(screenshot_path):
         return 0
-    return len([f for f in os.listdir(screenshot_path) if f.endswith('.png')])
+    return len([f for f in os.listdir(screenshot_path) if f.endswith(".png")])
+
 
 def get_video_count(name: str) -> int:
+    """Return the number of stored videos for ``name``."""
+
     name = validate_template_name(name)
     if name is None:
         return 0
     video_path = os.path.join(VIDEO_DIRECTORY, name)
     if not os.path.exists(video_path):
         return 0
-    return len([f for f in os.listdir(video_path) if f.endswith('.mp4')])
+    return len([f for f in os.listdir(video_path) if f.endswith(".mp4")])
+
 
 def get_storage_usage(name: str) -> str:
+    """Calculate disk usage for ``name``.
+
+    Parameters
+    ----------
+    name : str
+        Template name to measure on disk.
+
+    Returns
+    -------
+    str
+        Human readable size of all screenshots and videos.
+    """
+
     name = validate_template_name(name)
     if name is None:
         return "0 B"
@@ -367,21 +548,67 @@ def get_storage_usage(name: str) -> str:
                         total_size += os.path.getsize(fp)
 
     # Convert to human-readable format
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
         if total_size < 1024.0:
             break
         total_size /= 1024.0
     return f"{total_size:.1f} {unit}"
 
+
+def record_llm_usage(name: str, tokens: int) -> None:
+    """Record token usage for ``name`` in ``LLM_USAGE_PATH``.
+
+    Parameters
+    ----------
+    name : str
+        Template name the tokens were used for.
+    tokens : int
+        Number of tokens consumed.
+    """
+    name = validate_template_name(name)
+    if name is None or tokens <= 0:
+        return
+
+    os.makedirs(os.path.dirname(LLM_USAGE_PATH), exist_ok=True)
+    try:
+        with open(LLM_USAGE_PATH, "r") as f:
+            data = json.load(f)
+    except Exception:
+        data = {}
+
+    data[name] = data.get(name, 0) + int(tokens)
+
+    try:
+        with open(LLM_USAGE_PATH, "w") as f:
+            json.dump(data, f)
+    except Exception as e:
+        logging.error("Failed to record LLM usage: %s", e)
+
+
 def get_llm_response_count(name: str) -> int:
-    # This is a placeholder. You'll need to implement a way to track LLM responses per template.
-    # For now, we'll return a random number as an example.
+    """Return the number of LLM responses recorded for ``name``.
+
+    This is currently a placeholder that returns a random number.
+    """
+
     return random.randint(10, 100)
 
+
 def get_llm_cost_estimate(name: str) -> str:
-    # This is a placeholder. You'll need to implement a way to track LLM costs per template.
-    # For now, we'll return a random cost as an example.
-    cost = random.uniform(0.5, 5.0)
+    """Estimate LLM cost for ``name`` based on recorded token usage."""
+
+    name = validate_template_name(name)
+    if name is None:
+        return "$0.00"
+
+    try:
+        with open(LLM_USAGE_PATH, "r") as f:
+            data = json.load(f)
+    except Exception:
+        data = {}
+
+    tokens = data.get(name, 0)
+    cost = tokens * LLM_COST_PER_TOKEN
     return f"${cost:.2f}"
 
 
@@ -416,9 +643,7 @@ def mark_offline(name: str) -> None:
     try:
         template = session.query(Template).filter_by(name=name).first()
         if template and not template.offline_since:
-            template.offline_since = datetime.utcnow().strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
+            template.offline_since = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
             session.commit()
     finally:
         session.close()

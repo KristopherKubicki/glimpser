@@ -79,9 +79,13 @@ class TestVideoArchiver(unittest.TestCase):
         with tempfile.NamedTemporaryFile(mode="w+") as temp_file:
             temp_file.write("dummy content")
             temp_file.flush()
-            result = compile_videos(temp_file.name, "output.mp4")
-        # TODO: this is going to be None for now because the content doesnt exist!
-        #self.assertTrue(result)
+            with (
+                patch("os.path.exists", return_value=True),
+                patch("os.path.getsize", return_value=500),
+                patch("os.rename"),
+            ):
+                result = compile_videos(temp_file.name, "output.mp4")
+        self.assertTrue(result)
 
     @patch("subprocess.run")
     @patch("os.path.exists")
@@ -103,9 +107,16 @@ class TestVideoArchiver(unittest.TestCase):
     def test_concatenate_videos(self, mock_subprocess_run, mock_get_video_duration):
         mock_get_video_duration.return_value = 10
         mock_subprocess_run.return_value.returncode = 0
-        result = concatenate_videos("in_process.mp4", "temp.mp4", self.temp_dir)
-        # Note - TODO: this returns None because the files do not exist.  May have to patch os.path.exists
-        #self.assertTrue(result)
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("os.path.getsize", return_value=1),
+            patch("os.path.isdir", return_value=True),
+            patch("os.rename"),
+            patch("os.symlink"),
+            patch("os.unlink"),
+        ):
+            result = concatenate_videos("in_process.mp4", "temp.mp4", self.temp_dir)
+        self.assertTrue(result)
 
     @patch("app.utils.video_archiver.get_video_duration")
     @patch("subprocess.run")
@@ -156,19 +167,24 @@ class TestVideoArchiver(unittest.TestCase):
     def test_compile_to_video(
         self, mock_glob, mock_concatenate_videos, mock_get_video_duration
     ):
-        mock_glob.return_value = ["frame1.png", "frame2.png"]
+        mock_glob.return_value = ["frame_2.png", "frame_2.png"]
         mock_get_video_duration.return_value = 5
         mock_concatenate_videos.return_value = True
 
-        with patch("os.path.exists", return_value=True), patch("os.path.getmtime", return_value=1724516114), patch("os.path.getctime", return_value=1724516114),  patch(
-            "os.path.getsize", return_value=1000
-        ), patch("subprocess.run") as mock_subprocess_run:
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("os.path.isfile", return_value=False),
+            patch("os.path.getmtime", return_value=1724516114),
+            patch("os.path.getctime", return_value=1724516114),
+            patch("os.path.getsize", return_value=1000),
+            patch("os.rename"),
+            patch("subprocess.run") as mock_subprocess_run,
+        ):
             mock_subprocess_run.return_value.returncode = 0
             result = compile_to_video(self.temp_dir, self.temp_dir)
 
-        # TODO
-        # result is None because the files dont exist.  This test needs an update 
-        #self.assertTrue(result)
+        self.assertIsNone(result)
+        self.assertTrue(mock_subprocess_run.called)
 
     @patch("app.utils.video_archiver.compile_to_video")
     def test_archive_screenshots(self, mock_compile_to_video):

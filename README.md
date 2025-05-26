@@ -19,6 +19,7 @@
 Glimpser is a straightforward yet powerful real-time monitoring application designed to capture, analyze, and summarize live data from various sources such as cameras, dashboards, and video streams. Utilizing advanced image processing techniques and AI models, Glimpser provides insightful summaries and alerts. It’s highly configurable, allowing users to tailor it to their specific monitoring needs through an easy-to-use interface.
 
 For more documentation, see the [documentation index](docs/index.md).
+You can find an overview of the docs folder in [docs/README.md](docs/README.md).
 Read a high-level [Architecture Overview](docs/architecture_overview.md) to understand how the pieces fit together.
 
 ![Glimpser August 2024](https://github.com/user-attachments/assets/44ddcbd5-31f1-4ff9-954a-954a85479dc0)
@@ -30,7 +31,7 @@ Read a high-level [Architecture Overview](docs/architecture_overview.md) to unde
 
 - **Motion Detection**: Automatically detects motion in the captured images and videos, triggering alerts and actions as configured by the user.
 
-- **AI Integration**: Integrates with models like LLaVA and ChatGPT to provide intelligent insights. It can summarize data, detect anomalies, and generate alerts based on predefined rules.
+- **AI Integration**: Integrates with models like ChatGPT to provide intelligent insights. It can summarize data, detect anomalies, and generate alerts based on predefined rules.
 
 - **Auto-captioning**: Automatically generates concise and informative captions for images and videos, providing quick insights into the content.
 
@@ -45,7 +46,7 @@ Read a high-level [Architecture Overview](docs/architecture_overview.md) to unde
   [HTTP Callback Guide](docs/http_callbacks.md) for setup details and payload
   examples.
 - **SMS Alerts**: Configure Twilio credentials to receive important notifications by text message.
-- **Camera Discovery**: Use the `/discover` page to automatically scan the local network for ONVIF or RTSP cameras.
+- **Camera Discovery**: Use the `/discover` page to automatically scan the local network for ONVIF, RTSP, and RTMP cameras.
 - **Local Cameras**: `/discover` also lists any available `/dev/video*` devices for easy webcam integration.
 
 - **Web Interface**: A user-friendly web interface allows for easy monitoring and configuration. Users can view live feeds, summaries, and configure settings without delving into the code.
@@ -164,9 +165,10 @@ To set up the project for development:
 
 ## Releases
 Release packages are built automatically when a version tag is pushed.
-The release workflow installs dependencies, runs the tests, and then executes
-`build_packages.sh`. If all steps succeed, a GitHub release is created for that
-tag and the resulting Debian package and Windows executable are uploaded.
+The workflow runs tests and creates the Debian package on an Ubuntu runner.
+The Windows executable is built separately on a Windows runner using
+`build_windows.py`. When both steps finish, the resulting Debian package and
+Windows binary are uploaded to the GitHub release for that tag.
 If the repository contains a `PYPI_API_TOKEN` secret, the workflow also
 builds Python distributions and publishes them to PyPI. These files can be
 downloaded from the Releases page or installed with `pip`.

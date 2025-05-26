@@ -1,6 +1,5 @@
-{% include 'header.html' %}
-
-<body>
+{% extends 'base.html' %}
+{% block content %}
     <script>
         // Track the last time the health endpoint failed
         window.lastHealthFailed = false;
@@ -84,7 +83,7 @@
     </style>
 
     <div class="video-container">
-        <img id="live-image">
+        <img id="live-image" alt="Live feed frame" title="Current frame from the live feed">
         <video id="live-video" style="display: none;" autoplay muted>
             <source src="" type="video/mp4">
             Your browser does not support the video tag.
@@ -605,7 +604,5 @@ function playMotion() {
         playMP4();
     </script>
 
-    {% include 'footer.html' %}
-</body>
-</html>
+{% endblock %}
 

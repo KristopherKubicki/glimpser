@@ -1,10 +1,6 @@
 
-{% include 'header.html' %}
-
-<body>
-    <header>
-        {% include 'nav.html' %}
-    </header>
+{% extends 'base.html' %}
+{% block content %}
 
 
         <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger">Logout</a>
@@ -14,12 +10,12 @@
 
     <h3>Add New Setting</h3>
     <form method="POST" action="{{ url_for('settings') }}">
-        <input type="hidden" name="action" value="add">
-        <label for="new_name">Name:</label>
-        <input type="text" id="new_name" name="new_name" required>
-        <label for="new_value">Value:</label>
-        <input type="text" id="new_value" name="new_value" required>
-        <button type="submit">Add Setting</button>
+        <input type="hidden" name="action" value="add" title="Add setting action">
+        <label for="new_name" title="Setting name">Name:</label>
+        <input type="text" id="new_name" name="new_name" required title="Enter setting name">
+        <label for="new_value" title="Setting value">Value:</label>
+        <input type="text" id="new_value" name="new_value" required title="Enter setting value">
+        <button type="submit" title="Add setting">Add Setting</button>
     </form>
 
     <form method="POST" action="{{ url_for('settings') }}">
@@ -36,30 +32,27 @@
                 <tr>
                     <td>{{ setting.name }}</td>
                     <td>
-                        <input type="text" name="{{ setting.name }}" value="{{ setting.value }}">
+                        <input type="text" name="{{ setting.name }}" value="{{ setting.value }}" title="Edit value for {{ setting.name }}">
                     </td>
                     <td>
-                        <button type="submit" name="action" value="delete" onclick="document.getElementById('name_to_delete').value='{{ setting.name }}'">Delete</button>
+                        <button type="submit" name="action" value="delete" title="Delete {{ setting.name }}" onclick="document.getElementById('name_to_delete').value='{{ setting.name }}'">Delete</button>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        <input type="hidden" id="name_to_delete" name="name_to_delete" value="">
-        <button type="submit">Save Changes</button>
+        <input type="hidden" id="name_to_delete" name="name_to_delete" value="" title="Name of setting to delete">
+        <button type="submit" title="Save all changes">Save Changes</button>
     </form>
 
     <h3>Configuration Management</h3>
     <form method="POST" action="{{ url_for('settings') }}" enctype="multipart/form-data">
-        <button type="submit" name="action" value="backup">Backup Configuration</button>
-        <button type="submit" name="action" value="download">Download Configuration</button>
-        <input type="file" name="file" accept=".json">
-        <button type="submit" name="action" value="upload">Upload Configuration</button>
+        <button type="submit" name="action" value="backup" title="Backup configuration">Backup Configuration</button>
+        <button type="submit" name="action" value="download" title="Download configuration">Download Configuration</button>
+        <input type="file" name="file" accept=".json" title="Select configuration file">
+        <button type="submit" name="action" value="upload" title="Upload configuration">Upload Configuration</button>
     </form>
 
-    {% include 'footer.html' %}
-
     <script src="{{ url_for('static', filename='js/performance.js') }}"></script>
-</body>
-</html>
+{% endblock %}
 

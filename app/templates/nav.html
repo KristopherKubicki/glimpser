@@ -1,5 +1,5 @@
 
-		<h1><a href='/'><img src='{{ url_for('static', filename='img/glimpser_small.png') }}' title='Glimpser'></a></h1>
+                <h1><a href='/'><img src='{{ url_for('static', filename='img/glimpser_small.png') }}' alt='Glimpser logo' title='Glimpser'></a></h1>
         <nav>
             <div class="nav-left">
                 {% for ag in active_groups %}
@@ -86,7 +86,7 @@ checkHealth();
                     </div>
                 </a>
 				    </td><td>
-                <a href='/settings' class="settings-icon" title="Settings" title='Update settings'>&#9881;</a>
+                <a href='/settings' class="settings-icon" title="Update settings">&#9881;</a>
 				    </td>
 
 

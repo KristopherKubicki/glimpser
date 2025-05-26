@@ -1,16 +1,6 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Login</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-	<header>
-
-	<h1><a href='/'><img src='{{ url_for('static', filename='img/glimpser_small.png') }}' title='Glimpser'></a></h1>
-	</header>
-
-	<center>
+{% extends 'base.html' %}
+{% block content %}
+    <center>
     <div class="login-container" title="Login form">
         <h2>Login Required</h2>
         <form method="post" title="Enter your credentials to log in">
@@ -25,9 +15,6 @@
             <input type="submit" value="Login" title="Click to log in">
         </form>
     </div>
-	</center>
-
-    {% include 'footer.html' %}
-</body>
-</html>
+        </center>
+{% endblock %}
 

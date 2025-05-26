@@ -1,13 +1,6 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Live Camera Feed</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-	<header>
-    {% include 'nav.html' %} 
-	</header>
+{% extends 'base.html' %}
+{% block content %}
+    <h2>Live Camera Feed</h2>
     <h2>Live Feed
     </h2>
 
@@ -46,6 +39,5 @@
         // Start playing the first camera
         playNextCamera();
     </script>
-</body>
-</html>
+{% endblock %}
 

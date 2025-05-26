@@ -1,11 +1,7 @@
 <!-- app/templates/index.html -->
 
-	{% include 'header.html' %} 
-
-<body>
-	<header>
-	{% include 'nav.html' %}
-	</header>
+{% extends 'base.html' %}
+{% block content %}
 
 <details title="Expand to add a new template">
     <summary>Add Template</summary>
@@ -156,7 +152,5 @@ function validateForm() {
     </div>
 
 
-    {% include 'footer.html' %}
-</body>
-</html>
+{% endblock %}
 
