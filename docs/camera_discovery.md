@@ -21,7 +21,7 @@ When you visit `/discover`, Glimpser calls `discover_cameras()` to scan the netw
 The discovery code combines multiple approaches:
 
 1. **ONVIF probe** – `_probe_onvif()` broadcasts a WS-Discovery probe and parses any replies to extract camera IP addresses and ONVIF service URLs.
-2. **RTSP port scan** – `_scan_rtsp_ports()` walks through the host's local subnets and checks common RTSP ports (`554` and `8554`) using `is_port_open`.
+2. **RTSP port scan** – `_scan_rtsp_ports()` checks common RTSP ports (`554` and `8554`). When a port is open it sends a DESCRIBE request to retrieve the stream's SDP, if available.
 3. **RTMP port scan** – `_scan_rtmp_ports()` checks each subnet for the default RTMP port (`1935`).
 4. **mDNS/Zeroconf** – `_probe_mdns()` looks for services like `_onvif._tcp` and `_rtsp._tcp` advertised on the local network.
 5. **Local devices** – `_local_video_devices()` lists available `/dev/video*` entries for webcams or other direct-attached cameras.
@@ -44,7 +44,11 @@ def _scan_rtsp_ports(subnets):
             ...
             for port in (554, 8554):
                 if is_port_open(ip, port, timeout=1):
-                    found.append({"ip": ip, "protocol": "rtsp", "port": port, "info": {}})
+                    info = {}
+                    sdp = _fetch_sdp(ip, port)
+                    if sdp:
+                        info["sdp"] = sdp
+                    found.append({"ip": ip, "protocol": "rtsp", "port": port, "info": info})
 
 
 def _scan_rtmp_ports(subnets):

@@ -115,6 +115,34 @@ def _probe_mdns(timeout=2):
     return cameras
 
 
+def _fetch_sdp(ip, port, timeout=2):
+    """Attempt to retrieve an SDP description from an RTSP endpoint."""
+    request = (
+        f"DESCRIBE rtsp://{ip}:{port}/ RTSP/1.0\r\n"
+        "CSeq: 1\r\n"
+        "Accept: application/sdp\r\n\r\n"
+    )
+    try:
+        with socket.create_connection((ip, port), timeout=timeout) as sock:
+            sock.sendall(request.encode())
+            response = b""
+            while True:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                response += chunk
+                if b"\r\n\r\n" in response:
+                    # headers done; assume SDP follows
+                    break
+        header, _, body = response.partition(b"\r\n\r\n")
+        if b"200" not in header.split(b"\r\n")[0]:
+            return None
+        return body.decode(errors="ignore")
+    except Exception as e:  # pragma: no cover - network
+        logging.debug("SDP fetch error for %s:%s: %s", ip, port, e)
+        return None
+
+
 def _scan_rtsp_ports(subnets):
     found = []
     checked = set()
@@ -126,8 +154,12 @@ def _scan_rtsp_ports(subnets):
             checked.add(ip)
             for port in (554, 8554):
                 if is_port_open(ip, port, timeout=1):
+                    info = {}
+                    sdp = _fetch_sdp(ip, port)
+                    if sdp:
+                        info["sdp"] = sdp
                     found.append(
-                        {"ip": ip, "protocol": "rtsp", "port": port, "info": {}}
+                        {"ip": ip, "protocol": "rtsp", "port": port, "info": info}
                     )
     return found
 
