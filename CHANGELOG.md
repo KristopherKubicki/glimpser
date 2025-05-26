@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Addressed Python build issues and string concatenation errors
 - Fixed screenshot timeouts and setup script problems
 
+## [0.2.2] - 2025-05-26
+
+### Changed
+- Bumped package version in setup.py to 0.2.2.
+
 ## [1.0.0] - 2023-06-15
 
 ### Added
@@ -50,5 +55,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - N/A
 
-[Unreleased]: https://github.com/KristopherKubicki/glimpser/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/KristopherKubicki/glimpser/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/KristopherKubicki/glimpser/releases/tag/v0.2.2
 [1.0.0]: https://github.com/KristopherKubicki/glimpser/releases/tag/v1.0.0
