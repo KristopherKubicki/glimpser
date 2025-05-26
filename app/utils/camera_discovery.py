@@ -10,6 +10,54 @@ import glob
 import time
 from .screenshots import is_port_open
 
+# Pre-built SNMPv1 GET request for sysName.0 using the "public" community.
+# This avoids requiring external dependencies and is sufficient for checking
+# whether a device responds to basic SNMP queries.
+SNMP_SYSNAME_REQUEST = bytes(
+    [
+        0x30,
+        0x26,
+        0x02,
+        0x01,
+        0x00,
+        0x04,
+        0x06,
+        0x70,
+        0x75,
+        0x62,
+        0x6C,
+        0x69,
+        0x63,
+        0xA0,
+        0x19,
+        0x02,
+        0x01,
+        0x01,
+        0x02,
+        0x01,
+        0x00,
+        0x02,
+        0x01,
+        0x00,
+        0x30,
+        0x0E,
+        0x30,
+        0x0C,
+        0x06,
+        0x08,
+        0x2B,
+        0x06,
+        0x01,
+        0x02,
+        0x01,
+        0x01,
+        0x05,
+        0x00,
+        0x05,
+        0x00,
+    ]
+)
+
 try:  # optional Zeroconf support
     from zeroconf import ServiceBrowser, Zeroconf
 except Exception:  # pragma: no cover - optional dependency may be missing
@@ -147,6 +195,50 @@ def _scan_rtmp_ports(subnets):
     return found
 
 
+def _snmp_get_sysname(ip, community="public", timeout=1):
+    """Return the sysName via SNMP or None if the host does not respond."""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.settimeout(timeout)
+        try:
+            sock.sendto(SNMP_SYSNAME_REQUEST, (ip, 161))
+            data, _ = sock.recvfrom(512)
+        except (socket.timeout, OSError):
+            return None
+
+    # The response includes the requested OID followed by an OctetString.
+    oid = b"\x06\x08\x2b\x06\x01\x02\x01\x01\x05\x00"
+    idx = data.find(oid)
+    if idx == -1:
+        return None
+    idx += len(oid)
+    if idx + 2 > len(data) or data[idx] != 0x04:
+        return None
+    length = data[idx + 1]
+    value = data[idx + 2 : idx + 2 + length]
+    try:
+        return value.decode(errors="ignore")
+    except Exception:
+        return None
+
+
+def _probe_snmp(subnets):
+    """Probe hosts via SNMP to see if they respond to sysName queries."""
+    found = []
+    checked = set()
+    for net in subnets:
+        for host in net.hosts():
+            ip = str(host)
+            if ip in checked:
+                continue
+            checked.add(ip)
+            name = _snmp_get_sysname(ip)
+            if name:
+                found.append(
+                    {"ip": ip, "protocol": "snmp", "port": 161, "info": {"name": name}}
+                )
+    return found
+
+
 def _local_video_devices(base_path="/dev"):
     """List available local video devices like /dev/video0."""
     devices = []
@@ -167,6 +259,7 @@ def discover_cameras():
         subnets = _local_subnets()
         cameras.extend(_scan_rtsp_ports(subnets))
         cameras.extend(_scan_rtmp_ports(subnets))
+        cameras.extend(_probe_snmp(subnets))
     except Exception as e:
         logging.warning("RTSP scan error: %s", e)
     try:

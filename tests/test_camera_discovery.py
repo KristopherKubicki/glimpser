@@ -88,12 +88,30 @@ class TestCameraDiscovery(unittest.TestCase):
         ]
         self.assertEqual(result, expected)
 
+    @patch("app.utils.camera_discovery._snmp_get_sysname")
+    def test_probe_snmp(self, mock_snmp_get):
+        mock_snmp_get.side_effect = lambda ip, community="public", timeout=1: (
+            "cam-snmp" if ip == "192.168.1.6" else None
+        )
+        subnets = [ip_network("192.168.1.5/255.255.255.252", strict=False)]
+        result = camera_discovery._probe_snmp(subnets)
+        expected = [
+            {
+                "ip": "192.168.1.6",
+                "protocol": "snmp",
+                "port": 161,
+                "info": {"name": "cam-snmp"},
+            }
+        ]
+        self.assertEqual(result, expected)
+
     @patch("app.utils.camera_discovery._probe_mdns")
     @patch("app.utils.camera_discovery._probe_onvif")
     @patch("app.utils.camera_discovery.is_port_open")
     @patch("app.utils.camera_discovery.psutil.net_if_addrs")
+    @patch("app.utils.camera_discovery._probe_snmp")
     def test_discover_cameras_merge(
-        self, mock_addrs, mock_port_open, mock_onvif, mock_mdns
+        self, mock_snmp, mock_addrs, mock_port_open, mock_onvif, mock_mdns
     ):
         mock_addrs.return_value = self._mock_interfaces()
         mock_port_open.side_effect = self._port_open_side_effect
@@ -109,12 +127,26 @@ class TestCameraDiscovery(unittest.TestCase):
         mock_mdns.return_value = [
             {"ip": "192.168.1.7", "protocol": "mdns", "port": 8080, "info": {}}
         ]
+        mock_snmp.return_value = [
+            {
+                "ip": "192.168.1.6",
+                "protocol": "snmp",
+                "port": 161,
+                "info": {"name": "cam-snmp"},
+            }
+        ]
         result = camera_discovery.discover_cameras()
         expected = [
             {"ip": "192.168.1.6", "protocol": "onvif", "port": 80, "info": {}},
             {"ip": "192.168.1.6", "protocol": "rtsp", "port": 554, "info": {}},
             {"ip": "10.0.0.6", "protocol": "rtsp", "port": 8554, "info": {}},
             {"ip": "192.168.1.6", "protocol": "rtmp", "port": 1935, "info": {}},
+            {
+                "ip": "192.168.1.6",
+                "protocol": "snmp",
+                "port": 161,
+                "info": {"name": "cam-snmp"},
+            },
             {"ip": "192.168.1.7", "protocol": "mdns", "port": 8080, "info": {}},
             {
                 "ip": "127.0.0.1",

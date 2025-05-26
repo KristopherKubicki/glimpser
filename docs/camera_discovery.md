@@ -23,8 +23,9 @@ The discovery code combines multiple approaches:
 1. **ONVIF probe** – `_probe_onvif()` broadcasts a WS-Discovery probe and parses any replies to extract camera IP addresses and ONVIF service URLs.
 2. **RTSP port scan** – `_scan_rtsp_ports()` walks through the host's local subnets and checks common RTSP ports (`554` and `8554`) using `is_port_open`.
 3. **RTMP port scan** – `_scan_rtmp_ports()` checks each subnet for the default RTMP port (`1935`).
-4. **mDNS/Zeroconf** – `_probe_mdns()` looks for services like `_onvif._tcp` and `_rtsp._tcp` advertised on the local network.
-5. **Local devices** – `_local_video_devices()` lists available `/dev/video*` entries for webcams or other direct-attached cameras.
+4. **SNMP probe** – `_probe_snmp()` queries each host for a basic `sysName` response on port `161`.
+5. **mDNS/Zeroconf** – `_probe_mdns()` looks for services like `_onvif._tcp` and `_rtsp._tcp` advertised on the local network.
+6. **Local devices** – `_local_video_devices()` lists available `/dev/video*` entries for webcams or other direct-attached cameras.
 
 All discovered entries are merged and returned. The key parts of the implementation are shown below:
 
@@ -55,6 +56,15 @@ def _scan_rtmp_ports(subnets):
                 found.append({"ip": ip, "protocol": "rtmp", "port": 1935, "info": {}})
 
 
+def _probe_snmp(subnets):
+    for net in subnets:
+        for host in net.hosts():
+            ...
+            name = _snmp_get_sysname(ip)
+            if name:
+                found.append({"ip": ip, "protocol": "snmp", "port": 161, "info": {"name": name}})
+
+
 def _local_video_devices(base_path="/dev"):
     for path in glob.glob(os.path.join(base_path, "video*")):
         found.append({"ip": path, "protocol": "local", "port": 0, "info": {}})
@@ -72,7 +82,7 @@ metrics page.
 
 ## Common cameras to try
 
-Any IP camera that supports **ONVIF**, **RTSP**, or **RTMP** streams should show
+Any IP camera that supports **ONVIF**, **RTSP**, **RTMP**, or **SNMP** streams should show
 up in the discovery list. The following brands are frequently used and respond
 well to the existing discovery methods:
 
