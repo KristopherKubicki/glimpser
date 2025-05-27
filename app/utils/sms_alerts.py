@@ -1,10 +1,21 @@
+"""Utilities for sending SMS alerts via Twilio."""
+
 import logging
 
 from app.config import TWILIO_SID, TWILIO_TOKEN, TWILIO_NUMBER
 
 
 def send_sms_alert(message):
-    """Send an SMS alert using Twilio if credentials are configured."""
+    """Send an SMS alert using Twilio.
+
+    Parameters
+    ----------
+    message : str
+        Body text for the SMS message.
+
+    The alert is only attempted if ``TWILIO_SID``, ``TWILIO_TOKEN`` and
+    ``TWILIO_NUMBER`` are all configured. Any failure is logged.
+    """
     if not all([TWILIO_SID, TWILIO_TOKEN, TWILIO_NUMBER]):
         logging.info("SMS alerts are disabled.")
         return
@@ -24,5 +35,15 @@ def send_sms_alert(message):
 
 
 def sms_alert(event_type, details):
+    """Format and send an SMS alert for an event.
+
+    Parameters
+    ----------
+    event_type : str
+        Identifier for the type of event.
+    details : str
+        Additional information about the event.
+    """
+
     body = f"Glimpser Alert: {event_type}\n\nDetails:\n{details}"
     send_sms_alert(body)

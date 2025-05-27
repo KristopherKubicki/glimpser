@@ -1,7 +1,9 @@
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+"""Helpers for sending email notifications."""
+
 import logging
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from app.config import (
     EMAIL_ENABLED,
     EMAIL_SENDER,
@@ -15,6 +17,18 @@ from app.config import (
 
 
 def send_email_alert(subject, body):
+    """Send an email to the configured recipients.
+
+    Parameters
+    ----------
+    subject : str
+        Subject line for the email.
+    body : str
+        Plain-text body content.
+
+    The function checks ``EMAIL_ENABLED`` before attempting to send the
+    message. Connection errors are logged.
+    """
     if not EMAIL_ENABLED.lower() == "true":
         logging.info("Email alerts are disabled.")
         return
@@ -41,6 +55,16 @@ def send_email_alert(subject, body):
 
 
 def email_alert(event_type, details):
+    """Compose a standard alert email and send it.
+
+    Parameters
+    ----------
+    event_type : str
+        Identifier for the type of event.
+    details : str
+        Additional information about the event.
+    """
+
     subject = f"Glimpser Alert: {event_type}"
     body = f"Event Type: {event_type}\n\nDetails:\n{details}"
     send_email_alert(subject, body)
