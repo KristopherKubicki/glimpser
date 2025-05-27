@@ -9,9 +9,10 @@ import logging
 import io
 from PIL import Image
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.utils.screenshots import capture_screenshot_and_har, download_image
+
 
 class TestScreenshotCapture(unittest.TestCase):
     def setUp(self):
@@ -23,23 +24,51 @@ class TestScreenshotCapture(unittest.TestCase):
             os.remove(self.output_path)
         os.rmdir(self.temp_dir)
 
+    @patch("app.utils.screenshots.kill_driver_process")
+    @patch("app.utils.screenshots.add_timestamp")
+    @patch("app.utils.screenshots.get_chrome_version")
+    @patch("app.utils.screenshots.get_chrome_path")
+    @patch("app.utils.screenshots.ChromeDriverManager")
     @patch("app.utils.screenshots.webdriver.Chrome")
-    def test_capture_screenshot_success(self, mock_chrome):
-        # Mock the Chrome driver and its methods
+    def test_capture_screenshot_success(
+        self,
+        mock_chrome,
+        mock_manager,
+        mock_get_chrome_path,
+        mock_get_chrome_version,
+        mock_add_ts,
+        mock_kill,
+    ):
+        """capture_screenshot_and_har should write a PNG on success."""
+
+        # stub functions that interact with the environment
+        mock_kill.return_value = None
+        mock_add_ts.return_value = None
+        mock_get_chrome_path.return_value = "/usr/bin/google-chrome"
+        mock_get_chrome_version.return_value = 100
+        mock_manager.return_value.install.return_value = "/tmp/driver"
+
+        # create a mock Chrome driver
         mock_driver = MagicMock()
         mock_chrome.return_value = mock_driver
+        mock_driver.quit.return_value = None
         mock_driver.get.return_value = None
-        mock_driver.save_screenshot.return_value = True
 
-        # Call the function
+        # create a tiny PNG when save_screenshot is called
+        def save_png(path):
+            Image.new("RGB", (100, 100)).save(path, format="PNG")
+            return True
+
+        mock_driver.save_screenshot.side_effect = save_png
+
         result = capture_screenshot_and_har("http://example.com", self.output_path)
 
-        # Assertions
-        #self.assertTrue(result)  # assuming network connetion... 
-        # TODO: cleant his up 
-        #self.assertTrue(os.path.exists(self.output_path))
-        #mock_driver.get.assert_called_once_with("http://example.com")
-        #mock_driver.save_screenshot.assert_called_once_with(self.output_path)
+        self.assertTrue(result)
+        self.assertTrue(os.path.exists(self.output_path))
+        with Image.open(self.output_path) as im:
+            self.assertEqual(im.format, "PNG")
+
+        mock_driver.get.assert_called_once_with("http://example.com")
 
     @patch("app.utils.screenshots.webdriver.Chrome")
     def test_capture_screenshot_with_popup(self, mock_chrome):
@@ -56,10 +85,10 @@ class TestScreenshotCapture(unittest.TestCase):
         )
 
         # Assertions
-        #self.assertTrue(result)
-        #self.assertTrue(os.path.exists(self.output_path))
-        #mock_driver.find_elements.assert_called_once()
-        #mock_driver.execute_script.assert_called_once()
+        # self.assertTrue(result)
+        # self.assertTrue(os.path.exists(self.output_path))
+        # mock_driver.find_elements.assert_called_once()
+        # mock_driver.execute_script.assert_called_once()
 
     @patch("app.utils.screenshots.webdriver.Chrome")
     def test_capture_screenshot_failure(self, mock_chrome):
@@ -70,8 +99,8 @@ class TestScreenshotCapture(unittest.TestCase):
         result = capture_screenshot_and_har("http://example.com", self.output_path)
 
         # Assertions
-        #self.assertFalse(result)
-        #self.assertFalse(os.path.exists(self.output_path))
+        # self.assertFalse(result)
+        # self.assertFalse(os.path.exists(self.output_path))
 
     @patch("app.utils.screenshots.webdriver.Chrome")
     @patch("app.utils.screenshots.is_mostly_blank")
@@ -89,9 +118,9 @@ class TestScreenshotCapture(unittest.TestCase):
         result = capture_screenshot_and_har("http://example.com", self.output_path)
 
         # Assertions
-        #self.assertFalse(result) # i think this is going to be True, not false... 
-        #self.assertFalse(os.path.exists(self.output_path))
-        #mock_is_mostly_blank.assert_called_once()
+        # self.assertFalse(result) # i think this is going to be True, not false...
+        # self.assertFalse(os.path.exists(self.output_path))
+        # mock_is_mostly_blank.assert_called_once()
 
     @patch("app.utils.screenshots.webdriver.Chrome")
     def test_capture_screenshot_with_dark_mode(self, mock_chrome):
@@ -107,11 +136,11 @@ class TestScreenshotCapture(unittest.TestCase):
         )
 
         # Assertions
-        #self.assertTrue(result)
-        #self.assertTrue(os.path.exists(self.output_path))
-        #mock_driver.execute_cdp_cmd.assert_called_with(
+        # self.assertTrue(result)
+        # self.assertTrue(os.path.exists(self.output_path))
+        # mock_driver.execute_cdp_cmd.assert_called_with(
         #    "Emulation.setAutoDarkModeOverride", {"enabled": True}
-        #)
+        # )
 
     @patch("app.utils.screenshots.http_session")
     def test_download_image_uses_proxy(self, mock_session_factory):
@@ -138,6 +167,6 @@ class TestScreenshotCapture(unittest.TestCase):
             {"http": "http://proxy:8080", "https": "http://proxy:8080"},
         )
 
+
 if __name__ == "__main__":
     unittest.main()
-
