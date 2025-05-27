@@ -5,6 +5,7 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [API Documentation](api_documentation.md)
 - [Capture Process](capture_process.md)
 - [Configuration Guide](configuration_guide.md)
+- [Video Archiver](video_archiver.md)
 - [Developer Guide](developer_guide.md)
 - [Release Workflow](release_workflow.md)
 - [Docker Build Verification](docker_build.md)
