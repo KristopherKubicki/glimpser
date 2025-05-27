@@ -524,8 +524,16 @@ def generate(group=None, filename="latest_camera.png", rtsp=False, session_id=No
         time.sleep(1 - (time.time() - ltime))
 
 def allowed_filename(filename: str) -> bool:
+    r"""Return ``True`` when ``filename`` contains only safe characters.
 
-    if '..' in filename:
+    The function first rejects any occurrence of ``".."`` to prevent
+    directory traversal. It then matches the entire filename against the
+    regular expression ``^[a-zA-Z0-9\.\-_]+?$`` which allows only letters,
+    numbers, periods, hyphens, and underscores. A match means the filename
+    is free of path separators or other dangerous characters.
+    """
+
+    if ".." in filename:
         return False
 
     if re.findall(r'^[a-zA-Z0-9\.\-_]+?$', filename):
