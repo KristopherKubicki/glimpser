@@ -19,7 +19,7 @@ The Glimpser project uses a modular approach to capture content from various sou
 
 The main entry point for the capture process is the `capture_or_download` function in `app/utils/screenshots.py`. This function orchestrates the entire capture process by:
 
-1. Parsing the input URL and checking if the host is reachable
+1. Parsing the input URL and checking if the host is reachable (for network URLs)
 2. Determining the content type
 3. Choosing the appropriate capture method based on the content type and other parameters
 4. Handling the capture process and any necessary post-processing
@@ -30,7 +30,7 @@ The general flow of the capture process is as follows:
 
 1. **Input Validation**: Check if the provided name and template are valid.
 2. **URL Parsing**: Extract the domain and port from the URL.
-3. **Host Reachability Check**: Ensure the target host is reachable.
+3. **Host Reachability Check**: For network URLs, ensure the target host is reachable.
 4. **Output Path Preparation**: Generate a unique output path for the captured content.
 5. **Content Type Determination**: Analyze the URL and perform a HEAD request to determine the content type.
 6. **Capture Method Selection**: Choose the appropriate capture method based on the content type and other parameters.
@@ -51,7 +51,7 @@ Glimpser uses different methods to capture various types of content:
 
 For web pages, Glimpser uses two main approaches:
 
-1. **Lightweight Browser Capture**: Uses `wkhtmltoimage` for simple web pages without complex JavaScript or popup handling requirements.
+1. **Lightweight Browser Capture**: Uses `wkhtmltoimage` for simple web pages without complex JavaScript or popup handling requirements. The URL and output path are passed directly to `wkhtmltoimage` without shell quoting.
 2. **Full Browser Capture**: Uses Selenium with Chrome/Chromium for more complex web pages, supporting JavaScript execution, popup handling, and custom selectors.
 
 The choice between these methods depends on factors such as:

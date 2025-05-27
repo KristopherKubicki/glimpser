@@ -35,7 +35,6 @@ class ConcatStatus(Enum):
     FATAL = auto()
 
 
-
 def touch(fname, times=None):
     with open(fname, "a"):
         os.utime(fname, times)
@@ -43,6 +42,70 @@ def touch(fname, times=None):
 
 def trim_group_name(group_name):
     return group_name.replace(" ", "_").lower()
+
+
+def run_ffmpeg(command):
+    """Execute an FFmpeg command and log output."""
+    result = subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if result.stdout:
+        logging.debug("ffmpeg stdout: %s", result.stdout.strip())
+    if result.stderr:
+        logging.debug("ffmpeg stderr: %s", result.stderr.strip())
+    if result.returncode != 0:
+        raise subprocess.CalledProcessError(
+            result.returncode, command, output=result.stdout, stderr=result.stderr
+        )
+    return result
+
+
+def get_video_creation_time(video_path):
+    """Return the creation_time metadata as a datetime object."""
+    command = [
+        FFPROBE_PATH,
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "format_tags=creation_time",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        os.path.abspath(video_path),
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        if result.stdout.strip():
+            ctime = result.stdout.strip().replace("Z", "")
+            return datetime.datetime.fromisoformat(ctime)
+    except Exception as e:
+        logging.debug("ffprobe error %s", e)
+    return None
+
+
+def is_video_expired(video_path, max_age_days):
+    """Return True if the video is older than max_age_days."""
+    if not os.path.exists(video_path):
+        return False
+    now = datetime.datetime.utcnow()
+    try:
+        ctime = datetime.datetime.fromtimestamp(os.path.getctime(video_path))
+        age = (now - ctime).total_seconds()
+    except Exception:
+        age = 0
+    meta_time = get_video_creation_time(video_path)
+    if meta_time:
+        age = max(age, (now - meta_time).total_seconds())
+    return age > max_age_days * 86400
 
 
 def compile_to_teaser():
@@ -112,44 +175,41 @@ def compile_videos(input_file, output_file):
     create_command = [FFMPEG_PATH]
     if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
         create_command.extend(["-hwaccel", FFMPEG_HWACCEL])
-    create_command.extend([
-        "-threads",
-        "5",
-        "-err_detect",
-        "ignore_err",
-        "-fflags",
-        "+igndts+ignidx+genpts+fastseek+discardcorrupt",
-        "-an",
-        "-dn",
-        "-f",
-        "concat",
-        "-safe",  
-        "0", 
-        "-i",
-        os.path.abspath(input_file),
-        "-c",
-        "copy",
-        "-movflags",
-        "+faststart",
-        "-y",
-        os.path.abspath(output_file),
-    ])
+    create_command.extend(
+        [
+            "-threads",
+            "5",
+            "-err_detect",
+            "ignore_err",
+            "-fflags",
+            "+igndts+ignidx+genpts+fastseek+discardcorrupt",
+            "-an",
+            "-dn",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            os.path.abspath(input_file),
+            "-c",
+            "copy",
+            "-movflags",
+            "+faststart",
+            "-y",
+            os.path.abspath(output_file),
+        ]
+    )
 
     try:
-        subprocess.run(
-            create_command, check=True, 
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.PIPE
-        )
-        # print(' cmd:', ' '.join(create_command))
-        # subprocess.run(create_command)
+        run_ffmpeg(create_command)
         if os.path.exists(output_file) and os.path.getsize(output_file) > 300:
+            if is_video_expired(output_file, MAX_COMPRESSED_VIDEO_AGE):
+                logging.info("Rotating expired output %s", output_file)
             os.rename(output_file, output_file.replace(".tmp", ""))
             return True
         # otherwise, do something? clean up the file maybe?
-    except Exception:
-        # print("FFmpeg command failed:", ' '.join(create_command), e)
-        # log to an error instead!
+    except Exception as e:
+        logging.error("FFmpeg command failed: %s", e)
         if os.path.exists(output_file):
             os.unlink(output_file)
 
@@ -197,44 +257,40 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
             concat_command = [FFMPEG_PATH]
             if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
                 concat_command.extend(["-hwaccel", FFMPEG_HWACCEL])
-            concat_command.extend([
-                "-threads",
-                "5", # todo, make this a config
-                #"-safe",  Option not found?  But it is found and used elsewhere?  Not surewhy this is..
-                #"0",
-                "-err_detect",
-                "ignore_err",
-                "-fflags",
-                "+igndts+ignidx+genpts+fastseek+discardcorrupt",
-                "-an",
-                "-dn",
-                "-c:v",
-                "h264",
-                "-i",
-                os.path.abspath(in_process_video),
-                "-i",
-                os.path.abspath(temp_video),
-                "-filter_complex",
-                "[0:v:0][1:v:0]concat=n=2:v=1:a=0[outv]",
-                "-map",
-                "[outv]",
-                "-c:v",
-                "libx264",
-                "-pix_fmt",
-                "yuv420p",
-                "-movflags",
-                "+faststart",
-                "-y",
-                os.path.abspath(concat_video),  # Overwrite the in-process video
-            ])
+            concat_command.extend(
+                [
+                    "-threads",
+                    "5",  # todo, make this a config
+                    # "-safe",  Option not found?  But it is found and used elsewhere?  Not surewhy this is..
+                    # "0",
+                    "-err_detect",
+                    "ignore_err",
+                    "-fflags",
+                    "+igndts+ignidx+genpts+fastseek+discardcorrupt",
+                    "-an",
+                    "-dn",
+                    "-c:v",
+                    "h264",
+                    "-i",
+                    os.path.abspath(in_process_video),
+                    "-i",
+                    os.path.abspath(temp_video),
+                    "-filter_complex",
+                    "[0:v:0][1:v:0]concat=n=2:v=1:a=0[outv]",
+                    "-map",
+                    "[outv]",
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-movflags",
+                    "+faststart",
+                    "-y",
+                    os.path.abspath(concat_video),  # Overwrite the in-process video
+                ]
+            )
             try:
-                # TODO: check stdout and stderr
-                subprocess.run(
-                    concat_command,
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
+                run_ffmpeg(concat_command)
                 os.rename(concat_video, in_process_video)
                 output_video = os.path.join(VIDEO_DIRECTORY, "latest_camera.mp4")
                 if os.path.exists(output_video + ".tmp"):
@@ -253,7 +309,9 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
                 if status == ConcatStatus.RETRY and retries > 0:
                     logging.info("Retrying concatenation due to transient error")
                     time.sleep(1)
-                    return concatenate_videos(in_process_video, temp_video, video_path, retries=retries - 1)
+                    return concatenate_videos(
+                        in_process_video, temp_video, video_path, retries=retries - 1
+                    )
                 elif status == ConcatStatus.RECOVERED:
                     return True
                 else:
@@ -305,23 +363,18 @@ def compile_to_video(camera_path, video_path) -> bool:
 
     in_process_video = os.path.join(video_path, "in_process.mp4")
 
-    # Check if there is an "in-process" video and its size
-    # TODO: check the creation_time and if it exceeds the alotment, then alos roll over
+    # Check size and age of the in-process video for rotation
     if os.path.isfile(in_process_video):
         file_size_exceeded = (
             os.path.getsize(in_process_video) > MAX_IN_PROCESS_VIDEO_SIZE
         )
-        file_age_exceeded = (
-            datetime.datetime.utcnow()
-            - datetime.datetime.fromtimestamp(os.path.getctime(in_process_video))
-        ).total_seconds() > MAX_COMPRESSED_VIDEO_AGE * 60 * 60 * 24 * 7
+        file_age_exceeded = is_video_expired(in_process_video, MAX_COMPRESSED_VIDEO_AGE)
 
         # condsider when the length is 2x300 frames as well.  so we always have perfect overlap at 2x
 
         if file_size_exceeded or file_age_exceeded:
             # Rename the "in-process" video to a "final" video with a timestamp
             final_video_name = f"final_{int(os.path.getmtime(in_process_video))}.mp4"
-            # TODO: should we optimize the timing better?
             final_video_path = os.path.join(video_path, final_video_name)
             os.rename(in_process_video, final_video_path)
             # print(f'Video finalized: {final_video_path}')
@@ -350,7 +403,7 @@ def compile_to_video(camera_path, video_path) -> bool:
         # print(f'Video finalized: {final_video_path}')  #log instead
         # this is going to generate overlapping segments, which is OK for now .
 
-    #print("OK", glob.glob(camera_path + "/*.png"))
+    # print("OK", glob.glob(camera_path + "/*.png"))
 
     # Filter the list of image files to include only those that are newer than the video
     new_files = [
@@ -360,7 +413,7 @@ def compile_to_video(camera_path, video_path) -> bool:
     ]
     new_files = sorted(new_files)
 
-    #print("compile", time.time(), video_mod_time, len(new_files))
+    # print("compile", time.time(), video_mod_time, len(new_files))
 
     if len(new_files) > 0:
         # Create a temporary file with the list of new frames
@@ -385,36 +438,38 @@ def compile_to_video(camera_path, video_path) -> bool:
         create_command = [FFMPEG_PATH]
         if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
             create_command.extend(["-hwaccel", FFMPEG_HWACCEL])
-        create_command.extend([
-            "-threads",
-            "5",
-            "-f",
-            "concat",
-            "-r",
-            "25",  # for some reason the standard for png?
-            "-c:v",
-            "png",
-            "-use_wallclock_as_timestamps",
-            "1",
-            "-err_detect",
-            "ignore_err",
-            "-fflags",
-            "+igndts+ignidx+genpts+fastseek+discardcorrupt",
-            "-copyts",
-            "-start_at_zero",
-            "-safe",
-            "0",
-            "-i",
-            os.path.abspath(temp_file_path),
-            "-c:v",
-            "libx264",
-            "-pix_fmt",
-            "yuv420p",
-            "-vf",
-            "fps=30,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
-            "-movflags",
-            "+faststart",
-        ])
+        create_command.extend(
+            [
+                "-threads",
+                "5",
+                "-f",
+                "concat",
+                "-r",
+                "25",  # for some reason the standard for png?
+                "-c:v",
+                "png",
+                "-use_wallclock_as_timestamps",
+                "1",
+                "-err_detect",
+                "ignore_err",
+                "-fflags",
+                "+igndts+ignidx+genpts+fastseek+discardcorrupt",
+                "-copyts",
+                "-start_at_zero",
+                "-safe",
+                "0",
+                "-i",
+                os.path.abspath(temp_file_path),
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-vf",
+                "fps=30,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
+                "-movflags",
+                "+faststart",
+            ]
+        )
         create_command.extend(
             ["-metadata", "creation_time=%sZ" % datetime.datetime.utcnow()]
         )
@@ -426,21 +481,11 @@ def compile_to_video(camera_path, video_path) -> bool:
 
         lout, lerr = None, None
         try:
-            #print("CMD", lcount, ' '.join(create_command))
-            subprocess.run(
-                create_command,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            # subprocess.run(create_command, check=True, stdout=subprocess.PIPE)
-            # subprocess.run(create_command, check=True)
+            run_ffmpeg(create_command)
+            if is_video_expired(temp_video, MAX_COMPRESSED_VIDEO_AGE):
+                logging.warning("creation time mismatch for %s", temp_video)
         except Exception as e:
-            #print("FFmpeg command failed:", e)
-            #print(">>>> JOIN:", ' '.join(create_command))
-            # subprocess.run(create_command, check=True)
-            # TODO: log this better!
-            pass
+            logging.error("FFmpeg command failed: %s", e)
 
         finally:
 
@@ -449,21 +494,21 @@ def compile_to_video(camera_path, video_path) -> bool:
 
             # Concatenate the temporary video with the existing in-process video
             if os.path.getsize(temp_video) > 0 and video_mod_time == 0:
-                #print("concatenate skip...", temp_video, lcount) # warning
+                # print("concatenate skip...", temp_video, lcount) # warning
                 os.rename(temp_video, in_process_video)
             else:
                 ldur2 = get_video_duration(temp_video)
                 if os.path.getsize(temp_video) > 0 and ldur2 == 300 / 25:
-                    #print("concatenate skip2...", temp_video, lcount) # warning
+                    # print("concatenate skip2...", temp_video, lcount) # warning
                     os.rename(temp_video, in_process_video)
                 elif round(ldur2, 1) == round(
                     (len(new_files) / 25), 1
                 ):  # this is a perfect encode...
-                    #print(" detected perfect encode... concatenating...", ldur, ldur2, len(new_files) / 25, video_mod_time, camera_path, os.path.getsize(temp_video), os.path.getsize(in_process_video))
+                    # print(" detected perfect encode... concatenating...", ldur, ldur2, len(new_files) / 25, video_mod_time, camera_path, os.path.getsize(temp_video), os.path.getsize(in_process_video))
                     concatenate_videos(in_process_video, temp_video, video_path)
                 else:
                     # this means a lot of frame drops
-                    #print("warning encoding miss!", lcount, video_mod_time, temp_video, os.path.getsize(temp_video) , ldur, ldur2, len(new_files) / 25, os.path.getsize(temp_video), os.path.getsize(in_process_video))
+                    # print("warning encoding miss!", lcount, video_mod_time, temp_video, os.path.getsize(temp_video) , ldur, ldur2, len(new_files) / 25, os.path.getsize(temp_video), os.path.getsize(in_process_video))
                     # subprocess.run(create_command, check=True)
                     # yeah concatenate anyway
                     ltest = concatenate_videos(in_process_video, temp_video, video_path)

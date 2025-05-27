@@ -11,4 +11,5 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Screenshot utility functions now have dedicated unit tests.
 - Application version bumped to `v0.2.4`.
 - Template and live views now show camera metadata, and PNG streams stop when switching sources.
+- Templates are rescheduled when saved to apply the new settings.
 

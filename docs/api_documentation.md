@@ -45,6 +45,8 @@ Example response:
 ```json
 {"status": "success", "message": "Template saved"}
 ```
+Saving a template automatically stops any scheduled job for that
+camera and reschedules it using the updated parameters.
 
 **DELETE /templates**
 
@@ -97,7 +99,7 @@ Several other routes provide streaming functionality:
 - **GET /motion_caption.mjpg** – Combines motion and caption frames in a single MJPEG stream.
 - **GET /stream.m3u8** – HLS playlist referencing the latest videos from all cameras.
 - **GET /last_video/<template_name>** – Download the most recent MP4 for the given template.
-- **GET /last_screenshot/<template_name>** – Retrieve the latest screenshot for a template.
+- **GET /last_screenshot/<template_name>** – Retrieve the latest screenshot for a template. Returns `404` if no valid screenshot is found.
 - **GET /last_teaser** – Returns the teaser video compiled from recent footage.
 - **GET /test.rtsp** – Basic RTSP endpoint that serves MJPEG frames when used with `/rtsp_stream`.
 

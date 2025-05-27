@@ -14,10 +14,10 @@ import subprocess
 import time
 from urllib.parse import urlparse
 import glob
-import shlex
 import base64
 import nodriver
 import psutil
+from werkzeug.utils import secure_filename
 import urllib3
 from dateutil import tz
 
@@ -923,14 +923,15 @@ def capture_or_download(name: str, template: dict) -> bool:
         browser = True
         headless = True
 
-    # Check if the host is reachable
+    # Check if the host is reachable for network URLs
     domain, port = parse_url(url)
 
-    lreach = is_address_reachable(domain, port=port)
-    if lreach is False:
-        logging.debug(f"Could not reach host: {name} {url}")
-        cas_error(url)
-        return False
+    if domain:
+        lreach = is_address_reachable(domain, port=port)
+        if lreach is False:
+            logging.debug(f"Could not reach host: {name} {url}")
+            cas_error(url)
+            return False
 
     # Prepare output path
     timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
@@ -1573,8 +1574,8 @@ def capture_screenshot_and_har_light(
         "User-Agent",
         lua,
         "--custom-header-propagation",
-        shlex.quote(url),
-        shlex.quote(tmp_path),
+        url,
+        tmp_path,
     ]
 
     try:
@@ -2533,3 +2534,36 @@ def _save_har_logs(driver, har_output_path):
 
     except Exception as e:
         logging.error(f"Could not fetch performance logs: {e}")
+
+
+def create_blank_frame(name: str, size=(1280, 720)) -> str:
+    """Generate a blank screenshot for ``name``.
+
+    A timestamp and camera name are added so the resulting image can be
+    spliced into video sequences when templates change.
+
+    Parameters
+    ----------
+    name : str
+        Template identifier used to determine the storage path.
+
+    size : tuple, optional
+        Image width and height. Defaults to ``(1280, 720)``.
+
+    Returns
+    -------
+    str
+        Absolute path to the created image.
+    """
+
+    output_dir = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(name))
+    os.makedirs(output_dir, exist_ok=True)
+
+    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    image_path = os.path.join(output_dir, f"{name}_{timestamp}_blank.png")
+
+    image = Image.new("RGB", size, (0, 0, 0))
+    image.save(image_path, "PNG")
+    add_timestamp(image_path, name=name)
+
+    return image_path
