@@ -10,5 +10,4 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Retention policy file sorting is also verified by tests.
 - Screenshot utility functions now have dedicated unit tests.
 - Application version bumped to `v0.2.4`.
-- Filename validation helper now documents the regex used to reject unsafe names.
 
