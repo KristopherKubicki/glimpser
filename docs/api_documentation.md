@@ -98,7 +98,7 @@ Several other routes provide streaming functionality:
 - **GET /stream.m3u8** – HLS playlist referencing the latest videos from all cameras.
 - **GET /last_video/<template_name>** – Download the most recent MP4 for the given template.
 - **GET /last_screenshot/<template_name>** – Retrieve the latest screenshot for a template.
-- **GET /last_teaser** – Returns the teaser video compiled from recent footage.
+- **GET /last_teaser** – Returns the teaser video compiled from recent footage. Accepts an optional `group` query parameter to retrieve a group-specific teaser, e.g. `/last_teaser?group=frontdoor`.
 - **GET /test.rtsp** – Basic RTSP endpoint that serves MJPEG frames when used with `/rtsp_stream`.
 
 ### 6. Trigger Screenshot Capture
