@@ -924,14 +924,15 @@ def capture_or_download(name: str, template: dict) -> bool:
         browser = True
         headless = True
 
-    # Check if the host is reachable
+    # Check if the host is reachable for network URLs
     domain, port = parse_url(url)
 
-    lreach = is_address_reachable(domain, port=port)
-    if lreach is False:
-        logging.debug(f"Could not reach host: {name} {url}")
-        cas_error(url)
-        return False
+    if domain:
+        lreach = is_address_reachable(domain, port=port)
+        if lreach is False:
+            logging.debug(f"Could not reach host: {name} {url}")
+            cas_error(url)
+            return False
 
     # Prepare output path
     timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
