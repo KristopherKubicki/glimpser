@@ -1290,8 +1290,6 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
         logging.debug("skipping %s %s", lurl_cache[url], url)
         return False
 
-    # TODO: consider timeouts?
-
     lsuccess = False
     try:
         lurl_cache_time[url] = time.time()
