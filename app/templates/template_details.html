@@ -2,10 +2,9 @@
 
 {% extends 'base.html' %}
 {% block content %}
-
-
-
-    </script>
+<script>
+    const cameraMeta = {{ template_details|tojson }};
+</script>
 
             <video controls poster="/last_screenshot/{{ template_name }}" autoplay muted autoplay style='display: block; height: 90vh; width: 90vw;' width='90%'
 			    {% if template_details.last_caption %}
@@ -105,6 +104,18 @@ function updateVideo(templateName) {
 }
 
 </script>
+
+    <div id="camera-metadata" style="margin: 10px 0; color: #ccc;">
+        <ul>
+            <li><strong>Last Screenshot:</strong> {{ template_details.last_screenshot_time }}</li>
+            <li><strong>Last Video:</strong> {{ template_details.last_video_time }}</li>
+            <li><strong>Last Caption:</strong> {{ template_details.last_caption }}</li>
+            <li><strong>Caption Time:</strong> {{ template_details.last_caption_time }}</li>
+            {% if template_details.offline_since %}
+            <li><strong>Offline Since:</strong> {{ template_details.offline_since }}</li>
+            {% endif %}
+        </ul>
+    </div>
 
 
   <details title="View recent videos for this template"><summary>Recent Videos</summary>
@@ -279,7 +290,7 @@ function confirmDelete(templateName) {
 // todo, add the camera metadata template_details here too
 function showCameraDetails(templateName) {
     const baseUrl = window.location.origin;
-    const details = {
+    const endpoints = {
         'Camera Name': templateName,
         'Last Screenshot URL': `${baseUrl}/last_screenshot/${templateName}`,
         'Last Video URL': `${baseUrl}/last_video/${templateName}`,
@@ -290,11 +301,29 @@ function showCameraDetails(templateName) {
         'Template Details URL': `${baseUrl}/templates/${templateName}`
     };
 
-    let detailsHtml = '<h3>Camera Details</h3><pre>';
-    for (const [key, value] of Object.entries(details)) {
+    const meta = cameraMeta;
+    const metadata = {
+        'Last Screenshot Time': meta.last_screenshot_time,
+        'Last Video Time': meta.last_video_time,
+        'Last Caption': meta.last_caption,
+        'Caption Time': meta.last_caption_time,
+        'Offline Since': meta.offline_since
+    };
+
+    let detailsHtml = '<h3>Camera Endpoints</h3><pre>';
+    for (const [key, value] of Object.entries(endpoints)) {
         detailsHtml += `${key}: ${value}\n`;
     }
     detailsHtml += '</pre>';
+
+    detailsHtml += '<h3>Camera Metadata</h3><pre>';
+    for (const [key, value] of Object.entries(metadata)) {
+        if (value) {
+            detailsHtml += `${key}: ${value}\n`;
+        }
+    }
+    detailsHtml += '</pre>';
+
     detailsHtml += '<button onclick="copyToClipboard()">Copy to Clipboard</button>';
 
     document.getElementById('camera-details-content').innerHTML = detailsHtml;

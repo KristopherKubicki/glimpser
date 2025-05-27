@@ -279,8 +279,14 @@ function changeCamera() {
             if (details) {
                 video.title = details.last_caption;
                 templateDetailsContainer.innerHTML = `
-			    <a href='/camera/${currentCamera}'></a>
-                `;
+                    <div>
+                        <strong>Last Screenshot:</strong> ${details.last_screenshot_time || 'N/A'}<br/>
+                        <strong>Last Video:</strong> ${details.last_video_time || 'N/A'}<br/>
+                        <strong>Last Caption:</strong> ${details.last_caption || 'N/A'}<br/>
+                        ${details.offline_since ? `<strong>Offline Since:</strong> ${details.offline_since}<br/>` : ''}
+                    </div>`;
+            } else {
+                templateDetailsContainer.innerHTML = '';
             }
         }
 
@@ -327,10 +333,10 @@ function changeCamera() {
             }
         }
 
-        function playM3U8() {
-            video.style.display = 'block';
-            image.style.display = 'none';
-            clearInterval(pngInterval);
+function playM3U8() {
+    video.style.display = 'block';
+    image.style.display = 'none';
+    stopPNG();
 
             let m3u8Url;
             if (currentCamera.startsWith('group-')) {
@@ -385,7 +391,7 @@ function changeCamera() {
 function playLoop() {
     video.style.display = 'block';
     image.style.display = 'none';
-    clearInterval(pngInterval);
+    stopPNG();
 
     if (currentCamera.startsWith('group-') || currentCamera === 'All') {
         // Handle both groups and the special "All" group
@@ -433,8 +439,8 @@ function refreshPNG() {
 function playMP4() {
     video.style.display = 'block';
     image.style.display = 'none';
-	document.getElementById("seek-bar").style.display = "block";
-    clearInterval(pngInterval);
+        document.getElementById("seek-bar").style.display = "block";
+    stopPNG();
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
         const groupName = currentCamera.split('group-')[1];
@@ -474,7 +480,7 @@ function playLive() {
     video.style.display = 'block';
     image.style.display = 'none';
     document.getElementById("seek-bar").style.display = "block";
-    clearInterval(pngInterval);
+    stopPNG();
 
     if (currentCamera.startsWith('group-') || currentCamera === 'All') {
         // Fallback to MP4 streaming for groups or All
@@ -494,7 +500,7 @@ function playPNG() {
         const speed = Math.pow(2, slider.value);
 	document.getElementById("seek-bar").style.display = "none";
 	console.log( document.getElementById("seek-bar"), speed);
-    clearInterval(pngInterval);
+    stopPNG();
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
         let cameraIndex = 0;
@@ -524,8 +530,8 @@ function playPNG() {
 function playMJPG() {
     video.style.display = 'none';
     image.style.display = 'block';
-	document.getElementById("seek-bar").style.display = "block";
-    clearInterval(pngInterval);
+        document.getElementById("seek-bar").style.display = "block";
+    stopPNG();
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
         const groupName = currentCamera.split('group-')[1];
@@ -542,8 +548,8 @@ function playMJPG() {
 function playMotion() {
     video.style.display = 'none';
     image.style.display = 'block';
-	document.getElementById("seek-bar").style.display = "none";
-    clearInterval(pngInterval);
+        document.getElementById("seek-bar").style.display = "none";
+    stopPNG();
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
         const groupName = currentCamera.split('group-')[1];
@@ -578,7 +584,14 @@ function playMotion() {
 	        speedDisplay.classList.add('highlight-speed');
     setTimeout(() => speedDisplay.classList.remove('highlight-speed'), 500);
     }
-    // todo: stop the old playing png stream
+
+    function stopPNG() {
+        if (pngInterval) {
+            clearInterval(pngInterval);
+            pngInterval = null;
+        }
+        image.src = '';
+    }
 
     function checkCameraConnection(cameraName) {
         const camera = templateDetails[cameraName];
