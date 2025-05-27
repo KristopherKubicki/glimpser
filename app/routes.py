@@ -1395,9 +1395,13 @@ def init_routes(app):
             abort(404)
 
         lfiles = [f for f in glob.glob(path + "/*.png") if os.path.isfile(f)]
-        lfiles.sort(key=os.path.getmtime)
-        if len(lfiles) > 0:
-            return send_file(lfiles[-1])
+        lfiles.sort(key=os.path.getmtime, reverse=True)
+        for shot in lfiles:
+            try:
+                if os.path.getsize(shot) > 0 and screenshots._is_valid_png(shot):
+                    return send_file(shot)
+            except OSError:
+                continue
 
         abort(404)
 
