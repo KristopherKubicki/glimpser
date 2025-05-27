@@ -8,8 +8,8 @@ import argparse
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import generate_credentials
-import app.config as config
+import generate_credentials  # noqa: E402
+import app.config as config  # noqa: E402
 
 
 class TestGenerateCredentials(unittest.TestCase):
@@ -78,33 +78,52 @@ class TestGenerateCredentials(unittest.TestCase):
         cursor.execute("SELECT password_hash, role FROM users WHERE username='alice'")
         self.assertEqual(cursor.fetchone(), ("hash2", "user"))
 
-    @patch("generate_credentials.input")
-    @patch("generate_credentials.getpass.getpass")
-    @patch("generate_credentials.secrets.token_hex")
+    @patch("generate_credentials.logging.info")
+    @patch("generate_credentials.sys.stdin.isatty", return_value=True)
     @patch("generate_credentials.generate_password_hash")
-    def test_generate_credentials(
-        self, mock_hash, mock_token, mock_getpass, mock_input
+    @patch("generate_credentials.secrets.token_hex")
+    @patch("generate_credentials.getpass.getpass")
+    @patch("generate_credentials.input")
+    @patch(
+        "generate_credentials.app.config.get_setting",
+        side_effect=lambda n, d=None: (
+            config.DATABASE_PATH if n == "DATABASE_PATH" else d
+        ),
+    )
+    def test_generate_credentials_interactive(
+        self,
+        mock_get_setting,
+        mock_input,
+        mock_getpass,
+        mock_token,
+        mock_hash,
+        mock_isatty,
+        mock_log,
     ):
         mock_input.return_value = "testuser"
         mock_getpass.return_value = "testpass"
-        mock_token.side_effect = ["secretkey", "apikey"]
+        mock_token.return_value = "secretkey"
         mock_hash.return_value = "hashed_password"
 
-        # something wrong with previous mocks is messing this one up
-        # generate_credentials.generate_credentials(args=None)
+        generate_credentials.generate_credentials(args=None)
 
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT value FROM settings WHERE name='USER_NAME'")
-        # self.assertEqual(cursor.fetchone()[0], "testuser")
+        self.conn.close()
+        self.conn = sqlite3.connect(config.DATABASE_PATH)
+        cur = self.conn.cursor()
+        cur.execute("SELECT value FROM settings WHERE name='USER_NAME'")
+        self.assertEqual(cur.fetchone()[0], "testuser")
+        cur.execute("SELECT value FROM settings WHERE name='USER_PASSWORD_HASH'")
+        self.assertEqual(cur.fetchone()[0], "hashed_password")
+        cur.execute("SELECT value FROM settings WHERE name='SECRET_KEY'")
+        self.assertEqual(cur.fetchone()[0], "secretkey")
+        cur.execute(
+            "SELECT username, password_hash FROM users WHERE username='testuser'"
+        )
+        self.assertEqual(cur.fetchone(), ("testuser", "hashed_password"))
 
-        cursor.execute("SELECT value FROM settings WHERE name='USER_PASSWORD_HASH'")
-        # self.assertEqual(cursor.fetchone()[0], "hashed_password")
-
-        cursor.execute("SELECT value FROM settings WHERE name='SECRET_KEY'")
-        # self.assertEqual(cursor.fetchone()[0], "secretkey")
-
-        cursor.execute("SELECT value FROM settings WHERE name='API_KEY'")
-        # self.assertEqual(cursor.fetchone()[0], "apikey")
+        mock_log.assert_called_once_with(
+            "Credentials and settings updated in the database."
+        )
 
     @patch("generate_credentials.generate_password_hash", return_value="h")
     @patch(
