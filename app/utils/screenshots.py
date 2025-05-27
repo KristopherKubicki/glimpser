@@ -14,7 +14,6 @@ import subprocess
 import time
 from urllib.parse import urlparse
 import glob
-import shlex
 import base64
 import nodriver
 import psutil
@@ -1575,8 +1574,8 @@ def capture_screenshot_and_har_light(
         "User-Agent",
         lua,
         "--custom-header-propagation",
-        shlex.quote(url),
-        shlex.quote(tmp_path),
+        url,
+        tmp_path,
     ]
 
     try:
