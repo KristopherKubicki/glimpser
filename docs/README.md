@@ -10,4 +10,5 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Retention policy file sorting is also verified by tests.
 - Screenshot utility functions now have dedicated unit tests.
 - Application version bumped to `v0.2.4`.
+- Templates are rescheduled when saved to apply the new settings.
 
