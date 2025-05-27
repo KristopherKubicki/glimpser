@@ -58,3 +58,5 @@ When adding new features, include corresponding tests under the `tests/` directo
 - Utilities for network testing now have dedicated tests in `tests/test_network_testing_utils.py`.
 - Configuration lookup logic is verified by `tests/test_config_get_setting.py`.
 - Scheduler helpers are tested in `tests/test_scheduling_more.py`.
+- Template update validation ensures numeric fields remain in range and
+  required values are present.
