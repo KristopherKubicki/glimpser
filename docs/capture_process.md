@@ -69,6 +69,13 @@ After capturing the content, Glimpser applies several post-processing steps:
 3. **Timestamp Addition**: Add a timestamp to the captured image for reference.
 4. **Image Optimization**: Ensure the captured image is in the correct format and optimized for storage.
 
+## Capture Timeout
+
+`CAPTURE_TIMEOUT` controls how long Glimpser waits while grabbing a screenshot or pulling a
+frame from a video. If no image is produced before this limit expires, the
+capture attempt is aborted and marked as failed. Increase the value if your
+streams are slow to respond; lower it to fail fast on unresponsive sources.
+
 ## Conclusion
 
 The capture process in Glimpser is designed to be flexible and handle a wide variety of content types and capture scenarios. By using a modular approach and content-specific capture methods, Glimpser can efficiently capture and process content from various sources while maintaining consistency in the output.
