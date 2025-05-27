@@ -63,7 +63,8 @@ from app.utils.db import SessionLocal
 
 # from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock
-from app.utils.validators import validate_template_name
+from app.utils.validators import validate_template_name, validate_update_data
+
 
 
 def restart_server():
@@ -1814,14 +1815,16 @@ def init_routes(app):
             for lkey in lremoves:
                 del updated_data[lkey]
 
-            # TODO: validate
-
-            if updated_data.get("rollback_frames") == "":
-                updated_data["rollback_frames"] = 0
-            if updated_data.get("timeout") == "":
-                updated_data["timeout"] = 30
-            if updated_data.get("frequency") == "":
-                updated_data["frequency"] = 30
+            # Validate and normalize the incoming form data. Any missing or
+            # out-of-range values are replaced with sensible defaults. A
+            # ``ValueError`` is raised when required fields are absent.
+            try:
+                updated_data = validate_update_data(updated_data)
+            except ValueError as exc:
+                if request.is_json:
+                    return jsonify({"error": str(exc)}), 400
+                flash(str(exc), "error")
+                return redirect("/templates/" + template_name)
 
             # Update the template in your storage (e.g., JSON file, database)
             # This assumes you have a function to update templates
