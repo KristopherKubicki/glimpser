@@ -45,6 +45,8 @@ Example response:
 ```json
 {"status": "success", "message": "Template saved"}
 ```
+Saving a template automatically stops any scheduled job for that
+camera and reschedules it using the updated parameters.
 
 **DELETE /templates**
 
