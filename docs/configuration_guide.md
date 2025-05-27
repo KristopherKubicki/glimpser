@@ -83,7 +83,7 @@ Configure these values to enable Twilio SMS alerts:
 Settings controlling how frames are captured from video sources:
 
 - `NUM_FRAMES` – number of frames to grab from each stream (default `3`)
-- `CAPTURE_TIMEOUT` – maximum seconds to wait for a frame (default `30`)
+- `CAPTURE_TIMEOUT` – maximum seconds to wait for a frame; also used as the timeout for download and ffmpeg operations (default `30`)
 - `PROBE_SIZE_DEFAULT` – probe size for HTTP/HTTPS streams (default `5M`)
 - `PROBE_SIZE_RTSP` – probe size for RTSP streams (default `10M`)
 - `PROBE_SIZE_OTHER` – probe size for other protocols (default `20M`)
