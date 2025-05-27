@@ -1359,22 +1359,25 @@ def init_routes(app):
 
         abort(404)
 
-    # TODO: extend this for groups
     @app.route("/last_teaser")
     @login_required
     def serve_teaser():
-        """
-        Serve the group teaser video
-        """
-        # Placeholder logic to serve the screenshot
-        path = os.path.join(
+        """Serve the teaser video for a specific group."""
+
+        group = request.args.get("group")
+        if group and not re.match(r"^[a-zA-Z0-9_]+$", group):
+            abort(400, "Invalid group name. Group name must be alphanumeric.")
+
+        lgroup = secure_filename(group) if group else "all"
+        base_path = os.path.join(
             os.path.dirname(os.path.join(__file__)), "..", VIDEO_DIRECTORY
         )
-        if not os.path.exists(path):
+        if not os.path.exists(base_path):
             abort(404)
 
-        if os.path.exists(path + "/all_in_process.mp4"):
-            return send_file(path + "/all_in_process.mp4")
+        video_path = os.path.join(base_path, f"{lgroup}_in_process.mp4")
+        if os.path.exists(video_path):
+            return send_file(video_path)
 
         abort(404)
 
