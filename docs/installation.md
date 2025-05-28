@@ -54,6 +54,9 @@ Install the required Python packages:
 pip install -r requirements.txt
 ```
 
+This file now includes `jax[cpu]` and `flax` as dependencies. These packages
+provide accelerated array operations and neural network utilities.
+
 ### 6. (Optional) Configure Environment Variables
 
 Copy `.env.example` to `.env` and adjust values to override defaults:

@@ -19,6 +19,7 @@ This guide will walk you through the process of setting up Glimpser and running 
    ```
    pip install -r requirements.txt
    ```
+   The list now includes `jax[cpu]` and `flax` for machine learning support.
 
 3. Run the application:
    ```
