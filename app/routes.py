@@ -66,7 +66,6 @@ from app.utils.scheduling import log_cache, log_cache_lock
 from app.utils.validators import validate_template_name, validate_update_data
 
 
-
 def restart_server():
     logging.info("Restarting server...")
 
@@ -1862,8 +1861,13 @@ def init_routes(app):
     @app.route("/discover", methods=["GET"])
     @login_required
     def discover_cameras_route():
+        return render_template("discover.html", cameras=[])
+
+    @app.route("/discover/scan", methods=["POST"])
+    @login_required
+    def discover_cameras_scan():
         cameras = camera_discovery.discover_cameras()
-        return render_template("discover.html", cameras=cameras)
+        return jsonify(cameras)
 
     @app.route("/discover/add", methods=["POST"])
     @login_required
