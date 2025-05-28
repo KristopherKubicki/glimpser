@@ -534,7 +534,12 @@ function playPNG() {
         pngInterval = setInterval(refreshGroupPNG, 10000 / speed);
     } else if (currentCamera === 'All') {
         // Special handling for the "All" option
-        image.src = '/stream.png';
+        const refreshAllPNG = () => {
+            image.src = '/stream.png?time=' + new Date().getTime();
+        };
+        refreshAllPNG();
+        clearInterval(pngInterval);
+        pngInterval = setInterval(refreshAllPNG, 10000 / speed);
     } else {
         // Original behavior for individual cameras
         refreshPNG();
