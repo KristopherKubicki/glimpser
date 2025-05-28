@@ -66,7 +66,6 @@ from app.utils.scheduling import log_cache, log_cache_lock
 from app.utils.validators import validate_template_name, validate_update_data
 
 
-
 def restart_server():
     logging.info("Restarting server...")
 
@@ -394,7 +393,9 @@ def resize_and_pad(img, size, color=(0, 0, 0)):
 lock = Lock()
 
 
-def generate(group=None, filename="latest_camera.png", rtsp=False, session_id=None):
+def generate(
+    group=None, camera=None, filename="latest_camera.png", rtsp=False, session_id=None
+):
     # pretty hacky but it works ok
     global last_time, last_shot
     boundary = b"frame"
@@ -420,6 +421,7 @@ def generate(group=None, filename="latest_camera.png", rtsp=False, session_id=No
             with lock:
                 if (
                     group is None
+                    and camera is None
                     and last_time
                     and time.time() - last_time < 1
                     and last_shot
@@ -451,6 +453,9 @@ def generate(group=None, filename="latest_camera.png", rtsp=False, session_id=No
                             template_details.get("name")
                         )
                         if template_name is None:
+                            continue
+
+                        if camera and template_name != camera:
                             continue
 
                         template_groups = []
@@ -1021,34 +1026,38 @@ def init_routes(app):
     @app.route("/stream.mjpg", methods=["GET"])
     def stream_mjpg():
         group = request.args.get("group")
+        camera = request.args.get("camera")
         return Response(
-            generate(group=group, filename="latest_camera.png"),
+            generate(group=group, camera=camera, filename="latest_camera.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
 
     @app.route("/motion.mjpg", methods=["GET"])
     def motion_mjpg():
         group = request.args.get("group")
+        camera = request.args.get("camera")
         return Response(
-            generate(group=group, filename="last_motion.png"),
+            generate(group=group, camera=camera, filename="last_motion.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
 
     @app.route("/caption.mjpg", methods=["GET"])
     def caption_mjpg():
         group = request.args.get("group")
+        camera = request.args.get("camera")
         logging.debug("last caption")
         return Response(
-            generate(group=group, filename="last_caption.png"),
+            generate(group=group, camera=camera, filename="last_caption.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
 
     @app.route("/motion_caption.mjpg", methods=["GET"])
     def motion_caption_mjpg():
         group = request.args.get("group")
+        camera = request.args.get("camera")
         logging.debug("last motion caption")
         return Response(
-            generate(group=group, filename="last_motion_caption.png"),
+            generate(group=group, camera=camera, filename="last_motion_caption.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
 

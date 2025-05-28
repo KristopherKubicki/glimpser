@@ -92,9 +92,9 @@ Example: `/live_video?camera=frontdoor`
 
 Several other routes provide streaming functionality:
 
-- **GET /stream.mjpg** – Continuous MJPEG stream of the latest camera image. Optional `group` query parameter limits the feed to a group.
+- **GET /stream.mjpg** – Continuous MJPEG stream of the latest camera image. Optional `camera` or `group` query parameters limit the feed.
 - **GET /stream.png** – Returns the most recent screenshot across all cameras.
-- **GET /motion.mjpg** – MJPEG stream containing only motion frames. Accepts `group` as a query parameter.
+- **GET /motion.mjpg** – MJPEG stream containing only motion frames. Accepts `camera` or `group` as query parameters.
 - **GET /caption.mjpg** – MJPEG stream of the last caption frame for a group.
 - **GET /motion_caption.mjpg** – Combines motion and caption frames in a single MJPEG stream.
 - **GET /stream.m3u8** – HLS playlist referencing the latest videos from all cameras.
