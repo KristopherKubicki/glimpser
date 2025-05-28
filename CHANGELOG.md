@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated package requirements and cleaned up imports
 
 ### Fixed
-- Addressed Python build issues and string concatenation errors
+- Fixed missing dark mode application when downloading images
 - Fixed screenshot timeouts and setup script problems
 - Offline cameras now display an overlay and keep the camera selector usable
 

@@ -640,7 +640,7 @@ def download_image(
             image = image.convert("RGB")
             image = remove_background(image)
             if dark:
-                apply_dark_mode(image)
+                image = apply_dark_mode(image)
             # Save the image in PNG format
             image.save(output_path, "PNG")
             if os.path.exists(output_path) and _is_valid_png(output_path):

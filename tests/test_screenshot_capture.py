@@ -160,6 +160,29 @@ class TestScreenshotCapture(unittest.TestCase):
         kwargs = mock_session.get.call_args.kwargs
         self.assertNotIn("proxies", kwargs)
 
+    @patch("app.utils.screenshots.apply_dark_mode")
+    @patch("app.utils.screenshots.http_session")
+    def test_download_image_applies_dark_mode(self, mock_session_factory, mock_dark):
+        mock_session = MagicMock()
+        mock_response = MagicMock()
+        img_bytes = io.BytesIO()
+        Image.new("RGB", (1, 1)).save(img_bytes, format="PNG")
+        mock_response.status_code = 200
+        mock_response.content = img_bytes.getvalue()
+        mock_session.get.return_value = mock_response
+        mock_session_factory.return_value = mock_session
+
+        mock_dark.side_effect = lambda img: img
+
+        with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
+            download_image(
+                "http://example.com/test.png",
+                tmp.name,
+                dark=True,
+            )
+
+        mock_dark.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
