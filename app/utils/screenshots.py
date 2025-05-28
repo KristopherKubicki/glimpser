@@ -1612,7 +1612,9 @@ def capture_screenshot_and_har_light(
             image.save(tmp_path, "PNG")
 
         # Rename from .tmp.png to final .png
-        if os.path.exists(tmp_path) and _is_valid_png(output_path):
+        # Validate the temporary file before renaming so we don't
+        # replace the output with an incomplete image.
+        if os.path.exists(tmp_path) and _is_valid_png(tmp_path):
             add_timestamp(tmp_path, name, invert=invert)
             os.rename(tmp_path, output_path)
             lsuccess = True

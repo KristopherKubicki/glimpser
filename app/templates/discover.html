@@ -2,6 +2,7 @@
 {% block content %}
     <h2>Discovered Cameras</h2>
     <button id="discover-btn">Discover</button>
+    <progress id="discover-progress" style="display:none;"></progress>
     <div id="discover-message"></div>
     <table>
         <thead>
@@ -39,10 +40,12 @@
     <script>
     const button = document.getElementById('discover-btn');
     const msg = document.getElementById('discover-message');
+    const progress = document.getElementById('discover-progress');
     const body = document.getElementById('discover-body');
     if (button) {
         button.addEventListener('click', async () => {
             msg.textContent = 'Searching...';
+            progress.style.display = 'inline';
             body.innerHTML = '';
             try {
                 const response = await fetch('/discover/scan', {method: 'POST'});
@@ -70,6 +73,8 @@
             } catch (e) {
                 console.error('Discovery error', e);
                 msg.textContent = 'Error discovering cameras';
+            } finally {
+                progress.style.display = 'none';
             }
         });
     }
