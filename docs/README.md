@@ -15,3 +15,4 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Templates are rescheduled when saved to apply the new settings.
 
 - The front page 'Play All' button now works again after moving its script initialization to DOMContentLoaded.
+- The live view page no longer shows a duplicate navigation header.
