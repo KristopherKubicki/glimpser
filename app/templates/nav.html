@@ -5,7 +5,7 @@
                 {% for ag in active_groups %}
                 <a href='/group/{{ag}}'>{{ag}}</a>
                 {% endfor %}
-                <a href='/discover'>Discover Cameras</a>
+                <!-- Discover icon moved to nav-right for consistency -->
             </div>
 
 	    <div class="nav-center" style='text-align:center;'>
@@ -68,11 +68,13 @@ setInterval(checkHealth, 5000);
 checkHealth();
 
 	</script>
-				    </td>
+                                    </td>
+                                    <td>
+                                            <a href='/discover' class="settings-icon" title='Discover Cameras'>&#128269;</a>
+                                    </td>
 
-
-				    <td>
-					    <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'>&#9000;</a>
+                                    <td>
+                                            <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'>&#9000;</a>
 				    </td><td>
                 <a href='/live' id='live'>
                     <div id="coolClock" class="cool-clock" title="Live">
