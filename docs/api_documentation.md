@@ -45,6 +45,8 @@ Example response:
 ```json
 {"status": "success", "message": "Template saved"}
 ```
+Saving a template automatically stops any scheduled job for that
+camera and reschedules it using the updated parameters.
 
 **DELETE /templates**
 
@@ -90,15 +92,15 @@ Example: `/live_video?camera=frontdoor`
 
 Several other routes provide streaming functionality:
 
-- **GET /stream.mjpg** – Continuous MJPEG stream of the latest camera image. Optional `group` query parameter limits the feed to a group.
+- **GET /stream.mjpg** – Continuous MJPEG stream of the latest camera image. Optional `camera` or `group` query parameters limit the feed.
 - **GET /stream.png** – Returns the most recent screenshot across all cameras.
-- **GET /motion.mjpg** – MJPEG stream containing only motion frames. Accepts `group` as a query parameter.
+- **GET /motion.mjpg** – MJPEG stream containing only motion frames. Accepts `camera` or `group` as query parameters.
 - **GET /caption.mjpg** – MJPEG stream of the last caption frame for a group.
 - **GET /motion_caption.mjpg** – Combines motion and caption frames in a single MJPEG stream.
 - **GET /stream.m3u8** – HLS playlist referencing the latest videos from all cameras.
 - **GET /last_video/<template_name>** – Download the most recent MP4 for the given template.
 - **GET /last_screenshot/<template_name>** – Retrieve the latest screenshot for a template.
-- **GET /last_teaser** – Returns the teaser video compiled from recent footage.
+- **GET /last_teaser** – Returns the teaser video compiled from recent footage. Accepts an optional `group` query parameter to retrieve a group-specific teaser, e.g. `/last_teaser?group=frontdoor`.
 - **GET /test.rtsp** – Basic RTSP endpoint that serves MJPEG frames when used with `/rtsp_stream`.
 
 ### 6. Trigger Screenshot Capture
@@ -141,6 +143,8 @@ Example response:
 **GET /screenshots/<template_name>**
 
 Return a JSON array of screenshot filenames for the specified template. Individual files can be downloaded via `/screenshots/<template_name>/<filename>`.
+
+Placeholder images created when no real screenshot is available end with `_blank.png`. The endpoint includes these names in the sorted list.
 
 Example response:
 ```json

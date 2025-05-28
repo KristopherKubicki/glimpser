@@ -10,5 +10,11 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Retention policy file sorting is also verified by tests.
 - Screenshot utility functions now have dedicated unit tests.
 - Screenshot capture tests now verify PNG output when the driver succeeds.
+- Shutdown helpers and port checks are validated by new tests.
 - Application version bumped to `v0.2.4`.
-
+- Template and live views now show camera metadata, and PNG streams stop when switching sources.
+- Templates are rescheduled when saved to apply the new settings.
+- The front page 'Play All' button now works again after moving its script initialization to DOMContentLoaded.
+- The live view page no longer shows a duplicate navigation header.
+- The Discover page link now appears as a magnifying glass icon for consistent navigation.
+- Group and All cameras now bypass offline checks when loading feeds.

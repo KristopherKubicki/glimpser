@@ -1,6 +1,9 @@
 {% extends 'base.html' %}
 {% block content %}
     <h2>Discovered Cameras</h2>
+    <button id="discover-btn">Discover</button>
+    <progress id="discover-progress" style="display:none;"></progress>
+    <div id="discover-message"></div>
     <table>
         <thead>
             <tr>
@@ -11,7 +14,7 @@
                 <th title="Add camera"></th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="discover-body">
         {% for cam in cameras %}
             <tr>
                 <td>{{ cam.ip }}</td>
@@ -34,4 +37,46 @@
         {% endfor %}
         </tbody>
     </table>
+    <script>
+    const button = document.getElementById('discover-btn');
+    const msg = document.getElementById('discover-message');
+    const progress = document.getElementById('discover-progress');
+    const body = document.getElementById('discover-body');
+    if (button) {
+        button.addEventListener('click', async () => {
+            msg.textContent = 'Searching...';
+            progress.style.display = 'inline';
+            body.innerHTML = '';
+            try {
+                const response = await fetch('/discover/scan', {method: 'POST'});
+                const cams = await response.json();
+                msg.textContent = '';
+                cams.forEach(cam => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${cam.ip}</td>
+                        <td>${cam.protocol}</td>
+                        <td>${cam.port}</td>
+                        <td>${JSON.stringify(cam.info)}</td>
+                        <td>
+                            <form action="/discover/add" method="post">
+                                <input type="hidden" name="ip" value="${cam.ip}">
+                                <input type="hidden" name="protocol" value="${cam.protocol}">
+                                <input type="hidden" name="port" value="${cam.port}">
+                                ${cam.url ? `<input type="hidden" name="url" value="${cam.url}">` : ''}
+                                <input type="hidden" name="name" value="${cam.ip}">
+                                <button type="submit" title="Add this camera">Add</button>
+                            </form>
+                        </td>`;
+                    body.appendChild(tr);
+                });
+            } catch (e) {
+                console.error('Discovery error', e);
+                msg.textContent = 'Error discovering cameras';
+            } finally {
+                progress.style.display = 'none';
+            }
+        });
+    }
+    </script>
 {% endblock %}

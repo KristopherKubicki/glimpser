@@ -1,6 +1,6 @@
 # Camera Discovery
 
-Glimpser includes a simple discovery feature to help find network cameras on your local LAN. The `/discover` page in the web interface runs the logic in `app/utils/camera_discovery.py` and lists any cameras that respond.
+Glimpser includes a simple discovery feature to help find network cameras on your local LAN. The `/discover` page now loads immediately and only scans when you click the **Discover** button. A small progress bar appears while the scan runs. When triggered, the logic in `app/utils/camera_discovery.py` runs and any responding cameras are listed. To keep the scan quick, each interface is limited to a `/24` subnet even if the reported mask is larger.
 
 ## How the `/discover` route works
 
@@ -10,11 +10,16 @@ The route is defined in `app/routes.py`:
 @app.route('/discover', methods=['GET'])
 @login_required
 def discover_cameras_route():
+    return render_template('discover.html', cameras=[])
+
+@app.route('/discover/scan', methods=['POST'])
+@login_required
+def discover_cameras_scan():
     cameras = camera_discovery.discover_cameras()
-    return render_template('discover.html', cameras=cameras)
+    return jsonify(cameras)
 ```
 
-When you visit `/discover`, Glimpser calls `discover_cameras()` to scan the network and then renders `discover.html` with the results.
+When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button issues a POST to `/discover/scan`. This endpoint runs `discover_cameras()` and returns the results as JSON which are then inserted into the table.
 
 ## Camera scanning logic
 

@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Addressed Python build issues and string concatenation errors
 - Fixed screenshot timeouts and setup script problems
+- Offline cameras now display an overlay and keep the camera selector usable
 
 ## [0.2.4] - 2025-05-28
 
