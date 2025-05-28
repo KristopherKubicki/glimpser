@@ -41,7 +41,7 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
       - name: Upload Debian package
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           files: debian/glimpser.deb
@@ -62,7 +62,7 @@ jobs:
       - name: Build Windows executable
         run: python build_windows.py
       - name: Upload Windows executable
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           files: dist/Glimpser.exe
