@@ -56,6 +56,9 @@ user table in sync.
 - `VIDEO_DIRECTORY` – directory for recorded videos (default `data/video/`)
 - `SUMMARIES_DIRECTORY` – directory where summaries are written (default `data/summaries/`)
 
+  Routes such as `/captions` read from this location and will return no
+  entries when the directory is empty or missing.
+
 You can change these paths via the settings table or by editing `app/config.py` if you maintain a custom build.
 
 ## Email Settings
