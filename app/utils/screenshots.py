@@ -581,7 +581,7 @@ def download_image(
     response = None
 
     cached = get_cached_status_code(url)
-    if cached is not None and cached != 200:
+    if cached is not None and cached != 200 and proxy is None:
         logging.debug(f"Skipping {url} due to cached status {cached}")
         return False
     try:
