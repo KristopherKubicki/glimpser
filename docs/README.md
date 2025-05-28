@@ -18,3 +18,4 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - The live view page no longer shows a duplicate navigation header.
 - The Discover page link now appears as a magnifying glass icon for consistent navigation.
 - Group and All cameras now bypass offline checks when loading feeds.
+- The "All" camera PNG stream now refreshes automatically.
