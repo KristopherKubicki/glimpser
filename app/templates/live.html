@@ -141,6 +141,10 @@
         <div id="video-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
             <div id="loading-indicator" style="display: none;">Loading...</div>
             <div id="play-pause-indicator" style="display: none; font-size: 48px;">▶</div>
+            <div id="offline-indicator" style="display: none; text-align: center; color: white;">
+                <i class="fas fa-video-slash" style="font-size:48px;"></i>
+                <p id="offline-message"></p>
+            </div>
         </div>
         <div id="error-message"></div>
     </div>
@@ -162,6 +166,8 @@
         const playPauseIndicator = document.getElementById('play-pause-indicator');
         const errorMessage = document.getElementById('error-message');
         const playButton = document.getElementById('play-pause');
+        const offlineIndicator = document.getElementById('offline-indicator');
+        const offlineMessage = document.getElementById('offline-message');
 
         function showLoadingIndicator() {
             videoOverlay.style.display = 'block';
@@ -198,6 +204,22 @@
             setTimeout(() => {
                 errorMessage.style.display = 'none';
             }, 5000);
+        }
+
+        function showOfflineIndicator(cameraName) {
+            videoOverlay.style.display = 'block';
+            offlineIndicator.style.display = 'block';
+            offlineMessage.textContent = `Camera ${cameraName} is currently offline`;
+            loadingIndicator.style.display = 'none';
+            playPauseIndicator.style.display = 'none';
+        }
+
+        function hideOfflineIndicator() {
+            offlineIndicator.style.display = 'none';
+            offlineMessage.textContent = '';
+            if (loadingIndicator.style.display === 'none' && playPauseIndicator.style.display === 'none') {
+                videoOverlay.style.display = 'none';
+            }
         }
 
         video.addEventListener('waiting', showLoadingIndicator);
@@ -258,15 +280,13 @@ function changeCamera() {
     }
 
     if (!isConnected) {
-        const videoContainer = document.querySelector('.video-container');
-        videoContainer.innerHTML = `
-            <div class="placeholder">
-                <img src="/static/img/camera_offline.png" alt="Camera Offline">
-                <p>Camera ${currentCamera} is currently offline</p>
-            </div>
-        `;
+        showOfflineIndicator(currentCamera);
         hideLoadingIndicator();
+        video.pause();
+        video.src = '';
+        image.src = '';
     } else {
+        hideOfflineIndicator();
         updateTemplateDetails();
         updateFeed(); // Make sure to update the video feed after changing the camera or group
     }
@@ -295,15 +315,14 @@ function changeCamera() {
             const isConnected = checkCameraConnection(currentCamera);
 
             if (!isConnected) {
-                const videoContainer = document.querySelector('.video-container');
-                videoContainer.innerHTML = `
-                    <div class="placeholder">
-                        <img src="/static/img/camera_offline.png" alt="Camera Offline">
-                        <p>Camera ${currentCamera} is currently offline</p>
-                    </div>
-                `;
+                showOfflineIndicator(currentCamera);
                 hideLoadingIndicator();
+                video.pause();
+                video.src = '';
+                image.src = '';
                 return;
+            } else {
+                hideOfflineIndicator();
             }
 
             switch (source) {
