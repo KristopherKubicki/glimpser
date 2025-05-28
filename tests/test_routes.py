@@ -325,9 +325,39 @@ class TestRoutes(unittest.TestCase):
             sess["user_id"] = 1
         response = self.client.get("/discover")
         self.assertEqual(response.status_code, 200)
-        mock_render_template.assert_called_with(
-            "discover.html", cameras=mock_discover.return_value
-        )
+        mock_discover.assert_not_called()
+        mock_render_template.assert_called_with("discover.html", cameras=[])
+
+    @patch("app.routes.SessionLocal")
+    @patch("app.routes.camera_discovery.discover_cameras")
+    def test_discover_scan(self, mock_discover, mock_session_local):
+        mock_discover.return_value = [
+            {"ip": "1.2.3.4", "protocol": "rtsp", "port": 554, "info": {}}
+        ]
+        dummy_user = SimpleNamespace(id=1)
+
+        class DummyQuery:
+            def filter_by(self, **kwargs):
+                return self
+
+            def first(self):
+                return dummy_user
+
+        class DummySession:
+            def query(self, model):
+                return DummyQuery()
+
+            def close(self):
+                pass
+
+        mock_session_local.return_value = DummySession()
+
+        with self.client.session_transaction() as sess:
+            sess["user_id"] = 1
+        response = self.client.post("/discover/scan")
+        self.assertEqual(response.status_code, 200)
+        mock_discover.assert_called_once()
+        self.assertEqual(response.get_json(), mock_discover.return_value)
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.template_manager.save_template")
