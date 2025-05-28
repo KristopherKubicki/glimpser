@@ -22,7 +22,7 @@ Below are key settings loaded from the database with their default values. You
 can modify them in the application interface or directly in the database.
 
 - `NAME` – application name (default `glimpser`)
-- `VERSION` – configuration version number (default `0.1`)
+- `VERSION` – configuration version number (default `0.2.4`)
 - `LANG` – default language (default `en-US`)
 - `TZ` – timezone used for logs (default `UTC`)
 - `HOST` – address to bind the server (default `0.0.0.0`)

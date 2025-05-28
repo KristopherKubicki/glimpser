@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved screenshot reliability
 - Enhanced camera list UI and video player controls
 - Updated package requirements and cleaned up imports
+- Updated default VERSION to 0.2.4 for footer display
 
 ### Fixed
 - Addressed Python build issues and string concatenation errors
