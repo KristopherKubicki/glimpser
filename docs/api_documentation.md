@@ -144,6 +144,8 @@ Example response:
 
 Return a JSON array of screenshot filenames for the specified template. Individual files can be downloaded via `/screenshots/<template_name>/<filename>`.
 
+Placeholder images created when no real screenshot is available end with `_blank.png`. The endpoint includes these names in the sorted list.
+
 Example response:
 ```json
 {"screenshots": ["cam1_20240101.png", "cam1_20240102.png"]}

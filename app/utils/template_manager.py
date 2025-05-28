@@ -1,7 +1,6 @@
 # app/utils/template_manager.py
 
 import os
-import re
 import shutil
 import random
 import logging
@@ -204,7 +203,7 @@ class TemplateManager:
                                 value = True
                             elif value == "off":
                                 value = False
-                            elif type(value) == bool:
+                            elif isinstance(value, bool):
                                 pass
                             else:
                                 logging.debug("MISSSSED %s", value)
@@ -453,7 +452,9 @@ def get_screenshots_for_template(name: str) -> list:
     try:
         sorted_screenshots = sorted(
             screenshots,
-            key=lambda x: datetime.strptime(x[len(name) + 1 : -4], "%Y%m%d%H%M%S"),
+            key=lambda x: datetime.strptime(
+                x[len(name) + 1 : -4].replace("_blank", ""), "%Y%m%d%H%M%S"
+            ),
             reverse=True,
         )
     except Exception as e:
