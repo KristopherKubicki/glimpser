@@ -610,6 +610,9 @@ function playMotion() {
     }
 
     function checkCameraConnection(cameraName) {
+        if (cameraName === 'All' || cameraName.startsWith('group-')) {
+            return true;
+        }
         const camera = templateDetails[cameraName];
         if (!camera) {
             return false;
