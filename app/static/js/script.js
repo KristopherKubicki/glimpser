@@ -73,6 +73,28 @@ document.addEventListener('DOMContentLoaded', () => {
   setupSearch();
   setupStatusPageVideoHover();
   setupVideoControls();
+
+  // Play All / Stop All functionality for index page videos
+  const playAllButton = document.getElementById('play-all-button');
+  let isPlaying = false;
+  if (playAllButton) {
+    playAllButton.addEventListener('click', () => {
+      const videos = document.querySelectorAll('.templateDiv video');
+      if (isPlaying) {
+        videos.forEach((video) => {
+          video.pause();
+          video.currentTime = 0;
+        });
+        playAllButton.textContent = 'Play All';
+      } else {
+        videos.forEach((video) => {
+          video.play().catch((e) => console.error('Error playing video:', e));
+        });
+        playAllButton.textContent = 'Stop All';
+      }
+      isPlaying = !isPlaying;
+    });
+  }
   
   // Update video sources every 30 minutes
   setInterval(updateVideoSources, 60000 * 30);
@@ -482,27 +504,6 @@ if (toggleSchedulerButton && schedulerStatus) {
     });
 }
 
-// Play All / Stop All functionality for index page videos
-const playAllButton = document.getElementById('play-all-button');
-let isPlaying = false;
-if (playAllButton) {
-  playAllButton.addEventListener('click', () => {
-    const videos = document.querySelectorAll('.templateDiv video');
-    if (isPlaying) {
-      videos.forEach(video => {
-        video.pause();
-        video.currentTime = 0;
-      });
-      playAllButton.textContent = 'Play All';
-    } else {
-      videos.forEach(video => {
-        video.play().catch(e => console.error("Error playing video:", e));
-      });
-      playAllButton.textContent = 'Stop All';
-    }
-    isPlaying = !isPlaying;
-  });
-}
 
 // Google Cast API initialization
 function initializeCastApi() {
