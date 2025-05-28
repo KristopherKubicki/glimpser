@@ -22,7 +22,7 @@ Below are key settings loaded from the database with their default values. You
 can modify them in the application interface or directly in the database.
 
 - `NAME` – application name (default `glimpser`)
-- `VERSION` – configuration version number (default `0.1`)
+- `VERSION` – configuration version number (default `0.2.4`)
 - `LANG` – default language (default `en-US`)
 - `TZ` – timezone used for logs (default `UTC`)
 - `HOST` – address to bind the server (default `0.0.0.0`)
@@ -55,6 +55,9 @@ user table in sync.
 - `SCREENSHOT_DIRECTORY` – directory for raw screenshots (default `data/screenshots/`)
 - `VIDEO_DIRECTORY` – directory for recorded videos (default `data/video/`)
 - `SUMMARIES_DIRECTORY` – directory where summaries are written (default `data/summaries/`)
+
+  Routes such as `/captions` read from this location and will return no
+  entries when the directory is empty or missing.
 
 You can change these paths via the settings table or by editing `app/config.py` if you maintain a custom build.
 

@@ -23,6 +23,7 @@ SessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine
 )  # settings only thread
 
+
 def get_setting(name, default=None):
     """Return a setting from the environment or the database."""
     env_val = os.getenv(name)
@@ -37,7 +38,7 @@ def get_setting(name, default=None):
         ).fetchone()
         return result[0] if result else default
     except Exception as e:
-        if 'no such table' in str(e):
+        if "no such table" in str(e):
             # this is ok if its the first time only...
             logging.warning("table does not exist")
             pass
@@ -47,6 +48,7 @@ def get_setting(name, default=None):
         session.close()
 
     return default
+
 
 def backup_config() -> bool:
     session = SessionLocal()
@@ -62,21 +64,25 @@ def backup_config() -> bool:
         session.close()
     return success
 
+
 def restore_config():
     if os.path.exists(BACKUP_PATH):
-        with open(BACKUP_PATH, 'r') as f:
+        with open(BACKUP_PATH, "r") as f:
             config_dict = json.load(f)
-        
+
         session = SessionLocal()
         try:
             for name, value in config_dict.items():
                 session.execute(
-                    text("INSERT OR REPLACE INTO settings (name, value) VALUES (:name, :value)"),
-                    {"name": name, "value": value}
+                    text(
+                        "INSERT OR REPLACE INTO settings (name, value) VALUES (:name, :value)"
+                    ),
+                    {"name": name, "value": value},
                 )
             session.commit()
         finally:
             session.close()
+
 
 SCHEDULER_API_ENABLED = True
 
@@ -91,8 +97,8 @@ UA = get_setting(
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
 )
 LANG = get_setting("LANG", "en-US")
-TZ = get_setting("TZ","UTC")
-VERSION = float(get_setting("VERSION", 0.1))
+TZ = get_setting("TZ", "UTC")
+VERSION = get_setting("VERSION", "0.2.4")
 NAME = get_setting("NAME", "glimpser")
 HOST = get_setting("HOST", "0.0.0.0")
 PORT = int(get_setting("PORT", 8082))
@@ -110,7 +116,7 @@ MAX_IN_PROCESS_VIDEO_SIZE = int(
     get_setting("MAX_IN_PROCESS_VIDEO_SIZE", 100 * 1024 * 1024)
 )  # 100 MB
 
-LOG_LEVEL = get_setting("LOG_LEVEL","WARN")
+LOG_LEVEL = get_setting("LOG_LEVEL", "WARN")
 
 # Load settings from the database
 SECRET_KEY = get_setting("SECRET_KEY", "default_secret_key")
@@ -119,21 +125,23 @@ USER_PASSWORD_HASH = get_setting("USER_PASSWORD_HASH", "")
 API_KEY = get_setting("API_KEY", "")
 CHATGPT_KEY = get_setting("CHATGPT_KEY", "")  # maybe generalize as LLM_KEY ?
 
-LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-4.1-mini") # todo setup allowed models
+LLM_MODEL_VERSION = get_setting(
+    "LLM_MODEL_VERSION", "gpt-4.1-mini"
+)  # todo setup allowed models
 
 # note that $datetime is a special keyword that will be replaced with the datetime in iso Z format
 LLM_SUMMARY_PROMPT = get_setting(
     "LLM_SUMMARY_PROMPT",
-    "Return one single line of plain text—no line breaks, numbers, or bullet lists—beginning with a brief greeting plus today’s date, local time, and Chicago temperature, then densely packed clauses separated by “ | ”, each clause giving grouped insights, forecasts, and local take-aways drawn from the logs and any provided history; mark critical items with ⚠️, routine-but-watchworthy items with ℹ️ (info symbol), and resolved items with ✔️; weave a coherent bigger story rather than camera-by-camera notes, avoid repetition, drop boiler-plate, use precise technical language, and include uncommon insights or likely next events whenever possible; if nothing is noteworthy output exactly “All systems nominal — no actionable items.” The time is $datetime UTC."
-    #"Below are caption logs from multiple live sources. Produce a 10-line technical digest for a highly educated Chicago-area listener who glances for <30 s. Format: line 0 → greeting + date/time + current temperature + one-sentence “big picture”; lines 1-9 → plain-text bullets of ≤90 chars each, no timestamps, each tagged with ⚠️ for immediate action, ℹ️ for watch/interesting, ✔️ for resolved/nominal. Group related items logically; emphasise local (Chicago/Lincolnwood/Kenosha), include concrete facts (counts, magnitudes, street names, runways, K-index, etc.), omit boiler-plate and repeated info unless it’s a new alert. Tie items into a bigger narrative (weather → transit → power → cosmic events) rather than a camera list. If nothing merits mention, output exactly “All systems nominal — no actionable items.” The time is $datetime UTC.",
-    #"Summarize the following logs into a concise, technical transcript. Focus on providing clear, actionable insights and key takeaways. Keep the summary brief and organized, with one line per segment, separated by newlines. Start with a brief overview, including any major events or trends. Prioritize clarity and relevance, ensuring the summary is easy to understand and useful for decision-making. Avoid repetition unless necessary. Conclude with a brief summary or closing note. The time is $datetime.",
+    "Return one single line of plain text—no line breaks, numbers, or bullet lists—beginning with a brief greeting plus today’s date, local time, and Chicago temperature, then densely packed clauses separated by “ | ”, each clause giving grouped insights, forecasts, and local take-aways drawn from the logs and any provided history; mark critical items with ⚠️, routine-but-watchworthy items with ℹ️ (info symbol), and resolved items with ✔️; weave a coherent bigger story rather than camera-by-camera notes, avoid repetition, drop boiler-plate, use precise technical language, and include uncommon insights or likely next events whenever possible; if nothing is noteworthy output exactly “All systems nominal — no actionable items.” The time is $datetime UTC.",
+    # "Below are caption logs from multiple live sources. Produce a 10-line technical digest for a highly educated Chicago-area listener who glances for <30 s. Format: line 0 → greeting + date/time + current temperature + one-sentence “big picture”; lines 1-9 → plain-text bullets of ≤90 chars each, no timestamps, each tagged with ⚠️ for immediate action, ℹ️ for watch/interesting, ✔️ for resolved/nominal. Group related items logically; emphasise local (Chicago/Lincolnwood/Kenosha), include concrete facts (counts, magnitudes, street names, runways, K-index, etc.), omit boiler-plate and repeated info unless it’s a new alert. Tie items into a bigger narrative (weather → transit → power → cosmic events) rather than a camera list. If nothing merits mention, output exactly “All systems nominal — no actionable items.” The time is $datetime UTC.",
+    # "Summarize the following logs into a concise, technical transcript. Focus on providing clear, actionable insights and key takeaways. Keep the summary brief and organized, with one line per segment, separated by newlines. Start with a brief overview, including any major events or trends. Prioritize clarity and relevance, ensuring the summary is easy to understand and useful for decision-making. Avoid repetition unless necessary. Conclude with a brief summary or closing note. The time is $datetime.",
 )
 
 LLM_CAPTION_PROMPT = get_setting(
     "LLM_CAPTION_PROMPT",
-    "Examine the image carefully, then reply in two paragraphs only: (1) a punchy headline of ≤ 10 words that captures the single most urgent, unusual, or otherwise news-worthy element the user glancing for three seconds needs to notice; (2) one or two sharply written sentences that expand on that element with concrete specifics—names, counts, street or airport identifiers, magnitudes, colour codes, timestamps, likely impact, or next action—strictly based on visual evidence and the accompanying user question. Skip generic scene-setting, boiler-plate weather phrases, interface chrome, or guessing. If the frame is blank, frozen, unreadable, or unchanged since the previous image, respond only with the word **UNREADABLE**. Do not output anything else. The time is $datetime UTC."
-    #Provide a concise, insightful observation about this image. Focus on unique or significant aspects. Limit your response to 16 words or less. Do not describe the scene, describe the anomalies. Do not be concerned about timestamp issues (the image may have local and UTC timestamps on it). Provide a concise caption in 10 words o less, focusing only on the noteable aspects.  Avoid general descriptions. Keep it short!  Then, on a newline, write a couple sentences with a more detailed description. The time is $datetime UTC
-    #"Write a concise caption that highlights the most significant or unique aspect of this image in 10 words or less. Avoid general descriptions, and focus on noteworthy details or anomalies. Then, provide a brief, more detailed description in a couple of sentences. The time is $datetime UTC.",
+    "Examine the image carefully, then reply in two paragraphs only: (1) a punchy headline of ≤ 10 words that captures the single most urgent, unusual, or otherwise news-worthy element the user glancing for three seconds needs to notice; (2) one or two sharply written sentences that expand on that element with concrete specifics—names, counts, street or airport identifiers, magnitudes, colour codes, timestamps, likely impact, or next action—strictly based on visual evidence and the accompanying user question. Skip generic scene-setting, boiler-plate weather phrases, interface chrome, or guessing. If the frame is blank, frozen, unreadable, or unchanged since the previous image, respond only with the word **UNREADABLE**. Do not output anything else. The time is $datetime UTC.",
+    # Provide a concise, insightful observation about this image. Focus on unique or significant aspects. Limit your response to 16 words or less. Do not describe the scene, describe the anomalies. Do not be concerned about timestamp issues (the image may have local and UTC timestamps on it). Provide a concise caption in 10 words o less, focusing only on the noteable aspects.  Avoid general descriptions. Keep it short!  Then, on a newline, write a couple sentences with a more detailed description. The time is $datetime UTC
+    # "Write a concise caption that highlights the most significant or unique aspect of this image in 10 words or less. Avoid general descriptions, and focus on noteworthy details or anomalies. Then, provide a brief, more detailed description in a couple of sentences. The time is $datetime UTC.",
 )
 
 # FFMPEG/FFPROBE path settings
@@ -153,13 +161,14 @@ PROBE_SIZE_OTHER = get_setting("PROBE_SIZE_OTHER", "20M")
 # Email settings
 EMAIL_ENABLED = get_setting("EMAIL_ENABLED", "False")
 EMAIL_SENDER = get_setting("EMAIL_SENDER", "your-email@example.com")
-EMAIL_RECIPIENTS = get_setting("EMAIL_RECIPIENTS", "recipient1@example.com,recipient2@example.com")
+EMAIL_RECIPIENTS = get_setting(
+    "EMAIL_RECIPIENTS", "recipient1@example.com,recipient2@example.com"
+)
 EMAIL_SMTP_SERVER = get_setting("EMAIL_SMTP_SERVER", "smtp.example.com")
 EMAIL_SMTP_PORT = get_setting("EMAIL_SMTP_PORT", "587")
 EMAIL_USE_TLS = get_setting("EMAIL_USE_TLS", "True")
 EMAIL_USERNAME = get_setting("EMAIL_USERNAME", "your-username")
 EMAIL_PASSWORD = get_setting("EMAIL_PASSWORD", "")
-
 
 
 # SMS/Twilio settings
