@@ -1,6 +1,6 @@
 # Camera Discovery
 
-Glimpser includes a simple discovery feature to help find network cameras on your local LAN. The `/discover` page now loads immediately and only scans when you click the **Discover** button. When triggered, the logic in `app/utils/camera_discovery.py` runs and any responding cameras are listed.
+Glimpser includes a simple discovery feature to help find network cameras on your local LAN. The `/discover` page now loads immediately and only scans when you click the **Discover** button. A small progress bar appears while the scan runs. When triggered, the logic in `app/utils/camera_discovery.py` runs and any responding cameras are listed. To keep the scan quick, each interface is limited to a `/24` subnet even if the reported mask is larger.
 
 ## How the `/discover` route works
 

@@ -16,18 +16,29 @@ except Exception:  # pragma: no cover - optional dependency may be missing
     Zeroconf = None
 
 
-def _local_subnets():
+def _local_subnets(max_prefixlen: int = 24):
+    """Return local IPv4 subnets limited to ``max_prefixlen``.
+
+    Some interfaces report very large networks (e.g. ``10.0.0.0/8``) which makes
+    discovery scans effectively unbounded.  To keep discovery responsive we cap
+    the size of each subnet to at most ``max_prefixlen``.
+    """
+
     subnets = []
-    for iface, addrs in psutil.net_if_addrs().items():
+    for _iface, addrs in psutil.net_if_addrs().items():
         for addr in addrs:
             if addr.family == socket.AF_INET:
                 ip = addr.address
                 netmask = addr.netmask
-                if ip and netmask:
-                    try:
-                        subnets.append(ip_network(f"{ip}/{netmask}", strict=False))
-                    except Exception:
-                        pass
+                if not ip or not netmask:
+                    continue
+                try:
+                    net = ip_network(f"{ip}/{netmask}", strict=False)
+                    if net.prefixlen < max_prefixlen:
+                        net = ip_network(f"{ip}/{max_prefixlen}", strict=False)
+                    subnets.append(net)
+                except Exception:
+                    pass
     return subnets
 
 
