@@ -28,6 +28,16 @@ class TestValidateUpdateData(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_update_data({})
 
+    def test_invalid_proxy_removed(self):
+        data = {"url": "http://example", "proxy": "   "}
+        result = validate_update_data(data)
+        self.assertNotIn("proxy", result)
+
+    def test_valid_proxy_preserved(self):
+        data = {"url": "http://example", "proxy": "http://localhost:8080"}
+        result = validate_update_data(data)
+        self.assertEqual(result["proxy"], "http://localhost:8080")
+
 
 if __name__ == "__main__":
     unittest.main()

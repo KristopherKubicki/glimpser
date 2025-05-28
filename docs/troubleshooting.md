@@ -30,6 +30,12 @@ This guide addresses common issues that users might encounter while using Glimps
 - Regenerate your API key in the Glimpser web interface
 - Ensure you're using the correct API key format in your requests
 
+### Problem: Invalid proxy values
+
+**Solution:**
+- Ensure the proxy string begins with `http://` or `https://`.
+- Blank or malformed proxy values are ignored by Glimpser.
+
 ## 3. Performance Issues
 
 ### Problem: High CPU usage

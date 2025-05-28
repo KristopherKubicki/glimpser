@@ -1,6 +1,28 @@
 # app/utils/validators.py
 
 from werkzeug.utils import secure_filename
+import re
+
+
+def validate_proxy(proxy: str | None) -> str | None:
+    """Return the proxy string if valid, otherwise ``None``.
+
+    A valid proxy must start with ``http://`` or ``https://``. Whitespace-only
+    values are ignored.
+    """
+
+    if proxy is None:
+        return None
+
+    proxy = str(proxy).strip()
+
+    if not proxy:
+        return None
+
+    if not re.match(r"^https?://", proxy, flags=re.IGNORECASE):
+        return None
+
+    return proxy
 
 
 def validate_template_name(template_name: str):
@@ -106,6 +128,8 @@ def validate_update_data(data: dict) -> dict:
         "object_filter",
     ]:
         value = data.get(key)
+        if key == "proxy":
+            value = validate_proxy(value)
         if value not in [None, ""]:
             sanitized[key] = value
 

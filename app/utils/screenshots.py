@@ -68,6 +68,7 @@ from app.config import (
     PROBE_SIZE_OTHER,
     TZ,
 )
+from app.utils.validators import validate_proxy
 
 last_camera_test = {}
 last_camera_test_time = {}
@@ -570,6 +571,8 @@ def download_image(
         stealth (bool): Use stealth user agent.
         proxy (str, optional): Proxy to use for the HTTP request.
     """
+
+    proxy = validate_proxy(proxy)
 
     # ideally the timeout should be pretty high, its an image, and it could be real big
     if timeout < 10:
@@ -1534,6 +1537,7 @@ def capture_screenshot_and_har_light(
     """
     Capture a screenshot of a URL using wkhtmltoimage (WebKit).
     """
+    proxy = validate_proxy(proxy)
     # Check if wkhtmltoimage is available
     if shutil.which("wkhtmltoimage") is None:
         logging.warning("wkhtmltoimage is not installed or not in the system path.")
@@ -2133,6 +2137,8 @@ def capture_screenshot_and_har(
 
     Returns True on success, False otherwise.
     """
+
+    proxy = validate_proxy(proxy)
 
     # Quick sanity check
     if not re.match(r"^https?://", url, flags=re.IGNORECASE):
