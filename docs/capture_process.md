@@ -65,7 +65,7 @@ The choice between these methods depends on factors such as:
 After capturing the content, Glimpser applies several post-processing steps:
 
 1. **Background Removal**: Remove unnecessary background from captured images.
-2. **Dark Mode**: Apply dark mode to the captured image if requested.
+2. **Dark Mode**: Apply dark mode to the captured image if requested. The image array is copied before modification to avoid "assignment destination is read-only" errors.
 3. **Timestamp Addition**: Add a timestamp to the captured image for reference.
 4. **Image Optimization**: Ensure the captured image is in the correct format and optimized for storage.
 

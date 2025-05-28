@@ -1511,7 +1511,9 @@ def capture_frame_from_stream(
 
 
 def apply_dark_mode(img, rng=30, txt_rng=120):
-    arr = np.asarray(img.convert("RGB"))
+    arr = np.asarray(
+        img.convert("RGB")
+    ).copy()  # copy to avoid "assignment destination is read-only" errors
     dark = arr <= rng
     light = arr >= 255 - txt_rng
     mask = dark.any(axis=-1) | light.any(axis=-1)
