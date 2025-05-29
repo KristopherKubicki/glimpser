@@ -44,6 +44,7 @@ This guide will walk you through the process of setting up Glimpser and running 
 6. Go to the "Monitoring" section to view your live data feed.
 
 7. Explore the auto-generated captions and summaries.
+8. Use the **Suggest Prompt** button on a template's detail page to have the system propose better caption text.
 
 ## Next Steps
 

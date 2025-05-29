@@ -157,6 +157,7 @@ function updateVideo(templateName) {
 
                 <label for="notes" style="color: #fff;" title="Additional notes">Notes:</label>
                 <textarea id="notes" name="notes" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter any additional notes or comments">{{ template_details.notes }}</textarea>
+                <button type="button" onclick="suggestPrompt('{{ template_name }}')" style="margin-top:5px;">Suggest Prompt</button>
 
                 <label for="object_filter" style="color: #fff;" title="Filter for specific objects">Object Filter:</label>
                 <input type="text" id="object_filter" name="object_filter" value="{{ template_details.object_filter }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter object types to filter (e.g., 'person,car')">
@@ -342,6 +343,19 @@ function copyToClipboard() {
 function closeModal() {
     document.getElementById('camera-details-modal').style.display = 'none';
 }
+
+function suggestPrompt(name) {
+    fetch(`/generate_prompt/${name}`, {method: 'POST'})
+        .then(resp => resp.json())
+        .then(data => {
+            document.getElementById('prompt-text').value = data.prompt || '';
+            document.getElementById('prompt-modal').style.display = 'block';
+        });
+}
+
+function closePromptModal() {
+    document.getElementById('prompt-modal').style.display = 'none';
+}
 </script>
 
 
@@ -358,6 +372,13 @@ function closeModal() {
     <div style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%;">
       <span onclick="closeModal()" style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
       <div id="camera-details-content"></div>
+    </div>
+  </div>
+
+  <div id="prompt-modal" style="display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+    <div style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%;">
+      <span onclick="closePromptModal()" style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+      <textarea id="prompt-text" style="width: 100%; height: 100px;"></textarea>
     </div>
   </div>
 {% endblock %}
