@@ -1133,6 +1133,9 @@ def init_routes(app):
         if not os.path.exists(path):
             abort(404)
 
+        camera = request.args.get("camera")
+        group = request.args.get("group")
+
         # Generate playlist content
         playlist_content = "#EXTM3U\n"
         playlist_content += "#EXT-X-VERSION:3\n"
@@ -1142,18 +1145,38 @@ def init_routes(app):
         playlist_content += "#EXT-X-MEDIA-SEQUENCE:0\n"
 
         templates = template_manager.get_templates()
+
+        filtered_templates = []
+        if camera:
+            camera = validate_template_name(camera)
+            if camera is None:
+                abort(400, "Invalid camera name")
+            details = templates.get(camera)
+            if details:
+                filtered_templates.append((camera, details))
+        elif group:
+            if not re.match(r"^[a-zA-Z0-9_]+$", group):
+                abort(400, "Invalid group name. Group name must be alphanumeric.")
+            for name, details in templates.items():
+                groups = [g.strip() for g in details.get("groups", "").split(",")]
+                if group in groups:
+                    valid = validate_template_name(name)
+                    if valid:
+                        filtered_templates.append((valid, details))
+        else:
+            for name, details in templates.items():
+                valid = validate_template_name(name)
+                if valid:
+                    filtered_templates.append((valid, details))
+
         # Sort templates by 'last_video_time' descending
         sorted_templates = sorted(
-            templates.items(),
+            filtered_templates,
             key=lambda x: (x[1].get("last_video_time", 0) or 0),
             reverse=True,
         )
 
-        for camera_id, template in sorted_templates:
-            camera_name = validate_template_name(template.get("name"))
-            if camera_name is None:
-                continue
-            # Assuming the MP4 file is the segment
+        for camera_name, _ in sorted_templates:
             lkey = generate_timed_hash()
             video_path = f"{request.url_root}last_video/{camera_name}?timed_key={lkey}"
             playlist_content += f"#EXTINF:10.0,{camera_name}\n{video_path}\n"
