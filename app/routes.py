@@ -58,6 +58,7 @@ from app.utils import (
     video_archiver,
     screenshots,
     camera_discovery,
+    prompt_optimizer,
 )
 from app.utils.db import SessionLocal
 
@@ -1664,6 +1665,18 @@ def init_routes(app):
 
         lscreens = template_manager.get_screenshots_for_template(template_name)
         return jsonify({"screenshots": lscreens})
+
+    @app.route("/generate_prompt/<string:template_name>", methods=["POST"])
+    @login_required
+    def generate_prompt_route(template_name: TemplateName):
+        """Return a suggested caption prompt for ``template_name``."""
+
+        template_name = validate_template_name(template_name)
+        if template_name is None:
+            abort(404)
+
+        prompt = prompt_optimizer.generate_prompt(template_name)
+        return jsonify({"prompt": prompt})
 
     @app.route("/screenshots/<string:name>/<string:filename>")
     @login_required

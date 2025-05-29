@@ -153,6 +153,18 @@ Example response:
 {"screenshots": ["cam1_20240101.png", "cam1_20240102.png"]}
 ```
 
+### 11. Suggest Caption Prompt
+
+**POST /generate_prompt/<template_name>**
+
+Analyze the latest screenshots for the template and return a short text prompt
+that can be used to improve future captions.
+
+Example response:
+```json
+{"prompt": "Busy roadway — highlight license plates"}
+```
+
 ## Error Handling
 
 All endpoints may return the following error responses:
