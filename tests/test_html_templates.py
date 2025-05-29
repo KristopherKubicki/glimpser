@@ -1,0 +1,72 @@
+import os
+import sys
+from pathlib import Path
+from html.parser import HTMLParser
+import unittest
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+
+class TemplateParser(HTMLParser):
+    """Simple HTML parser to capture img tags and form inputs."""
+
+    def __init__(self):
+        super().__init__()
+        self.img_tags = []
+        self.forms = []
+        self._current_form = None
+
+    def handle_starttag(self, tag, attrs):
+        attrs_dict = dict(attrs)
+        if tag == "img":
+            self.img_tags.append(attrs_dict)
+        elif tag == "form":
+            self._current_form = {"attrs": attrs_dict, "inputs": []}
+            self.forms.append(self._current_form)
+        elif tag in {"input", "textarea", "select"} and self._current_form is not None:
+            self._current_form["inputs"].append(attrs_dict)
+
+    def handle_endtag(self, tag):
+        if tag == "form":
+            self._current_form = None
+
+
+def parse_template(path: Path) -> TemplateParser:
+    parser = TemplateParser()
+    with open(path, encoding="utf-8") as f:
+        parser.feed(f.read())
+    return parser
+
+
+class TestHtmlTemplates(unittest.TestCase):
+    def test_img_tags_have_alt(self):
+        templates_dir = Path("app/templates")
+        for template in templates_dir.glob("*.html"):
+            parser = parse_template(template)
+            for attrs in parser.img_tags:
+                with self.subTest(template=template, attrs=attrs):
+                    self.assertIn("alt", attrs)
+                    self.assertTrue(attrs["alt"].strip())
+
+    def test_login_form_inputs(self):
+        parser = parse_template(Path("app/templates/login.html"))
+        self.assertTrue(parser.forms, "login.html should contain a form")
+        inputs = {i.get("name") for i in parser.forms[0]["inputs"]}
+        self.assertIn("username", inputs)
+        self.assertIn("password", inputs)
+
+    def test_index_add_template_form_inputs(self):
+        parser = parse_template(Path("app/templates/index.html"))
+        add_form = None
+        for form in parser.forms:
+            if form["attrs"].get("id") == "add-template-form":
+                add_form = form
+                break
+        self.assertIsNotNone(add_form, "add-template-form missing")
+        inputs = {i.get("id") or i.get("name") for i in add_form["inputs"]}
+        required = {"name", "url", "frequency", "timeout"}
+        self.assertTrue(required.issubset(inputs))
+
+
+if __name__ == "__main__":
+    unittest.main()
