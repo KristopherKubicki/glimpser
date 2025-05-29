@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved screenshot reliability
 - Enhanced camera list UI and video player controls
 - Updated package requirements and cleaned up imports
+- Added CPU builds of JAX 0.6.1 and Flax 0.2.0
+- Bumped scikit-image to 0.25.0
 - Updated default VERSION to 0.2.4 for footer display
 
 ### Fixed
