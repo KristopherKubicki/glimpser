@@ -97,7 +97,9 @@ Several other routes provide streaming functionality:
 - **GET /motion.mjpg** – MJPEG stream containing only motion frames. Accepts `camera` or `group` as query parameters.
 - **GET /caption.mjpg** – MJPEG stream of the last caption frame for a group.
 - **GET /motion_caption.mjpg** – Combines motion and caption frames in a single MJPEG stream.
-- **GET /stream.m3u8** – HLS playlist referencing the latest videos from all cameras.
+- **GET /stream.m3u8** – HLS playlist referencing the latest videos.
+  Optional `camera` or `group` query parameters filter the playlist to a
+  single camera or group of cameras.
 - **GET /last_video/<template_name>** – Download the most recent MP4 for the given template.
 - **GET /last_screenshot/<template_name>** – Retrieve the latest screenshot for a template.
 - **GET /last_teaser** – Returns the teaser video compiled from recent footage. Accepts an optional `group` query parameter to retrieve a group-specific teaser, e.g. `/last_teaser?group=frontdoor`.
