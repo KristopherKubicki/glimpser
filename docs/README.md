@@ -21,3 +21,4 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - The "All" camera PNG stream now refreshes automatically.
 - HTML templates are tested for image `alt` text and required form fields.
 - Prompt optimizer logic is now tested for screenshot handling and prompt restoration.
+- The Add Template form auto-fills the Groups field when a filter is selected.

@@ -4,13 +4,35 @@ document.addEventListener('DOMContentLoaded', () => {
   // Cache DOM elements
   const form = document.querySelector('#template-form form');
   const groupDropdown = document.getElementById('group-dropdown');
+  const groupsInput = document.getElementById('groups');
+  const templateDetails = document
+    .getElementById('template-form')?.closest('details');
   const slider = document.getElementById('grid-width-slider');
   const templateList = document.getElementById('template-list');
   const searchInput = document.getElementById('search-input');
 
   // Setup event listeners
+  function autofillGroup() {
+    if (groupsInput && groupDropdown && groupDropdown.value !== 'all') {
+      groupsInput.value = groupDropdown.value;
+    }
+  }
+
   if (groupDropdown) {
-    groupDropdown.addEventListener('change', loadTemplates);
+    groupDropdown.addEventListener('change', () => {
+      loadTemplates();
+      if (templateDetails && templateDetails.open) {
+        autofillGroup();
+      }
+    });
+  }
+
+  if (templateDetails) {
+    templateDetails.addEventListener('toggle', () => {
+      if (templateDetails.open) {
+        autofillGroup();
+      }
+    });
   }
 
   if (slider && templateList) {
