@@ -88,6 +88,8 @@ glimpser --no-watchdog
 
 Run `glimpser --help` to see all available options.
 
+For a full description of every command-line flag, including the separate credentials utility, see [docs/command_line.md](docs/command_line.md).
+
    You will be prompted to create a secret key to initialize the local sqlite database. Follow the rest of the guided setup and then direct your browser to http://127.0.0.1:8082 to finish the rest of the setup.
 
 ### Docker Quick Start
