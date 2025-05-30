@@ -510,7 +510,54 @@ button, a {
 #edit-template input[type="number"],
 #edit-template textarea {
     padding: 5px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.checkbox-row {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.xpath-input-container input {
+    width: 70%;
+}
+
+.xpath-input-container button {
+    padding: 5px;
+    border-radius: 5px;
+    background-color: #4CAF50;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+#delete-btn {
+    padding: 10px 20px;
+    background-color: #e74c3c;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.form-actions {
+    text-align: center;
+    margin-top: 20px;
+}
+
+@media (max-width: 600px) {
+    .form-row {
+        grid-template-columns: 1fr;
     }
+}
 
 /* TSV Controls for Captions Page */
 .tsv-controls {
@@ -662,4 +709,13 @@ input[type=submit] {
 
 input[type=submit]:hover {
     background-color: #45a049;
+}
+#grid-width-slider {
+    width: clamp(200px, 50vw, 600px);
+}
+
+@media (max-width: 767px) {
+    #grid-width-slider {
+        width: 100%;
+    }
 }

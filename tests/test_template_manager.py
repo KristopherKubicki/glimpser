@@ -1,6 +1,7 @@
 import sys
 import os
 import unittest
+import tempfile
 from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -10,6 +11,7 @@ from app.utils.template_manager import (
     Template,
     mark_offline,
     update_last_screenshot_time,
+    get_storage_usage,
 )
 from app.utils.validators import validate_template_name
 
@@ -161,25 +163,25 @@ class TestTemplateManager(unittest.TestCase):
             "test_template", {"frequency": 525601}
         )
         # note, still returns just adjusts the vaue silently...
-        #self.assertFalse(result, "Expected False for frequency > 525600")
+        # self.assertFalse(result, "Expected False for frequency > 525600")
 
-        # not working for some reason?  
+        # not working for some reason?
         # Test saving with timeout >= frequency
         result = self.template_manager.save_template(
             "test_template", {"frequency": 60, "timeout": 61}
         )
         # warning - not working right.  value gets silently adjusted
-        #self.assertFalse(result, "Expected False, timeout should be adjusted")
-        #mock_session_instance.add.assert_called_once()
-        #mock_session_instance.commit.assert_called_once()
+        # self.assertFalse(result, "Expected False, timeout should be adjusted")
+        # mock_session_instance.add.assert_called_once()
+        # mock_session_instance.commit.assert_called_once()
 
-        '''
+        """
         # Verify that the timeout was adjusted
         args, _ = mock_session_instance.add.call_args
         self.assertEqual(
             args[0].timeout, 60, "Timeout should be adjusted to match frequency"
         )
-        '''
+        """
 
     @patch("app.utils.template_manager.SessionLocal")
     def test_get_template_by_id(self, mock_session):
@@ -260,7 +262,9 @@ class TestOfflineHandling(unittest.TestCase):
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
         template = Template(name="cam1")
-        mock_sess.query.return_value.filter_by.return_value.first.return_value = template
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = (
+            template
+        )
 
         mark_offline("cam1")
 
@@ -272,13 +276,36 @@ class TestOfflineHandling(unittest.TestCase):
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
         template = Template(name="cam1", offline_since="yesterday")
-        mock_sess.query.return_value.filter_by.return_value.first.return_value = template
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = (
+            template
+        )
 
         update_last_screenshot_time("cam1")
 
         self.assertEqual(template.offline_since, "")
         self.assertNotEqual(template.last_screenshot_time, "")
         mock_sess.commit.assert_called_once()
+
+
+class TestStorageUsage(unittest.TestCase):
+    def test_get_storage_usage(self):
+        """Combines screenshot and video sizes from both directories."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sshot_dir = os.path.join(temp_dir, "shots")
+            vid_dir = os.path.join(temp_dir, "vid")
+            os.makedirs(os.path.join(sshot_dir, "cam1"))
+            os.makedirs(os.path.join(vid_dir, "cam1"))
+
+            with open(os.path.join(sshot_dir, "cam1", "cam1.png"), "wb") as f:
+                f.write(b"0" * 1024)
+            with open(os.path.join(vid_dir, "cam1", "cam1.mp4"), "wb") as f:
+                f.write(b"0" * 2048)
+
+            with patch(
+                "app.utils.template_manager.SCREENSHOT_DIRECTORY", sshot_dir
+            ), patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir):
+                result = get_storage_usage("cam1")
+                self.assertEqual(result, "3.0 KB")
 
 
 if __name__ == "__main__":
