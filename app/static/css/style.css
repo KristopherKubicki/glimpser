@@ -233,6 +233,22 @@ select:hover {
     z-index: 5;
 }
 
+.open-url-link {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    border-radius: 4px;
+    padding: 2px 4px;
+    text-decoration: none;
+    z-index: 6;
+}
+
+.open-url-link:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
 video:hover + .play-icon {
     display: block; /* Show play icon on hover */
 }

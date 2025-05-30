@@ -388,6 +388,7 @@ function closePromptModal() {
     <button id="instant-screenshot-btn" onclick="takeInstantScreenshot('{{ template_name }}')" title="Take a screenshot of the template immediately">Take Instant Screenshot</button>
     <button id="update-video-btn" onclick="updateVideo('{{ template_name }}')" title="Update the video for this template">Update Video</button>
     <button id="show-camera-details-btn" onclick="showCameraDetails('{{ template_name }}')" title="Show camera details and endpoints">Show Camera Details</button>
+    <button id="open-url-btn" onclick="window.open('{{ template_details.url }}', '_blank')" title="Open the monitored page">Open Page</button>
     <br/>
 
 
