@@ -245,7 +245,8 @@ function setupSearch() {
   const searchInput = document.getElementById('search-input');
   const groupDropdown = document.getElementById('group-dropdown');
   const cameraRows = document.querySelectorAll('.camera-row');
-  if (!searchInput || !groupDropdown || !cameraRows) return;
+  const templateList = document.getElementById('template-list');
+  if (!searchInput || !groupDropdown) return;
 
   const filterCameras = () => {
     const searchTerm = searchInput.value.toLowerCase();
@@ -259,8 +260,13 @@ function setupSearch() {
     });
   };
 
-  searchInput.addEventListener('input', filterCameras);
-  groupDropdown.addEventListener('change', filterCameras);
+  if (templateList) {
+    searchInput.addEventListener('input', loadTemplates);
+    groupDropdown.addEventListener('change', loadTemplates);
+  } else {
+    searchInput.addEventListener('input', filterCameras);
+    groupDropdown.addEventListener('change', filterCameras);
+  }
 }
 
 function templateMatchesSearch(template, searchQuery) {
