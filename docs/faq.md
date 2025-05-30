@@ -23,6 +23,9 @@ Ensure the `EMAIL_ENABLED` setting is set to `True` and configure the remaining 
 
 ### How do I enable SMS alerts?
 Set `TWILIO_SID`, `TWILIO_TOKEN`, and `TWILIO_NUMBER` in the configuration. When these values are present, Glimpser will send important alerts via text message as well as email.
+### Why is the thumbnail size slider so narrow?
+The width slider on the index page now scales with the browser window. If it appears cramped, try widening the window or adjust the CSS in `style.css` to suit your layout.
+
 
 ## Troubleshooting
 

@@ -647,3 +647,12 @@ input[type=submit] {
 input[type=submit]:hover {
     background-color: #45a049;
 }
+#grid-width-slider {
+    width: clamp(200px, 50vw, 600px);
+}
+
+@media (max-width: 767px) {
+    #grid-width-slider {
+        width: 100%;
+    }
+}
