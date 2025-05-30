@@ -3,6 +3,7 @@
 import os
 import json
 import logging
+from importlib.metadata import PackageNotFoundError, version
 
 from dotenv import load_dotenv, find_dotenv
 
@@ -98,7 +99,12 @@ UA = get_setting(
 )
 LANG = get_setting("LANG", "en-US")
 TZ = get_setting("TZ", "UTC")
-VERSION = get_setting("VERSION", "0.2.4")
+try:
+    _PKG_VERSION = version("glimpser")
+except PackageNotFoundError:
+    _PKG_VERSION = "0.2.4"
+# Default to the package version if not overridden in the database
+VERSION = get_setting("VERSION", _PKG_VERSION)
 NAME = get_setting("NAME", "glimpser")
 HOST = get_setting("HOST", "0.0.0.0")
 PORT = int(get_setting("PORT", 8082))
