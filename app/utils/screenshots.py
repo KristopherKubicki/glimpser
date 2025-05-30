@@ -1608,7 +1608,8 @@ def capture_screenshot_and_har_light(
                 logging.warning(
                     f"Captured image is mostly blank—skipping. {url} {name}"
                 )
-                # return False
+                os.unlink(tmp_path)
+                return False
 
             image = remove_background(image)
             if dark:
@@ -2372,9 +2373,10 @@ def _finalize_screenshot(tmp_path, final_path, name, invert, dark):
         with Image.open(tmp_path) as img:
             img = img.convert("RGB")
 
-            # If the image is mostly blank, log a warning but continue
             if is_mostly_blank(img):
                 logging.warning(f"[{name}] The captured screenshot looks mostly blank.")
+                os.remove(tmp_path)
+                return False
 
             # Optional background removal
             img = remove_background(img)

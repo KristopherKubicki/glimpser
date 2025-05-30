@@ -71,28 +71,34 @@ class TestScreenshotCapture(unittest.TestCase):
         result = capture_screenshot_and_har("http://example.com", self.output_path)
 
         # Assertions
-        # self.assertFalse(result)
-        # self.assertFalse(os.path.exists(self.output_path))
+        self.assertFalse(result)
+        self.assertFalse(os.path.exists(self.output_path))
 
-    @patch("app.utils.screenshots.webdriver.Chrome")
-    @patch("app.utils.screenshots.is_mostly_blank")
-    def test_capture_screenshot_blank_image(self, mock_is_mostly_blank, mock_chrome):
-        # Mock the Chrome driver and its methods
+    @patch("app.utils.screenshots.launch_headless_chrome")
+    @patch("app.utils.screenshots.get_chrome_version", return_value=120)
+    @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.is_mostly_blank", return_value=True)
+    def test_capture_screenshot_blank_image(
+        self, mock_blank, mock_get_path, mock_get_version, mock_launch
+    ):
         mock_driver = MagicMock()
-        mock_chrome.return_value = mock_driver
+        mock_launch.return_value = mock_driver
         mock_driver.get.return_value = None
-        mock_driver.save_screenshot.return_value = True
 
-        # Mock is_mostly_blank to return True
-        mock_is_mostly_blank.return_value = True
+        partial = self.output_path + ".tmp.png"
 
-        # Call the function, might have to mock this better
+        def fake_save(path):
+            Image.new("RGB", (1, 1)).save(partial)
+            return True
+
+        mock_driver.save_screenshot.side_effect = fake_save
+
         result = capture_screenshot_and_har("http://example.com", self.output_path)
 
-        # Assertions
-        # self.assertFalse(result) # i think this is going to be True, not false...
-        # self.assertFalse(os.path.exists(self.output_path))
-        # mock_is_mostly_blank.assert_called_once()
+        self.assertFalse(result)
+        self.assertFalse(os.path.exists(self.output_path))
+        self.assertFalse(os.path.exists(partial))
+        mock_blank.assert_called()
 
     @patch("app.utils.screenshots.webdriver.Chrome")
     def test_capture_screenshot_with_dark_mode(self, mock_chrome):

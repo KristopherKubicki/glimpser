@@ -2,7 +2,7 @@ import unittest
 import os
 import sys
 import tempfile
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -65,8 +65,9 @@ class TestVideoArchiver(unittest.TestCase):
         }
         mock_get_video_duration.return_value = 10
 
-        with patch("os.path.exists", return_value=True), patch(
-            "glob.glob", return_value=["/path/to/video.mp4"]
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("glob.glob", return_value=["/path/to/video.mp4"]),
         ):
             compile_to_teaser()
 
@@ -92,13 +93,13 @@ class TestVideoArchiver(unittest.TestCase):
     def test_get_video_duration(self, mock_exists, mock_subprocess_run):
         # Mock the file check to return True
         mock_exists.return_value = True
-        
+
         # Mock the subprocess run to return the desired duration
         mock_subprocess_run.return_value.stdout = "10.5"
-        
+
         # Call the function
         duration = get_video_duration("dummy.mp4")
-        
+
         # Assert the result
         self.assertEqual(duration, 10.5)
 
@@ -120,11 +121,19 @@ class TestVideoArchiver(unittest.TestCase):
 
     @patch("app.utils.video_archiver.get_video_duration")
     @patch("subprocess.run")
-    def test_concatenate_videos_retry(self, mock_subprocess_run, mock_get_video_duration):
+    def test_concatenate_videos_retry(
+        self, mock_subprocess_run, mock_get_video_duration
+    ):
         mock_get_video_duration.return_value = 10
-        mock_subprocess_run.side_effect = [RuntimeError("Resource temporarily unavailable"), None]
+        mock_subprocess_run.side_effect = [
+            RuntimeError("Resource temporarily unavailable"),
+            None,
+        ]
         with (
-            patch("app.utils.video_archiver.handle_concat_error", return_value=ConcatStatus.RETRY) as mock_handle,
+            patch(
+                "app.utils.video_archiver.handle_concat_error",
+                return_value=ConcatStatus.RETRY,
+            ) as mock_handle,
             patch("os.path.exists", return_value=True),
             patch("os.path.getsize", return_value=1),
             patch("os.rename"),
@@ -134,27 +143,32 @@ class TestVideoArchiver(unittest.TestCase):
         self.assertEqual(mock_subprocess_run.call_count, 2)
 
     def test_handle_concat_error(self):
-        with patch("os.path.getsize", return_value=100), patch(
-            "os.rename"
-        ) as mock_rename:
+        with (
+            patch("os.path.getsize", return_value=100),
+            patch("os.rename") as mock_rename,
+        ):
             status = handle_concat_error(
                 Exception("Invalid data found"), "temp.mp4", "in_process.mp4"
             )
             mock_rename.assert_called_once_with("temp.mp4", "in_process.mp4")
             self.assertEqual(status, ConcatStatus.RECOVERED)
 
-        with patch("os.path.getsize", return_value=100), patch(
-            "os.rename"
-        ) as mock_rename:
+        with (
+            patch("os.path.getsize", return_value=100),
+            patch("os.rename") as mock_rename,
+        ):
             status = handle_concat_error(
-                Exception("Resource temporarily unavailable"), "temp.mp4", "in_process.mp4"
+                Exception("Resource temporarily unavailable"),
+                "temp.mp4",
+                "in_process.mp4",
             )
             mock_rename.assert_not_called()
             self.assertEqual(status, ConcatStatus.RETRY)
 
-        with patch("os.path.getsize", return_value=100), patch(
-            "os.rename"
-        ) as mock_rename:
+        with (
+            patch("os.path.getsize", return_value=100),
+            patch("os.rename") as mock_rename,
+        ):
             status = handle_concat_error(
                 Exception("Some fatal error"), "temp.mp4", "in_process.mp4"
             )
@@ -163,9 +177,16 @@ class TestVideoArchiver(unittest.TestCase):
 
     @patch("app.utils.video_archiver.get_video_duration")
     @patch("app.utils.video_archiver.concatenate_videos")
+    @patch("app.utils.video_archiver.Image.open")
+    @patch("app.utils.video_archiver.is_mostly_blank", return_value=False)
     @patch("glob.glob")
     def test_compile_to_video(
-        self, mock_glob, mock_concatenate_videos, mock_get_video_duration
+        self,
+        mock_glob,
+        mock_blank,
+        mock_open,
+        mock_concatenate_videos,
+        mock_get_video_duration,
     ):
         mock_glob.return_value = ["frame_2.png", "frame_2.png"]
         mock_get_video_duration.return_value = 5
@@ -175,21 +196,69 @@ class TestVideoArchiver(unittest.TestCase):
             patch("os.path.exists", return_value=True),
             patch("os.path.isfile", return_value=False),
             patch("os.path.getmtime", return_value=1724516114),
-            patch("os.path.getctime", return_value=1724516114),
+            patch("os.path.getctime", return_value=1724516115),
             patch("os.path.getsize", return_value=1000),
             patch("os.rename"),
             patch("subprocess.run") as mock_subprocess_run,
         ):
+            mock_open.return_value.__enter__.return_value = MagicMock()
+            mock_open.return_value.__exit__.return_value = None
             mock_subprocess_run.return_value.returncode = 0
             result = compile_to_video(self.temp_dir, self.temp_dir)
 
         self.assertIsNone(result)
         self.assertTrue(mock_subprocess_run.called)
 
+    @patch("app.utils.video_archiver.run_ffmpeg")
+    @patch("app.utils.video_archiver.Image.open")
+    @patch("glob.glob")
+    def test_compile_to_video_ignores_blank_frames(
+        self, mock_glob, mock_open, mock_run_ffmpeg
+    ):
+        mock_glob.return_value = ["shot_blank.png", "shot_2.png"]
+
+        captured_lines = []
+
+        def fake_run(cmd):
+            if isinstance(cmd, list) and "-i" in cmd:
+                idx = cmd.index("-i") + 1
+                with open(cmd[idx]) as f:
+                    captured_lines.extend(f.read().splitlines())
+
+            class R:
+                returncode = 0
+                stdout = ""
+                stderr = ""
+
+            return R()
+
+        mock_run_ffmpeg.side_effect = fake_run
+
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("os.path.isfile", return_value=False),
+            patch("os.path.getmtime", return_value=1724516114),
+            patch("os.path.getctime", return_value=1724516115),
+            patch("os.path.getsize", return_value=1000),
+            patch("os.rename"),
+            patch(
+                "app.utils.video_archiver.is_mostly_blank",
+                side_effect=[True, False],
+            ),
+            patch("subprocess.run") as mock_subprocess_run,
+        ):
+            mock_open.return_value.__enter__.return_value = MagicMock()
+            mock_open.return_value.__exit__.return_value = None
+            mock_subprocess_run.return_value.returncode = 0
+            compile_to_video(self.temp_dir, self.temp_dir)
+
+        mock_open.assert_called_once_with("shot_2.png")
+
     @patch("app.utils.video_archiver.compile_to_video")
     def test_archive_screenshots(self, mock_compile_to_video):
-        with patch("os.listdir", return_value=["camera1", "camera2"]), patch(
-            "os.path.isdir", return_value=True
+        with (
+            patch("os.listdir", return_value=["camera1", "camera2"]),
+            patch("os.path.isdir", return_value=True),
         ):
             archive_screenshots()
         self.assertEqual(mock_compile_to_video.call_count, 2)

@@ -8,6 +8,9 @@ import subprocess
 import tempfile
 import time
 import logging
+from PIL import Image
+
+from app.utils.screenshots import is_mostly_blank
 from enum import Enum, auto
 
 from .validators import validate_template_name
@@ -409,9 +412,20 @@ def compile_to_video(camera_path, video_path) -> bool:
     new_files = [
         f
         for f in glob.glob(camera_path + "/*.png")
-        if os.path.getctime(f) > video_mod_time
+        if os.path.getctime(f) > video_mod_time and not f.endswith("_blank.png")
     ]
-    new_files = sorted(new_files)
+
+    # Drop nearly blank images
+    filtered_files = []
+    for file in new_files:
+        try:
+            with Image.open(file) as img:
+                if not is_mostly_blank(img):
+                    filtered_files.append(file)
+        except Exception:
+            continue
+
+    new_files = sorted(filtered_files)
 
     # print("compile", time.time(), video_mod_time, len(new_files))
 
