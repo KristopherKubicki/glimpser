@@ -165,6 +165,7 @@ function updateVideo(templateName) {
                 <textarea id="notes" name="notes" title="Enter any additional notes or comments">{{ template_details.notes }}</textarea>
             </div>
             <button type="button" onclick="suggestPrompt('{{ template_name }}')">Suggest Prompt</button>
+            <button type="button" onclick="suggestFix('{{ template_name }}')">Suggest Fix</button>
 
             <div class="form-row">
                 <label for="object_filter" title="Filter for specific objects">Object Filter:</label>
@@ -374,6 +375,14 @@ function suggestPrompt(name) {
         .then(data => {
             document.getElementById('prompt-text').value = data.prompt || '';
             document.getElementById('prompt-modal').style.display = 'block';
+        });
+}
+
+function suggestFix(name) {
+    fetch(`/suggest_fix/${name}`, {method: 'POST'})
+        .then(resp => resp.json())
+        .then(data => {
+            alert(JSON.stringify(data, null, 2));
         });
 }
 
