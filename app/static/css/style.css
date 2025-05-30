@@ -647,3 +647,16 @@ input[type=submit] {
 input[type=submit]:hover {
     background-color: #45a049;
 }
+/* Structured XPath input layout */
+.structured-xpath-input {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.structured-xpath-input select,
+.structured-xpath-input input,
+.structured-xpath-input button {
+    flex: 1;
+}
