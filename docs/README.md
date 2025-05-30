@@ -10,10 +10,10 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Retention policy file sorting is also verified by tests.
 - Screenshot utility functions now have dedicated unit tests.
 - Shutdown helpers and port checks are validated by new tests.
+- LLM response count is now verified by a unit test that patches `random.randint`.
 - Application version bumped to `v0.2.4`.
 - Template and live views now show camera metadata, and PNG streams stop when switching sources.
 - Templates are rescheduled when saved to apply the new settings.
-
 - The front page 'Play All' button now works again after moving its script initialization to DOMContentLoaded.
 - The live view page no longer shows a duplicate navigation header.
 - The Discover page link now appears as a magnifying glass icon for consistent navigation.
@@ -22,3 +22,4 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - HTML templates are tested for image `alt` text and required form fields.
 - Prompt optimizer logic is now tested for screenshot handling and prompt restoration.
 - Template and live views now provide links to open the monitored page directly.
+- The Add Template form auto-fills the Groups field when a filter is selected.
