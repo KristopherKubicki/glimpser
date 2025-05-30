@@ -23,4 +23,5 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - HTML templates are tested for image `alt` text and required form fields.
 - Template storage usage is now verified by unit tests.
 - Prompt optimizer logic is now tested for screenshot handling and prompt restoration.
+- Template edit form now uses `.form-row` containers for aligned inputs.
 - The Add Template form auto-fills the Groups field when a filter is selected.

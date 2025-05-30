@@ -142,88 +142,112 @@ function updateVideo(templateName) {
 
 <details title="Edit the details of this template">
     <summary>Edit Template</summary>
-    <div id="edit-template" style="background-color: #222; padding: 20px; border-radius: 10px; max-width: 600px; margin: 20px auto;">
-        <h3 style="color: #fff; text-align: center; margin-bottom: 20px;">Edit Template Details</h3>
+    <div id="edit-template">
+        <h3>Edit Template Details</h3>
         <form id="edit-template-form" action="/update_template/{{ template_name }}" method="post" onsubmit="return validateForm()" title="Form to edit template details">
-		<div>
-                <label for="url" style="color: #fff;" title="URL to monitor">URL:</label>
-                <input type="url" id="url" name="url" value="{{ template_details.url }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter the URL to monitor">
+            <div class="form-row">
+                <label for="url" title="URL to monitor">URL:</label>
+                <input type="url" id="url" name="url" value="{{ template_details.url }}" required title="Enter the URL to monitor">
+            </div>
 
-                <label for="frequency" style="color: #fff;" title="How often to check the URL">Frequency (minutes):</label>
-                <input type="number" id="frequency" name="frequency" value="{{ template_details.frequency }}" min="1" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter how often to check the URL (in minutes)">
+            <div class="form-row">
+                <label for="frequency" title="How often to check the URL">Frequency (minutes):</label>
+                <input type="number" id="frequency" name="frequency" value="{{ template_details.frequency }}" min="1" required title="Enter how often to check the URL (in minutes)">
+            </div>
 
-                <label for="timeout" style="color: #fff;" title="Maximum time to wait for a response">Timeout (seconds):</label>
-                <input type="number" id="timeout" name="timeout" value="{{ template_details.timeout }}" min="1" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter the maximum time to wait for a response (in seconds)">
+            <div class="form-row">
+                <label for="timeout" title="Maximum time to wait for a response">Timeout (seconds):</label>
+                <input type="number" id="timeout" name="timeout" value="{{ template_details.timeout }}" min="1" required title="Enter the maximum time to wait for a response (in seconds)">
+            </div>
 
-                <label for="notes" style="color: #fff;" title="Additional notes">Notes:</label>
-                <textarea id="notes" name="notes" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter any additional notes or comments">{{ template_details.notes }}</textarea>
-                <button type="button" onclick="suggestPrompt('{{ template_name }}')" style="margin-top:5px;">Suggest Prompt</button>
+            <div class="form-row">
+                <label for="notes" title="Additional notes">Notes:</label>
+                <textarea id="notes" name="notes" title="Enter any additional notes or comments">{{ template_details.notes }}</textarea>
+            </div>
+            <button type="button" onclick="suggestPrompt('{{ template_name }}')">Suggest Prompt</button>
 
-                <label for="object_filter" style="color: #fff;" title="Filter for specific objects">Object Filter:</label>
-                <input type="text" id="object_filter" name="object_filter" value="{{ template_details.object_filter }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter object types to filter (e.g., 'person,car')">
+            <div class="form-row">
+                <label for="object_filter" title="Filter for specific objects">Object Filter:</label>
+                <input type="text" id="object_filter" name="object_filter" value="{{ template_details.object_filter }}" title="Enter object types to filter (e.g., 'person,car')">
+            </div>
 
-                <label for="object_confidence" style="color: #fff;" title="Minimum confidence for object detection">Object Confidence:</label>
-                <input type="number" id="object_confidence" name="object_confidence" value="{{ template_details.object_confidence }}" min="0" max="1" step="0.01" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter the minimum confidence level for object detection (0-1)">
+            <div class="form-row">
+                <label for="object_confidence" title="Minimum confidence for object detection">Object Confidence:</label>
+                <input type="number" id="object_confidence" name="object_confidence" value="{{ template_details.object_confidence }}" min="0" max="1" step="0.01" title="Enter the minimum confidence level for object detection (0-1)">
+            </div>
 
-                <label for="motion" style="color: #fff;" title="Percentage of motion required to trigger an alert">Motion Percent:</label>
-                <input type="number" id="motion" name="motion" value="{{ template_details.motion }}" min="0" max="1" step="0.01" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter the percentage of motion required to trigger an alert">
+            <div class="form-row">
+                <label for="motion" title="Percentage of motion required to trigger an alert">Motion Percent:</label>
+                <input type="number" id="motion" name="motion" value="{{ template_details.motion }}" min="0" max="1" step="0.01" title="Enter the percentage of motion required to trigger an alert">
+            </div>
 
-                <label for="popup_xpath" style="color: #fff;">Popup XPath:</label>
+            <div class="form-row">
+                <label for="popup_xpath">Popup XPath:</label>
                 <div class="xpath-input-container">
-                    <input type="text" id="popup_xpath" name="popup_xpath" value="{{ template_details.popup_xpath }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc; width: 70%;">
-                    <button type="button" onclick="showStructuredInput('popup_xpath')" style="padding: 5px; border-radius: 5px; background-color: #4CAF50; color: #fff; border: none; cursor: pointer;">Structured</button>
+                    <input type="text" id="popup_xpath" name="popup_xpath" value="{{ template_details.popup_xpath }}">
+                    <button type="button" onclick="showStructuredInput('popup_xpath')">Structured</button>
                 </div>
+            </div>
 
-                <label for="dedicated_xpath" style="color: #fff;">Dedicated XPath:</label>
+            <div class="form-row">
+                <label for="dedicated_xpath">Dedicated XPath:</label>
                 <div class="xpath-input-container">
-                    <input type="text" id="dedicated_xpath" name="dedicated_xpath" value="{{ template_details.dedicated_xpath }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc; width: 70%;">
-                    <button type="button" onclick="showStructuredInput('dedicated_xpath')" style="padding: 5px; border-radius: 5px; background-color: #4CAF50; color: #fff; border: none; cursor: pointer;">Structured</button>
+                    <input type="text" id="dedicated_xpath" name="dedicated_xpath" value="{{ template_details.dedicated_xpath }}">
+                    <button type="button" onclick="showStructuredInput('dedicated_xpath')">Structured</button>
                 </div>
+            </div>
 
-                <label for="callback_url" style="color: #fff;" title="URL for notifications">Callback URL:</label>
-                <input type="url" id="callback_url" name="callback_url" value="{{ template_details.callback_url }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter URL to receive notifications">
+            <div class="form-row">
+                <label for="callback_url" title="URL for notifications">Callback URL:</label>
+                <input type="url" id="callback_url" name="callback_url" value="{{ template_details.callback_url }}" title="Enter URL to receive notifications">
+            </div>
 
-                <label for="proxy" style="color: #fff;" title="Proxy server address">Proxy:</label>
-                <input type="text" id="proxy" name="proxy" value="{{ template_details.proxy }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter proxy server address (optional)">
+            <div class="form-row">
+                <label for="proxy" title="Proxy server address">Proxy:</label>
+                <input type="text" id="proxy" name="proxy" value="{{ template_details.proxy }}" title="Enter proxy server address (optional)">
+            </div>
 
-                <label for="groups" style="color: #fff;" title="Groups for the template">Groups:</label>
-                <input type="text" id="groups" name="groups" value="{{ template_details.groups }}" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter comma-separated group names">
+            <div class="form-row">
+                <label for="groups" title="Groups for the template">Groups:</label>
+                <input type="text" id="groups" name="groups" value="{{ template_details.groups }}" title="Enter comma-separated group names">
+            </div>
 
-                <label for="rollback_frames" style="color: #fff;" title="Number of frames to rollback">Rollback Frames:</label>
-                <input type="number" id="rollback_frames" name="rollback_frames" value="{{ template_details.rollback_frames or 0 }}" min="0" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter number of frames to rollback">
+            <div class="form-row">
+                <label for="rollback_frames" title="Number of frames to rollback">Rollback Frames:</label>
+                <input type="number" id="rollback_frames" name="rollback_frames" value="{{ template_details.rollback_frames or 0 }}" min="0" title="Enter number of frames to rollback">
+            </div>
+
             </div>
 	    <br/>
 
-            <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
-                <label for="invert" style="color: #fff;" title="Invert image colors">
+            <div class="checkbox-row">
+                <label for="invert" title="Invert image colors">
                     <input type="checkbox" id="invert" name="invert" {% if template_details.invert %}checked{% endif %} title="Invert colors of the captured image"> Invert
                 </label>
-                <label for="dark" style="color: #fff;" title="Use dark mode">
+                <label for="dark" title="Use dark mode">
                     <input type="checkbox" id="dark" name="dark" {% if template_details.dark %}checked{% endif %} title="Enable dark mode for the captured page"> Dark Mode
                 </label>
-                <label for="browser" style="color: #fff;" title="Use a full browser: Enables a complete browser environment for more complex web interactions, potentially improving compatibility but using more resources.">
+                <label for="browser" title="Use a full browser: Enables a complete browser environment for more complex web interactions, potentially improving compatibility but using more resources.">
                     <input type="checkbox" id="browser" name="browser" {% if template_details.browser %}checked{% endif %} title="Use a full browser instead of a headless one"> Browser
                 </label>
-                <label for="headless" style="color: #fff;" title="Run in headless mode: Operates the browser without a visible UI, which is faster and uses fewer resources but may be less compatible with some websites.">
+                <label for="headless" title="Run in headless mode: Operates the browser without a visible UI, which is faster and uses fewer resources but may be less compatible with some websites.">
                     <input type="checkbox" id="headless" name="headless" {% if template_details.headless %}checked{% endif %} title="Run browser in headless mode"> Headless
                 </label>
-                <label for="stealth" style="color: #fff;" title="Use stealth mode: Applies various techniques to make the browser behave more like a human user, helping to avoid detection by anti-bot systems.">
+                <label for="stealth" title="Use stealth mode: Applies various techniques to make the browser behave more like a human user, helping to avoid detection by anti-bot systems.">
                     <input type="checkbox" id="stealth" name="stealth" {% if template_details.stealth %}checked{% endif %} title="Use stealth mode to avoid detection"> Stealth
                 </label>
-                <label for="danger" style="color: #fff;" title="Mark as potentially dangerous: Flags this template as containing potentially sensitive or risky content, adding an extra layer of caution.">
+                <label for="danger" title="Mark as potentially dangerous: Flags this template as containing potentially sensitive or risky content, adding an extra layer of caution.">
                     <input type="checkbox" id="danger" name="danger" {% if template_details.danger %}checked{% endif %} title="Mark this template as potentially dangerous"> Danger
                 </label>
             </div>
-	    <br/>
-
-            <div style="text-align: center; margin-top: 20px;">
-                <input type="submit" value="Update Template" style="padding: 10px 20px; background-color: #4CAF50; color: #fff; border: none; border-radius: 5px; cursor: pointer;" title="Save changes to this template">
+            <br/>
+            <div class="form-actions">
+                <input type="submit" value="Update Template" title="Save changes to this template">
             </div>
         </form>
     </div>
-
-    <div id="delete-template" style="text-align: center; margin-top: 20px;">
-        <button id="delete-btn" onclick="confirmDelete('{{ template_name }}')" style="padding: 10px 20px; background-color: #e74c3c; color: #fff; border: none; border-radius: 5px; cursor: pointer;" title="Delete this template permanently">Delete Template</button>
+    <div id="delete-template" class="form-actions">
+        <button id="delete-btn" onclick="confirmDelete('{{ template_name }}')" title="Delete this template permanently">Delete Template</button>
     </div>
 </details>
 
