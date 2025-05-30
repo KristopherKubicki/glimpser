@@ -59,6 +59,7 @@ from app.utils import (
     screenshots,
     camera_discovery,
     prompt_optimizer,
+    camera_fix,
 )
 from app.utils.db import SessionLocal
 
@@ -1677,6 +1678,24 @@ def init_routes(app):
 
         prompt = prompt_optimizer.generate_prompt(template_name)
         return jsonify({"prompt": prompt})
+
+    @app.route("/suggest_fix/<string:template_name>", methods=["POST"])
+    @login_required
+    def suggest_fix_route(template_name: TemplateName):
+        """Return diagnostic info and replacement URL suggestions."""
+
+        template_name = validate_template_name(template_name)
+        if template_name is None:
+            abort(404)
+
+        details = template_manager.get_template(template_name)
+        if not details:
+            abort(404)
+
+        url = details.get("url", "")
+        xpaths = [details.get("popup_xpath", ""), details.get("dedicated_xpath", "")]
+        info = camera_fix.check_camera_template(url, xpaths)
+        return jsonify(info)
 
     @app.route("/screenshots/<string:name>/<string:filename>")
     @login_required
