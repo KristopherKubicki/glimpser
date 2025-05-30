@@ -42,6 +42,8 @@ class TestCameraDiscovery(unittest.TestCase):
             ("192.168.1.6", 5060),
             ("10.0.0.6", 5349),
             ("192.168.1.6", 161),
+            ("192.168.1.6", 80),
+            ("10.0.0.6", 8080),
         }
 
     @patch("app.utils.camera_discovery.glob.glob")
@@ -149,9 +151,11 @@ class TestCameraDiscovery(unittest.TestCase):
         ]
         self.assertEqual(result, expected)
 
+    @patch("app.utils.camera_discovery._probe_ssdp")
     @patch("app.utils.camera_discovery._probe_mdns")
     @patch("app.utils.camera_discovery._probe_onvif")
     @patch("app.utils.camera_discovery.is_port_open")
+    @patch("app.utils.camera_discovery._check_http_endpoint")
     @patch("app.utils.camera_discovery._fetch_snmp_sysname")
     @patch("app.utils.camera_discovery._fetch_sdp")
     @patch("app.utils.camera_discovery.psutil.net_if_addrs")
@@ -160,14 +164,23 @@ class TestCameraDiscovery(unittest.TestCase):
         mock_addrs,
         mock_fetch_sdp,
         mock_fetch_snmp,
+        mock_check_http,
         mock_port_open,
         mock_onvif,
         mock_mdns,
+        mock_ssdp,
     ):
         mock_addrs.return_value = self._mock_interfaces()
         mock_port_open.side_effect = self._port_open_side_effect
         mock_fetch_sdp.return_value = "v=0"
         mock_fetch_snmp.return_value = "cam1"
+        mock_check_http.side_effect = lambda ip, port, path, timeout=1: (
+            (ip, port, path)
+            in {
+                ("192.168.1.6", 80, "/snapshot.jpg"),
+                ("10.0.0.6", 8080, "/index.m3u8"),
+            }
+        )
         mock_onvif.return_value = [
             {"ip": "192.168.1.6", "protocol": "onvif", "port": 80, "info": {}},
             {
@@ -179,6 +192,9 @@ class TestCameraDiscovery(unittest.TestCase):
         ]
         mock_mdns.return_value = [
             {"ip": "192.168.1.7", "protocol": "mdns", "port": 8080, "info": {}}
+        ]
+        mock_ssdp.return_value = [
+            {"ip": "192.168.1.8", "protocol": "ssdp", "port": 80, "info": {}}
         ]
         result = camera_discovery.discover_cameras()
         expected = [
@@ -200,11 +216,24 @@ class TestCameraDiscovery(unittest.TestCase):
             {"ip": "10.0.0.6", "protocol": "webrtc", "port": 5349, "info": {}},
             {
                 "ip": "192.168.1.6",
+                "protocol": "http",
+                "port": 80,
+                "info": {"path": "/snapshot.jpg"},
+            },
+            {
+                "ip": "10.0.0.6",
+                "protocol": "hls",
+                "port": 8080,
+                "info": {"path": "/index.m3u8"},
+            },
+            {
+                "ip": "192.168.1.6",
                 "protocol": "snmp",
                 "port": 161,
                 "info": {"name": "cam1"},
             },
             {"ip": "192.168.1.7", "protocol": "mdns", "port": 8080, "info": {}},
+            {"ip": "192.168.1.8", "protocol": "ssdp", "port": 80, "info": {}},
             {
                 "ip": "127.0.0.1",
                 "protocol": "http",

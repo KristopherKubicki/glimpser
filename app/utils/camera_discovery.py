@@ -126,6 +126,45 @@ def _probe_mdns(timeout=2):
     return cameras
 
 
+def _probe_ssdp(timeout=2):
+    """Probe for devices announcing themselves via SSDP/UPnP."""
+    cameras = []
+    request = (
+        "M-SEARCH * HTTP/1.1\r\n"
+        "HOST:239.255.255.250:1900\r\n"
+        'MAN:"ssdp:discover"\r\n'
+        "MX:1\r\n"
+        "ST:ssdp:all\r\n\r\n"
+    )
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.settimeout(timeout)
+    try:
+        sock.sendto(request.encode(), ("239.255.255.250", 1900))
+        while True:
+            try:
+                resp, addr = sock.recvfrom(1024)
+            except socket.timeout:
+                break
+            ip = addr[0]
+            port = 80
+            headers = resp.decode(errors="ignore").split("\r\n")
+            for line in headers:
+                if line.lower().startswith("location:"):
+                    try:
+                        url = urlparse(line.split(":", 1)[1].strip())
+                        ip = url.hostname or ip
+                        port = url.port or port
+                    except Exception:
+                        pass
+                    break
+            cameras.append({"ip": ip, "protocol": "ssdp", "port": port, "info": {}})
+    except Exception as e:
+        logging.debug("SSDP probe error: %s", e)
+    finally:
+        sock.close()
+    return cameras
+
+
 def _fetch_sdp(ip, port, timeout=2):
     """Attempt to retrieve an SDP description from an RTSP endpoint."""
     request = (
@@ -152,6 +191,19 @@ def _fetch_sdp(ip, port, timeout=2):
     except Exception as e:  # pragma: no cover - network
         logging.debug("SDP fetch error for %s:%s: %s", ip, port, e)
         return None
+
+
+def _check_http_endpoint(ip: str, port: int, path: str, timeout: int = 2) -> bool:
+    """Return True if an HTTP GET returns status 200."""
+    request = f"GET {path} HTTP/1.1\r\nHost: {ip}\r\nConnection: close\r\n\r\n"
+    try:
+        with socket.create_connection((ip, port), timeout=timeout) as sock:
+            sock.sendall(request.encode())
+            resp = sock.recv(64)
+            return resp.startswith(b"HTTP/1") and b"200" in resp.split(b"\r\n")[0]
+    except Exception as e:  # pragma: no cover - network
+        logging.debug("HTTP check error for %s:%s%s: %s", ip, port, path, e)
+        return False
 
 
 def _scan_rtsp_ports(subnets):
@@ -187,6 +239,62 @@ def _scan_rtmp_ports(subnets):
             checked.add(ip)
             if is_port_open(ip, 1935, timeout=1):
                 found.append({"ip": ip, "protocol": "rtmp", "port": 1935, "info": {}})
+    return found
+
+
+def _scan_http_endpoints(subnets):
+    """Scan HTTP ports for MJPEG/snapshot URLs."""
+    paths = ["/snapshot.jpg", "/video.mjpg"]
+    found = []
+    checked: set[str] = set()
+    for net in subnets:
+        for host in net.hosts():
+            ip = str(host)
+            if ip in checked:
+                continue
+            checked.add(ip)
+            for port in (80, 8080, 443):
+                if not is_port_open(ip, port, timeout=1):
+                    continue
+                for path in paths:
+                    if _check_http_endpoint(ip, port, path, timeout=1):
+                        found.append(
+                            {
+                                "ip": ip,
+                                "protocol": "http",
+                                "port": port,
+                                "info": {"path": path},
+                            }
+                        )
+                        break
+    return found
+
+
+def _scan_hls_streams(subnets):
+    """Scan HTTP ports for HLS playlists."""
+    playlists = ["/index.m3u8", "/live.m3u8"]
+    found = []
+    checked: set[str] = set()
+    for net in subnets:
+        for host in net.hosts():
+            ip = str(host)
+            if ip in checked:
+                continue
+            checked.add(ip)
+            for port in (80, 8080, 443):
+                if not is_port_open(ip, port, timeout=1):
+                    continue
+                for path in playlists:
+                    if _check_http_endpoint(ip, port, path, timeout=1):
+                        found.append(
+                            {
+                                "ip": ip,
+                                "protocol": "hls",
+                                "port": port,
+                                "info": {"path": path},
+                            }
+                        )
+                        break
     return found
 
 
@@ -286,6 +394,10 @@ def discover_cameras():
     cameras = []
     cameras.extend(_probe_onvif())
     try:
+        cameras.extend(_probe_ssdp())
+    except Exception as e:
+        logging.debug("SSDP discovery error: %s", e)
+    try:
         cameras.extend(_probe_mdns())
     except Exception as e:
         logging.debug("mDNS discovery error: %s", e)
@@ -296,6 +408,8 @@ def discover_cameras():
         cameras.extend(_scan_sip_ports(subnets))
         cameras.extend(_scan_webrtc_ports(subnets))
         cameras.extend(_scan_snmp_ports(subnets))
+        cameras.extend(_scan_http_endpoints(subnets))
+        cameras.extend(_scan_hls_streams(subnets))
     except Exception as e:
         logging.warning("RTSP scan error: %s", e)
     try:

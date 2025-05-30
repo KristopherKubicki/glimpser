@@ -10,6 +10,7 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Retention policy file sorting is also verified by tests.
 - Screenshot utility functions now have dedicated unit tests.
 - Shutdown helpers and port checks are validated by new tests.
+- LLM response count is now verified by a unit test that patches `random.randint`.
 - Application version bumped to `v0.2.4`.
 - Template and live views now show camera metadata, and PNG streams stop when switching sources.
 - Templates are rescheduled when saved to apply the new settings.
@@ -20,5 +21,7 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Group and All cameras now bypass offline checks when loading feeds.
 - The "All" camera PNG stream now refreshes automatically.
 - HTML templates are tested for image `alt` text and required form fields.
+- Template storage usage is now verified by unit tests.
 - Prompt optimizer logic is now tested for screenshot handling and prompt restoration.
 - Template edit form now uses `.form-row` containers for aligned inputs.
+- The Add Template form auto-fills the Groups field when a filter is selected.
