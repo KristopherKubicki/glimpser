@@ -21,5 +21,6 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Group and All cameras now bypass offline checks when loading feeds.
 - The "All" camera PNG stream now refreshes automatically.
 - HTML templates are tested for image `alt` text and required form fields.
+- Template storage usage is now verified by unit tests.
 - Prompt optimizer logic is now tested for screenshot handling and prompt restoration.
 - The Add Template form auto-fills the Groups field when a filter is selected.
