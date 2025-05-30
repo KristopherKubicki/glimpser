@@ -52,4 +52,8 @@ This guide will walk you through the process of setting up Glimpser and running 
 - Check out the [Configuration Guide](configuration_guide.md) to customize Glimpser for your needs.
 - Join our [community forum](#) to connect with other Glimpser users and get support.
 
+## Offline Help
+
+After you visit the `/help` route while online, the help page is stored locally. You can then access `/help` anytime for instructions on adding templates, managing captures, and troubleshooting, even without an internet connection.
+
 Happy monitoring!
