@@ -1814,6 +1814,7 @@ def init_routes(app):
         return send_from_directory(path, filename)
 
     @app.route("/settings", methods=["GET", "POST"])
+    @login_required
     def settings():
         if request.method == "POST":
             email_settings = [
