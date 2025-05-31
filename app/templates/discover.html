@@ -51,7 +51,7 @@
             source.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 if (data.done) {
-                    msg.textContent = '';
+                    msg.textContent = `Found ${data.cameras.length} cameras.`;
                     progress.style.display = 'none';
                     data.cameras.forEach(cam => {
                         const tr = document.createElement('tr');
@@ -74,7 +74,7 @@
                     });
                     source.close();
                 } else {
-                    msg.textContent = `Scanning ${data.stage}... (${data.count})`;
+                    msg.textContent = `Scanning ${data.stage} (${data.count} found)...`;
                 }
             };
             source.onerror = (e) => {
