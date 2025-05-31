@@ -435,11 +435,16 @@ def generate(
                 ):
                     # warning - todo, this needs to be completed still
                     try:
-                        with Image.open(last_shot) as img:
-                            img = resize_and_pad(img, (1280, 720))
-                            buffer = io.BytesIO()
-                            img.save(buffer, format="JPEG")
-                            frame = buffer.getvalue()
+                        if screenshots._is_valid_png(last_shot):
+                            with Image.open(last_shot) as img:
+                                img = resize_and_pad(img, (1280, 720))
+                                buffer = io.BytesIO()
+                                img.save(buffer, format="JPEG")
+                                frame = buffer.getvalue()
+                        else:
+                            logging.error(
+                                "Failed to open last shot %s: invalid image", last_shot
+                            )
                     except Exception as e:
                         logging.error("Failed to open last shot %s: %s", last_shot, e)
                 else:
@@ -503,11 +508,20 @@ def generate(
                         last_shot = most_recent_file
 
                         try:
-                            with Image.open(most_recent_file) as img:
-                                img = resize_and_pad(img, (1280, 720))
-                                buffer = io.BytesIO()
-                                img.save(buffer, format="JPEG")
-                                frame = buffer.getvalue()
+                            if screenshots._is_valid_png(most_recent_file):
+                                with Image.open(most_recent_file) as img:
+                                    img = resize_and_pad(img, (1280, 720))
+                                    buffer = io.BytesIO()
+                                    img.save(buffer, format="JPEG")
+                                    frame = buffer.getvalue()
+                            else:
+                                logging.error(
+                                    "Failed to open last shot %s: invalid image",
+                                    most_recent_file,
+                                )
+                                frame = None
+
+                            if frame is not None:
                                 # file sizes the same size?  maybe just touch the file instead?
 
                                 # Write to a temporary file first, then atomically
