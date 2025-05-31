@@ -64,6 +64,7 @@ from app.utils import (
     prompt_optimizer,
     camera_fix,
 )
+from app.utils.screenshots import is_chrome_debug_port_open, check_user_activity
 from app.utils.db import SessionLocal, engine
 
 # from app.models.log import Log
@@ -695,6 +696,16 @@ def init_routes(app):
             200,
         )  # always return 200, but might be degraded.
 
+    @app.route("/danger_status")
+    @login_required
+    def danger_status():
+        """Return whether Danger mode can be used."""
+        port_open = is_chrome_debug_port_open("127.0.0.1", 9222)
+        idle = not check_user_activity(timeout=1)
+        return jsonify(
+            {"port_open": port_open, "idle": idle, "ready": port_open and idle}
+        )
+
     @app.route("/api/discover")
     def api_discover():
         api_info = {
@@ -704,6 +715,12 @@ def init_routes(app):
                     "path": "/health",
                     "method": "GET",
                     "description": "Check the health status of the API",
+                    "authentication_required": False,
+                },
+                {
+                    "path": "/danger_status",
+                    "method": "GET",
+                    "description": "Check if Danger mode is ready",
                     "authentication_required": False,
                 },
                 {
