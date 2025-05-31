@@ -1974,6 +1974,9 @@ def init_routes(app):
     def discover_cameras_scan_stream():
         def generate():
             q = queue.Queue()
+            # Provide the client with the number of discovery stages so it
+            # can display a progress bar.
+            q.put({"total": len(camera_discovery.get_discovery_stages())})
 
             def progress(stage, count):
                 q.put({"stage": stage, "count": count})

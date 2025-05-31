@@ -46,10 +46,16 @@
         button.addEventListener('click', () => {
             msg.textContent = 'Searching...';
             progress.style.display = 'inline';
+            progress.removeAttribute('value');
             body.innerHTML = '';
             const source = new EventSource('/discover/scan_stream');
             source.onmessage = (event) => {
                 const data = JSON.parse(event.data);
+                if (data.total) {
+                    progress.max = data.total;
+                    progress.value = 0;
+                    return;
+                }
                 if (data.done) {
                     msg.textContent = `Found ${data.cameras.length} cameras.`;
                     progress.style.display = 'none';
@@ -74,6 +80,7 @@
                     });
                     source.close();
                 } else {
+                    progress.value += 1;
                     msg.textContent = `Scanning ${data.stage} (${data.count} found)...`;
                 }
             };
