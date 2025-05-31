@@ -10,6 +10,7 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [Developer Guide](developer_guide.md)
 - [Release Workflow](release_workflow.md)
 - [Docker Build Verification](docker_build.md)
+- [JavaScript Test Workflow](javascript_tests.md)
 - [System Monitoring and Logs](system_monitoring.md)
 - [FAQ](faq.md)
 - [Getting Started](getting_started.md)
