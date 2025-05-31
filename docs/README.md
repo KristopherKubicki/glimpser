@@ -12,6 +12,7 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Shutdown helpers and port checks are validated by new tests.
 - LLM response count is now verified by a unit test that patches `random.randint`.
 - Footer now displays the package version from installed metadata.
+- Footer version link shows a warning icon when a newer release is available.
 - Template and live views now show camera metadata, and PNG streams stop when switching sources.
 - Templates are rescheduled when saved to apply the new settings.
 - The front page 'Play All' button now works again after moving its script initialization to DOMContentLoaded.
