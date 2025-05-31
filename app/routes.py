@@ -936,7 +936,7 @@ def init_routes(app):
 
         if file and allowed_filename(file.filename):
             # Generate a unique timestamped filename
-            timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+            timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
             filename = f"{template_name}_{timestamp}.png.tmp"
             output_path = os.path.join(SCREENSHOT_DIRECTORY, template_name, filename)
             # if not os.path.normpath(output_path).startswith(SCREENSHOT_DIRECTORY):
@@ -1001,7 +1001,7 @@ def init_routes(app):
         most_recent_time = 0
         most_recent_file = None
         last_file = None
-        for template in sorted_templates:
+        for _, template in sorted_templates:
             name = validate_template_name(template.get("name"))
             if name is None:
                 continue
@@ -1012,6 +1012,8 @@ def init_routes(app):
                 name,
             )
             lfiles = [f for f in glob.glob(path + "/*.png") if os.path.isfile(f)]
+            if not lfiles:
+                continue
             lfiles.sort(key=os.path.getmtime)
             last_file = lfiles[-1]
             if (
@@ -1028,7 +1030,9 @@ def init_routes(app):
 
         if os.path.exists(most_recent_file):
             return send_file(most_recent_file)
-        return send_file(last_file)  # better than nothing
+        if last_file and os.path.exists(last_file):
+            return send_file(last_file)  # better than nothing
+        abort(404)
 
     @app.route(
         "/test.rtsp",
