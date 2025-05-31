@@ -2,6 +2,7 @@ import csv
 import glob
 import hashlib
 import inspect
+from sqlalchemy import inspect as sa_inspect
 import io
 import json
 import logging
@@ -63,7 +64,7 @@ from app.utils import (
     prompt_optimizer,
     camera_fix,
 )
-from app.utils.db import SessionLocal
+from app.utils.db import SessionLocal, engine
 
 # from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock
@@ -157,7 +158,13 @@ def login_required(f):
 
             db_session = SessionLocal()
             try:
-                user = db_session.query(User).filter_by(id=session["user_id"]).first()
+                inspector = sa_inspect(engine)
+                if "users" in inspector.get_table_names():
+                    user = (
+                        db_session.query(User).filter_by(id=session["user_id"]).first()
+                    )
+                else:
+                    user = {"id": session["user_id"]}
             finally:
                 db_session.close()
 
@@ -1820,6 +1827,7 @@ def init_routes(app):
         return send_from_directory(path, filename)
 
     @app.route("/settings", methods=["GET", "POST"])
+    @login_required
     def settings():
         if request.method == "POST":
             email_settings = [
