@@ -57,6 +57,12 @@ class TestImageProcessing(unittest.TestCase):
         # index out of range?  fix this
         # self.assertEqual(result.getpixel((50, 50)), (255, 0, 0, 255))
 
+    def test_remove_background_white_border(self):
+        image = Image.new("RGBA", (100, 100), color=(255, 255, 255, 255))
+        image.putpixel((50, 50), (0, 0, 0, 255))
+        result = remove_background(image)
+        self.assertIsInstance(result, Image.Image)
+
     def test_find_bounding_box(self):
         # Create a test image with a known non-background area
         image = Image.new("RGBA", (100, 100), color=(14, 14, 14, 255))

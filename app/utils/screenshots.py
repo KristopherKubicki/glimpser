@@ -348,8 +348,22 @@ def check_user_activity(timeout=10):
     return user_active
 
 
-def remove_background(image, background_color=(14, 14, 14, 255), threshold=10):
+def detect_background_color(image: Image.Image, sample_width: int = 10):
+    """Return the most common color found along the image border."""
+    arr = np.asarray(image.convert("RGBA"))
+    top = arr[:sample_width, :, :].reshape(-1, 4)
+    bottom = arr[-sample_width:, :, :].reshape(-1, 4)
+    left = arr[:, :sample_width, :].reshape(-1, 4)
+    right = arr[:, -sample_width:, :].reshape(-1, 4)
+    border = np.concatenate([top, bottom, left, right], axis=0)
+    colors, counts = np.unique(border, axis=0, return_counts=True)
+    return tuple(int(c) for c in colors[counts.argmax()])
+
+
+def remove_background(image, background_color=None, threshold=10):
     """Crop the image to remove the background color border and ensure a 16:9 aspect ratio."""
+    if background_color is None:
+        background_color = detect_background_color(image)
     # Find the bounding box of the non-background area
     bbox = find_bounding_box(image, background_color, threshold)
 
