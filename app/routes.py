@@ -174,6 +174,12 @@ def login_required(f):
             if api_key:
                 return jsonify({"error": "Invalid API key"}), 401
             else:
+                # When no session cookie is present the user might have cookies
+                # disabled or the SESSION_COOKIE_SECURE flag could block the
+                # cookie over HTTP. Provide a hint and log for easier debugging
+                if "session" not in request.cookies:
+                    flash("Login requires cookies. Check browser settings.", "error")
+                    logging.debug("Missing session cookie from %s", request.remote_addr)
                 return redirect(url_for("login", next=request.url))
 
     return decorated_function
@@ -762,7 +768,9 @@ def init_routes(app):
             ip_address in login_attempts
             and login_attempts[ip_address]["locked_until"] > now
         ):
-            return "Too many failed attempts. Please try again later.", 429
+            flash("Too many failed attempts. Please try again later.", "error")
+            logging.warning("Locked login attempt from %s", ip_address)
+            return render_template("login.html"), 429
 
         if request.method == "POST":
             username = request.form["username"]
@@ -783,6 +791,7 @@ def init_routes(app):
                 login_attempts.pop(
                     ip_address, None
                 )  # Reset attempts on successful login
+                logging.info("Successful login for %s from %s", username, ip_address)
                 return redirect(url_for("index"))
             else:
                 # Record the failed attempt
@@ -802,8 +811,10 @@ def init_routes(app):
                     login_attempts[ip_address]["locked_until"] = now + timedelta(
                         minutes=1
                     )
-
-                flash("Invalid username or password")
+                logging.warning(
+                    "Failed login attempt for %s from %s", username, ip_address
+                )
+                flash("Invalid username or password", "error")
         return render_template("login.html")
 
     @app.route("/help")
