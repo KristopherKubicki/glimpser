@@ -6,7 +6,7 @@ This guide explains how to check Glimpser's health metrics and view live logs.
 
 **GET /status**
 
-The status page shows current system metrics and includes the live log viewer. Metrics are collected in a background thread. See `app/utils/scheduling.py` for implementation details.
+The status page shows current system metrics and includes the live log viewer. Metrics are collected in a background thread. See `app/utils/scheduling.py` for implementation details. Raw values can also be retrieved programmatically from the `/health` endpoint.
 
 ### Metrics
 

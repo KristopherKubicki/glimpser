@@ -2,7 +2,7 @@ let cpuData = [];
 const maxDataPoints = 60;
 
 function updatePerformanceMetrics() {
-    fetch('/system_metrics')
+    fetch('/health')
         .then(response => response.json())
         .then(data => {
             document.getElementById('cpu-value').textContent = `${data.cpu_usage}%`;

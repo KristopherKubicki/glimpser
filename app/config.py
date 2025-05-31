@@ -215,3 +215,11 @@ TWILIO_NUMBER = get_setting("TWILIO_NUMBER", "")
 # MCP settings
 MCP_SERVER_COMMAND = get_setting("MCP_SERVER_COMMAND", "")
 MCP_SERVER_URL = get_setting("MCP_SERVER_URL", "")
+
+# Settings that should never be displayed in the UI
+SENSITIVE_SETTINGS = [
+    "SECRET_KEY",
+    "USER_PASSWORD_HASH",
+    "DATABASE_URL",
+    "VERSION",
+]

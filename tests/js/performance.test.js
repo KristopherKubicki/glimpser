@@ -38,7 +38,7 @@ describe('performance.js', () => {
 
     await updatePerformanceMetrics();
 
-    expect(fetch).toHaveBeenCalledWith('/system_metrics');
+    expect(fetch).toHaveBeenCalledWith('/health');
     expect(document.getElementById('cpu-value').textContent).toBe('50%');
     expect(document.getElementById('memory-value').textContent).toBe('40%');
     expect(document.getElementById('uptime-value').textContent).toBe('1h');

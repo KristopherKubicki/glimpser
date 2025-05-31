@@ -51,6 +51,7 @@ from app.config import (
     BACKUP_PATH,
     backup_config,
     restore_config,
+    SENSITIVE_SETTINGS,
 )
 from app.models import User
 from app.utils import (
@@ -237,11 +238,13 @@ def get_all_settings():
             {"name": name, "value": value} for name, value in settings.items()
         ]
 
-        # TODO: blocklist some settings - set this somewhere
+        # Remove sensitive items before showing them in the settings page
         lsettings_list = []
-        blocks = ["SECRET_KEY", "USER_PASSWORD_HASH", "DATABASE_URL", "VERSION"]
         for sl in settings_list:
-            if re.findall(r"^[A-Z_]+?$", sl["name"]) and sl["name"] not in blocks:
+            if (
+                re.findall(r"^[A-Z_]+?$", sl["name"])
+                and sl["name"] not in SENSITIVE_SETTINGS
+            ):
                 lsettings_list.append({"name": sl["name"], "value": sl["value"]})
 
         return lsettings_list
