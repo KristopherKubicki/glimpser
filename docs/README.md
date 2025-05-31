@@ -32,3 +32,4 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - UI now uses the Inter font for improved readability.
 - Navigation health indicator uses a dedicated CSS class.
 - JavaScript is now split into modules for templates, video controls, and scheduler toggling.
+- Session cookies are now marked secure/HTTPOnly and expire after a configurable timeout.

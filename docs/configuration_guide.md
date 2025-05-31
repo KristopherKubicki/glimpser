@@ -45,6 +45,11 @@ updated with `generate_credentials.py` or through the web interface.
 - `API_KEY` – key used to access the API (empty by default)
 - `CHATGPT_KEY` – API key for AI captioning and summarization (empty by
   default)
+- `SESSION_COOKIE_SECURE` – set `True` to send cookies only over HTTPS
+  (default `True`)
+- `SESSION_COOKIE_HTTPONLY` – set `True` to prevent JavaScript access to the
+  session cookie (default `True`)
+- `SESSION_TIMEOUT_MINUTES` – session lifetime in minutes (default `30`)
 
 User accounts are stored in the `users` table. Each record contains the
 `username`, `password_hash`, and an optional `role` that can be used for future

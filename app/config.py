@@ -154,6 +154,11 @@ MAX_IN_PROCESS_VIDEO_SIZE = int(
 
 LOG_LEVEL = get_setting("LOG_LEVEL", "WARN")
 
+# Session security settings
+SESSION_COOKIE_SECURE = get_setting("SESSION_COOKIE_SECURE", "True") == "True"
+SESSION_COOKIE_HTTPONLY = get_setting("SESSION_COOKIE_HTTPONLY", "True") == "True"
+SESSION_TIMEOUT_MINUTES = int(get_setting("SESSION_TIMEOUT_MINUTES", 30))
+
 # Load settings from the database
 SECRET_KEY = get_setting("SECRET_KEY", "default_secret_key")
 USER_NAME = get_setting("USER_NAME", "admin")

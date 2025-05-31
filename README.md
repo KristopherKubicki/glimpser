@@ -94,7 +94,7 @@ For a full description of every command-line flag, including the separate creden
 
 ### Docker Quick Start
 
-If you prefer to run Glimpser in Docker, copy `.env.example` to `.env` and set at least `SECRET_KEY` and `API_KEY`. Then build and start the container:
+If you prefer to run Glimpser in Docker, copy `.env.example` to `.env` and set at least `SECRET_KEY` and `API_KEY`. You may also adjust `SESSION_TIMEOUT_MINUTES` and related cookie settings. Then build and start the container using Gunicorn:
 
 ```sh
 docker-compose up --build
