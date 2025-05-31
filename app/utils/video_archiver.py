@@ -552,6 +552,5 @@ def archive_screenshots():
 
         try:
             compile_to_video(camera_path, video_path)
-        except Exception:
-            # TODO: log something bad happening
-            pass
+        except Exception as e:
+            logging.exception("Failed to compile video for camera %s", camera_name)
