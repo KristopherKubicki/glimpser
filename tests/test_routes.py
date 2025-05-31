@@ -115,7 +115,8 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
     @patch("app.routes.render_template")
-    def test_index(self, mock_render_template, mock_session_local):
+    @patch("app.routes.template_manager.get_templates")
+    def test_index(self, mock_get_templates, mock_render_template, mock_session_local):
         dummy_user = SimpleNamespace(id=1)
 
         class DummyQuery:
@@ -133,9 +134,12 @@ class TestRoutes(unittest.TestCase):
                 pass
 
         mock_session_local.return_value = DummySession()
+        mock_get_templates.return_value = {"camera": {}}
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
-        mock_render_template.assert_called_with("index.html")
+        mock_render_template.assert_called_with(
+            "index.html", template_details={"camera": {}}
+        )
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
