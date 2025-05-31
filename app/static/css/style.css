@@ -290,39 +290,10 @@ video:hover + .play-icon {
     }
 }
 
-header {
-    background-color: #000; /* Dark background for better contrast */
-    color: #fff; /* White text */
-    padding: 2px 2px; /* Padding for spacing */
-    display: flex; /* Flexbox for layout */
-    align-items: center; /* Vertically align items */
-    justify-content: space-between; /* Space out the title and navigation */
-}
-
-header h1 {
-    font-size: 24px; /* Larger font size for title */
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5); /* Text shadow for readability */
-}
-
-nav {
-    display: flex; /* Flexbox for layout */
-    gap: 10px; /* Space between navigation items */
-}
-
-nav a {
-    color: #fff; /* White text */
-    text-decoration: none; /* No underline */
-    padding: 5px 10px; /* Padding */
-    border-radius: 5px; /* Rounded corners */
-}
-
-nav a:hover, nav a.active {
-    background-color: #555; /* Highlight for hover and active link */
-}
 
 .settings-icon {
-    font-size: 24px; /* Adjust the size of the icon */
-    text-decoration: none; /* Remove underline */
+    font-size: 24px;
+    text-decoration: none;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -351,22 +322,9 @@ nav a:hover, nav a.active {
     left: 0;
 }
 
-@media screen and (max-width: 768px) { /* Responsive design for mobile */
-    header h1 {
-        font-size: 20px; /* Smaller font size on mobile */
-    }
-
-    nav {
-        flex-direction: column; /* Stack navigation items on mobile */
-        align-items: flex-start;
-    }
-
-    nav a {
-        margin-bottom: 5px; /* Add margin for stacked items */
-    }
-
+@media screen and (max-width: 768px) {
     .settings-icon {
-        font-size: 20px; /* Slightly smaller icon on mobile */
+        font-size: 20px;
     }
 
     .performance-indicator {

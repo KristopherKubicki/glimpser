@@ -1,101 +1,102 @@
+<nav class="navbar navbar-expand-md navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+            <img src="{{ url_for('static', filename='img/glimpser_small.png') }}" alt="Glimpser logo" title="Glimpser">
+        </a>
 
-                <h1><a href='/'><img src='{{ url_for('static', filename='img/glimpser_small.png') }}' alt='Glimpser logo' title='Glimpser'></a></h1>
-        <nav>
-            <div class="nav-left">
+        <div class="collapse navbar-collapse" id="navbarContent">
+            <ul class="navbar-nav me-auto">
                 {% for ag in active_groups %}
-                <a href='/group/{{ag}}'>{{ag}}</a>
+                <li class="nav-item">
+                    <a class="nav-link" href="/group/{{ag}}">{{ag}}</a>
+                </li>
                 {% endfor %}
-                <!-- Discover icon moved to nav-right for consistency -->
-            </div>
+            </ul>
 
-	    <div class="nav-center" style='text-align:center;'>
-{% if template_name %}
-<center><h1><a href='/templates/{{template_name}}'>{{template_name}}</a></h1></center>
-    {% endif %} 
-	    </div>
+            <span class="navbar-text mx-auto">
+                {% if template_name %}
+                <a href="/templates/{{template_name}}" class="text-decoration-none">{{template_name}}</a>
+                {% endif %}
+            </span>
 
-            <div class="nav-right">
-		    <table>
-			    <tr>
-
-				    <td>
-					    <div id="health-status" style="width: 15px; height: 15px; border-radius: 50%; background-color: grey;" title="System Performance"><a href='/status'></a></div>
-				    </td>
-	<script>
-                if (typeof window.lastHealthFailed === 'undefined') {
-                    window.lastHealthFailed = false;
-                }
-                function checkHealth() {
-    fetch('/health')
-        .then(response => response.json())
-        .then(data => {
-            const healthStatus = document.getElementById('health-status');
-            if (data.status === 'healthy') {
-                healthStatus.style.backgroundColor = 'green';
-                healthStatus.title = 'System Status: Healthy\n\n';
-            } else {
-                healthStatus.style.backgroundColor = 'red';
-                healthStatus.title = 'System Status: Degraded\n\n';
-            }
-            healthStatus.title += `CPU: ${data.metrics.cpu_usage}%\nMemory: ${data.metrics.memory_usage}%\nDisk: ${data.metrics.disk_usage}%\nOpen Files: ${data.metrics.open_files}\nThreads: ${data.metrics.thread_count}\nUptime: ${data.metrics.uptime}\n`;
-
-            if (data.error_messages && data.error_messages.length > 0) {
-                healthStatus.title += '\nErrors:\n' + data.error_messages.join('\n');
-            }
-
-            if (window.lastHealthFailed) {
-                if (typeof updateFeed === 'function') {
-                    updateFeed();
-                } else {
-                    window.location.reload();
-                }
-                window.lastHealthFailed = false;
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching health status:', error);
-            const healthStatus = document.getElementById('health-status');
-            healthStatus.style.backgroundColor = 'red';
-            healthStatus.title = 'Error: Unable to fetch health status';
-            window.lastHealthFailed = true;
-        });
-}
-
-// Check health status every 5 seconds
-setInterval(checkHealth, 5000);
-
-// Initial health check
-checkHealth();
-
-	</script>
-                                    </td>
-                                    <td>
-                                            <a href='/discover' class="settings-icon" title='Discover Cameras'>&#128269;</a>
-                                    </td>
-
-                                    <td>
-                                            <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'>&#9000;</a>
-				    </td><td>
-                <a href='/live' id='live'>
-                    <div id="coolClock" class="cool-clock" title="Live">
-                        <div id="dateDisplay" class="clock-face">
-                            <div id="digitalTime" class="clock-hands" title="todo $digitalTime">
-                                <div class="hand hour-hand"></div>
-                                <div class="hand minute-hand"></div>
-                                <div class="hand second-hand"></div>
+            <ul class="navbar-nav ms-auto align-items-center">
+                <li class="nav-item">
+                    <div id="health-status" class="rounded-circle me-2" style="width: 15px; height: 15px; background-color: grey;" title="System Performance"><a href='/status'></a></div>
+                </li>
+                <li class="nav-item">
+                    <a href='/discover' class="nav-link settings-icon" title='Discover Cameras'>&#128269;</a>
+                </li>
+                <li class="nav-item">
+                    <a href='/captions' id='captions' class="nav-link settings-icon" title='Read and update camera LLMs'>&#9000;</a>
+                </li>
+                <li class="nav-item">
+                    <a href='/live' id='live' class="nav-link p-0">
+                        <div id="coolClock" class="cool-clock" title="Live">
+                            <div id="dateDisplay" class="clock-face">
+                                <div id="digitalTime" class="clock-hands" title="todo $digitalTime">
+                                    <div class="hand hour-hand"></div>
+                                    <div class="hand minute-hand"></div>
+                                    <div class="hand second-hand"></div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </a>
-				    </td><td>
-                <a href='/settings' class="settings-icon" title="Update settings">&#9881;</a>
-				    </td>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href='/settings' class="nav-link settings-icon" title="Update settings">&#9881;</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
 
+<script>
+    if (typeof window.lastHealthFailed === 'undefined') {
+        window.lastHealthFailed = false;
+    }
 
-			    </tr>
-		    </table>
-            </div>
-        </nav>
+    function checkHealth() {
+        fetch('/health')
+            .then(response => response.json())
+            .then(data => {
+                const healthStatus = document.getElementById('health-status');
+                if (data.status === 'healthy') {
+                    healthStatus.style.backgroundColor = 'green';
+                    healthStatus.title = 'System Status: Healthy\n\n';
+                } else {
+                    healthStatus.style.backgroundColor = 'red';
+                    healthStatus.title = 'System Status: Degraded\n\n';
+                }
+                healthStatus.title += `CPU: ${data.metrics.cpu_usage}%\nMemory: ${data.metrics.memory_usage}%\nDisk: ${data.metrics.disk_usage}%\nOpen Files: ${data.metrics.open_files}\nThreads: ${data.metrics.thread_count}\nUptime: ${data.metrics.uptime}\n`;
+
+                if (data.error_messages && data.error_messages.length > 0) {
+                    healthStatus.title += '\nErrors:\n' + data.error_messages.join('\n');
+                }
+
+                if (window.lastHealthFailed) {
+                    if (typeof updateFeed === 'function') {
+                        updateFeed();
+                    } else {
+                        window.location.reload();
+                    }
+                    window.lastHealthFailed = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching health status:', error);
+                const healthStatus = document.getElementById('health-status');
+                healthStatus.style.backgroundColor = 'red';
+                healthStatus.title = 'Error: Unable to fetch health status';
+                window.lastHealthFailed = true;
+            });
+    }
+
+    // Check health status every 5 seconds
+    setInterval(checkHealth, 5000);
+
+    // Initial health check
+    checkHealth();
+</script>
 
 <script>
     function updateCoolClock() {
@@ -114,4 +115,3 @@ checkHealth();
     setInterval(updateCoolClock, 1000);
     updateCoolClock(); // initial call to display the clock immediately
 </script>
-
