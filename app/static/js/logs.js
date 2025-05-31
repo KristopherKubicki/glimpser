@@ -57,3 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Start the initial event stream
     startEventStream();
 });
+
+if (typeof module !== 'undefined') {
+    module.exports = { updateTable };
+}

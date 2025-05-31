@@ -51,3 +51,7 @@ setInterval(updatePerformanceMetrics, 5000);
 
 // Initial update
 updatePerformanceMetrics();
+
+if (typeof module !== 'undefined') {
+    module.exports = { updatePerformanceMetrics, updateCPUSparkline };
+}

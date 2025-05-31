@@ -563,3 +563,7 @@ function startCasting() {
   }
 }
 
+if (typeof module !== 'undefined') {
+  module.exports = { loadTemplates, updateGridLayout, timeAgo };
+}
+

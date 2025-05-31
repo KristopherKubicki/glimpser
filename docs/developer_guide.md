@@ -53,6 +53,9 @@ For more details, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 - New routes can be added in `app/routes.py`.
 - Utility functions live in `app/utils/`.
 - Configuration defaults are defined in `app/config.py`.
+- JavaScript utilities in `app/static/js/` expose functions via `module.exports`
+  when running under Node, allowing the test suite to import them without
+  impacting browser usage.
 
 When adding new features, include corresponding tests under the `tests/` directory.
 - Utilities for network testing now have dedicated tests in `tests/test_network_testing_utils.py`.
