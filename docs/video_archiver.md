@@ -11,3 +11,7 @@ failures can be diagnosed easily.
 Blank screenshots (identified by the `_blank.png` suffix or when the image is
 mostly empty) are discarded before any compilation step. This keeps videos free
 of placeholder frames.
+
+If a screenshot vanishes between discovery and metadata lookup (for example, if
+another process cleans the directory), the archiver simply skips that file. This
+prevents crashes due to `FileNotFoundError` when gathering timestamps.
