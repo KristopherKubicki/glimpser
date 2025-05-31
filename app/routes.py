@@ -716,6 +716,25 @@ def init_routes(app):
         }
         return jsonify(api_info), 200
 
+    @app.route("/mcp/tools")
+    @login_required
+    def mcp_tools():
+        """Return the list of tools exposed by the configured MCP server."""
+        from app.utils import mcp
+
+        tools = mcp.list_tools_sync()
+        return jsonify(tools)
+
+    @app.route("/mcp/tool/<string:name>", methods=["POST"])
+    @login_required
+    def mcp_call_tool(name):
+        """Call a tool on the configured MCP server."""
+        from app.utils import mcp
+
+        params = request.get_json(silent=True) or {}
+        result = mcp.call_tool_sync(name, params)
+        return jsonify(result)
+
     @app.route("/login", methods=["GET", "POST"])
     def login():
         ip_address = request.remote_addr
