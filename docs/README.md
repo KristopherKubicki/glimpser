@@ -27,3 +27,4 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Template edit form now uses `.form-row` containers for aligned inputs.
 - The Add Template form auto-fills the Groups field when a filter is selected.
 - Help page now covers CLI usage, configuration pointers, and links back to the app.
+- CSS files are now linted in CI using **stylelint**.
