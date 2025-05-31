@@ -841,6 +841,36 @@ def init_routes(app):
                 flash("Invalid username or password", "error")
         return render_template("login.html")
 
+    @app.route("/sso", methods=["GET"])
+    def sso_login():
+        token = request.args.get("token") or request.headers.get("X-SSO-Token")
+        if token != config.SSO_TOKEN or not token:
+            flash("Invalid SSO token", "error")
+            logging.warning("Invalid SSO token from %s", request.remote_addr)
+            return redirect(url_for("login"))
+
+        db_session = SessionLocal()
+        try:
+            user = (
+                db_session.query(User).filter_by(username=config.SSO_USERNAME).first()
+            )
+        finally:
+            db_session.close()
+
+        if not user:
+            flash("Configured SSO user not found", "error")
+            logging.error("SSO user %s not found", config.SSO_USERNAME)
+            return redirect(url_for("login"))
+
+        session["user_id"] = user.id
+        session["expiry"] = (
+            datetime.now() + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
+        ).strftime("%Y-%m-%d %H:%M:%S")
+        session.permanent = True
+        flash("Logged in via SSO", "success")
+        logging.info("SSO login for %s from %s", user.username, request.remote_addr)
+        return redirect(url_for("index"))
+
     @app.route("/help")
     @login_required
     def help_page():

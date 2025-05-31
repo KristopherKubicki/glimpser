@@ -21,6 +21,7 @@ Before diving into specific integrations, it's important to understand the gener
 3. **Scheduling**: Glimpser's scheduling capabilities (`app/utils/scheduling.py`) can be used to synchronize with external systems.
 
 4. **Authentication**: Ensure that you use proper authentication when making API calls to Glimpser.
+5. **Single Sign-On**: When configured, send your SSO token to the `/sso` endpoint to establish a session.
 
 ## Blue Iris Integration
 
