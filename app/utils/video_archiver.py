@@ -413,6 +413,8 @@ def compile_to_video(camera_path, video_path) -> bool:
     # FileNotFoundError and skip missing entries.
     new_files = []
     for f in glob.glob(os.path.join(camera_path, "*.png")):
+        if os.path.islink(f):
+            continue
         if f.endswith("_blank.png"):
             continue
         try:
