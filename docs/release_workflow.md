@@ -14,6 +14,9 @@ Tags are normally created automatically when the version in `setup.py` is bumped
 on the `main` branch.  The `Tag Release` workflow creates a tag like `v0.2.5`
 and pushes it to GitHub, which then triggers the build jobs above.
 
+Since the tag is pushed by a workflow, the job must grant `workflow: write`
+permissions so that the subsequent release workflow is triggered.
+
 You can still trigger a release manually by creating and pushing a tag:
 
 ```sh
