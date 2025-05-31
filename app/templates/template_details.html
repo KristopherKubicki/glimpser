@@ -6,7 +6,7 @@
     const cameraMeta = {{ template_details|tojson }};
 </script>
 
-            <video controls poster="/last_screenshot/{{ template_name }}" autoplay muted autoplay style='display: block; height: 90vh; width: 90vw;' width='90%'
+            <video controls poster="/last_screenshot/{{ template_name }}" autoplay muted autoplay class="video-large" width='90%'
 			    {% if template_details.last_caption %}
 			    title='{{template_details.last_caption}}'
 			    {% else %}
@@ -105,7 +105,7 @@ function updateVideo(templateName) {
 
 </script>
 
-    <div id="camera-metadata" style="margin: 10px 0; color: #ccc;">
+    <div id="camera-metadata" class="camera-metadata">
         <ul>
             <li><strong>Last Screenshot:</strong> {{ template_details.last_screenshot_time }}</li>
             <li><strong>Last Video:</strong> {{ template_details.last_video_time }}</li>
@@ -402,17 +402,17 @@ function closePromptModal() {
 
 
 
-  <div id="camera-details-modal" style="display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
-    <div style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%;">
-      <span onclick="closeModal()" style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+  <div id="camera-details-modal" class="modal-overlay">
+    <div class="modal-content">
+      <span onclick="closeModal()" class="modal-close">&times;</span>
       <div id="camera-details-content"></div>
     </div>
   </div>
 
-  <div id="prompt-modal" style="display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
-    <div style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%;">
-      <span onclick="closePromptModal()" style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
-      <textarea id="prompt-text" style="width: 100%; height: 100px;"></textarea>
+  <div id="prompt-modal" class="modal-overlay">
+    <div class="modal-content">
+      <span onclick="closePromptModal()" class="modal-close">&times;</span>
+      <textarea id="prompt-text" class="prompt-text"></textarea>
     </div>
   </div>
 {% endblock %}

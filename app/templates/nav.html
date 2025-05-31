@@ -8,7 +8,7 @@
                 <!-- Discover icon moved to nav-right for consistency -->
             </div>
 
-	    <div class="nav-center" style='text-align:center;'>
+            <div class="nav-center text-center">
 {% if template_name %}
 <center><h1><a href='/templates/{{template_name}}'>{{template_name}}</a></h1></center>
     {% endif %} 
@@ -19,7 +19,7 @@
 			    <tr>
 
 				    <td>
-					    <div id="health-status" style="width: 15px; height: 15px; border-radius: 50%; background-color: grey;" title="System Performance"><a href='/status'></a></div>
+                                            <div id="health-status" class="health-status" title="System Performance"><a href='/status'></a></div>
 				    </td>
 	<script>
                 if (typeof window.lastHealthFailed === 'undefined') {

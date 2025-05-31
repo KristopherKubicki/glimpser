@@ -63,10 +63,10 @@
 {% endwith %}
 
     <details><summary>Captions</summary>
-        <table border="1" style="width: 100%; border-collapse: collapse;">
+        <table border="1" class="caption-table">
             <tr>
-                <th style="padding: 8px; background-color: #f4f4f4;">Timestamp</th>
-                <th style="padding: 8px; background-color: #f4f4f4;">Caption</th>
+                <th>Timestamp</th>
+                <th>Caption</th>
             </tr>
             {% for caption in lcaptions %}
             {% for lc in caption %}
@@ -81,7 +81,7 @@
     </details>
 
 <h2>Camera Notes</h2>
-<table id="camera-table" class="camera-table" style="min-width:90%; max-width: 90%;">
+<table id="camera-table" class="camera-table">
     <thead>
         <tr>
             <th>Camera</th>
@@ -92,7 +92,7 @@
         {% for camera in template_details %}
         <tr class="camera-row" data-groups="{{ template_details[camera]['groups'] }}">
             <td>
-                <div class="templateDiv" style="max-width: 10vh; max-height:1em;">
+                <div class="templateDiv templateDiv-sm">
                     <div class="video-container">
 			    <div class="camera-name"><a href='/templates/{{camera}}'>{{camera}}</a></div>
                         <video class="hover-video" loop muted poster="/last_screenshot/{{ camera }}">
@@ -105,7 +105,7 @@
                     </div>
                 </div>
             </td>
-            <td style="align: top left;">
+            <td>
 
 		    dark: {{ template_details[camera]['dark'] }}
 		    browser: {{ template_details[camera]['browser'] }}
@@ -126,20 +126,20 @@
                 </table>
                 <details>
                     <summary>Caption</summary>
-                    <form id="form-{{ camera }}" class="notes-form" style="display: flex; flex-direction: column;">
-                        <div class="chat-box" style="display: flex; flex-direction: column; border: 1px solid #ccc; border-radius: 8px; padding: 10px; background-color: #f9f9f9;">
-                            <div class="chat-prompt" style="margin-bottom: 8px;">
-                                <label for="notes-{{ camera }}" style="display: block; font-weight: bold;">Prompt:</label>
-                                <textarea id="notes-{{ camera }}" class="notes-textarea" style="width: 100%; border-radius: 4px; padding: 8px; border: 1px solid #ddd;">{{ template_details[camera]['notes'] }}</textarea>
+                    <form id="form-{{ camera }}" class="notes-form">
+                        <div class="chat-box">
+                            <div class="chat-prompt">
+                                <label for="notes-{{ camera }}" class="label-bold">Prompt:</label>
+                                <textarea id="notes-{{ camera }}" class="notes-textarea">{{ template_details[camera]['notes'] }}</textarea>
                             </div>
-                            <div class="chat-response" style="margin-top: 8px;">
-                                <label style="display: block; font-weight: bold;">Response:</label>
-                                <div class="last-caption" style="border: 1px solid #ddd; border-radius: 4px; padding: 8px; background-color: #fff;">
+                            <div class="chat-response">
+                                <label class="label-bold">Response:</label>
+                                <div class="last-caption">
                                     {{ template_details[camera]['last_caption'] }}
                                 </div>
                             </div>
                         </div>
-                        <button class="update-button" data-template="{{ camera }}" style="align-self: flex-end; margin-top: 10px; border: none; background-color: #4CAF50; color: white; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                        <button class="update-button" data-template="{{ camera }}">
                             Send
                         </button>
                     </form>
