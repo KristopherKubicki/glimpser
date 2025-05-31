@@ -263,6 +263,16 @@ class TestVideoArchiver(unittest.TestCase):
             archive_screenshots()
         self.assertEqual(mock_compile_to_video.call_count, 2)
 
+    @patch("app.utils.video_archiver.logging.exception")
+    @patch("app.utils.video_archiver.compile_to_video", side_effect=Exception("fail"))
+    def test_archive_screenshots_logs_error(self, mock_compile_to_video, mock_log):
+        with (
+            patch("os.listdir", return_value=["camera1"]),
+            patch("os.path.isdir", return_value=True),
+        ):
+            archive_screenshots()
+        mock_log.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
