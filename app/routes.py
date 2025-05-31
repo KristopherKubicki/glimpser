@@ -174,6 +174,12 @@ def login_required(f):
             if api_key:
                 return jsonify({"error": "Invalid API key"}), 401
             else:
+                # When no session cookie is present the user might have cookies
+                # disabled or the SESSION_COOKIE_SECURE flag could block the
+                # cookie over HTTP. Provide a hint and log for easier debugging
+                if "session" not in request.cookies:
+                    flash("Login requires cookies. Check browser settings.", "error")
+                    logging.debug("Missing session cookie from %s", request.remote_addr)
                 return redirect(url_for("login", next=request.url))
 
     return decorated_function
