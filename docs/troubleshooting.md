@@ -121,6 +121,8 @@ Remember to always include relevant log files, error messages, and your Glimpser
 - Stop other Glimpser instances that might be using the same database file.
 - If using SQLite, ensure the volume is mounted with proper locking support.
 - Consider switching to a server database like PostgreSQL for multi‑user setups.
+- Glimpser now enables SQLite WAL mode at startup which reduces lock errors.
+  Remove any stale `-journal` files if they remain from older runs.
 
 ## 7. Docker Deployment Issues
 
