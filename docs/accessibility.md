@@ -8,3 +8,4 @@ The user interface now includes additional tooltips and descriptive alt text to 
 - The navigation Settings link has a single descriptive `title` attribute.
 - The Discover page icon also uses a descriptive `title` attribute.
 - When a camera is offline, the player shows an overlay with a clear icon instead of replacing the controls.
+- Deprecated `<center>` tags were removed from templates and replaced with CSS-based centering.

@@ -309,6 +309,20 @@ nav {
     gap: 10px; /* Space between navigation items */
 }
 
+.nav-left,
+.nav-right {
+    display: flex;
+    align-items: center;
+}
+
+.nav-center {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
 nav a {
     color: #fff; /* White text */
     text-decoration: none; /* No underline */
@@ -678,6 +692,11 @@ footer {
 }
 
 /* Login Page Styles */
+.login-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
 .login-container {
     background-color: white;
     padding: 20px;
