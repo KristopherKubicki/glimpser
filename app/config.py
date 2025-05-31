@@ -217,6 +217,10 @@ TWILIO_SID = get_setting("TWILIO_SID", "")
 TWILIO_TOKEN = get_setting("TWILIO_TOKEN", "")
 TWILIO_NUMBER = get_setting("TWILIO_NUMBER", "")
 
+# Common Alerting Protocol settings
+CAP_ENDPOINT = get_setting("CAP_ENDPOINT", "")
+CAP_SENDER = get_setting("CAP_SENDER", "glimpser@example.com")
+
 # MCP settings
 MCP_SERVER_COMMAND = get_setting("MCP_SERVER_COMMAND", "")
 MCP_SERVER_URL = get_setting("MCP_SERVER_URL", "")
