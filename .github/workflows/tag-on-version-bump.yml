@@ -8,6 +8,8 @@ jobs:
   tag_release:
     permissions:
       contents: write
+      # Allow the push to trigger other workflows (e.g. package release)
+      workflow: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
