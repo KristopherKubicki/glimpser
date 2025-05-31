@@ -1,0 +1,49 @@
+import os
+import sys
+import shutil
+import unittest
+from flask import Flask
+from PIL import Image
+from unittest.mock import patch
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from app.routes import init_routes
+
+
+class TestStreamPngRoute(unittest.TestCase):
+    def setUp(self):
+        self.repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        self.sshot_dir = "test_stream_png"
+        os.makedirs(os.path.join(self.repo_root, self.sshot_dir, "cam1"), exist_ok=True)
+        self.login_patch = patch("app.routes.login_required", lambda x: x)
+        self.sc_patch = patch("app.routes.SCREENSHOT_DIRECTORY", self.sshot_dir)
+        self.tpl_patch = patch("app.routes.template_manager.get_templates")
+        self.login_patch.start()
+        self.sc_patch.start()
+        self.mock_tpl = self.tpl_patch.start()
+        self.app = Flask(__name__)
+        init_routes(self.app)
+        self.client = self.app.test_client()
+
+    def tearDown(self):
+        self.login_patch.stop()
+        self.sc_patch.stop()
+        self.tpl_patch.stop()
+        shutil.rmtree(os.path.join(self.repo_root, self.sshot_dir), ignore_errors=True)
+
+    def test_empty_directory_returns_404(self):
+        self.mock_tpl.return_value = {"cam1": {"name": "cam1"}}
+        resp = self.client.get("/stream.png")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_returns_latest_image(self):
+        self.mock_tpl.return_value = {"cam1": {"name": "cam1"}}
+        img_path = os.path.join(self.repo_root, self.sshot_dir, "cam1", "cam1_1.png")
+        Image.new("RGB", (1, 1)).save(img_path)
+        resp = self.client.get("/stream.png")
+        self.assertEqual(resp.status_code, 200)
+
+
+if __name__ == "__main__":  # pragma: no cover
+    unittest.main()
