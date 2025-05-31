@@ -18,56 +18,8 @@
 		    <table>
 			    <tr>
 
-				    <td>
-					    <div id="health-status" style="width: 15px; height: 15px; border-radius: 50%; background-color: grey;" title="System Performance"><a href='/status'></a></div>
-				    </td>
-	<script>
-                if (typeof window.lastHealthFailed === 'undefined') {
-                    window.lastHealthFailed = false;
-                }
-                function checkHealth() {
-    fetch('/health')
-        .then(response => response.json())
-        .then(data => {
-            const healthStatus = document.getElementById('health-status');
-            if (data.status === 'healthy') {
-                healthStatus.style.backgroundColor = 'green';
-                healthStatus.title = 'System Status: Healthy\n\n';
-            } else {
-                healthStatus.style.backgroundColor = 'red';
-                healthStatus.title = 'System Status: Degraded\n\n';
-            }
-            healthStatus.title += `CPU: ${data.metrics.cpu_usage}%\nMemory: ${data.metrics.memory_usage}%\nDisk: ${data.metrics.disk_usage}%\nOpen Files: ${data.metrics.open_files}\nThreads: ${data.metrics.thread_count}\nUptime: ${data.metrics.uptime}\n`;
-
-            if (data.error_messages && data.error_messages.length > 0) {
-                healthStatus.title += '\nErrors:\n' + data.error_messages.join('\n');
-            }
-
-            if (window.lastHealthFailed) {
-                if (typeof updateFeed === 'function') {
-                    updateFeed();
-                } else {
-                    window.location.reload();
-                }
-                window.lastHealthFailed = false;
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching health status:', error);
-            const healthStatus = document.getElementById('health-status');
-            healthStatus.style.backgroundColor = 'red';
-            healthStatus.title = 'Error: Unable to fetch health status';
-            window.lastHealthFailed = true;
-        });
-}
-
-// Check health status every 5 seconds
-setInterval(checkHealth, 5000);
-
-// Initial health check
-checkHealth();
-
-	</script>
+                                    <td>
+                                            <div id="health-status" style="width: 15px; height: 15px; border-radius: 50%; background-color: grey;" title="System Performance"><a href='/status'></a></div>
                                     </td>
                                     <td>
                                             <a href='/discover' class="settings-icon" title='Discover Cameras'>&#128269;</a>
@@ -75,7 +27,8 @@ checkHealth();
 
                                     <td>
                                             <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'>&#9000;</a>
-				    </td><td>
+                                    </td>
+                                    <td>
                 <a href='/live' id='live'>
                     <div id="coolClock" class="cool-clock" title="Live">
                         <div id="dateDisplay" class="clock-face">
@@ -87,9 +40,10 @@ checkHealth();
                         </div>
                     </div>
                 </a>
-				    </td><td>
+                                    </td>
+                                    <td>
                 <a href='/settings' class="settings-icon" title="Update settings">&#9881;</a>
-				    </td>
+                                    </td>
 
 
 			    </tr>
@@ -97,21 +51,4 @@ checkHealth();
             </div>
         </nav>
 
-<script>
-    function updateCoolClock() {
-        const now = new Date();
-        const secondsDegrees = (now.getSeconds() / 60) * 360 + 0;
-        const minutesDegrees = (now.getMinutes() / 60) * 360 + (now.getSeconds() / 60) * 6 + 0;
-        const hoursDegrees = (now.getHours() / 12) * 360 + (now.getMinutes() / 60) * 30 + 0;
-
-        document.querySelector('.second-hand').style.transform = `rotate(${secondsDegrees}deg)`;
-        document.querySelector('.minute-hand').style.transform = `rotate(${minutesDegrees}deg)`;
-        document.querySelector('.hour-hand').style.transform = `rotate(${hoursDegrees}deg)`;
-
-        document.getElementById('digitalTime').title = now.toLocaleTimeString() + '\n' + Intl.DateTimeFormat().resolvedOptions().timeZone + '\n' + now.toDateString() ;
-    }
-
-    setInterval(updateCoolClock, 1000);
-    updateCoolClock(); // initial call to display the clock immediately
-</script>
 

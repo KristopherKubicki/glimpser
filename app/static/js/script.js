@@ -117,12 +117,90 @@ document.addEventListener('DOMContentLoaded', () => {
       isPlaying = !isPlaying;
     });
   }
-  
+
+  // Health check and live clock initialization
+  if (typeof window.lastHealthFailed === 'undefined') {
+    window.lastHealthFailed = false;
+  }
+  if (document.getElementById('health-status')) {
+    setInterval(checkHealth, 5000);
+    checkHealth();
+  }
+  if (document.getElementById('coolClock')) {
+    setInterval(updateCoolClock, 1000);
+    updateCoolClock();
+  }
+
   // Update video sources every 30 minutes
   setInterval(updateVideoSources, 60000 * 30);
 });
 
 // Helper functions
+
+function checkHealth() {
+  fetch('/health')
+    .then((response) => response.json())
+    .then((data) => {
+      const healthStatus = document.getElementById('health-status');
+      if (!healthStatus) return;
+      if (data.status === 'healthy') {
+        healthStatus.style.backgroundColor = 'green';
+        healthStatus.title = 'System Status: Healthy\n\n';
+      } else {
+        healthStatus.style.backgroundColor = 'red';
+        healthStatus.title = 'System Status: Degraded\n\n';
+      }
+      healthStatus.title +=
+        `CPU: ${data.metrics.cpu_usage}%\n` +
+        `Memory: ${data.metrics.memory_usage}%\n` +
+        `Disk: ${data.metrics.disk_usage}%\n` +
+        `Open Files: ${data.metrics.open_files}\n` +
+        `Threads: ${data.metrics.thread_count}\n` +
+        `Uptime: ${data.metrics.uptime}\n`;
+
+      if (data.error_messages && data.error_messages.length > 0) {
+        healthStatus.title += '\nErrors:\n' + data.error_messages.join('\n');
+      }
+
+      if (window.lastHealthFailed) {
+        if (typeof updateFeed === 'function') {
+          updateFeed();
+        } else {
+          window.location.reload();
+        }
+        window.lastHealthFailed = false;
+      }
+    })
+    .catch((error) => {
+      console.error('Error fetching health status:', error);
+      const healthStatus = document.getElementById('health-status');
+      if (healthStatus) {
+        healthStatus.style.backgroundColor = 'red';
+        healthStatus.title = 'Error: Unable to fetch health status';
+      }
+      window.lastHealthFailed = true;
+    });
+}
+
+function updateCoolClock() {
+  const clock = document.getElementById('coolClock');
+  if (!clock) return;
+  const now = new Date();
+  const secondsDegrees = (now.getSeconds() / 60) * 360;
+  const minutesDegrees = (now.getMinutes() / 60) * 360 + (now.getSeconds() / 60) * 6;
+  const hoursDegrees = (now.getHours() / 12) * 360 + (now.getMinutes() / 60) * 30;
+
+  document.querySelector('.second-hand').style.transform = `rotate(${secondsDegrees}deg)`;
+  document.querySelector('.minute-hand').style.transform = `rotate(${minutesDegrees}deg)`;
+  document.querySelector('.hour-hand').style.transform = `rotate(${hoursDegrees}deg)`;
+
+  document.getElementById('digitalTime').title =
+    now.toLocaleTimeString() +
+    '\n' +
+    Intl.DateTimeFormat().resolvedOptions().timeZone +
+    '\n' +
+    now.toDateString();
+}
 
 async function loadGroups() {
   const groupDropdown = document.getElementById('group-dropdown');
