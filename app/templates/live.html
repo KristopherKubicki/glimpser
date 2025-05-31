@@ -82,7 +82,7 @@
 
     <div class="video-container">
         <img id="live-image" alt="Live feed frame" title="Current frame from the live feed">
-        <video id="live-video" style="display: none;" autoplay muted>
+        <video id="live-video" class="hidden" autoplay muted>
             <source src="" type="video/mp4">
             Your browser does not support the video tag.
         </video>
@@ -135,11 +135,11 @@
 
 
         </div>
-        <div id="video-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
-            <div id="loading-indicator" style="display: none;">Loading...</div>
-            <div id="play-pause-indicator" style="display: none; font-size: 48px;">▶</div>
-            <div id="offline-indicator" style="display: none; text-align: center; color: white;">
-                <i class="fas fa-video-slash" style="font-size:48px;"></i>
+        <div id="video-overlay" class="video-overlay">
+            <div id="loading-indicator" class="hidden">Loading...</div>
+            <div id="play-pause-indicator" class="video-icon hidden">▶</div>
+            <div id="offline-indicator" class="offline-indicator hidden">
+                <i class="fas fa-video-slash video-icon"></i>
                 <p id="offline-message"></p>
             </div>
         </div>
