@@ -20,7 +20,7 @@ This guide provides a high-level look at Glimpser's core components and how they
   - `screenshots.py` – capturing or downloading images and videos.
   - `template_manager.py` – provides `TemplateManager` for validating,
     saving and deleting templates stored in the database.
-  - `email_alerts.py` and `sms_alerts.py` – sending notifications.
+  - `email_alerts.py`, `sms_alerts.py` and `cap_alerts.py` – sending notifications.
 
 ## Scheduler Jobs (`app/utils/scheduling.py`)
 - Uses APScheduler to run periodic tasks.

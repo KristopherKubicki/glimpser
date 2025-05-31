@@ -87,6 +87,13 @@ Configure these values to enable Twilio SMS alerts:
 - `TWILIO_TOKEN` – your Twilio auth token
 - `TWILIO_NUMBER` – phone number that receives alerts
 
+## CAP Settings
+
+Set these variables to enable Common Alerting Protocol alerts:
+
+- `CAP_ENDPOINT` – URL that accepts CAP XML alerts
+- `CAP_SENDER` – identifier used in the CAP `sender` field
+
 ## Capture Parameters
 
 Settings controlling how frames are captured from video sources:
