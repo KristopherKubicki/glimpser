@@ -66,6 +66,8 @@ The choice between these methods depends on factors such as:
 After capturing the content, Glimpser applies several post-processing steps:
 
 1. **Background Removal**: Remove unnecessary background from captured images.
+   The color along the screenshot edges is sampled and the most common shade is
+   treated as the background to crop away.
 2. **Dark Mode**: Apply dark mode to the captured image if requested. The image array is copied before modification to avoid "assignment destination is read-only" errors.
 3. **Timestamp Addition**: Overlay the capture with the current time in the
    configured timezone. When different from UTC, the UTC time is displayed just
