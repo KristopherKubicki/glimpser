@@ -309,6 +309,15 @@ nav {
     gap: 10px; /* Space between navigation items */
 }
 
+.nav-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+}
+
 .nav-left,
 .nav-right {
     display: flex;
@@ -377,9 +386,23 @@ nav a:hover, nav a.active {
         font-size: 20px; /* Smaller font size on mobile */
     }
 
+    .nav-toggle {
+        display: block;
+    }
+
     nav {
         flex-direction: column; /* Stack navigation items on mobile */
         align-items: flex-start;
+    }
+
+    nav .nav-links {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+    }
+
+    nav.open .nav-links {
+        display: flex;
     }
 
     nav a {
