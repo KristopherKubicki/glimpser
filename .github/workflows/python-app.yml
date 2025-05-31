@@ -28,6 +28,14 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8 pytest coverage
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    - name: Install Node dependencies
+      run: npm ci
+    - name: Lint CSS
+      run: npm run lint:css
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
