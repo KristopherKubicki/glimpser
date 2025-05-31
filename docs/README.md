@@ -30,6 +30,9 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Help page now covers CLI usage, configuration pointers, and links back to the app.
 - CSS files are now linted in CI using **stylelint**.
 - UI now uses the Inter font for improved readability.
+- Stylelint case rule is disabled for the Inter font variable.
 - Navigation health indicator uses a dedicated CSS class.
 - JavaScript is now split into modules for templates, video controls, and scheduler toggling.
+- Navigation logic and form validation are now modules to keep templates concise.
+- Core colors and fonts are defined via CSS variables.
 - Session cookies are now marked secure/HTTPOnly and expire after a configurable timeout.

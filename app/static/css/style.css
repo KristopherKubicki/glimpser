@@ -105,12 +105,11 @@ html {
 }
 
 body {
-    font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: var(--font-family);
     margin: 0;
     padding: 0;
-    /* Background for contrast */
-    background-color: rgb(16, 16, 16);
-    color: rgb(191, 191, 191); /* Darker text for better readability */
+    background-color: var(--bg-color);
+    color: var(--text-color);
     overflow-x: hidden;
     max-width: 100vw;
 }
@@ -256,6 +255,15 @@ video:hover + .play-icon {
 :root {
     --camera-name-font-size: 14px;
     --timestamp-font-size: 12px;
+    /* Color palette */
+    --primary-color: #4CAF50;
+    --accent-color: #555;
+    --bg-color: rgb(16, 16, 16);
+    --secondary-bg-color: #222;
+    --text-color: rgb(191, 191, 191);
+    /* Typography */
+    /* stylelint-disable-next-line value-keyword-case */
+    --font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 .camera-name, .timestamp {
@@ -338,7 +346,7 @@ nav a {
 }
 
 nav a:hover, nav a.active {
-    background-color: #555; /* Highlight for hover and active link */
+    background-color: var(--accent-color); /* Highlight for hover and active link */
 }
 
 .settings-icon {
@@ -501,10 +509,10 @@ button, a {
 
 /* Template Form Styles */
 #template-form, #edit-template {
-    background-color: #222;
+    background-color: var(--secondary-bg-color);
     padding: 20px;
     border-radius: 10px;
-    max-width: 600px;
+    max-width: 1000px;
     margin: 20px auto;
 }
 
@@ -554,7 +562,7 @@ button, a {
 .xpath-input-container button {
     padding: 5px;
     border-radius: 5px;
-    background-color: #4CAF50;
+    background-color: var(--primary-color);
     color: #fff;
     border: none;
     cursor: pointer;
@@ -746,7 +754,7 @@ input[type=password] {
 
 input[type=submit] {
     width: 100%;
-    background-color: #4CAF50;
+    background-color: var(--primary-color);
     color: white;
     padding: 14px 20px;
     margin: 8px 0;
@@ -766,4 +774,26 @@ input[type=submit]:hover {
     #grid-width-slider {
         width: 100%;
     }
+}
+
+/* Utility classes extracted from inline styles */
+.hidden {
+    display: none;
+}
+
+.video-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: none;
+}
+
+.video-icon {
+    font-size: 48px;
+}
+
+.offline-indicator {
+    text-align: center;
+    color: white;
 }

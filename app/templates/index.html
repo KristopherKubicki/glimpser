@@ -5,131 +5,82 @@
 
 <details title="Expand to add a new template">
     <summary>Add Template</summary>
-    <div id="template-form" style="background-color: #222; padding: 20px; border-radius: 10px; max-width: 1000px; margin: 20px auto;" title="Form to add a new template">
-        <h3 style="color: #fff; text-align: center; margin-bottom: 20px;">Add Template</h3>
+    <div id="template-form" title="Form to add a new template">
+        <h3>Add Template</h3>
         <form id="add-template-form" action="/templates" method="post" onsubmit="return validateForm()" title="Enter details for the new template">
-		<div>
-                <label for="name" style="color: #fff;" title="Name of the template">Template Name:</label>
-                <input type="text" id="name" name="name" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter a unique name for this template">
+                <div>
+                <label for="name" title="Name of the template">Template Name:</label>
+                <input type="text" id="name" name="name" required title="Enter a unique name for this template">
 
-                <label for="url" style="color: #fff;" title="URL to monitor">URL:</label>
-                <input type="url" id="url" name="url" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter the URL to monitor">
+                <label for="url" title="URL to monitor">URL:</label>
+                <input type="url" id="url" name="url" required title="Enter the URL to monitor">
 
-                <label for="frequency" style="color: #fff;" title="How often to check the URL">Frequency (minutes):</label>
-                <input type="number" id="frequency" name="frequency" value="30" min="1" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter how often to check the URL (in minutes)">
+                <label for="frequency" title="How often to check the URL">Frequency (minutes):</label>
+                <input type="number" id="frequency" name="frequency" value="30" min="1" required title="Enter how often to check the URL (in minutes)">
 
-                <label for="timeout" style="color: #fff;" title="Maximum time to wait for a response">Timeout (seconds):</label>
-                <input type="number" id="timeout" name="timeout" value="10" min="1" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" required title="Enter the maximum time to wait for a response (in seconds)">
+                <label for="timeout" title="Maximum time to wait for a response">Timeout (seconds):</label>
+                <input type="number" id="timeout" name="timeout" value="10" min="1" required title="Enter the maximum time to wait for a response (in seconds)">
 
-                <label for="notes" style="color: #fff;" title="Additional notes">Notes:</label>
-                <textarea id="notes" name="notes" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter any additional notes or comments"></textarea>
+                <label for="notes" title="Additional notes">Notes:</label>
+                <textarea id="notes" name="notes" title="Enter any additional notes or comments"></textarea>
 
-                <label for="object_filter" style="color: #fff;" title="Filter for specific objects">Object Filter:</label>
-                <input type="text" id="object_filter" name="object_filter" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter object types to filter (e.g., 'person,car')">
+                <label for="object_filter" title="Filter for specific objects">Object Filter:</label>
+                <input type="text" id="object_filter" name="object_filter" title="Enter object types to filter (e.g., 'person,car')">
 
-                <label for="object_confidence" style="color: #fff;" title="Minimum confidence for object detection">Object Confidence:</label>
-                <input type="number" id="object_confidence" name="object_confidence" min="0" max="1" step="0.01" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter the minimum confidence level for object detection (0-1)">
+                <label for="object_confidence" title="Minimum confidence for object detection">Object Confidence:</label>
+                <input type="number" id="object_confidence" name="object_confidence" min="0" max="1" step="0.01" title="Enter the minimum confidence level for object detection (0-1)">
 
 
-                <label for="popup_xpath" style="color: #fff;">Popup XPath:</label>
+                <label for="popup_xpath">Popup XPath:</label>
                 <div class="xpath-input-container">
-                    <input type="text" id="popup_xpath" name="popup_xpath" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc; width: 70%;">
-                    <button type="button" onclick="showStructuredInput('popup_xpath')" style="padding: 5px; border-radius: 5px; background-color: #4CAF50; color: #fff; border: none; cursor: pointer;">Structured</button>
+                    <input type="text" id="popup_xpath" name="popup_xpath">
+                    <button type="button" onclick="showStructuredInput('popup_xpath')">Structured</button>
                 </div>
 
-                <label for="dedicated_xpath" style="color: #fff;">Dedicated XPath:</label>
+                <label for="dedicated_xpath">Dedicated XPath:</label>
                 <div class="xpath-input-container">
-                    <input type="text" id="dedicated_xpath" name="dedicated_xpath" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc; width: 70%;">
-                    <button type="button" onclick="showStructuredInput('dedicated_xpath')" style="padding: 5px; border-radius: 5px; background-color: #4CAF50; color: #fff; border: none; cursor: pointer;">Structured</button>
+                    <input type="text" id="dedicated_xpath" name="dedicated_xpath">
+                    <button type="button" onclick="showStructuredInput('dedicated_xpath')">Structured</button>
                 </div>
 
 
-                <label for="callback_url" style="color: #fff;" title="URL for notifications">Callback URL:</label>
-                <input type="url" id="callback_url" name="callback_url" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter URL to receive notifications">
+                <label for="callback_url" title="URL for notifications">Callback URL:</label>
+                <input type="url" id="callback_url" name="callback_url" title="Enter URL to receive notifications">
 
-                <label for="proxy" style="color: #fff;" title="Proxy server address">Proxy:</label>
-                <input type="text" id="proxy" name="proxy" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter proxy server address (optional)">
+                <label for="proxy" title="Proxy server address">Proxy:</label>
+                <input type="text" id="proxy" name="proxy" title="Enter proxy server address (optional)">
 
-                <label for="groups" style="color: #fff;" title="Groups for the template, comma separated ">Groups:</label>
-                <input type="text" id="groups" name="groups" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter comma-separated group names">
+                <label for="groups" title="Groups for the template, comma separated ">Groups:</label>
+                <input type="text" id="groups" name="groups" title="Enter comma-separated group names">
 
-                <label for="rollback_frames" style="color: #fff;" title="Number of frames to rollback">Rollback Frames:</label>
-                <input type="number" id="rollback_frames" name="rollback_frames" value="0" min="0" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" title="Enter number of frames to rollback">
+                <label for="rollback_frames" title="Number of frames to rollback">Rollback Frames:</label>
+                <input type="number" id="rollback_frames" name="rollback_frames" value="0" min="0" title="Enter number of frames to rollback">
             </div>
-	    <br/>
+            <br/>
 
-            <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
-                <label for="invert" style="color: #fff;" title="Invert image colors">
+            <div class="checkbox-row">
+                <label for="invert" title="Invert image colors">
                     <input type="checkbox" id="invert" name="invert" title="Invert colors of the captured image"> Invert
                 </label>
-                <label for="dark" style="color: #fff;" title="Use dark mode">
+                <label for="dark" title="Use dark mode">
                     <input type="checkbox" id="dark" name="dark" checked title="Enable dark mode for the captured page"> Dark Mode
                 </label>
-                <label for="headless" style="color: #fff;" title="Run in headless mode">
+                <label for="headless" title="Run in headless mode">
                     <input type="checkbox" id="headless" name="headless" checked title="Run browser in headless mode"> Headless
                 </label>
-                <label for="stealth" style="color: #fff;" title="Use stealth mode">
+                <label for="stealth" title="Use stealth mode">
                     <input type="checkbox" id="stealth" name="stealth" title="Use stealth mode to avoid detection"> Stealth
                 </label>
             </div>
 	    <br/>
 
-            <div style="text-align: center; margin-top: 20px;">
-                <input type="submit" value="Submit" style="padding: 10px 20px; background-color: #4CAF50; color: #fff; border: none; border-radius: 5px; cursor: pointer;" title="Submit the template">
+            <div class="form-actions">
+                <input type="submit" value="Submit" title="Submit the template">
             </div>
         </form>
     </div>
 </details>
 
-<script>
-function validateForm() {
-    const name = document.getElementById('name').value.trim();
-    const url = document.getElementById('url').value.trim();
-    const frequency = parseInt(document.getElementById('frequency').value);
-    const timeout = parseInt(document.getElementById('timeout').value);
-    const objectFilter = document.getElementById('object_filter').value.trim();
-    const objectConfidence = parseFloat(document.getElementById('object_confidence').value);
-    const popupXpath = document.getElementById('popup_xpath').value.trim();
-    const dedicatedXpath = document.getElementById('dedicated_xpath').value.trim();
-
-     // make sure the browser is set if there is a popup or dedicated xpath
-
-    if (name === "" || url === "") {
-        alert("Template Name and URL are required fields.");
-        return false;
-    }
-
-    if (frequency < 1 || frequency > 525600) {
-        alert("Frequency must be between 1 and 525600 minutes (1 year).");
-        return false;
-    }
-
-    if (frequency >= 43200) {  // 43200 minutes = 30 days
-        if (!confirm("Warning: The frequency is set to " + frequency + " minutes (more than 30 days). Are you sure you want to continue?")) {
-            return false;
-        }
-    }
-
-    if (timeout < 1 || timeout >= frequency * 60) {
-        alert("Timeout must be at least 1 second and less than the frequency.");
-        return false;
-    }
-
-    if (objectFilter !== "" && (objectConfidence < 0 || objectConfidence > 1)) {
-        alert("Object Confidence must be between 0 and 1 when Object Filter is specified.");
-        return false;
-    }
-
-    if ((popupXpath !== "" && !popupXpath.startsWith('//')) || (dedicatedXpath !== "" && !dedicatedXpath.startsWith('//'))) {
-        alert("XPath expressions must start with '//'.");
-        return false;
-    }
-
-    return true;
-}
-
-
-</script>
 
 
 	<div>
