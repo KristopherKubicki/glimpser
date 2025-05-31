@@ -38,6 +38,7 @@ from PIL import (
     ImageOps,
     ImageStat,
 )
+import textwrap
 from pyvirtualdisplay import Display
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -87,6 +88,25 @@ etag_cache = {}
 status_code_cache = {}
 status_code_cache_time = {}
 STATUS_CACHE_TTL = 60 * 60  # 1 hour
+
+
+FONT_CANDIDATES = [
+    "DejaVuSans-Bold.ttf",
+    "DejaVuSans.ttf",
+    "Arial.ttf",
+    "LiberationSans-Regular.ttf",
+]
+
+
+def load_font(size):
+    """Return a truetype font for overlays."""
+    for font_name in FONT_CANDIDATES:
+        try:
+            return ImageFont.truetype(font_name, size)
+        except IOError:
+            continue
+    return ImageFont.load_default()
+
 
 # Global flag to track user activity
 user_active = False
@@ -466,84 +486,95 @@ def add_timestamp(image_path, name="unknown", invert=False):
                 logging.error(f"Error saving image: {image_path} {e}")
                 return
 
-            # Create an ImageDraw object
             draw = ImageDraw.Draw(image)
-            # if the image has the "invert" flag, then inverse this image for better readability
+            # If the image has the "invert" flag, then invert colors for readability
             if invert:
                 image = ImageOps.invert(image)
 
             # Define the timestamp format
 
             zone = tz.gettz(TZ) or tz.UTC  # fall back if the name is invalid
-            timestamp = datetime.datetime.now(zone).strftime("%Y-%m-%d %H:%M:%S")
-            utc_timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            local_time = datetime.datetime.now(zone)
+            tz_name = local_time.tzname() or ""
+            timestamp = local_time.strftime("%Y-%m-%d %H:%M:%S")
+            if tz_name:
+                timestamp = f"{timestamp} {tz_name}"
 
-            # Define font size as 5% of the screen height
+            utc_time = datetime.datetime.utcnow()
+            utc_timestamp = utc_time.strftime("%Y-%m-%d %H:%M:%S UTC")
+
             max_height = min(image.height, image.width * 9 // 16)
             font_size = int(max_height * 0.05)
-            if font_size < 5:  # anything less than a font size of 5 is goign to fail
+            if font_size < 5:  # ignore tiny images
                 return
 
             top_offset = (image.height - max_height) / 2
 
-            # Define font (you may need to specify a full path to a .ttf file on your system)
-            try:
-                font = ImageFont.truetype("Arial.ttf", font_size)
-            except IOError:
-                try:
-                    font = ImageFont.truetype("LiberationSans-Regular.ttf", font_size)
-                except IOError:
-                    font = ImageFont.load_default()
-            try:
-                font_small = ImageFont.truetype("Arial.ttf", int(max(5, font_size / 2)))
-            except IOError:
-                try:
-                    font_small = ImageFont.truetype(
-                        "LiberationSans-Regular.ttf", int(max(5, font_size / 2))
-                    )
-                except IOError:
-                    font_small = ImageFont.load_default()
+            # Use the helper to load fonts. The small font is half-sized.
+            font = load_font(font_size)
+            font_small = load_font(int(max(5, font_size / 2)))
 
-            # Calculate text size and position
+            padding = 6
+
+            # Render the name in the upper-left corner
             text_w = int(draw.textlength(name, font=font))
             text_h = font_size
-            x, y = int(10), int(10 + top_offset)
-            # Create a black transparent rectangle as the background
+            x = padding
+            y = int(padding + top_offset)
             background = Image.new(
-                "RGBA", (text_w + 20, text_h + 10), (0, 0, 0, 64)
-            )  # 50% transparent black
-            image.paste(background, (x - 10, y - 5), background)
-            # Draw the timestamp in white text on the black transparent box
-            draw.text((x, y), name, font=font, fill=(255, 255, 255, 255))  # White tex
+                "RGBA",
+                (text_w + padding * 2, text_h + padding * 2),
+                (0, 0, 0, 128),
+            )
+            image.paste(background, (x - padding, y - padding), background)
+            draw.text(
+                (x, y),
+                name,
+                font=font,
+                fill=(255, 255, 255, 255),
+                stroke_width=1,
+                stroke_fill=(0, 0, 0, 255),
+            )
 
-            # Calculate text size and position
+            # Timestamp in the lower-right corner
             text_w = int(draw.textlength(timestamp, font=font))
             text_h = font_size
-            x, y = int(image.width - text_w - 10), int(
-                image.height - top_offset - font_size * 2
-            )
-            # Create a black transparent rectangle as the background
+            x = image.width - text_w - padding
+            y = int(image.height - top_offset - font_size * 2)
             background = Image.new(
-                "RGBA", (text_w + 20, text_h + 10), (0, 0, 0, 64)
-            )  # 50% transparent black
-            image.paste(background, (x - 10, y - 5), background)
+                "RGBA",
+                (text_w + padding * 2, text_h + padding * 2),
+                (0, 0, 0, 128),
+            )
+            image.paste(background, (x - padding, y - padding), background)
 
-            # Draw the timestamp in white text on the black transparent box
             draw.text(
-                (x, y), timestamp, font=font, fill=(255, 255, 255, 255)
-            )  # White text
+                (x, y),
+                timestamp,
+                font=font,
+                fill=(255, 255, 255, 255),
+                stroke_width=1,
+                stroke_fill=(0, 0, 0, 255),
+            )
 
             if utc_timestamp != timestamp:
+                text_w = int(draw.textlength(utc_timestamp + "Z", font=font_small))
                 background = Image.new(
-                    "RGBA", (text_w + 20, text_h + 10), (0, 0, 0, 64)
-                )  # 50% transparent black
-                image.paste(background, (x - 10, y + font_size - 5), background)
+                    "RGBA",
+                    (text_w + padding * 2, font_small.size + padding * 2),
+                    (0, 0, 0, 128),
+                )
+                image.paste(
+                    background, (x - padding, y + font_size - padding), background
+                )
                 draw.text(
-                    (x, y + font_size + 10),
+                    (x, y + font_size + padding),
                     utc_timestamp + "Z",
                     font=font_small,
                     fill=(255, 255, 255, 255),
-                )  # White text
+                    stroke_width=1,
+                    stroke_fill=(0, 0, 0, 255),
+                )
 
             # Save the image
             image.save(image_path, "PNG")

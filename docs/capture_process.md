@@ -66,9 +66,15 @@ After capturing the content, Glimpser applies several post-processing steps:
 
 1. **Background Removal**: Remove unnecessary background from captured images.
 2. **Dark Mode**: Apply dark mode to the captured image if requested. The image array is copied before modification to avoid "assignment destination is read-only" errors.
-3. **Timestamp Addition**: Add a timestamp to the captured image for reference.
-4. **Image Optimization**: Ensure the captured image is in the correct format and optimized for storage.
-5. **PNG Validation**: Verify the temporary screenshot file before renaming it to avoid leaving corrupt images.
+3. **Timestamp Addition**: Overlay the capture with the current time in the
+   configured timezone. When different from UTC, the UTC time is displayed just
+   below the local timestamp. The overlay uses a semi-transparent background and
+   stroked fonts to improve readability without obscuring the image.
+4. **Caption Overlay**: When captions or motion indicators are added, the text
+   is wrapped and rendered with the same improved font styling to avoid
+   overlapping the content.
+5. **Image Optimization**: Ensure the captured image is in the correct format and optimized for storage.
+6. **PNG Validation**: Verify the temporary screenshot file before renaming it to avoid leaving corrupt images.
 
 ## Capture Timeout
 

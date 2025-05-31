@@ -11,6 +11,7 @@ import threading
 import time
 import multiprocessing
 from collections import deque
+import textwrap
 
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
@@ -29,6 +30,7 @@ from .screenshots import (
     add_timestamp,
     is_mostly_blank,
     throttle_cache,
+    load_font,
 )
 from .template_manager import (
     get_template,
@@ -141,22 +143,15 @@ def add_motion_and_caption(image_path, caption=None, motion=False):
                     logging.error(f"Error saving image: {image_path} {e}")
                     return
 
-                # Create an ImageDraw object
                 draw = ImageDraw.Draw(image)
                 max_height = min(image.height, image.width * 9 // 16)
                 font_size = int(max_height * 0.05)
                 top_offset = (image.height - max_height) / 2
-                # if the image has the "invert" flag, then inverse this image for better readability
 
-                try:
-                    font = ImageFont.truetype("Arial.ttf", font_size)
-                except IOError:
-                    try:
-                        font = ImageFont.truetype(
-                            "LiberationSans-Regular.ttf", font_size
-                        )
-                    except IOError:
-                        font = ImageFont.load_default()
+                # Use the same font loader as timestamps
+                font = load_font(font_size)
+
+                padding = 6
 
                 if motion is True:
                     motion_icon = "░"
@@ -166,31 +161,42 @@ def add_motion_and_caption(image_path, caption=None, motion=False):
                     x, y = int(image.width - text_w - 10), int(
                         image.height - int(font_size * 3) - top_offset
                     )
-                    # Create a black transparent rectangle as the background
                     background = Image.new(
-                        "RGBA", (text_w + 20, text_h + 10), (0, 0, 0, 64)
-                    )  # 50% transparent black
-                    image.paste(background, (x - 10, y - 5), background)
-                    # Draw the timestamp in white text on the black transparent box
+                        "RGBA",
+                        (text_w + padding * 2, text_h + padding * 2),
+                        (0, 0, 0, 128),
+                    )
+                    image.paste(background, (x - padding, y - padding), background)
                     draw.text(
-                        (x, y), motion_icon, font=font, fill=(255, 255, 255, 255)
-                    )  # White text
+                        (x, y),
+                        motion_icon,
+                        font=font,
+                        fill=(255, 255, 255, 255),
+                        stroke_width=1,
+                        stroke_fill=(0, 0, 0, 255),
+                    )
 
                 if caption is not None:
                     caption = caption[:64].replace("\n", " ")
-                    # Calculate text size and position
-                    text_w = int(draw.textlength(caption, font=font))
-                    text_h = font_size
-                    x, y = int(10), int(image.height - int(font_size * 3) - top_offset)
-                    # Create a black transparent rectangle as the background
+                    wrapped = textwrap.fill(caption, width=32)
+                    text_w = int(draw.textlength(wrapped.split("\n")[0], font=font))
+                    text_h = font_size * len(wrapped.split("\n"))
+                    x = padding
+                    y = int(image.height - int(font_size * 3) - top_offset)
                     background = Image.new(
-                        "RGBA", (text_w + 20, text_h + 10), (0, 0, 0, 64)
-                    )  # 50% transparent black
-                    image.paste(background, (x - 10, y - 5), background)
-                    # Draw the timestamp in white text on the black transparent box
-                    draw.text(
-                        (x, y), caption, font=font, fill=(255, 255, 255, 255)
-                    )  # White text
+                        "RGBA",
+                        (text_w + padding * 2, text_h + padding * 2),
+                        (0, 0, 0, 128),
+                    )
+                    image.paste(background, (x - padding, y - padding), background)
+                    draw.multiline_text(
+                        (x, y),
+                        wrapped,
+                        font=font,
+                        fill=(255, 255, 255, 255),
+                        stroke_width=1,
+                        stroke_fill=(0, 0, 0, 255),
+                    )
 
                 # Save the image
                 image.save(image_path, "PNG")
