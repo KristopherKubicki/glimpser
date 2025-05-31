@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 
 from functools import wraps
 from threading import Lock, Thread
+import queue
 
 from flask import (
     abort,
@@ -1941,6 +1942,30 @@ def init_routes(app):
     def discover_cameras_scan():
         cameras = camera_discovery.discover_cameras()
         return jsonify(cameras)
+
+    @app.route("/discover/scan_stream")
+    @login_required
+    def discover_cameras_scan_stream():
+        def generate():
+            q = queue.Queue()
+
+            def progress(stage, count):
+                q.put({"stage": stage, "count": count})
+
+            def run():
+                cams = camera_discovery.discover_cameras(progress_callback=progress)
+                q.put({"done": True, "cameras": cams})
+
+            thread = Thread(target=run, daemon=True)
+            thread.start()
+
+            while True:
+                msg = q.get()
+                yield f"data: {json.dumps(msg)}\n\n"
+                if msg.get("done"):
+                    break
+
+        return Response(stream_with_context(generate()), mimetype="text/event-stream")
 
     @app.route("/discover/add", methods=["POST"])
     @login_required

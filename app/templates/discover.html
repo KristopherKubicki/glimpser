@@ -43,39 +43,46 @@
     const progress = document.getElementById('discover-progress');
     const body = document.getElementById('discover-body');
     if (button) {
-        button.addEventListener('click', async () => {
+        button.addEventListener('click', () => {
             msg.textContent = 'Searching...';
             progress.style.display = 'inline';
             body.innerHTML = '';
-            try {
-                const response = await fetch('/discover/scan', {method: 'POST'});
-                const cams = await response.json();
-                msg.textContent = '';
-                cams.forEach(cam => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${cam.ip}</td>
-                        <td>${cam.protocol}</td>
-                        <td>${cam.port}</td>
-                        <td>${JSON.stringify(cam.info)}</td>
-                        <td>
-                            <form action="/discover/add" method="post">
-                                <input type="hidden" name="ip" value="${cam.ip}">
-                                <input type="hidden" name="protocol" value="${cam.protocol}">
-                                <input type="hidden" name="port" value="${cam.port}">
-                                ${cam.url ? `<input type="hidden" name="url" value="${cam.url}">` : ''}
-                                <input type="hidden" name="name" value="${cam.ip}">
-                                <button type="submit" title="Add this camera">Add</button>
-                            </form>
-                        </td>`;
-                    body.appendChild(tr);
-                });
-            } catch (e) {
+            const source = new EventSource('/discover/scan_stream');
+            source.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.done) {
+                    msg.textContent = '';
+                    progress.style.display = 'none';
+                    data.cameras.forEach(cam => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${cam.ip}</td>
+                            <td>${cam.protocol}</td>
+                            <td>${cam.port}</td>
+                            <td>${JSON.stringify(cam.info)}</td>
+                            <td>
+                                <form action="/discover/add" method="post">
+                                    <input type="hidden" name="ip" value="${cam.ip}">
+                                    <input type="hidden" name="protocol" value="${cam.protocol}">
+                                    <input type="hidden" name="port" value="${cam.port}">
+                                    ${cam.url ? `<input type="hidden" name="url" value="${cam.url}">` : ''}
+                                    <input type="hidden" name="name" value="${cam.ip}">
+                                    <button type="submit" title="Add this camera">Add</button>
+                                </form>
+                            </td>`;
+                        body.appendChild(tr);
+                    });
+                    source.close();
+                } else {
+                    msg.textContent = `Scanning ${data.stage}... (${data.count})`;
+                }
+            };
+            source.onerror = (e) => {
                 console.error('Discovery error', e);
                 msg.textContent = 'Error discovering cameras';
-            } finally {
                 progress.style.display = 'none';
-            }
+                source.close();
+            };
         });
     }
     </script>
