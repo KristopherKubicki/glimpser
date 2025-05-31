@@ -1,0 +1,45 @@
+export function initFormValidation() {
+  window.validateForm = function validateForm() {
+    const name = document.getElementById('name').value.trim();
+    const url = document.getElementById('url').value.trim();
+    const frequency = parseInt(document.getElementById('frequency').value);
+    const timeout = parseInt(document.getElementById('timeout').value);
+    const objectFilter = document.getElementById('object_filter').value.trim();
+    const objectConfidence = parseFloat(document.getElementById('object_confidence').value);
+    const popupXpath = document.getElementById('popup_xpath').value.trim();
+    const dedicatedXpath = document.getElementById('dedicated_xpath').value.trim();
+
+    if (name === '' || url === '') {
+      alert('Template Name and URL are required fields.');
+      return false;
+    }
+
+    if (frequency < 1 || frequency > 525600) {
+      alert('Frequency must be between 1 and 525600 minutes (1 year).');
+      return false;
+    }
+
+    if (frequency >= 43200) {
+      if (!confirm(`Warning: The frequency is set to ${frequency} minutes (more than 30 days). Are you sure you want to continue?`)) {
+        return false;
+      }
+    }
+
+    if (timeout < 1 || timeout >= frequency * 60) {
+      alert('Timeout must be at least 1 second and less than the frequency.');
+      return false;
+    }
+
+    if (objectFilter !== '' && (objectConfidence < 0 || objectConfidence > 1)) {
+      alert('Object Confidence must be between 0 and 1 when Object Filter is specified.');
+      return false;
+    }
+
+    if ((popupXpath !== '' && !popupXpath.startsWith('//')) || (dedicatedXpath !== '' && !dedicatedXpath.startsWith('//'))) {
+      alert("XPath expressions must start with '//'.");
+      return false;
+    }
+
+    return true;
+  };
+}
