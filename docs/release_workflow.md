@@ -20,3 +20,6 @@ You can still trigger a release manually by creating and pushing a tag:
 git tag v0.2.4
 git push origin v0.2.4
 ```
+
+Alternatively, run `scripts/auto_tag_release.py` to create and push the tag
+for the current version automatically.
