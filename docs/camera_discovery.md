@@ -1,6 +1,6 @@
 # Camera Discovery
 
-Glimpser includes a simple discovery feature to help find network cameras on your local LAN. The `/discover` page now loads immediately and only scans when you click the **Discover** button. A small progress bar appears while the scan runs. When triggered, the logic in `app/utils/camera_discovery.py` runs and any responding cameras are listed. To keep the scan quick, each interface is limited to a `/24` subnet even if the reported mask is larger.
+Glimpser includes a simple discovery feature to help find network cameras on your local LAN. The `/discover` page now loads immediately and only scans when you click the **Discover** button. A small progress bar appears while the scan runs and the page shows which discovery stage is currently executing. The logic in `app/utils/camera_discovery.py` runs in parallel threads so results return faster. To keep the scan quick, each interface is limited to a `/24` subnet even if the reported mask is larger.
 
 ## How the `/discover` route works
 
@@ -12,14 +12,15 @@ The route is defined in `app/routes.py`:
 def discover_cameras_route():
     return render_template('discover.html', cameras=[])
 
-@app.route('/discover/scan', methods=['POST'])
+@app.route('/discover/scan_stream')
 @login_required
-def discover_cameras_scan():
-    cameras = camera_discovery.discover_cameras()
-    return jsonify(cameras)
+def discover_cameras_scan_stream():
+    def generate():
+        ...  # yields progress events
+    return Response(stream_with_context(generate()), mimetype='text/event-stream')
 ```
 
-When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button issues a POST to `/discover/scan`. This endpoint runs `discover_cameras()` and returns the results as JSON which are then inserted into the table.
+When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button now opens an EventSource to `/discover/scan_stream`. Progress messages indicate which stage is running and the final event delivers the list of cameras as JSON which the page inserts into the table.
 
 ## Camera scanning logic
 

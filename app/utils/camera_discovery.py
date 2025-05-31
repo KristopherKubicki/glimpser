@@ -8,6 +8,7 @@ from ipaddress import ip_network
 import os
 import glob
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from .screenshots import is_port_open
 
 try:  # optional Zeroconf support
@@ -389,33 +390,49 @@ def _local_video_devices(base_path="/dev"):
     return devices
 
 
-def discover_cameras():
-    """Discover cameras on the local network."""
-    cameras = []
-    cameras.extend(_probe_onvif())
-    try:
-        cameras.extend(_probe_ssdp())
-    except Exception as e:
-        logging.debug("SSDP discovery error: %s", e)
-    try:
-        cameras.extend(_probe_mdns())
-    except Exception as e:
-        logging.debug("mDNS discovery error: %s", e)
+def discover_cameras(progress_callback=None):
+    """Discover cameras on the local network.
+
+    Parameters
+    ----------
+    progress_callback : callable, optional
+        Called with ``(stage, count)`` each time a discovery step completes.
+    """
+    cameras: list[dict] = []
+
     try:
         subnets = _local_subnets()
-        cameras.extend(_scan_rtsp_ports(subnets))
-        cameras.extend(_scan_rtmp_ports(subnets))
-        cameras.extend(_scan_sip_ports(subnets))
-        cameras.extend(_scan_webrtc_ports(subnets))
-        cameras.extend(_scan_snmp_ports(subnets))
-        cameras.extend(_scan_http_endpoints(subnets))
-        cameras.extend(_scan_hls_streams(subnets))
-    except Exception as e:
-        logging.warning("RTSP scan error: %s", e)
-    try:
-        cameras.extend(_local_video_devices())
-    except Exception as e:
-        logging.debug("local video scan error: %s", e)
+    except Exception as e:  # pragma: no cover - system dependent
+        logging.warning("subnet discovery error: %s", e)
+        subnets = []
+
+    tasks = {
+        "onvif": _probe_onvif,
+        "ssdp": _probe_ssdp,
+        "mdns": _probe_mdns,
+        "rtsp": lambda: _scan_rtsp_ports(subnets),
+        "rtmp": lambda: _scan_rtmp_ports(subnets),
+        "sip": lambda: _scan_sip_ports(subnets),
+        "webrtc": lambda: _scan_webrtc_ports(subnets),
+        "snmp": lambda: _scan_snmp_ports(subnets),
+        "http": lambda: _scan_http_endpoints(subnets),
+        "hls": lambda: _scan_hls_streams(subnets),
+        "local": _local_video_devices,
+    }
+
+    with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
+        future_to_stage = {
+            executor.submit(func): stage for stage, func in tasks.items()
+        }
+        for fut in as_completed(future_to_stage):
+            stage = future_to_stage[fut]
+            try:
+                cameras.extend(fut.result())
+            except Exception as e:  # pragma: no cover - network
+                logging.warning("%s discovery error: %s", stage, e)
+            finally:
+                if progress_callback:
+                    progress_callback(stage, len(cameras))
 
     # Always include the internal status page so the system can monitor itself
     from app.config import PORT
