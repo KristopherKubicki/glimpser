@@ -1782,14 +1782,16 @@ def init_routes(app):
     @login_required
     def uploaded_file(name: TemplateName, filename: str):
         template_name = validate_template_name(name)
-        if template_name is None:
+        if template_name is None or not allowed_filename(filename):
             abort(404)
+
         path = os.path.join(
             os.path.dirname(os.path.join(__file__)),
             "..",
             SCREENSHOT_DIRECTORY,
             template_name,
         )
+
         if not os.path.exists(path):
             abort(404)
 
@@ -1827,14 +1829,16 @@ def init_routes(app):
     @login_required
     def view_video(name: TemplateName, filename: str):
         template_name = validate_template_name(name)
-        if template_name is None:
+        if template_name is None or not allowed_filename(filename):
             abort(404)
+
         path = os.path.join(
             os.path.dirname(os.path.join(__file__)),
             "..",
             VIDEO_DIRECTORY,
             template_name,
         )
+
         if not os.path.exists(path):
             abort(404)
 

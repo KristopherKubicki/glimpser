@@ -134,7 +134,7 @@ Streams log records via Server-Sent Events. Optional query parameters `level`, `
 
 **GET /videos/<template_name>**
 
-Return a JSON array of archived MP4 filenames for the specified template. Combine with `/videos/<template_name>/<filename>` to download a particular file.
+Return a JSON array of archived MP4 filenames for the specified template. Combine with `/videos/<template_name>/<filename>` to download a particular file. Filenames are validated and requests with illegal characters return `404`.
 
 Example response:
 ```json
@@ -145,7 +145,7 @@ Example response:
 
 **GET /screenshots/<template_name>**
 
-Return a JSON array of screenshot filenames for the specified template. Individual files can be downloaded via `/screenshots/<template_name>/<filename>`.
+Return a JSON array of screenshot filenames for the specified template. Individual files can be downloaded via `/screenshots/<template_name>/<filename>`. Invalid filenames also return `404`.
 
 Placeholder images created when no real screenshot is available end with `_blank.png`. The endpoint includes these names in the sorted list.
 
