@@ -8,6 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
      <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    {% if session.get('user_id') %}
     <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
+    {% endif %}
 </head>
 
