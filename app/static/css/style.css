@@ -108,8 +108,8 @@ body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     margin: 0;
     padding: 0;
-    #background-color: #f7f7f7; /* Lighter background for better contrast */
-    background-color: rgb(16, 16, 16); /* Lighter background for better contrast */
+    /* Background for contrast */
+    background-color: rgb(16, 16, 16);
     color: rgb(191, 191, 191); /* Darker text for better readability */
     overflow-x: hidden;
     max-width: 100vw;
