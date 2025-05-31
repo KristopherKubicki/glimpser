@@ -648,7 +648,28 @@ footer {
     background-color: #000;
     color: #fff;
     padding: 10px;
-    }
+    border-top: 2px solid #444;
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.footer-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.footer-copy {
+    margin-right: 10px;
+    font-size: 0.9em;
+}
 
 .tsv-buttons {
     display: flex;

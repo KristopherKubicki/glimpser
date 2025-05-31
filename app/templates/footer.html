@@ -2,16 +2,14 @@
 <footer>
     <div class="footer-content">
         <div class="footer-logo">
-		<!--
+            <!--
             <a href="/">
                 <img src="{{ url_for('static', filename='img/glimpser_small.png') }}" alt="Glimpser" title="Glimpser">
             </a>
-		-->
+            -->
         </div>
-    <div class="footer-copyright">
-        <p>&copy; <span id="current-year"></span> Glimpser. All rights reserved.</p>
-    </div>
         <nav class="footer-nav">
+            <span class="footer-copy">&copy; <span id="current-year"></span> Glimpser. All rights reserved.</span>
             <a href='https://github.com/KristopherKubicki/glimpser/releases'>v{{VERSION}}{% if VERSION_OUTDATED %}<span title="Update available">&#9888;</span>{% endif %}</a>
             <a href="/help" title="View help documentation">Help</a>
             <a href="https://glimpser.net" target="_blank">About</a>
