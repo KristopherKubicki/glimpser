@@ -85,6 +85,35 @@ def restore_config():
             session.close()
 
 
+def sync_version(pkg_version: str) -> None:
+    """Update the VERSION row when it doesn't match ``pkg_version``."""
+    if os.getenv("VERSION"):
+        return
+
+    session = SessionLocal()
+    try:
+        existing = session.execute(
+            text("SELECT value FROM settings WHERE name = :name"),
+            {"name": "VERSION"},
+        ).fetchone()
+        if existing is None or existing[0] != pkg_version:
+            session.execute(
+                text(
+                    "INSERT INTO settings (name, value) VALUES (:name, :value) "
+                    "ON CONFLICT(name) DO UPDATE SET value = :value"
+                ),
+                {"name": "VERSION", "value": pkg_version},
+            )
+            session.commit()
+    except Exception as e:
+        if "no such table" in str(e):
+            logging.warning("table does not exist")
+        else:
+            logging.warning("initialization error %s", e)
+    finally:
+        session.close()
+
+
 SCHEDULER_API_ENABLED = True
 
 # be careful when mounting network devices
@@ -103,6 +132,7 @@ try:
     _PKG_VERSION = version("glimpser")
 except PackageNotFoundError:
     _PKG_VERSION = "0.2.4"
+sync_version(_PKG_VERSION)
 # Default to the package version if not overridden in the database
 VERSION = get_setting("VERSION", _PKG_VERSION)
 NAME = get_setting("NAME", "glimpser")
