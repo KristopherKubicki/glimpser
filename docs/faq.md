@@ -26,6 +26,9 @@ Set `TWILIO_SID`, `TWILIO_TOKEN`, and `TWILIO_NUMBER` in the configuration. When
 ### Why is the thumbnail size slider so narrow?
 The width slider on the index page now scales with the browser window. If it appears cramped, try widening the window or adjust the CSS in `style.css` to suit your layout.
 
+### Why is the live feed slightly cropped on small screens?
+Older styles fixed the video container height with `overflow: hidden`, which could cut off controls on short displays. The container now allows scrolling so everything stays visible.
+
 
 ## Troubleshooting
 
