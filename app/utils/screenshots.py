@@ -1788,6 +1788,10 @@ def kill_driver_process(driver):
         logging.debug(f"Process {pid} already exited before termination attempt.")
     except Exception as e:
         logging.error(f"Error killing Chrome process: {e}")
+    finally:
+        # Ensure future calls create a new driver
+        global _DRIVER
+        _DRIVER = None
 
 
 def launch_headless_chrome(driver_options, version=None):
