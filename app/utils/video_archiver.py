@@ -409,11 +409,18 @@ def compile_to_video(camera_path, video_path) -> bool:
     # print("OK", glob.glob(camera_path + "/*.png"))
 
     # Filter the list of image files to include only those that are newer than the video
-    new_files = [
-        f
-        for f in glob.glob(camera_path + "/*.png")
-        if os.path.getctime(f) > video_mod_time and not f.endswith("_blank.png")
-    ]
+    # Files may disappear between the glob and metadata lookup so catch
+    # FileNotFoundError and skip missing entries.
+    new_files = []
+    for f in glob.glob(os.path.join(camera_path, "*.png")):
+        if f.endswith("_blank.png"):
+            continue
+        try:
+            if os.path.getctime(f) > video_mod_time:
+                new_files.append(f)
+        except FileNotFoundError:
+            # Screenshot was removed concurrently; ignore it
+            continue
 
     # Drop nearly blank images
     filtered_files = []
