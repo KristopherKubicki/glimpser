@@ -762,7 +762,9 @@ def init_routes(app):
             ip_address in login_attempts
             and login_attempts[ip_address]["locked_until"] > now
         ):
-            return "Too many failed attempts. Please try again later.", 429
+            flash("Too many failed attempts. Please try again later.", "error")
+            logging.warning("Locked login attempt from %s", ip_address)
+            return render_template("login.html"), 429
 
         if request.method == "POST":
             username = request.form["username"]
@@ -783,6 +785,7 @@ def init_routes(app):
                 login_attempts.pop(
                     ip_address, None
                 )  # Reset attempts on successful login
+                logging.info("Successful login for %s from %s", username, ip_address)
                 return redirect(url_for("index"))
             else:
                 # Record the failed attempt
@@ -802,8 +805,10 @@ def init_routes(app):
                     login_attempts[ip_address]["locked_until"] = now + timedelta(
                         minutes=1
                     )
-
-                flash("Invalid username or password")
+                logging.warning(
+                    "Failed login attempt for %s from %s", username, ip_address
+                )
+                flash("Invalid username or password", "error")
         return render_template("login.html")
 
     @app.route("/help")

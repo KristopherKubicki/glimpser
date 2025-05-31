@@ -86,6 +86,9 @@ This guide addresses common issues that users might encounter while using Glimps
 - Ensure you're using the correct username and password
 - Verify that the account exists in the `users` table
 - Try resetting your password through the recovery process
+- Repeated failures trigger a 24-hour lockout and display a
+  "Too many failed attempts" message
+- Invalid credentials now generate on-screen feedback and are logged
 
 ## Getting Further Help
 
