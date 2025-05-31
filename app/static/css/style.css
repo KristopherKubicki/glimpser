@@ -105,7 +105,7 @@ html {
 }
 
 body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     margin: 0;
     padding: 0;
     /* Background for contrast */
@@ -328,6 +328,13 @@ nav a {
     text-decoration: none; /* No underline */
     padding: 5px 10px; /* Padding */
     border-radius: 5px; /* Rounded corners */
+}
+
+.status-indicator {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background-color: grey;
 }
 
 nav a:hover, nav a.active {

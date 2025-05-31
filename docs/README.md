@@ -28,4 +28,6 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - The Add Template form auto-fills the Groups field when a filter is selected.
 - Help page now covers CLI usage, configuration pointers, and links back to the app.
 - CSS files are now linted in CI using **stylelint**.
+- UI now uses the Inter font for improved readability.
+- Navigation health indicator uses a dedicated CSS class.
 - JavaScript is now split into modules for templates, video controls, and scheduler toggling.
