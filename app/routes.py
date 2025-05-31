@@ -564,7 +564,15 @@ def init_routes(app):
 
     @app.context_processor
     def inject_footer_data():
-        return dict(VERSION=VERSION)
+        outdated = False
+        try:
+            from app.utils.github import is_update_available
+
+            outdated = is_update_available(str(VERSION))
+        except Exception:
+            pass
+
+        return dict(VERSION=VERSION, VERSION_OUTDATED=outdated)
 
     # Add a new route for the extended health check
     @app.route("/health")
