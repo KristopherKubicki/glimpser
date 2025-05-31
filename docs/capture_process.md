@@ -30,13 +30,14 @@ The general flow of the capture process is as follows:
 
 1. **Input Validation**: Check if the provided name and template are valid.
 2. **URL Parsing**: Extract the domain and port from the URL.
-3. **Host Reachability Check**: For network URLs, ensure the target host is reachable.
-4. **Output Path Preparation**: Generate a unique output path for the captured content.
-5. **Content Type Determination**: Analyze the URL and perform a HEAD request to determine the content type.
-6. **Capture Method Selection**: Choose the appropriate capture method based on the content type and other parameters.
-7. **Capture Execution**: Execute the selected capture method.
-8. **Post-Processing**: Apply any necessary post-processing steps, such as adding timestamps or applying dark mode.
-9. **Result Handling**: Return the success status of the capture process.
+3. **Scheme Verification**: Reject URLs that use unsupported schemes (e.g. `file://`) to prevent local file access.
+4. **Host Reachability Check**: For network URLs, ensure the target host is reachable.
+5. **Output Path Preparation**: Generate a unique output path for the captured content.
+6. **Content Type Determination**: Analyze the URL and perform a HEAD request to determine the content type.
+7. **Capture Method Selection**: Choose the appropriate capture method based on the content type and other parameters.
+8. **Capture Execution**: Execute the selected capture method.
+9. **Post-Processing**: Apply any necessary post-processing steps, such as adding timestamps or applying dark mode.
+10. **Result Handling**: Return the success status of the capture process.
 
 ## Content-Specific Capture Methods
 

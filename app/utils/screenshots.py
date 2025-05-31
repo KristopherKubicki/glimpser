@@ -931,6 +931,12 @@ def capture_or_download(name: str, template: dict) -> bool:
 
     # Extract parameters from the template
     url = template.get("url")
+
+    # Disallow local file paths to avoid unintended file disclosure
+    parsed = urlparse(url)
+    if parsed.scheme and parsed.scheme not in {"http", "https", "rtsp", "rtmp"}:
+        logging.error("Unsupported URL scheme: %s", parsed.scheme)
+        return False
     if throttle_cache.get(url) and throttle_cache[url].get("timeout", 0) > time.time():
         # just skip things that are obviously broken.  "Backoff"..
         return False
