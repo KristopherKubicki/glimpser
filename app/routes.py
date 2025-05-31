@@ -856,8 +856,9 @@ def init_routes(app):
     @app.route("/")
     @login_required
     def index():
-        # TODO: maybe include the template details
-        return render_template("index.html")
+        """Render the index page with available templates."""
+        template_details = template_manager.get_templates()
+        return render_template("index.html", template_details=template_details)
 
     def get_active_templates():
         templates = template_manager.get_templates()
@@ -1594,20 +1595,31 @@ def init_routes(app):
                 400,
             )
 
-        logging.debug("TODO: rewrite")
+        logging.debug("Uploading screenshot for %s", template_name)
         templates = template_manager.get_templates()
         if templates.get(template_name) is None:
             abort(404)
 
-        # TODO: add more handling around this
-        # Save the uploaded file to a temporary file
+        if not allowed_filename(
+            image_file.filename
+        ) or not image_file.filename.lower().endswith(".png"):
+            return (
+                jsonify({"status": "error", "message": "Invalid file name"}),
+                400,
+            )
+
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             image_file.save(temp_file.name)
-            # Call the update_camera function with the temporary file path
+            if not screenshots._is_valid_png(temp_file.name):
+                os.unlink(temp_file.name)
+                return (
+                    jsonify({"status": "error", "message": "Invalid image file"}),
+                    400,
+                )
+
             scheduling.update_camera(
                 template_name, templates.get(template_name), image_file=temp_file.name
             )
-            # potentially trigger motion too...
 
         # Clean up the temporary file
         if temp_file and os.path.exists(temp_file.name):
@@ -1913,10 +1925,10 @@ def init_routes(app):
         settings = get_all_settings()
         return render_template("settings.html", settings=settings)
 
-    # TODO: this has been refactored to health instead.. please update
+    # Retained for backwards compatibility; redirect to the health endpoint.
     @app.route("/system_metrics")
     def system_metrics():
-        return jsonify(scheduling.get_system_metrics())
+        return redirect(url_for("health_check"))
 
     def allowed_file(filename):
         return "." in filename and filename.rsplit(".", 1)[1].lower() == "json"
