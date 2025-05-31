@@ -43,6 +43,8 @@ updated with `generate_credentials.py` or through the web interface.
 - `SECRET_KEY` – secret key used for session management (default
   `default_secret_key`)
 - `API_KEY` – key used to access the API (empty by default)
+- `SSO_TOKEN` – token used for the `/sso` login endpoint (empty by default)
+- `SSO_USERNAME` – username associated with SSO logins (defaults to `USER_NAME`)
 - `CHATGPT_KEY` – API key for AI captioning and summarization (empty by
   default)
 - `SESSION_COOKIE_SECURE` – set `True` to send cookies only over HTTPS

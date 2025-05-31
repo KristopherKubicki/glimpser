@@ -164,6 +164,8 @@ SECRET_KEY = get_setting("SECRET_KEY", "default_secret_key")
 USER_NAME = get_setting("USER_NAME", "admin")
 USER_PASSWORD_HASH = get_setting("USER_PASSWORD_HASH", "")
 API_KEY = get_setting("API_KEY", "")
+SSO_TOKEN = get_setting("SSO_TOKEN", "")
+SSO_USERNAME = get_setting("SSO_USERNAME", USER_NAME)
 CHATGPT_KEY = get_setting("CHATGPT_KEY", "")  # maybe generalize as LLM_KEY ?
 
 LLM_MODEL_VERSION = get_setting(
