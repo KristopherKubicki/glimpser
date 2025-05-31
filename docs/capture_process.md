@@ -59,6 +59,8 @@ The choice between these methods depends on factors such as:
 - Presence of popups that need to be handled
 - Need for JavaScript execution
 - Requirement for stealth mode
+- When stealth mode is enabled, Glimpser randomizes the user agent and window
+  size to better mimic regular browser activity.
 - Presence of dedicated selectors for capturing specific elements
 
 ## Post-Processing
