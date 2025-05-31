@@ -5,22 +5,29 @@ import os
 import threading
 import time
 import psutil
+from datetime import timedelta
 
 from flask import Flask
 
 from app.utils.retention_policy import retention_cleanup
-from app.utils.scheduling import schedule_crawlers, schedule_summarization, scheduler, start_log_caching
+from app.utils.scheduling import (
+    schedule_crawlers,
+    schedule_summarization,
+    scheduler,
+    start_log_caching,
+)
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 from app.config import backup_config, restore_config
 from app.utils.email_alerts import email_alert
 from app.utils.sms_alerts import sms_alert
-#from app.utils.db import SessionLocal
-#from app.models.log import Log
+
+# from app.utils.db import SessionLocal
+# from app.models.log import Log
 
 # needed for the llava compare
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-'''
+"""
 class SQLAlchemyHandler(logging.Handler):
     def __init__(self):
         super().__init__()
@@ -34,7 +41,8 @@ class SQLAlchemyHandler(logging.Handler):
         )
         self.session.add(log_entry)
         self.session.commit()
-'''
+"""
+
 
 def create_app(watchdog=True, schedule=True):
     """Create and configure the Flask application.
@@ -68,12 +76,20 @@ def create_app(watchdog=True, schedule=True):
         SCREENSHOT_DIRECTORY,
         SUMMARIES_DIRECTORY,
         VIDEO_DIRECTORY,
+        SESSION_COOKIE_SECURE,
+        SESSION_COOKIE_HTTPONLY,
+        SESSION_TIMEOUT_MINUTES,
     )
 
     app = Flask(__name__)
     app.secret_key = SECRET_KEY
+    app.config["SESSION_COOKIE_SECURE"] = SESSION_COOKIE_SECURE
+    app.config["SESSION_COOKIE_HTTPONLY"] = SESSION_COOKIE_HTTPONLY
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(
+        minutes=SESSION_TIMEOUT_MINUTES
+    )
     # Set up logging
-    app.logger.setLevel(logging.WARN) # todo: read from config.... 
+    app.logger.setLevel(logging.WARN)  # todo: read from config....
 
     # Ensure required directories exist
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)
@@ -93,7 +109,9 @@ def create_app(watchdog=True, schedule=True):
         scheduler.init_app(app)
 
     # Set up and start the scheduler
-    if schedule is True and (os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug):
+    if schedule is True and (
+        os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug
+    ):
         scheduler.start()
         logging.info("Initializing scheduler...")
 
@@ -103,7 +121,7 @@ def create_app(watchdog=True, schedule=True):
             scheduler.remove_all_jobs()
 
             # Schedule various periodic tasks
-            schedule_crawlers() # TODO: make this a command line argument
+            schedule_crawlers()  # TODO: make this a command line argument
             scheduler.add_job(
                 id="compile_to_teaser",
                 func=compile_to_teaser,
@@ -148,7 +166,7 @@ def create_app(watchdog=True, schedule=True):
                 try:
                     # Check app responsiveness
                     with app.test_client() as client:
-                        response = client.get('/health')
+                        response = client.get("/health")
                         if response.status_code != 200:
                             raise Exception("Application is not responding correctly")
 
@@ -156,7 +174,9 @@ def create_app(watchdog=True, schedule=True):
                     current_process = psutil.Process()
                     open_files = current_process.open_files()
                     if len(open_files) > max_file_handles:
-                        raise Exception(f"Too many open file handles: {len(open_files)}")
+                        raise Exception(
+                            f"Too many open file handles: {len(open_files)}"
+                        )
 
                 except Exception as e:
                     logging.error("Application error detected: %s", e)
@@ -166,7 +186,9 @@ def create_app(watchdog=True, schedule=True):
                         try:
                             restore_config()
                         except Exception as config_error:
-                            logging.error("Failed to restore configuration: %s", config_error)
+                            logging.error(
+                                "Failed to restore configuration: %s", config_error
+                            )
                         logging.info("Forcing application restart...")
                         last_restart_time = current_time
                         os._exit(1)  # Force restart the application
@@ -182,13 +204,18 @@ def create_app(watchdog=True, schedule=True):
 
     # Start collecting metrics
     from .utils.scheduling import start_metrics_collection
+
     start_metrics_collection()
 
     start_log_caching()
 
     # Send alerts when the application starts
-    email_alert("Application Start", "The Glimpser application has been started successfully.")
-    sms_alert("Application Start", "The Glimpser application has been started successfully.")
+    email_alert(
+        "Application Start", "The Glimpser application has been started successfully."
+    )
+    sms_alert(
+        "Application Start", "The Glimpser application has been started successfully."
+    )
 
     # Make scheduler accessible globally
     app.scheduler = scheduler

@@ -47,4 +47,4 @@ RUN mkdir -p /app/db /app/logs /app/screenshots /app/videos /app/summaries
 EXPOSE 8082
 
 # Run the application
-CMD ["python", "main.py", "--host", "0.0.0.0", "--port", "8082", "--console-log"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8082", "wsgi:app"]

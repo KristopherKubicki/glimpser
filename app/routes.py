@@ -759,6 +759,10 @@ def init_routes(app):
 
             if user and check_password_hash(user.password_hash, password):
                 session["user_id"] = user.id
+                session["expiry"] = (
+                    now + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
+                ).strftime("%Y-%m-%d %H:%M:%S")
+                session.permanent = True
                 login_attempts.pop(
                     ip_address, None
                 )  # Reset attempts on successful login
