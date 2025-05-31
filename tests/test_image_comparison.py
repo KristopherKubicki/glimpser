@@ -1,13 +1,15 @@
 import unittest
+from unittest.mock import patch
 
 from PIL import Image
 import tempfile
 import os
-import sys 
+import sys
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.utils.detect import calculate_difference_fast
+
 
 class TestImageComparison(unittest.TestCase):
     def setUp(self):
@@ -38,6 +40,15 @@ class TestImageComparison(unittest.TestCase):
         # Test with the same image
         difference = calculate_difference_fast(self.image_path_a, self.image_path_a)
         self.assertAlmostEqual(difference, 0.0, places=2)
+
+    def test_calculate_difference_fast_error(self):
+        """Invalid paths should log an error and return ``None``."""
+        with patch("app.utils.detect.Image.open", side_effect=OSError), patch(
+            "app.utils.detect.logging.error"
+        ) as mock_log:
+            result = calculate_difference_fast("bad", "worse")
+            self.assertIsNone(result)
+            mock_log.assert_called_once()
 
 
 if __name__ == "__main__":
