@@ -41,3 +41,7 @@ The log viewer reads log lines from memory, ensuring minimal disk overhead.
 The `/status` page also appears on the `/discover` screen as a **System Status**
 camera. Adding it lets Glimpser capture periodic screenshots of its own health
 metrics.
+
+## Danger Mode Indicator
+
+When Chrome's remote debugging port is open and no user input has been detected for a short time, Danger mode becomes available. An orange dot in the navigation bar shows this state. Hovering over the dot explains why Danger mode may be unavailable.

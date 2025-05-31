@@ -21,6 +21,9 @@
                                     <td>
                                             <div id="health-status" class="status-indicator" title="System Performance"><a href='/status'></a></div>
                                     </td>
+                                    <td>
+                                            <div id="danger-status" class="status-indicator" title="Danger Mode"></div>
+                                    </td>
         {% if session.get('user_id') %}
         <script>
                 if (typeof window.lastHealthFailed === 'undefined') {
@@ -67,6 +70,31 @@ setInterval(checkHealth, 5000);
 
 // Initial health check
 checkHealth();
+
+function checkDanger() {
+    fetch('/danger_status')
+        .then(response => response.json())
+        .then(data => {
+            const dangerStatus = document.getElementById('danger-status');
+            if (data.ready) {
+                dangerStatus.style.backgroundColor = 'orange';
+                dangerStatus.title = 'Danger Mode Ready';
+            } else {
+                dangerStatus.style.backgroundColor = 'grey';
+                let reason = [];
+                if (!data.port_open) reason.push('Debug port closed');
+                if (!data.idle) reason.push('User active');
+                dangerStatus.title = 'Danger Mode Off';
+                if (reason.length) dangerStatus.title += '\n' + reason.join(', ');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching danger status:', error);
+        });
+}
+
+setInterval(checkDanger, 5000);
+checkDanger();
 
         </script>
                                     <td>
