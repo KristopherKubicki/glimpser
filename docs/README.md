@@ -29,7 +29,8 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - The Add Template form auto-fills the Groups field when a filter is selected.
 - Help page now covers CLI usage, configuration pointers, and links back to the app.
 - CSS files are now linted in CI using **stylelint**.
-- UI now uses the Inter font for improved readability.
+- UI now uses the Inter font for improved readability and serves the font files locally.
 - Navigation health indicator uses a dedicated CSS class.
 - JavaScript is now split into modules for templates, video controls, and scheduler toggling.
 - Session cookies are now marked secure/HTTPOnly and expire after a configurable timeout.
+- See [fonts.md](fonts.md) for instructions on self-hosting the Inter font.
