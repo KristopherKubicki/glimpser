@@ -27,6 +27,12 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    cp .env.example .env
    # edit .env before running the app
    ```
+5. Install the Node.js dependencies used for CSS linting. This step generates
+   `package-lock.json`, which is committed so that CI can run `npm ci` without
+   hitting the network:
+   ```sh
+   npm install
+   ```
 
 ## Running Tests
 
