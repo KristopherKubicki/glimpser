@@ -22,6 +22,8 @@ def discover_cameras_scan_stream():
 
 When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button now opens an EventSource to `/discover/scan_stream`. Progress messages indicate which stage is running and the final event delivers the list of cameras as JSON which the page inserts into the table.
 
+During the scan you will see messages like `Scanning onvif (3 found)...`. The stage name shows which discovery method just finished, while the number in parentheses reflects how many cameras have been detected so far.
+
 ## Camera scanning logic
 
 The discovery code combines multiple approaches:
