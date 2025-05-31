@@ -96,7 +96,11 @@ def find_closest_image(directory, last_caption_time):
     min_time_diff = None
 
     for filename in os.listdir(directory):
-        if filename.endswith(".png") and "motion" in filename:
+        if (
+            filename.endswith(".png")
+            and "motion" in filename
+            and not os.path.islink(os.path.join(directory, filename))
+        ):
             # Extract timestamp from filename
             timestamp_str = filename.split("_")[0]
             try:
@@ -239,7 +243,9 @@ def update_camera(name, template, image_file=None):
         png_files = [
             f
             for f in os.listdir(directory)
-            if f.endswith(".png") and os.path.isfile(os.path.join(directory, f))
+            if f.endswith(".png")
+            and os.path.isfile(os.path.join(directory, f))
+            and not os.path.islink(os.path.join(directory, f))
         ]
         if not png_files:
             return None  # camera is out
