@@ -69,15 +69,14 @@ setInterval(checkHealth, 5000);
 checkHealth();
 
         </script>
-        {% endif %}
-                                    </td>
                                     <td>
                                             <a href='/discover' class="settings-icon" title='Discover Cameras'>&#128269;</a>
                                     </td>
 
                                     <td>
                                             <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'>&#9000;</a>
-				    </td><td>
+                                    </td>
+                                    <td>
                 <a href='/live' id='live'>
                     <div id="coolClock" class="cool-clock" title="Live">
                         <div id="dateDisplay" class="clock-face">
@@ -89,13 +88,15 @@ checkHealth();
                         </div>
                     </div>
                 </a>
-				    </td><td>
+                                    </td>
+                                    <td>
                 <a href='/settings' class="settings-icon" title="Update settings">&#9881;</a>
-				    </td>
+                                    </td>
+        {% endif %}
 
 
-			    </tr>
-		    </table>
+                            </tr>
+                    </table>
             </div>
         </nav>
 

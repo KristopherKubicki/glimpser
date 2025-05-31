@@ -65,11 +65,12 @@ Example response:
 
 **GET /settings**
 
-Return the settings page in HTML format.
+Requires authentication via session or API key.
+Returns the settings page in HTML format.
 
 **POST /settings**
 
-Submit form data to modify configuration values. A successful update redirects back to the settings page.
+Requires authentication. Submit form data to modify configuration values. A successful update redirects back to the settings page.
 
 ### 3. Stream MP4 Video
 
