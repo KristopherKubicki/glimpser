@@ -19,8 +19,8 @@ class TestCaptureFileURL(unittest.TestCase):
         try:
             url = f"file://{path}"
             result = ss.capture_or_download("test", {"url": url})
-            self.assertTrue(result)
-            mock_download.assert_called_once()
+            self.assertFalse(result)
+            mock_download.assert_not_called()
         finally:
             os.unlink(path)
 
