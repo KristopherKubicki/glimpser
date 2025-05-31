@@ -918,23 +918,20 @@ def init_routes(app):
     @login_required
     def stream_png():
 
-        if os.path.exists(
-            os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                "..",
-                SCREENSHOT_DIRECTORY,
-                "latest_camera.png",
-            )
-        ):
-            # TODO: check for file integrity
-            return send_file(
-                os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)),
-                    "..",
-                    SCREENSHOT_DIRECTORY,
-                    "latest_camera.png",
-                )
-            )
+        latest_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            SCREENSHOT_DIRECTORY,
+            "latest_camera.png",
+        )
+        if os.path.exists(latest_path):
+            if screenshots._is_valid_png(latest_path):
+                return send_file(latest_path)
+            logging.warning("Invalid latest camera image removed: %s", latest_path)
+            try:
+                os.remove(latest_path)
+            except OSError:
+                pass
 
         global last_time, last_shot
         # implement some simple caching so the server doesn't get crushed
