@@ -11,6 +11,29 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from .screenshots import is_port_open
 
+# Discovery steps executed by :func:`discover_cameras`.  The list order
+# defines both the execution order and the number of progress updates.
+DISCOVERY_STAGES = [
+    "onvif",
+    "ssdp",
+    "mdns",
+    "rtsp",
+    "rtmp",
+    "sip",
+    "webrtc",
+    "snmp",
+    "http",
+    "hls",
+    "local",
+]
+
+
+def get_discovery_stages() -> list[str]:
+    """Return the list of discovery stage names."""
+
+    return DISCOVERY_STAGES.copy()
+
+
 try:  # optional Zeroconf support
     from zeroconf import ServiceBrowser, Zeroconf
 except Exception:  # pragma: no cover - optional dependency may be missing

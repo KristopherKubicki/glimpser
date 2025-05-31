@@ -1,6 +1,6 @@
 # Camera Discovery
 
-Glimpser includes a simple discovery feature to help find network cameras on your local LAN. The `/discover` page now loads immediately and only scans when you click the **Discover** button. A small progress bar appears while the scan runs and the page shows which discovery stage is currently executing. The logic in `app/utils/camera_discovery.py` runs in parallel threads so results return faster. To keep the scan quick, each interface is limited to a `/24` subnet even if the reported mask is larger.
+Glimpser includes a simple discovery feature to help find network cameras on your local LAN. The `/discover` page now loads immediately and only scans when you click the **Discover** button. A progress bar displays the number of completed stages so you know the scan is making progress. The page also shows which discovery stage is currently executing. The logic in `app/utils/camera_discovery.py` runs in parallel threads so results return faster. To keep the scan quick, each interface is limited to a `/24` subnet even if the reported mask is larger.
 
 ## How the `/discover` route works
 
@@ -20,7 +20,7 @@ def discover_cameras_scan_stream():
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 ```
 
-When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button now opens an EventSource to `/discover/scan_stream`. Progress messages indicate which stage is running and the final event delivers the list of cameras as JSON which the page inserts into the table.
+When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button opens an EventSource to `/discover/scan_stream`. The first message reports the total number of discovery stages so the progress bar can show overall completion. Subsequent messages indicate which stage has finished and how many cameras have been found so far. The final event delivers the list of cameras as JSON which the page inserts into the table.
 
 During the scan you will see messages like `Scanning onvif (3 found)...`. The stage name shows which discovery method just finished, while the number in parentheses reflects how many cameras have been detected so far.
 
