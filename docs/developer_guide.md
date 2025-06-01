@@ -27,9 +27,13 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    cp .env.example .env
    # edit .env before running the app
    ```
-5. Install the Node.js dependencies used for CSS linting:
+5. Install the Node.js dependencies used for CSS linting and JavaScript tests:
    ```sh
    npm install
+   ```
+6. Run the JavaScript tests:
+   ```sh
+   npm test
    ```
 
 ## Running Tests
