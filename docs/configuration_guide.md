@@ -62,10 +62,9 @@ user table in sync.
 
 - `SCREENSHOT_DIRECTORY` – directory for raw screenshots (default `data/screenshots/`)
 - `VIDEO_DIRECTORY` – directory for recorded videos (default `data/video/`)
-- `SUMMARIES_DIRECTORY` – directory where summaries are written (default `data/summaries/`)
+- `SUMMARIES_DIRECTORY` – **deprecated**; summaries are now stored in the database.
 
-  Routes such as `/captions` read from this location and will return no
-  entries when the directory is empty or missing.
+  Older deployments may still reference this path but it is no longer used.
 
 You can change these paths via the settings table or by editing `app/config.py` if you maintain a custom build.
 

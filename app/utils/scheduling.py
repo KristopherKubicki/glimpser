@@ -20,6 +20,8 @@ from PIL import Image, ImageDraw, ImageFont
 from transformers import CLIPProcessor, CLIPModel
 
 from app.config import DEBUG, SCREENSHOT_DIRECTORY, SUMMARIES_DIRECTORY, VIDEO_DIRECTORY
+from app.utils.db import SessionLocal
+from app.models import Summary
 
 from .detect import calculate_difference_fast
 from .image_processing import chatgpt_compare
@@ -714,48 +716,33 @@ def update_summary():
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     history = None
-    if True:
-        # TODO: move this to a database instead
-        # Specify the directory containing the .jl files
-        directory = "data/summaries/"
-
-        # Get all files in the directory
-        files = os.listdir(directory)
-
-        # Filter out only .jl files and sort them by last modified time in descending order
-        jl_files = sorted(
-            [file for file in files if file.endswith(".jl")],
-            key=lambda x: os.path.getmtime(os.path.join(directory, x)),
-            reverse=True,
-        )
-
-        # for file in jl_files[:5]:
+    session = SessionLocal()
+    try:
+        summaries = session.query(Summary).order_by(Summary.timestamp.desc()).all()
         entries = []
         steps = [1, 3, 8, 24]
         for step in steps:
-            if step < len(jl_files):
-                file = jl_files[step]
-                file_path = os.path.join(directory, file)
-                with open(file_path, "r") as f:
-                    try:
-                        data = json.load(f)
-                        entries.append(data)
-                    except Exception:
-                        pass
+            if step < len(summaries):
+                try:
+                    data = json.loads(summaries[step].content)
+                    entries.append(data)
+                except Exception:
+                    pass
             else:
-                break  # or continue, depending on what you want to do when there aren't enough files
+                break
 
-        if len(entries) > 0:
+        if entries:
             history = ""
             for hour in entries:
                 for key in hour:
-                    history += "%s: %s\n" % (key, hour[key])
+                    history += f"{key}: {hour[key]}\n"
+    finally:
+        session.close()
 
     lsum = summarize(lstring, history=history)
 
-    # Generate timestamp for filename and entry key
-    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
-    filename = f"data/summaries/{timestamp}.jl"
+    # Generate timestamp for entry key
+    timestamp = int(datetime.datetime.utcnow().timestamp())
 
     if type(lsum) != str:
         # print(" WARNING -- missing transcript") # this only matters if we have a CHATGPT KEY set
@@ -763,13 +750,19 @@ def update_summary():
 
     # for leach in re.findall(r'({.+?\})',lsum):  # if we don't find this, then we wasted money...
     lsuc = False
+    session = SessionLocal()
     for leach in re.findall(
-        r"^\s*?`?`?`?j?s?o?n?\n?(\{.+?\})\n?`?`?`?", lsum, flags=re.DOTALL
-    ):  # if we don't find this, then we wasted money...
-        # Write to file in JSONL format
-        with open(filename, "w") as file:
-            file.write(leach + "\n")
+        r"^\s*?`?`?`?j?s?o?n?\n?(\{.+?\})\n?`?`?`?",
+        lsum,
+        flags=re.DOTALL,
+    ):
+        try:
+            session.add(Summary(timestamp=timestamp, content=leach))
+            session.commit()
             lsuc = True
+        except Exception:
+            session.rollback()
+    session.close()
     if lsuc is False:
         logging.warning("MISSED CAPTION ($$$) %s", lsum)
 

@@ -54,7 +54,7 @@ from app.config import (
     restore_config,
     SENSITIVE_SETTINGS,
 )
-from app.models import User
+from app.models import User, Summary
 from app.utils import (
     scheduling,
     template_manager,
@@ -1320,29 +1320,26 @@ def init_routes(app):
     @login_required
     def captions():
 
-        # Specify the directory containing the .jl files
-        directory = config.SUMMARIES_DIRECTORY
-
+        # Load the most recent summaries from the database
         entries = []
-        if os.path.isdir(directory):
-            files = os.listdir(directory)
-
-            # Filter out only .jl files and sort them by last modified time in descending order
-            jl_files = sorted(
-                [file for file in files if file.endswith(".jl")],
-                key=lambda x: os.path.getmtime(os.path.join(directory, x)),
-                reverse=True,
-            )
-
-            # Load entries from the most recent 5 .jl files
-            for file in jl_files[:5]:
-                file_path = os.path.join(directory, file)
-                try:
-                    with open(file_path, "r") as f:
-                        data = json.load(f)
-                        entries.append(data)
-                except Exception:
-                    pass
+        try:
+            session_db = SessionLocal()
+            try:
+                records = (
+                    session_db.query(Summary)
+                    .order_by(Summary.timestamp.desc())
+                    .limit(5)
+                    .all()
+                )
+                for rec in records:
+                    try:
+                        entries.append(json.loads(rec.content))
+                    except Exception:
+                        pass
+            finally:
+                session_db.close()
+        except Exception:
+            entries = []
 
         # Get templates and calculate next capture time
         templates = template_manager.get_templates()
