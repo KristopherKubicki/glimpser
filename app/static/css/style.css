@@ -463,6 +463,11 @@ button, a {
   margin: 0 auto; /* Center the dial */
 }
 
+/* Speed slider and label container */
+#speed-container {
+    display: none;
+}
+
 /* Cool Clock Styles */
 .cool-clock {
     width: 25px;
