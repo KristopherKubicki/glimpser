@@ -2,39 +2,56 @@ import unittest
 import random
 import string
 from unittest.mock import patch
-from app.utils.scheduling import update_summary
+import tempfile
+import os
+import importlib
+
+import app.config as config
+import app.utils.db as db
+import app.utils.scheduling as scheduling
 
 
 class TestFuzzUpdateSummary(unittest.TestCase):
-    @patch("app.utils.scheduling.get_templates")
-    @patch("app.utils.scheduling.summarize")
-    def test_fuzz_update_summary(self, mock_summarize, mock_get_templates):
-        # Number of fuzz test iterations
+    def test_fuzz_update_summary(self):
         num_iterations = 100
 
-        for _ in range(num_iterations):
-            # Generate random templates
-            num_templates = random.randint(1, 10)
-            templates = {}
-            for i in range(num_templates):
-                template = self.generate_random_template()
-                templates[f"template_{i}"] = template
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = os.path.join(tmp, "test.db")
+            env_patch = patch.dict(os.environ, {"GLIMPSER_DATABASE_PATH": db_path})
+            env_patch.start()
+            importlib.reload(config)
+            importlib.reload(db)
+            import app.models as models
 
-            # Mock get_templates to return our random templates
-            mock_get_templates.return_value = templates
+            importlib.reload(models)
+            importlib.reload(models.summary)
+            importlib.reload(scheduling)
+            db.init_db()
+            scheduling.SessionLocal = db.SessionLocal
 
-            # Mock summarize to return a random string
-            mock_summarize.return_value = "".join(
-                random.choices(string.ascii_letters + string.digits, k=50)
-            )
+            for _ in range(num_iterations):
+                num_templates = random.randint(1, 10)
+                templates = {
+                    f"template_{i}": self.generate_random_template()
+                    for i in range(num_templates)
+                }
 
-            # Call the function under test
-            try:
-                update_summary()
-            except Exception as e:
-                self.fail(
-                    f"update_summary raised {type(e).__name__} unexpectedly: {str(e)}"
-                )
+                with patch(
+                    "app.utils.scheduling.get_templates", return_value=templates
+                ), patch(
+                    "app.utils.scheduling.summarize",
+                    return_value="".join(
+                        random.choices(string.ascii_letters + string.digits, k=50)
+                    ),
+                ):
+                    try:
+                        scheduling.update_summary()
+                    except Exception as e:
+                        env_patch.stop()
+                        self.fail(
+                            f"update_summary raised {type(e).__name__} unexpectedly: {str(e)}"
+                        )
+            env_patch.stop()
 
     def generate_random_template(self):
         return {
