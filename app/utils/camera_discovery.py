@@ -419,7 +419,9 @@ def discover_cameras(progress_callback=None):
     Parameters
     ----------
     progress_callback : callable, optional
-        Called with ``(stage, count)`` each time a discovery step completes.
+        Called with ``(stage, count, new_cameras)`` each time a discovery
+        step completes. ``new_cameras`` is the list of cameras found during
+        that stage.
     """
     cameras: list[dict] = []
 
@@ -449,13 +451,15 @@ def discover_cameras(progress_callback=None):
         }
         for fut in as_completed(future_to_stage):
             stage = future_to_stage[fut]
+            stage_cameras = []
             try:
-                cameras.extend(fut.result())
+                stage_cameras = fut.result()
+                cameras.extend(stage_cameras)
             except Exception as e:  # pragma: no cover - network
                 logging.warning("%s discovery error: %s", stage, e)
             finally:
                 if progress_callback:
-                    progress_callback(stage, len(cameras))
+                    progress_callback(stage, len(cameras), stage_cameras)
 
     # Always include the internal status page so the system can monitor itself
     from app.config import PORT

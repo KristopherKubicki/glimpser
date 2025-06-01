@@ -2075,12 +2075,20 @@ def init_routes(app):
             # can display a progress bar.
             q.put({"total": len(camera_discovery.get_discovery_stages())})
 
-            def progress(stage, count):
-                q.put({"stage": stage, "count": count})
+            sent = set()
+
+            def progress(stage, count, new_cams):
+                fresh = []
+                for cam in new_cams:
+                    key = (cam.get("ip"), cam.get("protocol"), cam.get("port"))
+                    if key not in sent:
+                        sent.add(key)
+                        fresh.append(cam)
+                q.put({"stage": stage, "count": count, "cameras": fresh})
 
             def run():
-                cams = camera_discovery.discover_cameras(progress_callback=progress)
-                q.put({"done": True, "cameras": cams})
+                camera_discovery.discover_cameras(progress_callback=progress)
+                q.put({"done": True})
 
             thread = Thread(target=run, daemon=True)
             thread.start()

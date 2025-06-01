@@ -49,6 +49,29 @@
             progress.removeAttribute('value');
             body.innerHTML = '';
             const source = new EventSource('/discover/scan_stream');
+            const known = new Set();
+            const addRow = (cam) => {
+                const key = `${cam.ip}-${cam.protocol}-${cam.port}`;
+                if (known.has(key)) return;
+                known.add(key);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${cam.ip}</td>
+                    <td>${cam.protocol}</td>
+                    <td>${cam.port}</td>
+                    <td>${JSON.stringify(cam.info)}</td>
+                    <td>
+                        <form action="/discover/add" method="post">
+                            <input type="hidden" name="ip" value="${cam.ip}">
+                            <input type="hidden" name="protocol" value="${cam.protocol}">
+                            <input type="hidden" name="port" value="${cam.port}">
+                            ${cam.url ? `<input type="hidden" name="url" value="${cam.url}">` : ''}
+                            <input type="hidden" name="name" value="${cam.ip}">
+                            <button type="submit" title="Add this camera">Add</button>
+                        </form>
+                    </td>`;
+                body.appendChild(tr);
+            };
             source.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 if (data.total) {
@@ -57,31 +80,15 @@
                     return;
                 }
                 if (data.done) {
-                    msg.textContent = `Found ${data.cameras.length} cameras.`;
+                    msg.textContent = `Found ${known.size} cameras.`;
                     progress.style.display = 'none';
-                    data.cameras.forEach(cam => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${cam.ip}</td>
-                            <td>${cam.protocol}</td>
-                            <td>${cam.port}</td>
-                            <td>${JSON.stringify(cam.info)}</td>
-                            <td>
-                                <form action="/discover/add" method="post">
-                                    <input type="hidden" name="ip" value="${cam.ip}">
-                                    <input type="hidden" name="protocol" value="${cam.protocol}">
-                                    <input type="hidden" name="port" value="${cam.port}">
-                                    ${cam.url ? `<input type="hidden" name="url" value="${cam.url}">` : ''}
-                                    <input type="hidden" name="name" value="${cam.ip}">
-                                    <button type="submit" title="Add this camera">Add</button>
-                                </form>
-                            </td>`;
-                        body.appendChild(tr);
-                    });
                     source.close();
-                } else {
-                    progress.value += 1;
-                    msg.textContent = `Scanning ${data.stage} (${data.count} found)...`;
+                    return;
+                }
+                progress.value += 1;
+                msg.textContent = `Scanning ${data.stage} (${data.count} found)...`;
+                if (data.cameras) {
+                    data.cameras.forEach(addRow);
                 }
             };
             source.onerror = (e) => {
