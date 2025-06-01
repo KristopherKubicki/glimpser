@@ -459,6 +459,10 @@ def generate(
                             logging.error(
                                 "Failed to open last shot %s: invalid image", last_shot
                             )
+                            try:
+                                os.remove(last_shot)
+                            except OSError:
+                                pass
                     except Exception as e:
                         logging.error("Failed to open last shot %s: %s", last_shot, e)
                 else:
@@ -533,6 +537,10 @@ def generate(
                                     "Failed to open last shot %s: invalid image",
                                     most_recent_file,
                                 )
+                                try:
+                                    os.remove(most_recent_file)
+                                except OSError:
+                                    pass
                                 frame = None
 
                             if frame is not None:
