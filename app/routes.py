@@ -632,6 +632,53 @@ def generate(
         time.sleep(1 - (time.time() - ltime))
 
 
+def generate_fast_mjpg(camera: str):
+    """Yield MJPEG frames by repeatedly capturing screenshots.
+
+    The function calls ``scheduling.update_camera`` directly to grab a fresh
+    frame as quickly as possible. If capturing fails, the previously captured
+    frame is re-used and the delay between attempts increases to avoid
+    overwhelming the camera endpoint.
+    """
+
+    template = template_manager.get_template(camera)
+    if not template:
+        return
+
+    boundary = b"frame"
+    last_frame = None
+    failures = 0
+
+    path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        SCREENSHOT_DIRECTORY,
+        camera,
+        "latest_camera.png",
+    )
+
+    while True:
+        start = time.time()
+        try:
+            scheduling.update_camera(camera, template)
+            if os.path.exists(path):
+                with open(path, "rb") as f:
+                    last_frame = f.read()
+            failures = 0
+        except Exception as e:  # pragma: no cover - unexpected errors
+            logging.error("fast mjpg capture failed for %s: %s", camera, e)
+            failures += 1
+
+        if last_frame:
+            yield b"--" + boundary + b"\r\n"
+            yield b"Content-Type: image/png\r\n\r\n" + last_frame + b"\r\n"
+
+        delay = min(0.1 * (2**failures), 5)
+        elapsed = time.time() - start
+        if elapsed < delay:
+            time.sleep(delay - elapsed)
+
+
 def allowed_filename(filename: str) -> bool:
     r"""Return ``True`` when ``filename`` contains only safe characters.
 
@@ -1253,6 +1300,19 @@ def init_routes(app):
         logging.debug("last motion caption")
         return Response(
             generate(group=group, camera=camera, filename="last_motion_caption.png"),
+            mimetype="multipart/x-mixed-replace; boundary=frame",
+        )
+
+    @app.route("/fast_stream.mjpg", methods=["GET"])
+    @login_required
+    def fast_stream_mjpg():
+        camera = request.args.get("camera")
+        if not camera:
+            abort(400, "camera parameter required")
+        if not template_manager.get_template(camera):
+            abort(404)
+        return Response(
+            generate_fast_mjpg(camera),
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
 
