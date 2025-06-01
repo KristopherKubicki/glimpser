@@ -71,6 +71,26 @@ export function initNav() {
         `${now.toLocaleTimeString()}\n${Intl.DateTimeFormat().resolvedOptions().timeZone}\n${now.toDateString()}`;
     }
 
+    function setupNavFade() {
+      const header = document.querySelector('header');
+      const player = document.querySelector('.video-container');
+      if (!header || !player) return;
+
+      let fadeTimeout;
+
+      const showNav = () => {
+        header.classList.remove('fade-out');
+        clearTimeout(fadeTimeout);
+        fadeTimeout = setTimeout(() => header.classList.add('fade-out'), 3000);
+      };
+
+      ['mousemove', 'scroll'].forEach((evt) => {
+        document.addEventListener(evt, showNav);
+      });
+
+      showNav();
+    }
+
     setInterval(checkHealth, 5000);
     checkHealth();
 
@@ -79,5 +99,7 @@ export function initNav() {
 
     setInterval(updateCoolClock, 1000);
     updateCoolClock();
+
+    setupNavFade();
   });
 }
