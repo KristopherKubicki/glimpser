@@ -128,6 +128,11 @@ def _local_video_devices(base_path="/dev"):
 
 After scanning, `discover_cameras()` removes duplicates and returns the final list of cameras.
 
+Each entry is also augmented with the device's MAC address and, when known,
+the manufacturer derived from its OUI prefix.  These details appear as separate
+columns in the discovery table so you can quickly identify where each camera
+originates.
+
 You can then add a discovered camera to your configuration directly from the `/discover` page.
 The "Add" button on this page now includes a tooltip (title attribute) for improved accessibility.
 
