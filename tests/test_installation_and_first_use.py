@@ -29,7 +29,7 @@ class TestInstallationAndFirstUse(unittest.TestCase):
         config.SUMMARIES_DIRECTORY = os.path.join(self.temp_dir, "summaries")
 
         # Create the Flask test client
-        self.app = create_app(watchdog=False, schedule=False)
+        self.app = create_app(enable_watchdog=False, schedule=False)
         self.client = self.app.test_client()
 
     def tearDown(self):
@@ -55,14 +55,16 @@ class TestInstallationAndFirstUse(unittest.TestCase):
 
     def test_database_initialization(self):
         """Test that the database file is created"""
-        # TODO: i think this needs a join... 
-        #self.assertTrue(os.path.exists(config.DATABASE_PATH))
+        # TODO: i think this needs a join...
+        # self.assertTrue(os.path.exists(config.DATABASE_PATH))
 
     def test_root_route(self):
         """Test the root route of the application"""
         response = self.client.get("/")
-        self.assertEqual(response.status_code, 302) # will be a redirect because of no auth
-        self.assertTrue('/login' in response.text)
+        self.assertEqual(
+            response.status_code, 302
+        )  # will be a redirect because of no auth
+        self.assertTrue("/login" in response.text)
 
 
 if __name__ == "__main__":

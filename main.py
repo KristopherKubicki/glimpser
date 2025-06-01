@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!./env/bin/python3
 #  main.py
 
 import logging
@@ -208,21 +208,22 @@ def create_application(args=None):
     generate_credentials_if_needed()
 
     schedule = not getattr(args, "no_scheduler", False)
-    watchdog = not getattr(args, "no_watchdog", False)
+    enable_watchdog = not getattr(args, "no_watchdog", False)
 
-    return create_app(watchdog=watchdog, schedule=schedule)
+    return create_app(enable_watchdog=enable_watchdog, schedule=schedule)
+
 
 
 def output_shutdown_stats():
     # Get and display system metrics
     metrics = get_system_metrics()
     logging.info("System Metrics at Shutdown:")
-    logging.info("CPU Usage: %s%%", metrics['cpu_usage'])
-    logging.info("Memory Usage: %s%%", metrics['memory_usage'])
-    logging.info("Disk Usage: %s%%", metrics['disk_usage'])
-    logging.info("Open Files: %s", metrics['open_files'])
-    logging.info("Thread Count: %s", metrics['thread_count'])
-    logging.info("Uptime: %s", metrics['uptime'])
+    logging.info("CPU Usage: %s%%", metrics["cpu_usage"])
+    logging.info("Memory Usage: %s%%", metrics["memory_usage"])
+    logging.info("Disk Usage: %s%%", metrics["disk_usage"])
+    logging.info("Open Files: %s", metrics["open_files"])
+    logging.info("Thread Count: %s", metrics["thread_count"])
+    logging.info("Uptime: %s", metrics["uptime"])
     logging.info("Thank you for running Glimpser. Goodbye!")
 
 
@@ -264,20 +265,22 @@ def graceful_shutdown(signum, frame):
 
 def clear_console():
     # For Windows
-    if os.name == 'nt':
-        _ = os.system('cls')
+    if os.name == "nt":
+        _ = os.system("cls")
     # For macOS and Linux
     else:
-        _ = os.system('clear')
+        _ = os.system("clear")
+
 
 
 def is_port_in_use(port):
     # Skip the check if running in Docker
-    if os.environ.get('IN_DOCKER'):
+    if os.environ.get("IN_DOCKER"):
         return False
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(('localhost', port)) == 0
+        return s.connect_ex(("localhost", port)) == 0
+
 
 
 def main(argv=None):

@@ -8,7 +8,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="glimpser",
-    version="0.2.5",
+    version="0.2.6",
     author="Kristopher Kubicki",
     author_email="kristopher@glimser.net",
     description="A real-time monitoring application for capturing and analyzing live data from various sources",
@@ -31,7 +31,7 @@ setup(
     python_requires=">=3.8",
     entry_points={
         "console_scripts": [
-            "glimpser=glimpser.main:main",
+            "glimpser=main:main",
         ],
     },
 )
