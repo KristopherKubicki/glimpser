@@ -4,10 +4,10 @@
 {% block content %}
 
 <div class="scheduler-controls">
-    <button id="toggle-scheduler" class="btn btn-primary">
+    <button id="toggle-scheduler" class="btn btn-primary" title="Start or stop the scheduler">
         Loading...
     </button>
-    <span id="scheduler-status">Checking status...</span>
+    <span id="scheduler-status" title="Current scheduler status">Checking status...</span>
 </div>
 
 <h1>System Status</h1>
@@ -15,12 +15,12 @@
 <!-- Display system metrics -->
 <h2>System Metrics</h2>
 <ul>
-    <li>CPU Usage: {{ metrics.cpu_usage }}%</li>
-    <li>Memory Usage: {{ metrics.memory_usage }}%</li>
-    <li>Disk Usage: {{ metrics.disk_usage }}%</li>
-    <li>Open Files: {{ metrics.open_files }}</li>
-    <li>Thread Count: {{ metrics.thread_count }}</li>
-    <li>Uptime: {{ metrics.uptime }}</li>
+    <li title="Current CPU utilization">CPU Usage: {{ metrics.cpu_usage }}%</li>
+    <li title="Current memory utilization">Memory Usage: {{ metrics.memory_usage }}%</li>
+    <li title="Disk space used">Disk Usage: {{ metrics.disk_usage }}%</li>
+    <li title="Open file handles">Open Files: {{ metrics.open_files }}</li>
+    <li title="Number of active threads">Thread Count: {{ metrics.thread_count }}</li>
+    <li title="System uptime">Uptime: {{ metrics.uptime }}</li>
 </ul>
 
 
