@@ -332,11 +332,13 @@ def generate_video_stream(video_path: str):
 
 
 def generate_live_stream(url: str):
-    """Yield video data directly from a remote URL using ffmpeg.
+    """Yield video data directly from a remote URL using ``ffmpeg``.
 
-    Some camera APIs expose JPEG snapshots rather than a continuous
-    video stream. If the URL resembles a static image endpoint, poll
-    the image directly to keep the live view working.
+    Some camera APIs expose JPEG snapshots rather than a continuous video
+    stream. If the URL resembles a static image endpoint, poll the image
+    directly to keep the live view working. Otherwise continuously invoke
+    ``ffmpeg`` and restart it on failure so the client receives a valid
+    MP4 stream whenever possible.
     """
 
     image_like = (
@@ -386,48 +388,32 @@ def generate_live_stream(url: str):
         ]
     )
 
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    frames_produced = False
-
-    try:
-        while True:
-            chunk = process.stdout.read(1024 * 1024)
-            if not chunk:
-                break
-            frames_produced = True
-            yield chunk
-            if process.poll() is not None:
-                break
-    except GeneratorExit:
-        pass
-    finally:
-        process.kill()
-        process.wait(timeout=1)
-
-    if frames_produced and process.returncode == 0:
-        return
-
-    # Fallback to still images if ffmpeg fails
     while True:
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-            tmp_path = tmp.name
+        process = subprocess.Popen(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
 
         try:
-            if screenshots.capture_frame_from_stream(url, tmp_path, timeout=10):
-                with open(tmp_path, "rb") as f:
-                    yield f.read()
-            time.sleep(1 / max(config.LIVE_FALLBACK_FPS, 1))
-            if process.poll() is not None:
-                # Avoid zombie process just in case
-                break
+            while True:
+                chunk = process.stdout.read(1024 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+                if process.poll() is not None:
+                    break
         except GeneratorExit:
-            break
+            process.kill()
+            process.wait(timeout=1)
+            return
         finally:
-            try:
-                os.remove(tmp_path)
-            except OSError:
-                pass
+            process.kill()
+            process.wait(timeout=1)
+
+        if process.returncode == 0:
+            return
+
+        logging.error("ffmpeg exited with %s, retrying", process.returncode)
+        time.sleep(2)
 
 
 login_attempts = {}
