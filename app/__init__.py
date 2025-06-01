@@ -79,6 +79,7 @@ def create_app(enable_watchdog=True, schedule=True):
         SESSION_COOKIE_SECURE,
         SESSION_COOKIE_HTTPONLY,
         SESSION_TIMEOUT_MINUTES,
+        API_KEY,
     )
 
     app = Flask(__name__)
@@ -168,7 +169,7 @@ def create_app(enable_watchdog=True, schedule=True):
                 try:
                     # Check app responsiveness
                     with app.test_client() as client:
-                        response = client.get("/health")
+                        response = client.get("/health", headers={"X-API-Key": API_KEY})
                         if response.status_code != 200:
                             raise Exception("Application is not responding correctly")
 
