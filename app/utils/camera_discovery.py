@@ -11,6 +11,15 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from .screenshots import is_port_open
 
+# Minimal OUI mapping for MAC manufacturer lookup.  This avoids pulling in
+# extra dependencies while still providing useful vendor hints.  Only a few
+# common prefixes are included.
+OUI_MAP = {
+    "000c29": "VMware",
+    "525400": "QEMU",
+    "080027": "VirtualBox",
+}
+
 # Discovery steps executed by :func:`discover_cameras`.  The list order
 # defines both the execution order and the number of progress updates.
 DISCOVERY_STAGES = [
@@ -38,6 +47,30 @@ try:  # optional Zeroconf support
     from zeroconf import ServiceBrowser, Zeroconf
 except Exception:  # pragma: no cover - optional dependency may be missing
     Zeroconf = None
+
+
+def _mac_for_ip(ip: str) -> str | None:
+    """Return the MAC address for ``ip`` from the ARP table if available."""
+
+    try:
+        with open("/proc/net/arp") as fh:
+            next(fh)
+            for line in fh:
+                parts = line.split()
+                if parts and parts[0] == ip:
+                    return parts[3].lower()
+    except Exception:
+        pass
+    return None
+
+
+def _mac_manufacturer(mac: str | None) -> str | None:
+    """Return the vendor name for ``mac`` using :data:`OUI_MAP`."""
+
+    if not mac:
+        return None
+    prefix = mac.replace(":", "").lower()[:6]
+    return OUI_MAP.get(prefix)
 
 
 def _local_subnets(max_prefixlen: int = 24):
@@ -479,4 +512,15 @@ def discover_cameras(progress_callback=None):
         key = (cam["ip"], cam["protocol"], cam["port"])
         if key not in unique:
             unique[key] = cam
-    return list(unique.values())
+
+    result = list(unique.values())
+    for cam in result:
+        if cam["protocol"] != "local":
+            mac = _mac_for_ip(cam["ip"])
+            if mac:
+                cam.setdefault("info", {})["mac"] = mac
+                vendor = _mac_manufacturer(mac)
+                if vendor:
+                    cam["info"]["manufacturer"] = vendor
+
+    return result

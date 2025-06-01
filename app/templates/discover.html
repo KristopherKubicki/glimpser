@@ -10,6 +10,8 @@
                 <th title="Camera IP address">IP</th>
                 <th title="Protocol type">Protocol</th>
                 <th title="Port number">Port</th>
+                <th title="MAC address">MAC</th>
+                <th title="Device manufacturer">Manufacturer</th>
                 <th title="Additional information">Info</th>
                 <th title="Add camera"></th>
             </tr>
@@ -20,6 +22,8 @@
                 <td>{{ cam.ip }}</td>
                 <td>{{ cam.protocol }}</td>
                 <td>{{ cam.port }}</td>
+                <td>{{ cam.info.mac }}</td>
+                <td>{{ cam.info.manufacturer }}</td>
                 <td>{{ cam.info }}</td>
                 <td>
                     <form action="/discover/add" method="post">
@@ -59,6 +63,8 @@
                     <td>${cam.ip}</td>
                     <td>${cam.protocol}</td>
                     <td>${cam.port}</td>
+                    <td>${cam.info.mac || ''}</td>
+                    <td>${cam.info.manufacturer || ''}</td>
                     <td>${JSON.stringify(cam.info)}</td>
                     <td>
                         <form action="/discover/add" method="post">
