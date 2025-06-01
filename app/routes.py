@@ -339,6 +339,12 @@ def generate_live_stream(url: str):
         command.extend(["-hwaccel", config.FFMPEG_HWACCEL])
     command.extend(
         [
+            "-reconnect",
+            "1",
+            "-reconnect_streamed",
+            "1",
+            "-reconnect_delay_max",
+            "2",
             "-i",
             url,
             "-loglevel",
@@ -376,7 +382,7 @@ def generate_live_stream(url: str):
     if frames_produced and process.returncode == 0:
         return
 
-    # Fallback to 1 fps screenshots if ffmpeg fails
+    # Fallback to still images if ffmpeg fails
     while True:
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
             tmp_path = tmp.name
@@ -385,7 +391,7 @@ def generate_live_stream(url: str):
             if screenshots.capture_frame_from_stream(url, tmp_path, timeout=10):
                 with open(tmp_path, "rb") as f:
                     yield f.read()
-            time.sleep(1)
+            time.sleep(1 / max(config.LIVE_FALLBACK_FPS, 1))
             if process.poll() is not None:
                 # Avoid zombie process just in case
                 break
