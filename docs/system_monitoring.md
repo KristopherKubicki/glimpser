@@ -45,3 +45,25 @@ metrics.
 ## Danger Mode Indicator
 
 When Chrome's remote debugging port is open and no user input has been detected for a short time, Danger mode becomes available. An orange dot in the navigation bar shows this state. Hovering over the dot explains why Danger mode may be unavailable. See [Danger Mode](danger_mode.md) for setup instructions.
+
+## Profiling
+
+Each profiled API request writes its execution time to `data/latency_log.json`.
+Query aggregated averages and counts using the `/profiling` endpoint:
+
+```bash
+curl /profiling
+```
+
+Use this information to identify slow endpoints and monitor performance.
+
+Baseline metrics from the main branch are stored in
+`docs/latency_baseline.json`. Run the helper script to refresh this file after
+tests:
+
+```bash
+python scripts/update_latency_baseline.py
+```
+
+CI bots can compare the latest profiling results against this baseline to detect
+latency regressions.
