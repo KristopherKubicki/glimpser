@@ -345,6 +345,10 @@ def check_user_activity(timeout=10):
     mouse_listener.stop()
     keyboard_listener.stop()
 
+    # Ensure threads close their X connections before returning
+    mouse_listener.join()
+    keyboard_listener.join()
+
     return user_active
 
 
