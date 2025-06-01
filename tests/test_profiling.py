@@ -38,5 +38,21 @@ class TestProfiling(unittest.TestCase):
         self.assertTrue(any(d["route"] == "/health" for d in data))
 
 
+    def test_baseline_update(self):
+        self.client.get("/health")
+        import scripts.update_latency_baseline as updater
+
+        with tempfile.NamedTemporaryFile(delete=False) as temp_baseline:
+            baseline_patch = patch.object(updater, "BASELINE_PATH", temp_baseline.name)
+            with baseline_patch:
+                updater.main()
+            temp_baseline.close()
+            with open(temp_baseline.name) as f:
+                stats = json.load(f)
+        os.unlink(temp_baseline.name)
+        self.assertIn("/health", stats)
+
+
+
 if __name__ == "__main__":
     unittest.main()
