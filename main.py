@@ -213,6 +213,7 @@ def create_application(args=None):
     return create_app(enable_watchdog=enable_watchdog, schedule=schedule)
 
 
+
 def output_shutdown_stats():
     # Get and display system metrics
     metrics = get_system_metrics()
@@ -271,6 +272,7 @@ def clear_console():
         _ = os.system("clear")
 
 
+
 def is_port_in_use(port):
     # Skip the check if running in Docker
     if os.environ.get("IN_DOCKER"):
@@ -278,6 +280,7 @@ def is_port_in_use(port):
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(("localhost", port)) == 0
+
 
 
 def main(argv=None):
