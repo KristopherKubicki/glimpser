@@ -59,6 +59,9 @@ The choice between these methods depends on factors such as:
 - Presence of popups that need to be handled
 - Need for JavaScript execution
 - Requirement for stealth mode
+- When stealth mode is enabled, Glimpser randomizes the window size and builds
+  the user agent string from the installed Chrome version to avoid outdated
+  fingerprints.
 - Presence of dedicated selectors for capturing specific elements
 
 ## Post-Processing
