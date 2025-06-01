@@ -74,6 +74,7 @@ from app.utils.db import SessionLocal, engine
 # from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock
 from app.utils.validators import validate_template_name, validate_update_data
+from app.utils.profiling import profile_route, get_latency_stats
 
 
 def restart_server():
@@ -682,6 +683,7 @@ def init_routes(app):
     # Add a new route for the extended health check
     @app.route("/health")
     @login_required
+    @profile_route("/health")
     def health_check():
 
         scheduler_status = "failed"
@@ -771,6 +773,7 @@ def init_routes(app):
 
     @app.route("/danger_status")
     @login_required
+    @profile_route("/danger_status")
     def danger_status():
         """Return whether Danger mode can be used."""
         port_open = is_chrome_debug_port_open("127.0.0.1", 9222)
@@ -780,6 +783,7 @@ def init_routes(app):
         )
 
     @app.route("/api/discover")
+    @profile_route("/api/discover")
     def api_discover():
         api_info = {
             "version": "1.0",
@@ -2232,6 +2236,7 @@ def init_routes(app):
 
     @app.route("/toggle_scheduler", methods=["POST"])
     @login_required
+    @profile_route("/toggle_scheduler")
     def toggle_scheduler():
         try:
             if scheduling.scheduler.running:
@@ -2249,7 +2254,13 @@ def init_routes(app):
 
     @app.route("/scheduler_status")
     @login_required
+    @profile_route("/scheduler_status")
     def get_scheduler_status():
         return jsonify(
             {"status": "running" if scheduling.scheduler.running else "stopped"}
         )
+
+    @app.route("/profiling")
+    @login_required
+    def profiling_data():
+        return jsonify(get_latency_stats())
