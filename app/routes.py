@@ -594,6 +594,16 @@ def allowed_filename(filename: str) -> bool:
 def init_routes(app):
     # get_active_groups()
 
+    @app.after_request
+    def add_security_headers(response):
+        """Add common security headers to every response."""
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
     @app.context_processor
     def inject_footer_data():
         outdated = False
