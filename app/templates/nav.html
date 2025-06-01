@@ -15,9 +15,9 @@
             </div>
 
             <div class="nav-right">
+        {% if session.get('user_id') %}
                 <div id="health-status" class="status-indicator" title="System Performance"><a href='/status'></a></div>
                 <div id="danger-status" class="status-indicator" title="Danger Mode"></div>
-        {% if session.get('user_id') %}
                 <a href='/discover' class="settings-icon" title='Discover Cameras'>&#128269;</a>
                 <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'>&#9000;</a>
                 <a href='/live' id='live'>
@@ -32,6 +32,8 @@
                     </div>
                 </a>
                 <a href='/settings' class="settings-icon" title="Update settings">&#9881;</a>
+        {% else %}
+                <a href="{{ url_for('login') }}" class="settings-icon" title="Login">Login</a>
         {% endif %}
             </div>
         </nav>

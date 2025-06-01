@@ -345,6 +345,10 @@ def check_user_activity(timeout=10):
     mouse_listener.stop()
     keyboard_listener.stop()
 
+    # Ensure threads close their X connections before returning
+    mouse_listener.join()
+    keyboard_listener.join()
+
     return user_active
 
 
@@ -892,19 +896,33 @@ def is_address_reachable(address, port=80, timeout=5):
 
 
 def parse_url(url):
-    parsed_url = urlparse(url)
+    """Return the domain and port extracted from *url*.
+
+    ``urllib.parse.urlparse`` treats strings without a scheme oddly.  For
+    example ``"example.com:8080/path"`` is parsed with ``"example.com"`` as the
+    *scheme* rather than the hostname.  To handle such URLs we prefix ``"//"`` so
+    they are interpreted as network locations.
+    """
+
+    # Handle URLs missing a scheme like ``example.com:8080/path`` by prefixing
+    # ``//`` which causes ``urlparse`` to parse the hostname and port correctly.
+    if "://" not in url:
+        parsed_url = urlparse("//" + url)
+    else:
+        parsed_url = urlparse(url)
+
     domain = parsed_url.hostname
-    if parsed_url and parsed_url.scheme == "" and domain is None:
+    if parsed_url.scheme == "" and domain is None:
         domain = re.sub(r"\/.+?$", "", parsed_url.path)
 
     port = parsed_url.port
-    # If the port is None and the scheme is specified, infer the default port
+    # If the port is None and the scheme is specified, infer the default port.
     if port is None:
         if parsed_url.scheme == "http":
             port = 80
         elif parsed_url.scheme == "https":
             port = 443
-        # Add more schemes and their default ports if necessary
+        # Add more schemes and their default ports if necessary.
 
     return domain, port
 
