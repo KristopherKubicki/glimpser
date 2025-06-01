@@ -2,9 +2,9 @@
 {% block content %}
     <h2>Live Camera Feed</h2>
 
-    <div class="video-container">
-        <div id="camera-name" class="camera-name"></div>
-        <video id="live-video" controls autoplay muted></video>
+    <div class="video-container" title="Live HLS stream">
+        <div id="camera-name" class="camera-name" title="Current camera"></div>
+        <video id="live-video" controls autoplay muted title="HLS video player"></video>
     </div>
 
         <script>
