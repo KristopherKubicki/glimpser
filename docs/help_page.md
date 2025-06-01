@@ -17,5 +17,11 @@ Key topics covered include:
 - A link to the project on [GitHub](https://github.com/KristopherKubicki/glimpser) where you can
   report issues or contribute.
 
+## Viewing Captures
+
+On the **Live** page, pick a camera from the drop-down menu and set the **Video
+Source** to **Live Video**. This connects you directly to the realtime feed so
+you can monitor activity as it happens.
+
 Navigate back to the main interface using the **Back to Glimpser** link at the
 bottom of the help page.

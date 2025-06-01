@@ -44,9 +44,12 @@ This guide will walk you through the process of setting up Glimpser and running 
 
 6. Go to the "Monitoring" section to view your live data feed.
 
-7. Explore the auto-generated captions and summaries.
-8. Use the **Suggest Prompt** button on a template's detail page to have the system propose better caption text.
-9. Visit the **Captions** page to review recent captions and update prompts. Use the group filter and search box to quickly find a camera, or manage captions in bulk with the TSV controls.
+7. On the **Live** page, select your camera and choose **Live Video** from the
+   "Video Source" dropdown for direct streaming.
+
+8. Explore the auto-generated captions and summaries.
+9. Use the **Suggest Prompt** button on a template's detail page to have the system propose better caption text.
+10. Visit the **Captions** page to review recent captions and update prompts. Use the group filter and search box to quickly find a camera, or manage captions in bulk with the TSV controls.
 
 ## Next Steps
 
