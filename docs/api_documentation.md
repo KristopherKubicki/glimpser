@@ -100,6 +100,10 @@ Stream a camera directly from its configured URL in real time. Specify `camera` 
 
 Example: `/live_video?camera=frontdoor`
 
+If the underlying `ffmpeg` process fails to stream, the server
+automatically captures still frames once per second as a fallback so
+clients continue to receive updates.
+
 ### 5. Additional Streaming Endpoints
 
 Several other routes provide streaming functionality:
