@@ -798,3 +798,10 @@ input[type=submit]:hover {
     text-align: center;
     color: white;
 }
+
+.no-templates {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-color);
+}
+
