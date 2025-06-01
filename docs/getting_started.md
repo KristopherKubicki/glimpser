@@ -45,6 +45,7 @@ This guide will walk you through the process of setting up Glimpser and running 
 
 7. Explore the auto-generated captions and summaries.
 8. Use the **Suggest Prompt** button on a template's detail page to have the system propose better caption text.
+9. Visit the **Captions** page to review recent captions and update prompts. Use the group filter and search box to quickly find a camera, or manage captions in bulk with the TSV controls.
 
 ## Next Steps
 
