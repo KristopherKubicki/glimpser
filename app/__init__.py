@@ -44,7 +44,7 @@ class SQLAlchemyHandler(logging.Handler):
 """
 
 
-def create_app(watchdog=True, schedule=True):
+def create_app(enable_watchdog=True, schedule=True):
     """Create and configure the Flask application.
 
     This function sets up the entire Flask application, including:
@@ -57,7 +57,7 @@ def create_app(watchdog=True, schedule=True):
 
     Parameters
     ----------
-    watchdog : bool, optional
+    enable_watchdog : bool, optional
         When ``True`` (the default) a background thread periodically
         polls the ``/health`` endpoint and checks the number of open file
         handles.  If either check fails it restores the last known good
@@ -147,7 +147,7 @@ def create_app(watchdog=True, schedule=True):
     backup_config()
 
     # Set up a watchdog thread to monitor the application
-    def watchdog():
+    def _watchdog_thread():
         """Background health monitor.
 
         The thread issues requests to ``/health`` and inspects the number of
@@ -196,8 +196,8 @@ def create_app(watchdog=True, schedule=True):
                         logging.warning("Restart cooldown in effect. Skipping restart.")
 
     # Start the watchdog thread
-    if watchdog is True:
-        watchdog_thread = threading.Thread(target=watchdog)
+    if enable_watchdog:
+        watchdog_thread = threading.Thread(target=_watchdog_thread)
         watchdog_thread.daemon = True
         watchdog_thread.start()
         app.watchdog_thread = watchdog_thread

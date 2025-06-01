@@ -10,7 +10,7 @@ from app import create_app
 
 class TestMotionMjpg(unittest.TestCase):
     def setUp(self):
-        self.app = create_app(watchdog=False, schedule=False)
+        self.app = create_app(enable_watchdog=False, schedule=False)
         self.client = self.app.test_client()
         self.app_context = self.app.app_context()
         self.app_context.push()
