@@ -332,7 +332,33 @@ def generate_video_stream(video_path: str):
 
 
 def generate_live_stream(url: str):
-    """Yield video data directly from a remote URL using ffmpeg."""
+    """Yield video data directly from a remote URL using ffmpeg.
+
+    Some camera APIs expose JPEG snapshots rather than a continuous
+    video stream. If the URL resembles a static image endpoint, poll
+    the image directly to keep the live view working.
+    """
+
+    image_like = (
+        url.lower().endswith((".jpg", ".jpeg", ".png")) or "/picture" in url.lower()
+    )
+    if image_like:
+        session = screenshots.http_session()
+        while True:
+            try:
+                resp = session.get(url, timeout=5, stream=True)
+                if resp.status_code == 200:
+                    yield resp.content
+                else:
+                    logging.error(
+                        "Failed to fetch image from %s (HTTP %s)", url, resp.status_code
+                    )
+            except GeneratorExit:
+                break
+            except Exception as e:
+                logging.error("Error fetching image from %s: %s", url, e)
+            time.sleep(1 / max(config.LIVE_FALLBACK_FPS, 1))
+        return
 
     command = [config.FFMPEG_PATH]
     if config.FFMPEG_HWACCEL and config.FFMPEG_HWACCEL.lower() != "false":

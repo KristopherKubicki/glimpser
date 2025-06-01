@@ -182,3 +182,16 @@ Glimpser writes logs to the console and exposes them via the `/status` page. If 
 **Solution:**
 - Ensure you are running the latest Glimpser version.
 - Refresh the page to load the updated JavaScript.
+
+## 11. Live View Problems
+
+### Problem: Live page never loads a frame
+
+If the logs repeat messages like `No frames captured from stream` or
+`Error capturing frame with ffmpeg`, the camera URL may point to a
+snapshot image rather than a true video stream.
+
+**Solution:**
+- Use the camera's RTSP or HTTP video stream URL when available.
+- Snapshot-only URLs now work automatically, but they refresh slowly
+  since a new JPEG must be fetched for each frame.
