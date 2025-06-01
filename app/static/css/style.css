@@ -799,6 +799,14 @@ input[type=submit]:hover {
     color: white;
 }
 
+
+.no-templates {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-color);
+}
+
+
 /* Captions Page */
 .captions-page {
     max-width: 1200px;
@@ -833,3 +841,4 @@ input[type=submit]:hover {
 .camera-table th {
     background-color: #f4f4f4;
 }
+

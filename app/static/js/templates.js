@@ -285,11 +285,13 @@ export async function loadTemplates() {
       });
     }, { threshold: 0.5 });
 
+    let hasTemplates = false;
     Object.entries(templates).forEach(([name, template], index) => {
       if (
         templateBelongsToGroup(template, selectedGroup) &&
         templateMatchesSearch(template, searchQuery)
       ) {
+        hasTemplates = true;
         const lastScreenshotTime = template.last_screenshot_time;
         const humanizedTimestamp = timeAgo(lastScreenshotTime);
         const nextCaptureTime = timeAgo(template.next_screenshot_time);
@@ -354,6 +356,18 @@ export async function loadTemplates() {
         }
       }
     });
+
+    if (!hasTemplates) {
+      const msg = document.createElement('div');
+      msg.className = 'no-templates';
+      msg.textContent = 'No templates found. Use "Add Template" above to create one.';
+      if (isIndexPage) {
+        templateList.appendChild(msg);
+      } else if (isCaptionsPage) {
+        templateContainer.appendChild(msg);
+      }
+      if (templateDetails) templateDetails.open = true;
+    }
 
     if (isIndexPage) {
       window.addEventListener('resize', updateGridLayout);
