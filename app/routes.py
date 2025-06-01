@@ -646,7 +646,10 @@ def init_routes(app):
     def add_security_headers(response):
         """Add common security headers to every response."""
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
+        # Allow pages from this site to be embedded in iframes
+        # without opening the application to clickjacking from
+        # other domains.
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Cache-Control"] = "no-store"

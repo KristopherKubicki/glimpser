@@ -16,7 +16,7 @@ All responses now include standard security headers to help prevent
 common attacks. Important headers are:
 
 - `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
+- `X-Frame-Options: SAMEORIGIN`
 - `X-XSS-Protection: 1; mode=block`
 - `Referrer-Policy: no-referrer`
 - `Cache-Control: no-store`
