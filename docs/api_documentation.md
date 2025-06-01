@@ -178,8 +178,16 @@ that can be used to improve future captions.
 
 Example response:
 ```json
+
 {"prompt": "Busy roadway — highlight license plates"}
 ```
+
+### 12. Compile Teaser Video
+
+**POST /compile_teaser**
+
+Trigger compilation of recent footage into a teaser video. Requires authentication.
+GET requests to this endpoint return `405 Method Not Allowed`.
 
 ## Error Handling
 
