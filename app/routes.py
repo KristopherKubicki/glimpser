@@ -344,20 +344,35 @@ def generate_live_stream(url: str):
     )
     if image_like:
         session = screenshots.http_session()
+        last_frame = None
+        delay = 1 / max(config.LIVE_FALLBACK_FPS, 1)
+        backoff = delay
         while True:
             try:
                 resp = session.get(url, timeout=5, stream=True)
                 if resp.status_code == 200:
-                    yield resp.content
+                    last_frame = resp.content
+                    backoff = delay
                 else:
                     logging.error(
                         "Failed to fetch image from %s (HTTP %s)", url, resp.status_code
                     )
+                    backoff = min(backoff * 2, 30)
             except GeneratorExit:
                 break
             except Exception as e:
                 logging.error("Error fetching image from %s: %s", url, e)
-            time.sleep(1 / max(config.LIVE_FALLBACK_FPS, 1))
+                backoff = min(backoff * 2, 30)
+            finally:
+                try:
+                    resp.close()
+                except Exception:
+                    pass
+
+            if last_frame:
+                yield last_frame
+
+            time.sleep(backoff)
         return
 
     command = [config.FFMPEG_PATH]
@@ -409,6 +424,9 @@ def generate_live_stream(url: str):
         return
 
     # Fallback to still images if ffmpeg fails
+    last_frame = None
+    delay = 1 / max(config.LIVE_FALLBACK_FPS, 1)
+    backoff = delay
     while True:
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
             tmp_path = tmp.name
@@ -416,18 +434,31 @@ def generate_live_stream(url: str):
         try:
             if screenshots.capture_frame_from_stream(url, tmp_path, timeout=10):
                 with open(tmp_path, "rb") as f:
-                    yield f.read()
-            time.sleep(1 / max(config.LIVE_FALLBACK_FPS, 1))
+                    last_frame = f.read()
+                backoff = delay
+            else:
+                backoff = min(backoff * 2, 30)
+
+            if last_frame:
+                yield last_frame
+
             if process.poll() is not None:
                 # Avoid zombie process just in case
                 break
         except GeneratorExit:
             break
+        except Exception as e:
+            logging.error("Error capturing fallback frame from %s: %s", url, e)
+            backoff = min(backoff * 2, 30)
+            if last_frame:
+                yield last_frame
         finally:
             try:
                 os.remove(tmp_path)
             except OSError:
                 pass
+
+        time.sleep(backoff)
 
 
 login_attempts = {}

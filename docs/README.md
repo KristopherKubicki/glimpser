@@ -38,3 +38,5 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Core colors and fonts are defined via CSS variables.
 - Navigation menus use a consistent accent color with smooth hover effects.
 - Session cookies are now marked secure/HTTPOnly and expire after a configurable timeout.
+- Live view uses a backoff strategy when snapshots fail and serves the last
+  successful frame to avoid hammering offline cameras.
