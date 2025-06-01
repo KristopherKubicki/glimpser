@@ -16,3 +16,9 @@ flake8
 ```
 
 Refer to [developer_guide.md](developer_guide.md) for setting up your environment.
+
+## End-to-End Tests
+
+The `tests/test_e2e_web.py` module contains basic browser tests. These tests
+start the Flask server and drive a headless browser via Selenium. If a suitable
+web driver is not available, the tests are automatically skipped.
