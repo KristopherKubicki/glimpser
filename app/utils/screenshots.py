@@ -20,6 +20,7 @@ import psutil
 from werkzeug.utils import secure_filename
 import urllib3
 from dateutil import tz
+import random
 
 os.environ["WDM_LOG"] = "0"
 os.environ["WDM_LOG_LEVEL"] = "0"
@@ -96,6 +97,37 @@ FONT_CANDIDATES = [
     "Arial.ttf",
     "LiberationSans-Regular.ttf",
 ]
+
+# User agent templates used when stealth mode is enabled. The actual version is
+# filled dynamically based on the installed Chrome version so that outdated
+# strings are avoided.
+STEALTH_UA_TEMPLATES = [
+    (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version}.0.0.0 "
+        "Safari/537.36"
+    ),
+    (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_4) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version}.0.0.0 "
+        "Safari/537.36"
+    ),
+    (
+        "Mozilla/5.0 (X11; Linux x86_64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version}.0.0.0 "
+        "Safari/537.36"
+    ),
+]
+
+
+def random_user_agent():
+    """Return a randomized user agent string for stealth mode."""
+    chrome_path = get_chrome_path()
+    version = get_chrome_version(chrome_path)
+    # Pick a nearby version to avoid obvious automation patterns
+    major_version = random.randint(max(100, version - 1), version + 1)
+    template = random.choice(STEALTH_UA_TEMPLATES)
+    return template.format(version=major_version)
 
 
 def load_font(size):
@@ -636,12 +668,7 @@ def download_image(
     try:
         lua = UA
         if stealth:
-            chrome_path = get_chrome_path()
-            cv = get_chrome_version(chrome_path)
-            lua = (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%s.0.0.0 Safari/537.36"
-                % cv
-            )
+            lua = random_user_agent()
         headers = {"user-agent": lua}
         proxies = {"http": proxy, "https": proxy} if proxy else None
 
@@ -738,12 +765,7 @@ def download_pdf(
         # Download the PDF file
         lua = UA
         if stealth:
-            chrome_path = get_chrome_path()
-            cv = get_chrome_version(chrome_path)
-            lua = (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%s.0.0.0 Safari/537.36"
-                % cv
-            )
+            lua = random_user_agent()
 
         headers = {"user-agent": lua}
         auth = None
@@ -1174,12 +1196,7 @@ def get_content_type(url, danger, stealth=False) -> (str, bool):
 
     lua = UA
     if stealth:
-        chrome_path = get_chrome_path()
-        cv = get_chrome_version(chrome_path)
-        lua = (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%s.0.0.0 Safari/537.36"
-            % cv
-        )
+        lua = random_user_agent()
 
     sess = http_session()
     modified = True
@@ -1843,6 +1860,17 @@ def launch_headless_chrome(driver_options, version=None):
     return driver
 
 
+def apply_stealth_options(driver_options):
+    """Randomize options to better mimic a human browser."""
+    width = random.randint(1200, 1920)
+    height = random.randint(800, 1080)
+    driver_options.add_argument(f"--window-size={width},{height}")
+    driver_options.add_argument(f"--user-agent={random_user_agent()}")
+    driver_options.add_argument("--disable-blink-features=AutomationControlled")
+    driver_options.add_argument("--disable-infobars")
+    driver_options.add_argument("--disable-extensions")
+
+
 def _purge_driver_cache():
     """
     Remove the undetected_chromedriver or webdriver_manager cache so that
@@ -2288,8 +2316,12 @@ def capture_screenshot_and_har(
         driver_options.add_argument("--no-sandbox")
         driver_options.add_argument("--disable-dev-shm-usage")
         driver_options.add_argument("--disable-gpu")
-        driver_options.add_argument("--window-size=1920,1080")
-        driver_options.add_argument("--disable-blink-features=AutomationControlled")
+        if stealth:
+            apply_stealth_options(driver_options)
+        else:
+            driver_options.add_argument("--window-size=1920,1080")
+            driver_options.add_argument("--disable-blink-features=AutomationControlled")
+            driver_options.add_argument("--enable-automation")
         driver_options.add_argument("--disable-infobars")
         driver_options.add_argument("--disable-background-networking")
         driver_options.add_argument("--disable-features=TranslateUI")
@@ -2314,9 +2346,10 @@ def capture_screenshot_and_har(
         driver_options.add_argument(
             "--disable-renderer-backgrounding"
         )  # Ensures no CPU throttling
-        driver_options.add_argument(
-            "--enable-automation"
-        )  # Explicitly marks as automation-friendly
+        if not stealth:
+            driver_options.add_argument(
+                "--enable-automation"
+            )  # Explicitly marks as automation-friendly
         driver_options.add_argument(
             "--force-device-scale-factor=1"
         )  # Prevents UI scaling issues

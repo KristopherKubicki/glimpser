@@ -799,9 +799,46 @@ input[type=submit]:hover {
     color: white;
 }
 
+
 .no-templates {
     text-align: center;
     padding: 2rem;
     color: var(--text-color);
+}
+
+
+/* Captions Page */
+.captions-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 15px;
+}
+
+.filter-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.captions-table,
+.camera-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.captions-table th,
+.captions-table td,
+.camera-table th,
+.camera-table td {
+    padding: 8px;
+    border: 1px solid #ddd;
+}
+
+.captions-table th,
+.camera-table th {
+    background-color: #f4f4f4;
 }
 
