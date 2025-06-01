@@ -44,4 +44,4 @@ metrics.
 
 ## Danger Mode Indicator
 
-When Chrome's remote debugging port is open and no user input has been detected for a short time, Danger mode becomes available. An orange dot in the navigation bar shows this state. Hovering over the dot explains why Danger mode may be unavailable.
+When Chrome's remote debugging port is open and no user input has been detected for a short time, Danger mode becomes available. An orange dot in the navigation bar shows this state. Hovering over the dot explains why Danger mode may be unavailable. See [Danger Mode](danger_mode.md) for setup instructions.

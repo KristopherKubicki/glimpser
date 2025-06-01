@@ -64,7 +64,11 @@ from app.utils import (
     prompt_optimizer,
     camera_fix,
 )
-from app.utils.screenshots import is_chrome_debug_port_open, check_user_activity
+from app.utils.screenshots import (
+    is_chrome_debug_port_open,
+    check_user_activity,
+    capture_frame_from_stream,
+)
 from app.utils.db import SessionLocal, engine
 
 # from app.models.log import Log
@@ -335,6 +339,12 @@ def generate_live_stream(url: str):
         command.extend(["-hwaccel", config.FFMPEG_HWACCEL])
     command.extend(
         [
+            "-reconnect",
+            "1",
+            "-reconnect_streamed",
+            "1",
+            "-reconnect_delay_max",
+            "2",
             "-i",
             url,
             "-loglevel",
@@ -350,18 +360,48 @@ def generate_live_stream(url: str):
         ]
     )
 
-    process = subprocess.Popen(command, stdout=subprocess.PIPE)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    frames_produced = False
 
     try:
         while True:
             chunk = process.stdout.read(1024 * 1024)
             if not chunk:
                 break
+            frames_produced = True
             yield chunk
+            if process.poll() is not None:
+                break
     except GeneratorExit:
         pass
     finally:
         process.kill()
+        process.wait(timeout=1)
+
+    if frames_produced and process.returncode == 0:
+        return
+
+    # Fallback to still images if ffmpeg fails
+    while True:
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+            tmp_path = tmp.name
+
+        try:
+            if screenshots.capture_frame_from_stream(url, tmp_path, timeout=10):
+                with open(tmp_path, "rb") as f:
+                    yield f.read()
+            time.sleep(1 / max(config.LIVE_FALLBACK_FPS, 1))
+            if process.poll() is not None:
+                # Avoid zombie process just in case
+                break
+        except GeneratorExit:
+            break
+        finally:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
 
 
 login_attempts = {}
