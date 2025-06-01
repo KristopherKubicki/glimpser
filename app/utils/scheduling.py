@@ -19,7 +19,7 @@ from flask_apscheduler import APScheduler
 from PIL import Image, ImageDraw, ImageFont
 from transformers import CLIPProcessor, CLIPModel
 
-from app.config import DEBUG, SCREENSHOT_DIRECTORY, SUMMARIES_DIRECTORY, VIDEO_DIRECTORY
+from app.config import DEBUG, SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY
 from app.utils.db import SessionLocal
 from app.models import Summary
 
@@ -711,9 +711,6 @@ def update_summary():
                 + str(gnotes)
                 + "\n"
             )
-
-    output_path = os.path.join(SUMMARIES_DIRECTORY)
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     history = None
     session = SessionLocal()

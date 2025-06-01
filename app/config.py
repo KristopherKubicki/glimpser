@@ -119,7 +119,6 @@ SCHEDULER_API_ENABLED = True
 # be careful when mounting network devices
 SCREENSHOT_DIRECTORY = "data/screenshots/"
 VIDEO_DIRECTORY = "data/video/"
-SUMMARIES_DIRECTORY = "data/summaries/"
 
 # Load settings from the database
 UA = get_setting(

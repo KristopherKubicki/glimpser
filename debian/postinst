@@ -4,7 +4,6 @@ set -e
 # Create necessary directories
 mkdir -p /opt/glimpser/data/screenshots
 mkdir -p /opt/glimpser/data/video
-mkdir -p /opt/glimpser/data/summaries
 mkdir -p /opt/glimpser/logs
 
 # Install Python dependencies

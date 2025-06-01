@@ -1,4 +1,4 @@
-#!./env/bin/python3            
+#!./env/bin/python3
 #  main.py
 
 import logging
@@ -23,6 +23,7 @@ banner = """
                               |_|
 """
 
+
 def parse_arguments(arg_list=None):
     """
     Parse command-line arguments for the Glimpser application.
@@ -35,17 +36,42 @@ def parse_arguments(arg_list=None):
         argparse.Namespace: An object containing the parsed arguments.
     """
     parser = argparse.ArgumentParser(description="Glimpser %s" % config.VERSION)
-    parser.add_argument("--db-path", default=config.DATABASE_PATH,
-            help="Path to the database file (default: %s)" % config.DATABASE_PATH)
-    parser.add_argument("--host", default=config.HOST, help="Host for the web server (default: %s)" % config.HOST)
-    parser.add_argument("--port", type=int, default=config.PORT, help="Port for the web server (default: %s)" % config.PORT)
-    parser.add_argument("--log-path", default=config.LOGGING_PATH,
-            help="Path to the log file (default: %s)" % config.LOGGING_PATH)
-    parser.add_argument("--log-level", default=config.LOG_LEVEL, choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-                        help="Logging level")
-    parser.add_argument("--console-log", action="store_true", help="Enable logging to the console", default=False)
-    parser.add_argument("--debug", action="store_true", default=config.DEBUG,
-                        help="Enable debug mode")
+    parser.add_argument(
+        "--db-path",
+        default=config.DATABASE_PATH,
+        help="Path to the database file (default: %s)" % config.DATABASE_PATH,
+    )
+    parser.add_argument(
+        "--host",
+        default=config.HOST,
+        help="Host for the web server (default: %s)" % config.HOST,
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=config.PORT,
+        help="Port for the web server (default: %s)" % config.PORT,
+    )
+    parser.add_argument(
+        "--log-path",
+        default=config.LOGGING_PATH,
+        help="Path to the log file (default: %s)" % config.LOGGING_PATH,
+    )
+    parser.add_argument(
+        "--log-level",
+        default=config.LOG_LEVEL,
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging level",
+    )
+    parser.add_argument(
+        "--console-log",
+        action="store_true",
+        help="Enable logging to the console",
+        default=False,
+    )
+    parser.add_argument(
+        "--debug", action="store_true", default=config.DEBUG, help="Enable debug mode"
+    )
     parser.add_argument(
         "--no-scheduler",
         action="store_true",
@@ -58,13 +84,18 @@ def parse_arguments(arg_list=None):
         help="Disable the watchdog thread",
         default=False,
     )
-    parser.add_argument("--screenshot-dir", default=config.SCREENSHOT_DIRECTORY,
-                        help="Directory for storing screenshots")
-    parser.add_argument("--video-dir", default=config.VIDEO_DIRECTORY,
-                        help="Directory for storing video files")
-    parser.add_argument("--summaries-dir", default=config.SUMMARIES_DIRECTORY,
-                        help="Directory for storing summaries")
+    parser.add_argument(
+        "--screenshot-dir",
+        default=config.SCREENSHOT_DIRECTORY,
+        help="Directory for storing screenshots",
+    )
+    parser.add_argument(
+        "--video-dir",
+        default=config.VIDEO_DIRECTORY,
+        help="Directory for storing video files",
+    )
     return parser.parse_args(arg_list)
+
 
 def setup_config(args=None):
     """
@@ -87,7 +118,7 @@ def setup_config(args=None):
     config.DEBUG_MODE = args.debug
     config.SCREENSHOT_DIRECTORY = args.screenshot_dir
     config.VIDEO_DIRECTORY = args.video_dir
-    config.SUMMARIES_DIRECTORY = args.summaries_dir
+
 
 def setup_logging(args=None):
     """
@@ -116,17 +147,18 @@ def setup_logging(args=None):
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
 
+
 def ensure_directories():
     """
     Create necessary directories for the application if they don't exist.
 
-    This function creates directories for the database, logs, screenshots, videos, and summaries.
+    This function creates directories for the database, logs, screenshots, and videos.
     """
     os.makedirs(os.path.dirname(config.DATABASE_PATH), exist_ok=True)
     os.makedirs(os.path.dirname(config.LOGGING_PATH), exist_ok=True)
     os.makedirs(config.SCREENSHOT_DIRECTORY, exist_ok=True)
     os.makedirs(config.VIDEO_DIRECTORY, exist_ok=True)
-    os.makedirs(config.SUMMARIES_DIRECTORY, exist_ok=True)
+
 
 def generate_credentials_if_needed():
     """
@@ -137,7 +169,9 @@ def generate_credentials_if_needed():
     """
     if not os.path.exists(config.DATABASE_PATH):
         from generate_credentials import generate_credentials
+
         generate_credentials(args=None)
+
 
 def create_application(args=None):
     """
@@ -171,19 +205,23 @@ def create_application(args=None):
 
     return create_app(watchdog=watchdog, schedule=schedule)
 
+
 def output_shutdown_stats():
     # Get and display system metrics
     metrics = get_system_metrics()
     logging.info("System Metrics at Shutdown:")
-    logging.info("CPU Usage: %s%%", metrics['cpu_usage'])
-    logging.info("Memory Usage: %s%%", metrics['memory_usage'])
-    logging.info("Disk Usage: %s%%", metrics['disk_usage'])
-    logging.info("Open Files: %s", metrics['open_files'])
-    logging.info("Thread Count: %s", metrics['thread_count'])
-    logging.info("Uptime: %s", metrics['uptime'])
+    logging.info("CPU Usage: %s%%", metrics["cpu_usage"])
+    logging.info("Memory Usage: %s%%", metrics["memory_usage"])
+    logging.info("Disk Usage: %s%%", metrics["disk_usage"])
+    logging.info("Open Files: %s", metrics["open_files"])
+    logging.info("Thread Count: %s", metrics["thread_count"])
+    logging.info("Uptime: %s", metrics["uptime"])
     logging.info("Thank you for running Glimpser. Goodbye!")
 
+
 display_note = True
+
+
 def cleanup_resources():
     # Shutdown the scheduler
     try:
@@ -201,37 +239,39 @@ def cleanup_resources():
                 # concurrent.futures.Future.cancel()
                 thread.join(timeout=0.01)
                 if thread.is_alive():
-                    logging.warning(
-                        "Thread %s is still alive after join", thread.name
-                    )
+                    logging.warning("Thread %s is still alive after join", thread.name)
             except Exception as e:
                 logging.error("Error terminating thread %s: %s", thread.name, e)
 
-    #global banner
+    # global banner
     # Add any other cleanup tasks here (e.g., closing database connections)
     output_shutdown_stats()
 
+
 def graceful_shutdown(signum, frame):
-    #time.sleep(random.randint(0,10) * 0.1)
-    #time.sleep(10)
+    # time.sleep(random.randint(0,10) * 0.1)
+    # time.sleep(10)
     time.sleep(0.01)
     sys.exit(0)
 
+
 def clear_console():
     # For Windows
-    if os.name == 'nt':
-        _ = os.system('cls')
+    if os.name == "nt":
+        _ = os.system("cls")
     # For macOS and Linux
     else:
-        _ = os.system('clear')
+        _ = os.system("clear")
+
 
 def is_port_in_use(port):
     # Skip the check if running in Docker
-    if os.environ.get('IN_DOCKER'):
+    if os.environ.get("IN_DOCKER"):
         return False
-    
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(('localhost', port)) == 0
+        return s.connect_ex(("localhost", port)) == 0
+
 
 def main(argv=None):
     """Entry point for the ``glimpser`` command."""
@@ -257,7 +297,9 @@ def main(argv=None):
 
     try:
         logging.info("Starting web...")
-        app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True)
+        app.run(
+            host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True
+        )
     except KeyboardInterrupt:
         logging.info("KeyboardInterrupt received. Exiting...")
     except Exception as e:

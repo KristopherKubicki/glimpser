@@ -41,7 +41,7 @@ ENV FLASK_APP=main.py \
     PYTHONUNBUFFERED=1
 
 # Create necessary directories
-RUN mkdir -p /app/db /app/logs /app/screenshots /app/videos /app/summaries
+RUN mkdir -p /app/db /app/logs /app/screenshots /app/videos
 
 # Expose port
 EXPOSE 8082

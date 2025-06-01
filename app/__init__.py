@@ -74,7 +74,6 @@ def create_app(watchdog=True, schedule=True):
         SECRET_KEY,
         MAX_WORKERS,
         SCREENSHOT_DIRECTORY,
-        SUMMARIES_DIRECTORY,
         VIDEO_DIRECTORY,
         SESSION_COOKIE_SECURE,
         SESSION_COOKIE_HTTPONLY,
@@ -94,7 +93,6 @@ def create_app(watchdog=True, schedule=True):
     # Ensure required directories exist
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)
     os.makedirs(VIDEO_DIRECTORY, exist_ok=True)
-    os.makedirs(SUMMARIES_DIRECTORY, exist_ok=True)
 
     from app.routes import init_routes
 
