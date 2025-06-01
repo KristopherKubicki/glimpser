@@ -256,8 +256,8 @@ video:hover + .play-icon {
     --camera-name-font-size: 14px;
     --timestamp-font-size: 12px;
     /* Color palette */
-    --primary-color: #4CAF50;
-    --accent-color: #555;
+    --primary-color: #3498db;
+    --accent-color: #1a73e8;
     --bg-color: rgb(16, 16, 16);
     --secondary-bg-color: #222;
     --text-color: rgb(191, 191, 191);
@@ -314,7 +314,7 @@ header h1 {
 
 nav {
     display: flex; /* Flexbox for layout */
-    gap: 10px; /* Space between navigation items */
+    gap: 15px; /* Space between navigation items */
 }
 
 .nav-left,
@@ -333,10 +333,12 @@ nav {
 }
 
 nav a {
-    color: #fff; /* White text */
+    color: var(--text-color); /* Base text color */
     text-decoration: none; /* No underline */
-    padding: 5px 10px; /* Padding */
+    padding: 6px 12px; /* Padding */
     border-radius: 5px; /* Rounded corners */
+    font-weight: 500; /* Slightly bolder text */
+    transition: background-color 0.2s, color 0.2s; /* Smooth hover transition */
 }
 
 .status-indicator {
@@ -348,6 +350,7 @@ nav a {
 
 nav a:hover, nav a.active {
     background-color: var(--accent-color); /* Highlight for hover and active link */
+    color: #fff;
 }
 
 .settings-icon {
