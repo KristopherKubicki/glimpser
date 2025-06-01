@@ -89,12 +89,13 @@
         </video>
         <div class="video-controls">
             <input type="range" id="seek-bar" value="0">
-            <div class="control-row">
-                <button id="play-pause"><i class="fa-play-pause"></i> Test
-		</button>
 
-	<input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()">
-        <label for="speed-slider">Speed: <span id="speed-value">1x</span></label>
+            <div class="control-row">
+                <button id="play-pause"><i class="fa-play-pause"></i> Test</button>
+                <div id="speed-container">
+                    <input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()">
+                    <label for="speed-slider">Speed: <span id="speed-value">1x</span></label>
+                </div>
 
 	<!-- <button id="cast-button">Cast</button> -->
                 <button id="full-screen" title='fullscreen'><i class="fas fa-expand"></i></button>
@@ -159,6 +160,9 @@
         const templateDetails = {{ template_details|tojson }};
         let currentCamera = 'All'; // Set the default camera to "All"
         let pngInterval;
+        let liveSwitchInterval;
+        let liveSwitchFunction;
+        const speedContainer = document.getElementById('speed-container');
         const videoOverlay = document.getElementById('video-overlay');
         const loadingIndicator = document.getElementById('loading-indicator');
         const playPauseIndicator = document.getElementById('play-pause-indicator');
@@ -289,6 +293,7 @@ function changeCamera() {
         showLastScreenshot();
         updateTemplateDetails();
         updateFeed(); // Make sure to update the video feed after changing the camera or group
+        updateSpeedContainer();
     }
 }
 
@@ -316,6 +321,7 @@ function changeCamera() {
         function updateFeed() {
             const source = document.getElementById('video-source').value;
             const isConnected = checkCameraConnection(currentCamera);
+            updateSpeedContainer();
 
             if (!isConnected) {
                 showOfflineIndicator(currentCamera);
@@ -360,6 +366,10 @@ function changeCamera() {
 
 function playM3U8() {
     video.style.display = 'block';
+
+    image.style.display = 'none';
+    stopLiveSwitch();
+
     stopPNG();
 
             let m3u8Url;
@@ -414,6 +424,10 @@ function playM3U8() {
 
 function playLoop() {
     video.style.display = 'block';
+
+    image.style.display = 'none';
+    stopLiveSwitch();
+
     stopPNG();
 
     if (currentCamera.startsWith('group-') || currentCamera === 'All') {
@@ -471,6 +485,7 @@ function showLastScreenshot() {
 function playMP4() {
     video.style.display = 'block';
         document.getElementById("seek-bar").style.display = "block";
+    stopLiveSwitch();
     stopPNG();
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
@@ -511,21 +526,44 @@ function playLive() {
     video.style.display = 'block';
     document.getElementById("seek-bar").style.display = "block";
     stopPNG();
+    stopLiveSwitch();
 
     if (currentCamera.startsWith('group-') || currentCamera === 'All') {
-        // Fallback to MP4 streaming for groups or All
-        playMP4();
-        return;
-    }
+        let groupCameras;
+        if (currentCamera === 'All') {
+            groupCameras = Object.keys(templateDetails).filter(key => key !== 'All');
+        } else {
+            const groupName = currentCamera.split('group-')[1];
+            groupCameras = templateDetails['group-' + groupName].groupCameras;
+        }
 
-    video.src = '/live_video?camera=' + encodeURIComponent(currentCamera);
-    video.load();
-    video.play();
+        let cameraIndex = 0;
+        liveSwitchFunction = () => {
+            if (cameraIndex >= groupCameras.length) {
+                cameraIndex = 0;
+            }
+            const cameraName = groupCameras[cameraIndex];
+            video.src = '/live_video?camera=' + encodeURIComponent(cameraName);
+            video.load();
+            video.play();
+            cameraIndex++;
+        };
+
+        const slider = document.getElementById('speed-slider');
+        const speed = Math.pow(2, slider.value);
+        liveSwitchFunction();
+        liveSwitchInterval = setInterval(liveSwitchFunction, 10000 / speed);
+    } else {
+        video.src = '/live_video?camera=' + encodeURIComponent(currentCamera);
+        video.load();
+        video.play();
+    }
 }
 
 function playPNG() {
     video.style.display = 'none';
     image.style.display = 'block';
+    stopLiveSwitch();
         const slider = document.getElementById('speed-slider');
         const speed = Math.pow(2, slider.value);
 	document.getElementById("seek-bar").style.display = "none";
@@ -566,6 +604,7 @@ function playMJPG() {
     video.style.display = 'none';
     image.style.display = 'block';
         document.getElementById("seek-bar").style.display = "block";
+    stopLiveSwitch();
     stopPNG();
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
@@ -584,6 +623,7 @@ function playMotion() {
     video.style.display = 'none';
     image.style.display = 'block';
         document.getElementById("seek-bar").style.display = "none";
+    stopLiveSwitch();
     stopPNG();
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
@@ -610,13 +650,19 @@ function playMotion() {
         video.playbackRate = parseFloat(speed.toFixed(2)); // Ensure the speed is a float with two decimal places
         speedDisplay.textContent = speed.toFixed(2) + 'x'; // Update the text to show two decimal places
 
-            // Adjust the refresh rate for the PNG stream based on the playback speed
-            if (pngInterval) {
-                clearInterval(pngInterval);
-                pngInterval = setInterval(refreshPNG, 10000 / speed);
-            }
+        // Adjust the refresh rate for the PNG stream based on the playback speed
+        if (pngInterval) {
+            clearInterval(pngInterval);
+            pngInterval = setInterval(refreshPNG, 10000 / speed);
+        }
 
-	        speedDisplay.classList.add('highlight-speed');
+        // Adjust the live group switch interval if active
+        if (liveSwitchInterval && liveSwitchFunction) {
+            clearInterval(liveSwitchInterval);
+            liveSwitchInterval = setInterval(liveSwitchFunction, 10000 / speed);
+        }
+
+        speedDisplay.classList.add('highlight-speed');
     setTimeout(() => speedDisplay.classList.remove('highlight-speed'), 500);
     }
 
@@ -626,6 +672,20 @@ function playMotion() {
             pngInterval = null;
         }
         image.src = '';
+    }
+
+    function stopLiveSwitch() {
+        if (liveSwitchInterval) {
+            clearInterval(liveSwitchInterval);
+            liveSwitchInterval = null;
+            liveSwitchFunction = null;
+        }
+    }
+
+    function updateSpeedContainer() {
+        if (!speedContainer) return;
+        const isGroupView = currentCamera === 'All' || currentCamera.startsWith('group-');
+        speedContainer.style.display = isGroupView ? 'block' : 'none';
     }
 
     function checkCameraConnection(cameraName) {
@@ -653,6 +713,7 @@ function playMotion() {
         // Initially show the latest screenshot and start the MP4 stream
         showLastScreenshot();
         updateTemplateDetails();
+        updateSpeedContainer();
         playMP4();
     </script>
 
