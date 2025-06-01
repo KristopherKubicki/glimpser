@@ -222,6 +222,7 @@
 
         video.addEventListener('waiting', showLoadingIndicator);
         video.addEventListener('canplay', hideLoadingIndicator);
+        video.addEventListener('canplay', () => { image.style.display = 'none'; });
         video.addEventListener('play', () => showPlayPauseIndicator(false));
         video.addEventListener('pause', () => showPlayPauseIndicator(true));
         video.addEventListener('error', (e) => {
@@ -285,6 +286,7 @@ function changeCamera() {
         image.src = '';
     } else {
         hideOfflineIndicator();
+        showLastScreenshot();
         updateTemplateDetails();
         updateFeed(); // Make sure to update the video feed after changing the camera or group
     }
@@ -324,6 +326,9 @@ function changeCamera() {
                 return;
             } else {
                 hideOfflineIndicator();
+                if (!['png', 'mjpg', 'motion'].includes(source)) {
+                    showLastScreenshot();
+                }
             }
 
             switch (source) {
@@ -355,7 +360,6 @@ function changeCamera() {
 
 function playM3U8() {
     video.style.display = 'block';
-    image.style.display = 'none';
     stopPNG();
 
             let m3u8Url;
@@ -410,7 +414,6 @@ function playM3U8() {
 
 function playLoop() {
     video.style.display = 'block';
-    image.style.display = 'none';
     stopPNG();
 
     if (currentCamera.startsWith('group-') || currentCamera === 'All') {
@@ -455,10 +458,18 @@ function refreshPNG() {
     image.src = '/last_screenshot/' + currentCamera + '?time=' + new Date().getTime();
 }
 
+function showLastScreenshot() {
+    if (currentCamera.startsWith('group-') || currentCamera === 'All') {
+        image.src = '/stream.png';
+    } else {
+        image.src = '/last_screenshot/' + currentCamera;
+    }
+    image.style.display = 'block';
+}
+
 
 function playMP4() {
     video.style.display = 'block';
-    image.style.display = 'none';
         document.getElementById("seek-bar").style.display = "block";
     stopPNG();
     if (currentCamera.startsWith('group-')) {
@@ -498,7 +509,6 @@ function handleVideoEnded() {
 
 function playLive() {
     video.style.display = 'block';
-    image.style.display = 'none';
     document.getElementById("seek-bar").style.display = "block";
     stopPNG();
 
@@ -640,7 +650,8 @@ function playMotion() {
         return lastScreenshotTime > oneHourAgo;
     }
 
-        // Initially update template details and play the MP4 stream
+        // Initially show the latest screenshot and start the MP4 stream
+        showLastScreenshot();
         updateTemplateDetails();
         playMP4();
     </script>
