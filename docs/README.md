@@ -35,4 +35,5 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - JavaScript is now split into modules for templates, video controls, and scheduler toggling.
 - Navigation logic and form validation are now modules to keep templates concise.
 - Core colors and fonts are defined via CSS variables.
+- Navigation menus use a consistent accent color with smooth hover effects.
 - Session cookies are now marked secure/HTTPOnly and expire after a configurable timeout.
