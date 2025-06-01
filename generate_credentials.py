@@ -1,4 +1,4 @@
-#!env/bin/python3
+#!/usr/bin/env python3
 # generate_credentials.py
 
 import secrets
@@ -88,13 +88,15 @@ def generate_credentials(args):
             username = args.username
         else:
             if sys.stdin.isatty():
-                username = input(f"Enter the username for login [{app.config.get_setting('USER_NAME', 'admin')}]: ") or app.config.get_setting("USER_NAME", "admin")
+                username = input(
+                    f"Enter the username for login [{app.config.get_setting('USER_NAME', 'admin')}]: "
+                ) or app.config.get_setting("USER_NAME", "admin")
             else:
                 username = app.config.get_setting("USER_NAME", "admin")
         upsert_setting("USER_NAME", username.strip(), conn)
-    
+
     if args is None or args.password or args.update_password:
-        password = "" # maybe populate with garbage
+        password = ""  # maybe populate with garbage
         if args:
             password = args.password
         else:
@@ -102,7 +104,7 @@ def generate_credentials(args):
                 password = getpass.getpass("Enter the password for login: ")
             else:
                 password = secrets.token_hex(16)
-                # your password is here.  This is the only time youll be able to see it again 
+                # your password is here.  This is the only time youll be able to see it again
 
         password_hash = generate_password_hash(password.strip())
         upsert_setting("USER_PASSWORD_HASH", password_hash, conn)
@@ -112,7 +114,7 @@ def generate_credentials(args):
     if args is None or args.update_key or not args.update_password:
         secret_key = app.config.get_setting("SECRET_KEY", secrets.token_hex(16))
         if args and args.secret_key:
-             secret_key = args.secret_key
+            secret_key = args.secret_key
         upsert_setting("SECRET_KEY", secret_key, conn)
 
     # Mirror settings into the users table
@@ -124,38 +126,25 @@ def generate_credentials(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate or update credentials and settings.")
-    parser.add_argument(
-        "--db-path",
-        type=str,
-        help="Path to the SQLite database file."
+    parser = argparse.ArgumentParser(
+        description="Generate or update credentials and settings."
     )
-    parser.add_argument(
-        "--username",
-        type=str,
-        help="Username for login."
-    )
-    parser.add_argument(
-        "--password",
-        type=str,
-        help="Password for login."
-    )
+    parser.add_argument("--db-path", type=str, help="Path to the SQLite database file.")
+    parser.add_argument("--username", type=str, help="Username for login.")
+    parser.add_argument("--password", type=str, help="Password for login.")
     parser.add_argument(
         "--update-password",
         action="store_true",
-        help="Update the password only, without creating a new database or changing other settings."
+        help="Update the password only, without creating a new database or changing other settings.",
     )
     parser.add_argument(
         "--secret-key",
         type=str,
-        help="Custom secret key. Generates a new one if not provided."
+        help="Custom secret key. Generates a new one if not provided.",
     )
     parser.add_argument(
-        "--update-key",
-        action="store_true",
-        help="Update the secret key."
+        "--update-key", action="store_true", help="Update the secret key."
     )
     args = parser.parse_args()
 
     generate_credentials(args)
-
