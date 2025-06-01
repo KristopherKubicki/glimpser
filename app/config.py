@@ -201,6 +201,11 @@ PROBE_SIZE_DEFAULT = get_setting("PROBE_SIZE_DEFAULT", "5M")
 PROBE_SIZE_RTSP = get_setting("PROBE_SIZE_RTSP", "10M")
 PROBE_SIZE_OTHER = get_setting("PROBE_SIZE_OTHER", "20M")
 
+# Frame rate used when `generate_live_stream` falls back to
+# still image capture. Increase to get smoother previews if
+# your hardware can handle the extra load.
+LIVE_FALLBACK_FPS = int(get_setting("LIVE_FALLBACK_FPS", 1))
+
 # Email settings
 EMAIL_ENABLED = get_setting("EMAIL_ENABLED", "False")
 EMAIL_SENDER = get_setting("EMAIL_SENDER", "your-email@example.com")
