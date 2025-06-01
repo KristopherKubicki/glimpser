@@ -37,6 +37,7 @@ class TestProfiling(unittest.TestCase):
             data = json.load(f)
         self.assertTrue(any(d["route"] == "/health" for d in data))
 
+
     def test_baseline_update(self):
         self.client.get("/health")
         import scripts.update_latency_baseline as updater
@@ -50,6 +51,7 @@ class TestProfiling(unittest.TestCase):
                 stats = json.load(f)
         os.unlink(temp_baseline.name)
         self.assertIn("/health", stats)
+
 
 
 if __name__ == "__main__":

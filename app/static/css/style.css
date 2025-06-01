@@ -308,6 +308,11 @@ header {
     display: flex; /* Flexbox for layout */
     align-items: center; /* Vertically align items */
     justify-content: space-between; /* Space out the title and navigation */
+    transition: opacity 0.5s; /* Smooth fade for inactivity */
+}
+
+header.fade-out {
+    opacity: 0;
 }
 
 header h1 {

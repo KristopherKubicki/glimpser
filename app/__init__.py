@@ -79,6 +79,7 @@ def create_app(enable_watchdog=True, schedule=True):
         SESSION_COOKIE_SECURE,
         SESSION_COOKIE_HTTPONLY,
         SESSION_TIMEOUT_MINUTES,
+        API_KEY,
     )
 
     app = Flask(__name__)
@@ -159,6 +160,8 @@ def create_app(enable_watchdog=True, schedule=True):
         last_restart_time = 0
         restart_cooldown = 900  # 15 minutes in seconds
         max_file_handles = 1000  # Adjust this value based on your system's limits
+        failure_count = 0
+        failure_threshold = 3
 
         while True:
             time.sleep(10)  # Check every 10 seconds
@@ -166,7 +169,7 @@ def create_app(enable_watchdog=True, schedule=True):
                 try:
                     # Check app responsiveness
                     with app.test_client() as client:
-                        response = client.get("/health")
+                        response = client.get("/health", headers={"X-API-Key": API_KEY})
                         if response.status_code != 200:
                             raise Exception("Application is not responding correctly")
 
@@ -180,20 +183,36 @@ def create_app(enable_watchdog=True, schedule=True):
 
                 except Exception as e:
                     logging.error("Application error detected: %s", e)
+                    failure_count += 1
                     current_time = time.time()
-                    if current_time - last_restart_time > restart_cooldown:
-                        logging.info("Attempting to restore previous configuration...")
-                        try:
-                            restore_config()
-                        except Exception as config_error:
-                            logging.error(
-                                "Failed to restore configuration: %s", config_error
+                    if failure_count >= failure_threshold:
+                        if current_time - last_restart_time > restart_cooldown:
+                            logging.info(
+                                "Attempting to restore previous configuration..."
                             )
-                        logging.info("Forcing application restart...")
-                        last_restart_time = current_time
-                        os._exit(1)  # Force restart the application
+                            try:
+                                restore_config()
+                            except Exception as config_error:
+                                logging.error(
+                                    "Failed to restore configuration: %s", config_error
+                                )
+                            logging.info("Forcing application restart...")
+                            last_restart_time = current_time
+                            failure_count = 0
+                            os._exit(1)  # Force restart the application
+                        else:
+                            logging.warning(
+                                "Restart cooldown in effect. Skipping restart."
+                            )
                     else:
-                        logging.warning("Restart cooldown in effect. Skipping restart.")
+                        logging.warning(
+                            "Health check failed (%s/%s)",
+                            failure_count,
+                            failure_threshold,
+                        )
+                else:
+                    # Reset failure count on successful check
+                    failure_count = 0
 
     # Start the watchdog thread
     if enable_watchdog:

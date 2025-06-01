@@ -28,7 +28,7 @@ can modify them in the application interface or directly in the database.
 - `TZ` – timezone used for logs (default `UTC`)
 - `HOST` – address to bind the server (default `0.0.0.0`)
 - `PORT` – port for the web interface (default `8082`)
-- `DEBUG` – enable debug mode (default `True`)
+- `DEBUG` – enable debug mode (default `False`)
 - `DEBUG_MODE` – runtime alias of `DEBUG` used by the command-line interface
 - `MAX_WORKERS` – number of worker threads (default `8`)
 - `LOG_LEVEL` – logging level (`INFO`, `WARN`, `DEBUG`, etc.)

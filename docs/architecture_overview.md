@@ -7,6 +7,10 @@ This guide provides a high-level look at Glimpser's core components and how they
 - Loads configuration values and sets up logging.
 - Initializes routes from `app/routes.py`.
 - Starts the background scheduler and optional watchdog thread.
+  The watchdog performs health checks and only triggers a restart after
+  three consecutive failures to avoid unnecessary restarts during startup.
+  Requests to `/health` include the configured API key so the check
+  succeeds even when login is required.
 
 ## Configuration Handling (`app/config.py`)
 - Loads environment variables and values stored in the database.

@@ -333,11 +333,13 @@ def generate_video_stream(video_path: str):
 
 
 def generate_live_stream(url: str):
-    """Yield video data directly from a remote URL using ffmpeg.
+    """Yield video data directly from a remote URL using ``ffmpeg``.
 
-    Some camera APIs expose JPEG snapshots rather than a continuous
-    video stream. If the URL resembles a static image endpoint, poll
-    the image directly to keep the live view working.
+    Some camera APIs expose JPEG snapshots rather than a continuous video
+    stream. If the URL resembles a static image endpoint, poll the image
+    directly to keep the live view working. Otherwise continuously invoke
+    ``ffmpeg`` and restart it on failure so the client receives a valid
+    MP4 stream whenever possible.
     """
 
     image_like = (
@@ -387,48 +389,32 @@ def generate_live_stream(url: str):
         ]
     )
 
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    frames_produced = False
-
-    try:
-        while True:
-            chunk = process.stdout.read(1024 * 1024)
-            if not chunk:
-                break
-            frames_produced = True
-            yield chunk
-            if process.poll() is not None:
-                break
-    except GeneratorExit:
-        pass
-    finally:
-        process.kill()
-        process.wait(timeout=1)
-
-    if frames_produced and process.returncode == 0:
-        return
-
-    # Fallback to still images if ffmpeg fails
     while True:
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-            tmp_path = tmp.name
+        process = subprocess.Popen(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
 
         try:
-            if screenshots.capture_frame_from_stream(url, tmp_path, timeout=10):
-                with open(tmp_path, "rb") as f:
-                    yield f.read()
-            time.sleep(1 / max(config.LIVE_FALLBACK_FPS, 1))
-            if process.poll() is not None:
-                # Avoid zombie process just in case
-                break
+            while True:
+                chunk = process.stdout.read(1024 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+                if process.poll() is not None:
+                    break
         except GeneratorExit:
-            break
+            process.kill()
+            process.wait(timeout=1)
+            return
         finally:
-            try:
-                os.remove(tmp_path)
-            except OSError:
-                pass
+            process.kill()
+            process.wait(timeout=1)
+
+        if process.returncode == 0:
+            return
+
+        logging.error("ffmpeg exited with %s, retrying", process.returncode)
+        time.sleep(2)
 
 
 login_attempts = {}
@@ -644,6 +630,53 @@ def generate(
         if time.time() - ltime > 1:
             continue
         time.sleep(1 - (time.time() - ltime))
+
+
+def generate_fast_mjpg(camera: str):
+    """Yield MJPEG frames by repeatedly capturing screenshots.
+
+    The function calls ``scheduling.update_camera`` directly to grab a fresh
+    frame as quickly as possible. If capturing fails, the previously captured
+    frame is re-used and the delay between attempts increases to avoid
+    overwhelming the camera endpoint.
+    """
+
+    template = template_manager.get_template(camera)
+    if not template:
+        return
+
+    boundary = b"frame"
+    last_frame = None
+    failures = 0
+
+    path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        SCREENSHOT_DIRECTORY,
+        camera,
+        "latest_camera.png",
+    )
+
+    while True:
+        start = time.time()
+        try:
+            scheduling.update_camera(camera, template)
+            if os.path.exists(path):
+                with open(path, "rb") as f:
+                    last_frame = f.read()
+            failures = 0
+        except Exception as e:  # pragma: no cover - unexpected errors
+            logging.error("fast mjpg capture failed for %s: %s", camera, e)
+            failures += 1
+
+        if last_frame:
+            yield b"--" + boundary + b"\r\n"
+            yield b"Content-Type: image/png\r\n\r\n" + last_frame + b"\r\n"
+
+        delay = min(0.1 * (2**failures), 5)
+        elapsed = time.time() - start
+        if elapsed < delay:
+            time.sleep(delay - elapsed)
 
 
 def allowed_filename(filename: str) -> bool:
@@ -1267,6 +1300,19 @@ def init_routes(app):
         logging.debug("last motion caption")
         return Response(
             generate(group=group, camera=camera, filename="last_motion_caption.png"),
+            mimetype="multipart/x-mixed-replace; boundary=frame",
+        )
+
+    @app.route("/fast_stream.mjpg", methods=["GET"])
+    @login_required
+    def fast_stream_mjpg():
+        camera = request.args.get("camera")
+        if not camera:
+            abort(400, "camera parameter required")
+        if not template_manager.get_template(camera):
+            abort(404)
+        return Response(
+            generate_fast_mjpg(camera),
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
 

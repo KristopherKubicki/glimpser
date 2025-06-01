@@ -57,6 +57,7 @@ curl /profiling
 
 Use this information to identify slow endpoints and monitor performance.
 
+
 Baseline metrics from the main branch are stored in
 `docs/latency_baseline.json`. Run the helper script to refresh this file after
 tests:
@@ -67,3 +68,4 @@ python scripts/update_latency_baseline.py
 
 CI bots can compare the latest profiling results against this baseline to detect
 latency regressions.
+
