@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+
 class TestSettingsRoute(unittest.TestCase):
     def setUp(self):
         # Create temporary directory and database path
@@ -30,6 +31,7 @@ class TestSettingsRoute(unittest.TestCase):
         import app.config as config
         import app.utils.db as db
         import app.routes as routes
+
         importlib.reload(config)
         importlib.reload(db)
         importlib.reload(routes)
@@ -43,7 +45,7 @@ class TestSettingsRoute(unittest.TestCase):
         conn.commit()
         conn.close()
 
-        self.app = app.create_app(watchdog=False, schedule=False)
+        self.app = app.create_app(enable_watchdog=False, schedule=False)
         self.client = self.app.test_client()
         self.app_context = self.app.app_context()
         self.app_context.push()
@@ -62,6 +64,7 @@ class TestSettingsRoute(unittest.TestCase):
         import app.config as config
         import app.utils.db as db
         import app.routes as routes
+
         importlib.reload(config)
         importlib.reload(db)
         importlib.reload(routes)
@@ -77,7 +80,9 @@ class TestSettingsRoute(unittest.TestCase):
         return row[0] if row else None
 
     def test_add_and_delete_setting(self):
-        with patch("app.routes.session", {"user_id": 1}), patch("app.routes.login_required", lambda x: x):
+        with patch("app.routes.session", {"user_id": 1}), patch(
+            "app.routes.login_required", lambda x: x
+        ):
             response = self.client.post(
                 "/settings",
                 data={"action": "add", "new_name": "TEST", "new_value": "1"},
@@ -86,7 +91,9 @@ class TestSettingsRoute(unittest.TestCase):
         self.assertIn("/settings", response.headers["Location"])
         self.assertEqual(self._get_value("TEST"), "1")
 
-        with patch("app.routes.session", {"user_id": 1}), patch("app.routes.login_required", lambda x: x):
+        with patch("app.routes.session", {"user_id": 1}), patch(
+            "app.routes.login_required", lambda x: x
+        ):
             response = self.client.post(
                 "/settings", data={"action": "delete", "name_to_delete": "TEST"}
             )
@@ -105,7 +112,9 @@ class TestSettingsRoute(unittest.TestCase):
             "EMAIL_USERNAME": "user",
             "EMAIL_PASSWORD": "pass",
         }
-        with patch("app.routes.session", {"user_id": 1}), patch("app.routes.login_required", lambda x: x):
+        with patch("app.routes.session", {"user_id": 1}), patch(
+            "app.routes.login_required", lambda x: x
+        ):
             response = self.client.post("/settings", data=payload)
         self.assertEqual(response.status_code, 302)
         self.assertEqual(self._get_value("EMAIL_SENDER"), "user@example.com")
@@ -118,7 +127,9 @@ class TestSettingsRoute(unittest.TestCase):
         conn.commit()
         conn.close()
 
-        with patch("app.routes.session", {"user_id": 1}), patch("app.routes.login_required", lambda x: x):
+        with patch("app.routes.session", {"user_id": 1}), patch(
+            "app.routes.login_required", lambda x: x
+        ):
             response = self.client.post("/settings", data={"action": "backup"})
         self.assertEqual(response.status_code, 302)
         self.assertTrue(os.path.exists(self.backup_path))
@@ -127,13 +138,16 @@ class TestSettingsRoute(unittest.TestCase):
         with open(self.backup_path, "r") as f:
             data = f.read()
         import json
+
         config = json.loads(data)
         config["A"] = "2"
         upload_path = os.path.join(self.temp_dir.name, "upload.json")
         with open(upload_path, "w") as f:
             json.dump(config, f)
 
-        with patch("app.routes.session", {"user_id": 1}), patch("app.routes.login_required", lambda x: x):
+        with patch("app.routes.session", {"user_id": 1}), patch(
+            "app.routes.login_required", lambda x: x
+        ):
             with open(upload_path, "rb") as file_data:
                 response = self.client.post(
                     "/settings",
@@ -142,6 +156,7 @@ class TestSettingsRoute(unittest.TestCase):
                 )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(self._get_value("A"), "2")
+
 
 if __name__ == "__main__":
     unittest.main()

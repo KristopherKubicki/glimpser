@@ -30,7 +30,14 @@ class TestMain(unittest.TestCase):
 
     def test_parse_arguments(self):
         with patch(
-            "sys.argv", ["main.py", "--db-path", os.path.join(self.temp_dir, "db.sqlite"), "--port", "8080"]
+            "sys.argv",
+            [
+                "main.py",
+                "--db-path",
+                os.path.join(self.temp_dir, "db.sqlite"),
+                "--port",
+                "8080",
+            ],
         ):
             args = main.parse_arguments()
             self.assertEqual(args.db_path, os.path.join(self.temp_dir, "db.sqlite"))
@@ -54,11 +61,15 @@ class TestMain(unittest.TestCase):
         self.assertEqual(config.PORT, 8080)
         self.assertEqual(config.LOGGING_PATH, os.path.join(self.temp_dir, "log.txt"))
         self.assertTrue(config.DEBUG_MODE)
-        self.assertEqual(config.SCREENSHOT_DIRECTORY, os.path.join(self.temp_dir, "screenshots"))
+        self.assertEqual(
+            config.SCREENSHOT_DIRECTORY, os.path.join(self.temp_dir, "screenshots")
+        )
         self.assertEqual(config.VIDEO_DIRECTORY, os.path.join(self.temp_dir, "videos"))
-        self.assertEqual(config.SUMMARIES_DIRECTORY, os.path.join(self.temp_dir, "summaries"))
+        self.assertEqual(
+            config.SUMMARIES_DIRECTORY, os.path.join(self.temp_dir, "summaries")
+        )
 
-    @patch.object(logging, 'getLogger')
+    @patch.object(logging, "getLogger")
     def test_setup_logging(self, mock_get_logger):
         mock_logger = MagicMock()
         mock_get_logger.return_value = mock_logger
@@ -70,9 +81,9 @@ class TestMain(unittest.TestCase):
         main.setup_logging(args)
 
         mock_logger.setLevel.assert_called_once_with(logging.DEBUG)
-        #mock_logger.addHandler.assert_any_call(mock.ANY)  # Check that any handler was added
- 
-    '''
+        # mock_logger.addHandler.assert_any_call(mock.ANY)  # Check that any handler was added
+
+    """
     @patch("logging.FileHandler")
     @patch("logging.StreamHandler")
     def test_setup_logging(self, mock_stream_handler, mock_file_handler):
@@ -84,7 +95,7 @@ class TestMain(unittest.TestCase):
 
         mock_file_handler.assert_called_once()
         mock_stream_handler.assert_called_once()
-    '''
+    """
 
     @patch("os.makedirs")
     def test_ensure_directories(self, mock_makedirs):
@@ -129,7 +140,7 @@ class TestMain(unittest.TestCase):
         args.no_watchdog = True
 
         main.create_application(args)
-        mock_create_app.assert_called_with(watchdog=False, schedule=False)
+        mock_create_app.assert_called_with(enable_watchdog=False, schedule=False)
 
 
 if __name__ == "__main__":
