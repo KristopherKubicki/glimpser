@@ -888,15 +888,20 @@ footer.fade-out {
 .login-wrapper {
     display: flex;
     justify-content: center;
-    margin-top: 20px;
+    align-items: center;
+    min-height: calc(100vh - 150px);
+    padding: 20px 0;
 }
 .login-container {
     background-color: var(--form-bg-color);
     color: var(--form-text-color);
     padding: 20px;
     border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     display: inline-block;
+    max-width: 400px;
+    width: 100%;
+    margin: 20px auto;
 }
 
 input[type=text],
