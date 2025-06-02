@@ -1032,6 +1032,12 @@ def init_routes(app):
     def help_page():
         return render_template("help.html")
 
+    @app.route("/settings_help")
+    @login_required
+    def settings_help():
+        """Display detailed explanations for each configuration option."""
+        return render_template("settings_explanation.html")
+
     @app.route("/logout")
     @login_required
     def logout():
