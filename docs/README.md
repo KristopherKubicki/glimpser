@@ -34,6 +34,8 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - CSS files are now linted in CI using **stylelint**.
 - UI now uses the Inter font for improved readability.
 - Stylelint case rule is disabled for the Inter font variable.
+- Inter font files can be placed in `app/static/fonts` so the UI works fully offline.
+- See [offline_fonts.md](offline_fonts.md) for download instructions.
 - Navigation health indicator uses a dedicated CSS class.
 - JavaScript is now split into modules for templates, video controls, and scheduler toggling.
 - Navigation logic and form validation are now modules to keep templates concise.
