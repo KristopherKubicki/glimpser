@@ -247,6 +247,43 @@ class TestCameraDiscovery(unittest.TestCase):
             {(c["ip"], c["protocol"], c["port"]) for c in expected},
         )
 
+    @patch("app.utils.camera_discovery._local_subnets", return_value=[])
+    @patch("app.utils.camera_discovery._local_video_devices", return_value=[])
+    @patch("app.utils.camera_discovery._scan_hls_streams", return_value=[])
+    @patch("app.utils.camera_discovery._scan_http_endpoints", return_value=[])
+    @patch("app.utils.camera_discovery._scan_snmp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_webrtc_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_sip_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_rtmp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_rtsp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._probe_ssdp", return_value=[])
+    @patch("app.utils.camera_discovery._probe_mdns", return_value=[])
+    @patch("app.utils.camera_discovery._probe_onvif")
+    @patch("app.utils.camera_discovery._mac_manufacturer")
+    @patch("app.utils.camera_discovery._mac_for_ip")
+    def test_progress_callback_includes_mac(
+        self,
+        mock_mac,
+        mock_vendor,
+        mock_onvif,
+        *_mocks,
+    ):
+        mock_onvif.return_value = [
+            {"ip": "192.168.1.6", "protocol": "rtsp", "port": 554, "info": {}}
+        ]
+        mock_mac.return_value = "000c29aabbcc"
+        mock_vendor.return_value = "VMware"
+
+        seen = []
+
+        def cb(stage, count, cams):
+            seen.extend(cams)
+
+        camera_discovery.discover_cameras(progress_callback=cb)
+
+        self.assertEqual(seen[0]["info"].get("mac"), "000c29aabbcc")
+        self.assertEqual(seen[0]["info"].get("manufacturer"), "VMware")
+
 
 if __name__ == "__main__":
     unittest.main()
