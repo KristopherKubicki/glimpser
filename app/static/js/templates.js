@@ -549,4 +549,5 @@ export function setupTableSorting(tableId) {
 export function setupSorting() {
   setupTableSorting('camera-table');
   setupTableSorting('feed-status');
+  setupTableSorting('captions-table');
 }

@@ -78,11 +78,14 @@
 {% endwith %}
 
     <details><summary>Captions</summary>
-        <table class="captions-table">
+        <table id="captions-table" class="captions-table">
+            <thead>
             <tr>
-                <th>Timestamp</th>
-                <th>Caption</th>
+                <th class="sortable" data-type="date">Timestamp</th>
+                <th class="sortable" data-type="string">Caption</th>
             </tr>
+            </thead>
+            <tbody>
             {% if not lcaptions %}
             <tr class="no-data">
                 <td colspan="2">No captions available</td>
@@ -99,6 +102,7 @@
             {% endfor %}
             {% endfor %}
             {% endif %}
+            </tbody>
         </table>
     </details>
 
