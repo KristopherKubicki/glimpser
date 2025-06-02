@@ -42,3 +42,4 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Templates track capture failures and display a warning icon when screenshots fail.
 - Keyboard shortcuts now allow play/pause, mute, and fullscreen toggling when watching live video.
 - Live view image streams now back off exponentially after repeated failures.
+- Live view preloads the next stream for smoother camera switching.
