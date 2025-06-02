@@ -82,7 +82,7 @@
     </style>
 
     <div class="video-container" role="region" aria-label="Live video feed">
-        <img id="live-image" alt="Live feed frame" title="Current frame from the live feed">
+        <img id="live-image" alt="Live view from selected camera" title="Current frame from the live feed">
         <video id="live-video" class="hidden" autoplay muted tabindex="0">
             <source src="" type="video/mp4">
             Your browser does not support the video tag.
@@ -92,14 +92,14 @@
             <input type="range" id="seek-bar" value="0">
 
             <div class="control-row">
-                <button id="play-pause" title="play/pause" aria-label="Play or pause video"><i class="fa-play-pause"></i></button>
+                <button id="play-pause" title="play/pause" aria-label="Play or pause video"><i class="fa-play-pause" aria-hidden="true"></i></button>
                 <div id="speed-container">
                     <input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()">
                     <label for="speed-slider">Speed: <span id="speed-value">1x</span></label>
                 </div>
 
 	<!-- <button id="cast-button">Cast</button> -->
-                <button id="full-screen" title='fullscreen' aria-label="Toggle fullscreen"><i class="fas fa-expand"></i></button>
+                <button id="full-screen" title='fullscreen' aria-label="Toggle fullscreen"><i class="fas fa-expand" aria-hidden="true"></i></button>
 
     <select id="video-source" onchange="changeVideoSource()">
         <option value="png" title="View a series of PNG images">PNG Stream</option>

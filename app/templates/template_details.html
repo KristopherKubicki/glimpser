@@ -66,7 +66,7 @@
 </style>
 
 <div class="video-container">
-    <img id="live-image" alt="Live feed frame" title="Current frame from the live feed" />
+    <img id="live-image" alt="Live view from {{ template_name }}" title="Current frame from the live feed" />
     <video id="live-video" class="hidden" autoplay muted>
         <source src="" type="video/mp4" />
         Your browser does not support the video tag.
@@ -76,12 +76,12 @@
         <input type="range" id="seek-bar" value="0" title="Seek position" />
 
         <div class="control-row">
-            <button id="play-pause" title="play/pause"><i class="fa-play-pause"></i></button>
+            <button id="play-pause" title="play/pause" aria-label="Play or pause video"><i class="fa-play-pause" aria-hidden="true"></i></button>
             <div id="speed-container">
                 <input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()" title="Adjust playback speed" />
                 <label for="speed-slider">Speed: <span id="speed-value">1x</span></label>
             </div>
-            <button id="full-screen" title="fullscreen"><i class="fas fa-expand"></i></button>
+            <button id="full-screen" title="fullscreen" aria-label="Toggle fullscreen"><i class="fas fa-expand" aria-hidden="true"></i></button>
             <select id="video-source" onchange="changeVideoSource()">
                 <option value="png" title="View a series of PNG images">PNG Stream</option>
                 <!-- <option value="m3u8" title="View an HLS (HTTP Live Streaming) video stream">M3U8 Stream</option> -->
@@ -95,17 +95,17 @@
     </div>
     <div id="video-overlay" class="video-overlay">
         <div id="loading-indicator" class="hidden">Loading...</div>
-        <div id="play-pause-indicator" class="video-icon hidden">▶</div>
+        <div id="play-pause-indicator" class="video-icon hidden" aria-hidden="true">▶</div>
         <div id="offline-indicator" class="offline-indicator hidden">
-            <i class="fas fa-video-slash video-icon"></i>
+            <i class="fas fa-video-slash video-icon" aria-hidden="true"></i>
             <p id="offline-message"></p>
         </div>
         <div id="capture-error-indicator" class="error-indicator hidden">
-            <i class="fas fa-exclamation-triangle video-icon"></i>
+            <i class="fas fa-exclamation-triangle video-icon" aria-hidden="true"></i>
             <p id="capture-error-message"></p>
         </div>
         <div id="stream-error-indicator" class="error-indicator hidden">
-            <i class="fas fa-times-circle video-icon"></i>
+            <i class="fas fa-times-circle video-icon" aria-hidden="true"></i>
             <p id="stream-error-message"></p>
         </div>
     </div>
@@ -187,7 +187,7 @@ function updateVideo(templateName) {
     <div id="screenshots">
         {% for screenshot in screenshots %}
             <div class="screenshot">
-                    <a href='/screenshots/{{template_name}}/{{screenshot}}' title="View full-size screenshot"><img src="/screenshots/{{template_name}}/{{screenshot }}" alt="Screenshot" height='200' title="Recent screenshot: {{screenshot}}"></a>
+                    <a href='/screenshots/{{template_name}}/{{screenshot}}' title="View full-size screenshot"><img src="/screenshots/{{template_name}}/{{screenshot }}" alt="Screenshot from {{ template_name }}" height='200' title="Recent screenshot: {{screenshot}}"></a>
             </div>
         {% endfor %}
     </div>
