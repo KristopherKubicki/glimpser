@@ -320,7 +320,6 @@ function confirmDelete(templateName) {
     }
 }
 
-// todo, add the camera metadata template_details here too
 function showCameraDetails(templateName) {
     const baseUrl = window.location.origin;
     const endpoints = {
@@ -336,13 +335,17 @@ function showCameraDetails(templateName) {
 
     const meta = cameraMeta;
     const metadata = {
-        'Last Screenshot Time': meta.last_screenshot_time,
-        'Last Video Time': meta.last_video_time,
-        'Last Caption': meta.last_caption,
-        'Caption Time': meta.last_caption_time,
-        'Offline Since': meta.offline_since,
-        'Capture Failed': meta.capture_failed
+        'Last Screenshot Time': meta.last_screenshot_time || 'N/A',
+        'Last Video Time': meta.last_video_time || 'N/A',
+        'Last Caption': meta.last_caption || 'N/A',
+        'Caption Time': meta.last_caption_time || 'N/A',
     };
+    if (meta.offline_since) {
+        metadata['Offline Since'] = meta.offline_since;
+    }
+    if (meta.capture_failed) {
+        metadata['Capture Failed'] = true;
+    }
 
     let detailsHtml = '<h3>Camera Endpoints</h3><pre>';
     for (const [key, value] of Object.entries(endpoints)) {

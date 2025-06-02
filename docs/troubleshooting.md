@@ -163,7 +163,7 @@ Remember to always include relevant log files, error messages, and your Glimpser
 
 Glimpser writes logs to the console and exposes them via the `/status` page. If something goes wrong:
 - Use the **System Monitoring and Logs** guide to access live logs.
-- Increase the `LOG_LEVEL` environment variable to `DEBUG` for more details.
+- Increase the `LOG_LEVEL` or `FLASK_LOG_LEVEL` environment variable to `DEBUG` for more details.
 - Review recent entries for stack traces or connection errors.
 - If logs show "Failed to open last shot ... invalid image", the screenshot file
   is corrupted. Delete the file so a new capture can replace it.
@@ -175,6 +175,7 @@ Glimpser writes logs to the console and exposes them via the `/status` page. If 
 **Solution:**
 - Run `pip install -r requirements.txt --upgrade` to update dependencies.
 - Apply any new database migrations as described in the release notes.
+- The `capture_failed` column is added automatically if missing.
 - Clear your browser cache to avoid stale JavaScript files.
 
 ### Problem: Search bar does not filter templates

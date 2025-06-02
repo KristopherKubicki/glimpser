@@ -32,6 +32,7 @@ can modify them in the application interface or directly in the database.
 - `DEBUG_MODE` – runtime alias of `DEBUG` used by the command-line interface
 - `MAX_WORKERS` – number of worker threads (default `8`)
 - `LOG_LEVEL` – logging level (`INFO`, `WARN`, `DEBUG`, etc.)
+- `FLASK_LOG_LEVEL` – logging level used by the Flask app logger (defaults to `LOG_LEVEL`)
 
 ## User Credentials
 
@@ -122,7 +123,7 @@ skip validation adhere to the safer defaults.
 
 Additional variables control AI behaviour and external tools:
 
-- `LLM_MODEL_VERSION` – language model version to use (default `gpt-4.1-mini`)
+- `LLM_MODEL_VERSION` – language model version to use (default `gpt-4.1-mini`). Supported models: `gpt-4.1-mini`, `gpt-4.1`, `gpt-4`
 - `LLM_SUMMARY_PROMPT` – default prompt used for log summaries
 - `LLM_CAPTION_PROMPT` – default prompt used for image captions
 - `FFMPEG_PATH` – path to the `ffmpeg` binary (default `ffmpeg`)

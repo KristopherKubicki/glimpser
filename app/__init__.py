@@ -84,6 +84,7 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
         SESSION_COOKIE_SECURE,
         SESSION_COOKIE_HTTPONLY,
         SESSION_TIMEOUT_MINUTES,
+        FLASK_LOG_LEVEL,
         API_KEY,
     )
 

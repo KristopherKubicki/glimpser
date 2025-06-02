@@ -11,8 +11,7 @@ from dotenv import load_dotenv, find_dotenv
 # Load variables from a `.env` file if present
 load_dotenv(find_dotenv())
 
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
 
 
 # Parse command line arguments when executed directly
@@ -45,10 +44,33 @@ BACKUP_PATH = (
 )
 
 # todo.. make sure this is not duplicate loading...
-engine = create_engine(f"sqlite:///{DATABASE_PATH}")
-SessionLocal = sessionmaker(
-    autocommit=False, autoflush=False, bind=engine
-)  # settings only thread
+# ``SessionLocal`` and ``_engine`` are initialized lazily so importing this
+# module doesn't immediately open a database connection.  Tests may patch
+# ``SessionLocal`` to supply a fake sessionmaker.
+SessionLocal = None
+_engine = None
+
+
+def _get_session():
+    """Return a new database session.
+
+    When ``SessionLocal`` has been patched (e.g. during testing) the patched
+    callable is used.  Otherwise the engine and sessionmaker are created on
+    first use and cached so repeated imports don't create multiple engines.
+    """
+    global _engine, SessionLocal
+
+    if SessionLocal is not None:
+        return SessionLocal()
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    if _engine is None:
+        _engine = create_engine(f"sqlite:///{DATABASE_PATH}")
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
+
+    return SessionLocal()
 
 
 def get_setting(name, default=None):
@@ -57,7 +79,7 @@ def get_setting(name, default=None):
     if env_val is not None:
         return env_val
 
-    session = SessionLocal()
+    session = _get_session()
     try:
         result = session.execute(
             text("SELECT value FROM settings WHERE name = :name"),
@@ -78,7 +100,7 @@ def get_setting(name, default=None):
 
 
 def backup_config() -> bool:
-    session = SessionLocal()
+    session = _get_session()
     success = True
     try:
         settings = session.execute(text("SELECT name, value FROM settings")).fetchall()
@@ -97,7 +119,7 @@ def restore_config():
         with open(BACKUP_PATH, "r") as f:
             config_dict = json.load(f)
 
-        session = SessionLocal()
+        session = _get_session()
         try:
             for name, value in config_dict.items():
                 session.execute(
@@ -116,7 +138,7 @@ def sync_version(pkg_version: str) -> None:
     if os.getenv("VERSION"):
         return
 
-    session = SessionLocal()
+    session = _get_session()
     try:
         existing = session.execute(
             text("SELECT value FROM settings WHERE name = :name"),
@@ -179,6 +201,7 @@ MAX_IN_PROCESS_VIDEO_SIZE = int(
 )  # 100 MB
 
 LOG_LEVEL = get_setting("LOG_LEVEL", "WARN")
+FLASK_LOG_LEVEL = get_setting("FLASK_LOG_LEVEL", LOG_LEVEL)
 
 # Session security settings
 SESSION_COOKIE_SECURE = get_setting("SESSION_COOKIE_SECURE", "True") == "True"
@@ -194,9 +217,16 @@ SSO_TOKEN = get_setting("SSO_TOKEN", "")
 SSO_USERNAME = get_setting("SSO_USERNAME", USER_NAME)
 CHATGPT_KEY = get_setting("CHATGPT_KEY", "")  # maybe generalize as LLM_KEY ?
 
-LLM_MODEL_VERSION = get_setting(
-    "LLM_MODEL_VERSION", "gpt-4.1-mini"
-)  # todo setup allowed models
+ALLOWED_LLM_MODELS = [
+    "gpt-4.1-mini",
+    "gpt-4.1",
+    "gpt-4",
+]
+
+LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-4.1-mini")
+
+if LLM_MODEL_VERSION not in ALLOWED_LLM_MODELS:
+    raise ValueError(f"Invalid LLM model: {LLM_MODEL_VERSION}")
 
 # note that $datetime is a special keyword that will be replaced with the datetime in iso Z format
 LLM_SUMMARY_PROMPT = get_setting(

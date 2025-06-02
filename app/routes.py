@@ -514,7 +514,9 @@ def generate(
                     and last_shot
                     and os.path.exists(last_shot)
                 ):
-                    # warning - todo, this needs to be completed still
+                    # Serve the previously captured screenshot if a new frame
+                    # was not generated. If the cached image cannot be opened,
+                    # remove it and fall back to searching for a new screenshot.
                     try:
                         if screenshots._is_valid_png(last_shot):
                             with Image.open(last_shot) as img:
@@ -530,9 +532,12 @@ def generate(
                                 os.remove(last_shot)
                             except OSError:
                                 pass
+                            last_shot = None
                     except Exception as e:
                         logging.error("Failed to open last shot %s: %s", last_shot, e)
-                else:
+                        last_shot = None
+
+                if frame is None:
                     # Replace this with your actual template manager code
                     templates = template_manager.get_templates()
 
@@ -1052,12 +1057,14 @@ def init_routes(app):
         if template_name is None:
             abort(404)
 
-        # Check if the template exists
-        logging.debug("WARNING BRPKEN!")
-        ltemplate = template_manager.get_template(template_name)
-        if ltemplate is None:
+        # Check if the template exists and get the canonical name stored
+        # in the database. ``get_template`` returns an attribute dictionary
+        # or ``{}`` when the name is not present.
+        details = template_manager.get_template(template_name)
+        if not details:
             return jsonify({"status": "error", "message": "Template not found"}), 404
-        template_name = ltemplate.get("name")  # todo...
+        # Prefer the name from the database (it may contain canonical casing)
+        template_name = details.get("name", template_name)
 
         # Check if the request has the file part
         if "file" not in request.files:
