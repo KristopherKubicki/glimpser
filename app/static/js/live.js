@@ -404,10 +404,12 @@ function refreshPNG() {
 }
 
 function showLastScreenshot() {
-    if (currentCamera.startsWith('group-') || currentCamera === 'All') {
-image.src = '/stream.png';
+    if (currentCamera === 'All') {
+        // Show the most recent screenshot across all cameras
+        image.src = '/stream.png';
     } else {
-image.src = '/last_screenshot/' + currentCamera;
+        // Display the latest screenshot for the selected camera or group
+        image.src = '/last_screenshot/' + currentCamera;
     }
     image.style.display = 'block';
 }
