@@ -347,6 +347,38 @@ class TestCameraDiscovery(unittest.TestCase):
             {"server": "Cam/1.0", "realm": "demo", "title": "Demo Cam"},
         )
 
+    @patch("app.utils.camera_discovery.subprocess.run")
+    def test_ping_latency(self, mock_run):
+        class FakeProc:
+            stdout = "64 bytes from 1.2.3.4: icmp_seq=1 ttl=64 time=2.3 ms"
+
+        mock_run.return_value = FakeProc()
+        latency = camera_discovery._ping_latency("1.2.3.4")
+        self.assertAlmostEqual(latency, 2.3, places=1)
+
+    @patch("app.utils.camera_discovery._ping_latency", return_value=5.0)
+    @patch("app.utils.camera_discovery._detect_open_ports", return_value=[])
+    @patch("app.utils.camera_discovery._probe_onvif", return_value=[])
+    @patch("app.utils.camera_discovery._probe_mdns", return_value=[])
+    @patch("app.utils.camera_discovery._probe_ssdp", return_value=[])
+    @patch("app.utils.camera_discovery._scan_rtsp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_rtmp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_sip_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_webrtc_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_snmp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_http_endpoints", return_value=[])
+    @patch("app.utils.camera_discovery._scan_hls_streams", return_value=[])
+    @patch("app.utils.camera_discovery._local_subnets", return_value=[])
+    def test_latency_in_discover(
+        self,
+        mock_subnets,
+        *_mocks,
+    ):
+        cams = camera_discovery.discover_cameras()
+        info = cams[0]["info"]
+        self.assertIn("ping_ms", info)
+        self.assertEqual(info["ping_ms"], 5.0)
+
     @patch("app.utils.camera_discovery._fetch_http_banner")
     @patch("app.utils.camera_discovery._detect_open_ports")
     @patch("app.utils.camera_discovery._probe_onvif", return_value=[])
