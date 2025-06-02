@@ -1,6 +1,6 @@
 # Command Line Reference
 
-This guide describes the available command line arguments for the main `glimpser` application and the `generate_credentials.py` utility.
+This guide describes the available command line arguments for the main `glimpser` application, `generate_credentials.py`, and `app/config.py` when run as a script.
 
 ## glimpser (main.py)
 
@@ -34,4 +34,15 @@ This helper script creates or updates the credentials stored in the database.
 | `--secret-key` | Custom secret key; a new one is generated if not provided. |
 | `--update-key` | Replace the stored secret key. |
 
-Use `--help` with either script to see these options from the command line.
+## config.py
+
+When invoked directly, `app/config.py` accepts a few path options to override the
+defaults loaded from environment variables:
+
+| Argument | Description |
+| --- | --- |
+| `--db-path` | Override the SQLite database location. |
+| `--log-path` | Override the main log file path. |
+| `--backup-path` | Override the configuration backup file. |
+
+Use `--help` with any script to see these options from the command line.
