@@ -120,7 +120,7 @@ def summarize(prompt, history=None, tokens=4096):
 
         # Convert the response text to a JSON format
         ljson = {}
-        start_time = int(time.time())
+        start_time = int(datetime.datetime.now().timestamp())
         for line in re.findall(r"(.+?)(?:[\t\n]|$)", response_text, flags=re.DOTALL):
             # Remove asterisks and bullet points
             line = line.replace("**", "").strip()

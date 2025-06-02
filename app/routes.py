@@ -68,6 +68,7 @@ from app.utils.screenshots import (
     is_chrome_debug_port_open,
     check_user_activity,
     capture_frame_from_stream,
+    download_image,
 )
 from app.utils.db import SessionLocal, engine
 
@@ -2322,6 +2323,48 @@ def init_routes(app):
         }
         template_manager.save_template(name, template)
         return jsonify({"status": "success"})
+
+    @app.route("/discover/snapshot")
+    @login_required
+    def discover_snapshot():
+        """Return a small snapshot for a discovered camera."""
+
+        url = request.args.get("url")
+        if not url:
+            ip = request.args.get("ip")
+            protocol = request.args.get("protocol", "http")
+            port = request.args.get("port", type=int)
+            path = request.args.get("path", "")
+            if not ip:
+                abort(400)
+            if port is None:
+                port = 80
+            url = f"{protocol}://{ip}:{port}{path}"
+
+        name = request.args.get("name", "discover")
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+            tmp_path = tmp.name
+
+        success = False
+        try:
+            if url.lower().endswith((".jpg", ".jpeg", ".png")):
+                success = download_image(url, tmp_path, name=name)
+            else:
+                success = capture_frame_from_stream(url, tmp_path, name=name)
+
+            if success and os.path.exists(tmp_path):
+                with open(tmp_path, "rb") as fh:
+                    data = fh.read()
+                return Response(data, mimetype="image/png")
+        except Exception as e:  # pragma: no cover - network
+            logging.warning("snapshot error for %s: %s", url, e)
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+        return send_file(os.path.join(app.static_folder, "img", "glimpser_small.png"))
 
     @app.route("/status")
     @login_required

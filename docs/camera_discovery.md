@@ -148,6 +148,11 @@ The discovery list also shows a **System Status** entry pointing at your local
 other camera to have Glimpser periodically capture screenshots of its own
 metrics page.
 
+Each discovered camera now attempts to display a small snapshot thumbnail. If the
+image cannot be retrieved—such as when the device requires authentication—a
+placeholder logo appears instead. This provides a quick visual preview without
+slowing down the discovery process.
+
 ## Common cameras to try
 
 Any IP camera that supports **ONVIF**, **RTSP**, **RTMP**, **HTTP/MJPEG**, or **HLS** streams should show

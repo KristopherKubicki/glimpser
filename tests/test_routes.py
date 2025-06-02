@@ -509,6 +509,30 @@ class TestRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mock_save_template.assert_called()
 
+    @patch("app.routes.download_image")
+    @patch("app.routes.capture_frame_from_stream")
+    def test_discover_snapshot(self, mock_cap, mock_dl):
+        def fake_save(url, path, name=None):
+            with open(path, "wb") as fh:
+                fh.write(b"x")
+            return True
+
+        mock_dl.side_effect = fake_save
+
+        with self.client.session_transaction() as sess:
+            sess["user_id"] = 1
+
+        resp = self.client.get("/discover/snapshot?url=http://example.com/a.jpg")
+        self.assertEqual(resp.status_code, 200)
+        mock_dl.assert_called_once()
+
+    def test_discover_snapshot_missing(self):
+        with self.client.session_transaction() as sess:
+            sess["user_id"] = 1
+
+        resp = self.client.get("/discover/snapshot")
+        self.assertEqual(resp.status_code, 400)
+
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
     @patch("app.routes.template_manager.get_template")
