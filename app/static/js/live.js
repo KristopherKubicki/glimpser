@@ -492,7 +492,15 @@ function playPNG() {
 const slider = document.getElementById('speed-slider');
 const speed = Math.pow(2, slider.value);
 	document.getElementById("seek-bar").style.display = "none";
-	console.log( document.getElementById("seek-bar"), speed);
+        const seekBar = document.getElementById("seek-bar");
+        // Structured log for easier scraping by Grafana Loki
+        console.info(
+            JSON.stringify({
+                ts: Date.now(),
+                ctx: "discover",
+                msg: `seekBar:${seekBar},speed:${speed}`,
+            })
+        );
     stopPNG();
     if (currentCamera.startsWith('group-')) {
 // Special handling for groups
