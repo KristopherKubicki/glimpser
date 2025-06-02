@@ -39,6 +39,7 @@ class Template(Base):
     last_screenshot_time = Column(Text, default="")
     last_video_time = Column(Text, default="")
     offline_since = Column(Text, default="")
+    capture_failed = Column(Boolean, default=False)
     object_filter = Column(String, default="")
     object_confidence = Column(Float, default=0.5)
     popup_xpath = Column(String, default="")
@@ -628,6 +629,7 @@ def update_last_screenshot_time(name: str) -> None:
                 "%Y-%m-%d %H:%M:%S"
             )
             template.offline_since = ""
+            template.capture_failed = False
             session.commit()
     finally:
         session.close()
@@ -645,6 +647,23 @@ def mark_offline(name: str) -> None:
         template = session.query(Template).filter_by(name=name).first()
         if template and not template.offline_since:
             template.offline_since = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            session.commit()
+    finally:
+        session.close()
+
+
+def set_capture_failed(name: str, failed: bool) -> None:
+    """Set ``capture_failed`` flag for ``name``."""
+    name = validate_template_name(name)
+    if name is None:
+        return
+
+    manager = TemplateManager()
+    session = manager.get_session()
+    try:
+        template = session.query(Template).filter_by(name=name).first()
+        if template:
+            template.capture_failed = bool(failed)
             session.commit()
     finally:
         session.close()

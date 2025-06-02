@@ -11,6 +11,7 @@ from app.utils.template_manager import (
     Template,
     mark_offline,
     update_last_screenshot_time,
+    set_capture_failed,
     get_storage_usage,
 )
 from app.utils.validators import validate_template_name
@@ -284,6 +285,20 @@ class TestOfflineHandling(unittest.TestCase):
 
         self.assertEqual(template.offline_since, "")
         self.assertNotEqual(template.last_screenshot_time, "")
+        mock_sess.commit.assert_called_once()
+
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_set_capture_failed_updates_flag(self, mock_session):
+        mock_sess = MagicMock()
+        mock_session.return_value = mock_sess
+        template = Template(name="cam1")
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = (
+            template
+        )
+
+        set_capture_failed("cam1", True)
+
+        self.assertTrue(template.capture_failed)
         mock_sess.commit.assert_called_once()
 
 

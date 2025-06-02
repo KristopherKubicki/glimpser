@@ -293,6 +293,10 @@ video:hover + .play-icon {
     border: 5px solid rgba(255, 255, 255, 0.9); /* Faint white border */
 }
 
+.template-error {
+    border: 5px solid red;
+}
+
 /* Improve video controls on mobile */
 @media (max-width: 767px) {
     .templateDiv video::-webkit-media-controls-panel {
@@ -814,6 +818,11 @@ input[type=submit]:hover {
 .offline-indicator {
     text-align: center;
     color: white;
+}
+
+.error-indicator {
+    text-align: center;
+    color: red;
 }
 
 
