@@ -108,7 +108,7 @@ stream whenever the camera becomes available again.
 
 Several other routes provide streaming functionality:
 
-- **GET /stream.mjpg** – Continuous MJPEG stream of the latest camera image. Optional `camera` or `group` query parameters limit the feed.
+- **GET /stream.mjpg** – Continuous MJPEG stream of the latest camera image. Optional `camera` or `group` query parameters limit the feed. Passing `group=all` shows the newest frame from any camera.
 - **GET /stream.png** – Returns the most recent screenshot across all cameras.
 - **GET /motion.mjpg** – MJPEG stream containing only motion frames. Accepts `camera` or `group` as query parameters.
 - **GET /caption.mjpg** – MJPEG stream of the last caption frame for a group.
