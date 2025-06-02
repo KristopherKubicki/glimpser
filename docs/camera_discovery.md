@@ -154,6 +154,9 @@ Each camera is now also checked for commonly used service ports. Any detected
 ports are listed in the ``open_ports`` field so you can quickly see which
 services are reachable (for example, 80 for HTTP or 554 for RTSP). This scan
 is lightweight and runs after the main discovery steps finish.
+If an HTTP port responds, Glimpser also fetches the web page banner to capture
+the `Server` header, authentication realm, and page title when present. These
+values populate the **Info** column so you can quickly identify each device.
 
 You can then add a discovered camera to your configuration directly from the `/discover` page.
 The "Add" button on this page now includes a tooltip (title attribute) for improved accessibility.

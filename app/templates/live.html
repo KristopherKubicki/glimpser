@@ -105,10 +105,10 @@
         <option value="png" title="View a series of PNG images">PNG Stream</option>
 	<!-- <option value="m3u8" title="View an HLS (HTTP Live Streaming) video stream">M3U8 Stream</option> -->
         <option value="loop" title="Loop through available video clips">Loop Videos</option>
-        <option value="mp4" selected title="View an MP4 video stream">MP4 Stream</option>
+        <option value="mp4" title="View an MP4 video stream">MP4 Stream</option>
         <option value="live" title="View the direct live stream">Live Video</option>
         <option value="motion" title="View motion-detected frames">Motion</option>
-        <option value="mjpg" title="View an MJPEG (Motion JPEG) stream">MJPG</option>
+        <option value="mjpg" selected title="View an MJPEG (Motion JPEG) stream">MJPG</option>
     </select>
 
 
@@ -872,8 +872,10 @@ function playMotion() {
 
     function updateSpeedContainer() {
         if (!speedContainer) return;
+        const source = document.getElementById('video-source').value;
         const isGroupView = currentCamera === 'All' || currentCamera.startsWith('group-');
-        speedContainer.style.display = isGroupView ? 'block' : 'none';
+        const show = isGroupView && source !== 'mjpg';
+        speedContainer.style.display = show ? 'block' : 'none';
     }
 
     function checkCameraConnection(cameraName) {
@@ -902,11 +904,11 @@ function playMotion() {
         return lastScreenshotTime > oneHourAgo;
     }
 
-        // Initially show the latest screenshot and start the MP4 stream
+        // Initially show the latest screenshot and start the MJPG stream
         showLastScreenshot();
         updateTemplateDetails();
         updateSpeedContainer();
-        playMP4();
+        playMJPG();
         preloadNextCamera();
     </script>
     <script type="module" src="{{ url_for('static', filename='js/live.js') }}"></script>
