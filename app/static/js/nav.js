@@ -1,5 +1,19 @@
 export function initNav() {
   document.addEventListener('DOMContentLoaded', () => {
+    /** @type {boolean} */
+    let _dangerActive = false;
+
+    Object.defineProperty(window, 'dangerActive', {
+      get() {
+        return _dangerActive;
+      },
+      set(value) {
+        if (typeof value !== 'boolean') {
+          throw new TypeError('dangerActive must be a boolean');
+        }
+        _dangerActive = value;
+      },
+    });
     function checkHealth() {
       fetch('/health')
         .then((response) => response.json())
@@ -38,6 +52,7 @@ export function initNav() {
       fetch('/danger_status')
         .then((response) => response.json())
         .then((data) => {
+          window.dangerActive = data.ready;
           const dangerStatus = document.getElementById('danger-status');
           if (!dangerStatus) return;
           if (data.ready) {
