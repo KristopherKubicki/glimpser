@@ -166,26 +166,29 @@ def _local_subnets(max_prefixlen: int = 24):
     """Return local IPv4 subnets limited to ``max_prefixlen``.
 
     Some interfaces report very large networks (e.g. ``10.0.0.0/8``) which makes
-    discovery scans effectively unbounded.  To keep discovery responsive we cap
-    the size of each subnet to at most ``max_prefixlen``.
+    discovery scans effectively unbounded. To keep discovery responsive we cap
+    the size of each subnet to at most ``max_prefixlen``. Duplicate networks are
+    removed so multi-homed interfaces only scan each subnet once.
     """
 
-    subnets = []
-    for _iface, addrs in psutil.net_if_addrs().items():
+    subnets: set[ip_network] = set()
+    for addrs in psutil.net_if_addrs().values():
         for addr in addrs:
-            if addr.family == socket.AF_INET:
-                ip = addr.address
-                netmask = addr.netmask
-                if not ip or not netmask:
-                    continue
-                try:
-                    net = ip_network(f"{ip}/{netmask}", strict=False)
-                    if net.prefixlen < max_prefixlen:
-                        net = ip_network(f"{ip}/{max_prefixlen}", strict=False)
-                    subnets.append(net)
-                except Exception:
-                    pass
-    return subnets
+            if addr.family != socket.AF_INET:
+                continue
+            ip = addr.address
+            netmask = addr.netmask
+            if not ip or not netmask:
+                continue
+            try:
+                net = ip_network(f"{ip}/{netmask}", strict=False)
+                if net.prefixlen < max_prefixlen:
+                    net = ip_network(f"{ip}/{max_prefixlen}", strict=False)
+                subnets.add(net)
+            except Exception:
+                continue
+
+    return sorted(subnets, key=lambda n: (n.network_address.packed, n.prefixlen))
 
 
 def _probe_onvif(timeout=2):
