@@ -135,6 +135,10 @@ function hideStreamErrorIndicator() {
 video.addEventListener('waiting', showLoadingIndicator);
 video.addEventListener('canplay', hideLoadingIndicator);
 video.addEventListener('canplay', () => { image.style.display = 'none'; });
+// Hide the loading overlay when a PNG frame successfully loads so the
+// viewer immediately sees the latest snapshot instead of an indefinite
+// "Loading" message.
+image.addEventListener('load', hideLoadingIndicator);
 video.addEventListener('play', () => showPlayPauseIndicator(false));
 video.addEventListener('pause', () => showPlayPauseIndicator(true));
 video.addEventListener('error', (e) => {
