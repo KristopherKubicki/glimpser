@@ -30,7 +30,7 @@ from app.utils.db import SessionLocal
 from app.models import Summary
 
 from .detect import calculate_difference_fast
-from .image_processing import chatgpt_compare
+from .image_processing import chatgpt_compare, ChatGPTImageComparison
 from .llm import summarize
 from .screenshots import (
     capture_or_download,
@@ -105,6 +105,9 @@ def run_with_timeout(func, args=(), timeout=300):
 
 MAX_IMAGE_TIME_DIFF = datetime.timedelta(minutes=5)
 
+# Difference threshold for deciding caption method
+DIFF_THRESHOLD = 0.1
+
 
 def find_closest_image(directory, last_caption_time, max_time_diff=MAX_IMAGE_TIME_DIFF):
     """Return the closest motion image not older than ``max_time_diff``."""
@@ -134,6 +137,30 @@ def find_closest_image(directory, last_caption_time, max_time_diff=MAX_IMAGE_TIM
                 continue  # Skip files with unexpected filename format
 
     return closest_image
+
+
+def llava_compare(prompt, image_paths, template_name=None):
+    """Lightweight captioning using low-resolution images."""
+
+    # Validate files exist before calling the API
+    for image in image_paths:
+        if not os.path.exists(image):
+            return "Missing image"
+
+    comparison = ChatGPTImageComparison()
+    result, tokens = comparison.compare_images(
+        prompt, image_paths, low_res=True, tokens=32
+    )
+
+    if template_name and tokens:
+        try:
+            from app.utils.template_manager import record_llm_usage
+
+            record_llm_usage(template_name, tokens)
+        except Exception as e:
+            logging.error("Failed to record token usage: %s", e)
+
+    return result
 
 
 def add_motion_and_caption(image_path, caption=None, motion=False):
@@ -515,6 +542,33 @@ def update_camera(name, template, image_file=None, motion=False):
             #      send llava the reference image (if available in data/screenshots/<camera>/reference.png), the last motion image (if available in data/screenshots/<camera>/last_motion.png)
             # TODO: be more targetted about this
 
+            ref_diff = None
+            ref_path = os.path.join(directory, "reference.png")
+            if os.path.exists(ref_path):
+                ref_diff = calculate_difference_fast(ref_path, latest_image_path)
+
+            motion_diff = None
+            if os.path.exists(prev_motion):
+                try:
+                    prev_target = os.readlink(prev_motion)
+                    prev_path = (
+                        prev_target
+                        if os.path.isabs(prev_target)
+                        else os.path.join(directory, prev_target)
+                    )
+                except Exception:
+                    prev_path = prev_motion
+                if os.path.exists(prev_path):
+                    motion_diff = calculate_difference_fast(
+                        prev_path, latest_image_path
+                    )
+
+            use_llava = True
+            for diff in (ref_diff, motion_diff):
+                if diff is not None and diff >= DIFF_THRESHOLD:
+                    use_llava = False
+                    break
+
             lret = None
             if last_motion_trigger:
                 template["last_motion_time"] = lctime
@@ -526,10 +580,12 @@ def update_camera(name, template, image_file=None, motion=False):
             if last_caption_trigger or template.get("last_caption") is None:
                 lprompt = ""
                 if template.get("notes"):
-                    lprompt += " " + template["notes"]
-                #  use Chatgpt_compare
-                gret = chatgpt_compare(lprompt, image_paths, template_name=name)
-                # TODO: add a separator?
+                    lprompt += template["notes"].strip() + "\n---\n"
+                # Choose summarizer based on image differences
+                if use_llava:
+                    gret = llava_compare(lprompt, image_paths, template_name=name)
+                else:
+                    gret = chatgpt_compare(lprompt, image_paths, template_name=name)
                 # print("  oldgpt:", name, template.get('last_caption'))
                 # print("  newgpt:", name, gret)
                 if gret and re.findall(r"(?:sorry|cannot|can not)", gret):
@@ -840,8 +896,11 @@ def schedule_crawlers():
         # Calculate the offset delay for this crawler
         offset_delay_seconds = index * delay_increment + index
 
-        # TODO: consider the fact that the tmeplate is out of date.
-        # any time we update a camera, we upave to remove the old job and create a new one
+        # Reschedule if the template changed
+        try:
+            scheduler.remove_job(name)
+        except Exception:
+            pass
 
         # Apply the incremental delay to space out job scheduling
         try:
