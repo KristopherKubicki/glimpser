@@ -496,6 +496,12 @@ lock = Lock()
 def generate(
     group=None, camera=None, filename="latest_camera.png", rtsp=False, session_id=None
 ):
+    # Treat explicit "all" values as no filter
+    if group == "all":
+        group = None
+    if camera == "all":
+        camera = None
+
     # pretty hacky but it works ok
     global last_time, last_shot
     boundary = b"frame"
@@ -1313,6 +1319,10 @@ def init_routes(app):
     def stream_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
+        if group == "all":
+            group = None
+        if camera == "all":
+            camera = None
         return Response(
             generate(group=group, camera=camera, filename="latest_camera.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -1322,6 +1332,10 @@ def init_routes(app):
     def motion_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
+        if group == "all":
+            group = None
+        if camera == "all":
+            camera = None
         return Response(
             generate(group=group, camera=camera, filename="last_motion.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -1331,6 +1345,10 @@ def init_routes(app):
     def caption_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
+        if group == "all":
+            group = None
+        if camera == "all":
+            camera = None
         logging.debug("last caption")
         return Response(
             generate(group=group, camera=camera, filename="last_caption.png"),
@@ -1341,6 +1359,10 @@ def init_routes(app):
     def motion_caption_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
+        if group == "all":
+            group = None
+        if camera == "all":
+            camera = None
         logging.debug("last motion caption")
         return Response(
             generate(group=group, camera=camera, filename="last_motion_caption.png"),
