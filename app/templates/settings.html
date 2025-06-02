@@ -10,12 +10,8 @@
     <form id="add-setting-form" method="POST" action="{{ url_for('settings') }}">
         <input type="hidden" name="action" value="add" title="Add setting action">
         <label for="new_name" title="Name of the new setting">Name:</label>
-    <h3 id="settings-help">Settings Reference</h3>
-    {% include 'settings_help_table.html' %}
         <input type="text" id="new_name" name="new_name" required title="Enter setting name">
         <label for="new_value" title="Initial value for the setting">Value:</label>
-    <h3 id="settings-help">Settings Reference</h3>
-    {% include 'settings_help_table.html' %}
         <input type="text" id="new_value" name="new_value" required title="Enter setting value">
         <div id="setting-error" class="form-error hidden"></div>
         <button type="submit" title="Add setting">Add Setting</button>
