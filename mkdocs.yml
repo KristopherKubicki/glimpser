@@ -35,5 +35,6 @@ nav:
       - Testing: testing.md
       - Tooltips: tooltips.md
       - Troubleshooting: troubleshooting.md
+      - Log Cleaner: log_cleaner.md
       - Video Archiver: video_archiver.md
       - Governance: governance.md
