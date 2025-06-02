@@ -87,6 +87,29 @@ export function setupVideoControls() {
   if (castButton) {
     castButton.addEventListener('click', startCasting);
   }
+
+  document.addEventListener('keydown', (e) => {
+    const tag = e.target.tagName.toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return;
+    switch (e.key) {
+      case ' ': // Spacebar
+      case 'k':
+        e.preventDefault();
+        video.paused ? video.play() : video.pause();
+        break;
+      case 'm':
+        video.muted = !video.muted;
+        break;
+      case 'f':
+        if (video.requestFullscreen) video.requestFullscreen();
+        else if (video.mozRequestFullScreen) video.mozRequestFullScreen();
+        else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+        else if (video.msRequestFullscreen) video.msRequestFullscreen();
+        break;
+      default:
+        break;
+    }
+  });
 }
 
 export function setupStatusPageVideoHover() {
