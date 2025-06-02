@@ -5,10 +5,19 @@ from unittest.mock import patch, MagicMock
 import sys
 import os
 import logging
+import tempfile
+from datetime import datetime, timedelta
+from PIL import Image
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.utils.scheduling import scheduler, schedule_crawlers, start_log_caching
+from app.utils.scheduling import (
+    scheduler,
+    schedule_crawlers,
+    start_log_caching,
+    find_closest_image,
+)
+
 
 class TestScheduler(unittest.TestCase):
 
@@ -25,10 +34,10 @@ class TestScheduler(unittest.TestCase):
 
         # Simulate the running of the scheduler (normally done in a separate thread)
         job_func = scheduler.get_job('test_job').func
-        job_func() # hopefully takes less than 5 seconds
+        job_func()  # hopefully takes less than 5 seconds
 
-        job.assert_called_once() 
-        scheduler.remove_job('test_job') 
+        job.assert_called_once()
+        scheduler.remove_job('test_job')
 
     @patch('time.sleep', return_value=None)  # Corrected patch target
     def test_run_scheduled_jobs(self, mock_sleep):
@@ -81,7 +90,7 @@ class TestScheduler(unittest.TestCase):
         # Ensure job2 still runs
         job_func2 = scheduler.get_job('test_job2').func
         job_func2()
-        #job2.assert_called_once() # TODO: fix this ...
+        # job2.assert_called_once() # TODO: fix this ...
         scheduler.remove_job('test_job2')
 
     @patch('time.sleep', return_value=None)
@@ -115,6 +124,22 @@ class TestScheduler(unittest.TestCase):
         mock_thread.return_value.start.assert_called_once()
         mock_add_job.assert_not_called()
 
+    def test_find_closest_image_none_when_outside_threshold(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            times = [
+                datetime(2023, 1, 1, 0, 0, 0),
+                datetime(2023, 1, 1, 0, 5, 0),
+            ]
+            for t in times:
+                filename = t.strftime('%Y%m%d%H%M%S') + '_motion.png'
+                Image.new('RGB', (1, 1)).save(os.path.join(tmp, filename))
+
+            last_caption_time = datetime(2023, 1, 1, 0, 10, 0)
+            result = find_closest_image(
+                tmp, last_caption_time, max_time_diff=timedelta(seconds=60)
+            )
+            self.assertIsNone(result)
+
     '''
     @patch('app.utils.scheduling.scheduler.add_job')
     @patch('app.utils.scheduling.get_templates', return_value={
@@ -134,6 +159,6 @@ class TestScheduler(unittest.TestCase):
             mock_add_job.assert_not_called()
     '''
 
+
 if __name__ == '__main__':
     unittest.main()
-
