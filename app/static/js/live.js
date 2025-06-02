@@ -252,6 +252,7 @@ function updateFeed() {
         video.pause();
         video.src = '';
         image.src = '';
+        updateSeekBar();
         return;
     } else if (details && details.capture_failed) {
         hideOfflineIndicator();
@@ -260,6 +261,7 @@ function updateFeed() {
         video.pause();
         video.src = '';
         image.src = '';
+        updateSeekBar();
         return;
     } else {
         hideOfflineIndicator();
@@ -299,6 +301,8 @@ function updateFeed() {
         default:
             console.error('Invalid video source');
     }
+
+    updateSeekBar();
 }
 
 function playM3U8() {
@@ -434,7 +438,6 @@ function showLastScreenshot() {
 
 function playMP4() {
     video.style.display = 'block';
-document.getElementById("seek-bar").style.display = "block";
     stopLiveSwitch();
     stopPNG();
     if (currentCamera.startsWith('group-')) {
@@ -664,8 +667,25 @@ if (liveSwitchInterval) {
         if (!speedContainer) return;
         const source = document.getElementById('video-source').value;
         const isGroupView = currentCamera === 'All' || currentCamera.startsWith('group-');
-        const show = isGroupView && source !== 'mjpg';
+        let cameraCount = 0;
+        if (isGroupView) {
+            if (currentCamera === 'All') {
+                cameraCount = Object.keys(templateDetails).filter(k => k !== 'All').length;
+            } else {
+                cameraCount = (templateDetails[currentCamera].groupCameras || []).length;
+            }
+        }
+        const show = isGroupView && cameraCount > 1 && source !== 'mjpg';
         speedContainer.style.display = show ? 'block' : 'none';
+    }
+
+    function updateSeekBar() {
+        const seekBar = document.getElementById('seek-bar');
+        if (!seekBar) return;
+        const source = document.getElementById('video-source').value;
+        const isSingleCamera = !(currentCamera === 'All' || currentCamera.startsWith('group-'));
+        const show = isSingleCamera && (source === 'mp4' || source === 'loop');
+        seekBar.style.display = show ? 'block' : 'none';
     }
 
 function checkCameraConnection(cameraName) {
@@ -698,6 +718,7 @@ return lastScreenshotTime > oneHourAgo;
 showLastScreenshot();
 updateTemplateDetails();
 updateSpeedContainer();
+updateSeekBar();
 playMJPG();
 
 function togglePlayback() {
