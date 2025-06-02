@@ -19,3 +19,7 @@ prevents crashes due to `FileNotFoundError` when gathering timestamps.
 When segments are concatenated, the resulting `in_process.mp4` is checked to
 ensure its modification time is recent. A stale timestamp triggers a warning
 and the operation is aborted so corrupted videos do not linger.
+
+Videos automatically rotate into a `final_*.mp4` once roughly 600 frames
+(about 24 seconds) accumulate. A small tolerance in the duration check prevents
+rounding errors from delaying rotation.

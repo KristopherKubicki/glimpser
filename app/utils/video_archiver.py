@@ -385,7 +385,8 @@ def compile_to_video(camera_path, video_path) -> bool:
         )
         file_age_exceeded = is_video_expired(in_process_video, MAX_COMPRESSED_VIDEO_AGE)
 
-        # condsider when the length is 2x300 frames as well.  so we always have perfect overlap at 2x
+        # consider when the length is 2x300 frames as well so we always
+        # have perfect overlap at 2x
 
         if file_size_exceeded or file_age_exceeded:
             # Rename the "in-process" video to a "final" video with a timestamp
@@ -408,10 +409,12 @@ def compile_to_video(camera_path, video_path) -> bool:
             video_mod_time = 0
             # go bigger...
 
-    if os.path.exists(in_process_video) and ldur >= int(300 / 25 * 2):  # rotate!
-        # Rename the "in-process" video to a "final" video with a timestamp
+    # Finalize when roughly 600 frames (~24s) have been assembled.  Allow a
+    # small tolerance for rounding errors from FFprobe so the file rotates
+    # when the recording actually completes.
+    rotation_threshold = (300 / 25) * 2  # two 12 second segments
+    if os.path.exists(in_process_video) and ldur >= rotation_threshold - 0.1:
         final_video_name = f"final_{int(os.path.getmtime(in_process_video))}.mp4"
-        # TODO: should we optimize the timing better?
         final_video_path = os.path.join(video_path, final_video_name)
         os.rename(in_process_video, final_video_path)
         # we should finalize at the END of the encode , right?
