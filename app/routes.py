@@ -320,9 +320,12 @@ def update_setting(name: str, value: str) -> bool:
     return True
 
 
-# TODO:
 def generate_video_stream(video_path: str):
-    """Yield video data in chunks, looping continuously."""
+    """Yield video data in chunks and restart when the end is reached."""
+
+    # The video preview on the UI expects an infinite generator. Read the
+    # file in 1MB increments and loop back to the beginning once no more
+    # bytes are available.
 
     chunk_size = 1024 * 1024  # 1 MB
     while True:
@@ -331,13 +334,15 @@ def generate_video_stream(video_path: str):
             break
 
         with open(video_path, "rb") as video:
-            chunk = video.read(chunk_size)
-            while chunk:
-                yield chunk
+            while True:
                 chunk = video.read(chunk_size)
+                if not chunk:
+                    break
+                yield chunk
 
+        # Immediately loop back and stream again so the client sees a
+        # seamless loop without gaps.
         logging.debug("Restarting video stream")
-        time.sleep(30)  # Wait before streaming again
 
 
 def generate_live_stream(url: str):
