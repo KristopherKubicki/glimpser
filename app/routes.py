@@ -622,8 +622,21 @@ def generate(
                         )
                         # no need to loop through the directory if we find the symlink file
                         lfiles = []
-                        if os.path.exists(os.path.join(path, filename)):
-                            lfiles = [os.path.join(path, filename)]
+                        file_path = os.path.join(path, filename)
+                        if os.path.exists(file_path):
+                            lfiles = [file_path]
+                        else:
+                            # fall back to the oldest screenshot so the MJPEG
+                            # stream always has an initial frame
+                            pngs = [
+                                os.path.join(path, f)
+                                for f in os.listdir(path)
+                                if f.endswith(".png")
+                                and os.path.isfile(os.path.join(path, f))
+                            ]
+                            if pngs:
+                                pngs.sort(key=os.path.getctime)
+                                lfiles = [pngs[0]]
 
                         last_file = lfiles[-1] if lfiles else None
                         if (
