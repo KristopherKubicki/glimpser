@@ -41,8 +41,13 @@ Blue Iris is a popular video surveillance software. Here's how to integrate it w
    - Set up an alert that triggers on motion or other events you're interested in.
    - In the alert action, add a webhook that calls Glimpser's screenshot capture endpoint:
      ```
-     http://<glimpser_ip>:<port>/take_screenshot/<template_name>
-     ```
+    http://<glimpser_ip>:<port>/take_screenshot/<template_name>
+    ```
+
+    Add `?motion=true` to force motion analysis:
+    ```
+    http://<glimpser_ip>:<port>/take_screenshot/<template_name>?motion=true
+    ```
 
 4. **Glimpser Analysis Results**:
    - Set up a scheduled task in Blue Iris that periodically checks Glimpser's API for analysis results.
@@ -103,6 +108,10 @@ webhook endpoint, but you can still connect the two systems using webhooks:
      ```
      http://<glimpser_ip>:<port>/take_screenshot/<template_name>
      ```
+    Add `?motion=true` to force motion analysis:
+    ```
+    http://<glimpser_ip>:<port>/take_screenshot/<template_name>?motion=true
+    ```
 
 ## IFTTT Integration
 
