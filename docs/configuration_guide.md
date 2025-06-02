@@ -16,6 +16,9 @@ are used.
 | `GLIMPSER_LOGGING_PATH` | `logs/glimpser.log` | Path to the main log file |
 | `GLIMPSER_BACKUP_PATH` | `data/config_backup.json` | File used when backing up configuration |
 
+`app.config` parses the `.env` file only once when it is first imported.  Later
+imports reuse the existing values instead of re-reading the file.
+
 ## Core Settings
 
 Below are key settings loaded from the database with their default values. You

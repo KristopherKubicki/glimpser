@@ -64,9 +64,8 @@ BACKUP_PATH = (
     else os.getenv("GLIMPSER_BACKUP_PATH", "data/config_backup.json")
 )
 
-# todo.. make sure this is not duplicate loading...
-# ``SessionLocal`` and ``_engine`` are initialized lazily so importing this
-# module doesn't immediately open a database connection.  Tests may patch
+# ``SessionLocal`` and ``_engine`` are created lazily and cached so repeated
+# imports or function calls don't open additional connections.  Tests may patch
 # ``SessionLocal`` to supply a fake sessionmaker.
 SessionLocal = None
 _engine = None
