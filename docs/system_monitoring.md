@@ -18,6 +18,9 @@ Below the system metrics the page lists each configured feed with a color-coded 
 
 The dashboard also shows when the most recent system summary was generated.
 
+The table headers are sortable. Click a column name to reorder feeds by feed
+name, last image time, last caption time, or status.
+
 ### Metrics
 
 - **CPU Usage** – percentage of CPU time used by the process

@@ -24,38 +24,38 @@
 </ul>
 
 <h2>Feed Status</h2>
-<table class="feed-status">
+<table id="feed-status" class="feed-status">
     <thead>
         <tr>
-            <th>Feed</th>
-            <th>Last Image</th>
-            <th>Last Caption</th>
-            <th>Status</th>
+            <th class="sortable" data-type="string">Feed</th>
+            <th class="sortable" data-type="date">Last Image</th>
+            <th class="sortable" data-type="date">Last Caption</th>
+            <th class="sortable" data-type="string">Status</th>
         </tr>
     </thead>
     <tbody>
     {% for feed in feeds %}
         <tr class="{{ feed.status }}">
-            <td><a href="{{ url_for('template_details', template_name=feed.name) }}">{{ feed.name }}</a></td>
-            <td>
-                {% if feed.last_screenshot_time %}
+            <td data-value="{{ feed.name }}"><a href="{{ url_for('template_details', template_name=feed.name) }}">{{ feed.name }}</a></td>
+            <td data-value="{{ feed.last_screenshot_time or '' }}">
+                {% if feed.last_screenshot_display %}
                 <span class="humanized-time" data-time="{{ feed.last_screenshot_time }}" title="{{ feed.last_screenshot_time }}">
-                    {{ feed.last_screenshot_time }}
+                    {{ feed.last_screenshot_display }}
                 </span>
                 {% else %}
                 N/A
                 {% endif %}
             </td>
-            <td>
-                {% if feed.last_caption_time %}
+            <td data-value="{{ feed.last_caption_time or '' }}">
+                {% if feed.last_caption_display %}
                 <span class="humanized-time" data-time="{{ feed.last_caption_time }}" title="{{ feed.last_caption_time }}">
-                    {{ feed.last_caption_time }}
+                    {{ feed.last_caption_display }}
                 </span>
                 {% else %}
                 N/A
                 {% endif %}
             </td>
-            <td><span class="status-dot {{ feed.status }}" title="{{ feed.status }}"></span></td>
+            <td data-value="{{ feed.status }}"><span class="status-dot {{ feed.status }}" title="{{ feed.status }}"></span></td>
         </tr>
     {% endfor %}
     </tbody>

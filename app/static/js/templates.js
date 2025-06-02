@@ -436,8 +436,8 @@ export async function loadTemplates() {
   }
 }
 
-export function setupSorting() {
-  const headers = document.querySelectorAll('#camera-table th.sortable');
+export function setupTableSorting(tableId) {
+  const headers = document.querySelectorAll(`#${tableId} th.sortable`);
   headers.forEach((th, index) => {
     th.addEventListener('click', () => {
       const type = th.dataset.type || 'string';
@@ -464,4 +464,9 @@ export function setupSorting() {
       rows.forEach((row) => tbody.appendChild(row));
     });
   });
+}
+
+export function setupSorting() {
+  setupTableSorting('camera-table');
+  setupTableSorting('feed-status');
 }
