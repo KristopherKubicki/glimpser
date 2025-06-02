@@ -266,6 +266,29 @@
                 playPauseIndicator.style.display === 'none' &&
                 offlineIndicator.style.display === 'none' &&
                 streamErrorIndicator.style.display === 'none'
+
+            ) {
+                videoOverlay.style.display = 'none';
+            }
+        }
+
+        function showStreamErrorIndicator(message) {
+            videoOverlay.style.display = 'block';
+            streamErrorIndicator.style.display = 'block';
+            streamErrorMessage.textContent = message;
+            loadingIndicator.style.display = 'none';
+            playPauseIndicator.style.display = 'none';
+        }
+
+        function hideStreamErrorIndicator() {
+            streamErrorIndicator.style.display = 'none';
+            streamErrorMessage.textContent = '';
+            if (
+                loadingIndicator.style.display === 'none' &&
+                playPauseIndicator.style.display === 'none' &&
+                offlineIndicator.style.display === 'none' &&
+                errorIndicator.style.display === 'none'
+
             ) {
                 videoOverlay.style.display = 'none';
             }
