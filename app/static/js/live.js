@@ -319,7 +319,12 @@ function updateFeed() {
 function playM3U8() {
     video.style.display = 'block';
     // HLS streams are live and not seekable
-    document.getElementById('seek-bar').style.display = 'none';
+    const seekBar = document.getElementById('seek-bar');
+    if (seekBar) {
+        seekBar.style.visibility = 'hidden';
+        seekBar.style.pointerEvents = 'none';
+        seekBar.disabled = true;
+    }
 
     image.style.display = 'none';
     stopLiveSwitch();
@@ -489,7 +494,12 @@ video.dataset.currentCamera = nextCamera;
 function playLive() {
     video.style.display = 'block';
     // Live video cannot be scrubbed
-    document.getElementById('seek-bar').style.display = 'none';
+    const seekBar = document.getElementById('seek-bar');
+    if (seekBar) {
+        seekBar.style.visibility = 'hidden';
+        seekBar.style.pointerEvents = 'none';
+        seekBar.disabled = true;
+    }
     stopPNG();
     stopLiveSwitch();
 
@@ -592,7 +602,12 @@ function playMJPG() {
     video.style.display = 'none';
     image.style.display = 'block';
     // MJPEG streams are continuous images, disable scrubbing
-    document.getElementById('seek-bar').style.display = 'none';
+    const seekBar = document.getElementById('seek-bar');
+    if (seekBar) {
+        seekBar.style.visibility = 'hidden';
+        seekBar.style.pointerEvents = 'none';
+        seekBar.disabled = true;
+    }
     stopLiveSwitch();
     stopPNG();
     if (currentCamera.startsWith('group-')) {
@@ -614,7 +629,12 @@ function playMotion() {
     video.src = '';
     video.style.display = 'none';
     image.style.display = 'block';
-document.getElementById("seek-bar").style.display = "none";
+    const seekBar = document.getElementById('seek-bar');
+    if (seekBar) {
+        seekBar.style.visibility = 'hidden';
+        seekBar.style.pointerEvents = 'none';
+        seekBar.disabled = true;
+    }
     stopLiveSwitch();
     stopPNG();
     if (currentCamera.startsWith('group-')) {
@@ -687,7 +707,10 @@ if (liveSwitchInterval) {
             }
         }
         const show = isGroupView && cameraCount > 1 && source !== 'mjpg';
-        speedContainer.style.display = show ? 'block' : 'none';
+        speedContainer.style.visibility = show ? 'visible' : 'hidden';
+        speedContainer.style.pointerEvents = show ? 'auto' : 'none';
+        const slider = document.getElementById('speed-slider');
+        if (slider) slider.disabled = !show;
     }
 
     function updateSeekBar() {
@@ -696,7 +719,9 @@ if (liveSwitchInterval) {
         const source = document.getElementById('video-source').value;
         const isSingleCamera = !(currentCamera === 'All' || currentCamera.startsWith('group-'));
         const show = isSingleCamera && (source === 'mp4' || source === 'loop');
-        seekBar.style.display = show ? 'block' : 'none';
+        seekBar.style.visibility = show ? 'visible' : 'hidden';
+        seekBar.style.pointerEvents = show ? 'auto' : 'none';
+        seekBar.disabled = !show;
     }
 
 function checkCameraConnection(cameraName) {

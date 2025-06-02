@@ -483,7 +483,12 @@ function changeCamera() {
 function playM3U8() {
     video.style.display = 'block';
         // HLS streams cannot be scrubbed
-        document.getElementById("seek-bar").style.display = "none";
+        const seekBar = document.getElementById("seek-bar");
+        if (seekBar) {
+            seekBar.style.visibility = "hidden";
+            seekBar.style.pointerEvents = "none";
+            seekBar.disabled = true;
+        }
 
     image.style.display = 'none';
     stopLiveSwitch();
@@ -603,7 +608,12 @@ function showLastScreenshot() {
 
 function playMP4() {
     video.style.display = 'block';
-        document.getElementById("seek-bar").style.display = "block";
+        const seekBar = document.getElementById("seek-bar");
+        if (seekBar) {
+            seekBar.style.visibility = "visible";
+            seekBar.style.pointerEvents = "auto";
+            seekBar.disabled = false;
+        }
     stopLiveSwitch();
     stopPNG();
     if (currentCamera.startsWith('group-')) {
@@ -649,7 +659,12 @@ function handleVideoEnded() {
 function playLive() {
     video.style.display = 'block';
         // Disable scrubbing on live streams
-        document.getElementById("seek-bar").style.display = "none";
+        const seekBar = document.getElementById("seek-bar");
+        if (seekBar) {
+            seekBar.style.visibility = "hidden";
+            seekBar.style.pointerEvents = "none";
+            seekBar.disabled = true;
+        }
     stopPNG();
     stopLiveSwitch();
 
@@ -695,7 +710,12 @@ function playPNG() {
     stopLiveSwitch();
         const slider = document.getElementById('speed-slider');
         const speed = Math.pow(2, slider.value);
-        document.getElementById("seek-bar").style.display = "none";
+        const seekBar = document.getElementById("seek-bar");
+        if (seekBar) {
+            seekBar.style.visibility = "hidden";
+            seekBar.style.pointerEvents = "none";
+            seekBar.disabled = true;
+        }
     stopPNG();
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
@@ -732,7 +752,12 @@ function playMJPG() {
     video.style.display = 'none';
     image.style.display = 'block';
         // MJPEG streams show images only, hide the scrub bar
-        document.getElementById("seek-bar").style.display = "none";
+        const seekBar = document.getElementById("seek-bar");
+        if (seekBar) {
+            seekBar.style.visibility = "hidden";
+            seekBar.style.pointerEvents = "none";
+            seekBar.disabled = true;
+        }
     stopLiveSwitch();
     stopPNG();
     if (currentCamera.startsWith('group-')) {
@@ -751,7 +776,12 @@ function playMJPG() {
 function playMotion() {
     video.style.display = 'none';
     image.style.display = 'block';
-        document.getElementById("seek-bar").style.display = "none";
+        const seekBar = document.getElementById("seek-bar");
+        if (seekBar) {
+            seekBar.style.visibility = "hidden";
+            seekBar.style.pointerEvents = "none";
+            seekBar.disabled = true;
+        }
     stopLiveSwitch();
     stopPNG();
     if (currentCamera.startsWith('group-')) {
@@ -816,7 +846,10 @@ function playMotion() {
         const source = document.getElementById('video-source').value;
         const isGroupView = currentCamera === 'All' || currentCamera.startsWith('group-');
         const show = isGroupView && source !== 'mjpg';
-        speedContainer.style.display = show ? 'block' : 'none';
+        speedContainer.style.visibility = show ? 'visible' : 'hidden';
+        speedContainer.style.pointerEvents = show ? 'auto' : 'none';
+        const sliderEl = document.getElementById('speed-slider');
+        if (sliderEl) sliderEl.disabled = !show;
     }
 
     function checkCameraConnection(cameraName) {
