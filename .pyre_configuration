@@ -1,5 +1,4 @@
 {
   "source_directories": ["app", "."],
-  "search_path": ["app"],
-  "taint_models_path": "taint"
+  "search_path": ["app"]
 }
