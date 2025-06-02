@@ -5,14 +5,19 @@ function updatePerformanceMetrics() {
     fetch('/health')
         .then(response => response.json())
         .then(data => {
-            document.getElementById('cpu-value').textContent = `${data.cpu_usage}%`;
-            document.getElementById('cpu-bar').style.width = `${data.cpu_usage}%`;
-            
-            document.getElementById('memory-value').textContent = `${data.memory_usage}%`;
-            document.getElementById('memory-bar').style.width = `${data.memory_usage}%`;
-            
-            document.getElementById('uptime-value').textContent = data.uptime;
-            
+            const cpuVal = document.getElementById('cpu-value');
+            if (cpuVal) cpuVal.textContent = `${data.cpu_usage}%`;
+            const cpuBar = document.getElementById('cpu-bar');
+            if (cpuBar) cpuBar.style.width = `${data.cpu_usage}%`;
+
+            const memoryVal = document.getElementById('memory-value');
+            if (memoryVal) memoryVal.textContent = `${data.memory_usage}%`;
+            const memoryBar = document.getElementById('memory-bar');
+            if (memoryBar) memoryBar.style.width = `${data.memory_usage}%`;
+
+            const uptimeVal = document.getElementById('uptime-value');
+            if (uptimeVal) uptimeVal.textContent = data.uptime;
+
             updateCPUSparkline(data.cpu_usage);
         });
 }
@@ -24,6 +29,7 @@ function updateCPUSparkline(newValue) {
     }
     
     const canvas = document.getElementById('cpu-sparkline');
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const width = canvas.width;
     const height = canvas.height;
