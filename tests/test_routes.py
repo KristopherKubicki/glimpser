@@ -185,7 +185,7 @@ class TestRoutes(unittest.TestCase):
             "/login", data={"username": "testuser", "password": "wrongpassword"}
         )
         self.assertEqual(response.status_code, 200)
-        mock_render_template.assert_called_with("login.html")
+        mock_render_template.assert_called_with("login.html", page_title="Login")
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.login_attempts", {})
@@ -193,7 +193,7 @@ class TestRoutes(unittest.TestCase):
     def test_login_missing_fields(self, mock_render_template, mock_session_local):
         response = self.client.post("/login", data={"username": "", "password": ""})
         self.assertEqual(response.status_code, 400)
-        mock_render_template.assert_called_with("login.html")
+        mock_render_template.assert_called_with("login.html", page_title="Login")
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
@@ -263,7 +263,7 @@ class TestRoutes(unittest.TestCase):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         mock_render_template.assert_called_with(
-            "index.html", template_details={"camera": {}}
+            "index.html", template_details={"camera": {}}, page_title="Dashboard"
         )
 
     @patch("app.routes.SessionLocal")
@@ -297,6 +297,7 @@ class TestRoutes(unittest.TestCase):
             "captions.html",
             template_details=mock_get_templates.return_value,
             lcaptions=[],
+            page_title="Captions",
         )
 
     @patch("app.routes.SessionLocal")
@@ -406,7 +407,7 @@ class TestRoutes(unittest.TestCase):
         mock_session_local.return_value = DummySession()
         response = self.client.get("/stream")
         self.assertEqual(response.status_code, 200)
-        mock_render_template.assert_called_with("stream.html")
+        mock_render_template.assert_called_with("stream.html", page_title="Stream")
 
     def test_api_discover(self):
         response = self.client.get("/api/discover")
@@ -455,7 +456,9 @@ class TestRoutes(unittest.TestCase):
         response = self.client.get("/discover")
         self.assertEqual(response.status_code, 200)
         mock_discover.assert_not_called()
-        mock_render_template.assert_called_with("discover.html", cameras=[])
+        mock_render_template.assert_called_with(
+            "discover.html", cameras=[], page_title="Discover Cameras"
+        )
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.camera_discovery.discover_cameras")
@@ -548,7 +551,9 @@ class TestRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mock_get_template.assert_called_with("cam1")
         mock_render_template.assert_called_with(
-            "live.html", template_details={"cam1": mock_get_template.return_value}
+            "live.html",
+            template_details={"cam1": mock_get_template.return_value},
+            page_title="Live View",
         )
 
     @patch("app.routes.render_template")
@@ -558,7 +563,9 @@ class TestRoutes(unittest.TestCase):
         mock_groups.return_value = ["group1", "group2"]
         response = self.client.get("/group/group1")
         self.assertEqual(response.status_code, 200)
-        mock_render_template.assert_called_with("group.html", group_name="group1")
+        mock_render_template.assert_called_with(
+            "group.html", group_name="group1", page_title="Group – group1"
+        )
 
     @patch("app.routes.get_active_groups")
     @patch("app.routes.session", {"user_id": 1})
