@@ -192,10 +192,25 @@ export function startCasting() {
     );
     const request = new chrome.cast.media.LoadRequest(mediaInfo);
     castSession.loadMedia(request).then(
-      () => console.log('Cast started'),
+      () =>
+        // Structured log for cast start
+        console.info(
+          JSON.stringify({
+            ts: Date.now(),
+            ctx: 'discover',
+            msg: 'Cast started',
+          })
+        ),
       (errorCode) => console.error('Error code: ' + errorCode)
     );
   } else {
-    console.log('No active cast session');
+    // Structured log when no cast session is active
+    console.info(
+      JSON.stringify({
+        ts: Date.now(),
+        ctx: 'discover',
+        msg: 'No active cast session',
+      })
+    );
   }
 }
