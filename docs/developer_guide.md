@@ -65,4 +65,5 @@ When adding new features, include corresponding tests under the `tests/` directo
 - Template update validation ensures numeric fields remain in range and
   required values are present.
 - Forms validate input client-side with JavaScript and fall back to server-side checks.
+- URLs in the template form must begin with http:// or https:// and fetch helpers provide consistent error handling.
 - `save_template` now reschedules APScheduler jobs when a template is edited.
