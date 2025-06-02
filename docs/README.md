@@ -25,6 +25,8 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Live view groups stream each camera sequentially with the speed slider and hide the slider for single cameras.
 - The "All" camera PNG stream now refreshes automatically.
 - The "All" camera MJPEG feed is available via `/stream.mjpg?group=all`.
+- Group views display the last screenshot for the selected group using the
+  `/last_screenshot/group-<name>` endpoint.
 - HTML templates are tested for image `alt` text and required form fields.
 - Template storage usage is now verified by unit tests.
 - Prompt optimizer logic is now tested for screenshot handling and prompt restoration.
