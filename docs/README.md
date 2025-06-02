@@ -24,6 +24,7 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Group and All cameras now bypass offline checks when loading feeds.
 - Live view groups stream each camera sequentially with the speed slider and hide the slider for single cameras.
 - The "All" camera PNG stream now refreshes automatically.
+- PNG streams preload images so live view always shows a frame for any camera or group.
 - The "All" camera MJPEG feed is available via `/stream.mjpg?group=all`.
 - Group views display the last screenshot for the selected group using the
   `/last_screenshot/group-<name>` endpoint.

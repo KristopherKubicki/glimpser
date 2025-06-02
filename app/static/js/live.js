@@ -404,13 +404,22 @@ function refreshPNG() {
 }
 
 function showLastScreenshot() {
+    const ts = '?time=' + new Date().getTime();
+    let url;
     if (currentCamera === 'All') {
         // Show the most recent screenshot across all cameras
-        image.src = '/stream.png';
+        url = '/stream.png' + ts;
     } else {
         // Display the latest screenshot for the selected camera or group
-        image.src = '/last_screenshot/' + currentCamera;
+        url = '/last_screenshot/' + currentCamera + ts;
     }
+
+    // Preload the image so the viewer always sees a frame when switching
+    const pre = new Image();
+    pre.onload = () => {
+        image.src = pre.src;
+    };
+    pre.src = url;
     image.style.display = 'block';
 }
 
