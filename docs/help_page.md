@@ -24,7 +24,8 @@ Source** to **Live Video**. This connects you directly to the realtime feed so
 you can monitor activity as it happens.
 
 When watching a live stream, you can use keyboard shortcuts:
-`Space` or `k` toggles play/pause, `m` toggles mute, and `f` toggles fullscreen.
+`Space` or `k` toggles play/pause, `m` toggles mute, `f` toggles fullscreen,
+Left/Right arrows change the selected camera, and `[`/`]` adjust playback speed.
 
 Navigate back to the main interface using the **Back to Glimpser** link at the
 bottom of the help page.
