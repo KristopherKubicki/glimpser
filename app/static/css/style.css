@@ -971,23 +971,24 @@ input[type=submit]:hover {
     padding: 15px;
 }
 
+/* Use the same tile width as the front page */
 .captions-page .templateDiv {
-    width: 160px;
+    width: var(--grid-item-width, 360px);
 }
 
 /* Ensure captions thumbnails fill the container and appear dimmed */
-.captions-page .templateDiv img {
+.captions-page .templateDiv video {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     filter: grayscale(40%);
     transition: filter 0.3s;
 }
 
-.captions-page .templateDiv:hover img {
+.captions-page .templateDiv:hover video {
     filter: none;
 }
 

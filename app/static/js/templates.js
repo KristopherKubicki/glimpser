@@ -108,6 +108,7 @@ export function initTemplates() {
     loadTemplates();
     setupSearch();
     setupSorting();
+    updateHumanizedTimes();
     setInterval(updateHumanizedTimes, 60000);
   });
 
