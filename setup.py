@@ -32,6 +32,7 @@ setup(
     entry_points={
         "console_scripts": [
             "glimpser=main:main",
+            "glimpser-clear=main:clear_console_cli",
         ],
     },
 )

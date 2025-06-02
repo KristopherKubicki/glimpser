@@ -213,7 +213,6 @@ def create_application(args=None):
     return create_app(enable_watchdog=enable_watchdog, schedule=schedule)
 
 
-
 def output_shutdown_stats():
     # Get and display system metrics
     metrics = get_system_metrics()
@@ -272,6 +271,10 @@ def clear_console():
         _ = os.system("clear")
 
 
+def clear_console_cli():
+    """Entry point for the ``glimpser-clear`` command."""
+    clear_console()
+
 
 def is_port_in_use(port):
     # Skip the check if running in Docker
@@ -280,7 +283,6 @@ def is_port_in_use(port):
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(("localhost", port)) == 0
-
 
 
 def main(argv=None):
