@@ -8,6 +8,7 @@ from ipaddress import ip_network
 import os
 import glob
 import time
+import re
 from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import subprocess
@@ -16,28 +17,11 @@ import shutil
 import requests
 
 from .screenshots import is_port_open
+from .oui_map import OUI_MAP as BUILTIN_OUI_MAP
 
-# Minimal OUI mapping for MAC manufacturer lookup.  This avoids pulling in
-# extra dependencies while still providing useful vendor hints.  Only a few
-# common prefixes are included.
-OUI_MAP = {
-    "000c29": "VMware",
-    "525400": "QEMU",
-    "080027": "VirtualBox",
-    # Common router and camera vendors
-    "d850e6": "ASUSTek",
-    "50e549": "ASUSTek",
-    "0017c8": "Netgear",
-    "a0cec8": "Netgear",
-    "00040e": "D-Link",
-    "b0b2dc": "TP-Link",
-    "28c68e": "TP-Link",
-    "fcdbb3": "Ubiquiti",
-    "7cf2c8": "Ubiquiti",
-    "001e58": "Hikvision",
-    "18a6f7": "Amcrest",
-    "00265e": "Axis",
-}
+# Minimal OUI mapping for MAC manufacturer lookup.  The bulk of prefixes lives
+# in ``app.utils.oui_map`` which avoids pulling in external dependencies.
+OUI_MAP = BUILTIN_OUI_MAP
 
 # Possible locations of large OUI databases to supplement :data:`OUI_MAP`.
 _OUI_FILES = [
@@ -243,6 +227,30 @@ def _trace_upstream(ip: str, timeout: int = 3) -> str | None:
     return None
 
 
+def _ping_latency(ip: str, timeout: int = 1) -> float | None:
+    """Return ping round-trip latency to ``ip`` in milliseconds."""
+
+    cmd = None
+    if shutil.which("ping"):
+        if os.name == "nt":
+            cmd = ["ping", "-n", "1", "-w", str(timeout * 1000), ip]
+        else:
+            cmd = ["ping", "-c", "1", "-W", str(timeout), ip]
+    if not cmd:
+        return None
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 1)
+        out = proc.stdout
+        match = re.search(r"time[=<]([0-9.]+)", out)
+        if not match:
+            match = re.search(r"Average = ([0-9]+)ms", out)
+        if match:
+            return float(match.group(1))
+    except Exception as e:  # pragma: no cover - system dependent
+        logging.debug("ping error for %s: %s", ip, e)
+    return None
+
+
 def _detect_open_ports(ip: str, ports: list[int]) -> list[int]:
     """Return ports from ``ports`` that are reachable on ``ip``."""
 
@@ -375,8 +383,14 @@ def _probe_mdns(timeout=2):
     return cameras
 
 
-def _probe_ssdp(timeout=2):
-    """Probe for devices announcing themselves via SSDP/UPnP."""
+def _probe_ssdp(timeout: int = 2, max_duration: int = 5) -> list[dict]:
+    """Probe for devices announcing themselves via SSDP/UPnP.
+
+    The loop ends after ``max_duration`` seconds regardless of how many
+    responses arrive. This prevents very large networks from delaying the
+    entire discovery run indefinitely.
+    """
+
     cameras = []
     request = (
         "M-SEARCH * HTTP/1.1\r\n"
@@ -386,14 +400,20 @@ def _probe_ssdp(timeout=2):
         "ST:ssdp:all\r\n\r\n"
     )
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    start = time.time()
     sock.settimeout(timeout)
     try:
         sock.sendto(request.encode(), ("239.255.255.250", 1900))
         while True:
+            # Break once the overall limit has expired even if the socket keeps
+            # receiving new announcements. Without this check discovery could
+            # stall on busy networks.
+            if time.time() - start >= max_duration:
+                break
             try:
                 resp, addr = sock.recvfrom(1024)
             except socket.timeout:
-                break
+                continue
             ip = addr[0]
             port = 80
             headers = resp.decode(errors="ignore").split("\r\n")
@@ -807,6 +827,9 @@ def discover_cameras(progress_callback=None, subnets=None):
         if hop:
             cam.setdefault("info", {})["upstream"] = hop
         if cam.get("protocol") != "local":
+            latency = _ping_latency(cam["ip"])
+            if latency is not None:
+                cam.setdefault("info", {})["ping_ms"] = latency
             ports = _detect_open_ports(cam["ip"], COMMON_PORTS)
             if ports:
                 info = cam.setdefault("info", {})

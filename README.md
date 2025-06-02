@@ -110,6 +110,9 @@ docker-compose up --build
 
 The web interface will be available at [http://localhost:8082](http://localhost:8082).
 
+### Common Setup Issues
+If you cannot log in or see video feeds, double-check that your `.env` file matches the configuration values in the database. Missing `SECRET_KEY` or API credentials often cause startup failures. Refer to [Troubleshooting](docs/troubleshooting.md) for more solutions.
+
 ## Usage
 
 ### Configuration
@@ -118,11 +121,17 @@ Glimpser uses a database-driven configuration to manage data sources and process
 ### Capturing Screenshots
 The preferred method for capturing screenshots is through the Glimpser web interface. Simply navigate to the capture section, select your desired source, and click the capture button. This ensures a seamless and user-friendly experience.
 
+### Adding a Camera Source
+Visit the `/discover` page to scan your network for ONVIF, RTSP, or local devices and click **Add** next to any result. You can also open **Add Source** in the web interface to manually supply a camera URL and group. See [Camera Discovery](docs/camera_discovery.md) for more details.
+
 ### Running Tests
 To ensure everything works as expected, you can run the included unit tests:
 ```sh
 python -m coverage run -m pytest
 ```
+
+### Troubleshooting Quick Tips
+If the summarizer stops working, ensure the scheduler is running and check `/jobs` for a `summary` entry. Review `logs/glimpser.log` for errors. More solutions are listed in [Troubleshooting](docs/troubleshooting.md).
 
 ### Motion Detection
 Glimpser automatically detects motion in the captured images and videos. When motion is detected, the system can trigger alerts, capture additional data, and generate relevant summaries and captions.

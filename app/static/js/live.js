@@ -520,6 +520,10 @@ video.play();
 }
 
 function playPNG() {
+    // When switching from video playback to PNG images, ensure any
+    // ongoing video stream is stopped to avoid "media element" errors.
+    video.pause();
+    video.src = '';
     video.style.display = 'none';
     image.style.display = 'block';
     stopLiveSwitch();
@@ -568,6 +572,9 @@ pngInterval = setInterval(refreshPNG, 10000 / speed);
 }
 
 function playMJPG() {
+    // Stop any existing video stream before showing MJPEG frames
+    video.pause();
+    video.src = '';
     video.style.display = 'none';
     image.style.display = 'block';
     // MJPEG streams are continuous images, disable scrubbing
@@ -588,6 +595,9 @@ image.src = '/stream.mjpg?camera=' + currentCamera + '&time=' + new Date().getTi
 }
 
 function playMotion() {
+    // Stop any existing video stream before showing motion JPEG frames
+    video.pause();
+    video.src = '';
     video.style.display = 'none';
     image.style.display = 'block';
 document.getElementById("seek-bar").style.display = "none";

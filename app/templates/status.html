@@ -36,8 +36,8 @@
     <tbody>
     {% for feed in feeds %}
         <tr class="{{ feed.status }}">
-            <td data-value="{{ feed.name }}"><a href="{{ url_for('template_details', template_name=feed.name) }}">{{ feed.name }}</a></td>
-            <td data-value="{{ feed.last_screenshot_time or '' }}">
+            <td data-label="Feed" data-value="{{ feed.name }}"><a href="{{ url_for('template_details', template_name=feed.name) }}">{{ feed.name }}</a></td>
+            <td data-label="Last Image" data-value="{{ feed.last_screenshot_time or '' }}">
                 {% if feed.last_screenshot_display %}
                 <span class="humanized-time" data-time="{{ feed.last_screenshot_time }}" title="{{ feed.last_screenshot_time }}">
                     {{ feed.last_screenshot_display }}
@@ -46,7 +46,7 @@
                 N/A
                 {% endif %}
             </td>
-            <td data-value="{{ feed.last_caption_time or '' }}">
+            <td data-label="Last Caption" data-value="{{ feed.last_caption_time or '' }}">
                 {% if feed.last_caption_display %}
                 <span class="humanized-time" data-time="{{ feed.last_caption_time }}" title="{{ feed.last_caption_time }}">
                     {{ feed.last_caption_display }}
@@ -55,7 +55,7 @@
                 N/A
                 {% endif %}
             </td>
-            <td data-value="{{ feed.status }}"><span class="status-dot {{ feed.status }}" title="{{ feed.status }}"></span></td>
+            <td data-label="Status" data-value="{{ feed.status }}"><span class="status-dot {{ feed.status }}" title="{{ feed.status }}"></span></td>
         </tr>
     {% endfor %}
     </tbody>

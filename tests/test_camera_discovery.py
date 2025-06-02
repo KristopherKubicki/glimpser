@@ -347,6 +347,38 @@ class TestCameraDiscovery(unittest.TestCase):
             {"server": "Cam/1.0", "realm": "demo", "title": "Demo Cam"},
         )
 
+    @patch("app.utils.camera_discovery.subprocess.run")
+    def test_ping_latency(self, mock_run):
+        class FakeProc:
+            stdout = "64 bytes from 1.2.3.4: icmp_seq=1 ttl=64 time=2.3 ms"
+
+        mock_run.return_value = FakeProc()
+        latency = camera_discovery._ping_latency("1.2.3.4")
+        self.assertAlmostEqual(latency, 2.3, places=1)
+
+    @patch("app.utils.camera_discovery._ping_latency", return_value=5.0)
+    @patch("app.utils.camera_discovery._detect_open_ports", return_value=[])
+    @patch("app.utils.camera_discovery._probe_onvif", return_value=[])
+    @patch("app.utils.camera_discovery._probe_mdns", return_value=[])
+    @patch("app.utils.camera_discovery._probe_ssdp", return_value=[])
+    @patch("app.utils.camera_discovery._scan_rtsp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_rtmp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_sip_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_webrtc_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_snmp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_http_endpoints", return_value=[])
+    @patch("app.utils.camera_discovery._scan_hls_streams", return_value=[])
+    @patch("app.utils.camera_discovery._local_subnets", return_value=[])
+    def test_latency_in_discover(
+        self,
+        mock_subnets,
+        *_mocks,
+    ):
+        cams = camera_discovery.discover_cameras()
+        info = cams[0]["info"]
+        self.assertIn("ping_ms", info)
+        self.assertEqual(info["ping_ms"], 5.0)
+
     @patch("app.utils.camera_discovery._fetch_http_banner")
     @patch("app.utils.camera_discovery._detect_open_ports")
     @patch("app.utils.camera_discovery._probe_onvif", return_value=[])
@@ -389,6 +421,50 @@ class TestCameraDiscovery(unittest.TestCase):
         nets = [ip_network("10.1.1.0/30")]
         camera_discovery.discover_cameras(subnets=nets)
         mock_local_subnets.assert_not_called()
+
+    @patch("app.utils.camera_discovery.socket.socket")
+    @patch("app.utils.camera_discovery.time.time")
+    def test_ssdp_scan_duration(self, mock_time, mock_socket):
+        """_probe_ssdp should exit after ``max_duration`` seconds."""
+
+        # Simulate time advancing by 0.05s on each call so the loop
+        # breaks after a few iterations instead of spinning endlessly.
+        t = [0.0]
+
+        def fake_time():
+            t[0] += 0.05
+            return t[0]
+
+        mock_time.side_effect = fake_time
+
+        class FakeSock:
+            def __init__(self):
+                self.responses = [
+                    (
+                        b"HTTP/1.1 200 OK\r\nLOCATION: http://1.2.3.4\r\n\r\n",
+                        ("1.2.3.4", 1900),
+                    )
+                ] * 10
+
+            def settimeout(self, _):
+                pass
+
+            def sendto(self, data, addr):
+                pass
+
+            def recvfrom(self, n):
+                if self.responses:
+                    return self.responses.pop(0)
+                raise socket.timeout
+
+            def close(self):
+                pass
+
+        mock_socket.return_value = FakeSock()
+        cams = camera_discovery._probe_ssdp(timeout=0.1, max_duration=0.2)
+        # With 0.05s per iteration and a 0.2s limit we should process about
+        # three responses.
+        self.assertLessEqual(len(cams), 4)
 
 
 if __name__ == "__main__":

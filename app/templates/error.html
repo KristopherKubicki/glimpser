@@ -3,7 +3,7 @@
 <div class="error-container">
     <h1 class="error-title">Oops! Something went wrong</h1>
     <div class="error-image">
-        <img src="{{ url_for('static', filename='img/error_camera.png') }}" alt="Glitchy camera">
+        <img src="{{ url_for('static', filename='img/error_camera.png') }}" loading="lazy" alt="Glitchy camera">
     </div>
     <p class="error-message">Error {{ error.code }}: {{ error.name }}</p>
     <p class="error-description">{{ error.description }}</p>

@@ -39,6 +39,11 @@ export function initTemplates() {
             templateList.style.setProperty('--grid-item-width', `${computedMin}px`);
           }
         }
+        if (templateList) {
+          const width = parseFloat(slider.value);
+          const height = Math.round((width * 9) / 16);
+          templateList.style.setProperty('--grid-item-height', `${height}px`);
+        }
       };
 
       updateSliderLimits();
@@ -73,6 +78,8 @@ export function initTemplates() {
       slider.addEventListener('input', () => {
         const value = slider.value;
         templateList.style.setProperty('--grid-item-width', `${value}px`);
+        const height = Math.round((value * 9) / 16);
+        templateList.style.setProperty('--grid-item-height', `${height}px`);
 
         const cameraNameFontSize = Math.max(10, Math.min(14, value / 25));
         const timestampFontSize = Math.max(8, Math.min(12, value / 30));
@@ -383,12 +390,14 @@ export async function loadTemplates() {
     }, { threshold: 0.5 });
 
     let hasTemplates = false;
+    let templateCount = 0;
     Object.entries(templates).forEach(([name, template], index) => {
       if (
         templateBelongsToGroup(template, selectedGroup) &&
         templateMatchesSearch(template, searchQuery)
       ) {
         hasTemplates = true;
+        templateCount += 1;
         const lastScreenshotTime = template.last_screenshot_time;
         const humanizedTimestamp = timeAgo(lastScreenshotTime);
         const nextCaptureTime = timeAgo(template.next_screenshot_time);
@@ -471,6 +480,9 @@ export async function loadTemplates() {
       if (window.updateSliderLimits) window.updateSliderLimits();
     }
     updateHumanizedTimes();
+    window.dispatchEvent(
+      new CustomEvent('templatesLoaded', { detail: { count: templateCount } }),
+    );
   } catch (error) {
     console.error('Error loading templates:', error);
     const errorMsg = '<div class="error">Error loading templates. Please try again.</div>';

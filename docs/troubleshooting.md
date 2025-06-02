@@ -69,6 +69,10 @@ This guide addresses common issues that users might encounter while using Glimps
 - Check the `LLM_SUMMARY_PROMPT` setting
 - Ensure there's enough data collected to generate a meaningful summary
 - Verify that the CHATGPT_KEY is working correctly
+- Confirm the scheduler is running and you did not start the app with
+  `--no-scheduler`
+- Visit `/jobs` to ensure the `summary` job is listed and check
+  `logs/glimpser.log` for errors
 
 ## 5. Web Interface Issues
 
@@ -208,3 +212,13 @@ could overlap the last buttons.
 - Glimpser now adds extra padding to the `main` element so page content scrolls
   fully above the footer. Update to the latest version or add a similar rule in
   your custom CSS.
+
+## 13. Camera Discovery Issues
+
+### Problem: Discovery page times out or stops on "Scanning SSDP"
+
+**Solution:**
+- Networks with many SSDP devices can delay this step. Wait a little longer or restrict scanning using the CIDR field (e.g., `192.168.1.0/24`).
+- Since v0.9.1 SSDP scanning stops after five seconds so discovery continues even on busy networks.
+- Ensure UDP multicast traffic is allowed; blocked multicast causes timeouts.
+- Check `logs/glimpser.log` for `SSDP probe error` messages if the scan never finishes.

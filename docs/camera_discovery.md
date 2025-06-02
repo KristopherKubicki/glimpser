@@ -43,7 +43,7 @@ The discovery code combines multiple approaches:
 5. **WebRTC/STUN scan** – `_scan_webrtc_ports()` detects WebRTC servers by checking ports `3478` and `5349`.
 6. **mDNS/Zeroconf** – `_probe_mdns()` looks for services like `_onvif._tcp` and `_rtsp._tcp` advertised on the local network.
 7. **SNMP scan** – `_scan_snmp_ports()` checks port `161` for SNMP agents and reads the device name if possible.
-8. **SSDP/UPnP probe** – `_probe_ssdp()` sends an M-SEARCH request to detect cameras announcing via SSDP.
+8. **SSDP/UPnP probe** – `_probe_ssdp()` sends an M-SEARCH request to detect cameras announcing via SSDP. The scan now stops after five seconds so large networks do not slow the entire process.
 9. **HTTP endpoint scan** – `_scan_http_endpoints()` checks ports `80`, `8080`, and `443` for `/snapshot.jpg` or `/video.mjpg` streams.
 10. **HLS detection** – `_scan_hls_streams()` looks for playlist files like `/index.m3u8`.
 11. **Local devices** – `_local_video_devices()` lists available `/dev/video*` entries for webcams or other direct-attached cameras.
@@ -139,10 +139,11 @@ def _local_video_devices(base_path="/dev"):
 After scanning, `discover_cameras()` removes duplicates and returns the final list of cameras.
 
 Each entry is also augmented with the device's MAC address and, when known,
-the manufacturer derived from its OUI prefix.  Glimpser consults local OUI
-databases such as `nmap-mac-prefixes` or `manuf` when present and falls back to
-an online lookup service if necessary so most devices report a recognizable
-brand.
+the manufacturer derived from its OUI prefix. Glimpser ships with a
+large mapping of common prefixes in `app/utils/oui_map.py`. Local OUI
+databases such as `nmap-mac-prefixes` or `manuf` are consulted when present and
+the application falls back to an online lookup service if necessary so most
+devices report a recognizable brand.
 These details appear as separate
 columns in the discovery table so you can quickly identify where each camera
 originates. This information is now available in the incremental results
@@ -154,6 +155,9 @@ Each camera is now also checked for commonly used service ports. Any detected
 ports are listed in the ``open_ports`` field so you can quickly see which
 services are reachable (for example, 80 for HTTP or 554 for RTSP). This scan
 is lightweight and runs after the main discovery steps finish.
+If a camera responds to ICMP echo requests, Glimpser measures the round-trip
+latency and reports the value in the ``ping_ms`` field. This extra check runs in
+parallel with other metadata gathering so it does not slow down discovery.
 If an HTTP port responds, Glimpser also fetches the web page banner to capture
 the `Server` header, authentication realm, and page title when present. These
 values populate the **Info** column so you can quickly identify each device.

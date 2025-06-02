@@ -32,6 +32,13 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    npm install
    ```
 
+## Understanding the Architecture
+Before diving into new features, read
+[Architecture Overview](architecture_overview.md). It describes how Flask routes,
+background jobs and utility modules cooperate. The "Data Flow from Camera to UI"
+section maps the path a captured frame takes through the scheduler and database
+to the web interface.
+
 ## Running Tests
 
 The project uses `pytest` for testing and `flake8` for linting. After activating your environment, run:
@@ -65,4 +72,5 @@ When adding new features, include corresponding tests under the `tests/` directo
 - Template update validation ensures numeric fields remain in range and
   required values are present.
 - Forms validate input client-side with JavaScript and fall back to server-side checks.
+- URLs in the template form must begin with http:// or https:// and fetch helpers provide consistent error handling.
 - `save_template` now reschedules APScheduler jobs when a template is edited.
