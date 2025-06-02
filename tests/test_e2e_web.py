@@ -144,3 +144,10 @@ def test_login_and_redirect(live_server_with_user, browser):
     browser.find_element(By.CSS_SELECTOR, "form input[type=submit]").click()
     assert browser.current_url.endswith("/")
     assert "Add Template" in browser.page_source
+    browser.get(f"{live_server_with_user}/live")
+    video = browser.find_element(By.ID, "live-video")
+    selector = browser.find_element(By.ID, "camera-selector")
+    slider = browser.find_element(By.ID, "speed-slider")
+    assert video is not None
+    assert selector is not None
+    assert slider is not None

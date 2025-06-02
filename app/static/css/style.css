@@ -360,6 +360,28 @@ nav a {
     background-color: grey;
 }
 
+.nav-right a,
+.nav-right .status-indicator {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--secondary-bg-color);
+    margin-left: 5px;
+    text-decoration: none;
+}
+
+.nav-right .cool-clock {
+    margin-left: 5px;
+}
+
+.nav-right a:hover {
+    background-color: var(--accent-color);
+    color: #fff;
+}
+
 nav a:hover, nav a.active {
     background-color: var(--accent-color); /* Highlight for hover and active link */
     color: #fff;
@@ -866,5 +888,24 @@ input[type=submit]:hover {
 .captions-table th,
 .camera-table th {
     background-color: #f4f4f4;
+}
+
+details > summary {
+    cursor: pointer;
+    font-weight: 600;
+    margin: 1rem 0;
+}
+
+.captions-table tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+.captions-table tr:hover {
+    background-color: #f1f1f1;
+}
+
+.captions-table td:first-child {
+    white-space: nowrap;
+    width: 12rem;
 }
 

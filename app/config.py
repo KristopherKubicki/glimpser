@@ -4,6 +4,7 @@ import os
 import json
 import logging
 import argparse
+import sqlite3
 from importlib.metadata import PackageNotFoundError, version
 
 from dotenv import load_dotenv, find_dotenv
@@ -12,6 +13,7 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 
 # Parse command line arguments when executed directly
@@ -86,13 +88,17 @@ def get_setting(name, default=None):
             {"name": name},
         ).fetchone()
         return result[0] if result else default
-    except Exception as e:
+    except (OperationalError, sqlite3.OperationalError) as e:
         if "no such table" in str(e):
-            # this is ok if its the first time only...
+            # This is ok on first run when the DB is empty.
             logging.warning("table does not exist")
-            pass
         else:
             logging.warning("initialization error %s", e)
+    except SQLAlchemyError as e:
+        logging.warning("database error %s", e)
+    except Exception as e:  # pragma: no cover - unexpected errors
+        logging.exception("unexpected error while fetching setting")
+        raise
     finally:
         session.close()
 
@@ -107,8 +113,12 @@ def backup_config() -> bool:
         config_dict = {name: value for name, value in settings}
         with open(BACKUP_PATH, "w") as f:
             json.dump(config_dict, f)
-    except Exception:
+    except (OperationalError, SQLAlchemyError, sqlite3.OperationalError, OSError) as e:
+        logging.warning("backup failed: %s", e)
         success = False
+    except Exception as e:  # pragma: no cover - unexpected errors
+        logging.exception("unexpected error during backup")
+        raise
     finally:
         session.close()
     return success
@@ -153,11 +163,16 @@ def sync_version(pkg_version: str) -> None:
                 {"name": "VERSION", "value": pkg_version},
             )
             session.commit()
-    except Exception as e:
+    except (OperationalError, sqlite3.OperationalError) as e:
         if "no such table" in str(e):
             logging.warning("table does not exist")
         else:
             logging.warning("initialization error %s", e)
+    except SQLAlchemyError as e:
+        logging.warning("database error %s", e)
+    except Exception as e:  # pragma: no cover - unexpected errors
+        logging.exception("unexpected error during version sync")
+        raise
     finally:
         session.close()
 
@@ -179,7 +194,7 @@ TZ = get_setting("TZ", "UTC")
 try:
     _PKG_VERSION = version("glimpser")
 except PackageNotFoundError:
-    _PKG_VERSION = "0.2.6"
+    _PKG_VERSION = "0.2.7"
 sync_version(_PKG_VERSION)
 # Default to the package version if not overridden in the database
 VERSION = get_setting("VERSION", _PKG_VERSION)
@@ -248,6 +263,8 @@ FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
 FFPROBE_PATH = get_setting("FFPROBE_PATH", "ffprobe")
 # Enable GPU acceleration if supported (e.g. "auto", "cuda", etc.)
 FFMPEG_HWACCEL = get_setting("FFMPEG_HWACCEL", "False")
+# Number of threads FFmpeg should use when encoding/decoding
+FFMPEG_THREADS = int(get_setting("FFMPEG_THREADS", 5))
 
 # CLIP model used for object filtering in scheduling
 CLIP_MODEL_NAME = get_setting(

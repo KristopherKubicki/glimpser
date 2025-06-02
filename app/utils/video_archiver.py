@@ -25,6 +25,7 @@ from app.config import (
     FFMPEG_PATH,
     FFPROBE_PATH,
     FFMPEG_HWACCEL,
+    FFMPEG_THREADS,
 )
 
 from .template_manager import get_templates
@@ -265,7 +266,7 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
             concat_command.extend(
                 [
                     "-threads",
-                    "5",  # todo, make this a config
+                    str(FFMPEG_THREADS),
                     # "-safe",  Option not found?  But it is found and used elsewhere?  Not surewhy this is..
                     # "0",
                     "-err_detect",

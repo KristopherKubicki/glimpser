@@ -1535,9 +1535,6 @@ def capture_frame_from_stream(
     stealth=False,
 ):
     """Use ffmpeg to capture multiple frames from a video stream and save the last one."""
-    if shutil.which(FFMPEG_PATH) is None:
-        logging.error("%s is not installed or not in the system path.", FFMPEG_PATH)
-        return False
 
     if timeout < 5:
         timeout = 5

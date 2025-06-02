@@ -509,6 +509,40 @@ class TestRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mock_save_template.assert_called()
 
+    @patch("app.routes.SessionLocal")
+    @patch("app.routes.session", {"user_id": 1})
+    @patch("app.routes.template_manager.get_template")
+    @patch("app.routes.render_template")
+    def test_live_single_camera(
+        self, mock_render_template, mock_get_template, mock_session_local
+    ):
+        """The live route should render only the requested camera."""
+
+        mock_get_template.return_value = {"url": "https://example.com"}
+
+        class DummyQuery:
+            def filter_by(self, **kwargs):
+                return self
+
+            def first(self):
+                return SimpleNamespace(id=1)
+
+        class DummySession:
+            def query(self, model):
+                return DummyQuery()
+
+            def close(self):
+                pass
+
+        mock_session_local.return_value = DummySession()
+
+        response = self.client.get("/live?camera=cam1")
+        self.assertEqual(response.status_code, 200)
+        mock_get_template.assert_called_with("cam1")
+        mock_render_template.assert_called_with(
+            "live.html", template_details={"cam1": mock_get_template.return_value}
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
