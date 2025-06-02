@@ -75,6 +75,7 @@ from app.utils.db import SessionLocal, engine
 from app.utils.scheduling import log_cache, log_cache_lock
 from app.utils.validators import validate_template_name, validate_update_data
 from app.utils.profiling import profile_route, get_latency_stats
+from scripts.update_chrome_shortcut import update_chrome_shortcuts
 
 
 def restart_server():
@@ -2098,6 +2099,11 @@ def init_routes(app):
                         flash("Configuration restored successfully", "success")
                     else:
                         flash("Invalid file type", "error")
+            elif action == "update_shortcut":
+                if update_chrome_shortcuts():
+                    flash("Chrome shortcuts updated", "success")
+                else:
+                    flash("Failed to update shortcuts", "error")
             else:
                 for name, value in request.form.items():
                     if (
