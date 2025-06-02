@@ -113,6 +113,7 @@ Settings controlling how frames are captured from video sources:
 - `ANALYZE_DURATION_OTHER` – analyzeduration for other protocols (default `20M`)
 - `LIVE_FALLBACK_FPS` – still-frame refresh rate when live video fails (default `1`)
 - `LIVE_MAX_FAILURES` – maximum consecutive ffmpeg failures before live view stops (default `10`)
+- `DISCOVERY_AUTOSTART` – run hourly background discovery automatically (default `False`)
 
 ### Stealth Browser Defaults
 

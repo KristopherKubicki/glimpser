@@ -19,7 +19,12 @@ from app.utils.scheduling import (
     start_log_caching,
 )
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
-from app.config import LOG_LEVEL, backup_config, restore_config
+from app.config import (
+    LOG_LEVEL,
+    backup_config,
+    restore_config,
+    DISCOVERY_AUTOSTART,
+)
 from app.utils.email_alerts import email_alert
 from app.utils.sms_alerts import sms_alert
 
@@ -149,7 +154,8 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
                 id="retention_cleanup", func=retention_cleanup, trigger="cron", day="*"
             )
             schedule_summarization()
-            schedule_discovery()
+            if DISCOVERY_AUTOSTART:
+                schedule_discovery()
 
         # Perform initial cleanup
         retention_cleanup()

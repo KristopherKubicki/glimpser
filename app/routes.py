@@ -960,6 +960,23 @@ def init_routes(app):
         """Return cached background discovery status."""
         return jsonify(scheduling.get_discovery_status())
 
+    @app.route("/toggle_discovery", methods=["POST"])
+    @login_required
+    @profile_route("/toggle_discovery")
+    def toggle_discovery():
+        """Start or stop hourly background discovery."""
+        try:
+            job = scheduling.scheduler.get_job("background_discovery")
+            if job:
+                scheduling.stop_discovery()
+                update_setting("DISCOVERY_AUTOSTART", "False")
+                return jsonify({"status": "stopped"})
+            scheduling.schedule_discovery()
+            update_setting("DISCOVERY_AUTOSTART", "True")
+            return jsonify({"status": "running"})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
     @app.route("/danger", methods=["GET", "POST"])
     @login_required
     def danger_mode():

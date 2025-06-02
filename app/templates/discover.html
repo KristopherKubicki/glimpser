@@ -14,6 +14,10 @@
 {%- endmacro %}
 {% block content %}
     <h2>Discovered Cameras</h2>
+    <div class="discovery-controls" title="Start or stop background discovery">
+        <button id="toggle-discovery" class="btn btn-primary" title="Start or stop automatic discovery">Loading...</button>
+        <span id="discovery-bg-status" title="Current background discovery status">Checking...</span>
+    </div>
     <div class="wizard-step" title="Enter an optional network range">
         <input id="cidr-input" type="text" placeholder="192.168.1.0/24" title="Optional CIDR to scan">
         <button id="discover-btn" title="Scan the network for cameras">Discover</button>

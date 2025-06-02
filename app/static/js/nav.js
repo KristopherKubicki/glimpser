@@ -67,7 +67,9 @@ export function initNav() {
       try {
         const res = await fetch('/discovery_status');
         const data = await res.json();
-        if (data.status === 'running') {
+        if (data.status === 'none') {
+          discoveryStatus.style.color = 'white';
+        } else if (data.status === 'running') {
           discoveryStatus.style.color = 'orange';
         } else if (data.status === 'ready') {
           discoveryStatus.style.color = 'green';
