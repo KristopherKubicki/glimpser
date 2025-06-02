@@ -18,8 +18,8 @@
         {% if session.get('user_id') %}
                 <a id="health-status" href="/status" class="status-indicator" title="System Performance"></a>
                 <div id="danger-status" class="status-indicator" title="Danger Mode"></div>
-                <a href='/discover' class="settings-icon" title='Discover Cameras'>&#x2315;</a>
-                <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'>&#9000;</a>
+                <a href='/discover' class="settings-icon" title='Discover Cameras'><i class="fas fa-search"></i></a>
+                <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'><i class="fas fa-comment-dots"></i></a>
                 <a href='/live' id='live'>
                     <div id="coolClock" class="cool-clock" title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming.">
                         <div id="dateDisplay" class="clock-face">
@@ -31,9 +31,9 @@
                         </div>
                     </div>
                 </a>
-                <a href='/settings' class="settings-icon" title="Update settings">&#9881;</a>
+                <a href='/settings' class="settings-icon" title="Update settings"><i class="fas fa-cog"></i></a>
         {% else %}
-                <a href="{{ url_for('login') }}" class="settings-icon" title="Login">Login</a>
+                <a href="{{ url_for('login') }}" class="settings-icon" title="Login"><i class="fas fa-sign-in-alt"></i></a>
         {% endif %}
             </div>
         </nav>

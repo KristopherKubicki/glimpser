@@ -39,7 +39,7 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Navigation logic and form validation are now modules to keep templates concise.
 - Core colors and fonts are defined via CSS variables.
 - Navigation menus use a consistent accent color with smooth hover effects.
- - Navigation bar icons have a unified circular style for a cleaner look. The search link now uses a monochrome glyph for consistency.
+ - Navigation bar icons now use the Font Awesome set and retain a unified circular style for a cleaner look.
 - Session cookies are now marked secure/HTTPOnly and expire after a configurable timeout.
 - Player pages fade the navigation bar when the mouse is idle for a few seconds.
 - The footer now stays fixed at the bottom of the screen and fades when the
