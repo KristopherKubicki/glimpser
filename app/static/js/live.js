@@ -303,6 +303,8 @@ function updateFeed() {
 
 function playM3U8() {
     video.style.display = 'block';
+    // HLS streams are live and not seekable
+    document.getElementById('seek-bar').style.display = 'none';
 
     image.style.display = 'none';
     stopLiveSwitch();
@@ -472,7 +474,8 @@ video.dataset.currentCamera = nextCamera;
 
 function playLive() {
     video.style.display = 'block';
-    document.getElementById("seek-bar").style.display = "block";
+    // Live video cannot be scrubbed
+    document.getElementById('seek-bar').style.display = 'none';
     stopPNG();
     stopLiveSwitch();
 
@@ -567,7 +570,8 @@ pngInterval = setInterval(refreshPNG, 10000 / speed);
 function playMJPG() {
     video.style.display = 'none';
     image.style.display = 'block';
-document.getElementById("seek-bar").style.display = "block";
+    // MJPEG streams are continuous images, disable scrubbing
+    document.getElementById('seek-bar').style.display = 'none';
     stopLiveSwitch();
     stopPNG();
     if (currentCamera.startsWith('group-')) {

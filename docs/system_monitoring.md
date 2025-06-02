@@ -54,6 +54,8 @@ The log viewer reads log lines from memory, ensuring minimal disk overhead.
 The `/status` page also appears on the `/discover` screen as a **System Status**
 camera. Adding it lets Glimpser capture periodic screenshots of its own health
 metrics.
+An accompanying **Internal Caption** camera shows `/internal_caption.mjpg` so you
+can monitor recent caption text without leaving the dashboard.
 
 ## Danger Mode Indicator
 

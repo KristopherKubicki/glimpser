@@ -770,7 +770,7 @@ def discover_cameras(progress_callback=None, subnets=None):
             finally:
                 _report(stage, len(cameras), stage_cameras)
 
-    # Always include the internal status page so the system can monitor itself
+    # Always include internal views so the system can monitor itself
     from app.config import PORT
 
     cameras.append(
@@ -782,10 +782,21 @@ def discover_cameras(progress_callback=None, subnets=None):
             "url": f"http://127.0.0.1:{PORT}/status",
         }
     )
-    # remove duplicates
+
+    cameras.append(
+        {
+            "ip": "127.0.0.1",
+            "protocol": "http",
+            "port": PORT,
+            "info": {"name": "Internal Caption"},
+            "url": f"http://127.0.0.1:{PORT}/internal_caption.mjpg",
+        }
+    )
+
+    # remove duplicates but keep distinct URLs
     unique = {}
     for cam in cameras:
-        key = (cam["ip"], cam["protocol"], cam["port"])
+        key = (cam["ip"], cam["protocol"], cam["port"], cam.get("url"))
         if key not in unique:
             unique[key] = cam
 

@@ -34,7 +34,8 @@ from flask import (
     stream_with_context,
 )
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
+import textwrap
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
@@ -742,6 +743,42 @@ def generate_fast_mjpg(camera: str):
             time.sleep(delay - elapsed)
 
 
+def generate_caption_loop():
+    """Yield MJPEG frames showing the most recent caption."""
+
+    boundary = b"frame"
+    while True:
+        session_db = SessionLocal()
+        caption = "No captions available"
+        try:
+            rec = session_db.query(Summary).order_by(Summary.timestamp.desc()).first()
+            if rec:
+                try:
+                    data = json.loads(rec.content)
+                    if data:
+                        caption = next(iter(data.values()))
+                except Exception:
+                    caption = rec.content
+        finally:
+            session_db.close()
+
+        img = Image.new("RGB", (1280, 720), "black")
+        draw = ImageDraw.Draw(img)
+        font = ImageFont.load_default()
+        wrapped = textwrap.fill(caption, width=60)
+        bbox = draw.textbbox((0, 0), wrapped, font=font)
+        w = bbox[2] - bbox[0]
+        h = bbox[3] - bbox[1]
+        draw.text(((1280 - w) / 2, (720 - h) / 2), wrapped, fill="white", font=font)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG")
+        frame = buf.getvalue()
+
+        yield b"--" + boundary + b"\r\n"
+        yield b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
+        time.sleep(5)
+
+
 def allowed_filename(filename: str) -> bool:
     r"""Return ``True`` when ``filename`` contains only safe characters.
 
@@ -1419,6 +1456,13 @@ def init_routes(app):
         logging.debug("last caption")
         return Response(
             generate(group=group, camera=camera, filename="last_caption.png"),
+            mimetype="multipart/x-mixed-replace; boundary=frame",
+        )
+
+    @app.route("/internal_caption.mjpg", methods=["GET"])
+    def internal_caption_mjpg():
+        return Response(
+            generate_caption_loop(),
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
 
