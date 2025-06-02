@@ -2,7 +2,13 @@ const video = document.getElementById('live-video');
 const image = document.getElementById('live-image');
 const templateDetailsContainer = document.getElementById('template-details');
 const templateDetails = window.templateDetails || {};
-let currentCamera = 'All'; // Set the default camera to "All"
+let currentCamera = 'All'; // Default to showing all cameras
+
+// If only a single camera is available, default to that camera instead
+const templateKeys = Object.keys(templateDetails);
+if (templateKeys.length === 1) {
+    currentCamera = templateKeys[0];
+}
 
 // Allow embedding the live view for a specific camera by reading the
 // ``camera`` query parameter. When provided and valid, restrict the camera
