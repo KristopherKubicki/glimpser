@@ -3,6 +3,23 @@ const image = document.getElementById('live-image');
 const templateDetailsContainer = document.getElementById('template-details');
 const templateDetails = window.templateDetails || {};
 let currentCamera = 'All'; // Set the default camera to "All"
+
+// Allow embedding the live view for a specific camera by reading the
+// ``camera`` query parameter. When provided and valid, restrict the camera
+// selector to that camera and start playback for it immediately.
+const params = new URLSearchParams(window.location.search);
+const requestedCamera = params.get('camera');
+if (requestedCamera && templateDetails[requestedCamera]) {
+    currentCamera = requestedCamera;
+    const cameraSelector = document.getElementById('camera-selector');
+    if (cameraSelector) {
+        Array.from(cameraSelector.options).forEach((opt) => {
+            if (opt.value !== requestedCamera) opt.remove();
+        });
+        cameraSelector.value = requestedCamera;
+        cameraSelector.style.display = 'none';
+    }
+}
 let pngInterval;
 let liveSwitchInterval;
 let liveSwitchFunction;
