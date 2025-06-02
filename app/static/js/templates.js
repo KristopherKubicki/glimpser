@@ -8,6 +8,14 @@ export function initTemplates() {
     const slider = document.getElementById('grid-width-slider');
     const templateList = document.getElementById('template-list');
 
+    if (slider) {
+      const updateSliderMax = () => {
+        slider.max = window.innerWidth;
+      };
+      updateSliderMax();
+      window.addEventListener('resize', updateSliderMax);
+    }
+
     function autofillGroup() {
       if (groupsInput && groupDropdown && groupDropdown.value !== 'all') {
         groupsInput.value = groupDropdown.value;
