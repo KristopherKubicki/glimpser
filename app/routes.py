@@ -1052,12 +1052,14 @@ def init_routes(app):
         if template_name is None:
             abort(404)
 
-        # Check if the template exists
-        logging.debug("WARNING BRPKEN!")
-        ltemplate = template_manager.get_template(template_name)
-        if ltemplate is None:
+        # Check if the template exists and get the canonical name stored
+        # in the database. ``get_template`` returns an attribute dictionary
+        # or ``{}`` when the name is not present.
+        details = template_manager.get_template(template_name)
+        if not details:
             return jsonify({"status": "error", "message": "Template not found"}), 404
-        template_name = ltemplate.get("name")  # todo...
+        # Prefer the name from the database (it may contain canonical casing)
+        template_name = details.get("name", template_name)
 
         # Check if the request has the file part
         if "file" not in request.files:
