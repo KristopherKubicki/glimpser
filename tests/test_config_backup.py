@@ -22,6 +22,7 @@ class TestBackupConfig(unittest.TestCase):
 
         import app.config as config
         import app.utils.db as db
+
         importlib.reload(config)
         importlib.reload(db)
         self.config = config
@@ -42,6 +43,7 @@ class TestBackupConfig(unittest.TestCase):
         self.env_patch.stop()
         import app.config as config
         import app.utils.db as db
+
         importlib.reload(config)
         importlib.reload(db)
         self.temp_dir.cleanup()
@@ -51,7 +53,7 @@ class TestBackupConfig(unittest.TestCase):
         self.assertTrue(result)
         self.assertTrue(os.path.exists(self.backup_path))
 
-    def test_backup_config_returns_false_on_exception(self):
+    def test_backup_config_raises_on_unexpected_exception(self):
         class DummySession:
             def execute(self, *a, **kw):
                 raise Exception("boom")
@@ -60,8 +62,8 @@ class TestBackupConfig(unittest.TestCase):
                 pass
 
         with patch.object(self.config, "SessionLocal", return_value=DummySession()):
-            result = self.config.backup_config()
-        self.assertFalse(result)
+            with self.assertRaises(Exception):
+                self.config.backup_config()
 
 
 if __name__ == "__main__":
