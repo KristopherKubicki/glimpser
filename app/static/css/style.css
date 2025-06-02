@@ -990,6 +990,11 @@ input[type=submit]:hover {
 /* Use the same tile width as the front page */
 .captions-page .templateDiv {
     width: var(--grid-item-width, 360px);
+    height: var(--grid-item-height, calc(var(--grid-item-width, 360px) * 0.5625));
+}
+
+.captions-page .templateDiv::before {
+    content: none;
 }
 
 /* Position the video container to cover the entire tile */

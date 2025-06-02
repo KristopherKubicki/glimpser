@@ -39,6 +39,11 @@ export function initTemplates() {
             templateList.style.setProperty('--grid-item-width', `${computedMin}px`);
           }
         }
+        if (templateList) {
+          const width = parseFloat(slider.value);
+          const height = Math.round((width * 9) / 16);
+          templateList.style.setProperty('--grid-item-height', `${height}px`);
+        }
       };
 
       updateSliderLimits();
@@ -73,6 +78,8 @@ export function initTemplates() {
       slider.addEventListener('input', () => {
         const value = slider.value;
         templateList.style.setProperty('--grid-item-width', `${value}px`);
+        const height = Math.round((value * 9) / 16);
+        templateList.style.setProperty('--grid-item-height', `${height}px`);
 
         const cameraNameFontSize = Math.max(10, Math.min(14, value / 25));
         const timestampFontSize = Math.max(8, Math.min(12, value / 30));
