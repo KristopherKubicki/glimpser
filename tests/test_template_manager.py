@@ -179,30 +179,17 @@ class TestTemplateManager(unittest.TestCase):
         mock_first = mock_filter_by.return_value.first
         mock_first.return_value = None  # Simulate creating a new template
 
-        # Test saving with invalid frequency
-        result = self.template_manager.save_template(
-            "test_template", {"frequency": 525601}
-        )
-        # note, still returns just adjusts the vaue silently...
-        # self.assertFalse(result, "Expected False for frequency > 525600")
-
-        # not working for some reason?
-        # Test saving with timeout >= frequency
-        result = self.template_manager.save_template(
-            "test_template", {"frequency": 60, "timeout": 61}
-        )
-        # warning - not working right.  value gets silently adjusted
-        # self.assertFalse(result, "Expected False, timeout should be adjusted")
-        # mock_session_instance.add.assert_called_once()
-        # mock_session_instance.commit.assert_called_once()
-
-        """
-        # Verify that the timeout was adjusted
+        self.template_manager.save_template("test_template", {"frequency": 525601})
         args, _ = mock_session_instance.add.call_args
-        self.assertEqual(
-            args[0].timeout, 60, "Timeout should be adjusted to match frequency"
+        self.assertEqual(args[0].frequency, 525600)
+
+        mock_session_instance.add.reset_mock()
+
+        result = self.template_manager.save_template(
+            "test_template2", {"frequency": 1, "timeout": 120}
         )
-        """
+        self.assertFalse(result)
+        self.assertEqual(mock_session_instance.commit.call_count, 1)
 
     @patch("app.utils.template_manager.SessionLocal")
     def test_get_template_by_id(self, mock_session):

@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 import tempfile
 import logging
+from unittest import mock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -81,7 +82,9 @@ class TestMain(unittest.TestCase):
         main.setup_logging(args)
 
         mock_logger.setLevel.assert_called_once_with(logging.DEBUG)
-        # mock_logger.addHandler.assert_any_call(mock.ANY)  # Check that any handler was added
+        mock_logger.addHandler.assert_any_call(
+            mock.ANY
+        )  # Check that any handler was added
 
     """
     @patch("logging.FileHandler")

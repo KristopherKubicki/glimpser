@@ -48,10 +48,12 @@ class TestImageProcessing(unittest.TestCase):
 
     def test_remove_background(self):
         with Image.new("RGBA", (100, 100), color=(14, 14, 14, 255)) as img:
-            img.putpixel((50, 50), (255, 0, 0, 255))  # Add a non-background pixel
+            for x in range(20, 80):
+                for y in range(20, 80):
+                    img.putpixel((x, y), (255, 0, 0, 255))
             result = remove_background(img)
-            # TODO: make this one work?
-            # self.assertEqual(result.size, (100, 100))  # Ensure the size is correct
+            ratio = result.size[0] / result.size[1]
+            self.assertAlmostEqual(ratio, 16 / 9, delta=0.15)
 
     def test_remove_background_white_border(self):
         with Image.new("RGBA", (100, 100), color=(255, 255, 255, 255)) as img:
@@ -68,9 +70,12 @@ class TestImageProcessing(unittest.TestCase):
             result = is_mostly_blank(img)
             self.assertTrue(result)
 
-            # img.putpixel((50, 50), (0, 0, 0))  # Add a non-blank pixel
-            # result = is_mostly_blank(img)
-            # self.assertFalse(result)
+        with Image.new("RGB", (100, 100), color="white") as img:
+            for x in range(0, 100):
+                for y in range(0, 60):
+                    img.putpixel((x, y), (0, 0, 0))
+            result = is_mostly_blank(img)
+            self.assertFalse(result)
 
 
 if __name__ == "__main__":

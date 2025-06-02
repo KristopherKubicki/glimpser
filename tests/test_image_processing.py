@@ -41,21 +41,18 @@ class TestImageProcessing(unittest.TestCase):
         # Add a non-background pixel
         image.putpixel((50, 50), (255, 0, 0, 255))
 
-        # Apply remove_background function
+        for x in range(20, 80):
+            for y in range(20, 80):
+                image.putpixel((x, y), (255, 0, 0, 255))
         result = remove_background(image)
 
-        # Check if the result is an image and has the correct dimensions
         self.assertIsInstance(result, Image.Image)
-        # TODO: fix this ...
-        # self.assertEqual(result.size, (100, 100))
-
-        # Check if the background is removed (should be transparent)
-        # index out of range? fix this
-        # self.assertEqual(result.getpixel((0, 0)), (0, 0, 0, 0))
-
-        # Check if the non-background pixel is preserved
-        # index out of range?  fix this
-        # self.assertEqual(result.getpixel((50, 50)), (255, 0, 0, 255))
+        ratio = result.size[0] / result.size[1]
+        self.assertAlmostEqual(ratio, 16 / 9, delta=0.15)
+        self.assertEqual(
+            result.getpixel((result.width // 2, result.height // 2))[:3],
+            (255, 0, 0),
+        )
 
     def test_remove_background_white_border(self):
         image = Image.new("RGBA", (100, 100), color=(255, 255, 255, 255))
@@ -161,7 +158,9 @@ class TestChatGPTImageComparison(unittest.TestCase):
             comparison.compare_images(
                 "Test prompt", [image1_path, image2_path], low_res=True
             )
-            # self.assertIn('"detail": "low"', str(mock_post.call_args[1]['json']['messages']))
+            self.assertIn(
+                "'detail': 'low'", str(mock_post.call_args[1]["json"]["messages"])
+            )
 
             # Test error handling
             mock_post.side_effect = Exception("API Error")
