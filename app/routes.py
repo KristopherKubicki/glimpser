@@ -72,6 +72,16 @@ from app.utils.screenshots import (
 )
 from app.utils.db import SessionLocal, engine
 
+try:
+    COMMIT_HASH = (
+        subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+        .decode()
+        .strip()
+    )
+except Exception:
+    COMMIT_HASH = "unknown"
+NODE_ENV = os.getenv("NODE_ENV", "development")
+
 # from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock
 from app.utils.validators import validate_template_name, validate_update_data
@@ -758,7 +768,12 @@ def init_routes(app):
         except Exception:
             pass
 
-        return dict(VERSION=VERSION, VERSION_OUTDATED=outdated)
+        return dict(
+            VERSION=VERSION,
+            VERSION_OUTDATED=outdated,
+            COMMIT_HASH=COMMIT_HASH,
+            NODE_ENV=NODE_ENV,
+        )
 
     # Add a new route for the extended health check
     @app.route("/health")

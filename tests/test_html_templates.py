@@ -13,6 +13,7 @@ class TemplateParser(HTMLParser):
     def __init__(self):
         super().__init__()
         self.img_tags = []
+        self.link_tags = []
         self.forms = []
         self._current_form = None
 
@@ -20,6 +21,8 @@ class TemplateParser(HTMLParser):
         attrs_dict = dict(attrs)
         if tag == "img":
             self.img_tags.append(attrs_dict)
+        elif tag == "link":
+            self.link_tags.append(attrs_dict)
         elif tag == "form":
             self._current_form = {"attrs": attrs_dict, "inputs": []}
             self.forms.append(self._current_form)
@@ -66,6 +69,19 @@ class TestHtmlTemplates(unittest.TestCase):
         inputs = {i.get("id") or i.get("name") for i in add_form["inputs"]}
         required = {"name", "url", "frequency", "timeout"}
         self.assertTrue(required.issubset(inputs))
+
+    def test_header_preloads_sprite(self):
+        parser = parse_template(Path("app/templates/header.html"))
+        expected_href = "{{ url_for('static', filename='icons/sprite.svg') }}"
+        for attrs in parser.link_tags:
+            if (
+                attrs.get("rel") == "preload"
+                and attrs.get("as") == "image"
+                and attrs.get("href") == expected_href
+            ):
+                break
+        else:
+            self.fail("sprite.svg preload link missing")
 
 
 if __name__ == "__main__":

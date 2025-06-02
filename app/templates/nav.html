@@ -1,40 +1,42 @@
+<h1>
+  <a href="/" title="Home">
+    <img src="{{ url_for('static', filename='img/glimpser_small.png') }}" alt="Glimpser logo" title="Glimpser" />
+  </a>
+</h1>
+<nav>
+  <div class="nav-left">
+    {% for ag in active_groups %}
+    <a href="/group/{{ ag }}" title="View group {{ ag }}">{{ ag }}</a>
+    {% endfor %}
+    <!-- Discover icon moved to nav-right for consistency -->
+  </div>
 
-                <h1><a href='/' title="Home"><img src='{{ url_for('static', filename='img/glimpser_small.png') }}' alt='Glimpser logo' title='Glimpser'></a></h1>
-        <nav>
-            <div class="nav-left">
-                {% for ag in active_groups %}
-                <a href='/group/{{ag}}' title="View group {{ag}}">{{ag}}</a>
-                {% endfor %}
-                <!-- Discover icon moved to nav-right for consistency -->
-            </div>
+  <div class="nav-center">
+    {% if template_name %}
+    <h1><a href="/templates/{{ template_name }}" title="View template {{ template_name }}">{{ template_name }}</a></h1>
+    {% endif %}
+  </div>
 
-            <div class="nav-center">
-{% if template_name %}
-                <h1><a href='/templates/{{template_name}}' title="View template {{template_name}}">{{template_name}}</a></h1>
-{% endif %}
-            </div>
-
-            <div class="nav-right">
-        {% if session.get('user_id') %}
-                <a id="health-status" href="/status" class="status-indicator" title="System Performance"></a>
-                <div id="danger-status" class="status-indicator" title="Danger Mode"></div>
-                <a href='/discover' class="settings-icon" title='Discover Cameras'><i class="fas fa-search"></i></a>
-                <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'><i class="fas fa-comment-dots"></i></a>
-                <a href='/live' id='live'>
-                    <div id="coolClock" class="cool-clock" title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming.">
-                        <div id="dateDisplay" class="clock-face">
-                            <div id="digitalTime" class="clock-hands" title="">
-                                <div class="hand hour-hand"></div>
-                                <div class="hand minute-hand"></div>
-                                <div class="hand second-hand"></div>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-                <a href='/settings' class="settings-icon" title="Update settings"><i class="fas fa-cog"></i></a>
-        {% else %}
-                <a href="{{ url_for('login') }}" class="settings-icon" title="Login"><i class="fas fa-sign-in-alt"></i></a>
-        {% endif %}
-            </div>
-        </nav>
-
+  <div class="nav-right">
+    {% if session.get('user_id') %}
+    <a id="health-status" href="/status" class="status-indicator" title="System Performance"></a>
+    <div id="danger-status" class="status-indicator" title="Danger Mode"></div>
+    <a href="/discover" class="settings-icon" title="Discover Cameras"><i class="fas fa-search"></i></a>
+    <a href="/captions" id="captions" class="settings-icon" title="Read and update camera LLMs"><i class="fas fa-comment-dots"></i></a>
+    <a href="/live" id="live">
+      <div id="coolClock" class="cool-clock" title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming.">
+        <div id="dateDisplay" class="clock-face">
+          <div id="digitalTime" class="clock-hands" title="">
+            <div class="hand hour-hand"></div>
+            <div class="hand minute-hand"></div>
+            <div class="hand second-hand"></div>
+          </div>
+        </div>
+      </div>
+    </a>
+    <a href="/settings" class="settings-icon" title="Update settings"><i class="fas fa-cog"></i></a>
+    {% else %}
+    <a href="{{ url_for('login') }}" class="settings-icon" title="Login"><i class="fas fa-sign-in-alt"></i></a>
+    {% endif %}
+  </div>
+</nav>

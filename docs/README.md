@@ -44,8 +44,11 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Player pages fade the navigation bar when the mouse is idle for a few seconds.
 - The footer now stays fixed at the bottom of the screen and fades when the
   mouse is idle.
+- A tiny footer badge shows the current commit hash and `NODE_ENV` for easier
+  support.
 - Templates track capture failures and display a warning icon when screenshots fail.
 - Keyboard shortcuts now allow play/pause, mute, fullscreen toggling, camera selection with the arrow keys, and speed adjustment with `[` and `]` when watching live video.
 - Live view image streams now back off exponentially after repeated failures.
 - Live view preloads the next stream for smoother camera switching.
 - PNG streams hide the loading overlay once a frame is displayed.
+- Icon sprite is preloaded and can be pushed via HTTP/2 to shave ~120 ms from the first paint on 4G.

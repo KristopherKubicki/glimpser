@@ -235,6 +235,7 @@ function updateTemplateDetails() {
 function updateFeed() {
     const source = document.getElementById('video-source').value;
     const isConnected = checkCameraConnection(currentCamera);
+    const details = templateDetails[currentCamera];
     updateSpeedContainer();
     hideStreamErrorIndicator();
 
@@ -260,6 +261,11 @@ function updateFeed() {
         if (!['png', 'mjpg', 'motion'].includes(source)) {
             showLastScreenshot();
         }
+    }
+
+    if (source === 'live' && details && details.snapshot_only) {
+        playMJPG();
+        return;
     }
 
     switch (source) {
@@ -452,6 +458,14 @@ function playLive() {
     document.getElementById("seek-bar").style.display = "block";
     stopPNG();
     stopLiveSwitch();
+
+    if (!(currentCamera.startsWith('group-') || currentCamera === 'All')) {
+        const details = templateDetails[currentCamera];
+        if (details && details.snapshot_only) {
+            playMJPG();
+            return;
+        }
+    }
 
     if (currentCamera.startsWith('group-') || currentCamera === 'All') {
 let groupCameras;
