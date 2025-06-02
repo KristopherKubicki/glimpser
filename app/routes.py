@@ -111,6 +111,12 @@ class TemplateName:
 
 
 def generate_timed_hash():
+    """Return a short‑lived hash derived from the API key.
+
+    The resulting string combines a SHA-256 digest of the API key and an
+    expiration timestamp. The timestamp is 15 minutes in the future, allowing
+    the caller to generate a temporary token for secure, time limited access.
+    """
     expiration_time = int(time.time()) + 15 * 60
     to_hash = f"{API_KEY}{expiration_time}"
     hash_digest = hashlib.sha256(to_hash.encode()).hexdigest()
@@ -1641,10 +1647,26 @@ def init_routes(app):
     @app.route("/live")
     @login_required
     def live():
-        # Get a list of active cameras (with updates within the last 1 day)
-        return render_template(
-            "live.html", template_details=template_manager.get_templates()
-        )
+        """Render the live view page.
+
+        Optionally filter to a single camera when ``camera`` is provided in the
+        query string. This avoids loading metadata for all cameras when embedding
+        the live view for a specific template.
+        """
+
+        camera = request.args.get("camera")
+        if camera:
+            camera = validate_template_name(camera)
+            if camera is None:
+                abort(400, "Invalid camera name")
+            details = template_manager.get_template(camera)
+            if not details:
+                abort(404)
+            templates = {camera: details}
+        else:
+            templates = template_manager.get_templates()
+
+        return render_template("live.html", template_details=templates)
 
     @app.route("/latest_frame/<string:template_name>")
     @login_required

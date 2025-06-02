@@ -149,6 +149,10 @@
                 <i class="fas fa-exclamation-triangle video-icon"></i>
                 <p id="capture-error-message"></p>
             </div>
+            <div id="stream-error-indicator" class="error-indicator hidden">
+                <i class="fas fa-times-circle video-icon"></i>
+                <p id="stream-error-message"></p>
+            </div>
         </div>
         <div id="error-message"></div>
     </div>
@@ -159,6 +163,7 @@
 
     <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
     <script>
+
         const video = document.getElementById('live-video');
         const preloadVideo = document.getElementById('preload-video');
         const image = document.getElementById('live-image');
@@ -173,12 +178,13 @@
         const videoOverlay = document.getElementById('video-overlay');
         const loadingIndicator = document.getElementById('loading-indicator');
         const playPauseIndicator = document.getElementById('play-pause-indicator');
-        const errorMessage = document.getElementById('error-message');
         const playButton = document.getElementById('play-pause');
         const offlineIndicator = document.getElementById('offline-indicator');
         const offlineMessage = document.getElementById('offline-message');
         const errorIndicator = document.getElementById('capture-error-indicator');
         const errorIndicatorMessage = document.getElementById('capture-error-message');
+        const streamErrorIndicator = document.getElementById('stream-error-indicator');
+        const streamErrorMessage = document.getElementById('stream-error-message');
 
         function showLoadingIndicator() {
             videoOverlay.style.display = 'block';
@@ -209,12 +215,23 @@
             }, 500);
         }
 
-        function showError(message) {
-            errorMessage.textContent = message;
-            errorMessage.style.display = 'block';
-            setTimeout(() => {
-                errorMessage.style.display = 'none';
-            }, 5000);
+        function showError(e) {
+            let message = 'Error loading stream';
+            if (e && e.target && e.target.error) {
+                switch (e.target.error.code) {
+                    case 2:
+                        message = 'Network error while loading stream';
+                        break;
+                    case 4:
+                        message = 'Video format not supported';
+                        break;
+                    default:
+                        message = 'Error loading stream';
+                }
+            } else if (typeof e === 'string') {
+                message = e;
+            }
+            showStreamErrorIndicator(message);
         }
 
         function showOfflineIndicator(cameraName) {
@@ -247,7 +264,29 @@
             if (
                 loadingIndicator.style.display === 'none' &&
                 playPauseIndicator.style.display === 'none' &&
-                offlineIndicator.style.display === 'none'
+                offlineIndicator.style.display === 'none' &&
+                streamErrorIndicator.style.display === 'none'
+            ) {
+                videoOverlay.style.display = 'none';
+            }
+        }
+
+        function showStreamErrorIndicator(message) {
+            videoOverlay.style.display = 'block';
+            streamErrorIndicator.style.display = 'block';
+            streamErrorMessage.textContent = message;
+            loadingIndicator.style.display = 'none';
+            playPauseIndicator.style.display = 'none';
+        }
+
+        function hideStreamErrorIndicator() {
+            streamErrorIndicator.style.display = 'none';
+            streamErrorMessage.textContent = '';
+            if (
+                loadingIndicator.style.display === 'none' &&
+                playPauseIndicator.style.display === 'none' &&
+                offlineIndicator.style.display === 'none' &&
+                errorIndicator.style.display === 'none'
             ) {
                 videoOverlay.style.display = 'none';
             }
@@ -309,7 +348,7 @@
         video.addEventListener('play', () => showPlayPauseIndicator(false));
         video.addEventListener('pause', () => showPlayPauseIndicator(true));
         video.addEventListener('error', (e) => {
-            showError('Error loading video: ' + e.target.error.message);
+            showError(e);
             setTimeout(() => {
                 if (typeof updateFeed === 'function') {
                     updateFeed();
@@ -407,6 +446,7 @@ function changeCamera() {
             const source = document.getElementById('video-source').value;
             const isConnected = checkCameraConnection(currentCamera);
             updateSpeedContainer();
+            hideStreamErrorIndicator();
 
             if (!isConnected) {
                 showOfflineIndicator(currentCamera);
@@ -835,8 +875,11 @@ function playMotion() {
         updateTemplateDetails();
         updateSpeedContainer();
         playMP4();
+
         preloadNextCamera();
+
     </script>
+    <script type="module" src="{{ url_for('static', filename='js/live.js') }}"></script>
 
 {% endblock %}
 
