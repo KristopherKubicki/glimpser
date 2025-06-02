@@ -115,6 +115,8 @@ Templates that enable `stealth` or `browser` mode require heavier page loads. If
 `frequency` or `timeout` are omitted for such templates, Glimpser defaults to a
 `frequency` of **60 minutes** and a `timeout` of **30 seconds** to reduce the
 load on target sites and allow extra time for rendering.
+These values are enforced by the TemplateManager so that even API clients that
+skip validation adhere to the safer defaults.
 
 ## Advanced Options
 
