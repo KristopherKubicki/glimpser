@@ -195,9 +195,16 @@ SSO_TOKEN = get_setting("SSO_TOKEN", "")
 SSO_USERNAME = get_setting("SSO_USERNAME", USER_NAME)
 CHATGPT_KEY = get_setting("CHATGPT_KEY", "")  # maybe generalize as LLM_KEY ?
 
-LLM_MODEL_VERSION = get_setting(
-    "LLM_MODEL_VERSION", "gpt-4.1-mini"
-)  # todo setup allowed models
+ALLOWED_LLM_MODELS = [
+    "gpt-4.1-mini",
+    "gpt-4.1",
+    "gpt-4",
+]
+
+LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-4.1-mini")
+
+if LLM_MODEL_VERSION not in ALLOWED_LLM_MODELS:
+    raise ValueError(f"Invalid LLM model: {LLM_MODEL_VERSION}")
 
 # note that $datetime is a special keyword that will be replaced with the datetime in iso Z format
 LLM_SUMMARY_PROMPT = get_setting(

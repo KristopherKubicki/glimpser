@@ -123,7 +123,7 @@ skip validation adhere to the safer defaults.
 
 Additional variables control AI behaviour and external tools:
 
-- `LLM_MODEL_VERSION` – language model version to use (default `gpt-4.1-mini`)
+- `LLM_MODEL_VERSION` – language model version to use (default `gpt-4.1-mini`). Supported models: `gpt-4.1-mini`, `gpt-4.1`, `gpt-4`
 - `LLM_SUMMARY_PROMPT` – default prompt used for log summaries
 - `LLM_CAPTION_PROMPT` – default prompt used for image captions
 - `FFMPEG_PATH` – path to the `ffmpeg` binary (default `ffmpeg`)
