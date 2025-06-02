@@ -903,6 +903,10 @@ input[type=submit]:hover {
     padding: 15px;
 }
 
+.captions-page .templateDiv {
+    width: 160px;
+}
+
 .filter-controls {
     display: flex;
     flex-wrap: wrap;

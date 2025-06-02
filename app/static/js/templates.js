@@ -92,6 +92,7 @@ export function initTemplates() {
     loadGroups();
     loadTemplates();
     setupSearch();
+    setupSorting();
   });
 
   window.showStructuredInput = showStructuredInput;
@@ -220,18 +221,37 @@ export function setupSearch() {
   const searchInput = document.getElementById('search-input');
   const groupDropdown = document.getElementById('group-dropdown');
   const cameraRows = document.querySelectorAll('.camera-row');
+  const filterColumn = document.getElementById('filter-column');
+  const filterValue = document.getElementById('filter-value');
+  const applyFilter = document.getElementById('apply-filter');
   const templateList = document.getElementById('template-list');
   if (!searchInput || !groupDropdown) return;
 
   const filterCameras = () => {
     const searchTerm = searchInput.value.toLowerCase();
     const selectedGroup = groupDropdown.value;
+    const column = filterColumn ? filterColumn.value : '';
+    const filterVal = filterValue ? filterValue.value.trim().toLowerCase() : '';
     cameraRows.forEach((row) => {
       const name = row.querySelector('td:first-child').textContent.toLowerCase();
       const groups = row.dataset.groups.split(',');
-      const matchesSearch = name.includes(searchTerm);
+      const rowText = row.textContent.toLowerCase();
+      const matchesSearch = rowText.includes(searchTerm);
       const matchesGroup = selectedGroup === 'all' || groups.includes(selectedGroup);
-      row.style.display = matchesSearch && matchesGroup ? '' : 'none';
+      let matchesKpi = true;
+      if (column && filterVal) {
+        const dataVal = row.dataset[column];
+        if (dataVal) {
+          const numericData = parseFloat(dataVal);
+          const numericFilter = parseFloat(filterVal);
+          if (!Number.isNaN(numericData) && !Number.isNaN(numericFilter)) {
+            matchesKpi = numericData >= numericFilter;
+          } else {
+            matchesKpi = dataVal.toLowerCase().includes(filterVal);
+          }
+        }
+      }
+      row.style.display = matchesSearch && matchesGroup && matchesKpi ? '' : 'none';
     });
   };
 
@@ -241,6 +261,7 @@ export function setupSearch() {
   } else {
     searchInput.addEventListener('input', filterCameras);
     groupDropdown.addEventListener('change', filterCameras);
+    if (applyFilter) applyFilter.addEventListener('click', filterCameras);
   }
 }
 
@@ -392,4 +413,34 @@ export async function loadTemplates() {
       templateContainer.innerHTML = errorMsg;
     }
   }
+}
+
+export function setupSorting() {
+  const headers = document.querySelectorAll('#camera-table th.sortable');
+  headers.forEach((th, index) => {
+    th.addEventListener('click', () => {
+      const type = th.dataset.type || 'string';
+      const tbody = th.closest('table').tBodies[0];
+      const rows = Array.from(tbody.rows);
+      const current = th.dataset.order === 'asc' ? 'asc' : 'desc';
+      rows.sort((a, b) => {
+        const aVal = a.cells[index].dataset.value || a.cells[index].textContent;
+        const bVal = b.cells[index].dataset.value || b.cells[index].textContent;
+        if (type === 'number') {
+          return parseFloat(aVal) - parseFloat(bVal);
+        }
+        if (type === 'date') {
+          return new Date(aVal) - new Date(bVal);
+        }
+        return aVal.localeCompare(bVal);
+      });
+      if (current === 'asc') {
+        rows.reverse();
+        th.dataset.order = 'desc';
+      } else {
+        th.dataset.order = 'asc';
+      }
+      rows.forEach((row) => tbody.appendChild(row));
+    });
+  });
 }

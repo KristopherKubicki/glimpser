@@ -49,7 +49,7 @@ This guide will walk you through the process of setting up Glimpser and running 
 
 8. Explore the auto-generated captions and summaries.
 9. Use the **Suggest Prompt** button on a template's detail page to have the system propose better caption text.
-10. Visit the **Captions** page to review recent captions and update prompts. Use the group filter and search box to quickly find a camera, or manage captions in bulk with the TSV controls. The bulk controls are collapsed by default—expand the **Bulk Caption Management** section when needed. The table now shows relative timestamps and a placeholder when no captions are available.
+10. Visit the **Captions** page to review recent captions and update prompts. Use the group filter and search box to quickly find a camera, or manage captions in bulk with the TSV controls. KPI columns can be sorted by clicking their headers, and you can filter rows by KPI values. The bulk controls are collapsed by default—expand the **Bulk Caption Management** section when needed. The table now shows relative timestamps and a placeholder when no captions are available.
 
 ## Next Steps
 
