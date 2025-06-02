@@ -83,7 +83,7 @@ html {
     .camera-list td {
         border: none;
         position: relative;
-        padding-left: 50%;
+        padding-inline-start: 50%;
     }
 
     .camera-list td:before {
@@ -91,7 +91,7 @@ html {
         top: 6px;
         left: 6px;
         width: 45%;
-        padding-right: 10px;
+        padding-inline-end: 10px;
         white-space: nowrap;
         content: attr(data-label);
         font-weight: bold;
@@ -374,12 +374,12 @@ nav a {
     align-items: center;
     justify-content: center;
     background-color: var(--secondary-bg-color);
-    margin-left: 5px;
+    margin-inline-start: 5px;
     text-decoration: none;
 }
 
 .nav-right .cool-clock {
-    margin-left: 5px;
+    margin-inline-start: 5px;
 }
 
 .nav-right a:hover {
@@ -406,7 +406,7 @@ nav a:hover, nav a.active {
     padding: 2px 5px;
     background-color: #f0f0f0;
     border-radius: 3px;
-    margin-left: 10px;
+    margin-inline-start: 10px;
 }
 
 .performance-indicator:hover::after {
@@ -512,7 +512,7 @@ button, a {
     background-color: #f0f0f0;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     position: relative;
-    margin-left: 20px;
+    margin-inline-start: 20px;
 }
 
 .clock-face {
@@ -731,7 +731,7 @@ footer.fade-out {
 }
 
 .footer-copy {
-    margin-right: 10px;
+    margin-inline-end: 10px;
     font-size: 0.9em;
 }
 
