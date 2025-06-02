@@ -195,6 +195,22 @@ export function updateHumanizedTimes() {
       element.title = formatExactTime(timestamp);
     }
   });
+
+  document
+    .querySelectorAll(
+      '.video-container[data-timestamp], .templateDiv img[data-timestamp], video.hover-video[data-timestamp]'
+    )
+    .forEach((element) => {
+      const original =
+        element.dataset.originalTimestamp || element.getAttribute('data-timestamp');
+      if (!element.dataset.originalTimestamp) {
+        element.dataset.originalTimestamp = original;
+      }
+      if (original) {
+        element.setAttribute('data-timestamp', timeAgo(original));
+        element.setAttribute('title', formatExactTime(original));
+      }
+    });
 }
 
 export function showStructuredInput(inputId) {
