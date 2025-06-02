@@ -1162,3 +1162,16 @@ details > summary {
 .status-dot.error {
     background-color: red;
 }
+
+/* Time display on index page */
+#index-time {
+    position: fixed;
+    bottom: 40px;
+    right: 10px;
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    font-size: var(--timestamp-font-size);
+    z-index: 10;
+}
+
