@@ -14,4 +14,12 @@
     <path d="M10 8l4 4-4 4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
     <path d="M4 4v16h7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
   </symbol>
-</svg>
+  <symbol id="check" viewBox="0 0 24 24">
+    <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" fill="none" />
+  </symbol>
+  <symbol id="alert" viewBox="0 0 24 24">
+    <path d="M12 2L2 22h20L12 2z" stroke="currentColor" stroke-width="2" fill="none" />
+    <line x1="12" y1="8" x2="12" y2="14" stroke="currentColor" stroke-width="2" />
+    <circle cx="12" cy="18" r="1" fill="currentColor" />
+  </symbol>
+  </svg>

@@ -9,10 +9,10 @@ export function initNav() {
         const res = await fetch('/health');
         const data = await res.json();
         if (data.status === 'healthy') {
-          healthStatus.style.backgroundColor = 'green';
+          healthStatus.style.color = 'green';
           healthStatus.title = 'System Status: Healthy\n\n';
         } else {
-          healthStatus.style.backgroundColor = 'red';
+          healthStatus.style.color = 'red';
           healthStatus.title = 'System Status: Degraded\n\n';
         }
         healthStatus.title +=
@@ -27,7 +27,7 @@ export function initNav() {
         }
       } catch (error) {
         console.error('Error fetching health status:', error);
-        healthStatus.style.backgroundColor = 'red';
+        healthStatus.style.color = 'red';
         healthStatus.title = 'Error: Unable to fetch health status';
       }
     };
@@ -38,12 +38,10 @@ export function initNav() {
         const res = await fetch('/danger_status');
         const data = await res.json();
         if (data.ready) {
-          dangerStatus.style.backgroundColor = 'orange';
-          dangerStatus.textContent = '!';
+          dangerStatus.style.color = 'orange';
           dangerStatus.title = 'Danger Mode Ready';
         } else {
-          dangerStatus.style.backgroundColor = 'grey';
-          dangerStatus.textContent = '×';
+          dangerStatus.style.color = 'grey';
           const reason = [];
           if (!data.port_open) reason.push('Debug port closed');
           if (!data.idle) reason.push('User active');
