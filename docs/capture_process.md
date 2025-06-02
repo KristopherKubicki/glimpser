@@ -82,6 +82,12 @@ After capturing the content, Glimpser applies several post-processing steps:
 5. **Image Optimization**: Ensure the captured image is in the correct format and optimized for storage.
 6. **PNG Validation**: Verify the temporary screenshot file before renaming it to avoid leaving corrupt images.
 
+## Status Code Caching
+
+Glimpser stores the last HTTP status code for each URL in `data/status_cache.json`.
+If a previous attempt returned a non‐200 status, further requests are skipped for
+one hour. This prevents repeated network calls to unreachable resources.
+
 ## Capture Timeout
 
 `CAPTURE_TIMEOUT` controls how long Glimpser waits while grabbing a screenshot or pulling a

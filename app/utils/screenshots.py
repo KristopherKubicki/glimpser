@@ -89,6 +89,41 @@ etag_cache = {}
 status_code_cache = {}
 status_code_cache_time = {}
 STATUS_CACHE_TTL = 60 * 60  # 1 hour
+STATUS_CACHE_PATH = "data/status_cache.json"
+
+
+def _load_status_cache() -> None:
+    """Load cached status codes from ``STATUS_CACHE_PATH``."""
+    if not os.path.exists(STATUS_CACHE_PATH):
+        return
+    try:
+        with open(STATUS_CACHE_PATH, "r") as f:
+            data = json.load(f)
+    except Exception:
+        return
+
+    status_code_cache.clear()
+    status_code_cache_time.clear()
+    for url, info in data.items():
+        status_code_cache[url] = info.get("code")
+        status_code_cache_time[url] = info.get("time", 0)
+
+
+def _persist_status_cache() -> None:
+    """Write ``status_code_cache`` to ``STATUS_CACHE_PATH``."""
+    os.makedirs(os.path.dirname(STATUS_CACHE_PATH), exist_ok=True)
+    data = {
+        url: {"code": code, "time": status_code_cache_time.get(url, 0)}
+        for url, code in status_code_cache.items()
+    }
+    try:
+        with open(STATUS_CACHE_PATH, "w") as f:
+            json.dump(data, f)
+    except Exception:
+        logging.exception("Failed to persist status cache")
+
+
+_load_status_cache()
 
 
 FONT_CANDIDATES = [
@@ -184,10 +219,11 @@ def get_cached_status_code(url):
     ts = status_code_cache_time.get(url, 0)
     if code is not None and time.time() - ts < STATUS_CACHE_TTL:
         return code
-    elif code is not None:
-        # entry expired
+    if code is not None:
+        # Entry expired, remove and persist cleanup
         status_code_cache.pop(url, None)
         status_code_cache_time.pop(url, None)
+        _persist_status_cache()
     return None
 
 
@@ -195,6 +231,7 @@ def set_cached_status_code(url, code):
     """Store status code for URL with current timestamp."""
     status_code_cache[url] = code
     status_code_cache_time[url] = time.time()
+    _persist_status_cache()
 
 
 # Callback functions to update activity state
