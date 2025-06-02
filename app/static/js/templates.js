@@ -316,6 +316,23 @@ export async function loadTemplates() {
 
   try {
     const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const message =
+        '<div class="error">Session expired. Please log in again.</div>';
+      if (isIndexPage) {
+        templateList.innerHTML = message;
+      } else if (isCaptionsPage) {
+        templateContainer.innerHTML = message;
+      }
+      return;
+    }
+
     const templates = await response.json();
 
     if (isIndexPage) {
