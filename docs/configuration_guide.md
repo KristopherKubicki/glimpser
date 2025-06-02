@@ -16,6 +16,9 @@ are used.
 | `GLIMPSER_LOGGING_PATH` | `logs/glimpser.log` | Path to the main log file |
 | `GLIMPSER_BACKUP_PATH` | `data/config_backup.json` | File used when backing up configuration |
 
+Relative paths are resolved from the application's root directory. Use an
+absolute path if the backup file should reside elsewhere.
+
 `app.config` parses the `.env` file only once when it is first imported.  Later
 imports reuse the existing values instead of re-reading the file.
 
