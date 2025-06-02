@@ -54,7 +54,8 @@
         {% endfor %}
         </tbody>
     </table>
-    <script>
+    <script type='module'>
+import { setDiscover, render } from '{{ url_for('static', filename='js/navbar.js') }}';
     const button = document.getElementById('discover-btn');
     const msg = document.getElementById('discover-message');
     const progress = document.getElementById('discover-progress');
@@ -78,6 +79,8 @@
             msg.textContent = 'Searching...';
             progress.style.display = 'inline';
             progress.removeAttribute('value');
+            setDiscover(true);
+            render();
             body.innerHTML = '';
             const source = new EventSource('/discover/scan_stream');
             const known = new Set();
@@ -115,6 +118,8 @@
                 if (data.done) {
                     msg.textContent = `Found ${known.size} cameras.`;
                     progress.style.display = 'none';
+                    setDiscover(false);
+                    render();
                     source.close();
                     return;
                 }
@@ -126,6 +131,8 @@
             };
             source.onerror = (e) => {
                 console.error('Discovery error', e);
+                setDiscover(false);
+                render();
                 msg.textContent = 'Error discovering cameras';
                 progress.style.display = 'none';
                 source.close();

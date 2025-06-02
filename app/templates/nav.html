@@ -18,7 +18,7 @@
         {% if session.get('user_id') %}
                 <a id="health-status" href="/status" class="status-indicator" title="System Performance"></a>
                 <div id="danger-status" class="status-indicator" title="Danger Mode"></div>
-                <a href='/discover' class="settings-icon" title='Discover Cameras'><i class="fas fa-search"></i></a>
+                <a href='/discover' id='discover-link' class="settings-icon" title='Discover Cameras'><i class="fas fa-search"></i></a>
                 <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'><i class="fas fa-comment-dots"></i></a>
                 <a href='/live' id='live'>
                     <div id="coolClock" class="cool-clock" title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming.">

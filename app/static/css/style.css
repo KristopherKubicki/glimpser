@@ -364,6 +364,12 @@ nav a {
     background-color: grey;
     color: var(--text-color);
 }
+.status-healthy { background-color: green; }
+.status-degraded { background-color: red; }
+.status-error { background-color: red; }
+.danger-ready { background-color: orange; }
+.danger-off { background-color: grey; }
+.discover-scanning { animation: pulse 1s infinite; }
 
 .nav-right a,
 .nav-right .status-indicator {
@@ -472,6 +478,8 @@ nav a:hover, nav a.active {
         margin: 10px 0; /* Add some vertical margin */
     }
 }
+
+@keyframes pulse {0%{opacity:1;}50%{opacity:0.5;}100%{opacity:1;}}
 
 @keyframes highlight {
     0% { background-color: yellow; }
