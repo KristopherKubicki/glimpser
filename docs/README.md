@@ -47,3 +47,4 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Keyboard shortcuts now allow play/pause, mute, fullscreen toggling, camera selection with the arrow keys, and speed adjustment with `[` and `]` when watching live video.
 - Live view image streams now back off exponentially after repeated failures.
 - Live view preloads the next stream for smoother camera switching.
+- PNG streams hide the loading overlay once a frame is displayed.
