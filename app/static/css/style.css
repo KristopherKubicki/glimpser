@@ -988,6 +988,13 @@ input[type=submit]:hover {
     width: var(--grid-item-width, 360px);
 }
 
+/* Position the video container to cover the entire tile */
+.captions-page .video-container {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+}
+
 /* Ensure captions thumbnails fill the container and appear dimmed */
 .captions-page .templateDiv video {
     position: absolute;
