@@ -391,6 +391,14 @@ nav {
     gap: 15px; /* Space between navigation items */
 }
 
+.menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 1.5rem;
+}
+
 .nav-left,
 .nav-right {
     display: flex;
@@ -501,6 +509,28 @@ nav a:hover, nav a.active {
 @media screen and (max-width: 768px) { /* Responsive design for mobile */
     header h1 {
         font-size: 20px; /* Smaller font size on mobile */
+    }
+
+    .menu-toggle {
+        display: block;
+    }
+
+    nav:not(.active) .nav-left,
+    nav:not(.active) .nav-right {
+        display: none;
+    }
+
+    nav.active .nav-left,
+    nav.active .nav-right {
+        display: flex;
+        flex-direction: column;
+        background-color: #000;
+        position: absolute;
+        top: 40px;
+        left: 0;
+        right: 0;
+        padding: 10px;
+        z-index: 100;
     }
 
     nav {
@@ -1229,6 +1259,39 @@ details > summary {
 
 .group-links a {
     margin-right: 0.5em;
+}
+
+@media screen and (max-width: 600px) {
+    .feed-status,
+    #log-table {
+        display: block;
+    }
+    .feed-status thead,
+    #log-table thead {
+        display: none;
+    }
+    .feed-status tr,
+    #log-table tr {
+        display: block;
+        margin-bottom: 10px;
+    }
+    .feed-status td,
+    #log-table td {
+        display: block;
+        text-align: right;
+        position: relative;
+        padding-left: 50%;
+        border: 1px solid #ddd;
+    }
+    .feed-status td::before,
+    #log-table td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 6px;
+        top: 6px;
+        font-weight: bold;
+        text-align: left;
+    }
 }
 
 

@@ -1,25 +1,26 @@
+function updateTable(logs) {
+    const tbody = document.querySelector('#log-table tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    logs.forEach(log => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td data-label="Timestamp">${log.timestamp}</td>
+            <td data-label="Level">${log.level}</td>
+            <td data-label="Source">${log.source}</td>
+            <td data-label="Message">${log.message}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('log-filter-form');
     const table = document.getElementById('log-table');
-    const tbody = table.querySelector('tbody');
     const searchInput = document.getElementById('search-input');
     const levelSelect = document.getElementById('level-select');
 
     let eventSource;
-
-    function updateTable(logs) {
-        tbody.innerHTML = '';
-        logs.forEach(log => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${log.timestamp}</td>
-                <td>${log.level}</td>
-                <td>${log.source}</td>
-                <td>${log.message}</td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
 
     function startEventStream() {
         if (eventSource) {
@@ -57,3 +58,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Start the initial event stream
     startEventStream();
 });
+
+window.updateTable = updateTable;
+if (typeof module !== 'undefined') {
+    module.exports = { updateTable };
+}
