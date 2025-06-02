@@ -47,7 +47,7 @@
             <option value="llm_cost_estimate">LLM Cost</option>
         </select>
         <input type="text" id="filter-value" placeholder="Value" title="Filter value">
-        <button id="apply-filter" type="button">Apply</button>
+        <button id="apply-filter" type="button" title="Filter table rows">Apply</button>
     </div>
 
 
@@ -55,11 +55,11 @@
 <details class="tsv-controls">
     <summary>Bulk Caption Management</summary>
     <div class="tsv-buttons">
-        <a href="/download_captions_tsv" class="btn btn-primary">Download Captions as TSV</a>
+        <a href="/download_captions_tsv" class="btn btn-primary" title="Download captions as TSV file">Download Captions as TSV</a>
 
         <form action="/upload_captions_tsv" method="post" enctype="multipart/form-data" class="tsv-upload-form">
-            <input type="file" name="tsv_file" id="tsv_file" accept=".tsv">
-            <button type="submit" class="btn btn-success">Upload TSV</button>
+            <input type="file" name="tsv_file" id="tsv_file" accept=".tsv" title="Select TSV file to upload">
+            <button type="submit" class="btn btn-success" title="Upload caption TSV file">Upload TSV</button>
         </form>
     </div>
     <p class="tsv-help">Download the TSV file, edit in a spreadsheet application, then upload to update captions.</p>
@@ -122,7 +122,7 @@
             <td>
                 <div class="templateDiv">
                     <div class="video-container" data-timestamp="{{ template_details[camera]['last_screenshot_time'] }}">
-                        <div class="camera-name"><a href='/templates/{{camera}}'>{{camera}}</a></div>
+                        <div class="camera-name"><a href='/templates/{{camera}}' title="Open {{ camera }} details">{{camera}}</a></div>
                         <video class="hover-video" loop muted poster="/last_screenshot/{{ camera }}">
                             <source src="/last_video/{{ camera }}" type="video/mp4">
                             Your browser does not support the video tag.
@@ -153,7 +153,7 @@
                                 </div>
                             </div>
                         </div>
-                        <button class="update-button" data-template="{{ camera }}">
+                        <button class="update-button" data-template="{{ camera }}" title="Send updated prompt">
                             Send
                         </button>
                     </form>

@@ -31,26 +31,27 @@
   </section>
 
   <form id="danger-form" method="post">
-    <label for="danger-checkbox">
+    <label for="danger-checkbox" title="Toggle danger mode">
       <input
         id="danger-checkbox"
         type="checkbox"
         name="enabled"
         {% if enabled %}checked{% endif %}
+        title="Enable or disable danger mode"
       />
       Enable Danger Mode
     </label>
-    <button type="submit">Save</button>
+    <button type="submit" title="Save danger mode setting">Save</button>
   </form>
 </main>
 
-<div id="danger-modal" class="modal">
-  <div class="modal-content">
-    <span id="danger-close" class="close-icon">&times;</span>
-    <p id="danger-modal-message"></p>
-    <button id="danger-confirm">Confirm</button>
-    <button id="danger-cancel">Cancel</button>
+  <div id="danger-modal" class="modal">
+    <div class="modal-content">
+      <span id="danger-close" class="close-icon" title="Close dialog">&times;</span>
+      <p id="danger-modal-message"></p>
+      <button id="danger-confirm" title="Confirm this action">Confirm</button>
+      <button id="danger-cancel" title="Cancel and close">Cancel</button>
+    </div>
   </div>
-</div>
 {% endblock %}
 

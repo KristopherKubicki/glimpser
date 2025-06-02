@@ -23,3 +23,12 @@ This document lists the main tooltips available in the Glimpser interface. Hover
 - The footer itself hides when the mouse is inactive.
 
 These tooltips aim to make the interface self‑explanatory and easier to navigate.
+
+## Forms
+
+Interactive forms now include additional tooltips:
+
+- **Add Template** – explains each field and the "Structured" XPath buttons.
+- **Template Details** – buttons like "Suggest Prompt" and "Suggest Fix" describe their actions.
+- **Captions** – upload and filter controls have descriptive titles.
+- **Danger Mode** – the checkbox, save button and modal controls all include tooltips.
