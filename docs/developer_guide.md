@@ -32,6 +32,13 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    npm install
    ```
 
+## Understanding the Architecture
+Before diving into new features, read
+[Architecture Overview](architecture_overview.md). It describes how Flask routes,
+background jobs and utility modules cooperate. The "Data Flow from Camera to UI"
+section maps the path a captured frame takes through the scheduler and database
+to the web interface.
+
 ## Running Tests
 
 The project uses `pytest` for testing and `flake8` for linting. After activating your environment, run:

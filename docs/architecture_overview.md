@@ -44,3 +44,11 @@ This guide provides a high-level look at Glimpser's core components and how they
 - Utility functions perform processing and are called by both routes and scheduled jobs.
 - Background tasks run outside request/response cycles to capture data and generate summaries.
 
+
+## Data Flow from Camera to UI
+1. **Camera Source** – Each camera is defined in the database as a template specifying the capture URL and parameters.
+2. **Capture Job** – The scheduler runs `capture_template` jobs that use `screenshots.py` to grab frames or video from the source.
+3. **Database Update** – Captured metadata and any motion events are stored via `db.py` while images are written to `data/screenshots/`.
+4. **Summarization** – `update_summary` collects recent captions and calls the configured language model to produce a textual summary which is saved back to the database.
+5. **Routes and API** – Flask routes load screenshots and summaries to serve HTML pages or JSON responses.
+6. **Frontend Display** – The web interface streams MJPEG or MP4 data on the live page and displays captions or summaries as they arrive via WebSocket events.
