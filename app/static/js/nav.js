@@ -1,62 +1,57 @@
+import { pollingFetch } from './polling.js';
+
 export function initNav() {
   document.addEventListener('DOMContentLoaded', () => {
-    function checkHealth() {
-      fetch('/health')
-        .then((response) => response.json())
-        .then((data) => {
-          const healthStatus = document.getElementById('health-status');
-          if (!healthStatus) return;
-          if (data.status === 'healthy') {
-            healthStatus.style.backgroundColor = 'green';
-            healthStatus.title = 'System Status: Healthy\n\n';
-          } else {
-            healthStatus.style.backgroundColor = 'red';
-            healthStatus.title = 'System Status: Degraded\n\n';
-          }
-          healthStatus.title += `CPU: ${data.metrics.cpu_usage}%\n` +
-            `Memory: ${data.metrics.memory_usage}%\n` +
-            `Disk: ${data.metrics.disk_usage}%\n` +
-            `Open Files: ${data.metrics.open_files}\n` +
-            `Threads: ${data.metrics.thread_count}\n` +
-            `Uptime: ${data.metrics.uptime}\n`;
+    function renderHealth(data) {
+      const healthStatus = document.getElementById('health-status');
+      if (!healthStatus || !data) return;
+      if (data.status === 'healthy') {
+        healthStatus.style.backgroundColor = 'green';
+        healthStatus.title = 'System Status: Healthy\n\n';
+      } else {
+        healthStatus.style.backgroundColor = 'red';
+        healthStatus.title = 'System Status: Degraded\n\n';
+      }
+      healthStatus.title += `CPU: ${data.metrics.cpu_usage}%\n` +
+        `Memory: ${data.metrics.memory_usage}%\n` +
+        `Disk: ${data.metrics.disk_usage}%\n` +
+        `Open Files: ${data.metrics.open_files}\n` +
+        `Threads: ${data.metrics.thread_count}\n` +
+        `Uptime: ${data.metrics.uptime}\n`;
 
-          if (data.error_messages && data.error_messages.length > 0) {
-            healthStatus.title += '\nErrors:\n' + data.error_messages.join('\n');
-          }
-        })
-        .catch((error) => {
-          console.error('Error fetching health status:', error);
-          const healthStatus = document.getElementById('health-status');
-          if (healthStatus) {
-            healthStatus.style.backgroundColor = 'red';
-            healthStatus.title = 'Error: Unable to fetch health status';
-          }
-        });
+      if (data.error_messages && data.error_messages.length > 0) {
+        healthStatus.title += '\nErrors:\n' + data.error_messages.join('\n');
+      }
     }
 
-    function checkDanger() {
-      fetch('/danger_status')
-        .then((response) => response.json())
-        .then((data) => {
-          const dangerStatus = document.getElementById('danger-status');
-          if (!dangerStatus) return;
-          if (data.ready) {
-            dangerStatus.style.backgroundColor = 'orange';
-            dangerStatus.textContent = '!';
-            dangerStatus.title = 'Danger Mode Ready';
-          } else {
-            dangerStatus.style.backgroundColor = 'grey';
-            dangerStatus.textContent = '×';
-            let reason = [];
-            if (!data.port_open) reason.push('Debug port closed');
-            if (!data.idle) reason.push('User active');
-            dangerStatus.title = 'Danger Mode Off';
-            if (reason.length) dangerStatus.title += '\n' + reason.join(', ');
-          }
-        })
-        .catch((error) => {
-          console.error('Error fetching danger status:', error);
-        });
+    function renderHealthError() {
+      const healthStatus = document.getElementById('health-status');
+      if (healthStatus) {
+        healthStatus.style.backgroundColor = 'red';
+        healthStatus.title = 'Error: Unable to fetch health status';
+      }
+    }
+
+    function renderDanger(data) {
+      const dangerStatus = document.getElementById('danger-status');
+      if (!dangerStatus || !data) return;
+      if (data.ready) {
+        dangerStatus.style.backgroundColor = 'orange';
+        dangerStatus.textContent = '!';
+        dangerStatus.title = 'Danger Mode Ready';
+      } else {
+        dangerStatus.style.backgroundColor = 'grey';
+        dangerStatus.textContent = '×';
+        let reason = [];
+        if (!data.port_open) reason.push('Debug port closed');
+        if (!data.idle) reason.push('User active');
+        dangerStatus.title = 'Danger Mode Off';
+        if (reason.length) dangerStatus.title += '\n' + reason.join(', ');
+      }
+    }
+
+    function renderDangerError() {
+      console.error('Error fetching danger status');
     }
 
     function updateCoolClock() {
@@ -93,11 +88,25 @@ export function initNav() {
       showNav();
     }
 
-    setInterval(checkHealth, 5000);
-    checkHealth();
+    (async () => {
+      for await (const data of pollingFetch(
+        () => fetch('/health').then((r) => r.json()),
+        5000,
+      )) {
+        if (data) renderHealth(data);
+        else renderHealthError();
+      }
+    })();
 
-    setInterval(checkDanger, 5000);
-    checkDanger();
+    (async () => {
+      for await (const data of pollingFetch(
+        () => fetch('/danger_status').then((r) => r.json()),
+        5000,
+      )) {
+        if (data) renderDanger(data);
+        else renderDangerError();
+      }
+    })();
 
     setInterval(updateCoolClock, 1000);
     updateCoolClock();
