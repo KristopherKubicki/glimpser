@@ -400,8 +400,14 @@ def _probe_mdns(timeout=2):
     return cameras
 
 
-def _probe_ssdp(timeout=2):
-    """Probe for devices announcing themselves via SSDP/UPnP."""
+def _probe_ssdp(timeout: int = 2, max_duration: int = 5) -> list[dict]:
+    """Probe for devices announcing themselves via SSDP/UPnP.
+
+    The loop ends after ``max_duration`` seconds regardless of how many
+    responses arrive. This prevents very large networks from delaying the
+    entire discovery run indefinitely.
+    """
+
     cameras = []
     request = (
         "M-SEARCH * HTTP/1.1\r\n"
@@ -411,14 +417,20 @@ def _probe_ssdp(timeout=2):
         "ST:ssdp:all\r\n\r\n"
     )
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    start = time.time()
     sock.settimeout(timeout)
     try:
         sock.sendto(request.encode(), ("239.255.255.250", 1900))
         while True:
+            # Break once the overall limit has expired even if the socket keeps
+            # receiving new announcements. Without this check discovery could
+            # stall on busy networks.
+            if time.time() - start >= max_duration:
+                break
             try:
                 resp, addr = sock.recvfrom(1024)
             except socket.timeout:
-                break
+                continue
             ip = addr[0]
             port = 80
             headers = resp.decode(errors="ignore").split("\r\n")

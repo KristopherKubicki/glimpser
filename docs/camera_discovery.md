@@ -43,7 +43,7 @@ The discovery code combines multiple approaches:
 5. **WebRTC/STUN scan** – `_scan_webrtc_ports()` detects WebRTC servers by checking ports `3478` and `5349`.
 6. **mDNS/Zeroconf** – `_probe_mdns()` looks for services like `_onvif._tcp` and `_rtsp._tcp` advertised on the local network.
 7. **SNMP scan** – `_scan_snmp_ports()` checks port `161` for SNMP agents and reads the device name if possible.
-8. **SSDP/UPnP probe** – `_probe_ssdp()` sends an M-SEARCH request to detect cameras announcing via SSDP.
+8. **SSDP/UPnP probe** – `_probe_ssdp()` sends an M-SEARCH request to detect cameras announcing via SSDP. The scan now stops after five seconds so large networks do not slow the entire process.
 9. **HTTP endpoint scan** – `_scan_http_endpoints()` checks ports `80`, `8080`, and `443` for `/snapshot.jpg` or `/video.mjpg` streams.
 10. **HLS detection** – `_scan_hls_streams()` looks for playlist files like `/index.m3u8`.
 11. **Local devices** – `_local_video_devices()` lists available `/dev/video*` entries for webcams or other direct-attached cameras.
