@@ -20,14 +20,14 @@ from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 from app.config import backup_config, restore_config
 from app.utils.email_alerts import email_alert
 from app.utils.sms_alerts import sms_alert
-
-# from app.utils.db import SessionLocal
-# from app.models.log import Log
+from app.utils.db import SessionLocal
+from app.models.log import Log
+from sqlalchemy.orm import scoped_session
 
 # needed for the llava compare
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-"""
+
 class SQLAlchemyHandler(logging.Handler):
     def __init__(self):
         super().__init__()
@@ -35,13 +35,13 @@ class SQLAlchemyHandler(logging.Handler):
 
     def emit(self, record):
         log_entry = Log(
+            timestamp=int(record.created),
             level=record.levelname,
             message=record.getMessage(),
-            source=record.name
+            source=record.name,
         )
         self.session.add(log_entry)
         self.session.commit()
-"""
 
 
 def create_app(enable_watchdog=True, schedule=True):
@@ -91,6 +91,7 @@ def create_app(enable_watchdog=True, schedule=True):
     )
     # Set up logging
     app.logger.setLevel(logging.WARN)  # todo: read from config....
+    logging.getLogger().addHandler(SQLAlchemyHandler())
 
     # Ensure required directories exist
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)

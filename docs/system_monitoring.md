@@ -38,6 +38,18 @@ To filter logs by level and message text, you could request:
 
 The log viewer reads log lines from memory, ensuring minimal disk overhead.
 
+## Persistent Log Storage
+
+All log entries are also written to the `logs` table in the SQLite database. You
+can inspect them directly:
+
+```bash
+sqlite3 data/glimpser.db "SELECT level, source, message FROM logs ORDER BY id DE
+SC LIMIT 10;"
+```
+
+This table is created automatically when the application starts.
+
 The `/status` page also appears on the `/discover` screen as a **System Status**
 camera. Adding it lets Glimpser capture periodic screenshots of its own health
 metrics.
