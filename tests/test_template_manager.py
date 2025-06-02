@@ -48,6 +48,26 @@ class TestTemplateManager(unittest.TestCase):
         self.assertEqual(result["template2"]["frequency"], 120)
 
     @patch("app.utils.template_manager.SessionLocal")
+    def test_get_templates_by_last_caption_time(self, mock_session):
+        mock_session_instance = MagicMock()
+        mock_session.return_value = mock_session_instance
+        mock_query = mock_session_instance.query.return_value
+        mock_order = mock_query.order_by
+        mock_all = mock_order.return_value.all
+
+        t1 = Template(name="t1", last_caption_time="2023-01-01 00:00:00")
+        t2 = Template(name="t2", last_caption_time="2023-01-02 00:00:00")
+        t3 = Template(name="t3", last_caption_time="2023-01-03 00:00:00")
+        mock_all.return_value = [t3, t2, t1]
+
+        result = self.template_manager.get_templates_by_last_caption_time()
+
+        self.assertEqual(result[0][0], "t3")
+        self.assertEqual(result[1][0], "t2")
+        self.assertEqual(result[2][0], "t1")
+        mock_order.assert_called()
+
+    @patch("app.utils.template_manager.SessionLocal")
     def test_save_template(self, mock_session):
         # Mock the session and query
         mock_session_instance = MagicMock()
