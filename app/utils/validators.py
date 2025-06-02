@@ -2,6 +2,7 @@
 
 from werkzeug.utils import secure_filename
 import re
+from urllib.parse import urlparse
 
 
 def validate_proxy(proxy: str | None) -> str | None:
@@ -23,6 +24,32 @@ def validate_proxy(proxy: str | None) -> str | None:
         return None
 
     return proxy
+
+
+def validate_url(url: str | None) -> str | None:
+    """Return the URL string if valid, otherwise ``None``.
+
+    The URL must use the ``http`` or ``https`` scheme and must not contain
+    newline characters or start with a dash. This helps prevent accidental
+    command-line argument injection when the value is passed to subprocess
+    calls.
+    """
+
+    if url is None:
+        return None
+
+    url = str(url).strip()
+
+    if not url or url.startswith("-"):
+        return None
+
+    if "\n" in url or "\r" in url:
+        return None
+
+    if urlparse(url).scheme not in {"http", "https"}:
+        return None
+
+    return url
 
 
 def validate_template_name(template_name: str):
