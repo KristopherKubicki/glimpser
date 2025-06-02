@@ -11,16 +11,23 @@ import app
 
 class TestStatusDashboard(unittest.TestCase):
     def setUp(self):
+        # Disable authentication before routes are registered so the
+        # dashboard can be accessed without a session.
+        self.login_patch = patch("app.routes.login_required", lambda x: x)
+        self.session_patch = patch("app.routes.session", {"user_id": 1})
+        self.login_patch.start()
+        self.session_patch.start()
         self.app = app.create_app(enable_watchdog=False, schedule=False)
         self.client = self.app.test_client()
 
+    def tearDown(self):
+        self.login_patch.stop()
+        self.session_patch.stop()
+
     def test_status_page_has_dashboard(self):
-        with self.app.app_context(), patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
-        ):
-            resp = self.client.get("/status")
-            self.assertEqual(resp.status_code, 200)
-            self.assertIn(b"Feed Status", resp.data)
+        resp = self.client.get("/status")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"Feed Status", resp.data)
 
 
 if __name__ == "__main__":
