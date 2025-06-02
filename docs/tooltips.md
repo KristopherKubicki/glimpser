@@ -10,7 +10,10 @@ This document lists the main tooltips available in the Glimpser interface. Hover
 - **System Performance icon** – shows CPU, memory and other metrics.
 - **Danger Mode icon** – explains why danger mode may be disabled.
 - **Discover Cameras icon** – opens the camera discovery page.
-- **Captions icon** – reads and updates camera language models.
+- **Captions icon** – reads and updates camera language models. The icon flashes
+  with the latest caption when group messages arrive. It stays green for one
+  minute after the most recent caption, turns yellow for the next five minutes
+  and becomes red when no update has been received for over thirty minutes.
 - **Clock icon** – opens the live page with instructions for real‑time streaming.
 - **Settings icon** – opens the settings page.
 - **Login link** – appears when not authenticated.

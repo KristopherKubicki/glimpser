@@ -940,6 +940,22 @@ def init_routes(app):
             }
         )
 
+    @app.route("/captions_status")
+    @login_required
+    def captions_status():
+        """Return the newest caption and its timestamp."""
+        caption = ""
+        timestamp = ""
+        try:
+            templates = template_manager.get_templates_sorted_by_last_caption_time()
+            if templates:
+                _, info = templates[0]
+                caption = info.get("last_caption", "")
+                timestamp = info.get("last_caption_time", "")
+        except Exception as e:  # pragma: no cover - unexpected DB errors
+            logging.error("error retrieving captions status: %s", e)
+        return jsonify({"caption": caption, "timestamp": timestamp})
+
     @app.route("/danger", methods=["GET", "POST"])
     @login_required
     def danger_mode():
@@ -967,6 +983,12 @@ def init_routes(app):
                     "path": "/danger_status",
                     "method": "GET",
                     "description": "Check if Danger mode is ready",
+                    "authentication_required": False,
+                },
+                {
+                    "path": "/captions_status",
+                    "method": "GET",
+                    "description": "Get the most recent caption and timestamp",
                     "authentication_required": False,
                 },
                 {
