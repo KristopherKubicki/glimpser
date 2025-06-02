@@ -1,4 +1,17 @@
 {% extends 'base.html' %}
+{% macro show_info(info) -%}
+    {%- set pieces = [] %}
+    {%- if info.name %}{% set _ = pieces.append(info.name) %}{% endif %}
+    {%- if info.xaddr %}{% set _ = pieces.append(info.xaddr) %}{% endif %}
+    {%- if info.path %}{% set _ = pieces.append(info.path) %}{% endif %}
+    {%- if info.sdp %}{% set _ = pieces.append('SDP available') %}{% endif %}
+    {%- for k, v in info.items() %}
+        {%- if k not in ['name', 'xaddr', 'path', 'sdp', 'mac', 'manufacturer'] %}
+            {%- set _ = pieces.append(k ~ ': ' ~ v) %}
+        {%- endif %}
+    {%- endfor %}
+    {{ pieces|join(' ') }}
+{%- endmacro %}
 {% block content %}
     <h2>Discovered Cameras</h2>
     <button id="discover-btn" title="Scan the network for cameras">Discover</button>
@@ -24,7 +37,7 @@
                 <td>{{ cam.port }}</td>
                 <td>{{ cam.info.mac }}</td>
                 <td>{{ cam.info.manufacturer }}</td>
-                <td>{{ cam.info }}</td>
+                <td>{{ show_info(cam.info) }}</td>
                 <td>
                     <form action="/discover/add" method="post">
                         <input type="hidden" name="ip" value="{{ cam.ip }}">
@@ -46,6 +59,20 @@
     const msg = document.getElementById('discover-message');
     const progress = document.getElementById('discover-progress');
     const body = document.getElementById('discover-body');
+    const renderInfo = (info) => {
+        if (!info) return '';
+        const pieces = [];
+        if (info.name) pieces.push(info.name);
+        if (info.xaddr) pieces.push(info.xaddr);
+        if (info.path) pieces.push(info.path);
+        if (info.sdp) pieces.push('SDP available');
+        Object.entries(info).forEach(([k, v]) => {
+            if (!['name', 'xaddr', 'path', 'sdp', 'mac', 'manufacturer'].includes(k)) {
+                pieces.push(`${k}: ${v}`);
+            }
+        });
+        return pieces.join(' ');
+    };
     if (button) {
         button.addEventListener('click', () => {
             msg.textContent = 'Searching...';
@@ -65,7 +92,7 @@
                     <td>${cam.port}</td>
                     <td>${cam.info.mac || ''}</td>
                     <td>${cam.info.manufacturer || ''}</td>
-                    <td>${JSON.stringify(cam.info)}</td>
+                    <td>${renderInfo(cam.info)}</td>
                     <td>
                         <form action="/discover/add" method="post">
                             <input type="hidden" name="ip" value="${cam.ip}">
