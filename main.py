@@ -85,6 +85,12 @@ def parse_arguments(arg_list=None):
         default=False,
     )
     parser.add_argument(
+        "--no-crawlers",
+        action="store_true",
+        help="Skip scheduling crawler jobs",
+        default=False,
+    )
+    parser.add_argument(
         "--screenshot-dir",
         default=config.SCREENSHOT_DIRECTORY,
         help="Directory for storing screenshots",
@@ -209,9 +215,11 @@ def create_application(args=None):
 
     schedule = not getattr(args, "no_scheduler", False)
     enable_watchdog = not getattr(args, "no_watchdog", False)
+    crawlers = not getattr(args, "no_crawlers", False)
 
-    return create_app(enable_watchdog=enable_watchdog, schedule=schedule)
-
+    return create_app(
+        enable_watchdog=enable_watchdog, schedule=schedule, crawlers=crawlers
+    )
 
 def output_shutdown_stats():
     # Get and display system metrics

@@ -139,8 +139,12 @@ class TestMain(unittest.TestCase):
         args.no_scheduler = True
         args.no_watchdog = True
 
+        args.no_crawlers = True
+
         main.create_application(args)
-        mock_create_app.assert_called_with(enable_watchdog=False, schedule=False)
+        mock_create_app.assert_called_with(
+            enable_watchdog=False, schedule=False, crawlers=False
+        )
 
 
 if __name__ == "__main__":

@@ -101,7 +101,11 @@ def run_with_timeout(func, args=(), timeout=300):
         logging.warning("Process terminated due to timeout")
 
 
-def find_closest_image(directory, last_caption_time):
+MAX_IMAGE_TIME_DIFF = datetime.timedelta(minutes=5)
+
+
+def find_closest_image(directory, last_caption_time, max_time_diff=MAX_IMAGE_TIME_DIFF):
+    """Return the closest motion image not older than ``max_time_diff``."""
     closest_image = None
     min_time_diff = None
 
@@ -115,9 +119,12 @@ def find_closest_image(directory, last_caption_time):
             timestamp_str = filename.split("_")[0]
             try:
                 timestamp = datetime.datetime.strptime(timestamp_str, "%Y%m%d%H%M%S")
-                time_diff = abs(
-                    last_caption_time - timestamp
-                )  # todo.. can't go over...
+                time_diff = abs(last_caption_time - timestamp)
+
+                # Ignore images outside the allowed time window
+                if time_diff > max_time_diff:
+                    continue
+
                 if min_time_diff is None or time_diff < min_time_diff:
                     closest_image = filename
                     min_time_diff = time_diff

@@ -1212,6 +1212,7 @@ def init_routes(app):
                     "seq": random.randint(0, 65535),
                     "timestamp": random.randint(0, 0xFFFFFFFF),
                     "ssrc": random.randint(0, 0xFFFFFFFF),
+                    "last_keepalive": time.time(),
                 }
 
             transport = request.headers.get("Transport", "")
@@ -1259,7 +1260,10 @@ def init_routes(app):
             return Response(headers={"CSeq": cseq, "Session": session_id})
 
         elif request.method == "GET_PARAMETER":
-            return "Method Not Allowed", 405
+            if session_id not in rtsp_sessions:
+                abort(454)
+            rtsp_sessions[session_id]["last_keepalive"] = time.time()
+            return Response(headers={"CSeq": cseq, "Session": session_id})
 
         elif request.method == "TEARDOWN":
             if session_id in rtsp_sessions:

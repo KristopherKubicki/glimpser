@@ -53,13 +53,14 @@ class TestRTSP(unittest.TestCase):
         self.assertEqual(resp.headers.get("Session"), session_id)
         self.assertEqual(routes.rtsp_sessions[session_id]["state"], "PLAYING")
 
-        # GET_PARAMETER not implemented
+        # GET_PARAMETER keepalive
         resp = self.client.open(
             "/test.rtsp",
             method="GET_PARAMETER",
             headers={"CSeq": "5", "Session": session_id},
         )
-        self.assertEqual(resp.status_code, 405)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.headers.get("Session"), session_id)
 
         # rtsp_stream should return RTP packets when PLAYING
         fake_frame = b"JPEGDATA"
