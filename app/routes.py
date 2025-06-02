@@ -940,6 +940,13 @@ def init_routes(app):
             }
         )
 
+    @app.route("/discovery_status")
+    @login_required
+    @profile_route("/discovery_status")
+    def discovery_status():
+        """Return cached background discovery status."""
+        return jsonify(scheduling.get_discovery_status())
+
     @app.route("/danger", methods=["GET", "POST"])
     @login_required
     def danger_mode():
@@ -967,6 +974,12 @@ def init_routes(app):
                     "path": "/danger_status",
                     "method": "GET",
                     "description": "Check if Danger mode is ready",
+                    "authentication_required": False,
+                },
+                {
+                    "path": "/discovery_status",
+                    "method": "GET",
+                    "description": "Check background discovery status",
                     "authentication_required": False,
                 },
                 {

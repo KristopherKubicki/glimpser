@@ -1106,3 +1106,64 @@ def get_last_summary_time() -> str | None:
     finally:
         session.close()
     return None
+
+
+# Background discovery cache
+
+discovery_cache = {
+    "results": [],
+    "timestamp": 0.0,
+    "running": False,
+    "error": None,
+}
+
+
+def run_discovery() -> None:
+    """Run camera discovery and cache the results."""
+
+    discovery_cache["running"] = True
+    discovery_cache["error"] = None
+    try:
+        discovery_cache["results"] = camera_discovery.discover_cameras()
+        discovery_cache["timestamp"] = time.time()
+    except Exception as e:  # pragma: no cover - network dependent
+        logging.error("background discovery failed: %s", e)
+        discovery_cache["error"] = str(e)
+    finally:
+        discovery_cache["running"] = False
+
+
+def get_discovery_status(max_age: int = 3600) -> dict:
+    """Return cached discovery status."""
+
+    age = time.time() - discovery_cache["timestamp"]
+    status = "stale"
+    if discovery_cache["running"]:
+        status = "running"
+    elif discovery_cache["error"]:
+        status = "error"
+    elif age <= max_age:
+        status = "ready"
+    return {
+        "status": status,
+        "age": age,
+        "results": discovery_cache["results"] if age <= max_age else [],
+        "running": discovery_cache["running"],
+        "error": discovery_cache["error"],
+    }
+
+
+def schedule_discovery() -> None:
+    """Schedule periodic background discovery."""
+
+    try:
+        scheduler.add_job(
+            func=run_discovery,
+            trigger="interval",
+            hours=1,
+            id="background_discovery",
+            replace_existing=True,
+        )
+    except Exception as e:
+        logging.error("job schedule error: %s", e)
+    run_discovery()
