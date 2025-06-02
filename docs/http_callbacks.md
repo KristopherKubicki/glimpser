@@ -16,7 +16,15 @@ The relevant code is shown below:
 
 ```python
 # app/utils/http_callbacks.py
-send_http_callback(url, event_type, payload)
+send_http_callback(
+    url,
+    event_type,
+    payload,
+    *,
+    timeout=5,
+    headers=None,
+    retries=0,
+)
 ```
 
 Scheduling tasks assemble the payload and call this function whenever an
@@ -32,6 +40,19 @@ payload = {
     "motion": bool(lsum),
 }
 send_http_callback(template.get("callback_url"), event, payload)
+```
+
+You can override the timeout, provide headers, and enable retries:
+
+```python
+send_http_callback(
+    template.get("callback_url"),
+    event,
+    payload,
+    timeout=10,
+    headers={"Authorization": "Bearer TOKEN"},
+    retries=2,
+)
 ```
 
 ## Configuring a Callback URL
