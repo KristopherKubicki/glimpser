@@ -3,11 +3,12 @@
     <div class="login-wrapper">
     <div class="login-container" title="Login form">
         <h2>Login Required</h2>
-        <form method="post" title="Enter your credentials to log in">
+        <form id="login-form" method="post" title="Enter your credentials to log in">
             Username:<br>
             <input type="text" name="username" required title="Enter your username"><br>
             Password:<br>
             <input type="password" name="password" required title="Enter your password"><br><br>
+            <div id="login-error" class="form-error hidden"></div>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -22,5 +23,6 @@
         </form>
     </div>
     </div>
+    <script type="module" src="{{ url_for('static', filename='js/login.js') }}"></script>
 {% endblock %}
 

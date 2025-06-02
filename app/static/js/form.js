@@ -42,4 +42,24 @@ export function initFormValidation() {
 
     return true;
   };
+
+  window.initAddSettingValidation = function initAddSettingValidation() {
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('add-setting-form');
+      if (!form) return;
+      form.addEventListener('submit', (e) => {
+        const name = document.getElementById('new_name').value.trim();
+        const value = document.getElementById('new_value').value.trim();
+        const error = document.getElementById('setting-error');
+        if (!name || !value || !/^[A-Z_]+$/.test(name)) {
+          e.preventDefault();
+          if (error) {
+            error.textContent =
+              'Name must use A-Z characters/underscores and value is required.';
+            error.classList.remove('hidden');
+          }
+        }
+      });
+    });
+  };
 }

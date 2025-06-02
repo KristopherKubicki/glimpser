@@ -992,8 +992,11 @@ def init_routes(app):
             return render_template("login.html"), 429
 
         if request.method == "POST":
-            username = request.form["username"]
-            password = request.form["password"]
+            username = (request.form.get("username") or "").strip()
+            password = (request.form.get("password") or "").strip()
+            if not username or not password:
+                flash("Username and password are required", "error")
+                return render_template("login.html"), 400
 
             db_session = SessionLocal()
             try:
@@ -2161,10 +2164,18 @@ def init_routes(app):
             ]
             action = request.form.get("action")
             if action == "add":
-                new_name = request.form.get("new_name")
-                new_value = request.form.get("new_value")
-                if new_name and new_value:
-                    update_setting(new_name, new_value)
+                new_name = (request.form.get("new_name") or "").strip()
+                new_value = (request.form.get("new_value") or "").strip()
+                if not new_name or not new_value:
+                    flash("Setting name and value are required", "error")
+                    return redirect(url_for("settings")), 400
+                if not re.fullmatch(r"[A-Z_]+", new_name):
+                    flash(
+                        "Setting names must contain only uppercase letters and underscores",
+                        "error",
+                    )
+                    return redirect(url_for("settings")), 400
+                update_setting(new_name, new_value)
             elif action == "delete":
                 name_to_delete = request.form.get("name_to_delete")
                 if name_to_delete:
