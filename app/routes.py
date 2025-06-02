@@ -30,6 +30,7 @@ from flask import (
     session,
     url_for,
     Response,
+    make_response,
     stream_with_context,
 )
 
@@ -2379,6 +2380,12 @@ def init_routes(app):
                 time.sleep(1)  # Send updates every second
 
         return Response(generate(), mimetype="text/event-stream")
+
+    @app.route("/sw.js")
+    def service_worker():
+        response = make_response(app.send_static_file("sw.js"))
+        response.headers["Cache-Control"] = "no-cache"
+        return response
 
     @app.route("/toggle_scheduler", methods=["POST"])
     @login_required
