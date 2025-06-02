@@ -7,10 +7,13 @@ export function initTemplates() {
       .getElementById('template-form')?.closest('details');
     const slider = document.getElementById('grid-width-slider');
     const templateList = document.getElementById('template-list');
+    const MAX_THUMBNAIL_HEIGHT = 720;
+    const ASPECT_RATIO = 9 / 16;
+    const MAX_THUMBNAIL_WIDTH = Math.round(MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO);
 
     if (slider) {
       const updateSliderLimits = () => {
-        slider.max = window.innerWidth;
+        slider.max = Math.min(window.innerWidth, MAX_THUMBNAIL_WIDTH);
         const templateCount =
           templateList?.querySelectorAll('.templateDiv').length || 1;
 
@@ -23,6 +26,8 @@ export function initTemplates() {
           (window.innerHeight * window.innerWidth) /
             (templateCount * aspectRatio),
         );
+        const widthForMaxHeight = MAX_THUMBNAIL_HEIGHT / aspectRatio;
+        slider.max = Math.min(slider.max, widthForMaxHeight);
 
         const computedMin = Math.max(
           50,
@@ -37,11 +42,19 @@ export function initTemplates() {
           slider.value = computedMin;
           if (templateList) {
             templateList.style.setProperty('--grid-item-width', `${computedMin}px`);
+            const height = Math.min(
+              Math.round((computedMin * 9) / 16),
+              MAX_THUMBNAIL_HEIGHT,
+            );
+            templateList.style.setProperty('--grid-item-height', `${height}px`);
           }
         }
         if (templateList) {
           const width = parseFloat(slider.value);
-          const height = Math.round((width * 9) / 16);
+          const height = Math.min(
+            Math.round((width * 9) / 16),
+            MAX_THUMBNAIL_HEIGHT,
+          );
           templateList.style.setProperty('--grid-item-height', `${height}px`);
         }
       };
@@ -76,10 +89,19 @@ export function initTemplates() {
 
     if (slider && templateList) {
       slider.addEventListener('input', () => {
-        const value = slider.value;
+        let value = Math.min(parseFloat(slider.value), MAX_THUMBNAIL_WIDTH);
+        const height = Math.min(
+          Math.round((value * 9) / 16),
+          MAX_THUMBNAIL_HEIGHT,
+        );
         templateList.style.setProperty('--grid-item-width', `${value}px`);
-        const height = Math.round((value * 9) / 16);
         templateList.style.setProperty('--grid-item-height', `${height}px`);
+        templateList
+          .querySelectorAll('.templateDiv')
+          .forEach((div) => {
+            div.style.width = `${value}px`;
+            div.style.height = `${height}px`;
+          });
 
         const cameraNameFontSize = Math.max(10, Math.min(14, value / 25));
         const timestampFontSize = Math.max(8, Math.min(12, value / 30));
