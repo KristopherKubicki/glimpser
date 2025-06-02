@@ -662,7 +662,7 @@ def download_image(
     response = None
 
     cached = get_cached_status_code(url)
-    if cached is not None and cached != 200 and proxy is None:
+    if cached is not None and cached != 200:
         logging.debug(f"Skipping {url} due to cached status {cached}")
         return False
     try:
@@ -676,7 +676,6 @@ def download_image(
         for leach in re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url):
             auth = requests.auth.HTTPBasicAuth(leach[0], leach[1])
 
-        # TODO: cache the response status_code
         request_kwargs = dict(
             stream=True,
             timeout=(timeout, timeout * 3),
@@ -688,9 +687,7 @@ def download_image(
             request_kwargs["proxies"] = proxies
 
         response = http_session().get(url, **request_kwargs)
-        if (
-            response.status_code == 401 and auth is not None
-        ):  # Unauthorized, try Digest Authentication
+        if response.status_code == 401 and auth is not None:
             for leach in re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url):
                 auth = requests.auth.HTTPDigestAuth(leach[0], leach[1])
             request_kwargs = dict(
@@ -705,9 +702,10 @@ def download_image(
 
             response = http_session().get(url, **request_kwargs)
 
-        set_cached_status_code(url, response.status_code)
+        status = response.status_code
+        set_cached_status_code(url, status)
 
-        if response.status_code == 200:
+        if status == 200:
             # Open the image directly from the response bytes
             image = Image.open(io.BytesIO(response.content))
             response.close()
@@ -724,10 +722,7 @@ def download_image(
                 return True
         else:
             response.close()
-            logging.warning(
-                f"Error downloading image: HTTP status code {response.status_code} {url}"
-            )
-            set_cached_status_code(url, response.status_code)
+            logging.warning(f"Error downloading image: HTTP status code {status} {url}")
     except Exception as e:
         logging.error(f"Error downloading image: {e} {url} {timeout}")
         set_cached_status_code(url, 0)

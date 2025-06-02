@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Addressed Python build issues and string concatenation errors
 - Fixed screenshot timeouts and setup script problems
 - Offline cameras now display an overlay and keep the camera selector usable
+- `download_image` now reuses cached HTTP status codes to reduce retry overhead
 
 ## [0.2.6] - 2025-06-01
 
