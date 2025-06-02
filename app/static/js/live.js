@@ -559,7 +559,7 @@ const groupName = currentCamera.split('group-')[1];
 image.src = `/stream.mjpg?group=${encodeURIComponent(groupName)}`;
     } else if (currentCamera === 'All') {
 // Special handling for the "All" option
-image.src = '/stream.mjpg';
+image.src = '/stream.mjpg?group=all';
     } else {
 // URL for individual cameras
 image.src = '/stream.mjpg?camera=' + currentCamera + '&time=' + new Date().getTime();
@@ -578,7 +578,7 @@ const groupName = currentCamera.split('group-')[1];
 image.src = `/motion.mjpg?group=${encodeURIComponent(groupName)}`;
     } else if (currentCamera === 'All') {
 // Special handling for the "All" option
-image.src = '/motion.mjpg';
+image.src = '/motion.mjpg?group=all';
     } else {
 // URL for individual cameras
 image.src = '/motion.mjpg?camera=' + currentCamera + '&time=' + new Date().getTime();
