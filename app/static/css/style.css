@@ -871,7 +871,8 @@ input[type=submit]:hover {
 }
 
 .captions-table,
-.camera-table {
+.camera-table,
+.settings-table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 20px;
@@ -880,13 +881,16 @@ input[type=submit]:hover {
 .captions-table th,
 .captions-table td,
 .camera-table th,
-.camera-table td {
+.camera-table td,
+.settings-table th,
+.settings-table td {
     padding: 8px;
     border: 1px solid #ddd;
 }
 
 .captions-table th,
-.camera-table th {
+.camera-table th,
+.settings-table th {
     background-color: #f4f4f4;
 }
 

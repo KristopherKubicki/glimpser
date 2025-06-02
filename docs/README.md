@@ -5,6 +5,7 @@ If you're looking for the list of available documents, see [index.md](index.md).
 
 - The Settings page now includes descriptive `title` attributes on form controls
   to improve accessibility.
+- A new help link on the Settings page opens a detailed overview of each option.
 - The navigation bar's Settings link now uses a single descriptive `title` attribute.
 - Unit tests now cover configuration retrieval and Chrome debug port detection.
 - Retention policy file sorting is also verified by tests.

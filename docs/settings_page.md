@@ -1,0 +1,12 @@
+# Settings Page Overview
+
+The **Settings** interface lets you manage configuration values stored in the database. Each field includes a tooltip that explains its purpose. Use the "What does each setting do?" link to open a table describing the built-in options.
+
+## Sections
+
+- **Add New Setting** – quickly create additional key/value pairs.
+- **Current Settings** – edit existing values or delete them.
+- **Configuration Management** – backup, download, and upload the JSON configuration file.
+- **Danger Mode** – update Chrome shortcuts with the required flags.
+
+You can also visit `/settings_help` directly to read the full explanation page.
