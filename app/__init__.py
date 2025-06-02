@@ -10,6 +10,8 @@ from datetime import timedelta
 
 from flask import Flask
 
+from .state import AppState
+
 from app.utils.retention_policy import retention_cleanup
 from app.utils.scheduling import (
     schedule_crawlers,
@@ -91,6 +93,8 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
 
     app = Flask(__name__)
     app.secret_key = SECRET_KEY
+    # Initialize container for runtime state
+    app.state = AppState()
     app.config["SESSION_COOKIE_SECURE"] = SESSION_COOKIE_SECURE
     app.config["SESSION_COOKIE_HTTPONLY"] = SESSION_COOKIE_HTTPONLY
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(

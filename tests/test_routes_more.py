@@ -6,6 +6,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 import unittest  # noqa: E402
 from unittest.mock import patch  # noqa: E402
 
+from flask import Flask  # noqa: E402
+from app.state import AppState  # noqa: E402
 from app.routes import TemplateName, get_active_groups, update_setting  # noqa: E402
 
 
@@ -27,16 +29,17 @@ class TestTemplateName(unittest.TestCase):
 class TestGetActiveGroups(unittest.TestCase):
     @patch("app.routes.template_manager.get_templates")
     def test_get_active_groups(self, mock_get_templates):
+        app = Flask(__name__)
+        app.state = AppState()
         mock_get_templates.return_value = {
             1: {"name": "cam1", "groups": "a, b"},
             2: {"name": "cam2", "groups": "b,c"},
             3: {"name": None, "groups": "d"},
         }
-        result = get_active_groups()
-        self.assertEqual(result, ["a", "b", "c"])
-        from app.routes import active_groups
-
-        self.assertEqual(active_groups, ["a", "b", "c"])
+        with app.app_context():
+            result = get_active_groups()
+            self.assertEqual(result, ["a", "b", "c"])
+            self.assertEqual(app.state.active_groups, ["a", "b", "c"])
 
 
 class DummySession:

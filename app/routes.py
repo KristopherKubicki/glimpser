@@ -31,6 +31,7 @@ from flask import (
     url_for,
     Response,
     stream_with_context,
+    current_app,
 )
 
 from PIL import Image
@@ -444,15 +445,8 @@ def generate_live_stream(url: str):
         time.sleep(2)
 
 
-login_attempts = {}
-last_shot = None
-last_time = None
-active_groups = []
-rtsp_sessions = {}
-
-
 def get_active_groups():
-    global active_groups
+    state = current_app.state
     templates = template_manager.get_templates()
     active_cameras = []
     for id, template in templates.items():
@@ -466,7 +460,7 @@ def get_active_groups():
     active_cameras = sorted(list(set(active_cameras)))
     if "" in active_cameras:
         active_cameras.remove("")
-    active_groups = active_cameras.copy()
+    state.active_groups = active_cameras.copy()
 
     return active_cameras
 
@@ -497,7 +491,7 @@ def generate(
     group=None, camera=None, filename="latest_camera.png", rtsp=False, session_id=None
 ):
     # pretty hacky but it works ok
-    global last_time, last_shot
+    state = current_app.state
     boundary = b"frame"
     while True:
         ltime = time.time()
@@ -522,33 +516,36 @@ def generate(
                 if (
                     group is None
                     and camera is None
-                    and last_time
-                    and time.time() - last_time < 1
-                    and last_shot
-                    and os.path.exists(last_shot)
+                    and state.last_time
+                    and time.time() - state.last_time < 1
+                    and state.last_shot
+                    and os.path.exists(state.last_shot)
                 ):
                     # Serve the previously captured screenshot if a new frame
                     # was not generated. If the cached image cannot be opened,
                     # remove it and fall back to searching for a new screenshot.
                     try:
-                        if screenshots._is_valid_png(last_shot):
-                            with Image.open(last_shot) as img:
+                        if screenshots._is_valid_png(state.last_shot):
+                            with Image.open(state.last_shot) as img:
                                 img = resize_and_pad(img, (1280, 720))
                                 buffer = io.BytesIO()
                                 img.save(buffer, format="JPEG")
                                 frame = buffer.getvalue()
                         else:
                             logging.error(
-                                "Failed to open last shot %s: invalid image", last_shot
+                                "Failed to open last shot %s: invalid image",
+                                state.last_shot,
                             )
                             try:
-                                os.remove(last_shot)
+                                os.remove(state.last_shot)
                             except OSError:
                                 pass
-                            last_shot = None
+                            state.last_shot = None
                     except Exception as e:
-                        logging.error("Failed to open last shot %s: %s", last_shot, e)
-                        last_shot = None
+                        logging.error(
+                            "Failed to open last shot %s: %s", state.last_shot, e
+                        )
+                        state.last_shot = None
 
                 if frame is None:
                     # Replace this with your actual template manager code
@@ -607,8 +604,8 @@ def generate(
 
                     frame = None
                     if most_recent_file:
-                        last_time = time.time()
-                        last_shot = most_recent_file
+                        state.last_time = time.time()
+                        state.last_shot = most_recent_file
 
                         try:
                             if screenshots._is_valid_png(most_recent_file):
@@ -645,8 +642,8 @@ def generate(
 
         if frame:
             if rtsp:
-                if session_id and session_id in rtsp_sessions:
-                    session = rtsp_sessions[session_id]
+                if session_id and session_id in current_app.state.rtsp_sessions:
+                    session = current_app.state.rtsp_sessions[session_id]
                     seq = session.get("seq", 0)
                     timestamp = session.get("timestamp", 0)
                     ssrc = session.get("ssrc", 0)
@@ -940,13 +937,14 @@ def init_routes(app):
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
+        state = current_app.state
         ip_address = request.remote_addr
         now = datetime.now()
 
         # Check if the IP address is locked out
         if (
-            ip_address in login_attempts
-            and login_attempts[ip_address]["locked_until"] > now
+            ip_address in state.login_attempts
+            and state.login_attempts[ip_address]["locked_until"] > now
         ):
             flash("Too many failed attempts. Please try again later.", "error")
             logging.warning("Locked login attempt from %s", ip_address)
@@ -968,27 +966,30 @@ def init_routes(app):
                     now + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
                 ).strftime("%Y-%m-%d %H:%M:%S")
                 session.permanent = True
-                login_attempts.pop(
+                state.login_attempts.pop(
                     ip_address, None
                 )  # Reset attempts on successful login
                 logging.info("Successful login for %s from %s", username, ip_address)
                 return redirect(url_for("index"))
             else:
                 # Record the failed attempt
-                if ip_address not in login_attempts:
-                    login_attempts[ip_address] = {"attempts": 1, "locked_until": now}
+                if ip_address not in state.login_attempts:
+                    state.login_attempts[ip_address] = {
+                        "attempts": 1,
+                        "locked_until": now,
+                    }
                 else:
-                    login_attempts[ip_address]["attempts"] += 1
+                    state.login_attempts[ip_address]["attempts"] += 1
 
                 # Lockout after 5 failed attempts
-                if login_attempts[ip_address]["attempts"] >= 5:
-                    login_attempts[ip_address]["locked_until"] = now + timedelta(
+                if state.login_attempts[ip_address]["attempts"] >= 5:
+                    state.login_attempts[ip_address]["locked_until"] = now + timedelta(
                         hours=24
                     )
 
                 # Rate limit after 2 attempts per minute
-                if login_attempts[ip_address]["attempts"] % 2 == 0:
-                    login_attempts[ip_address]["locked_until"] = now + timedelta(
+                if state.login_attempts[ip_address]["attempts"] % 2 == 0:
+                    state.login_attempts[ip_address]["locked_until"] = now + timedelta(
                         minutes=1
                     )
                 logging.warning(
@@ -1123,7 +1124,7 @@ def init_routes(app):
     @app.route("/stream.png")
     @login_required
     def stream_png():
-
+        state = current_app.state
         latest_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "..",
@@ -1139,15 +1140,14 @@ def init_routes(app):
             except OSError:
                 pass
 
-        global last_time, last_shot
         # implement some simple caching so the server doesn't get crushed
         if (
-            last_time
-            and time.time() - last_time < 1
-            and last_shot
-            and os.path.exists(last_shot)
+            state.last_time
+            and time.time() - state.last_time < 1
+            and state.last_shot
+            and os.path.exists(state.last_shot)
         ):
-            return send_file(last_shot)
+            return send_file(state.last_shot)
 
         templates = template_manager.get_templates()
         sorted_templates = sorted(
@@ -1183,8 +1183,8 @@ def init_routes(app):
         if most_recent_file is None:
             abort(404)
 
-        last_time = time.time()
-        last_shot = most_recent_file
+        state.last_time = time.time()
+        state.last_shot = most_recent_file
 
         if os.path.exists(most_recent_file):
             return send_file(most_recent_file)
@@ -1232,8 +1232,9 @@ def init_routes(app):
             )
 
         elif request.method == "SETUP":
-            if session_id not in rtsp_sessions:
-                rtsp_sessions[session_id] = {
+            sessions = current_app.state.rtsp_sessions
+            if session_id not in sessions:
+                sessions[session_id] = {
                     "state": "READY",
                     "seq": random.randint(0, 65535),
                     "timestamp": random.randint(0, 0xFFFFFFFF),
@@ -1250,7 +1251,7 @@ def init_routes(app):
                 client_ports = (first, second)
 
             server_ports = (5004, 5005)
-            session = rtsp_sessions[session_id]
+            session = sessions[session_id]
             session["client_ports"] = client_ports
             session["server_ports"] = server_ports
 
@@ -1268,9 +1269,10 @@ def init_routes(app):
             )
 
         elif request.method == "PLAY":
-            if session_id not in rtsp_sessions:
+            sessions = current_app.state.rtsp_sessions
+            if session_id not in sessions:
                 abort(454)  # Session Not Found
-            rtsp_sessions[session_id]["state"] = "PLAYING"
+            sessions[session_id]["state"] = "PLAYING"
             return Response(
                 headers={
                     "CSeq": cseq,
@@ -1280,20 +1282,23 @@ def init_routes(app):
             )
 
         elif request.method == "PAUSE":
-            if session_id not in rtsp_sessions:
+            sessions = current_app.state.rtsp_sessions
+            if session_id not in sessions:
                 abort(454)
-            rtsp_sessions[session_id]["state"] = "PAUSED"
+            sessions[session_id]["state"] = "PAUSED"
             return Response(headers={"CSeq": cseq, "Session": session_id})
 
         elif request.method == "GET_PARAMETER":
-            if session_id not in rtsp_sessions:
+            sessions = current_app.state.rtsp_sessions
+            if session_id not in sessions:
                 abort(454)
-            rtsp_sessions[session_id]["last_keepalive"] = time.time()
+            sessions[session_id]["last_keepalive"] = time.time()
             return Response(headers={"CSeq": cseq, "Session": session_id})
 
         elif request.method == "TEARDOWN":
-            if session_id in rtsp_sessions:
-                del rtsp_sessions[session_id]
+            sessions = current_app.state.rtsp_sessions
+            if session_id in sessions:
+                del sessions[session_id]
             return Response(
                 headers={
                     "CSeq": cseq,
@@ -1357,10 +1362,8 @@ def init_routes(app):
     @app.route("/rtsp_stream")
     def rtsp_stream():
         session_id = request.args.get("session")
-        if (
-            session_id not in rtsp_sessions
-            or rtsp_sessions[session_id]["state"] != "PLAYING"
-        ):
+        sessions = current_app.state.rtsp_sessions
+        if session_id not in sessions or sessions[session_id]["state"] != "PLAYING":
             abort(400, "Invalid session or session not in PLAYING state")
         return Response(
             generate(rtsp=True, session_id=session_id), mimetype="application/x-rtp"
