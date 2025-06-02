@@ -1011,3 +1011,61 @@ def start_log_caching():
     # No longer schedule cache_logs via the APScheduler.  The background thread
     # itself handles continuous log caching and avoids spawning additional
     # threads on scheduler restarts.
+
+
+def get_feed_status():
+    """Return a list of status dictionaries for each configured feed."""
+
+    templates = get_templates()
+    now = datetime.datetime.utcnow()
+    feeds = []
+
+    for name, template in templates.items():
+        last_shot = template.get("last_screenshot_time")
+        last_caption = template.get("last_caption_time")
+        frequency = int(template.get("frequency", 0) or 0)
+        capture_failed = template.get("capture_failed", False)
+        offline_since = template.get("offline_since")
+
+        status = "ok"
+        if capture_failed or offline_since:
+            status = "error"
+        elif last_shot:
+            try:
+                shot_time = datetime.datetime.strptime(last_shot, "%Y-%m-%d %H:%M:%S")
+                diff = (now - shot_time).total_seconds()
+                if frequency and diff > frequency * 120:
+                    status = "slow"
+            except Exception:
+                status = "error"
+        else:
+            status = "error"
+
+        feeds.append(
+            {
+                "name": name,
+                "last_screenshot_time": last_shot,
+                "last_caption_time": last_caption,
+                "status": status,
+            }
+        )
+
+    feeds.sort(key=lambda f: f["name"])
+    return feeds
+
+
+def get_last_summary_time() -> str | None:
+    """Return the timestamp of the most recent summary if available."""
+
+    session = SessionLocal()
+    try:
+        record = session.query(Summary).order_by(Summary.timestamp.desc()).first()
+        if record:
+            return datetime.datetime.utcfromtimestamp(record.timestamp).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+    except Exception:
+        return None
+    finally:
+        session.close()
+    return None

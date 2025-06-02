@@ -1062,3 +1062,30 @@ details > summary {
     width: 100%;
     height: 100px;
 }
+
+/* Status dashboard */
+.feed-status {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+.feed-status th,
+.feed-status td {
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+}
+.status-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+.status-dot.ok {
+    background-color: green;
+}
+.status-dot.slow {
+    background-color: orange;
+}
+.status-dot.error {
+    background-color: red;
+}
