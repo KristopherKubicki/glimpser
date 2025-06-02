@@ -21,6 +21,7 @@ nav:
       - CodeQL Security Scanning: codeql.md
       - FAQ: faq.md
       - Getting Started: getting_started.md
+      - Guided Setup: guided_setup.md
       - Help Page: help_page.md
       - HTTP Callbacks: http_callbacks.md
       - Installation Guide: installation.md
