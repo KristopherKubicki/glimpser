@@ -1030,11 +1030,13 @@ input[type=submit]:hover {
 }
 
 /* Indicate sortable KPI columns */
-.camera-table th.sortable {
+.camera-table th.sortable,
+.feed-status th.sortable {
     cursor: pointer;
 }
 
-.camera-table th.sortable::after {
+.camera-table th.sortable::after,
+.feed-status th.sortable::after {
     content: ' \2195';
     font-size: 0.8em;
     opacity: 0.6;
