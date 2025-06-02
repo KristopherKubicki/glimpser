@@ -33,6 +33,8 @@ const offlineIndicator = document.getElementById('offline-indicator');
 const offlineMessage = document.getElementById('offline-message');
 const errorIndicator = document.getElementById('capture-error-indicator');
 const errorIndicatorMessage = document.getElementById('capture-error-message');
+const streamErrorIndicator = document.getElementById('stream-error-indicator');
+const streamErrorMessage = document.getElementById('stream-error-message');
 
 function showLoadingIndicator() {
     videoOverlay.style.display = 'block';
@@ -66,6 +68,7 @@ function showPlayPauseIndicator(isPaused) {
 function showError(message) {
     errorMessage.textContent = message;
     errorMessage.style.display = 'block';
+    showStreamErrorIndicator(message);
     setTimeout(() => {
         errorMessage.style.display = 'none';
     }, 5000);
@@ -101,7 +104,29 @@ function hideCaptureErrorIndicator() {
     if (
         loadingIndicator.style.display === 'none' &&
         playPauseIndicator.style.display === 'none' &&
-        offlineIndicator.style.display === 'none'
+        offlineIndicator.style.display === 'none' &&
+        streamErrorIndicator.style.display === 'none'
+    ) {
+        videoOverlay.style.display = 'none';
+    }
+}
+
+function showStreamErrorIndicator(message) {
+    videoOverlay.style.display = 'block';
+    streamErrorIndicator.style.display = 'block';
+    streamErrorMessage.textContent = message;
+    loadingIndicator.style.display = 'none';
+    playPauseIndicator.style.display = 'none';
+}
+
+function hideStreamErrorIndicator() {
+    streamErrorIndicator.style.display = 'none';
+    streamErrorMessage.textContent = '';
+    if (
+        loadingIndicator.style.display === 'none' &&
+        playPauseIndicator.style.display === 'none' &&
+        offlineIndicator.style.display === 'none' &&
+        errorIndicator.style.display === 'none'
     ) {
         videoOverlay.style.display = 'none';
     }
@@ -121,6 +146,7 @@ video.addEventListener('error', (e) => {
     }, 2000);
 });
 image.addEventListener('error', () => {
+    showError('Error loading image');
     setTimeout(() => {
         if (typeof updateFeed === 'function') {
             updateFeed();
@@ -206,6 +232,7 @@ function updateFeed() {
     const source = document.getElementById('video-source').value;
     const isConnected = checkCameraConnection(currentCamera);
     updateSpeedContainer();
+    hideStreamErrorIndicator();
 
     if (!isConnected) {
         showOfflineIndicator(currentCamera);
