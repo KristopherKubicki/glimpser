@@ -247,7 +247,7 @@ function updateFeed() {
         video.src = '';
         image.src = '';
         return;
-    } else if (templateDetails[currentCamera].capture_failed) {
+    } else if (details && details.capture_failed) {
         hideOfflineIndicator();
         showCaptureErrorIndicator(currentCamera);
         hideLoadingIndicator();
