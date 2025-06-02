@@ -7,6 +7,7 @@ import { initFooterFade } from './footer.js';
 import { initOffline } from './offline.js';
 import { initDangerToggle } from './danger.js';
 import { initIndexTime } from './time.js';
+import { initWelcome } from './welcome.js';
 
 initTemplates();
 initVideoControls();
@@ -18,3 +19,4 @@ initFooterFade();
 initOffline();
 initDangerToggle();
 initIndexTime();
+initWelcome();
