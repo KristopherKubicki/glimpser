@@ -352,11 +352,38 @@ video:hover + .play-icon {
 }
 
 .recent-screenshot {
-    border: 5px solid rgba(255, 255, 255, 0.9); /* Faint white border */
+    border: 5px solid var(--accent-color);
 }
 
 .template-error {
     border: 5px solid red;
+}
+
+#status-legend {
+    display: flex;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.status-box {
+    width: 16px;
+    height: 16px;
+    border: 5px solid transparent;
+    display: inline-block;
+}
+
+.status-box.recent {
+    border-color: var(--accent-color);
+}
+
+.status-box.error {
+    border-color: red;
 }
 
 /* Improve video controls on mobile */
