@@ -3,6 +3,7 @@
 import os
 import json
 import logging
+import argparse
 from importlib.metadata import PackageNotFoundError, version
 
 from dotenv import load_dotenv, find_dotenv
@@ -13,10 +14,35 @@ load_dotenv(find_dotenv())
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-# TODO: also consider argparse...
-DATABASE_PATH = os.getenv("GLIMPSER_DATABASE_PATH", "data/glimpser.db")
-LOGGING_PATH = os.getenv("GLIMPSER_LOGGING_PATH", "logs/glimpser.log")
-BACKUP_PATH = os.getenv("GLIMPSER_BACKUP_PATH", "data/config_backup.json")
+
+# Parse command line arguments when executed directly
+def _parse_cli_args():
+    parser = argparse.ArgumentParser(description="Glimpser configuration")
+    parser.add_argument("--db-path", help="Path to the SQLite database file")
+    parser.add_argument("--log-path", help="Path to the log file")
+    parser.add_argument(
+        "--backup-path", help="Path to the configuration backup JSON file"
+    )
+    return parser.parse_args()
+
+
+_cli_args = _parse_cli_args() if __name__ == "__main__" else None
+
+DATABASE_PATH = (
+    _cli_args.db_path
+    if _cli_args and _cli_args.db_path
+    else os.getenv("GLIMPSER_DATABASE_PATH", "data/glimpser.db")
+)
+LOGGING_PATH = (
+    _cli_args.log_path
+    if _cli_args and _cli_args.log_path
+    else os.getenv("GLIMPSER_LOGGING_PATH", "logs/glimpser.log")
+)
+BACKUP_PATH = (
+    _cli_args.backup_path
+    if _cli_args and _cli_args.backup_path
+    else os.getenv("GLIMPSER_BACKUP_PATH", "data/config_backup.json")
+)
 
 # todo.. make sure this is not duplicate loading...
 engine = create_engine(f"sqlite:///{DATABASE_PATH}")
