@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libwebp7 unzip poppler-utils xvfb ffmpeg libssl3 libffi8 libbz2-1.0 \
     libreadline8 libncurses5 libncursesw6 libxml2 libxslt1.1 \
     build-essential gcc zlib1g wget gnupg iproute2 wkhtmltopdf \
+    python3-pip python3-setuptools python3-wheel \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Google Chrome
