@@ -1162,3 +1162,8 @@ details > summary {
 .status-dot.error {
     background-color: red;
 }
+
+/* simple layout for discovery wizard */
+.wizard-step {
+    margin-bottom: 1em;
+}

@@ -4,7 +4,9 @@ Glimpser includes a simple discovery feature to help find network cameras on you
 The subnet list is now deduplicated so machines with multiple addresses per interface are scanned only once. Unreachable ports fail fast so discovery always completes even when some networks are inaccessible.
 After all scanning steps finish, Glimpser performs a two-hop traceroute to each
 discovered camera. The previous hop is stored in the ``upstream`` field so you
-can see which router or switch connects the device.
+can see which router or switch connects the device. Each progress message now
+includes a completion percentage and an estimated time remaining so you know how
+long the scan will take.
 
 ## How the `/discover` route works
 
@@ -24,7 +26,7 @@ def discover_cameras_scan_stream():
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 ```
 
-When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button opens an EventSource to `/discover/scan_stream`. The first message now includes the list of subnets that will be scanned and the full plan of discovery stages. The progress bar is initialized with the total number of stages. Each subsequent message indicates which stage has finished, how many cameras have been found so far, and includes any new cameras discovered during that stage. These cameras appear in the table immediately. A final event with ``{"done": true}`` simply signals completion.
+When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button opens an EventSource to `/discover/scan_stream`. The first message now includes the list of subnets that will be scanned and the full plan of discovery stages. The progress bar is initialized with the total number of stages. Each subsequent message indicates which stage has finished, how many cameras have been found so far, and includes any new cameras discovered during that stage. These cameras appear in the table immediately. A final event with ``{"done": true}`` simply signals completion. Discovery results now display firmware details when available and the page offers buttons to export the table as CSV or JSON.
 
 An optional CIDR can be supplied via the new input field to restrict discovery to a specific Class C network. The value is sent as the ``cidr`` query parameter and parsed by ``discover_cameras()``.
 
@@ -182,7 +184,4 @@ outside the local network.
 
 ## Future improvements
 
-- Provide more granular progress updates with estimated completion times.
-- Offer a wizard-style interface with clearer instructions and tooltips.
-- Include additional metadata such as firmware versions.
-- Allow exporting discovery results to CSV or JSON.
+Remaining ideas include discovering cameras on remote networks and improving authentication options for protected feeds.

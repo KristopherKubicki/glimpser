@@ -2408,14 +2408,22 @@ def init_routes(app):
 
             sent = set()
 
-            def progress(stage, count, new_cams):
+            def progress(stage, count, new_cams, pct, eta):
                 fresh = []
                 for cam in new_cams:
                     key = (cam.get("ip"), cam.get("protocol"), cam.get("port"))
                     if key not in sent:
                         sent.add(key)
                         fresh.append(cam)
-                q.put({"stage": stage, "count": count, "cameras": fresh})
+                q.put(
+                    {
+                        "stage": stage,
+                        "count": count,
+                        "cameras": fresh,
+                        "progress": pct,
+                        "eta": eta,
+                    }
+                )
 
             def run():
                 camera_discovery.discover_cameras(
@@ -2450,6 +2458,43 @@ def init_routes(app):
         }
         template_manager.save_template(name, template)
         return jsonify({"status": "success"})
+
+    @app.route("/discover/export", methods=["POST"])
+    @login_required
+    def export_discovery_results():
+        fmt = request.args.get("format", "json")
+        cameras = request.get_json(force=True)
+        if not isinstance(cameras, list):
+            cameras = cameras.get("cameras", []) if isinstance(cameras, dict) else []
+        if fmt == "csv":
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(
+                ["ip", "protocol", "port", "mac", "manufacturer", "firmware"]
+            )
+            for cam in cameras:
+                info = cam.get("info", {})
+                writer.writerow(
+                    [
+                        cam.get("ip"),
+                        cam.get("protocol"),
+                        cam.get("port"),
+                        info.get("mac"),
+                        info.get("manufacturer"),
+                        info.get("firmware"),
+                    ]
+                )
+            output.seek(0)
+            return Response(
+                output.getvalue(),
+                mimetype="text/csv",
+                headers={"Content-Disposition": "attachment;filename=discovery.csv"},
+            )
+        return Response(
+            json.dumps(cameras, indent=2),
+            mimetype="application/json",
+            headers={"Content-Disposition": "attachment;filename=discovery.json"},
+        )
 
     @app.route("/status")
     @login_required
