@@ -34,13 +34,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added CPU builds of JAX 0.6.1 and Flax 0.2.0
 - Bumped scikit-image to 0.25.0
 - Bumped numpy to 1.25.0
-- Updated default VERSION to 0.2.6 for footer display
+- Updated default VERSION to 0.2.7 for footer display
 
 ### Fixed
 - Addressed Python build issues and string concatenation errors
 - Fixed screenshot timeouts and setup script problems
 - Offline cameras now display an overlay and keep the camera selector usable
 - `download_image` now reuses cached HTTP status codes to reduce retry overhead
+
+## [0.2.7] - 2025-06-02
+
+### Changed
+- Bumped package version in setup.py to 0.2.7.
 
 ## [0.2.6] - 2025-06-01
 
@@ -83,7 +88,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - N/A
 
-[Unreleased]: https://github.com/KristopherKubicki/glimpser/compare/v0.2.6...HEAD
+[Unreleased]: https://github.com/KristopherKubicki/glimpser/compare/v0.2.7...HEAD
+[0.2.7]: https://github.com/KristopherKubicki/glimpser/releases/tag/v0.2.7
 [0.2.6]: https://github.com/KristopherKubicki/glimpser/releases/tag/v0.2.6
 [0.2.5]: https://github.com/KristopherKubicki/glimpser/releases/tag/v0.2.5
 [0.2.4]: https://github.com/KristopherKubicki/glimpser/releases/tag/v0.2.4
