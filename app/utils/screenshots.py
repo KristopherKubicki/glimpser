@@ -384,6 +384,20 @@ def check_user_activity(timeout=10):
     return user_active
 
 
+def _send_input_event():
+    """Move the mouse slightly to generate an input event."""
+    if mouse is None:
+        return
+    try:
+        controller = mouse.Controller()
+        x, y = controller.position
+        controller.move(1, 0)
+        controller.move(-1, 0)
+        controller.position = (x, y)
+    except Exception as e:  # pragma: no cover - best effort
+        logging.debug(f"_send_input_event failed: {e}")
+
+
 def detect_background_color(image: Image.Image, sample_width: int = 10):
     """Return the most common color found along the image border."""
     arr = np.asarray(image.convert("RGBA"))
@@ -2560,7 +2574,7 @@ def _capture_danger_mode(
         logging.debug("trying %s", url)
         driver.get(url)
         logging.debug("success, screenshotting %s", url)
-        # TODO: move the mouse or something and prevent the other threads from running
+        _send_input_event()
         time.sleep(3)
 
         # Attempt dark mode if desired
