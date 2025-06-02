@@ -24,3 +24,19 @@ def init_db():
     import app.models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+
+
+def ensure_column(
+    table_name: str, column_name: str, column_type: str, default: str
+) -> None:
+    """Add a column to a table if it doesn't already exist."""
+
+    with engine.begin() as conn:
+        result = conn.execute(text(f"PRAGMA table_info({table_name})"))
+        columns = [row[1] for row in result]
+        if column_name not in columns:
+            conn.execute(
+                text(
+                    f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type} DEFAULT {default}"
+                )
+            )

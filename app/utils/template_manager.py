@@ -13,16 +13,22 @@ from .validators import validate_template_name
 
 from app.config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY
 
-from .db import Base, SessionLocal, init_db
+import app.utils.db as db
 from .video_details import get_latest_screenshot_date, get_latest_video_date
 
 from sqlalchemy.orm import validates
+
+# Keep aliases for backward compatibility and testing mocks
+SessionLocal = db.SessionLocal
+init_db = db.init_db
+ensure_column = db.ensure_column
+Base = db.Base
 
 LLM_USAGE_PATH = "data/llm_usage.json"
 LLM_COST_PER_TOKEN = 0.005 / 1000  # OpenAI pricing example
 
 
-class Template(Base):
+class Template(db.Base):
     __tablename__ = "templates"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -99,6 +105,10 @@ class TemplateManager:
 
     def __init__(self):
         init_db()
+        # Ensure the templates table exists even when Base has been reloaded
+        Template.__table__.create(db.engine, checkfirst=True)
+        # Automatically add newer columns when upgrading from older versions
+        ensure_column("templates", "capture_failed", "BOOLEAN", "0")
 
     def get_session(self):
         """Return a new SQLAlchemy session bound to the app database."""

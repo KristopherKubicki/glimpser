@@ -175,6 +175,7 @@ Glimpser writes logs to the console and exposes them via the `/status` page. If 
 **Solution:**
 - Run `pip install -r requirements.txt --upgrade` to update dependencies.
 - Apply any new database migrations as described in the release notes.
+- The `capture_failed` column is added automatically if missing.
 - Clear your browser cache to avoid stale JavaScript files.
 
 ### Problem: Search bar does not filter templates
