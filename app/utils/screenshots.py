@@ -1468,13 +1468,13 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
 
         lurl_cache[url] = "good"
         video_url = result.stdout.decode().strip()
-        
+
         # Validate the video_url to ensure it is a legitimate URL
         parsed_url = urlparse(video_url)
         if not parsed_url.scheme or not parsed_url.netloc:
             logging.error(f"Invalid video URL: {video_url}")
             return False
-        
+
         # 2) Use ffmpeg to capture a single frame
         ffmpeg_command = [FFMPEG_PATH]
         if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
@@ -1629,20 +1629,28 @@ def capture_frame_from_stream(
         )
 
         try:
-            try:
-                subprocess.run(
-                    command,
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    timeout=timeout,
-                )
-                # print("mmm", ' '.join(command))
-                # subprocess.run(command, check=True, timeout=CAPTURE_TIMEOUT)
-            except Exception:
-                # print("<<naye timeout...", e)
-                pass
+            result = subprocess.run(
+                command,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            logging.error("ffmpeg timed out for %s after %ss", url, timeout)
+            return False
+        except subprocess.CalledProcessError as e:
+            logging.error(
+                "ffmpeg failed for %s: %s",
+                url,
+                e.stderr.decode("utf-8", "ignore")[:200],
+            )
+            return False
+        except Exception as e:
+            logging.error("Error running ffmpeg for %s: %s", url, e)
+            return False
 
+        try:
             # Sort the captured frames by size and take the last one
             frames = sorted(
                 os.listdir(tmpdirname),
@@ -1787,6 +1795,9 @@ def capture_screenshot_and_har_light(
         )
         return lsuccess
 
+    except subprocess.TimeoutExpired:
+        logging.warning("wkhtmltoimage timed out for %s after %ss", url, timeout)
+        return False
     except Exception as e:
         logging.error(f"Error in capture_screenshot_and_har_light: {e}")
         return False
