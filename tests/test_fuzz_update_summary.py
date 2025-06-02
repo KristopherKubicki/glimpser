@@ -37,7 +37,8 @@ class TestFuzzUpdateSummary(unittest.TestCase):
                 }
 
                 with patch(
-                    "app.utils.scheduling.get_templates", return_value=templates
+                    "app.utils.scheduling.get_templates_sorted_by_last_caption_time",
+                    return_value=list(templates.items()),
                 ), patch(
                     "app.utils.scheduling.summarize",
                     return_value="".join(

@@ -126,6 +126,33 @@ class TemplateManager:
         finally:
             session.close()
 
+    def get_templates_by_last_caption_time(self):
+        """Return templates ordered by ``last_caption_time`` descending.
+
+        Returns
+        -------
+        list
+            Tuples of template name and attribute dicts sorted newest first.
+        """
+
+        session = self.get_session()
+        try:
+            templates = (
+                session.query(Template)
+                .order_by(Template.last_caption_time.desc())
+                .all()
+            )
+            result = []
+            for template in templates:
+                if template.name is None or template.name == "":
+                    continue
+                data = template.__dict__.copy()
+                data.pop("_sa_instance_state", None)
+                result.append((template.name, data))
+            return result
+        finally:
+            session.close()
+
     def save_template(self, name, details):
         """Create or update a template in the database.
 
@@ -337,6 +364,13 @@ def get_templates():
         details["last_screenshot_time"] = get_latest_screenshot_date(camera_path)
         details["last_video_time"] = get_latest_video_date(video_path)
     return templates
+
+
+def get_templates_sorted_by_last_caption_time():
+    """Return templates sorted by ``last_caption_time`` newest first."""
+
+    manager = TemplateManager()
+    return manager.get_templates_by_last_caption_time()
 
 
 def get_template(name):
