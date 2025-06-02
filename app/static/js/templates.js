@@ -383,12 +383,14 @@ export async function loadTemplates() {
     }, { threshold: 0.5 });
 
     let hasTemplates = false;
+    let templateCount = 0;
     Object.entries(templates).forEach(([name, template], index) => {
       if (
         templateBelongsToGroup(template, selectedGroup) &&
         templateMatchesSearch(template, searchQuery)
       ) {
         hasTemplates = true;
+        templateCount += 1;
         const lastScreenshotTime = template.last_screenshot_time;
         const humanizedTimestamp = timeAgo(lastScreenshotTime);
         const nextCaptureTime = timeAgo(template.next_screenshot_time);
@@ -471,6 +473,9 @@ export async function loadTemplates() {
       if (window.updateSliderLimits) window.updateSliderLimits();
     }
     updateHumanizedTimes();
+    window.dispatchEvent(
+      new CustomEvent('templatesLoaded', { detail: { count: templateCount } }),
+    );
   } catch (error) {
     console.error('Error loading templates:', error);
     const errorMsg = '<div class="error">Error loading templates. Please try again.</div>';
