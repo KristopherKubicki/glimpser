@@ -1468,6 +1468,13 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
 
         lurl_cache[url] = "good"
         video_url = result.stdout.decode().strip()
+        
+        # Validate the video_url to ensure it is a legitimate URL
+        parsed_url = urlparse(video_url)
+        if not parsed_url.scheme or not parsed_url.netloc:
+            logging.error(f"Invalid video URL: {video_url}")
+            return False
+        
         # 2) Use ffmpeg to capture a single frame
         ffmpeg_command = [FFMPEG_PATH]
         if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
