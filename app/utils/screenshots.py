@@ -68,6 +68,9 @@ from app.config import (
     PROBE_SIZE_DEFAULT,
     PROBE_SIZE_RTSP,
     PROBE_SIZE_OTHER,
+    ANALYZE_DURATION_DEFAULT,
+    ANALYZE_DURATION_RTSP,
+    ANALYZE_DURATION_OTHER,
     TZ,
 )
 from app.utils.validators import validate_proxy
@@ -1554,6 +1557,7 @@ def capture_frame_from_stream(
             )
 
         probe_size = PROBE_SIZE_DEFAULT
+        analyze_duration = ANALYZE_DURATION_DEFAULT
         if "http:" in url or "https:" in url:
             parsed_url = urlparse(url)
             base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
@@ -1564,18 +1568,22 @@ def capture_frame_from_stream(
             command.extend(["-seekable", "0"])
             # command.extend(['-timeout', str(CAPTURE_TIMEOUT-1)])  # not sure why, but this causes us a lot of issues, dont set a timetout
             probe_size = PROBE_SIZE_DEFAULT
+            analyze_duration = ANALYZE_DURATION_DEFAULT
         elif "rtsp:" in url:
             command.extend(["-rtsp_transport", "tcp"])
             probe_size = PROBE_SIZE_RTSP
+            analyze_duration = ANALYZE_DURATION_RTSP
             if "/streaming/" in url.lower():  # alittle bit of a hack
                 command.extend(["-c:v", "h264"])
                 command.extend(["-r", "1"])
                 probe_size = PROBE_SIZE_OTHER
+                analyze_duration = ANALYZE_DURATION_OTHER
         else:
             probe_size = PROBE_SIZE_OTHER
+            analyze_duration = ANALYZE_DURATION_OTHER
 
-        # todo: make this configurable instead
-        command.extend(["-analyzeduration", probe_size])
+        # Use configured analyze duration and probe size values
+        command.extend(["-analyzeduration", analyze_duration])
         command.extend(["-probesize", probe_size])
         command.extend(
             [

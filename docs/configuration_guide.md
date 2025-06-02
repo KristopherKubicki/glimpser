@@ -104,6 +104,9 @@ Settings controlling how frames are captured from video sources:
 - `PROBE_SIZE_DEFAULT` – probe size for HTTP/HTTPS streams (default `5M`)
 - `PROBE_SIZE_RTSP` – probe size for RTSP streams (default `10M`)
 - `PROBE_SIZE_OTHER` – probe size for other protocols (default `20M`)
+- `ANALYZE_DURATION_DEFAULT` – ffmpeg analyzeduration for HTTP/HTTPS streams (default `5M`)
+- `ANALYZE_DURATION_RTSP` – analyzeduration for RTSP streams (default `10M`)
+- `ANALYZE_DURATION_OTHER` – analyzeduration for other protocols (default `20M`)
 - `LIVE_FALLBACK_FPS` – still-frame refresh rate when live video fails (default `1`)
 
 ### Stealth Browser Defaults
