@@ -12,6 +12,7 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [Release Workflow](release_workflow.md)
 - [Docker Build Verification](docker_build.md)
 - [CodeQL Security Scanning](codeql.md)
+- [Continuous Integration Checks](ci_checks.md)
 - [System Monitoring and Logs](system_monitoring.md)
 - [Danger Mode](danger_mode.md)
 - [FAQ](faq.md)
