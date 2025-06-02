@@ -48,6 +48,7 @@
         </select>
         <input type="text" id="filter-value" placeholder="Value" title="Filter value">
         <button id="apply-filter" type="button" title="Filter table rows">Apply</button>
+        <input type="range" id="grid-width-slider" min="50" max="3840" value="360" title="Adjust thumbnail width">
     </div>
 
 
@@ -102,6 +103,7 @@
     </details>
 
 <h2>Camera Notes</h2>
+<div id="template-list">
 <table id="camera-table" class="camera-table">
     <thead>
         <tr>
@@ -118,7 +120,7 @@
     </thead>
     <tbody>
         {% for camera in template_details %}
-        <tr class="camera-row" data-groups="{{ template_details[camera]['groups'] }}" data-screenshot_count="{{ template_details[camera]['screenshot_count'] }}" data-video_count="{{ template_details[camera]['video_count'] }}" data-storage_usage="{{ template_details[camera]['storage_usage'] }}" data-llm_response_count="{{ template_details[camera]['llm_response_count'] }}" data-llm_cost_estimate="{{ template_details[camera]['llm_cost_estimate'] }}">
+        <tr class="camera-row" data-groups="{{ template_details[camera]['groups'] }}" data-screenshot_count="{{ template_details[camera]['screenshot_count'] }}" data-video_count="{{ template_details[camera]['video_count'] }}" data-storage_usage="{{ template_details[camera]['storage_usage_bytes'] }}" data-llm_response_count="{{ template_details[camera]['llm_response_count'] }}" data-llm_cost_estimate="{{ template_details[camera]['llm_cost_estimate'] }}">
             <td>
                 <div class="templateDiv">
                     <div class="video-container" data-timestamp="{{ template_details[camera]['last_screenshot_time'] }}">
@@ -134,13 +136,11 @@
             <td data-value="{{ template_details[camera]['next_screenshot'] }}"><span class="humanized-time" data-time="{{ template_details[camera]['next_screenshot'] }}">{{ template_details[camera]['next_screenshot'] }}</span></td>
             <td data-value="{{ template_details[camera]['screenshot_count'] }}">{{ template_details[camera]['screenshot_count'] }}</td>
             <td data-value="{{ template_details[camera]['video_count'] }}">{{ template_details[camera]['video_count'] }}</td>
-            <td data-value="{{ template_details[camera]['storage_usage'] }}">{{ template_details[camera]['storage_usage'] }}</td>
+            <td data-value="{{ template_details[camera]['storage_usage_bytes'] }}">{{ template_details[camera]['storage_usage'] }}</td>
             <td data-value="{{ template_details[camera]['llm_response_count'] }}">{{ template_details[camera]['llm_response_count'] }}</td>
             <td data-value="{{ template_details[camera]['llm_cost_estimate'] }}">{{ template_details[camera]['llm_cost_estimate'] }}</td>
             <td>
-                <details>
-                    <summary>Caption</summary>
-                    <form id="form-{{ camera }}" class="notes-form">
+                <form id="form-{{ camera }}" class="notes-form caption-box">
                         <div class="chat-box">
                             <div class="chat-prompt">
                                 <label for="notes-{{ camera }}">Prompt:</label>
@@ -156,13 +156,13 @@
                         <button class="update-button" data-template="{{ camera }}" title="Send updated prompt">
                             Send
                         </button>
-                    </form>
-                </details>
+                </form>
             </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
+</div>
 </div>
 {% endblock %}
 

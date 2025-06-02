@@ -1646,6 +1646,9 @@ def init_routes(app):
             )
             templates[name]["video_count"] = template_manager.get_video_count(name)
             templates[name]["storage_usage"] = template_manager.get_storage_usage(name)
+            templates[name]["storage_usage_bytes"] = (
+                template_manager.get_storage_usage_bytes(name)
+            )
             templates[name]["llm_response_count"] = (
                 template_manager.get_llm_response_count(name)
             )
