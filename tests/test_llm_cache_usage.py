@@ -28,7 +28,7 @@ class TestLLMCache(unittest.TestCase):
             pass
         os.rmdir(self.tmpdir)
 
-    @patch("app.utils.llm.requests.post")
+    @patch("app.utils.llm.request_with_retry")
     @patch("app.utils.llm.CHATGPT_KEY", "k")
     @patch("app.utils.llm.LLM_MODEL_VERSION", "gpt")
     @patch("app.utils.llm.LLM_SUMMARY_PROMPT", "prompt")

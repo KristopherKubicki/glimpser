@@ -7,6 +7,9 @@ import time
 
 import requests
 import logging
+from typing import Optional
+
+from .api_utils import request_with_retry
 
 from app.config import CHATGPT_KEY, LLM_MODEL_VERSION, LLM_SUMMARY_PROMPT
 from app.utils.email_alerts import email_alert
@@ -15,7 +18,14 @@ from app.utils import llm_cache
 last_429_error_time = None
 
 
-def summarize(prompt, history=None, tokens=4096):
+def summarize(
+    prompt: str,
+    history: Optional[str] = None,
+    tokens: int = 4096,
+    *,
+    timeout: int = 10,
+    retries: int = 2,
+):
     """
     Generate a summary using OpenAI's GPT model.
 
@@ -27,9 +37,11 @@ def summarize(prompt, history=None, tokens=4096):
         prompt (str): The main prompt for the summary.
         history (str, optional): Previous context or history to consider. Defaults to None.
         tokens (int, optional): Maximum number of tokens for the response. Defaults to 4096.
+        timeout (int, optional): Request timeout in seconds.
+        retries (int, optional): Number of retry attempts on failure.
 
     Returns:
-        str: A JSON string containing the summarized content, or None if an error occurs.
+        str: JSON content with the summary or a message if generation fails.
     """
     global last_429_error_time
 
@@ -89,7 +101,14 @@ def summarize(prompt, history=None, tokens=4096):
 
     # Send the request to the OpenAI API
     try:
-        response = requests.post(url, headers=headers, json=payload)
+        response = request_with_retry(
+            "post",
+            url,
+            headers=headers,
+            json=payload,
+            timeout=timeout,
+            retries=retries,
+        )
         if response.status_code == 429:
             last_429_error_time = datetime.datetime.now()
             logging.warning("429 error encountered. Blocking requests for 15 minutes.")
@@ -97,7 +116,9 @@ def summarize(prompt, history=None, tokens=4096):
         result = response.json()
     except Exception as e:
         logging.warning("API response issue %s", e)
-        return None
+        if cached is not None:
+            return cached.get("response")
+        return json.dumps({int(time.time()): "Summarization delayed"})
 
     # Process the API response
     try:
