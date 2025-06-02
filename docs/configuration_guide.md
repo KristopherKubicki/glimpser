@@ -116,5 +116,7 @@ Additional variables control AI behaviour and external tools:
 - `FFMPEG_PATH` – path to the `ffmpeg` binary (default `ffmpeg`)
 - `FFPROBE_PATH` – path to the `ffprobe` binary (default `ffprobe`)
 - `FFMPEG_HWACCEL` – hardware acceleration mode for ffmpeg (`False` disables)
+- `CLIP_MODEL_NAME` – CLIP model used for object filtering (default `openai/clip-vit-base-patch32`)
+  Example: `openai/clip-vit-large-patch14`
 
 Refer to the code comments in `app/config.py` for full details on each setting.

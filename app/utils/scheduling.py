@@ -19,7 +19,13 @@ from flask_apscheduler import APScheduler
 from PIL import Image, ImageDraw, ImageFont
 from transformers import CLIPProcessor, CLIPModel
 
-from app.config import DEBUG, SCREENSHOT_DIRECTORY, SUMMARIES_DIRECTORY, VIDEO_DIRECTORY
+from app.config import (
+    DEBUG,
+    SCREENSHOT_DIRECTORY,
+    SUMMARIES_DIRECTORY,
+    VIDEO_DIRECTORY,
+    CLIP_MODEL_NAME,
+)
 from app.utils.db import SessionLocal
 from app.models import Summary
 
@@ -427,14 +433,10 @@ def update_camera(name, template, image_file=None, motion=False):
             global clip_model, clip_processor
 
             if clip_model is None:
-                clip_model = CLIPModel.from_pretrained(
-                    "openai/clip-vit-base-patch32"
-                )  # TODO: make these models configurable
+                clip_model = CLIPModel.from_pretrained(CLIP_MODEL_NAME)
 
             if clip_processor is None:
-                clip_processor = CLIPProcessor.from_pretrained(
-                    "openai/clip-vit-base-patch32"
-                )
+                clip_processor = CLIPProcessor.from_pretrained(CLIP_MODEL_NAME)
 
             # Load the latest image
             latest_image_path = os.path.join(directory, png_files[-1])
