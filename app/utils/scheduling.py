@@ -19,7 +19,13 @@ from flask_apscheduler import APScheduler
 from PIL import Image, ImageDraw, ImageFont
 from transformers import CLIPProcessor, CLIPModel
 
-from app.config import DEBUG, SCREENSHOT_DIRECTORY, SUMMARIES_DIRECTORY, VIDEO_DIRECTORY
+from app.config import (
+    DEBUG,
+    SCREENSHOT_DIRECTORY,
+    SUMMARIES_DIRECTORY,
+    VIDEO_DIRECTORY,
+    CLIP_MODEL_NAME,
+)
 from app.utils.db import SessionLocal
 from app.models import Summary
 
@@ -40,6 +46,8 @@ from .template_manager import (
     save_template,
     update_last_screenshot_time,
     mark_offline,
+    Template,
+    TemplateManager,
 )
 from .email_alerts import email_alert
 from .sms_alerts import sms_alert
@@ -206,7 +214,16 @@ def add_motion_and_caption(image_path, caption=None, motion=False):
             logging.error(f"Error updating image {image_path} : {e}")
 
 
-def update_camera(name, template, image_file=None):
+def mark_error(image_path, message="ERROR"):
+    """Overlay an error message on ``image_path``."""
+    if os.path.exists(image_path):
+        try:
+            add_motion_and_caption(image_path, caption=message, motion=False)
+        except Exception as e:
+            logging.error("Failed to mark error on %s: %s", image_path, e)
+
+
+def update_camera(name, template, image_file=None, error_message=None):
 
     # just ignore the old
     template = get_template(name)
@@ -228,7 +245,8 @@ def update_camera(name, template, image_file=None):
             image = remove_background(image)
             image.save(output_path, "PNG")
             if os.path.exists(output_path):
-                # TODO: add error mark from lerror
+                if error_message:
+                    mark_error(output_path, error_message)
                 add_timestamp(output_path, name, invert=template.get("invert", False))
                 os.rename(output_path, output_path.replace(".tmp.png", ".png"))
                 lsuc = True
@@ -426,14 +444,10 @@ def update_camera(name, template, image_file=None):
             global clip_model, clip_processor
 
             if clip_model is None:
-                clip_model = CLIPModel.from_pretrained(
-                    "openai/clip-vit-base-patch32"
-                )  # TODO: make these models configurable
+                clip_model = CLIPModel.from_pretrained(CLIP_MODEL_NAME)
 
             if clip_processor is None:
-                clip_processor = CLIPProcessor.from_pretrained(
-                    "openai/clip-vit-base-patch32"
-                )
+                clip_processor = CLIPProcessor.from_pretrained(CLIP_MODEL_NAME)
 
             # Load the latest image
             latest_image_path = os.path.join(directory, png_files[-1])
@@ -489,6 +503,9 @@ def update_camera(name, template, image_file=None):
 
             image_paths.append(os.path.join(directory, png_files[-1]))
 
+            # Focus on the most recent context images
+            image_paths = [p for p in image_paths if os.path.exists(p)][-2:]
+
             lctime = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
             # archictecture:
@@ -516,7 +533,10 @@ def update_camera(name, template, image_file=None):
                     lprompt += " " + template["notes"]
                 #  use Chatgpt_compare
                 gret = chatgpt_compare(lprompt, image_paths, template_name=name)
-                # TODO: add a separator?
+                if gret and "|" in gret:
+                    gret = "\n".join(
+                        part.strip() for part in gret.split("|") if part.strip()
+                    )
                 # print("  oldgpt:", name, template.get('last_caption'))
                 # print("  newgpt:", name, gret)
                 if gret and re.findall(r"(?:sorry|cannot|can not)", gret):
@@ -648,38 +668,57 @@ def update_summary():
 
     # summarize all of htis together
     lstring = "The following are a list of real time dashboards and cameras, and their recent status updates:\n"
-    templates = get_templates()  # Make sure to fetch the templates within this function
+    manager = TemplateManager()
+    session = manager.get_session()
+    try:
+        sorted_templates = (
+            session.execute(
+                text("SELECT * FROM templates ORDER BY last_caption_time DESC")
+            )
+            .mappings()
+            .all()
+        )
+    except Exception:
+        session.close()
+        templates = get_templates()
+        sorted_templates = [
+            details
+            for _name, details in sorted(
+                templates.items(),
+                key=lambda item: item[1].get("last_caption_time", ""),
+                reverse=True,
+            )
+        ]
+    else:
+        session.close()
 
-    # Sort templates by last_caption_time, descending order
-    # TODO: this could just be a sql call instead
-    sorted_templates = sorted(
-        templates.items(),
-        key=lambda item: item[1].get("last_caption_time", ""),
-        reverse=True,
-    )
-
-    for id, template in sorted_templates:
-        name = template.get("name")
-        if "private" in template.get("groups", ""):
+    for template in sorted_templates:
+        if hasattr(template, "__dict__"):
+            data = template.__dict__.copy()
+            data.pop("_sa_instance_state", None)
+        else:
+            data = dict(template)
+        name = data.get("name")
+        if "private" in data.get("groups", ""):
             continue
         if lstring.count("\n") > 50:
             break
 
-        if template.get("last_caption_time"):
+        if data.get("last_caption_time"):
             caption_time = datetime.datetime.strptime(
-                template.get("last_caption_time", ""), "%Y-%m-%d %H:%M:%S"
+                data.get("last_caption_time", ""), "%Y-%m-%d %H:%M:%S"
             )
             if (datetime.datetime.utcnow() - caption_time).total_seconds() > 3 * 3600:
                 continue  # Skip templates older than 3 hours
 
             fnotes = re.split(
                 r"\s*?(.+?[\?\!\.\,])(?: \s?|\t|$)",
-                template.get("notes", "").strip(),
+                data.get("notes", "").strip(),
                 flags=re.DOTALL,
             )
             gnotes = re.split(
                 r"\s*?(.+?[\?\!\.\,])(?: \s?|\t|$)",
-                template.get("last_caption", "").strip(),
+                data.get("last_caption", "").strip(),
                 flags=re.DOTALL,
             )
 
@@ -702,9 +741,9 @@ def update_summary():
                 "name: "
                 + name
                 + "\tgroups: "
-                + template.get("groups", "")
+                + data.get("groups", "")
                 + "\tupdated: "
-                + template.get("last_caption_time", "")
+                + data.get("last_caption_time", "")
                 + "\tprompt: "
                 + str(fnotes)
                 + "\tresponse: "
@@ -835,21 +874,33 @@ def schedule_crawlers():
         # Calculate the offset delay for this crawler
         offset_delay_seconds = index * delay_increment + index
 
-        # TODO: consider the fact that the tmeplate is out of date.
-        # any time we update a camera, we upave to remove the old job and create a new one
+        # Reschedule if the template has changed
+        existing = scheduler.get_job(name)
+        if existing:
+            interval = getattr(existing.trigger, "interval", None)
+            current = interval.total_seconds() if interval else None
+            if current != seconds:
+                scheduler.remove_job(name)
+                existing = None
 
         # Apply the incremental delay to space out job scheduling
         try:
-            scheduler.add_job(
-                func=run_with_timeout,
-                trigger="interval",
-                seconds=seconds,
-                start_date=datetime.datetime.now()
-                + datetime.timedelta(seconds=offset_delay_seconds),
-                args=(update_camera, (name, template), seconds - 1),
-                id=name,
-                replace_existing=True,
-            )
+            if existing is None:
+                scheduler.add_job(
+                    func=run_with_timeout,
+                    trigger="interval",
+                    seconds=seconds,
+                    start_date=datetime.datetime.now()
+                    + datetime.timedelta(seconds=offset_delay_seconds),
+                    args=(update_camera, (name, template), seconds - 1),
+                    id=name,
+                    replace_existing=True,
+                )
+            else:
+                scheduler.modify_job(
+                    name,
+                    args=(update_camera, (name, template), seconds - 1),
+                )
 
             """
             scheduler.add_job(

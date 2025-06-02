@@ -111,6 +111,7 @@ Settings controlling how frames are captured from video sources:
 Additional variables control AI behaviour and external tools:
 
 - `LLM_MODEL_VERSION` – language model version to use (default `gpt-4.1-mini`)
+- `CLIP_MODEL_NAME` – vision model for object detection (default `openai/clip-vit-base-patch32`)
 - `LLM_SUMMARY_PROMPT` – default prompt used for log summaries
 - `LLM_CAPTION_PROMPT` – default prompt used for image captions
 - `FFMPEG_PATH` – path to the `ffmpeg` binary (default `ffmpeg`)

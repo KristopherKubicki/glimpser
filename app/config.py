@@ -172,6 +172,8 @@ LLM_MODEL_VERSION = get_setting(
     "LLM_MODEL_VERSION", "gpt-4.1-mini"
 )  # todo setup allowed models
 
+CLIP_MODEL_NAME = get_setting("CLIP_MODEL_NAME", "openai/clip-vit-base-patch32")
+
 # note that $datetime is a special keyword that will be replaced with the datetime in iso Z format
 LLM_SUMMARY_PROMPT = get_setting(
     "LLM_SUMMARY_PROMPT",
