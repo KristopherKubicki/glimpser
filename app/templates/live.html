@@ -144,6 +144,10 @@
                 <i class="fas fa-video-slash video-icon"></i>
                 <p id="offline-message"></p>
             </div>
+            <div id="capture-error-indicator" class="error-indicator hidden">
+                <i class="fas fa-exclamation-triangle video-icon"></i>
+                <p id="capture-error-message"></p>
+            </div>
         </div>
         <div id="error-message"></div>
     </div>
@@ -170,6 +174,8 @@
         const playButton = document.getElementById('play-pause');
         const offlineIndicator = document.getElementById('offline-indicator');
         const offlineMessage = document.getElementById('offline-message');
+        const errorIndicator = document.getElementById('capture-error-indicator');
+        const errorIndicatorMessage = document.getElementById('capture-error-message');
 
         function showLoadingIndicator() {
             videoOverlay.style.display = 'block';
@@ -220,6 +226,26 @@
             offlineIndicator.style.display = 'none';
             offlineMessage.textContent = '';
             if (loadingIndicator.style.display === 'none' && playPauseIndicator.style.display === 'none') {
+                videoOverlay.style.display = 'none';
+            }
+        }
+
+        function showCaptureErrorIndicator(cameraName) {
+            videoOverlay.style.display = 'block';
+            errorIndicator.style.display = 'block';
+            errorIndicatorMessage.textContent = `Capture failed for ${cameraName}`;
+            loadingIndicator.style.display = 'none';
+            playPauseIndicator.style.display = 'none';
+        }
+
+        function hideCaptureErrorIndicator() {
+            errorIndicator.style.display = 'none';
+            errorIndicatorMessage.textContent = '';
+            if (
+                loadingIndicator.style.display === 'none' &&
+                playPauseIndicator.style.display === 'none' &&
+                offlineIndicator.style.display === 'none'
+            ) {
                 videoOverlay.style.display = 'none';
             }
         }
@@ -315,6 +341,7 @@ function changeCamera() {
                     <strong>Last Video:</strong> ${details.last_video_time || 'N/A'}<br/>
                     <strong>Last Caption:</strong> ${details.last_caption || 'N/A'}<br/>
                     ${details.offline_since ? `<strong>Offline Since:</strong> ${details.offline_since}<br/>` : ''}
+                    ${details.capture_failed ? '<strong>Capture Failed</strong><br/>' : ''}
                 </div>`;
         }
 
@@ -325,6 +352,15 @@ function changeCamera() {
 
             if (!isConnected) {
                 showOfflineIndicator(currentCamera);
+                hideCaptureErrorIndicator();
+                hideLoadingIndicator();
+                video.pause();
+                video.src = '';
+                image.src = '';
+                return;
+            } else if (templateDetails[currentCamera].capture_failed) {
+                hideOfflineIndicator();
+                showCaptureErrorIndicator(currentCamera);
                 hideLoadingIndicator();
                 video.pause();
                 video.src = '';
@@ -332,6 +368,7 @@ function changeCamera() {
                 return;
             } else {
                 hideOfflineIndicator();
+                hideCaptureErrorIndicator();
                 if (!['png', 'mjpg', 'motion'].includes(source)) {
                     showLastScreenshot();
                 }
@@ -698,6 +735,10 @@ function playMotion() {
         }
 
         if (camera.offline_since && camera.offline_since !== "") {
+            return false;
+        }
+
+        if (camera.capture_failed) {
             return false;
         }
 
