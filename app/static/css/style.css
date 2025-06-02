@@ -269,6 +269,10 @@ video:hover + .play-icon {
     --font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
+:focus-visible {
+    outline: 2px solid var(--accent-color);
+}
+
 .camera-name, .timestamp {
     position: absolute;
     color: white;

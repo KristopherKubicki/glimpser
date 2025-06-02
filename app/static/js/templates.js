@@ -329,7 +329,7 @@ export async function loadTemplates() {
                 <div class="play-icon">&#9658;</div>
               </div>
             </a>
-            <a href='${template.url}' target='_blank' class='open-url-link' title='Open monitored page' aria-label='Open monitored page'>↗</a>
+            <a href='${template.url}' target='_blank' class='open-url-link' title='Open monitored page' aria-label='Open monitored page' role='button'>↗</a>
           `;
           templateList.appendChild(templateDiv);
 
