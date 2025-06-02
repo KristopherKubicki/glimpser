@@ -4,6 +4,11 @@ The user interface now includes additional tooltips and descriptive alt text to 
 
 - Navigation and login logos include descriptive `alt` attributes.
 - The live feed image has both `alt` text and a tooltip.
+- Live and screenshot images now use more descriptive `alt` text such as
+  "Live view from Camera 1".
+- Icon-only links and buttons include `aria-label` attributes so screen readers
+  announce their purpose.
+- The login form uses proper `<label>` elements for username and password.
 - The footer Help link displays a tooltip describing its purpose.
 - The navigation Settings link has a single descriptive `title` attribute.
 - The Discover page icon also uses a descriptive `title` attribute.
