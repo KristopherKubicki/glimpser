@@ -62,6 +62,7 @@ export function initTemplates() {
       updateSliderLimits();
       window.addEventListener('resize', updateSliderLimits);
       window.updateSliderLimits = updateSliderLimits;
+      slider.dispatchEvent(new Event('input'));
     }
 
     function autofillGroup() {
@@ -88,7 +89,7 @@ export function initTemplates() {
     }
 
     if (slider && templateList) {
-      slider.addEventListener('input', () => {
+      const handleSlider = () => {
         let value = Math.min(parseFloat(slider.value), MAX_THUMBNAIL_WIDTH);
         const height = Math.min(
           Math.round((value * 9) / 16),
@@ -107,7 +108,11 @@ export function initTemplates() {
         const timestampFontSize = Math.max(8, Math.min(12, value / 30));
         document.documentElement.style.setProperty('--camera-name-font-size', `${cameraNameFontSize}px`);
         document.documentElement.style.setProperty('--timestamp-font-size', `${timestampFontSize}px`);
-      });
+      };
+
+      slider.addEventListener('input', handleSlider);
+      slider.addEventListener('change', handleSlider);
+      handleSlider();
     }
 
     if (form) {
@@ -178,7 +183,7 @@ export async function loadGroups() {
     });
   } catch (error) {
     console.error('Error loading groups:', error);
-    groupDropdown.innerHTML = '<option value="all">Error loading groups</option>';
+    groupDropdown.innerHTML = '<option value="all">All Groups</option>';
   } finally {
     groupDropdown.disabled = false;
   }
@@ -501,6 +506,8 @@ export async function loadTemplates() {
       window.addEventListener('resize', updateGridLayout);
     }
     if (window.updateSliderLimits) window.updateSliderLimits();
+    const slider = document.getElementById('grid-width-slider');
+    if (slider) slider.dispatchEvent(new Event('input'));
     updateHumanizedTimes();
     window.dispatchEvent(
       new CustomEvent('templatesLoaded', { detail: { count: templateCount } }),
