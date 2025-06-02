@@ -42,9 +42,11 @@ export function initNav() {
           if (!dangerStatus) return;
           if (data.ready) {
             dangerStatus.style.backgroundColor = 'orange';
+            dangerStatus.textContent = '!';
             dangerStatus.title = 'Danger Mode Ready';
           } else {
             dangerStatus.style.backgroundColor = 'grey';
+            dangerStatus.textContent = '×';
             let reason = [];
             if (!data.port_open) reason.push('Debug port closed');
             if (!data.idle) reason.push('User active');
