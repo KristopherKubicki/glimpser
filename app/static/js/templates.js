@@ -108,6 +108,7 @@ export function initTemplates() {
     loadTemplates();
     setupSearch();
     setupSorting();
+    setInterval(updateHumanizedTimes, 60000);
   });
 
   window.showStructuredInput = showStructuredInput;
