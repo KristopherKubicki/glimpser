@@ -8,6 +8,16 @@ This guide explains how to check Glimpser's health metrics and view live logs.
 
 The status page shows current system metrics and includes the live log viewer. Metrics are collected in a background thread. See `app/utils/scheduling.py` for implementation details. Raw values can also be retrieved programmatically from the `/health` endpoint.
 
+### Feed Dashboard
+
+Below the system metrics the page lists each configured feed with a color-coded indicator.
+
+- **Green** – the feed is updating on schedule.
+- **Yellow** – the last capture is behind its configured frequency.
+- **Red** – capturing failed or the feed is offline.
+
+The dashboard also shows when the most recent system summary was generated.
+
 ### Metrics
 
 - **CPU Usage** – percentage of CPU time used by the process
