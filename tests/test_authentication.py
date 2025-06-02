@@ -309,9 +309,8 @@ class TestAuthentication(unittest.TestCase):
         # Test with invalid session data
         with patch("app.routes.session", {"user_id": "not_a_boolean"}):
             response = self.client.get("/protected")
-            # TODO: fix these
-            # self.assertEqual(response.status_code, 302)
-            # self.assertIn("/login", response.headers["Location"])
+            self.assertEqual(response.status_code, 302)
+            self.assertIn("/login", response.headers["Location"])
 
     def test_api_key_security(self):
         login_attempts = {}  # reset
