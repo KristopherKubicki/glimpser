@@ -179,6 +179,10 @@ If the repository contains a `PYPI_API_TOKEN` secret, the workflow also
 builds Python distributions and publishes them to PyPI. These files can be
 downloaded from the Releases page or installed with `pip`.
 
+If the Releases page shows an older version than the footer, ensure the
+version tag was pushed. You can run `scripts/auto_tag_release.py` to create
+and push the tag manually.
+
 ## Contributing
 Contributions are always welcome. If you have an idea to improve Glimpser, feel free to fork the repository and submit a pull request. Please read our [Code of Conduct](CODE_OF_CONDUCT.md) to understand the expectations for participants and how to report issues.
 

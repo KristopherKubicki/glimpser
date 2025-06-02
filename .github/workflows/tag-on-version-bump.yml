@@ -31,9 +31,4 @@ jobs:
       - name: Create tag
         if: steps.detect.outputs.changed == 'true'
         run: |
-          VERSION=${{ steps.detect.outputs.new }}
-          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
-            echo "Tag v$VERSION already exists" && exit 0
-          fi
-          git tag "v$VERSION"
-          git push origin "v$VERSION"
+          python scripts/auto_tag_release.py

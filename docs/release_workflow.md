@@ -11,8 +11,9 @@ Both artifacts are attached to the GitHub release created for the tag. When the
 PyPI.
 
 Tags are normally created automatically when the version in `setup.py` is bumped
-on the `main` branch.  The `Tag Release` workflow creates a tag like `v0.2.7`
-and pushes it to GitHub, which then triggers the build jobs above.
+on the `main` branch.  The `Tag Release` workflow runs
+`scripts/auto_tag_release.py` to create a tag like `v0.2.7` and push it to
+GitHub, which then triggers the build jobs above.
 
 Since the tag is pushed by a workflow, the job must grant `workflow: write`
 permissions so that the subsequent release workflow is triggered.
@@ -26,3 +27,9 @@ git push origin v0.2.7
 
 Alternatively, run `scripts/auto_tag_release.py` to create and push the tag
 for the current version automatically.
+
+## Troubleshooting
+
+If the GitHub releases page still shows an older version than the footer,
+the tag may not have been pushed. Run `scripts/auto_tag_release.py` again
+or push the tag manually to publish the release and update the page.
