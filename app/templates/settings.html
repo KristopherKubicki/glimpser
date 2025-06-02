@@ -4,14 +4,18 @@
     <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger" title="Log out of the interface">Logout</a>
 
     <h2>Current Settings</h2>
-    <p><a href="{{ url_for('settings_help') }}" title="Detailed explanation of each option">What does each setting do?</a></p>
+    <p><a href="#settings-help" title="Detailed explanation of each option">What does each setting do?</a></p>
 
     <h3>Add New Setting</h3>
     <form id="add-setting-form" method="POST" action="{{ url_for('settings') }}">
         <input type="hidden" name="action" value="add" title="Add setting action">
         <label for="new_name" title="Name of the new setting">Name:</label>
+    <h3 id="settings-help">Settings Reference</h3>
+    {% include 'settings_help_table.html' %}
         <input type="text" id="new_name" name="new_name" required title="Enter setting name">
         <label for="new_value" title="Initial value for the setting">Value:</label>
+    <h3 id="settings-help">Settings Reference</h3>
+    {% include 'settings_help_table.html' %}
         <input type="text" id="new_value" name="new_value" required title="Enter setting value">
         <div id="setting-error" class="form-error hidden"></div>
         <button type="submit" title="Add setting">Add Setting</button>
@@ -62,6 +66,8 @@
         <input type="checkbox" id="offline-preview" title="Cache snapshots for offline viewing">
         Enable offline preview
     </label>
+    <h3 id="settings-help">Settings Reference</h3>
+    {% include 'settings_help_table.html' %}
 </main>
     <script src="{{ url_for('static', filename='js/performance.js') }}"></script>
     <script>
