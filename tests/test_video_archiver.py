@@ -19,6 +19,7 @@ from app.utils.video_archiver import (
     compile_to_video,
     archive_screenshots,
 )
+from app.config import VIDEO_DIRECTORY
 
 
 class TestVideoArchiver(unittest.TestCase):
@@ -72,7 +73,12 @@ class TestVideoArchiver(unittest.TestCase):
             compile_to_teaser()
 
         self.assertTrue(mock_compile_videos.called)
-        # Add more assertions based on the expected behavior
+        self.assertEqual(mock_compile_videos.call_count, 4)
+        outputs = [c.args[1] for c in mock_compile_videos.call_args_list]
+        self.assertIn(os.path.join(VIDEO_DIRECTORY, "all_in_process.mp4"), outputs)
+        self.assertIn(os.path.join(VIDEO_DIRECTORY, "group1_in_process.mp4"), outputs)
+        self.assertIn(os.path.join(VIDEO_DIRECTORY, "group2_in_process.mp4"), outputs)
+        self.assertIn(os.path.join(VIDEO_DIRECTORY, "group3_in_process.mp4"), outputs)
 
     @patch("subprocess.run")
     def test_compile_videos(self, mock_subprocess_run):

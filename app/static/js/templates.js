@@ -300,6 +300,7 @@ export async function loadTemplates() {
         const oneMinuteAgo = new Date(Date.now() - 60000);
         const isRecent = lastScreenshotDate > oneMinuteAgo;
         const videoContainerClass = isRecent ? 'video-container recent-screenshot' : 'video-container';
+        const errorClass = template.capture_failed ? 'template-error' : '';
 
         if (isIndexPage) {
           const templateDiv = document.createElement('div');
@@ -310,7 +311,7 @@ export async function loadTemplates() {
 
           templateDiv.innerHTML = `
             <a href='/templates/${name}'>
-              <div class="${videoContainerClass}">
+              <div class="${videoContainerClass} ${errorClass}">
                 <div class="camera-name">${name}</div>
                 <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none">
                   <source src="/last_video/${name}" type="video/mp4">

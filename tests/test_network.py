@@ -8,10 +8,17 @@ import socket
 import subprocess
 from unittest.mock import patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.utils.retention_policy import get_files_sorted_by_creation_time
-from app.utils.screenshots import is_private_ip, is_address_reachable, is_port_open, parse_url, get_arp_output
+from app.utils.screenshots import (
+    is_private_ip,
+    is_address_reachable,
+    is_port_open,
+    parse_url,
+    get_arp_output,
+)
+
 
 class TestUtils(unittest.TestCase):
 
@@ -29,31 +36,32 @@ class TestUtils(unittest.TestCase):
         self.assertFalse(is_private_ip("8.8.8.8"))
         self.assertFalse(is_private_ip("1.1.1.1"))
 
-    @patch('socket.gethostbyname')
-    @patch('socket.socket')
+    @patch("socket.gethostbyname")
+    @patch("socket.socket")
     def test_is_address_reachable(self, mock_socket, mock_gethostbyname):
         # Simulate DNS resolution success, failure, and success
-        mock_gethostbyname.side_effect = ['1.1.1.1', Exception('fail'), '1.1.1.1']
+        mock_gethostbyname.side_effect = [
+            "1.1.1.1",
+            Exception("fail"),
+            "1.1.1.1",
+            "10.255.255.255",
+        ]
         mock_instance = mock_socket.return_value
-        mock_instance.connect_ex.return_value = 0
+        mock_instance.connect_ex.side_effect = [0, 0, 1]
 
         self.assertTrue(is_address_reachable("google.com"))
         self.assertFalse(is_address_reachable("nonexistent.domain.com"))
         self.assertTrue(is_address_reachable("google.com", port=443))
+        self.assertFalse(is_address_reachable("10.255.255.255", timeout=1))
 
-        # Test with timeout
-        #self.assertFalse(is_address_reachable("10.255.255.255", timeout=1)) # for some reason this passes on my network...
-
-    @patch('socket.socket')
+    @patch("socket.socket")
     def test_is_port_open(self, mock_socket):
         mock_instance = mock_socket.return_value.__enter__.return_value
-        mock_instance.connect.side_effect = [None, socket.timeout()]
+        mock_instance.connect.side_effect = [None, socket.timeout(), socket.timeout()]
 
         self.assertTrue(is_port_open("google.com", 80))
         self.assertFalse(is_port_open("google.com", 12345))
-
-        # Test with timeout
-        #self.assertFalse(is_port_open("10.255.255.255", 80, timeout=1))
+        self.assertFalse(is_port_open("10.255.255.255", 80, timeout=1))
 
     def test_parse_url(self):
         # Test parsing HTTP URL
@@ -76,12 +84,12 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(domain, "2001:db8::1")
         self.assertEqual(port, 8080)
 
-    @patch('subprocess.check_output')
+    @patch("subprocess.check_output")
     def test_get_arp_output(self, mock_check_output):
-        mock_check_output.return_value = b'REACHABLE'
+        mock_check_output.return_value = b"REACHABLE"
         output = get_arp_output("127.0.0.1", timeout=1)
         self.assertIsInstance(output, bytes)
 
-if __name__ == '__main__':
-    unittest.main()
 
+if __name__ == "__main__":
+    unittest.main()

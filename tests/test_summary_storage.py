@@ -39,7 +39,10 @@ class TestSummaryStorage(unittest.TestCase):
         importlib.reload(models.summary)
         self.temp_dir.cleanup()
 
-    @patch("app.utils.scheduling.get_templates", return_value={})
+    @patch(
+        "app.utils.scheduling.get_templates_sorted_by_last_caption_time",
+        return_value=[],
+    )
     @patch("app.utils.scheduling.summarize", return_value='{"1":"foo"}')
     def test_update_summary_saves_to_db(self, mock_sum, mock_get_templates):
         scheduling.update_summary()

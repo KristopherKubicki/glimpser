@@ -11,6 +11,7 @@ from app.utils.template_manager import (
     Template,
     mark_offline,
     update_last_screenshot_time,
+    set_capture_failed,
     get_storage_usage,
 )
 from app.utils.validators import validate_template_name
@@ -46,6 +47,26 @@ class TestTemplateManager(unittest.TestCase):
         self.assertIn("template2", result)
         self.assertEqual(result["template1"]["frequency"], 60)
         self.assertEqual(result["template2"]["frequency"], 120)
+
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_get_templates_by_last_caption_time(self, mock_session):
+        mock_session_instance = MagicMock()
+        mock_session.return_value = mock_session_instance
+        mock_query = mock_session_instance.query.return_value
+        mock_order = mock_query.order_by
+        mock_all = mock_order.return_value.all
+
+        t1 = Template(name="t1", last_caption_time="2023-01-01 00:00:00")
+        t2 = Template(name="t2", last_caption_time="2023-01-02 00:00:00")
+        t3 = Template(name="t3", last_caption_time="2023-01-03 00:00:00")
+        mock_all.return_value = [t3, t2, t1]
+
+        result = self.template_manager.get_templates_by_last_caption_time()
+
+        self.assertEqual(result[0][0], "t3")
+        self.assertEqual(result[1][0], "t2")
+        self.assertEqual(result[2][0], "t1")
+        mock_order.assert_called()
 
     @patch("app.utils.template_manager.SessionLocal")
     def test_save_template(self, mock_session):
@@ -158,30 +179,17 @@ class TestTemplateManager(unittest.TestCase):
         mock_first = mock_filter_by.return_value.first
         mock_first.return_value = None  # Simulate creating a new template
 
-        # Test saving with invalid frequency
-        result = self.template_manager.save_template(
-            "test_template", {"frequency": 525601}
-        )
-        # note, still returns just adjusts the vaue silently...
-        # self.assertFalse(result, "Expected False for frequency > 525600")
-
-        # not working for some reason?
-        # Test saving with timeout >= frequency
-        result = self.template_manager.save_template(
-            "test_template", {"frequency": 60, "timeout": 61}
-        )
-        # warning - not working right.  value gets silently adjusted
-        # self.assertFalse(result, "Expected False, timeout should be adjusted")
-        # mock_session_instance.add.assert_called_once()
-        # mock_session_instance.commit.assert_called_once()
-
-        """
-        # Verify that the timeout was adjusted
+        self.template_manager.save_template("test_template", {"frequency": 525601})
         args, _ = mock_session_instance.add.call_args
-        self.assertEqual(
-            args[0].timeout, 60, "Timeout should be adjusted to match frequency"
+        self.assertEqual(args[0].frequency, 525600)
+
+        mock_session_instance.add.reset_mock()
+
+        result = self.template_manager.save_template(
+            "test_template2", {"frequency": 1, "timeout": 120}
         )
-        """
+        self.assertFalse(result)
+        self.assertEqual(mock_session_instance.commit.call_count, 1)
 
     @patch("app.utils.template_manager.SessionLocal")
     def test_get_template_by_id(self, mock_session):
@@ -286,6 +294,20 @@ class TestOfflineHandling(unittest.TestCase):
         self.assertNotEqual(template.last_screenshot_time, "")
         mock_sess.commit.assert_called_once()
 
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_set_capture_failed_updates_flag(self, mock_session):
+        mock_sess = MagicMock()
+        mock_session.return_value = mock_sess
+        template = Template(name="cam1")
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = (
+            template
+        )
+
+        set_capture_failed("cam1", True)
+
+        self.assertTrue(template.capture_failed)
+        mock_sess.commit.assert_called_once()
+
 
 class TestStorageUsage(unittest.TestCase):
     def test_get_storage_usage(self):
@@ -306,6 +328,28 @@ class TestStorageUsage(unittest.TestCase):
             ), patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir):
                 result = get_storage_usage("cam1")
                 self.assertEqual(result, "3.0 KB")
+
+
+class TestSchedulerUpdates(unittest.TestCase):
+    @patch("app.utils.scheduling.scheduler")
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_save_template_reschedules_job(self, mock_session, mock_sched):
+        """Updating a template should recreate its scheduled job."""
+
+        mock_sess = MagicMock()
+        mock_session.return_value = mock_sess
+        template = Template(name="cam1", frequency=1)
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = (
+            template
+        )
+
+        manager = TemplateManager()
+        result = manager.save_template("cam1", {"frequency": 2})
+
+        self.assertTrue(result)
+        mock_sess.commit.assert_called_once()
+        mock_sched.remove_job.assert_called_with("cam1")
+        mock_sched.add_job.assert_called_once()
 
 
 if __name__ == "__main__":

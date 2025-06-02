@@ -63,8 +63,7 @@ class TestAuthentication(unittest.TestCase):
                 },
             )
             self.assertEqual(response.status_code, 302)
-            # seems sus...
-            # self.assertIn("/", response.headers["Path"])
+            self.assertIn("/", response.headers["Location"])
 
     def test_login_failure(self):
         with patch("app.routes.SessionLocal") as mock_session_local, patch(

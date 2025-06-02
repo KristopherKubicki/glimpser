@@ -53,6 +53,11 @@
         <button type="submit" name="action" value="upload" title="Upload configuration">Upload Configuration</button>
     </form>
 
+    <h3>Danger Mode</h3>
+    <form method="POST" action="{{ url_for('settings') }}">
+        <button type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode">Update Chrome Shortcut</button>
+    </form>
+
     <script src="{{ url_for('static', filename='js/performance.js') }}"></script>
 {% endblock %}
 

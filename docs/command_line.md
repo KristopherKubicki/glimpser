@@ -47,3 +47,8 @@ defaults loaded from environment variables:
 | `--backup-path` | Override the configuration backup file. |
 
 Use `--help` with any script to see these options from the command line.
+
+## glimpser-clear
+
+This helper clears the console screen. It uses the same logic as the main
+application's startup routine and works on Windows, macOS and Linux.
