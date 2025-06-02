@@ -193,6 +193,12 @@ FFPROBE_PATH = get_setting("FFPROBE_PATH", "ffprobe")
 # Enable GPU acceleration if supported (e.g. "auto", "cuda", etc.)
 FFMPEG_HWACCEL = get_setting("FFMPEG_HWACCEL", "False")
 
+# CLIP model used for object filtering in scheduling
+CLIP_MODEL_NAME = get_setting(
+    "CLIP_MODEL_NAME",
+    "openai/clip-vit-base-patch32",
+)
+
 
 # New settings for capture_frame_from_stream function
 NUM_FRAMES = int(get_setting("NUM_FRAMES", 3))
