@@ -36,10 +36,15 @@ This guide provides a high-level look at Glimpser's core components and how they
  Client Request ---> Routes (app/routes.py) ----> Models (app/models/) ----> Database
                            |                           |
                            v                           v
-                     Utility Functions ----> Scheduler Jobs / Background Tasks
+Utility Functions ----> Scheduler Jobs / Background Tasks
 ```
 - Routes handle incoming API or web requests.
 - Models define the database schema.
 - Utility functions perform processing and are called by both routes and scheduled jobs.
 - Background tasks run outside request/response cycles to capture data and generate summaries.
+
+### Caption Selection
+`scheduling.update_camera` decides whether to call the local LLaVA model or
+the GPT-based API for captions. Motion or object detections trigger the more
+expensive GPT call; otherwise a lightweight caption is generated locally.
 
