@@ -74,7 +74,7 @@ from app.config import (
     TZ,
 )
 import app.config as config
-from app.utils.validators import validate_proxy
+from app.utils.validators import validate_proxy, validate_url
 
 last_camera_test = {}
 last_camera_test_time = {}
@@ -1690,6 +1690,10 @@ def capture_screenshot_and_har_light(
     Capture a screenshot of a URL using wkhtmltoimage (WebKit).
     """
     proxy = validate_proxy(proxy)
+    url = validate_url(url)
+    if url is None:
+        logging.warning("Invalid URL provided for screenshot capture")
+        return False
     # Check if wkhtmltoimage is available
     if shutil.which("wkhtmltoimage") is None:
         logging.warning("wkhtmltoimage is not installed or not in the system path.")
