@@ -71,6 +71,22 @@ def _load_local_ouis() -> dict[str, str]:
 
 OUI_MAP.update(_load_local_ouis())
 
+# Ports checked for additional metadata after discovery. The list focuses on
+# common services exposed by cameras and network appliances. New ports can be
+# added here without affecting the scanning steps.
+COMMON_PORTS = [
+    80,
+    443,
+    554,
+    8554,
+    1935,
+    5060,
+    5061,
+    3478,
+    5349,
+    161,
+]
+
 # Discovery steps executed by :func:`discover_cameras`.  The list order
 # defines both the execution order and the number of progress updates.
 DISCOVERY_STAGES = [
@@ -191,6 +207,16 @@ def _trace_upstream(ip: str, timeout: int = 3) -> str | None:
     except Exception as e:  # pragma: no cover - system dependent
         logging.debug("traceroute error for %s: %s", ip, e)
     return None
+
+
+def _detect_open_ports(ip: str, ports: list[int]) -> list[int]:
+    """Return ports from ``ports`` that are reachable on ``ip``."""
+
+    open_ports = []
+    for port in ports:
+        if is_port_open(ip, port, timeout=1):
+            open_ports.append(port)
+    return open_ports
 
 
 def _local_subnets(max_prefixlen: int = 24):
@@ -645,6 +671,10 @@ def discover_cameras(progress_callback=None, subnets=None):
         hop = _trace_upstream(cam["ip"])
         if hop:
             cam.setdefault("info", {})["upstream"] = hop
+        if cam.get("protocol") != "local":
+            ports = _detect_open_ports(cam["ip"], COMMON_PORTS)
+            if ports:
+                cam.setdefault("info", {})["open_ports"] = ports
 
     if progress_callback:
         progress_callback("trace", len(result), [])

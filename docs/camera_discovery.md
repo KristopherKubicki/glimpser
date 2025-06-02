@@ -148,6 +148,11 @@ streamed back to the page during scanning. The **Info** column summarizes key
 details such as a camera's name, ONVIF address, or HTTP path instead of showing
 the raw JSON dictionary.
 
+Each camera is now also checked for commonly used service ports. Any detected
+ports are listed in the ``open_ports`` field so you can quickly see which
+services are reachable (for example, 80 for HTTP or 554 for RTSP). This scan
+is lightweight and runs after the main discovery steps finish.
+
 You can then add a discovered camera to your configuration directly from the `/discover` page.
 The "Add" button on this page now includes a tooltip (title attribute) for improved accessibility.
 
@@ -174,3 +179,10 @@ Locally attached USB webcams (for example, Logitech devices) will appear under
 Remote sources such as **GOES16**, **ZoomEarth**, and **Dopler** can be added
 manually, but they are not discovered automatically because they are hosted
 outside the local network.
+
+## Future improvements
+
+- Provide more granular progress updates with estimated completion times.
+- Offer a wizard-style interface with clearer instructions and tooltips.
+- Include additional metadata such as firmware versions.
+- Allow exporting discovery results to CSV or JSON.
