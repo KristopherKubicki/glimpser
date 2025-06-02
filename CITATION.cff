@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use Glimpser in your research, please cite it as follows."
+authors:
+  - family-names: Kubicki
+    given-names: Kristopher
+title: Glimpser
+version: "0.2.7"
+date-released: 2024-08-07
+url: https://github.com/KristopherKubicki/glimpser
