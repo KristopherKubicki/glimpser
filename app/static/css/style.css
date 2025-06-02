@@ -609,7 +609,8 @@ button, a {
 
 /* Speed slider and label container */
 #speed-container {
-    display: none;
+    visibility: hidden;
+    pointer-events: none;
 }
 
 /* Cool Clock Styles */
