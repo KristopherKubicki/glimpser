@@ -24,6 +24,7 @@ Glimpser is a straightforward yet powerful real-time monitoring application desi
 For more documentation, see the [documentation index](docs/index.md).
 You can find an overview of the docs folder in [docs/README.md](docs/README.md).
 Read a high-level [Architecture Overview](docs/architecture_overview.md) to understand how the pieces fit together.
+See [OpenSSF Scorecard](docs/scorecard.md) for details on the security badge.
 
 ![Glimpser August 2024](https://github.com/user-attachments/assets/44ddcbd5-31f1-4ff9-954a-954a85479dc0)
 
