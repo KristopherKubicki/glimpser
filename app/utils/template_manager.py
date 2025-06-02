@@ -28,6 +28,17 @@ LLM_USAGE_PATH = "data/llm_usage.json"
 LLM_COST_PER_TOKEN = 0.005 / 1000  # OpenAI pricing example
 
 
+def is_snapshot_url(url: str) -> bool:
+    """Return ``True`` when ``url`` points to a still image endpoint."""
+
+    if not url:
+        return False
+    url = url.lower()
+    return (
+        url.endswith((".jpg", ".jpeg", ".png")) or "snapshot" in url or "picture" in url
+    )
+
+
 class Template(db.Base):
     __tablename__ = "templates"
 
@@ -312,6 +323,8 @@ class TemplateManager:
             result = template.__dict__ if template else {}
             if "_sa_instance_state" in result:
                 del result["_sa_instance_state"]
+            if result:
+                result["snapshot_only"] = is_snapshot_url(result.get("url", ""))
             return result
         finally:
             session.close()
@@ -398,6 +411,7 @@ def get_templates():
         video_path = os.path.join(VIDEO_DIRECTORY, secure_filename(valid_name))
         details["last_screenshot_time"] = get_latest_screenshot_date(camera_path)
         details["last_video_time"] = get_latest_video_date(video_path)
+        details["snapshot_only"] = is_snapshot_url(details.get("url", ""))
     return templates
 
 
