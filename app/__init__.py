@@ -84,6 +84,7 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
         SESSION_COOKIE_SECURE,
         SESSION_COOKIE_HTTPONLY,
         SESSION_TIMEOUT_MINUTES,
+        FLASK_LOG_LEVEL,
         API_KEY,
     )
 
@@ -94,8 +95,8 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(
         minutes=SESSION_TIMEOUT_MINUTES
     )
-    # Set up logging
-    app.logger.setLevel(logging.WARN)  # todo: read from config....
+    # Set up logging using the configured level
+    app.logger.setLevel(getattr(logging, FLASK_LOG_LEVEL))
 
     # Ensure required directories exist
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)
