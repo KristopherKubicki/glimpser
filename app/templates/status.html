@@ -36,9 +36,25 @@
     <tbody>
     {% for feed in feeds %}
         <tr class="{{ feed.status }}">
-            <td>{{ feed.name }}</td>
-            <td>{{ feed.last_screenshot_time or 'N/A' }}</td>
-            <td>{{ feed.last_caption_time or 'N/A' }}</td>
+            <td><a href="{{ url_for('template_details', template_name=feed.name) }}">{{ feed.name }}</a></td>
+            <td>
+                {% if feed.last_screenshot_time %}
+                <span class="humanized-time" data-time="{{ feed.last_screenshot_time }}" title="{{ feed.last_screenshot_time }}">
+                    {{ feed.last_screenshot_time }}
+                </span>
+                {% else %}
+                N/A
+                {% endif %}
+            </td>
+            <td>
+                {% if feed.last_caption_time %}
+                <span class="humanized-time" data-time="{{ feed.last_caption_time }}" title="{{ feed.last_caption_time }}">
+                    {{ feed.last_caption_time }}
+                </span>
+                {% else %}
+                N/A
+                {% endif %}
+            </td>
             <td><span class="status-dot {{ feed.status }}" title="{{ feed.status }}"></span></td>
         </tr>
     {% endfor %}
