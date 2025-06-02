@@ -1011,6 +1011,22 @@ input[type=submit]:hover {
     filter: none;
 }
 
+.caption-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.caption-box textarea {
+    width: 100%;
+}
+
+.caption-box .last-caption {
+    max-height: 6rem;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
 .filter-controls {
     display: flex;
     flex-wrap: wrap;

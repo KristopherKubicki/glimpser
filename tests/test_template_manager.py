@@ -13,6 +13,7 @@ from app.utils.template_manager import (
     update_last_screenshot_time,
     set_capture_failed,
     get_storage_usage,
+    get_storage_usage_bytes,
     get_templates,
 )
 from app.utils.validators import validate_template_name
@@ -351,6 +352,26 @@ class TestStorageUsage(unittest.TestCase):
             ), patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir):
                 result = get_storage_usage("cam1")
                 self.assertEqual(result, "3.0 KB")
+
+    def test_get_storage_usage_bytes(self):
+        """Returns raw byte count for sorting."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sshot_dir = os.path.join(temp_dir, "shots")
+            vid_dir = os.path.join(temp_dir, "vid")
+            os.makedirs(os.path.join(sshot_dir, "cam1"))
+            os.makedirs(os.path.join(vid_dir, "cam1"))
+
+            with open(os.path.join(sshot_dir, "cam1", "cam1.png"), "wb") as f:
+                f.write(b"0" * 1024)
+            with open(os.path.join(vid_dir, "cam1", "cam1.mp4"), "wb") as f:
+                f.write(b"0" * 2048)
+
+            with patch(
+                "app.utils.template_manager.SCREENSHOT_DIRECTORY",
+                sshot_dir,
+            ), patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir):
+                result = get_storage_usage_bytes("cam1")
+                self.assertEqual(result, 3072)
 
 
 class TestSnapshotDetection(unittest.TestCase):
