@@ -73,6 +73,20 @@ def _mac_manufacturer(mac: str | None) -> str | None:
     return OUI_MAP.get(prefix)
 
 
+def _add_mac_info(cam: dict) -> None:
+    """Augment ``cam`` with MAC and vendor information if possible."""
+
+    if cam.get("protocol") == "local":
+        return
+    mac = _mac_for_ip(cam.get("ip"))
+    if mac:
+        info = cam.setdefault("info", {})
+        info["mac"] = mac
+        vendor = _mac_manufacturer(mac)
+        if vendor:
+            info["manufacturer"] = vendor
+
+
 def _local_subnets(max_prefixlen: int = 24):
     """Return local IPv4 subnets limited to ``max_prefixlen``.
 
@@ -487,6 +501,8 @@ def discover_cameras(progress_callback=None):
             stage_cameras = []
             try:
                 stage_cameras = fut.result()
+                for cam in stage_cameras:
+                    _add_mac_info(cam)
                 cameras.extend(stage_cameras)
             except Exception as e:  # pragma: no cover - network
                 logging.warning("%s discovery error: %s", stage, e)
@@ -515,12 +531,6 @@ def discover_cameras(progress_callback=None):
 
     result = list(unique.values())
     for cam in result:
-        if cam["protocol"] != "local":
-            mac = _mac_for_ip(cam["ip"])
-            if mac:
-                cam.setdefault("info", {})["mac"] = mac
-                vendor = _mac_manufacturer(mac)
-                if vendor:
-                    cam["info"]["manufacturer"] = vendor
+        _add_mac_info(cam)
 
     return result
