@@ -607,7 +607,7 @@ button, a {
     left: 50%;
     transform-origin: 50% 0;
     transform: translateX(-50%);
-    background-color: #333;
+    background-color: var(--text-color);
     pointer-events: none;
 }
 
