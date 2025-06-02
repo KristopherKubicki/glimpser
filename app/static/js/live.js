@@ -613,3 +613,8 @@ showLastScreenshot();
 updateTemplateDetails();
 updateSpeedContainer();
 playMP4();
+
+// Expose handlers used by inline event attributes
+window.changeCamera = changeCamera;
+window.changeVideoSource = changeVideoSource;
+window.updatePlaybackSpeed = updatePlaybackSpeed;
