@@ -66,6 +66,40 @@ class TestAuthentication(unittest.TestCase):
             # seems sus...
             # self.assertIn("/", response.headers["Path"])
 
+    def test_login_success_with_totp(self):
+        with patch("app.routes.SessionLocal") as mock_session_local, patch(
+            "app.routes.check_password_hash", return_value=True
+        ), patch("app.routes.verify_totp_code", return_value=True):
+            dummy_user = SimpleNamespace(
+                id=1, username=USER_NAME, password_hash="hash", totp_secret="x"
+            )
+
+            class DummyQuery:
+                def filter_by(self, **kwargs):
+                    return self
+
+                def first(self):
+                    return dummy_user
+
+            class DummySession:
+                def query(self, model):
+                    return DummyQuery()
+
+                def close(self):
+                    pass
+
+            mock_session_local.return_value = DummySession()
+
+            response = self.client.post(
+                "/login",
+                data={
+                    "username": USER_NAME,
+                    "password": "correct_password",
+                    "totp_code": "123456",
+                },
+            )
+            self.assertEqual(response.status_code, 302)
+
     def test_login_failure(self):
         with patch("app.routes.SessionLocal") as mock_session_local, patch(
             "app.routes.check_password_hash", return_value=False
@@ -90,6 +124,40 @@ class TestAuthentication(unittest.TestCase):
 
             response = self.client.post(
                 "/login", data={"username": USER_NAME, "password": "wrong_password"}
+            )
+            self.assertEqual(response.status_code, 200)
+
+    def test_login_failure_bad_totp(self):
+        with patch("app.routes.SessionLocal") as mock_session_local, patch(
+            "app.routes.check_password_hash", return_value=True
+        ), patch("app.routes.verify_totp_code", return_value=False):
+            dummy_user = SimpleNamespace(
+                id=1, username=USER_NAME, password_hash="hash", totp_secret="x"
+            )
+
+            class DummyQuery:
+                def filter_by(self, **kwargs):
+                    return self
+
+                def first(self):
+                    return dummy_user
+
+            class DummySession:
+                def query(self, model):
+                    return DummyQuery()
+
+                def close(self):
+                    pass
+
+            mock_session_local.return_value = DummySession()
+
+            response = self.client.post(
+                "/login",
+                data={
+                    "username": USER_NAME,
+                    "password": "correct_password",
+                    "totp_code": "000000",
+                },
             )
             self.assertEqual(response.status_code, 200)
 

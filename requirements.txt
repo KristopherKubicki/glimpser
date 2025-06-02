@@ -25,5 +25,6 @@ python-dateutil
 python-dotenv
 nodriver
 pytest
+pyotp
 flax==0.2.0
 jax[cpu]==0.6.1

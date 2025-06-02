@@ -75,6 +75,7 @@ from app.utils.db import SessionLocal, engine
 from app.utils.scheduling import log_cache, log_cache_lock
 from app.utils.validators import validate_template_name, validate_update_data
 from app.utils.profiling import profile_route, get_latency_stats
+from app.utils.totp import verify_totp_code
 
 
 def restart_server():
@@ -923,6 +924,7 @@ def init_routes(app):
         if request.method == "POST":
             username = request.form["username"]
             password = request.form["password"]
+            valid_login = True
 
             db_session = SessionLocal()
             try:
@@ -931,17 +933,27 @@ def init_routes(app):
                 db_session.close()
 
             if user and check_password_hash(user.password_hash, password):
-                session["user_id"] = user.id
-                session["expiry"] = (
-                    now + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
-                ).strftime("%Y-%m-%d %H:%M:%S")
-                session.permanent = True
-                login_attempts.pop(
-                    ip_address, None
-                )  # Reset attempts on successful login
-                logging.info("Successful login for %s from %s", username, ip_address)
-                return redirect(url_for("index"))
+                if user.totp_secret and not verify_totp_code(
+                    user.totp_secret, request.form.get("totp_code")
+                ):
+                    valid_login = False
+                else:
+                    session["user_id"] = user.id
+                    session["expiry"] = (
+                        now + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
+                    ).strftime("%Y-%m-%d %H:%M:%S")
+                    session.permanent = True
+                    login_attempts.pop(
+                        ip_address, None
+                    )  # Reset attempts on successful login
+                    logging.info(
+                        "Successful login for %s from %s", username, ip_address
+                    )
+                    return redirect(url_for("index"))
             else:
+                valid_login = False
+
+            if not valid_login:
                 # Record the failed attempt
                 if ip_address not in login_attempts:
                     login_attempts[ip_address] = {"attempts": 1, "locked_until": now}

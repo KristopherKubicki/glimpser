@@ -7,7 +7,9 @@
             Username:<br>
             <input type="text" name="username" required title="Enter your username"><br>
             Password:<br>
-            <input type="password" name="password" required title="Enter your password"><br><br>
+            <input type="password" name="password" required title="Enter your password"><br>
+            TOTP Code:<br>
+            <input type="text" name="totp_code" title="Time-based one-time password"><br><br>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
