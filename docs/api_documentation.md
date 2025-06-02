@@ -116,6 +116,7 @@ Several other routes provide streaming functionality:
 - **GET /motion.mjpg** – MJPEG stream containing only motion frames. Accepts `camera` or `group` as query parameters.
 - **GET /caption.mjpg** – MJPEG stream of the last caption frame for a group.
 - **GET /motion_caption.mjpg** – Combines motion and caption frames in a single MJPEG stream.
+- **GET /internal_caption.mjpg** – Loops the latest caption text as an MJPEG stream.
 - **GET /stream.m3u8** – HLS playlist referencing the latest videos.
   Optional `camera` or `group` query parameters filter the playlist to a
   single camera or group of cameras.
