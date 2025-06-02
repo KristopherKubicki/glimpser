@@ -10,3 +10,8 @@ The user interface now includes additional tooltips and descriptive alt text to 
 - When a camera is offline, the player shows an overlay with a clear icon instead of replacing the controls.
 - Deprecated `<center>` tags were removed from templates and replaced with CSS-based centering.
 - Error pages, the status dashboard, and video players now include tooltips on buttons and metrics.
+- A "skip to main content" link enables quick keyboard navigation.
+- The base template uses a `<main>` element for semantic structure.
+- Live video overlays use ARIA roles so screen readers announce status changes.
+- Focus outlines appear when navigating via keyboard.
+- The delete button text color now meets color contrast guidelines.

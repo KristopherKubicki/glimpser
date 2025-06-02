@@ -5,6 +5,32 @@ html {
     max-width: 100vw;
 }
 
+/* Skip link for keyboard users */
+.skip-link {
+    position: absolute;
+    left: -10000px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.skip-link:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 10px;
+    background: #000;
+    color: #fff;
+    z-index: 1000;
+}
+
+/* Visible outline when navigating with keyboard */
+:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
 /* Camera list styles */
 .camera-list {
     width: 100%;
@@ -642,7 +668,7 @@ button, a {
 #delete-btn {
     padding: 10px 20px;
     background-color: #e74c3c;
-    color: #fff;
+    color: #000;
     border: none;
     border-radius: 5px;
     cursor: pointer;
