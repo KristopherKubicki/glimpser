@@ -1108,6 +1108,16 @@ def init_routes(app):
         template_details = template_manager.get_templates()
         return render_template("index.html", template_details=template_details)
 
+    @app.route("/group/<string:group_name>")
+    @login_required
+    def group_page(group_name: str):
+        """Render a page listing all cameras in a group."""
+        group_name = secure_filename(group_name)
+        groups = get_active_groups()
+        if group_name not in groups:
+            abort(404)
+        return render_template("group.html", group_name=group_name)
+
     def get_active_templates():
         templates = template_manager.get_templates()
         active_cameras = []

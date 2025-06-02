@@ -1206,4 +1206,12 @@ details > summary {
     z-index: 10;
 }
 
+.group-links {
+    margin-top: 0.5em;
+}
+
+.group-links a {
+    margin-right: 0.5em;
+}
+
 
