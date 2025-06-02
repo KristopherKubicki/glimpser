@@ -154,6 +154,14 @@ def login_required(f):
 
         # Check for valid session
         elif session.get("user_id"):
+            # Ensure the stored user_id is an integer. Any malformed session
+            # data should trigger a logout redirect rather than allowing the
+            # request through.
+            if not isinstance(session.get("user_id"), int):
+                session.pop("user_id", None)
+                flash("Session expired. Please log in again.")
+                return redirect(url_for("login", next=request.url))
+
             expiry = session.get("expiry")
             if expiry and datetime.now() > datetime.strptime(
                 expiry, "%Y-%m-%d %H:%M:%S"
