@@ -2,9 +2,17 @@ import os
 from threading import Thread
 from werkzeug.serving import make_server
 
+import importlib
+from unittest.mock import patch
+import argparse
+
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import pytest
 
-from app import create_app
+import app
 
 try:
     from selenium import webdriver
@@ -31,11 +39,11 @@ class ServerThread(Thread):
 
 @pytest.fixture(scope="module")
 def live_server(tmp_path_factory):
-    app = create_app(enable_watchdog=False, schedule=False)
+    application = app.create_app(enable_watchdog=False, schedule=False)
     data_dir = tmp_path_factory.mktemp("data")
     prev_cwd = os.getcwd()
     os.chdir(data_dir)
-    server = ServerThread(app)
+    server = ServerThread(application)
     server.start()
     yield f"http://127.0.0.1:{server.port}"
     server.shutdown()
@@ -71,6 +79,50 @@ def browser():
     driver.quit()
 
 
+@pytest.fixture(scope="module")
+def live_server_with_user(tmp_path_factory):
+    data_dir = tmp_path_factory.mktemp("creds")
+    db_path = os.path.join(data_dir, "test.db")
+    env = {"GLIMPSER_DATABASE_PATH": db_path}
+    patcher = patch.dict(os.environ, env)
+    patcher.start()
+
+    import generate_credentials
+    import app.config as config
+    import app.utils.db as db
+    import app.routes as routes
+
+    importlib.reload(config)
+    importlib.reload(db)
+    importlib.reload(routes)
+    importlib.reload(app)
+
+    args = argparse.Namespace(
+        db_path=db_path,
+        username="e2e",
+        password="secret",
+        update_password=False,
+        secret_key="secretkey",
+        update_key=False,
+    )
+    generate_credentials.generate_credentials(args)
+
+    application = app.create_app(enable_watchdog=False, schedule=False)
+    prev_cwd = os.getcwd()
+    os.chdir(data_dir)
+    server = ServerThread(application)
+    server.start()
+    yield f"http://127.0.0.1:{server.port}"
+    server.shutdown()
+    os.chdir(prev_cwd)
+
+    patcher.stop()
+    importlib.reload(config)
+    importlib.reload(db)
+    importlib.reload(routes)
+    importlib.reload(app)
+
+
 def test_root_redirects_to_login(live_server, browser):
     browser.get(live_server)
     assert "/login" in browser.current_url
@@ -83,3 +135,12 @@ def test_login_page_has_form(live_server, browser):
     password = browser.find_element(By.NAME, "password")
     assert username is not None
     assert password is not None
+
+
+def test_login_and_redirect(live_server_with_user, browser):
+    browser.get(f"{live_server_with_user}/login")
+    browser.find_element(By.NAME, "username").send_keys("e2e")
+    browser.find_element(By.NAME, "password").send_keys("secret")
+    browser.find_element(By.CSS_SELECTOR, "form input[type=submit]").click()
+    assert browser.current_url.endswith("/")
+    assert "Add Template" in browser.page_source
