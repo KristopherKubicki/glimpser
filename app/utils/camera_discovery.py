@@ -455,6 +455,43 @@ def _check_http_endpoint(ip: str, port: int, path: str, timeout: int = 2) -> boo
         return False
 
 
+def _fetch_http_banner(ip: str, port: int, timeout: int = 2) -> dict[str, str]:
+    """Return HTTP metadata such as Server header or page title."""
+
+    request = f"GET / HTTP/1.1\r\nHost: {ip}\r\nConnection: close\r\n\r\n"
+    info: dict[str, str] = {}
+    try:
+        with socket.create_connection((ip, port), timeout=timeout) as sock:
+            sock.sendall(request.encode())
+            response = b""
+            while True:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                response += chunk
+                if b"\r\n\r\n" in response:
+                    break
+        header, _, body = response.partition(b"\r\n\r\n")
+        for line in header.decode(errors="ignore").split("\r\n"):
+            if line.lower().startswith("server:"):
+                info["server"] = line.split(":", 1)[1].strip()
+            if line.lower().startswith("www-authenticate:") and 'realm="' in line:
+                start = line.lower().find('realm="') + 7
+                end = line.find('"', start)
+                if end != -1:
+                    info["realm"] = line[start:end]
+        body_text = body.decode(errors="ignore")
+        start_idx = body_text.lower().find("<title>")
+        end_idx = body_text.lower().find("</title>", start_idx)
+        if start_idx != -1 and end_idx != -1:
+            title = body_text[start_idx + 7 : end_idx].strip()
+            if title:
+                info["title"] = title
+    except Exception as e:  # pragma: no cover - network
+        logging.debug("HTTP banner error for %s:%s: %s", ip, port, e)
+    return info
+
+
 def _scan_rtsp_ports(subnets):
     found = []
     checked = set()
@@ -761,7 +798,13 @@ def discover_cameras(progress_callback=None, subnets=None):
         if cam.get("protocol") != "local":
             ports = _detect_open_ports(cam["ip"], COMMON_PORTS)
             if ports:
-                cam.setdefault("info", {})["open_ports"] = ports
+                info = cam.setdefault("info", {})
+                info["open_ports"] = ports
+                for p in ports:
+                    if p in (80, 8080, 443):
+                        banner = _fetch_http_banner(cam["ip"], p)
+                        for k, v in banner.items():
+                            info.setdefault(k, v)
 
     _report("trace", len(result), [])
 
