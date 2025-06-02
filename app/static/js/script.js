@@ -5,6 +5,7 @@ import { initNav } from './nav.js';
 import { initFormValidation } from './form.js';
 import { initFooterFade } from './footer.js';
 import { initOffline } from './offline.js';
+import { initDangerToggle } from './danger.js';
 
 initTemplates();
 initVideoControls();
@@ -13,3 +14,4 @@ initNav();
 initFormValidation();
 initFooterFade();
 initOffline();
+initDangerToggle();

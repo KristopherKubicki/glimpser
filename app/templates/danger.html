@@ -1,14 +1,56 @@
 {% extends 'base.html' %}
 {% block content %}
-<main class="danger-page">
+<main class="container danger-page">
   <h2>Danger Mode</h2>
-  <form method="post">
-    <label>
-      <input type="checkbox" name="enabled" {% if enabled %}checked{% endif %}>
+
+  <section>
+    <h3>What is it?</h3>
+    <p>
+      Danger Mode reuses your running Chrome instance so Glimpser can capture
+      pages that rely on your logged-in session. Chrome must be started with the
+      <code>--remote-debugging-port=9222</code> flag.
+    </p>
+  </section>
+
+  <section>
+    <h3>How it works</h3>
+    <p>
+      When the debug port is detected and you are idle, an orange icon appears
+      in the navigation bar. Captures marked as "Danger" then open in your
+      browser and close automatically when finished.
+    </p>
+  </section>
+
+  <section>
+    <h3>Why use it?</h3>
+    <p>
+      Use this mode for dynamic sites that need your real browser context or
+      authenticated session. It allows Glimpser to interact with pages that a
+      headless browser cannot easily access.
+    </p>
+  </section>
+
+  <form id="danger-form" method="post">
+    <label for="danger-checkbox">
+      <input
+        id="danger-checkbox"
+        type="checkbox"
+        name="enabled"
+        {% if enabled %}checked{% endif %}
+      />
       Enable Danger Mode
     </label>
     <button type="submit">Save</button>
   </form>
 </main>
+
+<div id="danger-modal" class="modal">
+  <div class="modal-content">
+    <span id="danger-close" class="close-icon">&times;</span>
+    <p id="danger-modal-message"></p>
+    <button id="danger-confirm">Confirm</button>
+    <button id="danger-cancel">Cancel</button>
+  </div>
+</div>
 {% endblock %}
 
