@@ -236,14 +236,11 @@ select:hover {
     border-radius: 5px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     width: 100%;
-    /* No fixed height here; it will be set by padding-top in the ::before pseudo-element */
+    height: var(--grid-item-height, calc(var(--grid-item-width, 360px) * 0.5625));
 }
 
 .templateDiv::before {
-    content: '';
-    display: block;
-    width: 100%;
-    padding-top: 56.25%; /* Aspect ratio of 16:9 */
+    content: none;
 }
 
 /* Ensure the preview link covers the entire tile */
@@ -755,7 +752,7 @@ button, a {
 .templateDiv {
     position: relative;
     width: 100%;
-    padding-top: 56.25%; /* 16:9 aspect ratio */
+    height: var(--grid-item-height, calc(var(--grid-item-width, 360px) * 0.5625));
     overflow: hidden;
     background-color: #000;
     border-radius: 5px;
