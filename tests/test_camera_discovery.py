@@ -274,10 +274,12 @@ class TestCameraDiscovery(unittest.TestCase):
     @patch("app.utils.camera_discovery._probe_onvif")
     @patch("app.utils.camera_discovery._mac_manufacturer")
     @patch("app.utils.camera_discovery._mac_for_ip")
+    @patch("app.utils.camera_discovery.is_port_open", return_value=False)
     @patch("app.utils.camera_discovery._trace_upstream", return_value=None)
     def test_progress_callback_includes_mac(
         self,
         mock_trace,
+        mock_is_port_open,
         mock_mac,
         mock_vendor,
         mock_onvif,
@@ -298,6 +300,12 @@ class TestCameraDiscovery(unittest.TestCase):
 
         self.assertEqual(seen[0]["info"].get("mac"), "000c29aabbcc")
         self.assertEqual(seen[0]["info"].get("manufacturer"), "VMware")
+
+    @patch("app.utils.camera_discovery.is_port_open")
+    def test_detect_open_ports(self, mock_open):
+        mock_open.side_effect = lambda ip, port, timeout=1: port in (80, 554)
+        result = camera_discovery._detect_open_ports("192.168.1.6", [80, 443, 554])
+        self.assertEqual(result, [80, 554])
 
     @patch("app.utils.camera_discovery._local_subnets")
     @patch("app.utils.camera_discovery._probe_onvif", return_value=[])
