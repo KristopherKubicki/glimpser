@@ -1434,6 +1434,27 @@ def init_routes(app):
     @app.route("/stream.mp4")
     @login_required
     def stream_mp4():
+        """Stream the latest MP4 for a camera or group."""
+
+        camera = request.args.get("camera")
+        if camera:
+            camera = validate_template_name(camera)
+            if camera is None:
+                abort(400, "Invalid camera name")
+            video_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "..",
+                VIDEO_DIRECTORY,
+                camera,
+                "in_process.mp4",
+            )
+            if not os.path.exists(video_path):
+                abort(404)
+            return Response(
+                stream_with_context(generate_video_stream(video_path)),
+                mimetype="video/mp4",
+            )
+
         # Default group
         lgroup = "all"
 

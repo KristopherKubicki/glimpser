@@ -430,15 +430,15 @@ document.getElementById("seek-bar").style.display = "block";
     stopLiveSwitch();
     stopPNG();
     if (currentCamera.startsWith('group-')) {
-// Special handling for groups
-const groupName = currentCamera.split('group-')[1];
-video.src = `/stream.mp4?group=${encodeURIComponent(groupName)}`;
+        // Special handling for groups
+        const groupName = currentCamera.split('group-')[1];
+        video.src = `/stream.mp4?group=${encodeURIComponent(groupName)}`;
     } else if (currentCamera === 'All') {
-// Special handling for the "All" option
-video.src = '/stream.mp4';
+        // Special handling for the "All" option
+        video.src = '/stream.mp4';
     } else {
-// URL for individual cameras
-video.src = '/last_video/' + currentCamera;
+        // Stream a single camera
+        video.src = `/stream.mp4?camera=${encodeURIComponent(currentCamera)}`;
     }
     video.load();
     video.play();
