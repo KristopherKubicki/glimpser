@@ -326,6 +326,10 @@ LIVE_FALLBACK_FPS = int(get_setting("LIVE_FALLBACK_FPS", 1))
 # not wasted.
 LIVE_MAX_FAILURES = int(get_setting("LIVE_MAX_FAILURES", 10))
 
+# Background discovery runs on a schedule when enabled.  Set this
+# to ``True`` to run an hourly scan automatically.
+DISCOVERY_AUTOSTART = get_setting("DISCOVERY_AUTOSTART", "False") == "True"
+
 # Email settings
 EMAIL_ENABLED = get_setting("EMAIL_ENABLED", "False")
 EMAIL_SENDER = get_setting("EMAIL_SENDER", "your-email@example.com")

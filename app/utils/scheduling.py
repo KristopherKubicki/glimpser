@@ -1142,6 +1142,8 @@ def get_discovery_status(max_age: int = 3600) -> dict:
         status = "running"
     elif discovery_cache["error"]:
         status = "error"
+    elif discovery_cache["timestamp"] == 0:
+        status = "none"
     elif age <= max_age:
         status = "ready"
     return {
@@ -1167,3 +1169,12 @@ def schedule_discovery() -> None:
     except Exception as e:
         logging.error("job schedule error: %s", e)
     run_discovery()
+
+
+def stop_discovery() -> None:
+    """Remove the scheduled background discovery job."""
+
+    try:
+        scheduler.remove_job("background_discovery")
+    except Exception:
+        pass
