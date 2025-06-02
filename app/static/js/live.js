@@ -773,12 +773,37 @@ const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 return lastScreenshotTime > oneHourAgo;
 }
 
+let captionInterval;
+
+async function fetchLatestCaptions() {
+    try {
+        const resp = await fetch('/templates');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        for (const name in templateDetails) {
+            if (data[name]) {
+                templateDetails[name].last_caption = data[name].last_caption;
+                templateDetails[name].last_caption_time = data[name].last_caption_time;
+            }
+        }
+        updateTemplateDetails();
+    } catch (err) {
+        console.error('Failed to fetch captions', err);
+    }
+}
+
+function startCaptionPolling() {
+    fetchLatestCaptions();
+    captionInterval = setInterval(fetchLatestCaptions, 15000);
+}
+
 // Initially show the latest screenshot and start the MJPG stream
 showLastScreenshot();
 updateTemplateDetails();
 updateSpeedContainer();
 updateSeekBar();
 playMJPG();
+startCaptionPolling();
 
 function togglePlayback() {
     if (video.paused) {
