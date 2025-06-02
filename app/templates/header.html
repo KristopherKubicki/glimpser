@@ -4,7 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Glimpser</title>
+    <title>{% if page_title %}Glimpser – {{ page_title }}{% else %}Glimpser{% endif %}</title>
+    <meta name="description" content="{{ meta_description or 'Real-time monitoring and summarization for camera streams.' }}">
+    <meta property="og:title" content="{% if page_title %}Glimpser – {{ page_title }}{% else %}Glimpser{% endif %}">
+    <meta property="og:description" content="{{ meta_description or 'Real-time monitoring and summarization for camera streams.' }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="preload" as="image" href="{{ url_for('static', filename='icons/sprite.svg') }}">
