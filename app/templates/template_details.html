@@ -73,12 +73,12 @@
     </video>
     <video id="preload-video" class="hidden" muted preload="auto"></video>
     <div class="video-controls">
-        <input type="range" id="seek-bar" value="0" />
+        <input type="range" id="seek-bar" value="0" title="Seek position" />
 
         <div class="control-row">
             <button id="play-pause" title="play/pause"><i class="fa-play-pause"></i></button>
             <div id="speed-container">
-                <input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()" />
+                <input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()" title="Adjust playback speed" />
                 <label for="speed-slider">Speed: <span id="speed-value">1x</span></label>
             </div>
             <button id="full-screen" title="fullscreen"><i class="fas fa-expand"></i></button>
@@ -219,8 +219,8 @@ function updateVideo(templateName) {
                 <label for="notes" title="Additional notes">Notes:</label>
                 <textarea id="notes" name="notes" title="Enter any additional notes or comments">{{ template_details.notes }}</textarea>
             </div>
-            <button type="button" onclick="suggestPrompt('{{ template_name }}')">Suggest Prompt</button>
-            <button type="button" onclick="suggestFix('{{ template_name }}')">Suggest Fix</button>
+            <button type="button" onclick="suggestPrompt('{{ template_name }}')" title="Generate a prompt">Suggest Prompt</button>
+            <button type="button" onclick="suggestFix('{{ template_name }}')" title="Suggest troubleshooting tips">Suggest Fix</button>
 
             <div class="form-row">
                 <label for="object_filter" title="Filter for specific objects">Object Filter:</label>
@@ -241,7 +241,7 @@ function updateVideo(templateName) {
                 <label for="popup_xpath">Popup XPath:</label>
                 <div class="xpath-input-container">
                     <input type="text" id="popup_xpath" name="popup_xpath" value="{{ template_details.popup_xpath }}">
-                    <button type="button" onclick="showStructuredInput('popup_xpath')">Structured</button>
+                    <button type="button" onclick="showStructuredInput('popup_xpath')" title="Open structured XPath editor">Structured</button>
                 </div>
             </div>
 
@@ -249,7 +249,7 @@ function updateVideo(templateName) {
                 <label for="dedicated_xpath">Dedicated XPath:</label>
                 <div class="xpath-input-container">
                     <input type="text" id="dedicated_xpath" name="dedicated_xpath" value="{{ template_details.dedicated_xpath }}">
-                    <button type="button" onclick="showStructuredInput('dedicated_xpath')">Structured</button>
+                    <button type="button" onclick="showStructuredInput('dedicated_xpath')" title="Open structured XPath editor">Structured</button>
                 </div>
             </div>
 
@@ -372,7 +372,7 @@ function showUndo(name, data) {
     const container = document.getElementById('undo-container');
     if (!container) return;
     container.style.display = 'block';
-    container.innerHTML = '<button id="undo-btn">Undo Delete</button>';
+    container.innerHTML = '<button id="undo-btn" title="Restore deleted template">Undo Delete</button>';
     document.getElementById('undo-btn').addEventListener('click', () => {
         fetch('/templates', {
             method: 'POST',
@@ -427,7 +427,7 @@ function showCameraDetails(templateName) {
     }
     detailsHtml += '</pre>';
 
-    detailsHtml += '<button onclick="copyToClipboard()">Copy to Clipboard</button>';
+    detailsHtml += '<button onclick="copyToClipboard()" title="Copy details to clipboard">Copy to Clipboard</button>';
 
     document.getElementById('camera-details-content').innerHTML = detailsHtml;
     document.getElementById('camera-details-modal').style.display = 'block';
@@ -481,14 +481,14 @@ function closePromptModal() {
 
   <div id="camera-details-modal" class="modal">
     <div class="modal-content">
-      <span onclick="closeModal()" class="close-icon">&times;</span>
+      <span onclick="closeModal()" class="close-icon" title="Close dialog">&times;</span>
       <div id="camera-details-content"></div>
     </div>
   </div>
 
   <div id="prompt-modal" class="modal">
     <div class="modal-content">
-      <span onclick="closePromptModal()" class="close-icon">&times;</span>
+      <span onclick="closePromptModal()" class="close-icon" title="Close dialog">&times;</span>
       <textarea id="prompt-text" class="prompt-textarea"></textarea>
     </div>
   </div>
