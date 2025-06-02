@@ -19,9 +19,7 @@ Key topics covered include:
 
 ## Viewing Captures
 
-On the **Live** page, pick a camera from the drop-down menu and set the **Video
-Source** to **Live Video**. This connects you directly to the realtime feed so
-you can monitor activity as it happens.
+On the **Live** page, pick a camera from the drop-down menu. The **Video Source** now defaults to **MJPG** so you immediately see a lightweight stream of the latest frames. Select **Live Video** if you want a direct real-time feed.
 
 When watching a live stream, you can use keyboard shortcuts:
 `Space` or `k` toggles play/pause, `m` toggles mute, `f` toggles fullscreen,

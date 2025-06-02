@@ -647,9 +647,11 @@ if (liveSwitchInterval) {
     }
 
     function updateSpeedContainer() {
-if (!speedContainer) return;
-const isGroupView = currentCamera === 'All' || currentCamera.startsWith('group-');
-speedContainer.style.display = isGroupView ? 'block' : 'none';
+        if (!speedContainer) return;
+        const source = document.getElementById('video-source').value;
+        const isGroupView = currentCamera === 'All' || currentCamera.startsWith('group-');
+        const show = isGroupView && source !== 'mjpg';
+        speedContainer.style.display = show ? 'block' : 'none';
     }
 
 function checkCameraConnection(cameraName) {
@@ -678,11 +680,11 @@ const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 return lastScreenshotTime > oneHourAgo;
 }
 
-// Initially show the latest screenshot and start the MP4 stream
+// Initially show the latest screenshot and start the MJPG stream
 showLastScreenshot();
 updateTemplateDetails();
 updateSpeedContainer();
-playMP4();
+playMJPG();
 
 function togglePlayback() {
     if (video.paused) {
