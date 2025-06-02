@@ -206,7 +206,7 @@ def add_motion_and_caption(image_path, caption=None, motion=False):
             logging.error(f"Error updating image {image_path} : {e}")
 
 
-def update_camera(name, template, image_file=None):
+def update_camera(name, template, image_file=None, motion=False):
 
     # just ignore the old
     template = get_template(name)
@@ -309,12 +309,13 @@ def update_camera(name, template, image_file=None):
 
         motion_config = template.get("motion", 1)
         if (
-            motion_config in [1, None]
+            not motion
+            and motion_config in [1, None]
             and (template.get("last_caption", "") or "") != ""
         ):
             return
 
-        lsum = False
+        lsum = motion
         percentage_difference = 0
 
         latest_image_path = os.path.join(directory, png_files[-1])
@@ -343,12 +344,12 @@ def update_camera(name, template, image_file=None):
         prev_motion = os.path.join(directory, "last_motion.png")
         # print(" detected motion", lsum, name, template.get('last_caption'))
 
-        allow = False
+        allow = motion
 
         #  Work through, Motion detection, then object detection, then live caption, then online captioning
         #
         last_caption_time, _last_motion_caption = None, None
-        last_caption_trigger, last_motion_trigger = False, False
+        last_caption_trigger, last_motion_trigger = motion, motion
 
         if (template.get("last_caption", "") or "") == "":
             allow = True

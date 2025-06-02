@@ -128,6 +128,8 @@ Several other routes provide streaming functionality:
 
 Manually capture a screenshot for the specified template.
 
+Appending `?motion=true` forces motion analysis for the resulting frame.
+
 Example response:
 ```json
 {"status": "success", "message": "Screenshot for camera1 taken"}

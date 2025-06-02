@@ -1812,8 +1812,14 @@ def init_routes(app):
         if templates.get(template_name) is None:
             abort(404)
 
-        # TODO: consider adding motion control
-        scheduling.update_camera(template_name, templates.get(template_name))
+        motion_flag = request.args.get("motion", "false").lower() in [
+            "1",
+            "true",
+            "yes",
+        ]
+        scheduling.update_camera(
+            template_name, templates.get(template_name), motion=motion_flag
+        )
         return jsonify(
             {"status": "success", "message": f"Screenshot for {template_name} taken"}
         )
