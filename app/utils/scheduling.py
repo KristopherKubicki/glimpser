@@ -25,6 +25,7 @@ from app.config import (
     SUMMARIES_DIRECTORY,
     VIDEO_DIRECTORY,
     CLIP_MODEL_NAME,
+    LOGGING_PATH,
 )
 from app.utils.db import SessionLocal
 from app.models import Summary
@@ -964,7 +965,9 @@ log_cache_lock = threading.Lock()
 
 
 def cache_logs():
-    log_file_path = "logs/glimpser.log"
+    log_file_path = LOGGING_PATH
+    os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+    open(log_file_path, "a").close()
 
     try:
         with open(log_file_path, "r") as file:
