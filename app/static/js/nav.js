@@ -103,5 +103,34 @@ export function initNav() {
     updateCoolClock();
 
     setupNavFade();
+
+    const cheatSheetModal = document.getElementById('cheat-sheet-modal');
+    const cheatSheetClose = document.getElementById('cheat-sheet-close');
+    if (cheatSheetClose) {
+      cheatSheetClose.addEventListener('click', () => {
+        cheatSheetModal.style.display = 'none';
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      const tag = e.target.tagName.toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+      if (e.key === '?') {
+        e.preventDefault();
+        if (cheatSheetModal) cheatSheetModal.style.display = 'block';
+        return;
+      }
+      if (e.key === 'Escape' && cheatSheetModal && cheatSheetModal.style.display === 'block') {
+        cheatSheetModal.style.display = 'none';
+        return;
+      }
+      const routes = { s: 'status', d: 'danger', c: 'captions', l: 'live', k: 'settings' };
+      const route = routes[e.key];
+      if (route) {
+        e.preventDefault();
+        const target = document.querySelector(`[data-route="${route}"]`);
+        if (target) target.click();
+      }
+    });
   });
 }
