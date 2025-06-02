@@ -4,69 +4,117 @@
 {% block content %}
 <script>
     const cameraMeta = {{ template_details|tojson }};
+    window.templateDetails = { "{{ template_name }}": cameraMeta };
 </script>
 
-<div id="live-embed" class="live-embed">
-    <iframe src="{{ url_for('live') }}?camera={{ template_name }}" width="100%" height="500" title="Embedded Live View" class="embed-frame"></iframe>
+<style>
+    .video-container {
+        max-width: 100vw;
+        width: 100%;
+        height: 92vh;
+        max-height: 92vh;
+        position: relative;
+        overflow: auto;
+    }
+    #live-video,
+    #live-image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        max-width: 100vw;
+        max-height: 92vh;
+    }
+    .video-controls {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        opacity: 0;
+        transition: opacity 0.3s;
+        max-width: 100vw;
+    }
+    .video-container:hover .video-controls {
+        opacity: 1;
+    }
+    .video-controls button {
+        background-color: transparent;
+        border: none;
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 5px 10px;
+    }
+    .video-controls button:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+    }
+    #seek-bar {
+        width: 100%;
+        margin: 10px 0;
+    }
+    .control-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+    }
+</style>
+
+<div class="video-container">
+    <img id="live-image" alt="Live feed frame" title="Current frame from the live feed" />
+    <video id="live-video" class="hidden" autoplay muted>
+        <source src="" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
+    <video id="preload-video" class="hidden" muted preload="auto"></video>
+    <div class="video-controls">
+        <input type="range" id="seek-bar" value="0" />
+
+        <div class="control-row">
+            <button id="play-pause" title="play/pause"><i class="fa-play-pause"></i></button>
+            <div id="speed-container">
+                <input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()" />
+                <label for="speed-slider">Speed: <span id="speed-value">1x</span></label>
+            </div>
+            <button id="full-screen" title="fullscreen"><i class="fas fa-expand"></i></button>
+            <select id="video-source" onchange="changeVideoSource()">
+                <option value="png" title="View a series of PNG images">PNG Stream</option>
+                <!-- <option value="m3u8" title="View an HLS (HTTP Live Streaming) video stream">M3U8 Stream</option> -->
+                <option value="loop" title="Loop through available video clips">Loop Videos</option>
+                <option value="mp4" selected title="View an MP4 video stream">MP4 Stream</option>
+                <option value="live" title="View the direct live stream">Live Video</option>
+                <option value="motion" title="View motion-detected frames">Motion</option>
+                <option value="mjpg" title="View an MJPEG (Motion JPEG) stream">MJPG</option>
+            </select>
+        </div>
+    </div>
+    <div id="video-overlay" class="video-overlay">
+        <div id="loading-indicator" class="hidden">Loading...</div>
+        <div id="play-pause-indicator" class="video-icon hidden">▶</div>
+        <div id="offline-indicator" class="offline-indicator hidden">
+            <i class="fas fa-video-slash video-icon"></i>
+            <p id="offline-message"></p>
+        </div>
+        <div id="capture-error-indicator" class="error-indicator hidden">
+            <i class="fas fa-exclamation-triangle video-icon"></i>
+            <p id="capture-error-message"></p>
+        </div>
+        <div id="stream-error-indicator" class="error-indicator hidden">
+            <i class="fas fa-times-circle video-icon"></i>
+            <p id="stream-error-message"></p>
+        </div>
+    </div>
+    <div id="error-message"></div>
 </div>
 
-            <video controls poster="/last_screenshot/{{ template_name }}" autoplay muted autoplay class='full-size-video' width='90%'
-			    {% if template_details.last_caption %}
-			    title='{{template_details.last_caption}}'
-			    {% else %}
-			    title='Latest video capture for this template'
-			    {% endif %}
-		    >
-
-            <source src="/last_video/{{template_name}}" type='video/mp4'>
-            </video >
-
-             <script>
-                const video = document.querySelector('video');
-                video.addEventListener('loadedmetadata', () => {
-                    // Set playback speed based on video duration
-                    if (video.duration < 1) {
-                        video.playbackRate = 0.0625;
-                    } else if (video.duration < 3) {
-                        video.playbackRate = 0.0625*2;
-                    } else if (video.duration < 7) {
-                        video.playbackRate = 0.0625*4;
-                    } else if (video.duration < 15) {
-                        video.playbackRate = 0.0625*8;
-                    } else if (video.duration < 30) {
-                        video.playbackRate = 0.0625*16;
-                    } else if (video.duration < 60) {
-                        video.playbackRate = 0.0625*32;
-                    } else if (video.duration > 120) {
-                        video.playbackRate = 0.0625*64;
-                    } else {
-                        video.playbackRate = 0.0625*128;
-                    }
-
-                    // Start the video at t minus 10 seconds if possible
-                    video.currentTime = Math.max(0, video.duration - 10);
-                });
-
-video.addEventListener('ended', () => {
-        const pauseTime = calculatePauseTime(video.duration);
-    setTimeout(() => {
-        video.load(); // Reset the video to show the poster
-        video.play(); // Resume autoplay after 1 second
-    }, pauseTime); // Pause for 1 second
-});
-
-function calculatePauseTime(duration) {
-    if (duration < 1) {
-        return 10000; // 10 seconds for videos shorter than 1 second
-    } else if (duration > 120) {
-        return 3000; // 3 seconds for videos longer than 2 minutes
-    } else {
-        // For videos between 1 second and 2 minutes, calculate a pause time that decreases with duration
-        // This is just an example calculation, you can adjust the formula as needed
-        return 10000 - (duration - 1) * (7000 / 119);
-    }
-}
-             </script>
+<div id="template-details"></div>
+<script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+<script type="module" src="{{ url_for('static', filename='js/live.js') }}"></script>
 
 
 
