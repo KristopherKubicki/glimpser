@@ -2,6 +2,14 @@ export function initNav() {
   document.addEventListener('DOMContentLoaded', () => {
     const healthStatus = document.getElementById('health-status');
     const dangerStatus = document.getElementById('danger-status');
+    const nav = document.querySelector('nav');
+    const menuToggle = document.getElementById('menu-toggle');
+
+    if (nav && menuToggle) {
+      menuToggle.addEventListener('click', () => {
+        nav.classList.toggle('active');
+      });
+    }
 
     const checkHealth = async () => {
       if (!healthStatus) return;
