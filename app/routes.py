@@ -879,9 +879,26 @@ def init_routes(app):
         """Return whether Danger mode can be used."""
         port_open = is_chrome_debug_port_open("127.0.0.1", 9222)
         idle = not check_user_activity(timeout=1)
+        enabled = config.get_setting("DANGER_MODE", "True") == "True"
         return jsonify(
-            {"port_open": port_open, "idle": idle, "ready": port_open and idle}
+            {
+                "port_open": port_open,
+                "idle": idle,
+                "enabled": enabled,
+                "ready": port_open and idle and enabled,
+            }
         )
+
+    @app.route("/danger", methods=["GET", "POST"])
+    @login_required
+    def danger_mode():
+        if request.method == "POST":
+            enabled = "enabled" in request.form
+            update_setting("DANGER_MODE", "True" if enabled else "False")
+            return redirect(url_for("danger_mode"))
+
+        current = config.get_setting("DANGER_MODE", "True") == "True"
+        return render_template("danger.html", enabled=current)
 
     @app.route("/api/discover")
     @profile_route("/api/discover")

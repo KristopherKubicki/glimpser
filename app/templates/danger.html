@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+<main class="danger-page">
+  <h2>Danger Mode</h2>
+  <form method="post">
+    <label>
+      <input type="checkbox" name="enabled" {% if enabled %}checked{% endif %}>
+      Enable Danger Mode
+    </label>
+    <button type="submit">Save</button>
+  </form>
+</main>
+{% endblock %}
+
