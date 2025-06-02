@@ -92,14 +92,14 @@
             <input type="range" id="seek-bar" value="0">
 
             <div class="control-row">
-                <button id="play-pause" title="play/pause"><i class="fa-play-pause"></i></button>
+                <button id="play-pause" title="play/pause"><span aria-hidden="true">⏯</span></button>
                 <div id="speed-container">
                     <input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()">
                     <label for="speed-slider">Speed: <span id="speed-value">1x</span></label>
                 </div>
 
 	<!-- <button id="cast-button">Cast</button> -->
-                <button id="full-screen" title='fullscreen'><i class="fas fa-expand"></i></button>
+                <button id="full-screen" title='fullscreen'><span aria-hidden="true">⛶</span></button>
 
     <select id="video-source" onchange="changeVideoSource()">
         <option value="png" title="View a series of PNG images">PNG Stream</option>
@@ -142,15 +142,15 @@
             <div id="loading-indicator" class="hidden">Loading...</div>
             <div id="play-pause-indicator" class="video-icon hidden">▶</div>
             <div id="offline-indicator" class="offline-indicator hidden">
-                <i class="fas fa-video-slash video-icon"></i>
+                <span class="video-icon" aria-hidden="true">🚫</span>
                 <p id="offline-message"></p>
             </div>
             <div id="capture-error-indicator" class="error-indicator hidden">
-                <i class="fas fa-exclamation-triangle video-icon"></i>
+                <span class="video-icon" aria-hidden="true">⚠️</span>
                 <p id="capture-error-message"></p>
             </div>
             <div id="stream-error-indicator" class="error-indicator hidden">
-                <i class="fas fa-times-circle video-icon"></i>
+                <span class="video-icon" aria-hidden="true">❌</span>
                 <p id="stream-error-message"></p>
             </div>
         </div>
@@ -161,7 +161,6 @@
 
     <div id="template-details"></div>
 
-    <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
     <script>
 
         const video = document.getElementById('live-video');

@@ -22,6 +22,10 @@ class TestSecurityHeaders(unittest.TestCase):
         self.assertEqual(resp.headers.get("X-XSS-Protection"), "1; mode=block")
         self.assertEqual(resp.headers.get("Referrer-Policy"), "no-referrer")
         self.assertEqual(resp.headers.get("Cache-Control"), "no-store")
+        self.assertEqual(
+            resp.headers.get("Content-Security-Policy"),
+            "default-src 'self'; img-src 'self' data: blob:",
+        )
 
 
 if __name__ == "__main__":  # pragma: no cover
