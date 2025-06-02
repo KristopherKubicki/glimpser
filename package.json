@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "lint:css": "stylelint 'app/static/css/**/*.css'"
+    "lint:css": "stylelint 'app/static/css/**/*.css'",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "stylelint": "^15.10.0",
-    "stylelint-config-standard": "^34.0.0"
+    "stylelint-config-standard": "^34.0.0",
+    "playwright": "^1.41.0"
   }
 }

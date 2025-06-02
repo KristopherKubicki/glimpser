@@ -49,3 +49,8 @@ like:
 python -m coverage run -m pytest
 python -m coverage html
 ```
+
+## Playwright Smoke Tests
+
+Playwright verifies that login succeeds and navigation links render the grid correctly. These tests run headless in CI on every push. A green bar means the basics still work until we expand to full component coverage.
+
