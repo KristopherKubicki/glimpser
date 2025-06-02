@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed screenshot timeouts and setup script problems
 - Offline cameras now display an overlay and keep the camera selector usable
 - `download_image` now reuses cached HTTP status codes to reduce retry overhead
+- Fixed unclosed `.form-error` block in `style.css` causing CSS lint failures
 
 ## [0.2.7] - 2025-06-02
 
