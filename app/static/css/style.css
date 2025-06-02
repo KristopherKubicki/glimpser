@@ -301,7 +301,7 @@ video:hover + .play-icon {
 }
 
 .template-error {
-    border: 5px solid red;
+    border: 5px solid gray;
 }
 
 /* Improve video controls on mobile */
@@ -694,29 +694,6 @@ button, a {
     right: 0;
 }
 
-/* Overlay ISO8601 timestamps using pseudo-elements */
-.video-container[data-timestamp],
-.templateDiv img[data-timestamp],
-video.hover-video[data-timestamp] {
-    position: relative;
-}
-
-.video-container[data-timestamp]::after,
-.templateDiv img[data-timestamp]::after,
-video.hover-video[data-timestamp]::after {
-    content: attr(data-timestamp);
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    padding: 5px;
-    background-color: rgba(0, 0, 0, 0.5);
-    color: white;
-    font-size: var(--timestamp-font-size);
-    font-variant: small-caps;
-    text-shadow: 0 0 3px #000;
-    z-index: 5;
-    pointer-events: none;
-}
 
 .notes-textarea {
     width: 100%;

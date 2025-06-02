@@ -346,6 +346,7 @@ export async function loadTemplates() {
                   <source src="/last_video/${name}" type="video/mp4">
                   Your browser does not support the video tag.
                 </video>
+                <div class="timestamp humanized-time" data-time="${lastScreenshotTime}" title="${formatExactTime(lastScreenshotTime)}">${humanizedTimestamp}</div>
                 <div class="play-icon">&#9658;</div>
               </div>
             </a>
@@ -400,6 +401,7 @@ export async function loadTemplates() {
 
     if (isIndexPage) {
       window.addEventListener('resize', updateGridLayout);
+      updateHumanizedTimes();
     }
     if (isCaptionsPage) {
       updateHumanizedTimes();
