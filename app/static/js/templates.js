@@ -9,11 +9,26 @@ export function initTemplates() {
     const templateList = document.getElementById('template-list');
 
     if (slider) {
-      const updateSliderMax = () => {
+      const updateSliderLimits = () => {
         slider.max = window.innerWidth;
+        const templateCount =
+          templateList?.querySelectorAll('.templateDiv').length || 1;
+        const computedMin = Math.max(
+          50,
+          Math.min(slider.max, Math.ceil(window.innerWidth / templateCount)),
+        );
+        slider.min = computedMin;
+        if (parseFloat(slider.value) < computedMin) {
+          slider.value = computedMin;
+          if (templateList) {
+            templateList.style.setProperty('--grid-item-width', `${computedMin}px`);
+          }
+        }
       };
-      updateSliderMax();
-      window.addEventListener('resize', updateSliderMax);
+
+      updateSliderLimits();
+      window.addEventListener('resize', updateSliderLimits);
+      window.updateSliderLimits = updateSliderLimits;
     }
 
     function autofillGroup() {
@@ -400,6 +415,7 @@ export async function loadTemplates() {
 
     if (isIndexPage) {
       window.addEventListener('resize', updateGridLayout);
+      if (window.updateSliderLimits) window.updateSliderLimits();
     }
     if (isCaptionsPage) {
       updateHumanizedTimes();
