@@ -108,6 +108,7 @@ export function initTemplates() {
     loadTemplates();
     setupSearch();
     setupSorting();
+    updateHumanizedTimes();
     setInterval(updateHumanizedTimes, 60000);
   });
 
@@ -189,7 +190,10 @@ export function templateBelongsToGroup(template, group) {
 export function updateHumanizedTimes() {
   document.querySelectorAll('.humanized-time').forEach((element) => {
     const timestamp = element.getAttribute('data-time');
-    if (timestamp) element.textContent = timeAgo(timestamp);
+    if (timestamp) {
+      element.textContent = timeAgo(timestamp);
+      element.title = formatExactTime(timestamp);
+    }
   });
 }
 
