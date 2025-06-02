@@ -212,3 +212,13 @@ could overlap the last buttons.
 - Glimpser now adds extra padding to the `main` element so page content scrolls
   fully above the footer. Update to the latest version or add a similar rule in
   your custom CSS.
+
+## 13. Camera Discovery Issues
+
+### Problem: Discovery page times out or stops on "Scanning SSDP"
+
+**Solution:**
+- Networks with many SSDP devices can delay this step. Wait a little longer or restrict scanning using the CIDR field (e.g., `192.168.1.0/24`).
+- Since v0.9.1 SSDP scanning stops after five seconds so discovery continues even on busy networks.
+- Ensure UDP multicast traffic is allowed; blocked multicast causes timeouts.
+- Check `logs/glimpser.log` for `SSDP probe error` messages if the scan never finishes.

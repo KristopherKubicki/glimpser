@@ -422,6 +422,50 @@ class TestCameraDiscovery(unittest.TestCase):
         camera_discovery.discover_cameras(subnets=nets)
         mock_local_subnets.assert_not_called()
 
+    @patch("app.utils.camera_discovery.socket.socket")
+    @patch("app.utils.camera_discovery.time.time")
+    def test_ssdp_scan_duration(self, mock_time, mock_socket):
+        """_probe_ssdp should exit after ``max_duration`` seconds."""
+
+        # Simulate time advancing by 0.05s on each call so the loop
+        # breaks after a few iterations instead of spinning endlessly.
+        t = [0.0]
+
+        def fake_time():
+            t[0] += 0.05
+            return t[0]
+
+        mock_time.side_effect = fake_time
+
+        class FakeSock:
+            def __init__(self):
+                self.responses = [
+                    (
+                        b"HTTP/1.1 200 OK\r\nLOCATION: http://1.2.3.4\r\n\r\n",
+                        ("1.2.3.4", 1900),
+                    )
+                ] * 10
+
+            def settimeout(self, _):
+                pass
+
+            def sendto(self, data, addr):
+                pass
+
+            def recvfrom(self, n):
+                if self.responses:
+                    return self.responses.pop(0)
+                raise socket.timeout
+
+            def close(self):
+                pass
+
+        mock_socket.return_value = FakeSock()
+        cams = camera_discovery._probe_ssdp(timeout=0.1, max_duration=0.2)
+        # With 0.05s per iteration and a 0.2s limit we should process about
+        # three responses.
+        self.assertLessEqual(len(cams), 4)
+
 
 if __name__ == "__main__":
     unittest.main()
