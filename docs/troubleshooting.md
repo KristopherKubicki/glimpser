@@ -194,5 +194,5 @@ snapshot image rather than a true video stream.
 
 **Solution:**
 - Use the camera's RTSP or HTTP video stream URL when available.
-- Snapshot-only URLs now work automatically, but they refresh slowly
-  since a new JPEG must be fetched for each frame.
+- Snapshot-only URLs now fall back to an MJPEG feed so the live view
+  behaves like a regular video stream.

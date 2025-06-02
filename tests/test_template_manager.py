@@ -13,6 +13,7 @@ from app.utils.template_manager import (
     update_last_screenshot_time,
     set_capture_failed,
     get_storage_usage,
+    get_templates,
 )
 from app.utils.validators import validate_template_name
 
@@ -350,6 +351,39 @@ class TestStorageUsage(unittest.TestCase):
             ), patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir):
                 result = get_storage_usage("cam1")
                 self.assertEqual(result, "3.0 KB")
+
+
+class TestSnapshotDetection(unittest.TestCase):
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_snapshot_flag_in_get_templates(self, mock_session):
+        mock_sess = MagicMock()
+        mock_session.return_value = mock_sess
+        mock_query = mock_sess.query.return_value
+        mock_all = mock_query.all
+
+        t1 = Template(name="cam1", url="http://example.com/snapshot.jpg")
+        t2 = Template(name="cam2", url="http://example.com/stream.m3u8")
+        mock_all.return_value = [t1, t2]
+
+        result = get_templates()
+
+        self.assertTrue(result["cam1"]["snapshot_only"])
+        self.assertFalse(result["cam2"]["snapshot_only"])
+
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_snapshot_flag_in_get_template(self, mock_session):
+        mock_sess = MagicMock()
+        mock_session.return_value = mock_sess
+        mock_query = mock_sess.query.return_value
+        mock_first = mock_query.filter_by.return_value.first
+
+        t1 = Template(name="cam1", url="http://example.com/snapshot.jpg")
+        mock_first.return_value = t1
+
+        manager = TemplateManager()
+        result = manager.get_template("cam1")
+
+        self.assertTrue(result["snapshot_only"])
 
 
 class TestSchedulerUpdates(unittest.TestCase):
