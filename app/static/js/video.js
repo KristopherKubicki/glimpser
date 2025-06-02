@@ -106,6 +106,32 @@ export function setupVideoControls() {
         else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
         else if (video.msRequestFullscreen) video.msRequestFullscreen();
         break;
+      case 'ArrowLeft':
+      case 'ArrowRight': {
+        const selector = document.getElementById('camera-selector');
+        if (!selector) break;
+        const step = e.key === 'ArrowLeft' ? -1 : 1;
+        const newIndex = selector.selectedIndex + step;
+        if (newIndex >= 0 && newIndex < selector.options.length) {
+          selector.selectedIndex = newIndex;
+          if (typeof changeCamera === 'function') changeCamera();
+        }
+        break;
+      }
+      case '[':
+      case ']': {
+        const slider = document.getElementById('speed-slider');
+        if (!slider) break;
+        const step = parseFloat(slider.step) || 1;
+        const delta = e.key === '[' ? -step : step;
+        const newValue = Math.min(
+          parseFloat(slider.max),
+          Math.max(parseFloat(slider.min), parseFloat(slider.value) + delta)
+        );
+        slider.value = newValue;
+        if (typeof updatePlaybackSpeed === 'function') updatePlaybackSpeed();
+        break;
+      }
       default:
         break;
     }
