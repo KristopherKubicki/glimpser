@@ -236,37 +236,40 @@ def output_shutdown_stats():
 
 
 display_note = True
+cleanup_called = False
 
 
 def cleanup_resources():
-    # Shutdown the scheduler
+    """Release resources and stop running threads."""
+    global display_note, cleanup_called
+
+    if cleanup_called:
+        return
+    cleanup_called = True
+
     try:
         scheduler.shutdown(wait=True)
     except Exception as e:
         logging.error("Error shutting down scheduler: %s", e)
 
-    # Terminate all non-daemon threads
-    global display_note
     time.sleep(0.01)
     for thread in threading.enumerate():
         if thread != threading.current_thread():
             display_note = False
             try:
-                # concurrent.futures.Future.cancel()
                 thread.join(timeout=0.01)
                 if thread.is_alive():
                     logging.warning("Thread %s is still alive after join", thread.name)
             except Exception as e:
                 logging.error("Error terminating thread %s: %s", thread.name, e)
 
-    # global banner
-    # Add any other cleanup tasks here (e.g., closing database connections)
     output_shutdown_stats()
 
 
 def graceful_shutdown(signum, frame):
-    # time.sleep(random.randint(0,10) * 0.1)
-    # time.sleep(10)
+    """Handle termination signals by cleaning up and exiting."""
+    logging.info("Received signal %s. Shutting down...", signum)
+    cleanup_resources()
     time.sleep(0.01)
     sys.exit(0)
 
@@ -322,10 +325,12 @@ def main(argv=None):
             host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True
         )
     except KeyboardInterrupt:
-        logging.info("KeyboardInterrupt received. Exiting...")
+        logging.info("KeyboardInterrupt received. Cleaning up...")
+        cleanup_resources()
     except Exception as e:
         logging.error("An error occurred while running the application: %s", e)
     finally:
+        cleanup_resources()
         logging.info("Glimpser shut down.")
 
 

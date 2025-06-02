@@ -9,6 +9,8 @@ _cache = {}
 
 def _load_cache() -> None:
     """Load cached responses from ``CACHE_PATH``."""
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return
     if not os.path.exists(CACHE_PATH):
         return
     try:
@@ -22,6 +24,8 @@ def _load_cache() -> None:
 
 def _persist_cache() -> None:
     """Persist ``_cache`` to ``CACHE_PATH``."""
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return
     os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
     try:
         with open(CACHE_PATH, "w") as f:
@@ -56,4 +60,5 @@ def store(prompt: str, response: str, tokens: int, image_paths=None) -> None:
     _persist_cache()
 
 
-_load_cache()
+if not os.environ.get("PYTEST_CURRENT_TEST"):
+    _load_cache()
