@@ -477,11 +477,16 @@ def update_camera(name, template, image_file=None, motion=False):
             #  generate the symlink. if there is a data/screenshots/<camera>/last_motion.png, please rename the move the symlink to prev_motion.png
             #    then, create the symlink for last_motion.png to point to the new png_files[-1]
             image_paths = []
-            # add reference image if exists
-            if os.path.exists(
-                os.path.join(directory, "reference.png")
-            ):  # if doesnt exist, consider taking the oldest?
+            # add reference image if available
+            if os.path.exists(os.path.join(directory, "reference.png")):
                 image_paths.append(os.path.join(directory, "reference.png"))
+
+            # Include previous motion frames when present so the captioner can
+            # better detect changes between updates
+            for extra in ["prev_motion.png", "last_motion.png"]:
+                extra_path = os.path.join(directory, extra)
+                if os.path.exists(extra_path):
+                    image_paths.append(extra_path)
 
             # Find the image that closest matches the last_caption_time
             if "last_caption_time" in template and template["last_caption_time"] != "":
@@ -502,6 +507,13 @@ def update_camera(name, template, image_file=None, motion=False):
 
             image_paths.append(os.path.join(directory, png_files[-1]))
 
+            # Remove any duplicates while preserving order
+            deduped = []
+            for path in image_paths:
+                if path not in deduped:
+                    deduped.append(path)
+            image_paths = deduped
+
             lctime = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
             # archictecture:
@@ -511,9 +523,9 @@ def update_camera(name, template, image_file=None, motion=False):
             #     yes?  use the gpt caption
             #
 
-            #  add python llava (llama multimodal)  summarization.  Compare the reference frame, the previous motion capped frame, and this frame together.
-            #      send llava the reference image (if available in data/screenshots/<camera>/reference.png), the last motion image (if available in data/screenshots/<camera>/last_motion.png)
-            # TODO: be more targetted about this
+            #  add python llava (llama multimodal)  summarization. Compare the
+            #  reference frame, the previous motion frame and the current frame
+            #  together so captions reflect meaningful changes.
 
             lret = None
             if last_motion_trigger:
@@ -526,10 +538,9 @@ def update_camera(name, template, image_file=None, motion=False):
             if last_caption_trigger or template.get("last_caption") is None:
                 lprompt = ""
                 if template.get("notes"):
-                    lprompt += " " + template["notes"]
-                #  use Chatgpt_compare
+                    lprompt += template["notes"].strip() + "\n---\n"
+                #  use Chatgpt_compare with notes separated for clarity
                 gret = chatgpt_compare(lprompt, image_paths, template_name=name)
-                # TODO: add a separator?
                 # print("  oldgpt:", name, template.get('last_caption'))
                 # print("  newgpt:", name, gret)
                 if gret and re.findall(r"(?:sorry|cannot|can not)", gret):
@@ -798,6 +809,16 @@ def schedule_crawlers():
     Each job will be offset by an additional delay to avoid overloading the system.
     """
     templates = get_templates()
+
+    # Remove crawler jobs for templates that no longer exist
+    existing_jobs = {job.id for job in scheduler.get_jobs()}
+    for job_id in existing_jobs:
+        if job_id not in templates:
+            try:
+                scheduler.remove_job(job_id)
+            except Exception:
+                pass
+
     total_crawlers = len(templates)
     base_delay = 60  # Base delay of 1 minute in seconds
     #  consider making this more dynamic, so that the shorter term ones have less of a base
@@ -839,9 +860,6 @@ def schedule_crawlers():
 
         # Calculate the offset delay for this crawler
         offset_delay_seconds = index * delay_increment + index
-
-        # TODO: consider the fact that the tmeplate is out of date.
-        # any time we update a camera, we upave to remove the old job and create a new one
 
         # Apply the incremental delay to space out job scheduling
         try:

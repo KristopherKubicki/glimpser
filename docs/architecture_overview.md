@@ -30,6 +30,7 @@ This guide provides a high-level look at Glimpser's core components and how they
 - Uses APScheduler to run periodic tasks.
 - Jobs include crawler scheduling, video archiving and summarization.
 - Exposes a `GracefulAPScheduler` instance used by the Flask app.
+- Stale crawler jobs are removed when templates are updated.
 
 ## How Components Fit Together
 ```
