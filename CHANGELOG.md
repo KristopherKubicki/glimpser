@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - FFprobe path configuration
 - Live video streaming endpoint `/live_video`
 - Python 3.11 compatibility
+- Python 3.12 compatibility
 - mDNS/Zeroconf camera discovery
 - MAC vendor lookup now consults local databases and an online API
 - Footer warns when a newer release is available
@@ -37,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated package requirements and cleaned up imports
 - Added CPU builds of JAX 0.6.1 and Flax 0.2.0
 - Bumped scikit-image to 0.25.0
-- Bumped numpy to 1.25.0
+- Bumped numpy to 1.26.0
 - Updated default VERSION to 0.2.7 for footer display
 
 ### Fixed
