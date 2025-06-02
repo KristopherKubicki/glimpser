@@ -20,9 +20,17 @@
   <div class="nav-right">
     {% if session.get('user_id') %}
     <a id="health-status" href="/status" class="status-indicator" title="System Performance"></a>
-    <div id="danger-status" class="status-indicator" title="Danger Mode"></div>
-    <a href="/discover" class="settings-icon" title="Discover Cameras"><i class="fas fa-search"></i></a>
-    <a href="/captions" id="captions" class="settings-icon" title="Read and update camera LLMs"><i class="fas fa-comment-dots"></i></a>
+    <a id="danger-status" href="/danger" class="status-indicator" title="Danger Mode"></a>
+    <a href="/discover" class="settings-icon" title="Discover Cameras">
+      <svg width="20" height="20">
+        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#search" />
+      </svg>
+    </a>
+    <a href="/captions" id="captions" class="settings-icon" title="Read and update camera LLMs">
+      <svg width="20" height="20">
+        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#comment" />
+      </svg>
+    </a>
     <a href="/live" id="live">
       <div id="coolClock" class="cool-clock" title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming.">
         <div id="dateDisplay" class="clock-face">
@@ -34,9 +42,17 @@
         </div>
       </div>
     </a>
-    <a href="/settings" class="settings-icon" title="Update settings"><i class="fas fa-cog"></i></a>
+    <a href="/settings" class="settings-icon" title="Update settings">
+      <svg width="20" height="20">
+        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#settings" />
+      </svg>
+    </a>
     {% else %}
-    <a href="{{ url_for('login') }}" class="settings-icon" title="Login"><i class="fas fa-sign-in-alt"></i></a>
+    <a href="{{ url_for('login') }}" class="settings-icon" title="Login">
+      <svg width="20" height="20">
+        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#login" />
+      </svg>
+    </a>
     {% endif %}
   </div>
 </nav>
