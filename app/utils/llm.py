@@ -10,6 +10,7 @@ import logging
 
 from app.config import CHATGPT_KEY, LLM_MODEL_VERSION, LLM_SUMMARY_PROMPT
 from app.utils.email_alerts import email_alert
+from app.utils import llm_cache
 
 last_429_error_time = None
 
@@ -42,6 +43,12 @@ def summarize(prompt, history=None, tokens=4096):
         return None
     if LLM_SUMMARY_PROMPT is None or len(LLM_SUMMARY_PROMPT) < 1:
         return None
+
+    # Check for cached result
+    cache_key = prompt if history is None else f"{prompt}|{history}"
+    cached = llm_cache.get(cache_key)
+    if cached is not None:
+        return cached.get("response")
 
     # note - if history is None or [], there isnt much to do ..
 
@@ -125,7 +132,9 @@ def summarize(prompt, history=None, tokens=4096):
                 start_time += 5
 
         logging.debug("Processed summary: %s", ljson)
-        return json.dumps(ljson)
+        result_json = json.dumps(ljson)
+        llm_cache.store(cache_key, result_json, ltokens)
+        return result_json
     except Exception as e:
         logging.exception("GPT response processing exception: %s", e)
         if response is not None:
