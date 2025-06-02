@@ -10,6 +10,8 @@ import glob
 import time
 from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import subprocess
+import shutil
 
 import requests
 
@@ -83,6 +85,7 @@ DISCOVERY_STAGES = [
     "http",
     "hls",
     "local",
+    "trace",
 ]
 
 
@@ -160,6 +163,34 @@ def _add_mac_info(cam: dict) -> None:
         vendor = _mac_manufacturer(mac)
         if vendor:
             info["manufacturer"] = vendor
+
+
+def _trace_upstream(ip: str, timeout: int = 3) -> str | None:
+    """Return the first hop when tracing ``ip``.
+
+    The function invokes the system ``traceroute`` (or ``tracert`` on
+    Windows) limited to two hops so discovery remains quick.  The IP of
+    the first hop is returned, representing the router or switch just
+    before the camera.  Any errors are ignored and ``None`` is returned.
+    """
+
+    cmd = None
+    if shutil.which("traceroute"):
+        cmd = ["traceroute", "-n", "-m", "2", ip]
+    elif shutil.which("tracert"):
+        cmd = ["tracert", "-d", "-h", "2", ip]
+    if not cmd:
+        return None
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        lines = proc.stdout.splitlines()
+        if len(lines) >= 2:
+            parts = lines[1].split()
+            if len(parts) >= 2 and parts[1] != "*":
+                return parts[1]
+    except Exception as e:  # pragma: no cover - system dependent
+        logging.debug("traceroute error for %s: %s", ip, e)
+    return None
 
 
 def _local_subnets(max_prefixlen: int = 24):
@@ -610,5 +641,11 @@ def discover_cameras(progress_callback=None):
     result = list(unique.values())
     for cam in result:
         _add_mac_info(cam)
+        hop = _trace_upstream(cam["ip"])
+        if hop:
+            cam.setdefault("info", {})["upstream"] = hop
+
+    if progress_callback:
+        progress_callback("trace", len(result), [])
 
     return result

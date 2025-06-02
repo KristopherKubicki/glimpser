@@ -2,6 +2,9 @@
 
 Glimpser includes a simple discovery feature to help find network cameras on your local LAN. The `/discover` page now loads immediately and only scans when you click the **Discover** button. A progress bar displays the number of completed stages so you know the scan is making progress. The page also shows which discovery stage is currently executing. The logic in `app/utils/camera_discovery.py` runs in parallel threads so results return faster. To keep the scan quick, each interface is limited to a `/24` subnet even if the reported mask is larger.
 The subnet list is now deduplicated so machines with multiple addresses per interface are scanned only once. Unreachable ports fail fast so discovery always completes even when some networks are inaccessible.
+After all scanning steps finish, Glimpser performs a two-hop traceroute to each
+discovered camera. The previous hop is stored in the ``upstream`` field so you
+can see which router or switch connects the device.
 
 ## How the `/discover` route works
 
@@ -40,6 +43,8 @@ The discovery code combines multiple approaches:
 9. **HTTP endpoint scan** – `_scan_http_endpoints()` checks ports `80`, `8080`, and `443` for `/snapshot.jpg` or `/video.mjpg` streams.
 10. **HLS detection** – `_scan_hls_streams()` looks for playlist files like `/index.m3u8`.
 11. **Local devices** – `_local_video_devices()` lists available `/dev/video*` entries for webcams or other direct-attached cameras.
+12. **Traceroute hop** – `_trace_upstream()` runs a quick traceroute limited to
+    two hops and records the previous hop for each camera.
 
 All discovered entries are merged and returned. The key parts of the implementation are shown below:
 

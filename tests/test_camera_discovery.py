@@ -66,6 +66,11 @@ class TestCameraDiscovery(unittest.TestCase):
         }
         self.assertEqual(set(result), expected)
 
+    def test_get_discovery_stages_has_trace(self):
+        stages = camera_discovery.get_discovery_stages()
+        self.assertIn("trace", stages)
+        self.assertEqual(stages[-1], "trace")
+
     @patch("app.utils.camera_discovery._fetch_sdp")
     @patch("app.utils.camera_discovery.is_port_open")
     def test_scan_rtsp_ports(self, mock_port_open, mock_fetch_sdp):
@@ -151,6 +156,7 @@ class TestCameraDiscovery(unittest.TestCase):
         ]
         self.assertEqual(result, expected)
 
+    @patch("app.utils.camera_discovery._trace_upstream", return_value="192.168.1.1")
     @patch("app.utils.camera_discovery._probe_ssdp")
     @patch("app.utils.camera_discovery._probe_mdns")
     @patch("app.utils.camera_discovery._probe_onvif")
@@ -169,6 +175,7 @@ class TestCameraDiscovery(unittest.TestCase):
         mock_onvif,
         mock_mdns,
         mock_ssdp,
+        mock_trace,
     ):
         mock_addrs.return_value = self._mock_interfaces()
         mock_port_open.side_effect = self._port_open_side_effect
@@ -246,6 +253,12 @@ class TestCameraDiscovery(unittest.TestCase):
             {(c["ip"], c["protocol"], c["port"]) for c in result},
             {(c["ip"], c["protocol"], c["port"]) for c in expected},
         )
+        upstreams = [
+            c["info"].get("upstream")
+            for c in result
+            if c["ip"] == "192.168.1.6" and c["protocol"] == "onvif"
+        ]
+        self.assertEqual(upstreams[0], "192.168.1.1")
 
     @patch("app.utils.camera_discovery._local_subnets", return_value=[])
     @patch("app.utils.camera_discovery._local_video_devices", return_value=[])
@@ -261,8 +274,10 @@ class TestCameraDiscovery(unittest.TestCase):
     @patch("app.utils.camera_discovery._probe_onvif")
     @patch("app.utils.camera_discovery._mac_manufacturer")
     @patch("app.utils.camera_discovery._mac_for_ip")
+    @patch("app.utils.camera_discovery._trace_upstream", return_value=None)
     def test_progress_callback_includes_mac(
         self,
+        mock_trace,
         mock_mac,
         mock_vendor,
         mock_onvif,
