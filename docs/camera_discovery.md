@@ -165,6 +165,8 @@ The discovery list also shows a **System Status** entry pointing at your local
 `/status` page (`http://127.0.0.1:8082/status`). You can add this item like any
 other camera to have Glimpser periodically capture screenshots of its own
 metrics page.
+It now also includes an **Internal Caption** entry streaming `/internal_caption.mjpg`,
+which loops recent caption text for convenient review.
 
 ## Common cameras to try
 
