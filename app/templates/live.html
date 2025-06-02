@@ -141,16 +141,16 @@
         <div id="video-overlay" class="video-overlay" role="region" aria-live="polite">
             <div id="loading-indicator" class="hidden" role="status">Loading...</div>
             <div id="play-pause-indicator" class="video-icon hidden" aria-hidden="true">▶</div>
-            <div id="offline-indicator" class="offline-indicator hidden" role="alert">
-                <i class="fas fa-video-slash video-icon"></i>
+            <div id="offline-indicator" class="offline-indicator hidden" role="alert" title="Camera offline">
+                <i class="fas fa-video-slash video-icon" aria-hidden="true"></i>
                 <p id="offline-message"></p>
             </div>
-            <div id="capture-error-indicator" class="error-indicator hidden" role="alert">
-                <i class="fas fa-exclamation-triangle video-icon"></i>
+            <div id="capture-error-indicator" class="error-indicator hidden" role="alert" title="Capture error">
+                <i class="fas fa-exclamation-triangle video-icon" aria-hidden="true"></i>
                 <p id="capture-error-message"></p>
             </div>
-            <div id="stream-error-indicator" class="error-indicator hidden" role="alert">
-                <i class="fas fa-times-circle video-icon"></i>
+            <div id="stream-error-indicator" class="error-indicator hidden" role="alert" title="Streaming error">
+                <i class="fas fa-times-circle video-icon" aria-hidden="true"></i>
                 <p id="stream-error-message"></p>
             </div>
         </div>
