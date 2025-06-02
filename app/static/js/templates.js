@@ -477,8 +477,8 @@ export async function loadTemplates() {
 
     if (isIndexPage) {
       window.addEventListener('resize', updateGridLayout);
-      if (window.updateSliderLimits) window.updateSliderLimits();
     }
+    if (window.updateSliderLimits) window.updateSliderLimits();
     updateHumanizedTimes();
     window.dispatchEvent(
       new CustomEvent('templatesLoaded', { detail: { count: templateCount } }),
