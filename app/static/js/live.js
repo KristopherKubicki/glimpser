@@ -148,7 +148,12 @@ image.addEventListener('load', hideLoadingIndicator);
 video.addEventListener('play', () => showPlayPauseIndicator(false));
 video.addEventListener('pause', () => showPlayPauseIndicator(true));
 video.addEventListener('error', (e) => {
-    showError('Error loading video: ' + e.target.error.message);
+    const msg = e.target.error ? e.target.error.message : '';
+    if (msg && msg.includes('Empty src attribute')) {
+        // Ignore errors from blank sources when switching cameras
+        return;
+    }
+    showError('Error loading video: ' + msg);
     setTimeout(() => {
         if (typeof updateFeed === 'function') {
             updateFeed();
