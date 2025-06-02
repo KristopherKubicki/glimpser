@@ -221,6 +221,7 @@ def create_application(args=None):
         enable_watchdog=enable_watchdog, schedule=schedule, crawlers=crawlers
     )
 
+
 def output_shutdown_stats():
     # Get and display system metrics
     metrics = get_system_metrics()
