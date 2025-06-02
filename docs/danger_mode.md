@@ -17,7 +17,7 @@ If Chrome is not started with this flag, Danger mode will be unavailable.
 After Chrome updates, shortcuts may revert to their original command line. Two approaches can help keep the debug port enabled:
 
 - **Manual update**: Edit the desktop shortcut each time Chrome updates.
-- **Helper script**: Provide a small utility that rewrites the shortcut with the required flag. A future release could expose this as a button in the settings page to automate the process.
+- **Helper script**: Run `python scripts/update_chrome_shortcut.py` to rewrite the shortcut with the required flag. This can also be triggered from the *Update Chrome Shortcut* button on the Settings page.
 
 For now, you can store the launch command in a script and double-click it instead of using the original shortcut.
 
