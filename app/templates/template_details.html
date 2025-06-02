@@ -118,6 +118,9 @@ function updateVideo(templateName) {
             {% if template_details.offline_since %}
             <li><strong>Offline Since:</strong> {{ template_details.offline_since }}</li>
             {% endif %}
+            {% if template_details.capture_failed %}
+            <li><strong>Capture Failed:</strong> Yes</li>
+            {% endif %}
         </ul>
     </div>
 
@@ -337,7 +340,8 @@ function showCameraDetails(templateName) {
         'Last Video Time': meta.last_video_time,
         'Last Caption': meta.last_caption,
         'Caption Time': meta.last_caption_time,
-        'Offline Since': meta.offline_since
+        'Offline Since': meta.offline_since,
+        'Capture Failed': meta.capture_failed
     };
 
     let detailsHtml = '<h3>Camera Endpoints</h3><pre>';

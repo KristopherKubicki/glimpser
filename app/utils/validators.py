@@ -64,15 +64,35 @@ def validate_update_data(data: dict) -> dict:
 
     sanitized = {}
 
+    stealth_flag = str(data.get("stealth", False)).lower() in {
+        "true",
+        "1",
+        "t",
+        "y",
+        "yes",
+        "on",
+    }
+    browser_flag = str(data.get("browser", False)).lower() in {
+        "true",
+        "1",
+        "t",
+        "y",
+        "yes",
+        "on",
+    }
+
+    default_frequency = 60 if stealth_flag or browser_flag else 30
+    default_timeout = 30 if stealth_flag or browser_flag else 10
+
     url = (data.get("url") or "").strip()
     if not url:
         raise ValueError("url is required")
     sanitized["url"] = url
 
     try:
-        frequency = int(data.get("frequency", 30) or 30)
+        frequency = int(data.get("frequency", default_frequency) or default_frequency)
     except (TypeError, ValueError):
-        frequency = 30
+        frequency = default_frequency
     if frequency < 1:
         frequency = 1
     if frequency > 525600:
@@ -80,9 +100,9 @@ def validate_update_data(data: dict) -> dict:
     sanitized["frequency"] = frequency
 
     try:
-        timeout = int(data.get("timeout", 10) or 10)
+        timeout = int(data.get("timeout", default_timeout) or default_timeout)
     except (TypeError, ValueError):
-        timeout = 10
+        timeout = default_timeout
     if timeout < 1:
         timeout = 1
     max_timeout = frequency * 60
