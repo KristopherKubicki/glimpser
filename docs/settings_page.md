@@ -8,5 +8,6 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Current Settings** – edit existing values or delete them.
 - **Configuration Management** – backup, download, and upload the JSON configuration file.
 - **Danger Mode** – update Chrome shortcuts with the required flags.
+- **Offline Preview** – toggle a Service Worker that caches recent images.
 
 You can also visit `/settings_help` directly to read the full explanation page.

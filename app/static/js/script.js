@@ -4,6 +4,7 @@ import { initSchedulerToggle } from './scheduler.js';
 import { initNav } from './nav.js';
 import { initFormValidation } from './form.js';
 import { initFooterFade } from './footer.js';
+import { initOffline } from './offline.js';
 
 initTemplates();
 initVideoControls();
@@ -11,3 +12,4 @@ initSchedulerToggle();
 initNav();
 initFormValidation();
 initFooterFade();
+initOffline();
