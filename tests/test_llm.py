@@ -29,12 +29,9 @@ class TestLLM(unittest.TestCase):
 
         result = summarize("Test prompt")
 
-        # Check if the result is as expected
+        ts = int(datetime.datetime.now().timestamp())
         expected_result = json.dumps(
-            {
-                int(datetime.datetime.now().timestamp()): "Mock summary",
-                int(datetime.datetime.now().timestamp()) + 5: "With multiple lines",
-            }
+            {ts: "Mock summary", ts + 5: "With multiple lines"}
         )
         self.assertEqual(json.loads(result), json.loads(expected_result))
 
@@ -42,7 +39,7 @@ class TestLLM(unittest.TestCase):
         mock_post.assert_called_once()
         call_args = mock_post.call_args[1]
         self.assertEqual(call_args["headers"]["Authorization"], "Bearer mock_api_key")
-        #self.assertEqual(call_args["json"]["model"], "mock_model_version")  # doesnt work fro some reason...
+        self.assertEqual(call_args["json"]["model"], "mock_model_version")
         self.assertIn("Test prompt", str(call_args["json"]["messages"]))
 
     @patch("app.utils.llm.requests.post")
@@ -70,6 +67,9 @@ class TestLLM(unittest.TestCase):
         mock_post.assert_not_called()
 
     @patch("app.utils.llm.requests.post")
+    @patch("app.utils.llm.CHATGPT_KEY", "mock_api_key")
+    @patch("app.utils.llm.LLM_MODEL_VERSION", "mock_model_version")
+    @patch("app.utils.llm.LLM_SUMMARY_PROMPT", "Mock summary prompt")
     def test_summarize_with_history(self, mock_post):
         # Mock the successful API response
         mock_response = MagicMock()
@@ -81,18 +81,13 @@ class TestLLM(unittest.TestCase):
 
         result = summarize("Test prompt", history="Previous conversation")
 
-        # Check if the result is as expected
-        expected_result = json.dumps(
-            {int(datetime.datetime.now().timestamp()): "Mock summary with history"}
-        )
+        ts = int(datetime.datetime.now().timestamp())
+        expected_result = json.dumps({ts: "Mock summary with history"})
+        self.assertEqual(json.loads(result), json.loads(expected_result))
 
-        # result is going to be None because dont have a key set... 
-        #self.assertEqual(json.loads(result), json.loads(expected_result))
-
-        # Verify that the API was called with the correct parameters including history
-        #mock_post.assert_called_once()
-        #call_args = mock_post.call_args[1]
-        #self.assertIn("Previous conversation", str(call_args["json"]["messages"]))
+        mock_post.assert_called_once()
+        call_args = mock_post.call_args[1]
+        self.assertIn("Previous conversation", str(call_args["json"]["messages"]))
 
 
 if __name__ == "__main__":
