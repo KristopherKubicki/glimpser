@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MAC vendor lookup now consults local databases and an online API
 - Footer warns when a newer release is available
 - Stream error overlay distinguishes network and unsupported format errors
+- Sortable KPI table on captions page with filtering
 
 ### Changed
 - Improved screenshot reliability
