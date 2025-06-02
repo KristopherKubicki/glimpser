@@ -33,7 +33,7 @@
                         <input type="text" name="{{ setting.name }}" value="{{ setting.value }}" title="Edit value for {{ setting.name }}">
                     </td>
                     <td>
-                        <button type="submit" name="action" value="delete" title="Delete {{ setting.name }}" onclick="document.getElementById('name_to_delete').value='{{ setting.name }}'">Delete</button>
+                        <button type="submit" name="action" value="delete" title="Delete {{ setting.name }}" onclick="return confirmDeleteSetting('{{ setting.name }}')">Delete</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -48,7 +48,7 @@
         <button type="submit" name="action" value="backup" title="Create a JSON backup of all settings">Backup Configuration</button>
         <button type="submit" name="action" value="download" title="Download the latest configuration backup">Download Configuration</button>
         <input type="file" name="file" accept=".json" title="Select configuration file to upload">
-        <button type="submit" name="action" value="upload" title="Restore configuration from uploaded file">Upload Configuration</button>
+        <button type="submit" name="action" value="upload" title="Restore configuration from uploaded file" onclick="return confirmRestore()">Upload Configuration</button>
     </form>
 
     <h3>Danger Mode</h3>
@@ -63,4 +63,17 @@
     </label>
 </main>
     <script src="{{ url_for('static', filename='js/performance.js') }}"></script>
+    <script>
+        function confirmDeleteSetting(name) {
+            if (confirm('Are you sure you want to delete ' + name + '?')) {
+                document.getElementById('name_to_delete').value = name;
+                return true;
+            }
+            return false;
+        }
+
+        function confirmRestore() {
+            return confirm('Restore configuration from the selected file? This will overwrite existing settings.');
+        }
+    </script>
 {% endblock %}
