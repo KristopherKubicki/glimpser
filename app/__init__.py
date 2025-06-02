@@ -17,7 +17,7 @@ from app.utils.scheduling import (
     start_log_caching,
 )
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
-from app.config import backup_config, restore_config
+from app.config import LOG_LEVEL, backup_config, restore_config
 from app.utils.email_alerts import email_alert
 from app.utils.sms_alerts import sms_alert
 
@@ -94,8 +94,9 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(
         minutes=SESSION_TIMEOUT_MINUTES
     )
-    # Set up logging
-    app.logger.setLevel(logging.WARN)  # todo: read from config....
+    # Set up logging using the configured level
+    log_level = getattr(logging, str(LOG_LEVEL).upper(), logging.WARN)
+    app.logger.setLevel(log_level)
 
     # Ensure required directories exist
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)
