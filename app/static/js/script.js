@@ -6,6 +6,7 @@ import { initFormValidation, initAddSettingValidation } from './form.js';
 import { initFooterFade } from './footer.js';
 import { initOffline } from './offline.js';
 import { initDangerToggle } from './danger.js';
+import { initIndexTime } from './time.js';
 
 initTemplates();
 initVideoControls();
@@ -16,3 +17,4 @@ initAddSettingValidation();
 initFooterFade();
 initOffline();
 initDangerToggle();
+initIndexTime();
