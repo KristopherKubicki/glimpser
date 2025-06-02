@@ -455,9 +455,7 @@ export async function loadTemplates() {
       window.addEventListener('resize', updateGridLayout);
       if (window.updateSliderLimits) window.updateSliderLimits();
     }
-    if (isCaptionsPage) {
-      updateHumanizedTimes();
-    }
+    updateHumanizedTimes();
   } catch (error) {
     console.error('Error loading templates:', error);
     const errorMsg = '<div class="error">Error loading templates. Please try again.</div>';
