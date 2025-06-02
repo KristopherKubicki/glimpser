@@ -32,3 +32,10 @@ Be cautious with this feature, as it can interact with your browser while you ar
 ## Enabling or Disabling Danger Mode
 
 Visit `/danger` to toggle the feature on or off. When disabled, captures marked as "Danger" are skipped even if Chrome's debugging port is open.
+
+## Danger Page Overview
+
+The `/danger` page explains what the feature does and when to use it. It notes
+that Glimpser attaches to your Chrome session via the debugging port and only
+activates when you are idle. Toggling the option now shows a confirmation modal
+so the feature is not enabled or disabled accidentally.
