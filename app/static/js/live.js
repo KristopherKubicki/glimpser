@@ -652,7 +652,7 @@ const isGroupView = currentCamera === 'All' || currentCamera.startsWith('group-'
 speedContainer.style.display = isGroupView ? 'block' : 'none';
     }
 
-    function checkCameraConnection(cameraName) {
+function checkCameraConnection(cameraName) {
 if (cameraName === 'All' || cameraName.startsWith('group-')) {
     return true;
 }
@@ -676,7 +676,7 @@ if (!camera.last_screenshot_time) {
 const lastScreenshotTime = new Date(camera.last_screenshot_time);
 const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 return lastScreenshotTime > oneHourAgo;
-    }
+}
 
 // Initially show the latest screenshot and start the MP4 stream
 showLastScreenshot();
@@ -684,7 +684,66 @@ updateTemplateDetails();
 updateSpeedContainer();
 playMP4();
 
+function togglePlayback() {
+    if (video.paused) {
+        video.play();
+    } else {
+        video.pause();
+    }
+}
+
+function selectNextCamera() {
+    const selector = document.getElementById('camera-selector');
+    if (!selector) return;
+    const options = Array.from(selector.options);
+    const currentIndex = options.findIndex((opt) => opt.value === selector.value);
+    const nextIndex = (currentIndex + 1) % options.length;
+    selector.value = options[nextIndex].value;
+    changeCamera();
+}
+
+function selectPreviousCamera() {
+    const selector = document.getElementById('camera-selector');
+    if (!selector) return;
+    const options = Array.from(selector.options);
+    const currentIndex = options.findIndex((opt) => opt.value === selector.value);
+    const prevIndex = (currentIndex - 1 + options.length) % options.length;
+    selector.value = options[prevIndex].value;
+    changeCamera();
+}
+
+document.addEventListener('keydown', (event) => {
+    if (
+        event.target.tagName === 'INPUT' ||
+        event.target.tagName === 'SELECT' ||
+        event.target.isContentEditable
+    ) {
+        return;
+    }
+
+    switch (event.key) {
+        case ' ': // Spacebar
+        case 'k':
+            togglePlayback();
+            event.preventDefault();
+            break;
+        case 'ArrowRight':
+        case 'l':
+            selectNextCamera();
+            event.preventDefault();
+            break;
+        case 'ArrowLeft':
+        case 'j':
+            selectPreviousCamera();
+            event.preventDefault();
+            break;
+    }
+});
+
 // Expose handlers used by inline event attributes
 window.changeCamera = changeCamera;
 window.changeVideoSource = changeVideoSource;
 window.updatePlaybackSpeed = updatePlaybackSpeed;
+window.selectNextCamera = selectNextCamera;
+window.selectPreviousCamera = selectPreviousCamera;
+window.togglePlayback = togglePlayback;
