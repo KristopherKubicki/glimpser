@@ -152,6 +152,30 @@ def _remote_vendor_lookup(mac: str) -> str | None:
     return None
 
 
+def _onvif_get_firmware(xaddr: str, timeout: int = 2) -> str | None:
+    """Return firmware version from an ONVIF device service."""
+
+    body = (
+        "<?xml version='1.0' encoding='UTF-8'?>"
+        "<s:Envelope xmlns:s='http://www.w3.org/2003/05/soap-envelope'>"
+        "<s:Body>"
+        "<GetDeviceInformation xmlns='http://www.onvif.org/ver10/device/wsdl'/>"
+        "</s:Body>"
+        "</s:Envelope>"
+    )
+    try:
+        resp = requests.post(xaddr, data=body, timeout=timeout)
+        if resp.ok:
+            xml = ET.fromstring(resp.content)
+            ns = {"tt": "http://www.onvif.org/ver10/schema"}
+            node = xml.find(".//tt:FirmwareVersion", ns)
+            if node is not None:
+                return node.text
+    except Exception:
+        pass
+    return None
+
+
 def _mac_manufacturer(mac: str | None) -> str | None:
     """Return the vendor name for ``mac`` using known mappings or remote lookup."""
 
@@ -293,6 +317,17 @@ def _probe_onvif(timeout=2):
             except Exception as e:
                 logging.debug("parse error: %s", e)
                 port = 80
+            # Attempt to collect firmware information using the ONVIF device
+            # service if an XAddr was advertised. Many cameras expose this
+            # endpoint without authentication. Any errors are ignored so the
+            # discovery still finishes quickly.
+            if info.get("xaddr"):
+                try:
+                    fw = _onvif_get_firmware(info["xaddr"], timeout=timeout)
+                    if fw:
+                        info["firmware"] = fw
+                except Exception:
+                    pass
             cameras.append({"ip": ip, "protocol": "onvif", "port": port, "info": info})
     except Exception as e:
         logging.warning("ONVIF discovery error: %s", e)
@@ -568,6 +603,33 @@ def _fetch_snmp_sysname(ip, timeout=2):
     return None
 
 
+def _fetch_snmp_sysdescr(ip, timeout=2) -> str | None:
+    """Attempt to retrieve the SNMP sysDescr value."""
+    request = bytes.fromhex(
+        "30 2a 02 01 00 04 06 70 75 62 6c 69 63 A0 1d "
+        "02 04 00 00 00 01 02 01 00 02 01 00 30 0f 30 0d "
+        "06 08 2b 06 01 02 01 01 01 00 05 00"
+    )
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(timeout)
+    try:
+        sock.sendto(request, (ip, 161))
+        resp, _ = sock.recvfrom(4096)
+        oid = b"\x06\x08\x2b\x06\x01\x02\x01\x01\x01\x00"
+        idx = resp.find(oid)
+        if idx != -1:
+            start = idx + len(oid)
+            if start + 2 <= len(resp) and resp[start] == 0x04:
+                length = resp[start + 1]
+                end = start + 2 + length
+                return resp[start + 2 : end].decode(errors="ignore")
+    except Exception:
+        pass
+    finally:
+        sock.close()
+    return None
+
+
 def _scan_snmp_ports(subnets):
     """Scan SNMP port 161 across subnets."""
     found = []
@@ -583,6 +645,9 @@ def _scan_snmp_ports(subnets):
                 name = _fetch_snmp_sysname(ip)
                 if name:
                     info["name"] = name
+                descr = _fetch_snmp_sysdescr(ip)
+                if descr:
+                    info["firmware"] = descr
                 found.append({"ip": ip, "protocol": "snmp", "port": 161, "info": info})
     return found
 
@@ -601,9 +666,10 @@ def discover_cameras(progress_callback=None, subnets=None):
     Parameters
     ----------
     progress_callback : callable, optional
-        Called with ``(stage, count, new_cameras)`` each time a discovery
-        step completes. ``new_cameras`` is the list of cameras found during
-        that stage.
+        Called with ``(stage, count, new_cameras, progress, eta)`` each time a
+        discovery step completes. ``progress`` is the overall completion
+        percentage and ``eta`` provides the estimated seconds remaining. The
+        ``new_cameras`` argument lists entries found during that stage.
     """
     cameras: list[dict] = []
 
@@ -628,6 +694,20 @@ def discover_cameras(progress_callback=None, subnets=None):
         "local": _local_video_devices,
     }
 
+    total_steps = len(tasks) + 1  # additional step for tracing/open port checks
+    start_time = time.time()
+    completed = 0
+
+    def _report(stage, count, new):
+        nonlocal completed
+        completed += 1
+        progress = completed / total_steps * 100
+        elapsed = time.time() - start_time
+        avg = elapsed / completed
+        eta = max(0.0, avg * total_steps - elapsed)
+        if progress_callback:
+            progress_callback(stage, count, new, progress, eta)
+
     with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
         future_to_stage = {
             executor.submit(func): stage for stage, func in tasks.items()
@@ -643,8 +723,7 @@ def discover_cameras(progress_callback=None, subnets=None):
             except Exception as e:  # pragma: no cover - network
                 logging.warning("%s discovery error: %s", stage, e)
             finally:
-                if progress_callback:
-                    progress_callback(stage, len(cameras), stage_cameras)
+                _report(stage, len(cameras), stage_cameras)
 
     # Always include the internal status page so the system can monitor itself
     from app.config import PORT
@@ -676,7 +755,6 @@ def discover_cameras(progress_callback=None, subnets=None):
             if ports:
                 cam.setdefault("info", {})["open_ports"] = ports
 
-    if progress_callback:
-        progress_callback("trace", len(result), [])
+    _report("trace", len(result), [])
 
     return result

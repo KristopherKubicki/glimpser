@@ -293,7 +293,7 @@ class TestCameraDiscovery(unittest.TestCase):
 
         seen = []
 
-        def cb(stage, count, cams):
+        def cb(stage, count, cams, *_):
             seen.extend(cams)
 
         camera_discovery.discover_cameras(progress_callback=cb)

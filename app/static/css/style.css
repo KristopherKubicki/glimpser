@@ -1163,6 +1163,12 @@ details > summary {
     background-color: red;
 }
 
+
+/* simple layout for discovery wizard */
+.wizard-step {
+    margin-bottom: 1em;
+}
+
 /* Time display on index page */
 #index-time {
     position: fixed;
@@ -1174,4 +1180,5 @@ details > summary {
     font-size: var(--timestamp-font-size);
     z-index: 10;
 }
+
 

@@ -14,10 +14,17 @@
 {%- endmacro %}
 {% block content %}
     <h2>Discovered Cameras</h2>
-    <input id="cidr-input" type="text" placeholder="192.168.1.0/24" title="Optional CIDR to scan">
-    <button id="discover-btn" title="Scan the network for cameras">Discover</button>
-    <progress id="discover-progress" class="hidden" title="Discovery progress"></progress>
-    <div id="discover-message" title="Status messages"></div>
+    <div class="wizard-step" title="Enter an optional network range">
+        <input id="cidr-input" type="text" placeholder="192.168.1.0/24" title="Optional CIDR to scan">
+        <button id="discover-btn" title="Scan the network for cameras">Discover</button>
+    </div>
+    <div class="wizard-step" title="Progress of the discovery scan">
+        <progress id="discover-progress" class="hidden" max="100" title="Discovery progress"></progress>
+        <span id="discover-message" title="Status messages"></span>
+    </div>
+    <div class="wizard-step" title="Review results and export if desired">
+    <button id="export-json" title="Download results as JSON">Export JSON</button>
+    <button id="export-csv" title="Download results as CSV">Export CSV</button>
     <table>
         <thead>
             <tr>
@@ -55,11 +62,14 @@
         {% endfor %}
         </tbody>
     </table>
+    </div>
     <script>
     const button = document.getElementById('discover-btn');
     const msg = document.getElementById('discover-message');
     const progress = document.getElementById('discover-progress');
     const body = document.getElementById('discover-body');
+    const exportJson = document.getElementById('export-json');
+    const exportCsv = document.getElementById('export-csv');
     const renderInfo = (info) => {
         if (!info) return '';
         const pieces = [];
@@ -74,12 +84,14 @@
         });
         return pieces.join(' ');
     };
+    let results = [];
     if (button) {
         button.addEventListener('click', () => {
             msg.textContent = 'Searching...';
             progress.style.display = 'inline';
-            progress.removeAttribute('value');
+            progress.value = 0;
             body.innerHTML = '';
+            results = [];
             const cidr = document.getElementById('cidr-input').value.trim();
             const url = cidr ? `/discover/scan_stream?cidr=${encodeURIComponent(cidr)}` : '/discover/scan_stream';
             const source = new EventSource(url);
@@ -88,6 +100,7 @@
                 const key = `${cam.ip}-${cam.protocol}-${cam.port}`;
                 if (known.has(key)) return;
                 known.add(key);
+                results.push(cam);
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${cam.ip}</td>
@@ -112,7 +125,7 @@
             source.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 if (data.total) {
-                    progress.max = data.total;
+                    progress.max = 100;
                     progress.value = 0;
                     plan = data.stages || [];
                     if (data.subnets) {
@@ -126,11 +139,17 @@
                     source.close();
                     return;
                 }
-                progress.value += 1;
+                if (typeof data.progress === 'number') {
+                    progress.value = data.progress;
+                } else {
+                    progress.value += 1;
+                }
                 if (plan.length && plan[0] === data.stage) {
                     plan.shift();
                 }
-                msg.textContent = `Scanning ${data.stage} (${data.count} found)...` + (plan.length ? ` Next: ${plan[0]}` : '');
+                const eta = data.eta ? ` ~${Math.round(data.eta)}s left` : '';
+                msg.textContent = `Scanning ${data.stage} (${data.count} found)...` +
+                    (plan.length ? ` Next: ${plan[0]}` : '') + eta;
                 if (data.cameras) {
                     data.cameras.forEach(addRow);
                 }
@@ -143,5 +162,24 @@
             };
         });
     }
+
+    const exportData = (fmt) => {
+        fetch(`/discover/export?format=${fmt}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(results)
+        }).then(r => r.blob()).then(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fmt === 'csv' ? 'discovery.csv' : 'discovery.json';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        });
+    };
+    if (exportJson) exportJson.addEventListener('click', () => exportData('json'));
+    if (exportCsv) exportCsv.addEventListener('click', () => exportData('csv'));
     </script>
 {% endblock %}
