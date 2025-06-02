@@ -44,6 +44,29 @@ class TestStreamPngRoute(unittest.TestCase):
         resp = self.client.get("/stream.png")
         self.assertEqual(resp.status_code, 200)
 
+    def test_ignores_missing_files(self):
+        self.mock_tpl.return_value = {"cam1": {"name": "cam1"}}
+        img_dir = os.path.join(self.repo_root, self.sshot_dir, "cam1")
+        valid = os.path.join(img_dir, "cam1_valid.png")
+        missing = os.path.join(img_dir, "cam1_missing.png")
+        Image.new("RGB", (1, 1)).save(valid)
+
+        def fake_glob(_):
+            return [missing, valid]
+
+        orig_getmtime = os.path.getmtime
+
+        def fake_getmtime(path):
+            if path == missing:
+                raise FileNotFoundError
+            return orig_getmtime(path)
+
+        with patch("glob.glob", side_effect=fake_glob), patch(
+            "os.path.getmtime", side_effect=fake_getmtime
+        ):
+            resp = self.client.get("/stream.png")
+        self.assertEqual(resp.status_code, 200)
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
