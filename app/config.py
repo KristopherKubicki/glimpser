@@ -9,8 +9,27 @@ from importlib.metadata import PackageNotFoundError, version
 
 from dotenv import load_dotenv, find_dotenv
 
-# Load variables from a `.env` file if present
-load_dotenv(find_dotenv())
+_DOTENV_LOADED = False
+
+
+def _load_dotenv_once() -> None:
+    """Load ``.env`` variables once per process.
+
+    ``dotenv`` silently succeeds if called multiple times but repeating the
+    operation can be wasteful when this module is imported frequently. This
+    helper keeps track of whether variables have been loaded already and skips
+    re-loading on subsequent calls.
+    """
+    global _DOTENV_LOADED
+    if not _DOTENV_LOADED:
+        load_dotenv(find_dotenv())
+        _DOTENV_LOADED = True
+
+
+# Load variables from a ``.env`` file if present.  Using ``_load_dotenv_once``
+# ensures we do not re-read the file unnecessarily should this module somehow
+# be imported more than once.
+_load_dotenv_once()
 
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
