@@ -446,7 +446,7 @@ video.play();
 
 
 function refreshPNG() {
-    image.src = '/last_screenshot/' + currentCamera + '?time=' + new Date().getTime();
+    image.src = '/last_screenshot/' + encodeURIComponent(currentCamera) + '?time=' + new Date().getTime();
 }
 
 function showLastScreenshot() {
@@ -457,7 +457,7 @@ function showLastScreenshot() {
         url = '/stream.png' + ts;
     } else {
         // Display the latest screenshot for the selected camera or group
-        url = '/last_screenshot/' + currentCamera + ts;
+        url = '/last_screenshot/' + encodeURIComponent(currentCamera) + ts;
     }
 
     // Preload the image so the viewer always sees a frame when switching
@@ -641,7 +641,7 @@ image.src = `/stream.mjpg?group=${encodeURIComponent(groupName)}`;
 image.src = '/stream.mjpg?group=all';
     } else {
 // URL for individual cameras
-image.src = '/stream.mjpg?camera=' + currentCamera + '&time=' + new Date().getTime();
+        image.src = '/stream.mjpg?camera=' + encodeURIComponent(currentCamera) + '&time=' + new Date().getTime();
     }
 }
 
@@ -669,7 +669,7 @@ image.src = `/motion.mjpg?group=${encodeURIComponent(groupName)}`;
 image.src = '/motion.mjpg?group=all';
     } else {
 // URL for individual cameras
-image.src = '/motion.mjpg?camera=' + currentCamera + '&time=' + new Date().getTime();
+        image.src = '/motion.mjpg?camera=' + encodeURIComponent(currentCamera) + '&time=' + new Date().getTime();
     }
 }
 
