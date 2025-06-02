@@ -24,7 +24,9 @@ def discover_cameras_scan_stream():
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 ```
 
-When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button opens an EventSource to `/discover/scan_stream`. The first message reports the total number of discovery stages so the progress bar can show overall completion. Each subsequent message indicates which stage has finished, how many cameras have been found so far, and includes any new cameras discovered during that stage. These cameras appear in the table immediately. A final event with ``{"done": true}`` simply signals completion.
+When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button opens an EventSource to `/discover/scan_stream`. The first message now includes the list of subnets that will be scanned and the full plan of discovery stages. The progress bar is initialized with the total number of stages. Each subsequent message indicates which stage has finished, how many cameras have been found so far, and includes any new cameras discovered during that stage. These cameras appear in the table immediately. A final event with ``{"done": true}`` simply signals completion.
+
+An optional CIDR can be supplied via the new input field to restrict discovery to a specific Class C network. The value is sent as the ``cidr`` query parameter and parsed by ``discover_cameras()``.
 
 During the scan you will see messages like `Scanning onvif (3 found)...`. The stage name shows which discovery method just finished, while the number in parentheses reflects how many cameras have been detected so far.
 

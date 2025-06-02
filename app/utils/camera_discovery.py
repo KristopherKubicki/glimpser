@@ -569,8 +569,8 @@ def _local_video_devices(base_path="/dev"):
     return devices
 
 
-def discover_cameras(progress_callback=None):
-    """Discover cameras on the local network.
+def discover_cameras(progress_callback=None, subnets=None):
+    """Discover cameras on the local network or provided ``subnets``.
 
     Parameters
     ----------
@@ -581,11 +581,12 @@ def discover_cameras(progress_callback=None):
     """
     cameras: list[dict] = []
 
-    try:
-        subnets = _local_subnets()
-    except Exception as e:  # pragma: no cover - system dependent
-        logging.warning("subnet discovery error: %s", e)
-        subnets = []
+    if subnets is None:
+        try:
+            subnets = _local_subnets()
+        except Exception as e:  # pragma: no cover - system dependent
+            logging.warning("subnet discovery error: %s", e)
+            subnets = []
 
     tasks = {
         "onvif": _probe_onvif,
