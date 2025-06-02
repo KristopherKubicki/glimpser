@@ -224,6 +224,12 @@ class TemplateManager:
                 details["timeout"] = default_timeout
             if template:
                 for key, value in details.items():
+                    if not hasattr(template, key):
+                        # Ignore keys that are not valid attributes on
+                        # the Template model. This prevents errors when
+                        # extraneous fields like ``snapshot_only`` are
+                        # submitted from the UI.
+                        continue
                     try:
                         if key == "rollback_frames":
                             value = int(value)
