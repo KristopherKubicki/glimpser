@@ -82,6 +82,9 @@ common flags are:
 # Start without the background scheduler
 glimpser --no-scheduler
 
+# Skip scheduling crawler jobs
+glimpser --no-crawlers
+
 # Disable the watchdog thread
 glimpser --no-watchdog
 ```
