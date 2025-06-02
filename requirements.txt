@@ -12,7 +12,7 @@ psutil==6.0.0
 pysqlite3==0.5.4
 pyvirtualdisplay==3.0
 scikit-image==0.25.0
-selenium==4.23.1
+selenium==4.33.0
 SQLAlchemy==2.0.41
 #torch==2.4.0
 transformers==4.50.0
