@@ -157,6 +157,16 @@ class TestSettingsRoute(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(self._get_value("A"), "2")
 
+    def test_download_without_backup(self):
+        """Downloading settings should not crash when no backup exists."""
+        if os.path.exists(self.backup_path):
+            os.remove(self.backup_path)
+        with patch("app.routes.session", {"user_id": 1}), patch(
+            "app.routes.login_required", lambda x: x
+        ):
+            response = self.client.post("/settings", data={"action": "download"})
+        self.assertEqual(response.status_code, 302)
+
 
 if __name__ == "__main__":
     unittest.main()

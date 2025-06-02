@@ -5,6 +5,7 @@ import json
 import logging
 import argparse
 import sqlite3
+from pathlib import Path
 from importlib.metadata import PackageNotFoundError, version
 
 from dotenv import load_dotenv, find_dotenv
@@ -48,6 +49,9 @@ def _parse_cli_args():
 
 _cli_args = _parse_cli_args() if __name__ == "__main__" else None
 
+# Resolve paths relative to the project root when a relative path is provided
+_BASE_DIR = Path(__file__).resolve().parent.parent
+
 DATABASE_PATH = (
     _cli_args.db_path
     if _cli_args and _cli_args.db_path
@@ -58,10 +62,15 @@ LOGGING_PATH = (
     if _cli_args and _cli_args.log_path
     else os.getenv("GLIMPSER_LOGGING_PATH", "logs/glimpser.log")
 )
-BACKUP_PATH = (
-    _cli_args.backup_path
-    if _cli_args and _cli_args.backup_path
-    else os.getenv("GLIMPSER_BACKUP_PATH", "data/config_backup.json")
+# Ensure the backup file lives inside the project directory unless an absolute
+# path is provided. This avoids errors when the working directory changes.
+_backup_env = os.getenv("GLIMPSER_BACKUP_PATH", "data/config_backup.json")
+_backup_raw = (
+    _cli_args.backup_path if _cli_args and _cli_args.backup_path else _backup_env
+)
+_backup_path = Path(_backup_raw)
+BACKUP_PATH = str(
+    _backup_path if _backup_path.is_absolute() else _BASE_DIR / _backup_path
 )
 
 # ``SessionLocal`` and ``_engine`` are created lazily and cached so repeated
@@ -129,6 +138,7 @@ def backup_config() -> bool:
     try:
         settings = session.execute(text("SELECT name, value FROM settings")).fetchall()
         config_dict = {name: value for name, value in settings}
+        os.makedirs(os.path.dirname(BACKUP_PATH), exist_ok=True)
         with open(BACKUP_PATH, "w") as f:
             json.dump(config_dict, f)
     except (OperationalError, SQLAlchemyError, sqlite3.OperationalError, OSError) as e:
