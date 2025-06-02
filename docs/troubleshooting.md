@@ -196,3 +196,10 @@ snapshot image rather than a true video stream.
 - Use the camera's RTSP or HTTP video stream URL when available.
 - Snapshot-only URLs now work automatically, but they refresh slowly
   since a new JPEG must be fetched for each frame.
+
+## 12. Browser Errors
+
+Glimpser now surfaces JavaScript errors in small toast notifications at the top left of the page.
+These pop-ups disappear automatically after about 10 seconds. If a backend request fails or the
+browser blocks a cross-origin request, the message will appear here so you can immediately see
+what went wrong. Consult the browser console for full details if needed.
