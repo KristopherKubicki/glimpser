@@ -1733,7 +1733,7 @@ def init_routes(app):
 
         abort(404)
 
-    @app.route("/compile_teaser", methods=["GET"])  # todo: should probably be post?
+    @app.route("/compile_teaser", methods=["POST"])
     @login_required
     def take_compile():
         video_archiver.compile_to_teaser()
