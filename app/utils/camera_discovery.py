@@ -17,28 +17,11 @@ import shutil
 import requests
 
 from .screenshots import is_port_open
+from .oui_map import OUI_MAP as BUILTIN_OUI_MAP
 
-# Minimal OUI mapping for MAC manufacturer lookup.  This avoids pulling in
-# extra dependencies while still providing useful vendor hints.  Only a few
-# common prefixes are included.
-OUI_MAP = {
-    "000c29": "VMware",
-    "525400": "QEMU",
-    "080027": "VirtualBox",
-    # Common router and camera vendors
-    "d850e6": "ASUSTek",
-    "50e549": "ASUSTek",
-    "0017c8": "Netgear",
-    "a0cec8": "Netgear",
-    "00040e": "D-Link",
-    "b0b2dc": "TP-Link",
-    "28c68e": "TP-Link",
-    "fcdbb3": "Ubiquiti",
-    "7cf2c8": "Ubiquiti",
-    "001e58": "Hikvision",
-    "18a6f7": "Amcrest",
-    "00265e": "Axis",
-}
+# Minimal OUI mapping for MAC manufacturer lookup.  The bulk of prefixes lives
+# in ``app.utils.oui_map`` which avoids pulling in external dependencies.
+OUI_MAP = BUILTIN_OUI_MAP
 
 # Possible locations of large OUI databases to supplement :data:`OUI_MAP`.
 _OUI_FILES = [

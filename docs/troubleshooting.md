@@ -69,6 +69,10 @@ This guide addresses common issues that users might encounter while using Glimps
 - Check the `LLM_SUMMARY_PROMPT` setting
 - Ensure there's enough data collected to generate a meaningful summary
 - Verify that the CHATGPT_KEY is working correctly
+- Confirm the scheduler is running and you did not start the app with
+  `--no-scheduler`
+- Visit `/jobs` to ensure the `summary` job is listed and check
+  `logs/glimpser.log` for errors
 
 ## 5. Web Interface Issues
 

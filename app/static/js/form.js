@@ -14,6 +14,11 @@ export function initFormValidation() {
       return false;
     }
 
+    if (!/^https?:\/\//.test(url)) {
+      alert('URL must start with http:// or https://');
+      return false;
+    }
+
     if (frequency < 1 || frequency > 525600) {
       alert('Frequency must be between 1 and 525600 minutes (1 year).');
       return false;

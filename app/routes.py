@@ -949,7 +949,7 @@ def init_routes(app):
             return redirect(url_for("danger_mode"))
 
         current = config.get_setting("DANGER_MODE", "True") == "True"
-        return render_template("danger.html", enabled=current)
+        return render_template("danger.html", enabled=current, page_title="Danger Mode")
 
     @app.route("/api/discover")
     @profile_route("/api/discover")
@@ -1040,14 +1040,14 @@ def init_routes(app):
         ):
             flash("Too many failed attempts. Please try again later.", "error")
             logging.warning("Locked login attempt from %s", ip_address)
-            return render_template("login.html"), 429
+            return render_template("login.html", page_title="Login"), 429
 
         if request.method == "POST":
             username = (request.form.get("username") or "").strip()
             password = (request.form.get("password") or "").strip()
             if not username or not password:
                 flash("Username and password are required", "error")
-                return render_template("login.html"), 400
+                return render_template("login.html", page_title="Login"), 400
 
             db_session = SessionLocal()
             try:
@@ -1088,7 +1088,7 @@ def init_routes(app):
                     "Failed login attempt for %s from %s", username, ip_address
                 )
                 flash("Invalid username or password", "error")
-        return render_template("login.html")
+        return render_template("login.html", page_title="Login")
 
     @app.route("/sso", methods=["GET"])
     def sso_login():
@@ -1123,13 +1123,13 @@ def init_routes(app):
     @app.route("/help")
     @login_required
     def help_page():
-        return render_template("help.html")
+        return render_template("help.html", page_title="Help")
 
     @app.route("/settings_help")
     @login_required
     def settings_help():
         """Display detailed explanations for each configuration option."""
-        return render_template("settings_explanation.html")
+        return render_template("settings_explanation.html", page_title="Settings Guide")
 
     @app.route("/logout")
     @login_required
@@ -1143,7 +1143,9 @@ def init_routes(app):
     def index():
         """Render the index page with available templates."""
         template_details = template_manager.get_templates()
-        return render_template("index.html", template_details=template_details)
+        return render_template(
+            "index.html", template_details=template_details, page_title="Dashboard"
+        )
 
     @app.route("/group/<string:group_name>")
     @login_required
@@ -1153,7 +1155,9 @@ def init_routes(app):
         groups = get_active_groups()
         if group_name not in groups:
             abort(404)
-        return render_template("group.html", group_name=group_name)
+        return render_template(
+            "group.html", group_name=group_name, page_title=f"Group – {group_name}"
+        )
 
     def get_active_templates():
         templates = template_manager.get_templates()
@@ -1642,7 +1646,7 @@ def init_routes(app):
     @login_required
     def stream():
         # Get a list of active cameras (with updates within the last 1 day)
-        return render_template("stream.html")
+        return render_template("stream.html", page_title="Stream")
 
     @app.route("/groups")
     @login_required
@@ -1715,6 +1719,7 @@ def init_routes(app):
             "captions.html",
             template_details=templates,
             lcaptions=entries,
+            page_title="Captions",
         )
 
     @app.route("/download_captions_tsv")
@@ -1829,7 +1834,9 @@ def init_routes(app):
         else:
             templates = template_manager.get_templates()
 
-        return render_template("live.html", template_details=templates)
+        return render_template(
+            "live.html", template_details=templates, page_title="Live View"
+        )
 
     @app.route("/latest_frame/<string:template_name>")
     @login_required
@@ -2137,6 +2144,7 @@ def init_routes(app):
             template_details=template_details,
             screenshots=lscreenshots,
             videos=lvideos,
+            page_title="Camera Details",
         )
 
     @app.route("/screenshots/<string:name>")
@@ -2327,7 +2335,9 @@ def init_routes(app):
             return redirect(url_for("settings"))
 
         settings = get_all_settings()
-        return render_template("settings.html", settings=settings)
+        return render_template(
+            "settings.html", settings=settings, page_title="Settings"
+        )
 
     # Retained for backwards compatibility; redirect to the health endpoint.
     @app.route("/system_metrics")
@@ -2428,7 +2438,9 @@ def init_routes(app):
     @app.route("/discover", methods=["GET"])
     @login_required
     def discover_cameras_route():
-        return render_template("discover.html", cameras=[])
+        return render_template(
+            "discover.html", cameras=[], page_title="Discover Cameras"
+        )
 
     @app.route("/discover/scan", methods=["POST"])
     @login_required
@@ -2567,13 +2579,17 @@ def init_routes(app):
         feeds = scheduling.get_feed_status()
         last_summary = scheduling.get_last_summary_time()
         return render_template(
-            "status.html", metrics=metrics, feeds=feeds, last_summary=last_summary
+            "status.html",
+            metrics=metrics,
+            feeds=feeds,
+            last_summary=last_summary,
+            page_title="System Status",
         )
 
     @app.route("/logs")
     @login_required
     def logs():
-        return render_template("logs.html")
+        return render_template("logs.html", page_title="Logs")
 
     @app.route("/stream_logs")
     @login_required
