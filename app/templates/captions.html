@@ -104,13 +104,10 @@
                 <div class="templateDiv">
                     <div class="video-container">
 			    <div class="camera-name"><a href='/templates/{{camera}}'>{{camera}}</a></div>
-                        <video class="hover-video" loop muted poster="/last_screenshot/{{ camera }}">
+                        <video class="hover-video" loop muted poster="/last_screenshot/{{ camera }}" data-timestamp="{{ template_details[camera]['last_screenshot_time'] }}">
                             <source src="/last_video/{{ camera }}" type="video/mp4">
                             Your browser does not support the video tag.
                         </video>
-                        <div class="timestamp" title="{{ template_details[camera]['last_screenshot_time'] }}">
-                            {{ template_details[camera]['last_screenshot_time'] }}
-                        </div>
                     </div>
                 </div>
             </td>

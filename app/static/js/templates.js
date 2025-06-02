@@ -319,13 +319,12 @@ export async function loadTemplates() {
 
           templateDiv.innerHTML = `
             <a href='/templates/${name}'>
-              <div class="${videoContainerClass} ${errorClass}">
+              <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}">
                 <div class="camera-name">${name}</div>
                 <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none">
                   <source src="/last_video/${name}" type="video/mp4">
                   Your browser does not support the video tag.
                 </video>
-                <div class="timestamp" title="${formatExactTime(lastScreenshotTime)}">${humanizedTimestamp}</div>
                 <div class="play-icon">&#9658;</div>
               </div>
             </a>
