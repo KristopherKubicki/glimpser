@@ -103,6 +103,38 @@ def run_with_timeout(func, args=(), timeout=300):
 
 MAX_IMAGE_TIME_DIFF = datetime.timedelta(minutes=5)
 
+# Separator used when building LLM prompts that contain multiple segments.
+# This helps the model understand logical breaks in the text.
+PROMPT_SEPARATOR = "\n---\n"
+
+
+def select_comparison_frames(directory, latest):
+    """Return a list of comparison frames in priority order.
+
+    The function looks for a reference frame and the previous motion frame
+    before appending the provided latest frame. Only existing files are
+    returned to avoid sending invalid paths to the LLM.
+    """
+
+    frames = []
+
+    reference = os.path.join(directory, "reference.png")
+    if os.path.exists(reference):
+        frames.append(reference)
+
+    prev_motion = os.path.join(directory, "prev_motion.png")
+    if os.path.exists(prev_motion):
+        frames.append(prev_motion)
+    else:
+        last_motion = os.path.join(directory, "last_motion.png")
+        if os.path.exists(last_motion):
+            frames.append(last_motion)
+
+    if latest:
+        frames.append(latest)
+
+    return frames
+
 
 def find_closest_image(directory, last_caption_time, max_time_diff=MAX_IMAGE_TIME_DIFF):
     """Return the closest motion image not older than ``max_time_diff``."""
@@ -473,31 +505,9 @@ def update_camera(name, template, image_file=None, motion=False):
             # allow this to run one time if we have no detection
             #  generate the symlink. if there is a data/screenshots/<camera>/last_motion.png, please rename the move the symlink to prev_motion.png
             #    then, create the symlink for last_motion.png to point to the new png_files[-1]
-            image_paths = []
-            # add reference image if exists
-            if os.path.exists(
-                os.path.join(directory, "reference.png")
-            ):  # if doesnt exist, consider taking the oldest?
-                image_paths.append(os.path.join(directory, "reference.png"))
-
-            # Find the image that closest matches the last_caption_time
-            if "last_caption_time" in template and template["last_caption_time"] != "":
-                try:
-                    last_caption_time = parser.parse(template["last_caption_time"])
-                    closest_image_filename = find_closest_image(
-                        directory, last_caption_time
-                    )
-                    if closest_image_filename:
-                        closest_image_path = os.path.join(
-                            directory, closest_image_filename
-                        )
-                        logging.debug("last caption.... %s", closest_image_path)
-                        image_paths.append(closest_image_path)
-                except Exception as e:
-                    logging.warning("caption parsing error %s", e)
-                    pass
-
-            image_paths.append(os.path.join(directory, png_files[-1]))
+            image_paths = select_comparison_frames(
+                directory, os.path.join(directory, png_files[-1])
+            )
 
             lctime = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -523,10 +533,15 @@ def update_camera(name, template, image_file=None, motion=False):
             if last_caption_trigger or template.get("last_caption") is None:
                 lprompt = ""
                 if template.get("notes"):
-                    lprompt += " " + template["notes"]
-                #  use Chatgpt_compare
+                    # Split multi-line notes to keep prompts concise.
+                    segments = [
+                        seg.strip()
+                        for seg in re.split(r"\n+", template["notes"])
+                        if seg.strip()
+                    ]
+                    lprompt = PROMPT_SEPARATOR.join(segments)
+                # Use ChatGPT to compare the selected frames.
                 gret = chatgpt_compare(lprompt, image_paths, template_name=name)
-                # TODO: add a separator?
                 # print("  oldgpt:", name, template.get('last_caption'))
                 # print("  newgpt:", name, gret)
                 if gret and re.findall(r"(?:sorry|cannot|can not)", gret):
