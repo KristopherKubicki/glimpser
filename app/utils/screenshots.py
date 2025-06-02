@@ -1049,6 +1049,11 @@ def capture_or_download(name: str, template: dict) -> bool:
     ):  # try every 1 hour no matter what??
         return False
 
+    cached_status = get_cached_status_code(url)
+    if cached_status is not None and cached_status >= 400:
+        logging.debug(f"Skipping {url} due to cached status {cached_status}")
+        return False
+
     popup_xpath = template.get("popup_xpath")
     dedicated_selector = template.get("dedicated_xpath")
     timeout = int(template.get("timeout", 30) or 30)
@@ -1278,8 +1283,9 @@ def get_content_type(url, danger, stealth=False) -> (str, bool):
                     stream=(verb == "GET"),
                 )
 
-            if resp.status_code == 404:
-                logging.info(f"Missing {url}")
+            if resp.status_code >= 400:
+                logging.info(f"HTTP error {resp.status_code} for {url}")
+                set_cached_status_code(url, resp.status_code)
                 return "", False
 
             modified = check_if_modified(url, resp.headers)
@@ -1318,8 +1324,9 @@ def get_content_type(url, danger, stealth=False) -> (str, bool):
                     allow_redirects=True,
                 )
 
-            if response.status_code == 404: # todo: consider other 
-                logging.info(f"Missing {url}")
+            if response.status_code >= 400:
+                logging.info(f"HTTP error {response.status_code} for {url}")
+                set_cached_status_code(url, response.status_code)
                 return "", False
 
             modified = check_if_modified(url, response.headers)
