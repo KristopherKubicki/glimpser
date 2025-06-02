@@ -91,6 +91,8 @@ export function initNav() {
         }
       } catch (error) {
         console.error('Error fetching caption status:', error);
+      }
+    };
 
     const checkDiscovery = async () => {
       if (!discoveryStatus) return;
