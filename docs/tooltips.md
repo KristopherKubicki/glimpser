@@ -12,7 +12,7 @@ This document lists the main tooltips available in the Glimpser interface. Hover
 - **Discover Cameras icon** – opens the camera discovery page.
 - **Captions icon** – reads and updates camera language models.
 - **Clock icon** – opens the live page with instructions for real‑time streaming.
-- **Settings icon** – opens the settings page.
+- **Settings gear icon** – opens the settings page.
 - **Login link** – appears when not authenticated.
 
 ## Footer
