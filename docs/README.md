@@ -49,3 +49,4 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Live view image streams now back off exponentially after repeated failures.
 - Live view preloads the next stream for smoother camera switching.
 - PNG streams hide the loading overlay once a frame is displayed.
+- Icon sprite is preloaded and can be pushed via HTTP/2 to shave ~120 ms from the first paint on 4G.

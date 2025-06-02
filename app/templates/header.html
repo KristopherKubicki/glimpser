@@ -14,7 +14,8 @@
         referrerpolicy="no-referrer"
     />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="preload" as="image" href="{{ url_for('static', filename='icons/sprite.svg') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     {% if session.get('user_id') %}
     <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
     {% endif %}
