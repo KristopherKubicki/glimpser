@@ -248,6 +248,8 @@ FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
 FFPROBE_PATH = get_setting("FFPROBE_PATH", "ffprobe")
 # Enable GPU acceleration if supported (e.g. "auto", "cuda", etc.)
 FFMPEG_HWACCEL = get_setting("FFMPEG_HWACCEL", "False")
+# Number of threads FFmpeg should use when encoding/decoding
+FFMPEG_THREADS = int(get_setting("FFMPEG_THREADS", 5))
 
 # CLIP model used for object filtering in scheduling
 CLIP_MODEL_NAME = get_setting(
