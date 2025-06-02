@@ -184,6 +184,23 @@ class TemplateManager:
                 ldelta = True
             else:
                 ldelta = False
+
+            # Determine whether this template operates in browser/stealth mode.
+            browser_like = bool(details.get("browser", template.browser)) or bool(
+                details.get("stealth", template.stealth)
+            )
+
+            # Default frequency/timeout to higher values when using a real
+            # browser. Pages take longer to load and should be scraped more
+            # politely. This mirrors validation defaults but also covers direct
+            # TemplateManager usage without prior normalization. See
+            # ``docs/configuration_guide.md`` for rationale.
+            default_frequency = 60 if browser_like else 30
+            default_timeout = 30 if browser_like else 10
+            if "frequency" not in details or details.get("frequency") == "":
+                details["frequency"] = default_frequency
+            if "timeout" not in details or details.get("timeout") == "":
+                details["timeout"] = default_timeout
             if template:
                 for key, value in details.items():
                     try:
@@ -191,7 +208,11 @@ class TemplateManager:
                             value = int(value)
                         elif key in ["frequency", "timeout"]:
                             if value == "":
-                                value = 30
+                                value = (
+                                    default_frequency
+                                    if key == "frequency"
+                                    else default_timeout
+                                )
 
                             value = int(value)
                             if key == "frequency" and value > 525600:
@@ -200,7 +221,6 @@ class TemplateManager:
                                 key == "frequency" and value < 0.01
                             ):  # that's less than 1 fps...
                                 value = 0.01
-                            # TODO: adjust for browsers-stealth-etc?  increase the frequency and timeout for those by default??
 
                             if (
                                 key == "timeout"
@@ -710,6 +730,7 @@ def mark_offline(name: str) -> None:
     finally:
         session.close()
 
+
 def set_capture_failed(name: str, failed: bool) -> None:
     """Set ``capture_failed`` flag for ``name``."""
     name = validate_template_name(name)
@@ -725,6 +746,7 @@ def set_capture_failed(name: str, failed: bool) -> None:
             session.commit()
     finally:
         session.close()
+
 
 def set_capture_failed(name: str, failed: bool) -> None:
     """Set ``capture_failed`` flag for ``name``."""

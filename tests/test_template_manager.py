@@ -192,6 +192,28 @@ class TestTemplateManager(unittest.TestCase):
         self.assertEqual(mock_session_instance.commit.call_count, 1)
 
     @patch("app.utils.template_manager.SessionLocal")
+    def test_browser_and_stealth_defaults(self, mock_session):
+        """Browser/stealth templates should receive higher defaults."""
+
+        mock_sess = MagicMock()
+        mock_session.return_value = mock_sess
+        mock_query = mock_sess.query.return_value
+        mock_first = mock_query.filter_by.return_value.first
+        mock_first.return_value = None  # simulate creation
+
+        self.template_manager.save_template("btemp", {"browser": True})
+        args, _ = mock_sess.add.call_args
+        self.assertEqual(args[0].frequency, 60)
+        self.assertEqual(args[0].timeout, 30)
+
+        mock_sess.add.reset_mock()
+
+        self.template_manager.save_template("stemp", {"stealth": True})
+        args, _ = mock_sess.add.call_args
+        self.assertEqual(args[0].frequency, 60)
+        self.assertEqual(args[0].timeout, 30)
+
+    @patch("app.utils.template_manager.SessionLocal")
     def test_get_template_by_id(self, mock_session):
         mock_session_instance = MagicMock()
         mock_session.return_value = mock_session_instance
