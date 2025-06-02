@@ -14,7 +14,7 @@ from app.utils.llm import summarize
 
 
 class TestLLM(unittest.TestCase):
-    @patch("app.utils.llm.requests.post")
+    @patch("app.utils.llm.request_with_retry")
     @patch("app.utils.llm.CHATGPT_KEY", "mock_api_key")
     @patch("app.utils.llm.LLM_MODEL_VERSION", "mock_model_version")
     @patch("app.utils.llm.LLM_SUMMARY_PROMPT", "Mock summary prompt")
@@ -42,17 +42,20 @@ class TestLLM(unittest.TestCase):
         self.assertEqual(call_args["json"]["model"], "mock_model_version")
         self.assertIn("Test prompt", str(call_args["json"]["messages"]))
 
-    @patch("app.utils.llm.requests.post")
+    @patch("app.utils.llm.request_with_retry")
+    @patch("app.utils.llm.CHATGPT_KEY", "mock_api_key")
+    @patch("app.utils.llm.LLM_MODEL_VERSION", "mock_model_version")
+    @patch("app.utils.llm.LLM_SUMMARY_PROMPT", "Mock summary prompt")
     def test_summarize_api_error(self, mock_post):
         # Mock an API error response
         mock_post.side_effect = Exception("API Error")
 
         result = summarize("Test prompt")
 
-        # Check if the result is None when an error occurs
-        self.assertIsNone(result)
+        data = json.loads(result)
+        self.assertIn("Summarization delayed", list(data.values())[0])
 
-    @patch("app.utils.llm.requests.post")
+    @patch("app.utils.llm.request_with_retry")
     @patch(
         "app.utils.llm.last_429_error_time",
         datetime.datetime.now() - datetime.timedelta(minutes=10),
@@ -66,7 +69,7 @@ class TestLLM(unittest.TestCase):
         # Verify that the API was not called
         mock_post.assert_not_called()
 
-    @patch("app.utils.llm.requests.post")
+    @patch("app.utils.llm.request_with_retry")
     @patch("app.utils.llm.CHATGPT_KEY", "mock_api_key")
     @patch("app.utils.llm.LLM_MODEL_VERSION", "mock_model_version")
     @patch("app.utils.llm.LLM_SUMMARY_PROMPT", "Mock summary prompt")
