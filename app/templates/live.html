@@ -271,6 +271,7 @@
             }
         }
 
+
         function showStreamErrorIndicator(message) {
             videoOverlay.style.display = 'block';
             streamErrorIndicator.style.display = 'block';
@@ -291,6 +292,7 @@
                 videoOverlay.style.display = 'none';
             }
         }
+
 
         function computeVideoUrl(cameraName, source) {
             if (source === 'mp4' || source === 'loop') {
@@ -600,6 +602,7 @@ function playLoop() {
                 cameraIndex = 0; // Reset the index to loop through the cameras again
             }
             const cameraName = groupCameras[cameraIndex];
+            video.dataset.currentCamera = cameraName; // track which camera is playing
             video.src = `/last_video/${cameraName}`; // Update the video source with the current camera
             video.load();
             video.play();
@@ -641,9 +644,11 @@ function playMP4() {
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
         const groupName = currentCamera.split('group-')[1];
+        video.dataset.currentCamera = templateDetails[currentCamera].groupCameras[0];
         video.src = `/stream.mp4?group=${encodeURIComponent(groupName)}`;
     } else if (currentCamera === 'All') {
         // Special handling for the "All" option
+        video.dataset.currentCamera = Object.keys(templateDetails).filter(k => k !== 'All')[0];
         video.src = '/stream.mp4';
     } else {
         // URL for individual cameras
@@ -697,6 +702,7 @@ function playLive() {
                 cameraIndex = 0;
             }
             const cameraName = groupCameras[cameraIndex];
+            video.dataset.currentCamera = cameraName; // remember active camera
             video.src = '/live_video?camera=' + encodeURIComponent(cameraName);
             video.load();
             video.play();
@@ -875,9 +881,7 @@ function playMotion() {
         updateTemplateDetails();
         updateSpeedContainer();
         playMP4();
-
         preloadNextCamera();
-
     </script>
     <script type="module" src="{{ url_for('static', filename='js/live.js') }}"></script>
 
