@@ -14,6 +14,7 @@ from app.utils.retention_policy import retention_cleanup
 from app.utils.scheduling import (
     schedule_crawlers,
     schedule_summarization,
+    schedule_discovery,
     scheduler,
     start_log_caching,
 )
@@ -148,6 +149,7 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
                 id="retention_cleanup", func=retention_cleanup, trigger="cron", day="*"
             )
             schedule_summarization()
+            schedule_discovery()
 
         # Perform initial cleanup
         retention_cleanup()
