@@ -146,6 +146,8 @@ body {
 main {
     padding: 1rem;
     flex-grow: 1;
+    /* Reserve space for fixed footer so content isn't hidden */
+    padding-bottom: 60px;
 }
 
 
@@ -178,6 +180,10 @@ h1, h2 {
     padding: 20px;
     justify-content: center;
     max-width: 100%;
+}
+
+.captions-page #template-list {
+    display: block;
 }
 
 @media (max-width: 767px) { /* Adjust this value based on your testing */
@@ -986,6 +992,13 @@ input[type=submit]:hover {
     width: var(--grid-item-width, 360px);
 }
 
+/* Position the video container to cover the entire tile */
+.captions-page .video-container {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+}
+
 /* Ensure captions thumbnails fill the container and appear dimmed */
 .captions-page .templateDiv video {
     position: absolute;
@@ -1000,6 +1013,22 @@ input[type=submit]:hover {
 
 .captions-page .templateDiv:hover video {
     filter: none;
+}
+
+.caption-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.caption-box textarea {
+    width: 100%;
+}
+
+.caption-box .last-caption {
+    max-height: 6rem;
+    overflow-y: auto;
+    white-space: pre-wrap;
 }
 
 .filter-controls {
@@ -1179,6 +1208,14 @@ details > summary {
     color: white;
     font-size: var(--timestamp-font-size);
     z-index: 10;
+}
+
+.group-links {
+    margin-top: 0.5em;
+}
+
+.group-links a {
+    margin-right: 0.5em;
 }
 
 

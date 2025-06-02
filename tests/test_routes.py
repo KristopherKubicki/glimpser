@@ -551,6 +551,22 @@ class TestRoutes(unittest.TestCase):
             "live.html", template_details={"cam1": mock_get_template.return_value}
         )
 
+    @patch("app.routes.render_template")
+    @patch("app.routes.get_active_groups")
+    @patch("app.routes.session", {"user_id": 1})
+    def test_group_page(self, mock_groups, mock_render_template):
+        mock_groups.return_value = ["group1", "group2"]
+        response = self.client.get("/group/group1")
+        self.assertEqual(response.status_code, 200)
+        mock_render_template.assert_called_with("group.html", group_name="group1")
+
+    @patch("app.routes.get_active_groups")
+    @patch("app.routes.session", {"user_id": 1})
+    def test_group_page_not_found(self, mock_groups):
+        mock_groups.return_value = ["group1"]
+        response = self.client.get("/group/unknown")
+        self.assertEqual(response.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

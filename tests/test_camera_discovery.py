@@ -307,6 +307,82 @@ class TestCameraDiscovery(unittest.TestCase):
         result = camera_discovery._detect_open_ports("192.168.1.6", [80, 443, 554])
         self.assertEqual(result, [80, 554])
 
+    @patch("app.utils.camera_discovery.socket.create_connection")
+    def test_fetch_http_banner(self, mock_conn):
+        class FakeSock:
+            resp = (
+                b"HTTP/1.1 200 OK\r\n"
+                b"Server: Cam/1.0\r\n"
+                b'WWW-Authenticate: Basic realm="demo"\r\n\r\n'
+                b"<html><title>Demo Cam</title></html>"
+            )
+
+            def __init__(self):
+                self._sent = False
+                self._idx = 0
+
+            def sendall(self, data):
+                self._sent = True
+
+            def recv(self, n):
+                if self._idx >= len(self.resp):
+                    return b""
+                chunk = self.resp[self._idx : self._idx + n]
+                self._idx += n
+                return chunk
+
+            def close(self):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                pass
+
+        mock_conn.return_value = FakeSock()
+        result = camera_discovery._fetch_http_banner("1.2.3.4", 80)
+        self.assertEqual(
+            result,
+            {"server": "Cam/1.0", "realm": "demo", "title": "Demo Cam"},
+        )
+
+    @patch("app.utils.camera_discovery._fetch_http_banner")
+    @patch("app.utils.camera_discovery._detect_open_ports")
+    @patch("app.utils.camera_discovery._probe_onvif", return_value=[])
+    @patch("app.utils.camera_discovery._probe_mdns", return_value=[])
+    @patch("app.utils.camera_discovery._probe_ssdp", return_value=[])
+    @patch("app.utils.camera_discovery._scan_rtsp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_rtmp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_sip_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_webrtc_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_snmp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_http_endpoints", return_value=[])
+    @patch("app.utils.camera_discovery._scan_hls_streams", return_value=[])
+    @patch("app.utils.camera_discovery._local_subnets", return_value=[])
+    def test_banner_in_discover(
+        self,
+        mock_subnets,
+        mock_hls,
+        mock_http,
+        mock_snmp,
+        mock_webrtc,
+        mock_sip,
+        mock_rtmp,
+        mock_rtsp,
+        mock_ssdp,
+        mock_mdns,
+        mock_onvif,
+        mock_detect,
+        mock_fetch,
+    ):
+        mock_detect.return_value = [80]
+        mock_fetch.return_value = {"server": "CamOS"}
+        cams = camera_discovery.discover_cameras()
+        info = cams[0]["info"]
+        self.assertIn("server", info)
+        self.assertEqual(info["server"], "CamOS")
+
     @patch("app.utils.camera_discovery._local_subnets")
     @patch("app.utils.camera_discovery._probe_onvif", return_value=[])
     def test_custom_subnets(self, mock_onvif, mock_local_subnets):

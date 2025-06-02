@@ -13,10 +13,25 @@ export function initTemplates() {
         slider.max = window.innerWidth;
         const templateCount =
           templateList?.querySelectorAll('.templateDiv').length || 1;
+
+        // Minimum width needed to fit all tiles across the page
+        const widthForColumns = Math.ceil(window.innerWidth / templateCount);
+
+        // Minimum width needed so combined rows fill the screen vertically
+        const aspectRatio = 9 / 16;
+        const widthForHeight = Math.sqrt(
+          (window.innerHeight * window.innerWidth) /
+            (templateCount * aspectRatio),
+        );
+
         const computedMin = Math.max(
           50,
-          Math.min(slider.max, Math.ceil(window.innerWidth / templateCount)),
+          Math.min(
+            slider.max,
+            Math.ceil(Math.max(widthForColumns, widthForHeight)),
+          ),
         );
+
         slider.min = computedMin;
         if (parseFloat(slider.value) < computedMin) {
           slider.value = computedMin;
@@ -455,9 +470,7 @@ export async function loadTemplates() {
       window.addEventListener('resize', updateGridLayout);
       if (window.updateSliderLimits) window.updateSliderLimits();
     }
-    if (isCaptionsPage) {
-      updateHumanizedTimes();
-    }
+    updateHumanizedTimes();
   } catch (error) {
     console.error('Error loading templates:', error);
     const errorMsg = '<div class="error">Error loading templates. Please try again.</div>';

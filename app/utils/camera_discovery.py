@@ -152,8 +152,12 @@ def _remote_vendor_lookup(mac: str) -> str | None:
     return None
 
 
-def _onvif_get_firmware(xaddr: str, timeout: int = 2) -> str | None:
-    """Return firmware version from an ONVIF device service."""
+def _onvif_get_device_info(xaddr: str, timeout: int = 2) -> dict[str, str]:
+    """Return device information from an ONVIF service.
+
+    The request is intentionally minimal and does not require authentication in
+    most cases.  Any errors are silently ignored so discovery remains fast.
+    """
 
     body = (
         "<?xml version='1.0' encoding='UTF-8'?>"
@@ -163,17 +167,23 @@ def _onvif_get_firmware(xaddr: str, timeout: int = 2) -> str | None:
         "</s:Body>"
         "</s:Envelope>"
     )
+    info: dict[str, str] = {}
     try:
         resp = requests.post(xaddr, data=body, timeout=timeout)
         if resp.ok:
             xml = ET.fromstring(resp.content)
             ns = {"tt": "http://www.onvif.org/ver10/schema"}
-            node = xml.find(".//tt:FirmwareVersion", ns)
-            if node is not None:
-                return node.text
+            for tag, key in (
+                ("Manufacturer", "manufacturer"),
+                ("Model", "model"),
+                ("FirmwareVersion", "firmware"),
+            ):
+                node = xml.find(f".//tt:{tag}", ns)
+                if node is not None and node.text:
+                    info[key] = node.text
     except Exception:
         pass
-    return None
+    return info
 
 
 def _mac_manufacturer(mac: str | None) -> str | None:
@@ -317,15 +327,13 @@ def _probe_onvif(timeout=2):
             except Exception as e:
                 logging.debug("parse error: %s", e)
                 port = 80
-            # Attempt to collect firmware information using the ONVIF device
-            # service if an XAddr was advertised. Many cameras expose this
-            # endpoint without authentication. Any errors are ignored so the
-            # discovery still finishes quickly.
+            # Attempt to collect detailed information using the ONVIF device
+            # service. Many cameras expose this endpoint without authentication.
+            # Any errors are ignored so discovery still finishes quickly.
             if info.get("xaddr"):
                 try:
-                    fw = _onvif_get_firmware(info["xaddr"], timeout=timeout)
-                    if fw:
-                        info["firmware"] = fw
+                    details = _onvif_get_device_info(info["xaddr"], timeout=timeout)
+                    info.update(details)
                 except Exception:
                     pass
             cameras.append({"ip": ip, "protocol": "onvif", "port": port, "info": info})
@@ -445,6 +453,43 @@ def _check_http_endpoint(ip: str, port: int, path: str, timeout: int = 2) -> boo
     except Exception as e:  # pragma: no cover - network
         logging.debug("HTTP check error for %s:%s%s: %s", ip, port, path, e)
         return False
+
+
+def _fetch_http_banner(ip: str, port: int, timeout: int = 2) -> dict[str, str]:
+    """Return HTTP metadata such as Server header or page title."""
+
+    request = f"GET / HTTP/1.1\r\nHost: {ip}\r\nConnection: close\r\n\r\n"
+    info: dict[str, str] = {}
+    try:
+        with socket.create_connection((ip, port), timeout=timeout) as sock:
+            sock.sendall(request.encode())
+            response = b""
+            while True:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                response += chunk
+                if b"\r\n\r\n" in response:
+                    break
+        header, _, body = response.partition(b"\r\n\r\n")
+        for line in header.decode(errors="ignore").split("\r\n"):
+            if line.lower().startswith("server:"):
+                info["server"] = line.split(":", 1)[1].strip()
+            if line.lower().startswith("www-authenticate:") and 'realm="' in line:
+                start = line.lower().find('realm="') + 7
+                end = line.find('"', start)
+                if end != -1:
+                    info["realm"] = line[start:end]
+        body_text = body.decode(errors="ignore")
+        start_idx = body_text.lower().find("<title>")
+        end_idx = body_text.lower().find("</title>", start_idx)
+        if start_idx != -1 and end_idx != -1:
+            title = body_text[start_idx + 7 : end_idx].strip()
+            if title:
+                info["title"] = title
+    except Exception as e:  # pragma: no cover - network
+        logging.debug("HTTP banner error for %s:%s: %s", ip, port, e)
+    return info
 
 
 def _scan_rtsp_ports(subnets):
@@ -725,7 +770,7 @@ def discover_cameras(progress_callback=None, subnets=None):
             finally:
                 _report(stage, len(cameras), stage_cameras)
 
-    # Always include the internal status page so the system can monitor itself
+    # Always include internal views so the system can monitor itself
     from app.config import PORT
 
     cameras.append(
@@ -737,10 +782,21 @@ def discover_cameras(progress_callback=None, subnets=None):
             "url": f"http://127.0.0.1:{PORT}/status",
         }
     )
-    # remove duplicates
+
+    cameras.append(
+        {
+            "ip": "127.0.0.1",
+            "protocol": "http",
+            "port": PORT,
+            "info": {"name": "Internal Caption"},
+            "url": f"http://127.0.0.1:{PORT}/internal_caption.mjpg",
+        }
+    )
+
+    # remove duplicates but keep distinct URLs
     unique = {}
     for cam in cameras:
-        key = (cam["ip"], cam["protocol"], cam["port"])
+        key = (cam["ip"], cam["protocol"], cam["port"], cam.get("url"))
         if key not in unique:
             unique[key] = cam
 
@@ -753,7 +809,13 @@ def discover_cameras(progress_callback=None, subnets=None):
         if cam.get("protocol") != "local":
             ports = _detect_open_ports(cam["ip"], COMMON_PORTS)
             if ports:
-                cam.setdefault("info", {})["open_ports"] = ports
+                info = cam.setdefault("info", {})
+                info["open_ports"] = ports
+                for p in ports:
+                    if p in (80, 8080, 443):
+                        banner = _fetch_http_banner(cam["ip"], p)
+                        for k, v in banner.items():
+                            info.setdefault(k, v)
 
     _report("trace", len(result), [])
 

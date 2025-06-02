@@ -645,6 +645,28 @@ def get_storage_usage(name: str) -> str:
     return f"{total_size:.1f} {unit}"
 
 
+def get_storage_usage_bytes(name: str) -> int:
+    """Return total storage used for ``name`` in bytes."""
+
+    name = validate_template_name(name)
+    if name is None:
+        return 0
+
+    screenshot_path = os.path.join(SCREENSHOT_DIRECTORY, name)
+    video_path = os.path.join(VIDEO_DIRECTORY, name)
+    total_size = 0
+
+    for path in [screenshot_path, video_path]:
+        if os.path.exists(path):
+            for dirpath, _, filenames in os.walk(path):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    if os.path.exists(fp):
+                        total_size += os.path.getsize(fp)
+
+    return total_size
+
+
 def record_llm_usage(name: str, tokens: int) -> None:
     """Record token usage for ``name`` in ``LLM_USAGE_PATH``.
 

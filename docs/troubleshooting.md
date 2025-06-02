@@ -196,3 +196,15 @@ snapshot image rather than a true video stream.
 - Use the camera's RTSP or HTTP video stream URL when available.
 - Snapshot-only URLs now fall back to an MJPEG feed so the live view
   behaves like a regular video stream.
+
+## 12. Layout Issues
+
+### Problem: Buttons at the bottom of the Templates page are hidden
+
+The footer uses a fixed position at the bottom of the screen. On long pages this
+could overlap the last buttons.
+
+**Solution:**
+- Glimpser now adds extra padding to the `main` element so page content scrolls
+  fully above the footer. Update to the latest version or add a similar rule in
+  your custom CSS.

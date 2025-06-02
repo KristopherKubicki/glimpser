@@ -105,10 +105,10 @@
         <option value="png" title="View a series of PNG images">PNG Stream</option>
 	<!-- <option value="m3u8" title="View an HLS (HTTP Live Streaming) video stream">M3U8 Stream</option> -->
         <option value="loop" title="Loop through available video clips">Loop Videos</option>
-        <option value="mp4" selected title="View an MP4 video stream">MP4 Stream</option>
+        <option value="mp4" title="View an MP4 video stream">MP4 Stream</option>
         <option value="live" title="View the direct live stream">Live Video</option>
         <option value="motion" title="View motion-detected frames">Motion</option>
-        <option value="mjpg" title="View an MJPEG (Motion JPEG) stream">MJPG</option>
+        <option value="mjpg" selected title="View an MJPEG (Motion JPEG) stream">MJPG</option>
     </select>
 
 
@@ -141,16 +141,16 @@
         <div id="video-overlay" class="video-overlay" role="region" aria-live="polite">
             <div id="loading-indicator" class="hidden" role="status">Loading...</div>
             <div id="play-pause-indicator" class="video-icon hidden" aria-hidden="true">▶</div>
-            <div id="offline-indicator" class="offline-indicator hidden" role="alert">
-                <i class="fas fa-video-slash video-icon"></i>
+            <div id="offline-indicator" class="offline-indicator hidden" role="alert" title="Camera offline">
+                <i class="fas fa-video-slash video-icon" aria-hidden="true"></i>
                 <p id="offline-message"></p>
             </div>
-            <div id="capture-error-indicator" class="error-indicator hidden" role="alert">
-                <i class="fas fa-exclamation-triangle video-icon"></i>
+            <div id="capture-error-indicator" class="error-indicator hidden" role="alert" title="Capture error">
+                <i class="fas fa-exclamation-triangle video-icon" aria-hidden="true"></i>
                 <p id="capture-error-message"></p>
             </div>
-            <div id="stream-error-indicator" class="error-indicator hidden" role="alert">
-                <i class="fas fa-times-circle video-icon"></i>
+            <div id="stream-error-indicator" class="error-indicator hidden" role="alert" title="Streaming error">
+                <i class="fas fa-times-circle video-icon" aria-hidden="true"></i>
                 <p id="stream-error-message"></p>
             </div>
         </div>
@@ -545,6 +545,8 @@ function changeCamera() {
 
 function playM3U8() {
     video.style.display = 'block';
+        // HLS streams cannot be scrubbed
+        document.getElementById("seek-bar").style.display = "none";
 
     image.style.display = 'none';
     stopLiveSwitch();
@@ -709,7 +711,8 @@ function handleVideoEnded() {
 
 function playLive() {
     video.style.display = 'block';
-    document.getElementById("seek-bar").style.display = "block";
+        // Disable scrubbing on live streams
+        document.getElementById("seek-bar").style.display = "none";
     stopPNG();
     stopLiveSwitch();
 
@@ -791,7 +794,8 @@ function playPNG() {
 function playMJPG() {
     video.style.display = 'none';
     image.style.display = 'block';
-        document.getElementById("seek-bar").style.display = "block";
+        // MJPEG streams show images only, hide the scrub bar
+        document.getElementById("seek-bar").style.display = "none";
     stopLiveSwitch();
     stopPNG();
     if (currentCamera.startsWith('group-')) {
@@ -872,8 +876,10 @@ function playMotion() {
 
     function updateSpeedContainer() {
         if (!speedContainer) return;
+        const source = document.getElementById('video-source').value;
         const isGroupView = currentCamera === 'All' || currentCamera.startsWith('group-');
-        speedContainer.style.display = isGroupView ? 'block' : 'none';
+        const show = isGroupView && source !== 'mjpg';
+        speedContainer.style.display = show ? 'block' : 'none';
     }
 
     function checkCameraConnection(cameraName) {
@@ -902,11 +908,11 @@ function playMotion() {
         return lastScreenshotTime > oneHourAgo;
     }
 
-        // Initially show the latest screenshot and start the MP4 stream
+        // Initially show the latest screenshot and start the MJPG stream
         showLastScreenshot();
         updateTemplateDetails();
         updateSpeedContainer();
-        playMP4();
+        playMJPG();
         preloadNextCamera();
     </script>
     <script type="module" src="{{ url_for('static', filename='js/live.js') }}"></script>

@@ -86,10 +86,10 @@
                 <option value="png" title="View a series of PNG images">PNG Stream</option>
                 <!-- <option value="m3u8" title="View an HLS (HTTP Live Streaming) video stream">M3U8 Stream</option> -->
                 <option value="loop" title="Loop through available video clips">Loop Videos</option>
-                <option value="mp4" selected title="View an MP4 video stream">MP4 Stream</option>
+                <option value="mp4" title="View an MP4 video stream">MP4 Stream</option>
                 <option value="live" title="View the direct live stream">Live Video</option>
                 <option value="motion" title="View motion-detected frames">Motion</option>
-                <option value="mjpg" title="View an MJPEG (Motion JPEG) stream">MJPG</option>
+                <option value="mjpg" selected title="View an MJPEG (Motion JPEG) stream">MJPG</option>
             </select>
         </div>
     </div>
@@ -266,6 +266,13 @@ function updateVideo(templateName) {
             <div class="form-row">
                 <label for="groups" title="Groups for the template">Groups:</label>
                 <input type="text" id="groups" name="groups" value="{{ template_details.groups }}" title="Enter comma-separated group names">
+                {% if template_details.groups %}
+                <div class="group-links">
+                    {% for g in template_details.groups.split(',') %}
+                    <a href="/group/{{ g.strip() }}" class="group-link" title="View group {{ g.strip() }}">{{ g.strip() }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
 
             <div class="form-row">

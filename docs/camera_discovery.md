@@ -26,7 +26,7 @@ def discover_cameras_scan_stream():
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 ```
 
-When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button opens an EventSource to `/discover/scan_stream`. The first message now includes the list of subnets that will be scanned and the full plan of discovery stages. The progress bar is initialized with the total number of stages. Each subsequent message indicates which stage has finished, how many cameras have been found so far, and includes any new cameras discovered during that stage. These cameras appear in the table immediately. A final event with ``{"done": true}`` simply signals completion. Discovery results now display firmware details when available and the page offers buttons to export the table as CSV or JSON.
+When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button opens an EventSource to `/discover/scan_stream`. The first message now includes the list of subnets that will be scanned and the full plan of discovery stages. The progress bar is initialized with the total number of stages. Each subsequent message indicates which stage has finished, how many cameras have been found so far, and includes any new cameras discovered during that stage. These cameras appear in the table immediately. A final event with ``{"done": true}`` simply signals completion. Discovery results now display firmware details along with the reported manufacturer and model when available. These fields are pulled from the camera's ONVIF device service. The page also offers buttons to export the table as CSV or JSON.
 
 An optional CIDR can be supplied via the new input field to restrict discovery to a specific Class C network. The value is sent as the ``cidr`` query parameter and parsed by ``discover_cameras()``.
 
@@ -154,6 +154,9 @@ Each camera is now also checked for commonly used service ports. Any detected
 ports are listed in the ``open_ports`` field so you can quickly see which
 services are reachable (for example, 80 for HTTP or 554 for RTSP). This scan
 is lightweight and runs after the main discovery steps finish.
+If an HTTP port responds, Glimpser also fetches the web page banner to capture
+the `Server` header, authentication realm, and page title when present. These
+values populate the **Info** column so you can quickly identify each device.
 
 You can then add a discovered camera to your configuration directly from the `/discover` page.
 The "Add" button on this page now includes a tooltip (title attribute) for improved accessibility.
@@ -162,6 +165,8 @@ The discovery list also shows a **System Status** entry pointing at your local
 `/status` page (`http://127.0.0.1:8082/status`). You can add this item like any
 other camera to have Glimpser periodically capture screenshots of its own
 metrics page.
+It now also includes an **Internal Caption** entry streaming `/internal_caption.mjpg`,
+which loops recent caption text for convenient review.
 
 ## Common cameras to try
 

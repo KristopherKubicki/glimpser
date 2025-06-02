@@ -34,7 +34,8 @@ from flask import (
     stream_with_context,
 )
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
+import textwrap
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
@@ -742,6 +743,42 @@ def generate_fast_mjpg(camera: str):
             time.sleep(delay - elapsed)
 
 
+def generate_caption_loop():
+    """Yield MJPEG frames showing the most recent caption."""
+
+    boundary = b"frame"
+    while True:
+        session_db = SessionLocal()
+        caption = "No captions available"
+        try:
+            rec = session_db.query(Summary).order_by(Summary.timestamp.desc()).first()
+            if rec:
+                try:
+                    data = json.loads(rec.content)
+                    if data:
+                        caption = next(iter(data.values()))
+                except Exception:
+                    caption = rec.content
+        finally:
+            session_db.close()
+
+        img = Image.new("RGB", (1280, 720), "black")
+        draw = ImageDraw.Draw(img)
+        font = ImageFont.load_default()
+        wrapped = textwrap.fill(caption, width=60)
+        bbox = draw.textbbox((0, 0), wrapped, font=font)
+        w = bbox[2] - bbox[0]
+        h = bbox[3] - bbox[1]
+        draw.text(((1280 - w) / 2, (720 - h) / 2), wrapped, fill="white", font=font)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG")
+        frame = buf.getvalue()
+
+        yield b"--" + boundary + b"\r\n"
+        yield b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
+        time.sleep(5)
+
+
 def allowed_filename(filename: str) -> bool:
     r"""Return ``True`` when ``filename`` contains only safe characters.
 
@@ -1108,6 +1145,16 @@ def init_routes(app):
         template_details = template_manager.get_templates()
         return render_template("index.html", template_details=template_details)
 
+    @app.route("/group/<string:group_name>")
+    @login_required
+    def group_page(group_name: str):
+        """Render a page listing all cameras in a group."""
+        group_name = secure_filename(group_name)
+        groups = get_active_groups()
+        if group_name not in groups:
+            abort(404)
+        return render_template("group.html", group_name=group_name)
+
     def get_active_templates():
         templates = template_manager.get_templates()
         active_cameras = []
@@ -1412,6 +1459,13 @@ def init_routes(app):
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
 
+    @app.route("/internal_caption.mjpg", methods=["GET"])
+    def internal_caption_mjpg():
+        return Response(
+            generate_caption_loop(),
+            mimetype="multipart/x-mixed-replace; boundary=frame",
+        )
+
     @app.route("/motion_caption.mjpg", methods=["GET"])
     def motion_caption_mjpg():
         group = request.args.get("group")
@@ -1646,6 +1700,9 @@ def init_routes(app):
             )
             templates[name]["video_count"] = template_manager.get_video_count(name)
             templates[name]["storage_usage"] = template_manager.get_storage_usage(name)
+            templates[name]["storage_usage_bytes"] = (
+                template_manager.get_storage_usage_bytes(name)
+            )
             templates[name]["llm_response_count"] = (
                 template_manager.get_llm_response_count(name)
             )
