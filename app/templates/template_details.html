@@ -305,6 +305,7 @@ function updateVideo(templateName) {
     <div id="delete-template" class="form-actions">
         <button id="delete-btn" onclick="confirmDelete('{{ template_name }}')" title="Delete this template permanently">Delete Template</button>
     </div>
+    <div id="undo-container" style="display:none" class="form-actions"></div>
 </details>
 
 <script>
@@ -348,24 +349,41 @@ function validateForm() {
 
 function confirmDelete(templateName) {
     const confirmed = confirm("Are you sure you want to delete this template?");
-    if (confirmed) {
-        // Send a DELETE request to the server
+    if (!confirmed) return;
+    const templateData = window.templateDetails[templateName] || {};
+    fetch('/templates', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: templateName })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if(data.status === 'success') {
+            showUndo(templateName, templateData);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function showUndo(name, data) {
+    const container = document.getElementById('undo-container');
+    if (!container) return;
+    container.style.display = 'block';
+    container.innerHTML = '<button id="undo-btn">Undo Delete</button>';
+    document.getElementById('undo-btn').addEventListener('click', () => {
         fetch('/templates', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ name: templateName })
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Object.assign({ name }, data))
         })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message);
-            if(data.status === 'success') {
-                window.location.href = '/'; // Redirect to the homepage or another appropriate page
-            }
-        })
-        .catch(error => console.error('Error:', error));
-    }
+        .then(resp => resp.json())
+        .then(() => { window.location.reload(); })
+        .catch(err => console.error('Error:', err));
+    });
+    setTimeout(() => { container.style.display = 'none'; }, 10000);
 }
 
 function showCameraDetails(templateName) {
