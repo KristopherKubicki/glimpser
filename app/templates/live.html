@@ -162,6 +162,7 @@
 
     <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
     <script>
+
         const video = document.getElementById('live-video');
         const image = document.getElementById('live-image');
         const templateDetailsContainer = document.getElementById('template-details');
@@ -795,7 +796,9 @@ function playMotion() {
         updateTemplateDetails();
         updateSpeedContainer();
         playMP4();
+
     </script>
+    <script type="module" src="{{ url_for('static', filename='js/live.js') }}"></script>
 
 {% endblock %}
 

@@ -4,6 +4,7 @@ import logging
 import os
 import threading
 import time
+import sys
 import psutil
 from datetime import timedelta
 
@@ -207,7 +208,7 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
                             logging.info("Forcing application restart...")
                             last_restart_time = current_time
                             failure_count = 0
-                            os._exit(1)  # Force restart the application
+                            sys.exit(1)  # Force restart the application gracefully
                         else:
                             logging.warning(
                                 "Restart cooldown in effect. Skipping restart."
