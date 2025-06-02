@@ -514,7 +514,9 @@ def generate(
                     and last_shot
                     and os.path.exists(last_shot)
                 ):
-                    # warning - todo, this needs to be completed still
+                    # Serve the previously captured screenshot if a new frame
+                    # was not generated. If the cached image cannot be opened,
+                    # remove it and fall back to searching for a new screenshot.
                     try:
                         if screenshots._is_valid_png(last_shot):
                             with Image.open(last_shot) as img:
@@ -530,9 +532,12 @@ def generate(
                                 os.remove(last_shot)
                             except OSError:
                                 pass
+                            last_shot = None
                     except Exception as e:
                         logging.error("Failed to open last shot %s: %s", last_shot, e)
-                else:
+                        last_shot = None
+
+                if frame is None:
                     # Replace this with your actual template manager code
                     templates = template_manager.get_templates()
 
