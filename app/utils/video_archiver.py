@@ -246,6 +246,8 @@ def get_video_duration(video_path):
 
 def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> bool:
     """Concatenate the temporary video with the existing in-process video."""
+    file_updated = False
+
     if (
         os.path.exists(in_process_video)
         and os.path.exists(temp_video)
@@ -295,6 +297,7 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
             try:
                 run_ffmpeg(concat_command)
                 os.rename(concat_video, in_process_video)
+                file_updated = True
                 output_video = os.path.join(VIDEO_DIRECTORY, "latest_camera.mp4")
                 if os.path.exists(output_video + ".tmp"):
                     os.unlink(output_video + ".tmp")
@@ -321,11 +324,20 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
                     return False
         elif os.path.exists(temp_video) and os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
+            file_updated = True
     elif os.path.exists(temp_video) and os.path.getsize(temp_video) > 0:
         os.rename(temp_video, in_process_video)
+        file_updated = True
 
-    # TODO: check timestamp, should be current...
+    # Verify the modification time is recent when a file was updated
     if os.path.exists(in_process_video):
+        if file_updated:
+            mod_time = os.path.getmtime(in_process_video)
+            if abs(time.time() - mod_time) > 10:
+                logging.warning(
+                    "in_process video timestamp stale: %s", in_process_video
+                )
+                return False
         return True
     return False
 

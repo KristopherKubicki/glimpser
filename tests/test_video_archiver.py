@@ -115,6 +115,8 @@ class TestVideoArchiver(unittest.TestCase):
             patch("os.rename"),
             patch("os.symlink"),
             patch("os.unlink"),
+            patch("os.path.getmtime", return_value=100),
+            patch("time.time", return_value=105),
         ):
             result = concatenate_videos("in_process.mp4", "temp.mp4", self.temp_dir)
         self.assertTrue(result)
@@ -138,9 +140,34 @@ class TestVideoArchiver(unittest.TestCase):
             patch("os.path.getsize", return_value=1),
             patch("os.rename"),
             patch("os.symlink"),
+            patch("os.path.getmtime", return_value=100),
+            patch("time.time", return_value=105),
         ):
             result = concatenate_videos("in.mp4", "tmp.mp4", self.temp_dir)
         self.assertEqual(mock_subprocess_run.call_count, 2)
+
+    @patch("app.utils.video_archiver.logging.warning")
+    @patch("app.utils.video_archiver.get_video_duration")
+    @patch("subprocess.run")
+    def test_concatenate_videos_stale_timestamp(
+        self, mock_subprocess_run, mock_get_video_duration, mock_warning
+    ):
+        mock_get_video_duration.return_value = 10
+        mock_subprocess_run.return_value.returncode = 0
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("os.path.getsize", return_value=1),
+            patch("os.path.isdir", return_value=True),
+            patch("os.rename"),
+            patch("os.symlink"),
+            patch("os.unlink"),
+            patch("os.path.getmtime", return_value=0),
+            patch("time.time", return_value=100),
+        ):
+            result = concatenate_videos("in.mp4", "tmp.mp4", self.temp_dir)
+
+        self.assertFalse(result)
+        mock_warning.assert_called_once()
 
     def test_handle_concat_error(self):
         with (

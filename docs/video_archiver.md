@@ -15,3 +15,7 @@ of placeholder frames.
 If a screenshot vanishes between discovery and metadata lookup (for example, if
 another process cleans the directory), the archiver simply skips that file. This
 prevents crashes due to `FileNotFoundError` when gathering timestamps.
+
+When segments are concatenated, the resulting `in_process.mp4` is checked to
+ensure its modification time is recent. A stale timestamp triggers a warning
+and the operation is aborted so corrupted videos do not linger.
