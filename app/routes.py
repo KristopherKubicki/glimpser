@@ -953,7 +953,6 @@ def init_routes(app):
             }
         )
 
-
     @app.route("/captions_status")
     @login_required
     def captions_status():
@@ -1347,6 +1346,9 @@ def init_routes(app):
                 most_recent_file = last_file
                 most_recent_time = last_mtime
         if most_recent_file is None:
+            if last_shot and os.path.exists(last_shot):
+                # Fall back to the previously served screenshot
+                return send_file(last_shot)
             abort(404)
 
         last_time = time.time()
@@ -1355,7 +1357,10 @@ def init_routes(app):
         if os.path.exists(most_recent_file):
             return send_file(most_recent_file)
         if last_file and os.path.exists(last_file):
+            last_shot = last_file
             return send_file(last_file)  # better than nothing
+        if last_shot and os.path.exists(last_shot):
+            return send_file(last_shot)
         abort(404)
 
     @app.route(

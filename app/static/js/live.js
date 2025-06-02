@@ -181,6 +181,15 @@ image.addEventListener('error', () => {
         // Ignore errors triggered from clearing the image source
         return;
     }
+    if (src.includes('/stream.png')) {
+        // For the PNG stream view, keep showing the last frame and retry
+        setTimeout(() => {
+            if (typeof updateFeed === 'function') {
+                updateFeed();
+            }
+        }, 2000);
+        return;
+    }
     showError('Error loading image');
     setTimeout(() => {
         if (typeof updateFeed === 'function') {
