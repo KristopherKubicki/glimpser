@@ -152,8 +152,12 @@ def _remote_vendor_lookup(mac: str) -> str | None:
     return None
 
 
-def _onvif_get_firmware(xaddr: str, timeout: int = 2) -> str | None:
-    """Return firmware version from an ONVIF device service."""
+def _onvif_get_device_info(xaddr: str, timeout: int = 2) -> dict[str, str]:
+    """Return device information from an ONVIF service.
+
+    The request is intentionally minimal and does not require authentication in
+    most cases.  Any errors are silently ignored so discovery remains fast.
+    """
 
     body = (
         "<?xml version='1.0' encoding='UTF-8'?>"
@@ -163,17 +167,23 @@ def _onvif_get_firmware(xaddr: str, timeout: int = 2) -> str | None:
         "</s:Body>"
         "</s:Envelope>"
     )
+    info: dict[str, str] = {}
     try:
         resp = requests.post(xaddr, data=body, timeout=timeout)
         if resp.ok:
             xml = ET.fromstring(resp.content)
             ns = {"tt": "http://www.onvif.org/ver10/schema"}
-            node = xml.find(".//tt:FirmwareVersion", ns)
-            if node is not None:
-                return node.text
+            for tag, key in (
+                ("Manufacturer", "manufacturer"),
+                ("Model", "model"),
+                ("FirmwareVersion", "firmware"),
+            ):
+                node = xml.find(f".//tt:{tag}", ns)
+                if node is not None and node.text:
+                    info[key] = node.text
     except Exception:
         pass
-    return None
+    return info
 
 
 def _mac_manufacturer(mac: str | None) -> str | None:
@@ -317,15 +327,13 @@ def _probe_onvif(timeout=2):
             except Exception as e:
                 logging.debug("parse error: %s", e)
                 port = 80
-            # Attempt to collect firmware information using the ONVIF device
-            # service if an XAddr was advertised. Many cameras expose this
-            # endpoint without authentication. Any errors are ignored so the
-            # discovery still finishes quickly.
+            # Attempt to collect detailed information using the ONVIF device
+            # service. Many cameras expose this endpoint without authentication.
+            # Any errors are ignored so discovery still finishes quickly.
             if info.get("xaddr"):
                 try:
-                    fw = _onvif_get_firmware(info["xaddr"], timeout=timeout)
-                    if fw:
-                        info["firmware"] = fw
+                    details = _onvif_get_device_info(info["xaddr"], timeout=timeout)
+                    info.update(details)
                 except Exception:
                     pass
             cameras.append({"ip": ip, "protocol": "onvif", "port": port, "info": info})
