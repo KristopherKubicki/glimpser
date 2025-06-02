@@ -78,6 +78,11 @@ class TestMainUtilities(unittest.TestCase):
             main.clear_console()
             mock_system.assert_called_once_with("clear")
 
+    @patch("main.clear_console")
+    def test_clear_console_cli_calls_clear(self, mock_clear):
+        main.clear_console_cli()
+        mock_clear.assert_called_once()
+
     @patch("main.socket.socket")
     def test_is_port_in_use(self, mock_socket):
         mock_instance = mock_socket.return_value.__enter__.return_value
