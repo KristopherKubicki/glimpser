@@ -50,7 +50,7 @@ We follow a standard GitHub Flow:
 3. Ensure all tests pass and linting succeeds.
 4. Open a pull request describing your changes.
 
-For more details, see [CONTRIBUTING.md](../CONTRIBUTING.md).
+For more details, see [CONTRIBUTING.md](https://github.com/KristopherKubicki/glimpser/blob/main/CONTRIBUTING.md).
 
 ## Extending the Codebase
 
