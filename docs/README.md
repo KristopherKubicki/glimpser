@@ -39,3 +39,4 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Navigation menus use a consistent accent color with smooth hover effects.
 - Session cookies are now marked secure/HTTPOnly and expire after a configurable timeout.
 - Player pages fade the navigation bar when the mouse is idle for a few seconds.
+- Keyboard shortcuts now allow play/pause, mute, and fullscreen toggling when watching live video.
