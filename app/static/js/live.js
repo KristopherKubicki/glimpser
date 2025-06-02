@@ -149,8 +149,9 @@ video.addEventListener('play', () => showPlayPauseIndicator(false));
 video.addEventListener('pause', () => showPlayPauseIndicator(true));
 video.addEventListener('error', (e) => {
     const msg = e.target.error ? e.target.error.message : '';
-    if (msg && msg.includes('Empty src attribute')) {
-        // Ignore errors from blank sources when switching cameras
+    const src = video.getAttribute('src');
+    if (!src || src.trim() === '' || (msg && msg.includes('Empty src attribute'))) {
+        // Ignore errors from blank or cleared sources when switching cameras
         return;
     }
     showError('Error loading video: ' + msg);
@@ -161,6 +162,11 @@ video.addEventListener('error', (e) => {
     }, 2000);
 });
 image.addEventListener('error', () => {
+    const src = image.getAttribute('src');
+    if (!src || src.trim() === '') {
+        // Ignore errors triggered from clearing the image source
+        return;
+    }
     showError('Error loading image');
     setTimeout(() => {
         if (typeof updateFeed === 'function') {
