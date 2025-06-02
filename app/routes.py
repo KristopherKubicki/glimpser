@@ -361,20 +361,27 @@ def generate_live_stream(url: str):
     )
     if image_like:
         session = screenshots.http_session()
+        failures = 0
+        base_delay = 1 / max(config.LIVE_FALLBACK_FPS, 1)
         while True:
             try:
                 resp = session.get(url, timeout=5, stream=True)
                 if resp.status_code == 200:
                     yield resp.content
+                    failures = 0
                 else:
                     logging.error(
                         "Failed to fetch image from %s (HTTP %s)", url, resp.status_code
                     )
+                    failures += 1
             except GeneratorExit:
                 break
             except Exception as e:
                 logging.error("Error fetching image from %s: %s", url, e)
-            time.sleep(1 / max(config.LIVE_FALLBACK_FPS, 1))
+                failures += 1
+
+            delay = min(base_delay * (2**failures), 30)
+            time.sleep(delay)
         return
 
     command = [config.FFMPEG_PATH]
