@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Live video streaming endpoint `/live_video`
 - Python 3.11 compatibility
 - mDNS/Zeroconf camera discovery
+- MAC vendor lookup now consults local databases and an online API
 - Footer warns when a newer release is available
 - Stream error overlay distinguishes network and unsupported format errors
 

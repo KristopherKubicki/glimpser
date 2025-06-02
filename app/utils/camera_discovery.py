@@ -8,7 +8,11 @@ from ipaddress import ip_network
 import os
 import glob
 import time
+from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import requests
+
 from .screenshots import is_port_open
 
 # Minimal OUI mapping for MAC manufacturer lookup.  This avoids pulling in
@@ -18,7 +22,52 @@ OUI_MAP = {
     "000c29": "VMware",
     "525400": "QEMU",
     "080027": "VirtualBox",
+    # Common router and camera vendors
+    "d850e6": "ASUSTek",
+    "50e549": "ASUSTek",
+    "0017c8": "Netgear",
+    "a0cec8": "Netgear",
+    "00040e": "D-Link",
+    "b0b2dc": "TP-Link",
+    "28c68e": "TP-Link",
+    "fcdbb3": "Ubiquiti",
+    "7cf2c8": "Ubiquiti",
+    "001e58": "Hikvision",
+    "18a6f7": "Amcrest",
+    "00265e": "Axis",
 }
+
+# Possible locations of large OUI databases to supplement :data:`OUI_MAP`.
+_OUI_FILES = [
+    "/usr/share/nmap/nmap-mac-prefixes",
+    "/usr/share/wireshark/manuf",
+]
+
+
+def _load_local_ouis() -> dict[str, str]:
+    """Return additional vendor prefixes from common system files."""
+
+    vendors: dict[str, str] = {}
+    for path in _OUI_FILES:
+        try:
+            with open(path) as fh:
+                for line in fh:
+                    if line.startswith("#") or not line.strip():
+                        continue
+                    parts = line.split()
+                    if len(parts) < 2:
+                        continue
+                    prefix = parts[0].replace("-", "").replace(":", "").lower()
+                    if len(prefix) >= 6 and prefix[:6] not in vendors:
+                        vendors[prefix[:6]] = parts[1]
+        except FileNotFoundError:
+            continue
+        except Exception:
+            continue
+    return vendors
+
+
+OUI_MAP.update(_load_local_ouis())
 
 # Discovery steps executed by :func:`discover_cameras`.  The list order
 # defines both the execution order and the number of progress updates.
@@ -64,13 +113,39 @@ def _mac_for_ip(ip: str) -> str | None:
     return None
 
 
+MAC_VENDOR_API = "https://api.maclookup.app/v2/macs/{}"
+
+
+@lru_cache(maxsize=1024)
+def _remote_vendor_lookup(mac: str) -> str | None:
+    """Return vendor name for ``mac`` via maclookup API."""
+
+    try:  # network access might fail; ignore errors
+        resp = requests.get(MAC_VENDOR_API.format(mac), timeout=3)
+        if resp.status_code == 200:
+            data = resp.json()
+            vendor = data.get("company")
+            if not vendor:
+                vendor = data.get("vendorDetails", {}).get("companyName")
+            return vendor
+    except Exception:
+        pass
+    return None
+
+
 def _mac_manufacturer(mac: str | None) -> str | None:
-    """Return the vendor name for ``mac`` using :data:`OUI_MAP`."""
+    """Return the vendor name for ``mac`` using known mappings or remote lookup."""
 
     if not mac:
         return None
     prefix = mac.replace(":", "").lower()[:6]
-    return OUI_MAP.get(prefix)
+    vendor = OUI_MAP.get(prefix)
+    if vendor:
+        return vendor
+    vendor = _remote_vendor_lookup(mac)
+    if vendor:
+        OUI_MAP[prefix] = vendor  # cache for future calls
+    return vendor
 
 
 def _add_mac_info(cam: dict) -> None:
