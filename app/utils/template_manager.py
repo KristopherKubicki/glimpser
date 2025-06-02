@@ -127,6 +127,33 @@ class TemplateManager:
         finally:
             session.close()
 
+    def get_templates_by_last_caption_time(self):
+        """Return templates ordered by ``last_caption_time`` descending.
+
+        Returns
+        -------
+        list
+            Tuples of template name and attribute dicts sorted newest first.
+        """
+
+        session = self.get_session()
+        try:
+            templates = (
+                session.query(Template)
+                .order_by(Template.last_caption_time.desc())
+                .all()
+            )
+            result = []
+            for template in templates:
+                if template.name is None or template.name == "":
+                    continue
+                data = template.__dict__.copy()
+                data.pop("_sa_instance_state", None)
+                result.append((template.name, data))
+            return result
+        finally:
+            session.close()
+
     def save_template(self, name, details):
         """Create or update a template in the database.
 
@@ -154,7 +181,9 @@ class TemplateManager:
             if template is None:
                 template = Template()
                 session.add(template)
-            ldelta = False
+                ldelta = True
+            else:
+                ldelta = False
             if template:
                 for key, value in details.items():
                     try:
@@ -220,6 +249,8 @@ class TemplateManager:
                         ldelta = True
             if ldelta is True:
                 session.commit()
+                # Recreate the scheduler job so the new settings take effect
+                _update_scheduler_job(name, template.frequency)
             return True
         except Exception as e:
             logging.error("Error saving template: %s", str(e))
@@ -338,6 +369,13 @@ def get_templates():
         details["last_screenshot_time"] = get_latest_screenshot_date(camera_path)
         details["last_video_time"] = get_latest_video_date(video_path)
     return templates
+
+
+def get_templates_sorted_by_last_caption_time():
+    """Return templates sorted by ``last_caption_time`` newest first."""
+
+    manager = TemplateManager()
+    return manager.get_templates_by_last_caption_time()
 
 
 def get_template(name):
@@ -652,6 +690,7 @@ def mark_offline(name: str) -> None:
         session.close()
 
 
+
 def set_capture_failed(name: str, failed: bool) -> None:
     """Set ``capture_failed`` flag for ``name``."""
     name = validate_template_name(name)
@@ -667,3 +706,32 @@ def set_capture_failed(name: str, failed: bool) -> None:
             session.commit()
     finally:
         session.close()
+
+def _update_scheduler_job(name: str, frequency: int) -> None:
+    """Reschedule the APScheduler job for ``name`` if it exists.
+
+    The scheduler uses the template's frequency to determine the interval. Any
+    update should remove the old job and create a new one so changes apply
+    immediately.
+    """
+
+    from . import scheduling  # Imported here to avoid circular dependency
+
+    try:
+        scheduling.scheduler.remove_job(name)
+    except Exception:
+        pass
+
+    seconds = 60 * int(frequency)
+    try:
+        scheduling.scheduler.add_job(
+            func=scheduling.update_camera,
+            trigger="interval",
+            seconds=seconds,
+            args=[name, {}],
+            id=name,
+            replace_existing=True,
+        )
+    except Exception as e:
+        logging.error("job schedule error: %s", e)
+

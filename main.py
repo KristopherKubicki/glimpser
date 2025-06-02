@@ -221,7 +221,6 @@ def create_application(args=None):
         enable_watchdog=enable_watchdog, schedule=schedule, crawlers=crawlers
     )
 
-
 def output_shutdown_stats():
     # Get and display system metrics
     metrics = get_system_metrics()
@@ -278,6 +277,11 @@ def clear_console():
     # For macOS and Linux
     else:
         _ = os.system("clear")
+
+
+def clear_console_cli():
+    """Entry point for the ``glimpser-clear`` command."""
+    clear_console()
 
 
 def is_port_in_use(port):
