@@ -27,6 +27,7 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [Architecture Overview](architecture_overview.md)
 - [UI Accessibility Improvements](accessibility.md)
 - [Dark Mode Support](dark_mode.md)
+- [Dashboard Time Display](#dashboard-time)
 - [LLM Cost Tracking](cost_tracking.md)
 - [UI and Navigation Tooltips](tooltips.md)
 - [Settings Page Overview](settings_page.md)
@@ -34,3 +35,7 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [Nginx HTTP/2 Push](nginx_http2_push.md)
 - [API Resilience](api_resilience.md)
 - [OpenSSF Scorecard](scorecard.md)
+
+## Dashboard Time
+
+The main dashboard now displays the current time in the lower right corner. Hover over the time to view the full ISO 8601 timestamp.
