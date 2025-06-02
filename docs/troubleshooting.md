@@ -201,6 +201,16 @@ snapshot image rather than a true video stream.
 - Snapshot-only URLs now fall back to an MJPEG feed so the live view
   behaves like a regular video stream.
 
+### Problem: Playback continues in the background after switching types
+
+Older versions kept preloading the previous stream when you changed the video
+source. That could cause extra network requests and confusing behavior.
+
+**Solution:**
+- Update to the latest version.
+- The player now destroys any active HLS or looping handlers before starting the
+  new stream, so switching sources cleanly stops the old one.
+
 ## 12. Layout Issues
 
 ### Problem: Buttons at the bottom of the Templates page are hidden

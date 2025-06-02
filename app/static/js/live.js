@@ -29,6 +29,8 @@ if (requestedCamera && templateDetails[requestedCamera]) {
 let pngInterval;
 let liveSwitchInterval;
 let liveSwitchFunction;
+let hlsInstance = null;
+let loopHandler = null;
 const speedContainer = document.getElementById('speed-container');
 const videoOverlay = document.getElementById('video-overlay');
 const loadingIndicator = document.getElementById('loading-indicator');
@@ -41,6 +43,18 @@ const errorIndicator = document.getElementById('capture-error-indicator');
 const errorIndicatorMessage = document.getElementById('capture-error-message');
 const streamErrorIndicator = document.getElementById('stream-error-indicator');
 const streamErrorMessage = document.getElementById('stream-error-message');
+
+function resetVideo() {
+    if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+    }
+    if (loopHandler) {
+        video.removeEventListener('ended', loopHandler);
+        loopHandler = null;
+    }
+    video.removeEventListener('ended', handleVideoEnded);
+}
 
 function showLoadingIndicator() {
     videoOverlay.style.display = 'block';
@@ -250,6 +264,7 @@ function updateTemplateDetails() {
 }
 
 function updateFeed() {
+    resetVideo();
     const source = document.getElementById('video-source').value;
     const isConnected = checkCameraConnection(currentCamera);
     const details = templateDetails[currentCamera];
@@ -317,6 +332,7 @@ function updateFeed() {
 }
 
 function playM3U8() {
+    resetVideo();
     video.style.display = 'block';
     // HLS streams are live and not seekable
     const seekBar = document.getElementById('seek-bar');
@@ -342,27 +358,28 @@ function playM3U8() {
     }
 
     if (Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(m3u8Url);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+        hlsInstance = new Hls();
+        hlsInstance.loadSource(m3u8Url);
+        hlsInstance.attachMedia(video);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
             video.play().catch(e => console.error("Error playing video:", e));
         });
-        hls.on(Hls.Events.ERROR, function(event, data) {
+        hlsInstance.on(Hls.Events.ERROR, function(event, data) {
             console.error("HLS error:", data);
             if (data.fatal) {
                 switch(data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
                         console.error("Fatal network error encountered, trying to recover...");
-                        hls.startLoad();
+                        hlsInstance.startLoad();
                         break;
                     case Hls.ErrorTypes.MEDIA_ERROR:
                         console.error("Fatal media error encountered, trying to recover...");
-                        hls.recoverMediaError();
+                        hlsInstance.recoverMediaError();
                         break;
                     default:
                         console.error("Fatal error, cannot recover");
-                        hls.destroy();
+                        hlsInstance.destroy();
+                        hlsInstance = null;
                         break;
                 }
             }
@@ -382,6 +399,7 @@ function playM3U8() {
 
 
 function playLoop() {
+    resetVideo();
     video.style.display = 'block';
 
     image.style.display = 'none';
@@ -403,7 +421,7 @@ if (currentCamera === 'All') {
 
 let cameraIndex = 0;
 
-const cycleCameras = () => {
+loopHandler = () => {
     if (cameraIndex >= groupCameras.length) {
         cameraIndex = 0; // Reset the index to loop through the cameras again
     }
@@ -414,8 +432,8 @@ const cycleCameras = () => {
     cameraIndex++; // Move to the next camera
 };
 
-cycleCameras(); // Start the loop
-video.addEventListener('ended', cycleCameras); // Continue the loop when the video ends
+loopHandler(); // Start the loop
+video.addEventListener('ended', loopHandler); // Continue the loop when the video ends
     } else {
 // Handling for individual cameras
 video.src = `/last_video/${currentCamera}`;
@@ -453,6 +471,7 @@ function showLastScreenshot() {
 
 
 function playMP4() {
+    resetVideo();
     video.style.display = 'block';
     stopLiveSwitch();
     stopPNG();
@@ -492,6 +511,7 @@ video.dataset.currentCamera = nextCamera;
 }
 
 function playLive() {
+    resetVideo();
     video.style.display = 'block';
     // Live video cannot be scrubbed
     const seekBar = document.getElementById('seek-bar');
@@ -546,6 +566,7 @@ video.play();
 function playPNG() {
     // When switching from video playback to PNG images, ensure any
     // ongoing video stream is stopped to avoid "media element" errors.
+    resetVideo();
     video.pause();
     video.src = '';
     video.style.display = 'none';
@@ -597,6 +618,7 @@ pngInterval = setInterval(refreshPNG, 10000 / speed);
 
 function playMJPG() {
     // Stop any existing video stream before showing MJPEG frames
+    resetVideo();
     video.pause();
     video.src = '';
     video.style.display = 'none';
@@ -625,6 +647,7 @@ image.src = '/stream.mjpg?camera=' + currentCamera + '&time=' + new Date().getTi
 
 function playMotion() {
     // Stop any existing video stream before showing motion JPEG frames
+    resetVideo();
     video.pause();
     video.src = '';
     video.style.display = 'none';
