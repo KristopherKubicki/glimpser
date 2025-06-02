@@ -16,6 +16,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
      <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     {% if session.get('user_id') %}
+    <script type="module" src="{{ url_for('static', filename='js/api.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/navbar.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/grid.js') }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
     {% endif %}
 </head>

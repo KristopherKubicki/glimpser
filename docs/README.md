@@ -36,6 +36,7 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Stylelint case rule is disabled for the Inter font variable.
 - Navigation health indicator uses a dedicated CSS class.
 - JavaScript is now split into modules for templates, video controls, and scheduler toggling.
+- Navbar, grid, and API logic load as independent ES modules so browsers cache them separately.
 - Navigation logic and form validation are now modules to keep templates concise.
 - Core colors and fonts are defined via CSS variables.
 - Navigation menus use a consistent accent color with smooth hover effects.
