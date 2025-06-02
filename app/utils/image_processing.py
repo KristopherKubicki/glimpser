@@ -10,6 +10,7 @@ import requests
 from PIL import Image
 
 from app.config import CHATGPT_KEY, LLM_CAPTION_PROMPT, LLM_MODEL_VERSION
+from app.utils import llm_cache
 
 last_429_error_time = None
 
@@ -125,8 +126,15 @@ def chatgpt_compare(prompt, image_paths, template_name=None):
     if len(CHATGPT_KEY) < 1:
         return "Missing ChatGPT key"
 
-    chatgpt_comparison = ChatGPTImageComparison()
-    result, tokens = chatgpt_comparison.compare_images(prompt, image_paths)
+    cached = llm_cache.get(prompt, image_paths)
+    if cached is not None:
+        result = cached.get("response")
+        tokens = cached.get("tokens", 0)
+    else:
+        chatgpt_comparison = ChatGPTImageComparison()
+        result, tokens = chatgpt_comparison.compare_images(prompt, image_paths)
+        if result:
+            llm_cache.store(prompt, result, tokens, image_paths)
 
     if template_name and tokens:
         try:
