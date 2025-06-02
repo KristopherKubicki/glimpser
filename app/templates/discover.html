@@ -14,6 +14,7 @@
 {%- endmacro %}
 {% block content %}
     <h2>Discovered Cameras</h2>
+    <input id="cidr-input" type="text" placeholder="192.168.1.0/24" title="Optional CIDR to scan">
     <button id="discover-btn" title="Scan the network for cameras">Discover</button>
     <progress id="discover-progress" class="hidden" title="Discovery progress"></progress>
     <div id="discover-message" title="Status messages"></div>
@@ -79,7 +80,9 @@
             progress.style.display = 'inline';
             progress.removeAttribute('value');
             body.innerHTML = '';
-            const source = new EventSource('/discover/scan_stream');
+            const cidr = document.getElementById('cidr-input').value.trim();
+            const url = cidr ? `/discover/scan_stream?cidr=${encodeURIComponent(cidr)}` : '/discover/scan_stream';
+            const source = new EventSource(url);
             const known = new Set();
             const addRow = (cam) => {
                 const key = `${cam.ip}-${cam.protocol}-${cam.port}`;
@@ -105,11 +108,16 @@
                     </td>`;
                 body.appendChild(tr);
             };
+            let plan = [];
             source.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 if (data.total) {
                     progress.max = data.total;
                     progress.value = 0;
+                    plan = data.stages || [];
+                    if (data.subnets) {
+                        msg.textContent = `Scanning networks: ${data.subnets.join(', ')}. Plan: ${plan.join(', ')}`;
+                    }
                     return;
                 }
                 if (data.done) {
@@ -119,7 +127,10 @@
                     return;
                 }
                 progress.value += 1;
-                msg.textContent = `Scanning ${data.stage} (${data.count} found)...`;
+                if (plan.length && plan[0] === data.stage) {
+                    plan.shift();
+                }
+                msg.textContent = `Scanning ${data.stage} (${data.count} found)...` + (plan.length ? ` Next: ${plan[0]}` : '');
                 if (data.cameras) {
                     data.cameras.forEach(addRow);
                 }

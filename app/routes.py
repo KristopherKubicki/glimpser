@@ -38,6 +38,7 @@ from PIL import Image
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
+from ipaddress import ip_network
 import subprocess
 import struct
 import random
@@ -2334,17 +2335,42 @@ def init_routes(app):
     @app.route("/discover/scan", methods=["POST"])
     @login_required
     def discover_cameras_scan():
-        cameras = camera_discovery.discover_cameras()
+        cidr = request.form.get("cidr") if request.form else request.args.get("cidr")
+        nets = None
+        if cidr:
+            try:
+                nets = [ip_network(cidr, strict=False)]
+            except ValueError:
+                pass
+        cameras = camera_discovery.discover_cameras(subnets=nets)
         return jsonify(cameras)
 
     @app.route("/discover/scan_stream")
     @login_required
     def discover_cameras_scan_stream():
         def generate():
+            cidr = request.args.get("cidr")
+            nets = None
+            if cidr:
+                try:
+                    nets = [ip_network(cidr, strict=False)]
+                except ValueError:
+                    pass
+
+            stages = camera_discovery.get_discovery_stages()
+
             q = queue.Queue()
             # Provide the client with the number of discovery stages so it
-            # can display a progress bar.
-            q.put({"total": len(camera_discovery.get_discovery_stages())})
+            # can display a progress bar and show subnet information.
+            q.put(
+                {
+                    "total": len(stages),
+                    "subnets": [
+                        str(n) for n in (nets or camera_discovery._local_subnets())
+                    ],
+                    "stages": stages,
+                }
+            )
 
             sent = set()
 
@@ -2358,7 +2384,9 @@ def init_routes(app):
                 q.put({"stage": stage, "count": count, "cameras": fresh})
 
             def run():
-                camera_discovery.discover_cameras(progress_callback=progress)
+                camera_discovery.discover_cameras(
+                    progress_callback=progress, subnets=nets
+                )
                 q.put({"done": True})
 
             thread = Thread(target=run, daemon=True)

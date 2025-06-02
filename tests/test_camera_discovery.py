@@ -299,6 +299,13 @@ class TestCameraDiscovery(unittest.TestCase):
         self.assertEqual(seen[0]["info"].get("mac"), "000c29aabbcc")
         self.assertEqual(seen[0]["info"].get("manufacturer"), "VMware")
 
+    @patch("app.utils.camera_discovery._local_subnets")
+    @patch("app.utils.camera_discovery._probe_onvif", return_value=[])
+    def test_custom_subnets(self, mock_onvif, mock_local_subnets):
+        nets = [ip_network("10.1.1.0/30")]
+        camera_discovery.discover_cameras(subnets=nets)
+        mock_local_subnets.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
