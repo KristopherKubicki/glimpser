@@ -10,3 +10,4 @@ The user interface now includes additional tooltips and descriptive alt text to 
 - When a camera is offline, the player shows an overlay with a clear icon instead of replacing the controls.
 - Deprecated `<center>` tags were removed from templates and replaced with CSS-based centering.
 - Error pages, the status dashboard, and video players now include tooltips on buttons and metrics.
+- Status and discovery animations respect the `prefers-reduced-motion` setting.

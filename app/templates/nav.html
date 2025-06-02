@@ -16,8 +16,8 @@
 
             <div class="nav-right">
         {% if session.get('user_id') %}
-                <a id="health-status" href="/status" class="status-indicator" title="System Performance"></a>
-                <div id="danger-status" class="status-indicator" title="Danger Mode"></div>
+                <a id="health-status" href="/status" class="status-indicator status-pulse" title="System Performance"></a>
+                <div id="danger-status" class="status-indicator status-pulse" title="Danger Mode"></div>
                 <a href='/discover' class="settings-icon" title='Discover Cameras'><i class="fas fa-search"></i></a>
                 <a href='/captions' id='captions' class="settings-icon" title='Read and update camera LLMs'><i class="fas fa-comment-dots"></i></a>
                 <a href='/live' id='live'>

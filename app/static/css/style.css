@@ -979,3 +979,32 @@ details > summary {
     width: 100%;
     height: 100px;
 }
+
+@keyframes status-pulse {
+    0% { filter: brightness(100%); }
+    50% { filter: brightness(150%); }
+    100% { filter: brightness(100%); }
+}
+
+.status-pulse {
+    animation: status-pulse 1.5s infinite;
+    filter: brightness(150%);
+}
+
+@keyframes discover-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.discover-spin {
+    animation: discover-spin 1s linear infinite;
+    filter: brightness(150%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .status-pulse,
+    .discover-spin {
+        animation: none;
+        transition: filter 0.2s;
+    }
+}

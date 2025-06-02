@@ -79,6 +79,7 @@
             progress.style.display = 'inline';
             progress.removeAttribute('value');
             body.innerHTML = '';
+            button.classList.add('discover-spin');
             const source = new EventSource('/discover/scan_stream');
             const known = new Set();
             const addRow = (cam) => {
@@ -115,6 +116,7 @@
                 if (data.done) {
                     msg.textContent = `Found ${known.size} cameras.`;
                     progress.style.display = 'none';
+                    button.classList.remove('discover-spin');
                     source.close();
                     return;
                 }
@@ -128,6 +130,7 @@
                 console.error('Discovery error', e);
                 msg.textContent = 'Error discovering cameras';
                 progress.style.display = 'none';
+                button.classList.remove('discover-spin');
                 source.close();
             };
         });
