@@ -111,6 +111,12 @@ class TemplateName:
 
 
 def generate_timed_hash():
+    """Return a short‑lived hash derived from the API key.
+
+    The resulting string combines a SHA-256 digest of the API key and an
+    expiration timestamp. The timestamp is 15 minutes in the future, allowing
+    the caller to generate a temporary token for secure, time limited access.
+    """
     expiration_time = int(time.time()) + 15 * 60
     to_hash = f"{API_KEY}{expiration_time}"
     hash_digest = hashlib.sha256(to_hash.encode()).hexdigest()
