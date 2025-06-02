@@ -44,7 +44,7 @@ class SQLAlchemyHandler(logging.Handler):
 """
 
 
-def create_app(enable_watchdog=True, schedule=True):
+def create_app(enable_watchdog=True, schedule=True, crawlers=True):
     """Create and configure the Flask application.
 
     This function sets up the entire Flask application, including:
@@ -64,6 +64,11 @@ def create_app(enable_watchdog=True, schedule=True):
         configuration using :func:`restore_config` and exits the process so
         an external supervisor can restart it.  Pass ``False`` to disable
         this thread entirely, which is useful when running unit tests.
+
+    crawlers : bool, optional
+        When ``True`` (the default) crawler jobs are scheduled.  Pass
+        ``False`` to skip scheduling crawlers, which is useful during
+        testing or when using the application purely for playback.
 
     Returns
     -------
@@ -122,7 +127,8 @@ def create_app(enable_watchdog=True, schedule=True):
             scheduler.remove_all_jobs()
 
             # Schedule various periodic tasks
-            schedule_crawlers()  # TODO: make this a command line argument
+            if crawlers:
+                schedule_crawlers()
             scheduler.add_job(
                 id="compile_to_teaser",
                 func=compile_to_teaser,
