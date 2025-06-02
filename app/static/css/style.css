@@ -182,6 +182,10 @@ h1, h2 {
     max-width: 100%;
 }
 
+.captions-page #template-list {
+    display: block;
+}
+
 @media (max-width: 767px) { /* Adjust this value based on your testing */
     select {
         font-size: 16px; /* Larger font size for easier interaction */
