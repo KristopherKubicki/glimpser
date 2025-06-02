@@ -106,6 +106,13 @@ Settings controlling how frames are captured from video sources:
 - `PROBE_SIZE_OTHER` – probe size for other protocols (default `20M`)
 - `LIVE_FALLBACK_FPS` – still-frame refresh rate when live video fails (default `1`)
 
+### Stealth Browser Defaults
+
+Templates that enable `stealth` or `browser` mode require heavier page loads. If
+`frequency` or `timeout` are omitted for such templates, Glimpser defaults to a
+`frequency` of **60 minutes** and a `timeout` of **30 seconds** to reduce the
+load on target sites and allow extra time for rendering.
+
 ## Advanced Options
 
 Additional variables control AI behaviour and external tools:

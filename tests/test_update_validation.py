@@ -38,6 +38,18 @@ class TestValidateUpdateData(unittest.TestCase):
         result = validate_update_data(data)
         self.assertEqual(result["proxy"], "http://localhost:8080")
 
+    def test_stealth_defaults(self):
+        data = {"url": "http://example", "stealth": True}
+        result = validate_update_data(data)
+        self.assertEqual(result["frequency"], 60)
+        self.assertEqual(result["timeout"], 30)
+
+    def test_browser_defaults(self):
+        data = {"url": "http://example", "browser": True}
+        result = validate_update_data(data)
+        self.assertEqual(result["frequency"], 60)
+        self.assertEqual(result["timeout"], 30)
+
 
 if __name__ == "__main__":
     unittest.main()

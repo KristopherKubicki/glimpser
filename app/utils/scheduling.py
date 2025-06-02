@@ -43,6 +43,7 @@ from .screenshots import (
 from .template_manager import (
     get_template,
     get_templates,
+    get_templates_sorted_by_last_caption_time,
     save_template,
     update_last_screenshot_time,
     mark_offline,
@@ -660,17 +661,9 @@ def update_summary():
 
     # summarize all of htis together
     lstring = "The following are a list of real time dashboards and cameras, and their recent status updates:\n"
-    templates = get_templates()  # Make sure to fetch the templates within this function
+    templates = get_templates_sorted_by_last_caption_time()
 
-    # Sort templates by last_caption_time, descending order
-    # TODO: this could just be a sql call instead
-    sorted_templates = sorted(
-        templates.items(),
-        key=lambda item: item[1].get("last_caption_time", ""),
-        reverse=True,
-    )
-
-    for id, template in sorted_templates:
+    for id, template in templates:
         name = template.get("name")
         if "private" in template.get("groups", ""):
             continue

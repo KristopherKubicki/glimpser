@@ -131,7 +131,8 @@ After scanning, `discover_cameras()` removes duplicates and returns the final li
 Each entry is also augmented with the device's MAC address and, when known,
 the manufacturer derived from its OUI prefix.  These details appear as separate
 columns in the discovery table so you can quickly identify where each camera
-originates.
+originates. The **Info** column now summarizes key details such as a camera's
+name, ONVIF address, or HTTP path instead of showing the raw JSON dictionary.
 
 You can then add a discovered camera to your configuration directly from the `/discover` page.
 The "Add" button on this page now includes a tooltip (title attribute) for improved accessibility.
