@@ -49,3 +49,27 @@ like:
 python -m coverage run -m pytest
 python -m coverage html
 ```
+
+## JavaScript Unit Tests
+
+Front‑end utilities under `app/static/js` are tested with **Jest**. The tests
+use the JSDOM environment so that DOM APIs are available in Node. Run them with:
+
+```sh
+npx jest --env=jsdom
+```
+
+New tests cover the offline service‑worker toggle and template helpers.
+
+## Playwright End‑to‑End Tests
+
+For critical user flows a minimal Playwright setup lives in
+`tests/playwright`. These tests start the development server defined in
+`playwright.config.js` and drive a headless browser. Execute them with:
+
+```sh
+npx playwright test
+```
+
+Playwright is optional, so the Node dependencies are not included in the
+repository. Install them locally to run the tests.
