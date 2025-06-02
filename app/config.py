@@ -43,10 +43,10 @@ BACKUP_PATH = (
     else os.getenv("GLIMPSER_BACKUP_PATH", "data/config_backup.json")
 )
 
-# todo.. make sure this is not duplicate loading...
 # ``SessionLocal`` and ``_engine`` are initialized lazily so importing this
 # module doesn't immediately open a database connection.  Tests may patch
-# ``SessionLocal`` to supply a fake sessionmaker.
+# ``SessionLocal`` to supply a fake sessionmaker.  The globals ensure a single
+# engine is reused across imports.
 SessionLocal = None
 _engine = None
 
@@ -248,6 +248,7 @@ FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
 FFPROBE_PATH = get_setting("FFPROBE_PATH", "ffprobe")
 # Enable GPU acceleration if supported (e.g. "auto", "cuda", etc.)
 FFMPEG_HWACCEL = get_setting("FFMPEG_HWACCEL", "False")
+FFMPEG_THREADS = int(get_setting("FFMPEG_THREADS", 5))
 
 # CLIP model used for object filtering in scheduling
 CLIP_MODEL_NAME = get_setting(

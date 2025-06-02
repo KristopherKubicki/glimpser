@@ -14,7 +14,6 @@ from collections import deque
 import textwrap
 
 from apscheduler.triggers.cron import CronTrigger
-from dateutil import parser
 from flask_apscheduler import APScheduler
 from PIL import Image, ImageDraw, ImageFont
 from transformers import CLIPProcessor, CLIPModel
@@ -477,28 +476,13 @@ def update_camera(name, template, image_file=None, motion=False):
             #  generate the symlink. if there is a data/screenshots/<camera>/last_motion.png, please rename the move the symlink to prev_motion.png
             #    then, create the symlink for last_motion.png to point to the new png_files[-1]
             image_paths = []
-            # add reference image if exists
-            if os.path.exists(
-                os.path.join(directory, "reference.png")
-            ):  # if doesnt exist, consider taking the oldest?
-                image_paths.append(os.path.join(directory, "reference.png"))
+            reference_image = os.path.join(directory, "reference.png")
+            if os.path.exists(reference_image):
+                image_paths.append(reference_image)
 
-            # Find the image that closest matches the last_caption_time
-            if "last_caption_time" in template and template["last_caption_time"] != "":
-                try:
-                    last_caption_time = parser.parse(template["last_caption_time"])
-                    closest_image_filename = find_closest_image(
-                        directory, last_caption_time
-                    )
-                    if closest_image_filename:
-                        closest_image_path = os.path.join(
-                            directory, closest_image_filename
-                        )
-                        logging.debug("last caption.... %s", closest_image_path)
-                        image_paths.append(closest_image_path)
-                except Exception as e:
-                    logging.warning("caption parsing error %s", e)
-                    pass
+            prev_image = os.path.join(directory, "prev_motion.png")
+            if os.path.exists(prev_image):
+                image_paths.append(prev_image)
 
             image_paths.append(os.path.join(directory, png_files[-1]))
 
@@ -527,11 +511,14 @@ def update_camera(name, template, image_file=None, motion=False):
                 lprompt = ""
                 if template.get("notes"):
                     lprompt += " " + template["notes"]
-                #  use Chatgpt_compare
+                #  use ChatGPT to compare images
                 gret = chatgpt_compare(lprompt, image_paths, template_name=name)
-                # TODO: add a separator?
-                # print("  oldgpt:", name, template.get('last_caption'))
-                # print("  newgpt:", name, gret)
+                logging.debug(
+                    "caption update %s | old: %s | new: %s",
+                    name,
+                    template.get("last_caption"),
+                    gret,
+                )
                 if gret and re.findall(r"(?:sorry|cannot|can not)", gret):
                     template["last_ret"] = gret + "*"
                 elif gret:
@@ -840,8 +827,9 @@ def schedule_crawlers():
         # Calculate the offset delay for this crawler
         offset_delay_seconds = index * delay_increment + index
 
-        # TODO: consider the fact that the tmeplate is out of date.
-        # any time we update a camera, we upave to remove the old job and create a new one
+        # Ensure any existing job for this camera is replaced with the latest configuration
+        if scheduler.get_job(name):
+            scheduler.remove_job(name)
 
         # Apply the incremental delay to space out job scheduling
         try:
