@@ -136,89 +136,102 @@ def find_closest_image(directory, last_caption_time, max_time_diff=MAX_IMAGE_TIM
     return closest_image
 
 
+def load_image(image_path):
+    """Return an RGB image or ``None`` if loading fails."""
+    try:
+        image = Image.open(image_path)
+        return image.convert("RGB")
+    except Exception as e:  # pragma: no cover - I/O errors are environment specific
+        if DEBUG:
+            os.rename(image_path, image_path.replace(".png", ".broken"))
+        else:
+            os.unlink(image_path)
+        logging.warning("image load issue: %s %s", image_path, e)
+        logging.error("Error saving image: %s %s", image_path, e)
+        return None
+
+
+def apply_motion_icon(image, draw, font, font_size, top_offset, padding=6):
+    motion_icon = "░"
+    text_w = int(draw.textlength(motion_icon, font=font))
+    text_h = font_size
+    x = int(image.width - text_w - 10)
+    y = int(image.height - int(font_size * 3) - top_offset)
+    background = Image.new(
+        "RGBA",
+        (text_w + padding * 2, text_h + padding * 2),
+        (0, 0, 0, 128),
+    )
+    image.paste(background, (x - padding, y - padding), background)
+    draw.text(
+        (x, y),
+        motion_icon,
+        font=font,
+        fill=(255, 255, 255, 255),
+        stroke_width=1,
+        stroke_fill=(0, 0, 0, 255),
+    )
+
+
+def apply_caption(image, draw, font, font_size, caption, top_offset, padding=6):
+    caption = caption[:64].replace("\n", " ")
+    wrapped = textwrap.fill(caption, width=32)
+    text_w = int(draw.textlength(wrapped.split("\n")[0], font=font))
+    text_h = font_size * len(wrapped.split("\n"))
+    x = padding
+    y = int(image.height - int(font_size * 3) - top_offset)
+    background = Image.new(
+        "RGBA",
+        (text_w + padding * 2, text_h + padding * 2),
+        (0, 0, 0, 128),
+    )
+    image.paste(background, (x - padding, y - padding), background)
+    draw.multiline_text(
+        (x, y),
+        wrapped,
+        font=font,
+        fill=(255, 255, 255, 255),
+        stroke_width=1,
+        stroke_fill=(0, 0, 0, 255),
+    )
+
+
+def save_image(image, image_path):
+    image.save(image_path, "PNG")
+    image.close()
+
+
 def add_motion_and_caption(image_path, caption=None, motion=False):
-    if os.path.exists(image_path):
+    if not os.path.exists(image_path):
+        return
 
-        if caption is None and motion is False:
-            return
+    if caption is None and not motion:
+        return
 
-        try:
-            with Image.open(
-                image_path
-            ) as image:  # consider unlinking if this fails to open
-                # Convert the image to RGBA mode in case it's a format that doesn't support transparency
-                try:
-                    image = image.convert("RGB")
-                except Exception as e:
-                    # for debugging only, otherwise unlink the file
-                    if DEBUG:
-                        os.rename(image_path, image_path.replace(".png", ".broken"))
-                    else:
-                        # unlink the offending image
-                        os.unlink(image_path)
-                    logging.warning("image load issue: %s %s", image_path, e)
-                    logging.error(f"Error saving image: {image_path} {e}")
-                    return
+    image = load_image(image_path)
+    if image is None:
+        return
 
-                draw = ImageDraw.Draw(image)
-                max_height = min(image.height, image.width * 9 // 16)
-                font_size = int(max_height * 0.05)
-                top_offset = (image.height - max_height) / 2
+    try:
+        draw = ImageDraw.Draw(image)
+        max_height = min(image.height, image.width * 9 // 16)
+        font_size = int(max_height * 0.05)
+        top_offset = (image.height - max_height) / 2
 
-                # Use the same font loader as timestamps
-                font = load_font(font_size)
+        # Use the same font loader as timestamps
+        font = load_font(font_size)
 
-                padding = 6
+        padding = 6
 
-                if motion is True:
-                    motion_icon = "░"
-                    # Calculate text size and position
-                    text_w = int(draw.textlength(motion_icon, font=font))
-                    text_h = font_size
-                    x, y = int(image.width - text_w - 10), int(
-                        image.height - int(font_size * 3) - top_offset
-                    )
-                    background = Image.new(
-                        "RGBA",
-                        (text_w + padding * 2, text_h + padding * 2),
-                        (0, 0, 0, 128),
-                    )
-                    image.paste(background, (x - padding, y - padding), background)
-                    draw.text(
-                        (x, y),
-                        motion_icon,
-                        font=font,
-                        fill=(255, 255, 255, 255),
-                        stroke_width=1,
-                        stroke_fill=(0, 0, 0, 255),
-                    )
+        if motion:
+            apply_motion_icon(image, draw, font, font_size, top_offset, padding)
 
-                if caption is not None:
-                    caption = caption[:64].replace("\n", " ")
-                    wrapped = textwrap.fill(caption, width=32)
-                    text_w = int(draw.textlength(wrapped.split("\n")[0], font=font))
-                    text_h = font_size * len(wrapped.split("\n"))
-                    x = padding
-                    y = int(image.height - int(font_size * 3) - top_offset)
-                    background = Image.new(
-                        "RGBA",
-                        (text_w + padding * 2, text_h + padding * 2),
-                        (0, 0, 0, 128),
-                    )
-                    image.paste(background, (x - padding, y - padding), background)
-                    draw.multiline_text(
-                        (x, y),
-                        wrapped,
-                        font=font,
-                        fill=(255, 255, 255, 255),
-                        stroke_width=1,
-                        stroke_fill=(0, 0, 0, 255),
-                    )
+        if caption is not None:
+            apply_caption(image, draw, font, font_size, caption, top_offset, padding)
 
-                # Save the image
-                image.save(image_path, "PNG")
-        except Exception as e:
-            logging.error(f"Error updating image {image_path} : {e}")
+        save_image(image, image_path)
+    except Exception as e:  # pragma: no cover - unexpected errors
+        logging.error(f"Error updating image {image_path} : {e}")
 
 
 def update_camera(name, template, image_file=None, motion=False):
