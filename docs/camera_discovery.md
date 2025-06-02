@@ -139,10 +139,11 @@ def _local_video_devices(base_path="/dev"):
 After scanning, `discover_cameras()` removes duplicates and returns the final list of cameras.
 
 Each entry is also augmented with the device's MAC address and, when known,
-the manufacturer derived from its OUI prefix.  Glimpser consults local OUI
-databases such as `nmap-mac-prefixes` or `manuf` when present and falls back to
-an online lookup service if necessary so most devices report a recognizable
-brand.
+the manufacturer derived from its OUI prefix. Glimpser ships with a
+large mapping of common prefixes in `app/utils/oui_map.py`. Local OUI
+databases such as `nmap-mac-prefixes` or `manuf` are consulted when present and
+the application falls back to an online lookup service if necessary so most
+devices report a recognizable brand.
 These details appear as separate
 columns in the discovery table so you can quickly identify where each camera
 originates. This information is now available in the incremental results
@@ -154,6 +155,9 @@ Each camera is now also checked for commonly used service ports. Any detected
 ports are listed in the ``open_ports`` field so you can quickly see which
 services are reachable (for example, 80 for HTTP or 554 for RTSP). This scan
 is lightweight and runs after the main discovery steps finish.
+If a camera responds to ICMP echo requests, Glimpser measures the round-trip
+latency and reports the value in the ``ping_ms`` field. This extra check runs in
+parallel with other metadata gathering so it does not slow down discovery.
 If an HTTP port responds, Glimpser also fetches the web page banner to capture
 the `Server` header, authentication realm, and page title when present. These
 values populate the **Info** column so you can quickly identify each device.

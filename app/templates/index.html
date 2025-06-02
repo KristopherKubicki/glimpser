@@ -3,6 +3,7 @@
 {% extends 'base.html' %}
 {% block content %}
 
+<section id="template-addition">
 <details title="Expand to add a new template">
     <summary>Add Template</summary>
     <div id="template-form" title="Form to add a new template">
@@ -80,10 +81,10 @@
         </form>
     </div>
 </details>
+</section>
 
 
-
-	<div>
+<section id="template-controls">
     <label for="group-dropdown" title="Filter templates by group">Filter by Group:</label>
 
     <select id="group-dropdown" title="Select a group to filter templates">
@@ -96,13 +97,30 @@
 
         <input type="range" id="grid-width-slider" min="50" max="3840" value="360" title="Adjust the width of the template grid">
     <button id="play-all-button" title="Play/Stop all videos">Play All</button>
-</div>
+</section>
 
+<section id="template-list-section">
     <div id="template-list" title="List of all templates" role="region" aria-label="Templates">
         <!-- Template list will be populated here -->
     </div>
 
+</section>
+
     <div id="index-time" class="corner-time" title=""></div>
+
+    <div id="welcome-modal" class="modal">
+        <div class="modal-content">
+            <span id="welcome-close" class="close-icon" title="Close dialog">&times;</span>
+            <h3>Welcome to Glimpser</h3>
+            <ol>
+                <li>Add a camera using <strong>Add Template</strong>.</li>
+                <li>Configure monitoring options.</li>
+                <li>View live feeds and summaries.</li>
+            </ol>
+            <p>Use the <strong>Discover Cameras</strong> icon in the navigation bar to scan your network.</p>
+            <button id="welcome-ok" title="Dismiss this guide">Got it!</button>
+        </div>
+    </div>
 
 
 {% endblock %}
