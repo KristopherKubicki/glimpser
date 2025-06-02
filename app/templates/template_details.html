@@ -66,7 +66,7 @@
 </style>
 
 <div class="video-container">
-    <img id="live-image" alt="Live feed frame" title="Current frame from the live feed" />
+    <img id="live-image" loading="lazy" alt="Live feed frame" title="Current frame from the live feed" />
     <video id="live-video" class="hidden" autoplay muted>
         <source src="" type="video/mp4" />
         Your browser does not support the video tag.
@@ -187,7 +187,7 @@ function updateVideo(templateName) {
     <div id="screenshots">
         {% for screenshot in screenshots %}
             <div class="screenshot">
-                    <a href='/screenshots/{{template_name}}/{{screenshot}}' title="View full-size screenshot"><img src="/screenshots/{{template_name}}/{{screenshot }}" alt="Screenshot" height='200' title="Recent screenshot: {{screenshot}}"></a>
+                    <a href='/screenshots/{{template_name}}/{{screenshot}}' title="View full-size screenshot"><img src="/screenshots/{{template_name}}/{{screenshot }}" loading="lazy" alt="Screenshot" height='200' title="Recent screenshot: {{screenshot}}"></a>
             </div>
         {% endfor %}
     </div>
