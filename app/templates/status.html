@@ -23,6 +23,30 @@
     <li title="System uptime">Uptime: {{ metrics.uptime }}</li>
 </ul>
 
+<h2>Feed Status</h2>
+<table class="feed-status">
+    <thead>
+        <tr>
+            <th>Feed</th>
+            <th>Last Image</th>
+            <th>Last Caption</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for feed in feeds %}
+        <tr class="{{ feed.status }}">
+            <td>{{ feed.name }}</td>
+            <td>{{ feed.last_screenshot_time or 'N/A' }}</td>
+            <td>{{ feed.last_caption_time or 'N/A' }}</td>
+            <td><span class="status-dot {{ feed.status }}" title="{{ feed.status }}"></span></td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<p>Last summary generated: {{ last_summary or 'N/A' }}</p>
+
 
 {% include 'logs.html' %}
 {% endblock %}

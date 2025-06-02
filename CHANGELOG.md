@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bulk caption management with TSV import and export
 - Configuration backup and restore
 - System status and log viewing pages
+- Feed dashboard on the `/status` page summarizing camera health
 - Real-time log streaming with improved filtering
 - Console clearing command
 - Google Cast support

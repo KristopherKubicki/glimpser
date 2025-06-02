@@ -2393,7 +2393,11 @@ def init_routes(app):
     @login_required
     def status():
         metrics = scheduling.get_system_metrics()
-        return render_template("status.html", metrics=metrics)
+        feeds = scheduling.get_feed_status()
+        last_summary = scheduling.get_last_summary_time()
+        return render_template(
+            "status.html", metrics=metrics, feeds=feeds, last_summary=last_summary
+        )
 
     @app.route("/logs")
     @login_required

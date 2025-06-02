@@ -1,10 +1,13 @@
 {% include 'header.html' %}
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <header>
         {% include 'nav.html' %}
     </header>
 
-    {% block content %}{% endblock %}
+    <main id="main-content" tabindex="-1">
+        {% block content %}{% endblock %}
+    </main>
 
     {% include 'footer.html' %}
 </body>
