@@ -15,7 +15,7 @@ This document lists the main tooltips available in the Glimpser interface. Hover
   minute after the most recent caption, turns yellow for the next five minutes
   and becomes red when no update has been received for over thirty minutes.
 - **Clock icon** – opens the live page with instructions for real‑time streaming.
-- **Settings icon** – opens the settings page.
+- **Settings gear icon** – opens the settings page.
 - **Login link** – appears when not authenticated.
 
 ## Footer
@@ -35,3 +35,4 @@ Interactive forms now include additional tooltips:
 - **Template Details** – buttons like "Suggest Prompt" and "Suggest Fix" describe their actions.
 - **Captions** – upload and filter controls have descriptive titles.
 - **Danger Mode** – the checkbox, save button and modal controls all include tooltips.
+- **Live video player** – tooltip now refreshes with the full caption as it updates.

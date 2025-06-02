@@ -236,14 +236,11 @@ select:hover {
     border-radius: 5px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     width: 100%;
-    /* No fixed height here; it will be set by padding-top in the ::before pseudo-element */
+    height: var(--grid-item-height, calc(var(--grid-item-width, 360px) * 0.5625));
 }
 
 .templateDiv::before {
-    content: '';
-    display: block;
-    width: 100%;
-    padding-top: 56.25%; /* Aspect ratio of 16:9 */
+    content: none;
 }
 
 /* Ensure the preview link covers the entire tile */
@@ -352,11 +349,38 @@ video:hover + .play-icon {
 }
 
 .recent-screenshot {
-    border: 5px solid rgba(255, 255, 255, 0.9); /* Faint white border */
+    border: 5px solid var(--accent-color);
 }
 
 .template-error {
     border: 5px solid red;
+}
+
+#status-legend {
+    display: flex;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.status-box {
+    width: 16px;
+    height: 16px;
+    border: 5px solid transparent;
+    display: inline-block;
+}
+
+.status-box.recent {
+    border-color: var(--accent-color);
+}
+
+.status-box.error {
+    border-color: red;
 }
 
 /* Improve video controls on mobile */
@@ -618,7 +642,8 @@ button, a {
 
 /* Speed slider and label container */
 #speed-container {
-    display: none;
+    visibility: hidden;
+    pointer-events: none;
 }
 
 /* Cool Clock Styles */
@@ -764,7 +789,7 @@ button, a {
 .templateDiv {
     position: relative;
     width: 100%;
-    padding-top: 56.25%; /* 16:9 aspect ratio */
+    height: var(--grid-item-height, calc(var(--grid-item-width, 360px) * 0.5625));
     overflow: hidden;
     background-color: #000;
     border-radius: 5px;

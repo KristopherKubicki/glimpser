@@ -7,8 +7,8 @@
     <path d="M4 4h16v10H8l-4 4z" stroke="currentColor" stroke-width="2" fill="none" />
   </symbol>
   <symbol id="gear" viewBox="0 0 24 24">
+    <path d="M11.25 1.5a.75.75 0 011.5 0l.3 1.2a7.5 7.5 0 012.7 1.1l1-.6a.75.75 0 011.02.27l.65 1.13a.75.75 0 01-.27 1.02l-1 .6a7.5 7.5 0 011.1 2.7l1.2.3c.34.08.6.39.6.74v1.5c0 .35-.26.66-.6.74l-1.2.3a7.5 7.5 0 01-1.1 2.7l1 .6c.36.2.48.66.27 1.02l-.65 1.13a.75.75 0 01-1.02.27l-1-.6a7.5 7.5 0 01-2.7 1.1l-.3 1.2a.75.75 0 01-1.5 0l-.3-1.2a7.5 7.5 0 01-2.7-1.1l-1 .6a.75.75 0 01-1.02-.27l-.65-1.13a.75.75 0 01.27-1.02l1-.6a7.5 7.5 0 01-1.1-2.7l-1.2-.3A.75.75 0 014 12.75v-1.5c0-.35.26-.66.6-.74l1.2-.3a7.5 7.5 0 011.1-2.7l-1-.6a.75.75 0 01-.27-1.02l.65-1.13a.75.75 0 011.02-.27l1 .6a7.5 7.5 0 012.7-1.1l.3-1.2z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
     <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none" />
-    <path d="M2 12l2-2.5 2.5.7a7 7 0 011.3-1.3L7.1 6.1 9 5l1 2.5c.5-.1 1-.2 1.5-.2s1 .1 1.5.2L14 5l1.9 1.1-.7 2.4a7 7 0 011.3 1.3l2.5-.7L22 12l-2.5 2.5-2.5-.7a7 7 0 01-1.3 1.3l.7 2.4L14 19l-1-2.5c-.5.1-1 .2-1.5.2s-1-.1-1.5-.2L9 19l-1.9-1.1.7-2.4a7 7 0 01-1.3-1.3l-2.5.7L2 12z" stroke="currentColor" stroke-width="2" fill="none" />
   </symbol>
   <symbol id="settings" viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none" />

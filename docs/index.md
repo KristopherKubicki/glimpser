@@ -32,6 +32,7 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [UI Component Guide](style_guide.md)
 - [UI Design Guidelines](design_guidelines.md)
 - [Dashboard Time Display](#dashboard-time)
+- [Dashboard Border Legend](border_legend.md)
 - [LLM Cost Tracking](cost_tracking.md)
 - [UI and Navigation Tooltips](tooltips.md)
 - [Settings Page Overview](settings_page.md)

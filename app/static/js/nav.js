@@ -2,6 +2,7 @@ export function initNav() {
   document.addEventListener('DOMContentLoaded', () => {
     const healthStatus = document.getElementById('health-status');
     const dangerStatus = document.getElementById('danger-status');
+    const discoveryStatus = document.getElementById('discover-status');
     const nav = document.querySelector('nav');
     const menuToggle = document.getElementById('menu-toggle');
 
@@ -61,6 +62,7 @@ export function initNav() {
       }
     };
 
+
     const captionsIcon = document.getElementById('captions');
     let lastCaptionTime = null;
     const checkCaptions = async () => {
@@ -89,6 +91,24 @@ export function initNav() {
         }
       } catch (error) {
         console.error('Error fetching caption status:', error);
+
+    const checkDiscovery = async () => {
+      if (!discoveryStatus) return;
+      try {
+        const res = await fetch('/discovery_status');
+        const data = await res.json();
+        if (data.status === 'running') {
+          discoveryStatus.style.color = 'orange';
+        } else if (data.status === 'ready') {
+          discoveryStatus.style.color = 'green';
+        } else if (data.status === 'error') {
+          discoveryStatus.style.color = 'red';
+        } else {
+          discoveryStatus.style.color = 'grey';
+        }
+      } catch (error) {
+        console.error('Error fetching discovery status:', error);
+        discoveryStatus.style.color = 'red';
       }
     };
 
@@ -130,6 +150,8 @@ export function initNav() {
     setInterval(checkDanger, 5000);
     checkCaptions();
     setInterval(checkCaptions, 10000);
+    checkDiscovery();
+    setInterval(checkDiscovery, 60000);
     updateCoolClock();
     setInterval(updateCoolClock, 1000);
     setupNavFade();

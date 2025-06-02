@@ -29,6 +29,8 @@ if (requestedCamera && templateDetails[requestedCamera]) {
 let pngInterval;
 let liveSwitchInterval;
 let liveSwitchFunction;
+let hlsInstance = null;
+let loopHandler = null;
 const speedContainer = document.getElementById('speed-container');
 const videoOverlay = document.getElementById('video-overlay');
 const loadingIndicator = document.getElementById('loading-indicator');
@@ -41,6 +43,18 @@ const errorIndicator = document.getElementById('capture-error-indicator');
 const errorIndicatorMessage = document.getElementById('capture-error-message');
 const streamErrorIndicator = document.getElementById('stream-error-indicator');
 const streamErrorMessage = document.getElementById('stream-error-message');
+
+function resetVideo() {
+    if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+    }
+    if (loopHandler) {
+        video.removeEventListener('ended', loopHandler);
+        loopHandler = null;
+    }
+    video.removeEventListener('ended', handleVideoEnded);
+}
 
 function showLoadingIndicator() {
     videoOverlay.style.display = 'block';
@@ -149,8 +163,9 @@ video.addEventListener('play', () => showPlayPauseIndicator(false));
 video.addEventListener('pause', () => showPlayPauseIndicator(true));
 video.addEventListener('error', (e) => {
     const msg = e.target.error ? e.target.error.message : '';
-    if (msg && msg.includes('Empty src attribute')) {
-        // Ignore errors from blank sources when switching cameras
+    const src = video.getAttribute('src');
+    if (!src || src.trim() === '' || (msg && msg.includes('Empty src attribute'))) {
+        // Ignore errors from blank or cleared sources when switching cameras
         return;
     }
     showError('Error loading video: ' + msg);
@@ -161,6 +176,11 @@ video.addEventListener('error', (e) => {
     }, 2000);
 });
 image.addEventListener('error', () => {
+    const src = image.getAttribute('src');
+    if (!src || src.trim() === '') {
+        // Ignore errors triggered from clearing the image source
+        return;
+    }
     showError('Error loading image');
     setTimeout(() => {
         if (typeof updateFeed === 'function') {
@@ -244,6 +264,7 @@ function updateTemplateDetails() {
 }
 
 function updateFeed() {
+    resetVideo();
     const source = document.getElementById('video-source').value;
     const isConnected = checkCameraConnection(currentCamera);
     const details = templateDetails[currentCamera];
@@ -311,9 +332,15 @@ function updateFeed() {
 }
 
 function playM3U8() {
+    resetVideo();
     video.style.display = 'block';
     // HLS streams are live and not seekable
-    document.getElementById('seek-bar').style.display = 'none';
+    const seekBar = document.getElementById('seek-bar');
+    if (seekBar) {
+        seekBar.style.visibility = 'hidden';
+        seekBar.style.pointerEvents = 'none';
+        seekBar.disabled = true;
+    }
 
     image.style.display = 'none';
     stopLiveSwitch();
@@ -331,27 +358,28 @@ function playM3U8() {
     }
 
     if (Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(m3u8Url);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+        hlsInstance = new Hls();
+        hlsInstance.loadSource(m3u8Url);
+        hlsInstance.attachMedia(video);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
             video.play().catch(e => console.error("Error playing video:", e));
         });
-        hls.on(Hls.Events.ERROR, function(event, data) {
+        hlsInstance.on(Hls.Events.ERROR, function(event, data) {
             console.error("HLS error:", data);
             if (data.fatal) {
                 switch(data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
                         console.error("Fatal network error encountered, trying to recover...");
-                        hls.startLoad();
+                        hlsInstance.startLoad();
                         break;
                     case Hls.ErrorTypes.MEDIA_ERROR:
                         console.error("Fatal media error encountered, trying to recover...");
-                        hls.recoverMediaError();
+                        hlsInstance.recoverMediaError();
                         break;
                     default:
                         console.error("Fatal error, cannot recover");
-                        hls.destroy();
+                        hlsInstance.destroy();
+                        hlsInstance = null;
                         break;
                 }
             }
@@ -371,6 +399,7 @@ function playM3U8() {
 
 
 function playLoop() {
+    resetVideo();
     video.style.display = 'block';
 
     image.style.display = 'none';
@@ -392,7 +421,7 @@ if (currentCamera === 'All') {
 
 let cameraIndex = 0;
 
-const cycleCameras = () => {
+loopHandler = () => {
     if (cameraIndex >= groupCameras.length) {
         cameraIndex = 0; // Reset the index to loop through the cameras again
     }
@@ -403,8 +432,8 @@ const cycleCameras = () => {
     cameraIndex++; // Move to the next camera
 };
 
-cycleCameras(); // Start the loop
-video.addEventListener('ended', cycleCameras); // Continue the loop when the video ends
+loopHandler(); // Start the loop
+video.addEventListener('ended', loopHandler); // Continue the loop when the video ends
     } else {
 // Handling for individual cameras
 video.src = `/last_video/${currentCamera}`;
@@ -442,6 +471,7 @@ function showLastScreenshot() {
 
 
 function playMP4() {
+    resetVideo();
     video.style.display = 'block';
     stopLiveSwitch();
     stopPNG();
@@ -481,9 +511,15 @@ video.dataset.currentCamera = nextCamera;
 }
 
 function playLive() {
+    resetVideo();
     video.style.display = 'block';
     // Live video cannot be scrubbed
-    document.getElementById('seek-bar').style.display = 'none';
+    const seekBar = document.getElementById('seek-bar');
+    if (seekBar) {
+        seekBar.style.visibility = 'hidden';
+        seekBar.style.pointerEvents = 'none';
+        seekBar.disabled = true;
+    }
     stopPNG();
     stopLiveSwitch();
 
@@ -530,6 +566,7 @@ video.play();
 function playPNG() {
     // When switching from video playback to PNG images, ensure any
     // ongoing video stream is stopped to avoid "media element" errors.
+    resetVideo();
     video.pause();
     video.src = '';
     video.style.display = 'none';
@@ -581,12 +618,18 @@ pngInterval = setInterval(refreshPNG, 10000 / speed);
 
 function playMJPG() {
     // Stop any existing video stream before showing MJPEG frames
+    resetVideo();
     video.pause();
     video.src = '';
     video.style.display = 'none';
     image.style.display = 'block';
     // MJPEG streams are continuous images, disable scrubbing
-    document.getElementById('seek-bar').style.display = 'none';
+    const seekBar = document.getElementById('seek-bar');
+    if (seekBar) {
+        seekBar.style.visibility = 'hidden';
+        seekBar.style.pointerEvents = 'none';
+        seekBar.disabled = true;
+    }
     stopLiveSwitch();
     stopPNG();
     if (currentCamera.startsWith('group-')) {
@@ -604,11 +647,17 @@ image.src = '/stream.mjpg?camera=' + currentCamera + '&time=' + new Date().getTi
 
 function playMotion() {
     // Stop any existing video stream before showing motion JPEG frames
+    resetVideo();
     video.pause();
     video.src = '';
     video.style.display = 'none';
     image.style.display = 'block';
-document.getElementById("seek-bar").style.display = "none";
+    const seekBar = document.getElementById('seek-bar');
+    if (seekBar) {
+        seekBar.style.visibility = 'hidden';
+        seekBar.style.pointerEvents = 'none';
+        seekBar.disabled = true;
+    }
     stopLiveSwitch();
     stopPNG();
     if (currentCamera.startsWith('group-')) {
@@ -681,7 +730,10 @@ if (liveSwitchInterval) {
             }
         }
         const show = isGroupView && cameraCount > 1 && source !== 'mjpg';
-        speedContainer.style.display = show ? 'block' : 'none';
+        speedContainer.style.visibility = show ? 'visible' : 'hidden';
+        speedContainer.style.pointerEvents = show ? 'auto' : 'none';
+        const slider = document.getElementById('speed-slider');
+        if (slider) slider.disabled = !show;
     }
 
     function updateSeekBar() {
@@ -690,7 +742,9 @@ if (liveSwitchInterval) {
         const source = document.getElementById('video-source').value;
         const isSingleCamera = !(currentCamera === 'All' || currentCamera.startsWith('group-'));
         const show = isSingleCamera && (source === 'mp4' || source === 'loop');
-        seekBar.style.display = show ? 'block' : 'none';
+        seekBar.style.visibility = show ? 'visible' : 'hidden';
+        seekBar.style.pointerEvents = show ? 'auto' : 'none';
+        seekBar.disabled = !show;
     }
 
 function checkCameraConnection(cameraName) {
@@ -719,12 +773,37 @@ const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 return lastScreenshotTime > oneHourAgo;
 }
 
+let captionInterval;
+
+async function fetchLatestCaptions() {
+    try {
+        const resp = await fetch('/templates');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        for (const name in templateDetails) {
+            if (data[name]) {
+                templateDetails[name].last_caption = data[name].last_caption;
+                templateDetails[name].last_caption_time = data[name].last_caption_time;
+            }
+        }
+        updateTemplateDetails();
+    } catch (err) {
+        console.error('Failed to fetch captions', err);
+    }
+}
+
+function startCaptionPolling() {
+    fetchLatestCaptions();
+    captionInterval = setInterval(fetchLatestCaptions, 15000);
+}
+
 // Initially show the latest screenshot and start the MJPG stream
 showLastScreenshot();
 updateTemplateDetails();
 updateSpeedContainer();
 updateSeekBar();
 playMJPG();
+startCaptionPolling();
 
 function togglePlayback() {
     if (video.paused) {

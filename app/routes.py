@@ -622,8 +622,21 @@ def generate(
                         )
                         # no need to loop through the directory if we find the symlink file
                         lfiles = []
-                        if os.path.exists(os.path.join(path, filename)):
-                            lfiles = [os.path.join(path, filename)]
+                        file_path = os.path.join(path, filename)
+                        if os.path.exists(file_path):
+                            lfiles = [file_path]
+                        else:
+                            # fall back to the oldest screenshot so the MJPEG
+                            # stream always has an initial frame
+                            pngs = [
+                                os.path.join(path, f)
+                                for f in os.listdir(path)
+                                if f.endswith(".png")
+                                and os.path.isfile(os.path.join(path, f))
+                            ]
+                            if pngs:
+                                pngs.sort(key=os.path.getctime)
+                                lfiles = [pngs[0]]
 
                         last_file = lfiles[-1] if lfiles else None
                         if (
@@ -940,6 +953,7 @@ def init_routes(app):
             }
         )
 
+
     @app.route("/captions_status")
     @login_required
     def captions_status():
@@ -955,6 +969,13 @@ def init_routes(app):
         except Exception as e:  # pragma: no cover - unexpected DB errors
             logging.error("error retrieving captions status: %s", e)
         return jsonify({"caption": caption, "timestamp": timestamp})
+
+    @app.route("/discovery_status")
+    @login_required
+    @profile_route("/discovery_status")
+    def discovery_status():
+        """Return cached background discovery status."""
+        return jsonify(scheduling.get_discovery_status())
 
     @app.route("/danger", methods=["GET", "POST"])
     @login_required
@@ -989,6 +1010,9 @@ def init_routes(app):
                     "path": "/captions_status",
                     "method": "GET",
                     "description": "Get the most recent caption and timestamp",
+                    "path": "/discovery_status",
+                    "method": "GET",
+                    "description": "Check background discovery status",
                     "authentication_required": False,
                 },
                 {
