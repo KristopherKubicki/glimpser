@@ -39,5 +39,6 @@ nav:
       - Tooltips: tooltips.md
       - SEO Metadata: seo_metadata.md
       - Troubleshooting: troubleshooting.md
+      - Log Cleaner: log_cleaner.md
       - Video Archiver: video_archiver.md
       - Governance: governance.md
