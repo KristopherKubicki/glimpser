@@ -10,7 +10,7 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Retention policy file sorting is also verified by tests.
 - Screenshot utility functions now have dedicated unit tests.
 - Shutdown helpers and port checks are validated by new tests.
-- LLM response count is now verified by a unit test that patches `random.randint`.
+- LLM response count now reads the number of stored entries in `data/llm_usage.json`.
 - Footer now displays the package version from installed metadata.
 - Footer version link shows a warning icon when a newer release is available.
 - The VERSION setting now syncs with the installed package version on startup.
