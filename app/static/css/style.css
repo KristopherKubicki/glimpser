@@ -143,6 +143,11 @@ body {
     min-height: 100vh;
 }
 
+main {
+    padding: 1rem;
+    flex-grow: 1;
+}
+
 
 .link {
     color: rgb(192, 192, 192);
