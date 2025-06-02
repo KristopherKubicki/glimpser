@@ -628,10 +628,31 @@ def record_llm_usage(name: str, tokens: int) -> None:
 def get_llm_response_count(name: str) -> int:
     """Return the number of LLM responses recorded for ``name``.
 
-    This is currently a placeholder that returns a random number.
+    Counts how many response entries are stored for the template in
+    ``LLM_USAGE_PATH``. The function is tolerant of the existing data format
+    where token usage may be recorded as either a list of entries or a single
+    cumulative integer.
     """
 
-    return random.randint(10, 100)
+    name = validate_template_name(name)
+    if name is None:
+        return 0
+
+    if not os.path.exists(LLM_USAGE_PATH):
+        return 0
+
+    try:
+        with open(LLM_USAGE_PATH, "r") as f:
+            data = json.load(f)
+    except Exception:
+        return 0
+
+    entry = data.get(name, [])
+    if isinstance(entry, list):
+        return len(entry)
+    if isinstance(entry, int):
+        return 1 if entry > 0 else 0
+    return 0
 
 
 def get_llm_cost_estimate(name: str) -> str:
@@ -690,7 +711,6 @@ def mark_offline(name: str) -> None:
         session.close()
 
 
-
 def set_capture_failed(name: str, failed: bool) -> None:
     """Set ``capture_failed`` flag for ``name``."""
     name = validate_template_name(name)
@@ -706,6 +726,7 @@ def set_capture_failed(name: str, failed: bool) -> None:
             session.commit()
     finally:
         session.close()
+
 
 def _update_scheduler_job(name: str, frequency: int) -> None:
     """Reschedule the APScheduler job for ``name`` if it exists.
@@ -734,4 +755,3 @@ def _update_scheduler_job(name: str, frequency: int) -> None:
         )
     except Exception as e:
         logging.error("job schedule error: %s", e)
-
