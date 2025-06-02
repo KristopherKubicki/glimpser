@@ -11,10 +11,12 @@
 
 [![Python application](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml)
 [![Pylint](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
+[![Tests](https://github.com/KristopherKubicki/glimpser/actions/workflows/test.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 [![GitHub release](https://img.shields.io/github/v/release/KristopherKubicki/glimpser)](https://github.com/KristopherKubicki/glimpser/releases/latest)
 [![Coverage](https://codecov.io/gh/KristopherKubicki/glimpser/branch/main/graph/badge.svg)](https://codecov.io/gh/KristopherKubicki/glimpser)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/KristopherKubicki/glimpser/badge)](https://securityscorecards.dev/viewer/?uri=github.com/KristopherKubicki/glimpser)
+[![Docs Build](https://github.com/KristopherKubicki/glimpser/actions/workflows/docs-build.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/docs-build.yml)
 
 ## Introduction
 Glimpser is a straightforward yet powerful real-time monitoring application designed to capture, analyze, and summarize live data from various sources such as cameras, dashboards, and video streams. Utilizing advanced image processing techniques and AI models, Glimpser provides insightful summaries and alerts. It’s highly configurable, allowing users to tailor it to their specific monitoring needs through an easy-to-use interface.

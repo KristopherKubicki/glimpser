@@ -45,6 +45,7 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Navigation logic and form validation are now modules to keep templates concise.
 - Core colors and fonts are defined via CSS variables.
 - Navigation menus use a consistent accent color with smooth hover effects.
+- Main content now includes padding so text isn't flush against the page edges.
  - Navigation bar icons now use the Font Awesome set and retain a unified circular style for a cleaner look.
 - Session cookies are now marked secure/HTTPOnly and expire after a configurable timeout.
 - The front page shows a "Session expired" message when template loading redirects to the login page.
