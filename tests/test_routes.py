@@ -188,6 +188,14 @@ class TestRoutes(unittest.TestCase):
         mock_render_template.assert_called_with("login.html")
 
     @patch("app.routes.SessionLocal")
+    @patch("app.routes.login_attempts", {})
+    @patch("app.routes.render_template")
+    def test_login_missing_fields(self, mock_render_template, mock_session_local):
+        response = self.client.post("/login", data={"username": "", "password": ""})
+        self.assertEqual(response.status_code, 400)
+        mock_render_template.assert_called_with("login.html")
+
+    @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
     def test_logout(self, mock_session_local):
         dummy_user = SimpleNamespace(id=1)

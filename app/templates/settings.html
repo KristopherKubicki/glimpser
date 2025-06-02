@@ -7,12 +7,13 @@
     <p><a href="{{ url_for('settings_help') }}" title="Detailed explanation of each option">What does each setting do?</a></p>
 
     <h3>Add New Setting</h3>
-    <form method="POST" action="{{ url_for('settings') }}">
+    <form id="add-setting-form" method="POST" action="{{ url_for('settings') }}">
         <input type="hidden" name="action" value="add" title="Add setting action">
         <label for="new_name" title="Name of the new setting">Name:</label>
         <input type="text" id="new_name" name="new_name" required title="Enter setting name">
         <label for="new_value" title="Initial value for the setting">Value:</label>
         <input type="text" id="new_value" name="new_value" required title="Enter setting value">
+        <div id="setting-error" class="form-error hidden"></div>
         <button type="submit" title="Add setting">Add Setting</button>
     </form>
 
