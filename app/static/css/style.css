@@ -372,17 +372,25 @@ nav a {
     color: var(--text-color);
 }
 
-.nav-right a,
+
+.nav-right a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 5px;
+    text-decoration: none;
+    color: var(--text-color);
+}
+
 .nav-right .status-indicator {
-    width: 28px;
-    height: 28px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--secondary-bg-color);
+    background-color: grey;
     margin-left: 5px;
-    text-decoration: none;
 }
 
 .nav-right .cool-clock {
@@ -390,21 +398,26 @@ nav a {
 }
 
 .nav-right a:hover {
-    background-color: var(--accent-color);
-    color: #fff;
+    color: var(--accent-color);
 }
 
 nav a:hover, nav a.active {
-    background-color: var(--accent-color); /* Highlight for hover and active link */
-    color: #fff;
+    color: var(--accent-color);
 }
 
 .settings-icon {
-    font-size: 24px; /* Adjust the size of the icon */
-    text-decoration: none; /* Remove underline */
+    text-decoration: none;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.settings-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
 }
 
 .performance-indicator {
@@ -444,8 +457,9 @@ nav a:hover, nav a.active {
         margin-bottom: 5px; /* Add margin for stacked items */
     }
 
-    .settings-icon {
-        font-size: 20px; /* Slightly smaller icon on mobile */
+    .settings-icon svg {
+        width: 18px;
+        height: 18px;
     }
 
     .performance-indicator {

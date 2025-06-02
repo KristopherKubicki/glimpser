@@ -26,7 +26,13 @@ class TestDangerStatusEndpoint(unittest.TestCase):
         resp = self.client.get("/danger_status")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(
-            resp.get_json(), {"port_open": True, "idle": True, "ready": True}
+            resp.get_json(),
+            {
+                "port_open": True,
+                "idle": True,
+                "enabled": True,
+                "ready": True,
+            },
         )
 
 

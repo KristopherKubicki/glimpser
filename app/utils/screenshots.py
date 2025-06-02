@@ -73,6 +73,7 @@ from app.config import (
     ANALYZE_DURATION_OTHER,
     TZ,
 )
+import app.config as config
 from app.utils.validators import validate_proxy
 
 last_camera_test = {}
@@ -2321,7 +2322,7 @@ def capture_screenshot_and_har(
     ############
     # Danger Mode
     ############
-    if danger:
+    if danger and config.get_setting("DANGER_MODE", "True") == "True":
         # If we rely on the user's local Chrome with remote-debugging-port=9222,
         # let's confirm it's actually open.
         if not is_chrome_debug_port_open("127.0.0.1", 9222):
