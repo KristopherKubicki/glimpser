@@ -87,10 +87,13 @@ Requires authentication. Submit form data to modify configuration values. A succ
 
 **GET /stream.mp4**
 
-Stream the most recent MP4 video for a group. Specify `group` as a query parameter. The
-video is served in small chunks and loops continuously.
+Stream the most recent MP4 video. Provide either a `camera` or `group` query
+parameter to restrict the feed. When a camera is specified the current
+`in_process.mp4` for that camera is streamed; otherwise the latest group video
+is returned. The video is served in small chunks and loops continuously.
 
-Example: `/stream.mp4?group=frontdoor`
+Examples:
+`/stream.mp4?camera=frontdoor` or `/stream.mp4?group=frontdoor`
 
 ### 4. Stream Live Video
 
