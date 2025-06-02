@@ -167,6 +167,9 @@ Glimpser writes logs to the console and exposes them via the `/status` page. If 
 - Review recent entries for stack traces or connection errors.
 - If logs show "Failed to open last shot ... invalid image", the screenshot file
   is corrupted. Delete the file so a new capture can replace it.
+- If you see "session not created" with a message about the user data directory
+  already in use, remove any stale `/tmp/glimpser_*` folders or restart Glimpser
+  to clear old Chrome processes.
 
 ## 10. Upgrade Issues
 

@@ -12,6 +12,7 @@ import shutil
 import socket
 import subprocess
 import time
+import tempfile
 from urllib.parse import urlparse
 import glob
 import base64
@@ -2357,10 +2358,9 @@ def capture_screenshot_and_har(
     user_data_dir = None
     driver = None
     try:
-        # Create ephemeral profile dir in /tmp
-        tmp_profile = f"/tmp/glimpser_{name}"
-        os.makedirs(tmp_profile, exist_ok=True)
-        user_data_dir = tmp_profile  # just to keep track
+        # Create a unique ephemeral profile directory
+        tmp_profile = tempfile.mkdtemp(prefix="glimpser_")
+        user_data_dir = tmp_profile  # track for cleanup
 
         # Using undetected_chromedriver for stealth:
         # driver_options = uc.ChromeOptions()
