@@ -574,6 +574,22 @@ class TestRoutes(unittest.TestCase):
         response = self.client.get("/group/unknown")
         self.assertEqual(response.status_code, 404)
 
+    @patch("app.routes.template_manager.get_templates_sorted_by_last_caption_time")
+    @patch("app.routes.session", {"user_id": 1})
+    def test_captions_status(self, mock_sorted):
+        mock_sorted.return_value = [
+            (
+                "cam1",
+                {"last_caption": "hello", "last_caption_time": "2024-01-01 00:00:00"},
+            )
+        ]
+        response = self.client.get("/captions_status")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.get_json(),
+            {"caption": "hello", "timestamp": "2024-01-01 00:00:00"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -62,6 +62,36 @@ export function initNav() {
       }
     };
 
+
+    const captionsIcon = document.getElementById('captions');
+    let lastCaptionTime = null;
+    const checkCaptions = async () => {
+      if (!captionsIcon) return;
+      try {
+        const res = await fetch('/captions_status');
+        const data = await res.json();
+        captionsIcon.title = data.caption || '';
+        if (data.timestamp) {
+          const ts = new Date(data.timestamp.replace(' ', 'T') + 'Z');
+          if (!lastCaptionTime || ts > lastCaptionTime) {
+            captionsIcon.classList.add('flash-caption');
+            setTimeout(() => captionsIcon.classList.remove('flash-caption'), 5000);
+            lastCaptionTime = ts;
+          }
+          const ageSec = (Date.now() - ts.getTime()) / 1000;
+          if (ageSec < 60) {
+            captionsIcon.style.color = 'green';
+          } else if (ageSec < 300) {
+            captionsIcon.style.color = 'yellow';
+          } else if (ageSec > 1800) {
+            captionsIcon.style.color = 'red';
+          } else {
+            captionsIcon.style.color = '';
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching caption status:', error);
+
     const checkDiscovery = async () => {
       if (!discoveryStatus) return;
       try {
@@ -118,6 +148,8 @@ export function initNav() {
     setInterval(checkHealth, 5000);
     checkDanger();
     setInterval(checkDanger, 5000);
+    checkCaptions();
+    setInterval(checkCaptions, 10000);
     checkDiscovery();
     setInterval(checkDiscovery, 60000);
     updateCoolClock();

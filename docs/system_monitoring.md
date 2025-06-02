@@ -57,6 +57,14 @@ metrics.
 An accompanying **Internal Caption** camera shows `/internal_caption.mjpg` so you
 can monitor recent caption text without leaving the dashboard.
 
+## Caption Activity Indicator
+
+The navigation bar shows a captions icon that reflects how recent the last
+caption update was. It flashes with the newest caption text when a group message
+arrives. The icon remains green for one minute after a caption, changes to
+yellow for the next five minutes and turns red once thirty minutes have passed
+without an update.
+
 ## Danger Mode Indicator
 
 When Chrome's remote debugging port is open and no user input has been detected for a short time, Danger mode becomes available. An orange icon in the navigation bar shows this state. Hovering over the icon explains why Danger mode may be unavailable. See [Danger Mode](danger_mode.md) for setup instructions.

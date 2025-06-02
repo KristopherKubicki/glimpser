@@ -612,6 +612,15 @@ nav a:hover, nav a.active {
     animation: highlight 0.5s;
 }
 
+@keyframes caption-flash {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.25); }
+}
+
+.flash-caption {
+    animation: caption-flash 1s ease-in-out 5;
+}
+
 /* Increase the size of buttons and links for all screen sizes */
 button, a {
     padding: 5px; /* More padding for larger touch area */
