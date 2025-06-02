@@ -38,4 +38,5 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Core colors and fonts are defined via CSS variables.
 - Navigation menus use a consistent accent color with smooth hover effects.
 - Session cookies are now marked secure/HTTPOnly and expire after a configurable timeout.
+- Routes can restrict access by user role using a helper on the login decorator.
 - Player pages fade the navigation bar when the mouse is idle for a few seconds.

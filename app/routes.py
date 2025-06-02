@@ -131,7 +131,22 @@ def is_hash_valid(timed_hash: str) -> bool:
         return False
 
 
-def login_required(f):
+def _has_required_role(user, roles):
+    """Return True if no role restrictions or the user's role is allowed."""
+
+    if not roles:
+        return True
+    if isinstance(user, dict):
+        user_role = user.get("role")
+    else:
+        user_role = getattr(user, "role", None)
+    return user_role in roles
+
+
+def login_required(f=None, *, roles=None):
+    if f is None:
+        return lambda fn: login_required(fn, roles=roles)
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # Check for API key in headers, GET parameters, or POST form data
@@ -179,7 +194,8 @@ def login_required(f):
                 flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
 
-            # Optional role checks could be added here
+            if not _has_required_role(user, roles):
+                abort(403)
             return f(*args, **kwargs)
 
         # Handle missing or invalid authentication
@@ -2025,7 +2041,7 @@ def init_routes(app):
         return send_from_directory(path, filename)
 
     @app.route("/settings", methods=["GET", "POST"])
-    @login_required
+    @login_required(roles=[User.ROLE_ADMIN])
     def settings():
         if request.method == "POST":
             email_settings = [

@@ -14,6 +14,7 @@ from unittest.mock import patch
 from types import SimpleNamespace
 from app.config import USER_NAME, API_KEY
 from app.routes import login_required, login_attempts
+from app.models.user import User
 from app import create_app
 
 
@@ -366,6 +367,77 @@ class TestAuthentication(unittest.TestCase):
             response = self.client.get("/sso?token=wrong")
             self.assertEqual(response.status_code, 302)
             self.assertIn("/login", response.headers["Location"])
+
+    def test_role_based_access_allowed(self):
+        login_attempts = {}
+
+        @self.app.route("/admin")
+        @login_required(roles=[User.ROLE_ADMIN])
+        def admin_route():
+            return "admin"
+
+        dummy_user = SimpleNamespace(id=1, username=USER_NAME, role=User.ROLE_ADMIN)
+
+        class DummyQuery:
+            def filter_by(self, **kwargs):
+                return self
+
+            def first(self):
+                return dummy_user
+
+        class DummySession:
+            def query(self, model):
+                return DummyQuery()
+
+            def close(self):
+                pass
+
+        class DummyInspector:
+            def get_table_names(self):
+                return ["users"]
+
+        with patch("app.routes.session", {"user_id": 1}), patch(
+            "app.routes.SessionLocal",
+            return_value=DummySession(),
+        ), patch("app.routes.sa_inspect", return_value=DummyInspector()):
+            response = self.client.get("/admin")
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b"admin", response.data)
+
+    def test_role_based_access_denied(self):
+        login_attempts = {}
+
+        @self.app.route("/admin2")
+        @login_required(roles=[User.ROLE_ADMIN])
+        def admin2_route():
+            return "admin2"
+
+        dummy_user = SimpleNamespace(id=1, username=USER_NAME, role=User.ROLE_USER)
+
+        class DummyQuery:
+            def filter_by(self, **kwargs):
+                return self
+
+            def first(self):
+                return dummy_user
+
+        class DummySession:
+            def query(self, model):
+                return DummyQuery()
+
+            def close(self):
+                pass
+
+        class DummyInspector:
+            def get_table_names(self):
+                return ["users"]
+
+        with patch("app.routes.session", {"user_id": 1}), patch(
+            "app.routes.SessionLocal",
+            return_value=DummySession(),
+        ), patch("app.routes.sa_inspect", return_value=DummyInspector()):
+            response = self.client.get("/admin2")
+            self.assertEqual(response.status_code, 403)
 
 
 if __name__ == "__main__":
