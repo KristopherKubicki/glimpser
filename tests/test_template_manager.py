@@ -308,5 +308,27 @@ class TestStorageUsage(unittest.TestCase):
                 self.assertEqual(result, "3.0 KB")
 
 
+class TestSchedulerUpdates(unittest.TestCase):
+    @patch("app.utils.scheduling.scheduler")
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_save_template_reschedules_job(self, mock_session, mock_sched):
+        """Updating a template should recreate its scheduled job."""
+
+        mock_sess = MagicMock()
+        mock_session.return_value = mock_sess
+        template = Template(name="cam1", frequency=1)
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = (
+            template
+        )
+
+        manager = TemplateManager()
+        result = manager.save_template("cam1", {"frequency": 2})
+
+        self.assertTrue(result)
+        mock_sess.commit.assert_called_once()
+        mock_sched.remove_job.assert_called_with("cam1")
+        mock_sched.add_job.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()

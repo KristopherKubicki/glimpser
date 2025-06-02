@@ -153,7 +153,9 @@ class TemplateManager:
             if template is None:
                 template = Template()
                 session.add(template)
-            ldelta = False
+                ldelta = True
+            else:
+                ldelta = False
             if template:
                 for key, value in details.items():
                     try:
@@ -219,6 +221,8 @@ class TemplateManager:
                         ldelta = True
             if ldelta is True:
                 session.commit()
+                # Recreate the scheduler job so the new settings take effect
+                _update_scheduler_job(name, template.frequency)
             return True
         except Exception as e:
             logging.error("Error saving template: %s", str(e))
@@ -648,3 +652,32 @@ def mark_offline(name: str) -> None:
             session.commit()
     finally:
         session.close()
+
+
+def _update_scheduler_job(name: str, frequency: int) -> None:
+    """Reschedule the APScheduler job for ``name`` if it exists.
+
+    The scheduler uses the template's frequency to determine the interval. Any
+    update should remove the old job and create a new one so changes apply
+    immediately.
+    """
+
+    from . import scheduling  # Imported here to avoid circular dependency
+
+    try:
+        scheduling.scheduler.remove_job(name)
+    except Exception:
+        pass
+
+    seconds = 60 * int(frequency)
+    try:
+        scheduling.scheduler.add_job(
+            func=scheduling.update_camera,
+            trigger="interval",
+            seconds=seconds,
+            args=[name, {}],
+            id=name,
+            replace_existing=True,
+        )
+    except Exception as e:
+        logging.error("job schedule error: %s", e)

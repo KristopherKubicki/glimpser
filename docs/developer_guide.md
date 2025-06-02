@@ -64,3 +64,4 @@ When adding new features, include corresponding tests under the `tests/` directo
 - Scheduler helpers are tested in `tests/test_scheduling_more.py`.
 - Template update validation ensures numeric fields remain in range and
   required values are present.
+- `save_template` now reschedules APScheduler jobs when a template is edited.
