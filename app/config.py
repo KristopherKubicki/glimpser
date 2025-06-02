@@ -292,6 +292,12 @@ ANALYZE_DURATION_OTHER = get_setting("ANALYZE_DURATION_OTHER", PROBE_SIZE_OTHER)
 # your hardware can handle the extra load.
 LIVE_FALLBACK_FPS = int(get_setting("LIVE_FALLBACK_FPS", 1))
 
+# Stop restarting live streams endlessly when ffmpeg repeatedly fails. If the
+# live view fails this many times in a row without producing any output,
+# ``generate_live_stream`` gives up and closes the connection so resources are
+# not wasted.
+LIVE_MAX_FAILURES = int(get_setting("LIVE_MAX_FAILURES", 10))
+
 # Email settings
 EMAIL_ENABLED = get_setting("EMAIL_ENABLED", "False")
 EMAIL_SENDER = get_setting("EMAIL_SENDER", "your-email@example.com")
