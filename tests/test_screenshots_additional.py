@@ -2,6 +2,7 @@ import unittest
 import os
 import sys
 import tempfile
+import shutil
 from unittest.mock import patch
 from PIL import Image
 
@@ -11,6 +12,21 @@ import app.utils.screenshots as ss
 
 
 class TestScreenshotsExtras(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.patcher = patch(
+            "app.utils.screenshots.STATUS_CACHE_PATH",
+            os.path.join(self.tmpdir, "cache.json"),
+        )
+        self.patcher.start()
+        ss.status_code_cache.clear()
+        ss.status_code_cache_time.clear()
+        ss._persist_status_cache()
+
+    def tearDown(self):
+        self.patcher.stop()
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
     def test_is_valid_png(self):
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
             Image.new("RGB", (1, 1)).save(tmp, format="PNG")
