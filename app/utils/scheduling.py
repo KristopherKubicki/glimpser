@@ -1020,6 +1020,41 @@ def get_feed_status():
     now = datetime.datetime.utcnow()
     feeds = []
 
+    def _humanize(ts: str | None) -> str | None:
+        """Return a simple "time ago" string for the given timestamp."""
+        if not ts:
+            return None
+        try:
+            dt = datetime.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+        except Exception:
+            return ts
+
+        diff = (now - dt).total_seconds()
+        if diff < 0:
+            return "in the future"
+        intervals = (
+            ("year", 31536000),
+            ("month", 2592000),
+            ("day", 86400),
+            ("hour", 3600),
+            ("minute", 60),
+            ("second", 1),
+        )
+        for label, seconds in intervals:
+            count = int(diff // seconds)
+            if count >= 1:
+                return f"{count} {label}{'s' if count > 1 else ''} ago"
+        return "just now"
+
+    def _iso(ts: str | None) -> str | None:
+        if not ts:
+            return None
+        try:
+            dt = datetime.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+            return dt.isoformat() + "Z"
+        except Exception:
+            return ts
+
     for name, template in templates.items():
         last_shot = template.get("last_screenshot_time")
         last_caption = template.get("last_caption_time")
@@ -1044,8 +1079,10 @@ def get_feed_status():
         feeds.append(
             {
                 "name": name,
-                "last_screenshot_time": last_shot,
-                "last_caption_time": last_caption,
+                "last_screenshot_time": _iso(last_shot),
+                "last_screenshot_display": _humanize(last_shot),
+                "last_caption_time": _iso(last_caption),
+                "last_caption_display": _humanize(last_caption),
                 "status": status,
             }
         )

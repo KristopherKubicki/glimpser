@@ -1127,6 +1127,14 @@ details > summary {
     padding: 6px 8px;
     border: 1px solid #ddd;
 }
+.feed-status a {
+    color: var(--text-color);
+    text-decoration: none;
+}
+.feed-status a:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+}
 .status-dot {
     display: inline-block;
     width: 12px;
