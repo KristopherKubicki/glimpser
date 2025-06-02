@@ -233,6 +233,13 @@ PROBE_SIZE_DEFAULT = get_setting("PROBE_SIZE_DEFAULT", "5M")
 PROBE_SIZE_RTSP = get_setting("PROBE_SIZE_RTSP", "10M")
 PROBE_SIZE_OTHER = get_setting("PROBE_SIZE_OTHER", "20M")
 
+# Analysis duration values for ffmpeg's stream probing. They default to the
+# corresponding probe size values but can be overridden independently if
+# needed.
+ANALYZE_DURATION_DEFAULT = get_setting("ANALYZE_DURATION_DEFAULT", PROBE_SIZE_DEFAULT)
+ANALYZE_DURATION_RTSP = get_setting("ANALYZE_DURATION_RTSP", PROBE_SIZE_RTSP)
+ANALYZE_DURATION_OTHER = get_setting("ANALYZE_DURATION_OTHER", PROBE_SIZE_OTHER)
+
 # Frame rate used when `generate_live_stream` falls back to
 # still image capture. Increase to get smoother previews if
 # your hardware can handle the extra load.
