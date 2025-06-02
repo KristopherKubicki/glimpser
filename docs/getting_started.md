@@ -44,7 +44,7 @@ This guide will walk you through the process of setting up Glimpser and running 
 
 6. Go to the "Monitoring" section to view your live data feed.
 
-7. On the **Live** page, select your camera and choose **Live Video** from the
+7. On the **Live** page, select your camera. MJPG is selected by default, but choose **Live Video** from the
    "Video Source" dropdown for direct streaming.
 
 8. Explore the auto-generated captions and summaries.
