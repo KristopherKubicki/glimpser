@@ -1853,15 +1853,14 @@ def is_port_open(host, port, timeout=5):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(timeout)
         try:
-            sock.connect((host, port))
-            logging.debug("should close?? %s", host)
-            sock.close()
-            logging.debug("closed %s", host)
-            return True
-        except (socket.timeout, ConnectionRefusedError, socket.gaierror):
-            if host in ("google.com", "www.google.com") and port == 80:
-                return True
+            result = sock.connect_ex((host, port))
+        except OSError:
             return False
+        if result == 0:
+            return True
+        if host in ("google.com", "www.google.com") and port == 80:
+            return True
+        return False
 
 
 def is_chrome_debug_port_open(host="127.0.0.1", port=9222, timeout=1):

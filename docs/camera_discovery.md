@@ -1,6 +1,7 @@
 # Camera Discovery
 
 Glimpser includes a simple discovery feature to help find network cameras on your local LAN. The `/discover` page now loads immediately and only scans when you click the **Discover** button. A progress bar displays the number of completed stages so you know the scan is making progress. The page also shows which discovery stage is currently executing. The logic in `app/utils/camera_discovery.py` runs in parallel threads so results return faster. To keep the scan quick, each interface is limited to a `/24` subnet even if the reported mask is larger.
+The subnet list is now deduplicated so machines with multiple addresses per interface are scanned only once. Unreachable ports fail fast so discovery always completes even when some networks are inaccessible.
 
 ## How the `/discover` route works
 
