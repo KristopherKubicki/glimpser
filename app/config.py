@@ -179,6 +179,7 @@ MAX_IN_PROCESS_VIDEO_SIZE = int(
 )  # 100 MB
 
 LOG_LEVEL = get_setting("LOG_LEVEL", "WARN")
+FLASK_LOG_LEVEL = get_setting("FLASK_LOG_LEVEL", LOG_LEVEL)
 
 # Session security settings
 SESSION_COOKIE_SECURE = get_setting("SESSION_COOKIE_SECURE", "True") == "True"
