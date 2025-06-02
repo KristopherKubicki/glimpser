@@ -17,6 +17,9 @@ flake8
 
 Refer to [developer_guide.md](developer_guide.md) for setting up your environment.
 
+Recent tests cover screenshot capture helpers, database initialization through
+`TemplateManager`, and mocked OpenAI interactions.
+
 ## End-to-End Tests
 
 The `tests/test_e2e_web.py` module contains browser-based scenarios powered by

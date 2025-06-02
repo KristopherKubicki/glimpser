@@ -10,6 +10,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from app import create_app
 import app.config as config
+from importlib import reload
+from app.utils import db
+from app.utils.template_manager import TemplateManager
 
 
 class TestInstallationAndFirstUse(unittest.TestCase):
@@ -55,8 +58,9 @@ class TestInstallationAndFirstUse(unittest.TestCase):
 
     def test_database_initialization(self):
         """Test that the database file is created"""
-        # TODO: i think this needs a join...
-        # self.assertTrue(os.path.exists(config.DATABASE_PATH))
+        reload(db)
+        TemplateManager()
+        self.assertTrue(os.path.exists(config.DATABASE_PATH))
 
     def test_root_route(self):
         """Test the root route of the application"""
