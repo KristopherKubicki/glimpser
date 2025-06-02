@@ -1231,17 +1231,24 @@ def init_routes(app):
                 SCREENSHOT_DIRECTORY,
                 name,
             )
-            lfiles = [f for f in glob.glob(path + "/*.png") if os.path.isfile(f)]
-            if not lfiles:
+            files_with_mtime = []
+            for f in glob.glob(path + "/*.png"):
+                if not os.path.isfile(f) or f.endswith(".tmp.png"):
+                    # Ignore in-progress screenshots
+                    continue
+                try:
+                    mtime = os.path.getmtime(f)
+                except OSError:
+                    # File might have been removed between glob and stat
+                    continue
+                files_with_mtime.append((f, mtime))
+            if not files_with_mtime:
                 continue
-            lfiles.sort(key=os.path.getmtime)
-            last_file = lfiles[-1]
-            if (
-                os.path.exists(last_file)
-                and os.path.getmtime(last_file) > most_recent_time
-            ):
+            files_with_mtime.sort(key=lambda t: t[1])
+            last_file, last_mtime = files_with_mtime[-1]
+            if last_mtime > most_recent_time:
                 most_recent_file = last_file
-                most_recent_time = os.path.getmtime(last_file)
+                most_recent_time = last_mtime
         if most_recent_file is None:
             abort(404)
 
