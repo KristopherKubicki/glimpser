@@ -87,11 +87,12 @@
             <source src="" type="video/mp4">
             Your browser does not support the video tag.
         </video>
+        <video id="preload-video" class="hidden" muted preload="auto"></video>
         <div class="video-controls">
             <input type="range" id="seek-bar" value="0">
 
             <div class="control-row">
-                <button id="play-pause"><i class="fa-play-pause"></i> Test</button>
+                <button id="play-pause" title="play/pause"><i class="fa-play-pause"></i></button>
                 <div id="speed-container">
                     <input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()">
                     <label for="speed-slider">Speed: <span id="speed-value">1x</span></label>
@@ -164,6 +165,7 @@
     <script>
 
         const video = document.getElementById('live-video');
+        const preloadVideo = document.getElementById('preload-video');
         const image = document.getElementById('live-image');
         const templateDetailsContainer = document.getElementById('template-details');
         const templateDetails = {{ template_details|tojson }};
@@ -171,6 +173,7 @@
         let pngInterval;
         let liveSwitchInterval;
         let liveSwitchFunction;
+        let preloadedCamera = null;
         const speedContainer = document.getElementById('speed-container');
         const videoOverlay = document.getElementById('video-overlay');
         const loadingIndicator = document.getElementById('loading-indicator');
@@ -289,6 +292,56 @@
             }
         }
 
+        function computeVideoUrl(cameraName, source) {
+            if (source === 'mp4' || source === 'loop') {
+                if (cameraName.startsWith('group-')) {
+                    const groupName = cameraName.split('group-')[1];
+                    return `/stream.mp4?group=${encodeURIComponent(groupName)}`;
+                } else if (cameraName === 'All') {
+                    return '/stream.mp4';
+                }
+                return '/last_video/' + cameraName;
+            }
+
+            if (source === 'live') {
+                if (cameraName.startsWith('group-') || cameraName === 'All') {
+                    const groupCams = cameraName === 'All'
+                        ? Object.keys(templateDetails).filter(key => key !== 'All')
+                        : templateDetails[cameraName].groupCameras;
+                    return '/live_video?camera=' + encodeURIComponent(groupCams[0]);
+                }
+                return '/live_video?camera=' + encodeURIComponent(cameraName);
+            }
+
+            return null;
+        }
+
+        function preloadCameraStream(cameraName) {
+            const source = document.getElementById('video-source').value;
+            const url = computeVideoUrl(cameraName, source);
+            if (url) {
+                preloadVideo.dataset.camera = cameraName;
+                preloadVideo.src = url;
+                preloadVideo.load();
+                preloadedCamera = cameraName;
+            }
+        }
+
+        function preloadNextCamera() {
+            const selector = document.getElementById('camera-selector');
+            const options = Array.from(selector.options);
+            const idx = options.findIndex(o => o.value === currentCamera);
+            if (idx === -1) return;
+            const nextValue = options[(idx + 1) % options.length].value;
+            preloadCameraStream(nextValue);
+        }
+
+        function swapPreloadedStream() {
+            video.src = preloadVideo.src;
+            video.load();
+            video.play();
+        }
+
         video.addEventListener('waiting', showLoadingIndicator);
         video.addEventListener('canplay', hideLoadingIndicator);
         video.addEventListener('canplay', () => { image.style.display = 'none'; });
@@ -357,8 +410,13 @@ function changeCamera() {
         hideOfflineIndicator();
         showLastScreenshot();
         updateTemplateDetails();
-        updateFeed(); // Make sure to update the video feed after changing the camera or group
+        if (preloadedCamera === currentCamera && preloadVideo.src) {
+            swapPreloadedStream();
+        } else {
+            updateFeed(); // Load normally if not preloaded
+        }
         updateSpeedContainer();
+        preloadNextCamera();
     }
 }
 
@@ -412,6 +470,22 @@ function changeCamera() {
                 if (!['png', 'mjpg', 'motion'].includes(source)) {
                     showLastScreenshot();
                 }
+            }
+
+            if (
+                preloadedCamera === currentCamera &&
+                ['mp4', 'live', 'loop'].includes(source) &&
+                preloadVideo.src
+            ) {
+                video.style.display = 'block';
+                image.style.display = 'none';
+                stopLiveSwitch();
+                stopPNG();
+                video.src = preloadVideo.src;
+                video.load();
+                video.play();
+                preloadNextCamera();
+                return;
             }
 
             switch (source) {
@@ -583,6 +657,7 @@ function playMP4() {
 
     // Add an event listener for the 'ended' event
     video.addEventListener('ended', handleVideoEnded);
+    preloadNextCamera();
 }
 
 function handleVideoEnded() {
@@ -594,6 +669,8 @@ function handleVideoEnded() {
         const nextCamera = groupCameras[nextIndex];
         video.src = '/last_video/' + nextCamera;
         video.dataset.currentCamera = nextCamera;
+        const upcomingCamera = groupCameras[(nextIndex + 1) % groupCameras.length];
+        preloadCameraStream(upcomingCamera);
     }
     video.load();
     video.play();
@@ -624,6 +701,8 @@ function playLive() {
             video.load();
             video.play();
             cameraIndex++;
+            const nextCamera = groupCameras[cameraIndex % groupCameras.length];
+            preloadCameraStream(nextCamera);
         };
 
         const slider = document.getElementById('speed-slider');
@@ -635,6 +714,7 @@ function playLive() {
         video.load();
         video.play();
     }
+    preloadNextCamera();
 }
 
 function playPNG() {
@@ -643,8 +723,7 @@ function playPNG() {
     stopLiveSwitch();
         const slider = document.getElementById('speed-slider');
         const speed = Math.pow(2, slider.value);
-	document.getElementById("seek-bar").style.display = "none";
-	console.log( document.getElementById("seek-bar"), speed);
+        document.getElementById("seek-bar").style.display = "none";
     stopPNG();
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
@@ -796,6 +875,8 @@ function playMotion() {
         updateTemplateDetails();
         updateSpeedContainer();
         playMP4();
+
+        preloadNextCamera();
 
     </script>
     <script type="module" src="{{ url_for('static', filename='js/live.js') }}"></script>
