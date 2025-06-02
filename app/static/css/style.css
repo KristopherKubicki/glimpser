@@ -209,6 +209,13 @@ select:hover {
     padding-top: 56.25%; /* Aspect ratio of 16:9 */
 }
 
+/* Ensure the preview link covers the entire tile */
+.templateDiv > a:first-child {
+    position: absolute;
+    inset: 0;
+    display: block;
+}
+
 .templateDiv video {
     position: absolute;
     top: 0;
@@ -489,7 +496,9 @@ button, a {
 
 /* Adjust padding and margin for better spacing */
 .video-container {
-    padding: 5px; /* Add more padding around the video */
+    padding: 5px; /* Space around the preview */
+    height: 100%;
+    box-sizing: border-box;
 }
 
 #speed-control-container {
