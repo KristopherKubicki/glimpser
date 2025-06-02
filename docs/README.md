@@ -17,6 +17,7 @@ If you're looking for the list of available documents, see [index.md](index.md).
 - Template and live views now show camera metadata, and PNG streams stop when switching sources.
 - Templates are rescheduled when saved to apply the new settings.
 - The front page 'Play All' button now works again after moving its script initialization to DOMContentLoaded.
+- The Play All button only starts playback for videos visible on the page to avoid overloading the browser with many cameras.
 - The live view page no longer shows a duplicate navigation header.
 - The Discover page link now appears as a magnifying glass icon for consistent navigation.
 - Group and All cameras now bypass offline checks when loading feeds.

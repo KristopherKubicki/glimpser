@@ -4,23 +4,40 @@ export function initVideoControls() {
     setupVideoControls();
 
     const playAllButton = document.getElementById('play-all-button');
-    let isPlaying = false;
+    let playAllActive = false;
+    let playAllObserver;
+
+    function handlePlayAll(entries) {
+      entries.forEach((entry) => {
+        if (!playAllActive) return;
+        if (entry.isIntersecting) {
+          entry.target
+            .play()
+            .catch((e) => console.error('Error playing video:', e));
+        } else {
+          entry.target.pause();
+        }
+      });
+    }
+
     if (playAllButton) {
       playAllButton.addEventListener('click', () => {
         const videos = document.querySelectorAll('.templateDiv video');
-        if (isPlaying) {
+        if (playAllActive) {
+          if (playAllObserver) playAllObserver.disconnect();
           videos.forEach((video) => {
             video.pause();
             video.currentTime = 0;
           });
           playAllButton.textContent = 'Play All';
         } else {
-          videos.forEach((video) => {
-            video.play().catch((e) => console.error('Error playing video:', e));
+          playAllObserver = new IntersectionObserver(handlePlayAll, {
+            threshold: 0.25,
           });
+          videos.forEach((video) => playAllObserver.observe(video));
           playAllButton.textContent = 'Stop All';
         }
-        isPlaying = !isPlaying;
+        playAllActive = !playAllActive;
       });
     }
 
