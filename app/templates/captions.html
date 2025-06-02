@@ -40,18 +40,18 @@
 
 
 <!-- Bulk management controls -->
-<div class="tsv-controls">
-    <h3>Bulk Caption Management</h3>
+<details class="tsv-controls">
+    <summary>Bulk Caption Management</summary>
     <div class="tsv-buttons">
         <a href="/download_captions_tsv" class="btn btn-primary">Download Captions as TSV</a>
-        
+
         <form action="/upload_captions_tsv" method="post" enctype="multipart/form-data" class="tsv-upload-form">
             <input type="file" name="tsv_file" id="tsv_file" accept=".tsv">
             <button type="submit" class="btn btn-success">Upload TSV</button>
         </form>
     </div>
     <p class="tsv-help">Download the TSV file, edit in a spreadsheet application, then upload to update captions.</p>
-</div>
+</details>
 
 <!-- Add this to display flash messages -->
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -64,7 +64,7 @@
   {% endif %}
 {% endwith %}
 
-    <details open><summary>Captions</summary>
+    <details><summary>Captions</summary>
         <table class="captions-table">
             <tr>
                 <th>Timestamp</th>
