@@ -20,5 +20,6 @@ This document lists the main tooltips available in the Glimpser interface. Hover
 - **Help** – opens this documentation.
 - **Version** – indicates the installed package version and warns when updates are available.
 - **About/License** – links to project information.
+- The footer itself hides when the mouse is inactive.
 
 These tooltips aim to make the interface self‑explanatory and easier to navigate.

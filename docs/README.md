@@ -40,6 +40,8 @@ If you're looking for the list of available documents, see [index.md](index.md).
  - Navigation bar icons have a unified circular style for a cleaner look. The search link now uses a monochrome glyph for consistency.
 - Session cookies are now marked secure/HTTPOnly and expire after a configurable timeout.
 - Player pages fade the navigation bar when the mouse is idle for a few seconds.
+- The footer now stays fixed at the bottom of the screen and fades when the
+  mouse is idle.
 - Templates track capture failures and display a warning icon when screenshots fail.
 - Keyboard shortcuts now allow play/pause, mute, fullscreen toggling, camera selection with the arrow keys, and speed adjustment with `[` and `]` when watching live video.
 - Live view image streams now back off exponentially after repeated failures.

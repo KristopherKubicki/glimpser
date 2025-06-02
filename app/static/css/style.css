@@ -706,7 +706,14 @@ footer {
     padding: 10px 10px 0 10px;
     border-top: 2px solid #444;
     box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.2);
-    margin-top: auto;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    transition: opacity 0.5s;
+}
+
+footer.fade-out {
+    opacity: 0;
 }
 
 .footer-content {
