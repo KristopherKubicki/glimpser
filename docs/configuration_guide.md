@@ -116,6 +116,9 @@ Settings controlling how frames are captured from video sources:
 - `ANALYZE_DURATION_OTHER` – analyzeduration for other protocols (default `20M`)
 - `LIVE_FALLBACK_FPS` – still-frame refresh rate when live video fails (default `1`)
 - `LIVE_MAX_FAILURES` – maximum consecutive ffmpeg failures before live view stops (default `10`)
+- `WATCHDOG_FAILURE_THRESHOLD` – number of failed health checks before a restart (default `3`)
+- `WATCHDOG_RESTART_COOLDOWN` – cooldown period between restarts in seconds (default `900`)
+- `WATCHDOG_MAX_FILE_HANDLES` – open file handle limit before triggering a restart (default `1000`)
 - `DISCOVERY_AUTOSTART` – run hourly background discovery automatically (default `False`)
 
 ### Stealth Browser Defaults
