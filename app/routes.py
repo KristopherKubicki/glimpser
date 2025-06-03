@@ -2454,6 +2454,8 @@ def init_routes(app):
                 "dedicated_xpath": request.form.get("dedicated_xpath"),
                 "callback_url": request.form.get("callback_url"),
                 "proxy": request.form.get("proxy"),
+                "auth_username": request.form.get("auth_username"),
+                "auth_password": request.form.get("auth_password"),
                 "rollback_frames": request.form.get("rollback_frames"),
                 "groups": request.form.get("groups"),
                 "object_filter": request.form.get("object_filter"),

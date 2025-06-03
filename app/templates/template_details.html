@@ -208,6 +208,16 @@ function updateVideo(templateName) {
             </div>
 
             <div class="form-row">
+                <label for="auth_username" title="Username for camera authentication">Username:</label>
+                <input type="text" id="auth_username" name="auth_username" value="{{ template_details.auth_username }}" title="Camera username">
+            </div>
+
+            <div class="form-row">
+                <label for="auth_password" title="Password for camera authentication">Password:</label>
+                <input type="password" id="auth_password" name="auth_password" value="{{ template_details.auth_password }}" title="Camera password">
+            </div>
+
+            <div class="form-row">
                 <label for="groups" title="Groups for the template">Groups:</label>
                 <input type="text" id="groups" name="groups" value="{{ template_details.groups }}" title="Enter comma-separated group names">
                 {% if template_details.groups %}
