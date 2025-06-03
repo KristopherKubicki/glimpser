@@ -1116,6 +1116,7 @@ discovery_cache = {
     "timestamp": 0.0,
     "running": False,
     "error": None,
+    "started": 0.0,
 }
 
 
@@ -1124,6 +1125,7 @@ def run_discovery() -> None:
 
     discovery_cache["running"] = True
     discovery_cache["error"] = None
+    discovery_cache["started"] = time.time()
     try:
         discovery_cache["results"] = camera_discovery.discover_cameras()
         discovery_cache["timestamp"] = time.time()
@@ -1138,6 +1140,15 @@ def get_discovery_status(max_age: int = 3600) -> dict:
     """Return cached discovery status."""
 
     age = time.time() - discovery_cache["timestamp"]
+    running_for = None
+    if discovery_cache["running"]:
+        running_for = time.time() - discovery_cache["started"]
+    job = scheduler.get_job("background_discovery")
+    next_run_in = None
+    if job and job.next_run_time:
+        next_run_in = (
+            job.next_run_time - datetime.datetime.now(job.next_run_time.tzinfo)
+        ).total_seconds()
     status = "stale"
     if discovery_cache["running"]:
         status = "running"
@@ -1150,6 +1161,8 @@ def get_discovery_status(max_age: int = 3600) -> dict:
     return {
         "status": status,
         "age": age,
+        "running_for": running_for,
+        "next_run_in": next_run_in,
         "results": discovery_cache["results"] if age <= max_age else [],
         "running": discovery_cache["running"],
         "error": discovery_cache["error"],

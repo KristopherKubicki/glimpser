@@ -6,6 +6,20 @@ export function initDiscoveryToggle() {
     const statusSpan = document.getElementById('discovery-bg-status');
     if (!toggleBtn || !statusSpan) return;
 
+    const minutes = (s) => `${Math.round(s / 60)}m`;
+    const formatStatus = (d) => {
+      let text = d.status;
+      if (d.running_for) {
+        text += ` (${minutes(d.running_for)})`;
+      } else if (Number.isFinite(d.age) && d.status !== 'none') {
+        text += ` (${minutes(d.age)} ago)`;
+      }
+      if (d.next_run_in) {
+        text += `, next in ${minutes(d.next_run_in)}`;
+      }
+      return text;
+    };
+
     toggleBtn.addEventListener('click', async () => {
       const confirmToggle = confirm(
         `Are you sure you want to ${
@@ -15,7 +29,7 @@ export function initDiscoveryToggle() {
       if (!confirmToggle) return;
       try {
         const data = await fetchJson('/toggle_discovery', { method: 'POST' });
-        statusSpan.textContent = data.status;
+        statusSpan.textContent = formatStatus(data);
         toggleBtn.textContent =
           data.status === 'running' ? 'Stop Discovery' : 'Start Discovery';
       } catch (err) {
@@ -26,7 +40,7 @@ export function initDiscoveryToggle() {
 
     fetchJson('/discovery_status')
       .then((data) => {
-        statusSpan.textContent = data.status;
+        statusSpan.textContent = formatStatus(data);
         toggleBtn.textContent =
           data.status === 'running' ? 'Stop Discovery' : 'Start Discovery';
       })

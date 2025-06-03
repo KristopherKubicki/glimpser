@@ -99,6 +99,7 @@ export function initNav() {
       try {
         const res = await fetch('/discovery_status');
         const data = await res.json();
+        const fmt = (s) => `${Math.round(s / 60)}m`;
         if (data.status === 'none') {
           discoveryStatus.style.color = 'white';
         } else if (data.status === 'running') {
@@ -110,6 +111,16 @@ export function initNav() {
         } else {
           discoveryStatus.style.color = 'grey';
         }
+        let title = `Background discovery: ${data.status}`;
+        if (data.running_for) {
+          title += `\nRunning for ${fmt(data.running_for)}`;
+        } else if (Number.isFinite(data.age) && data.status !== 'none') {
+          title += `\nLast run ${fmt(data.age)} ago`;
+        }
+        if (data.next_run_in) {
+          title += `\nNext in ${fmt(data.next_run_in)}`;
+        }
+        discoveryStatus.title = title;
       } catch (error) {
         console.error('Error fetching discovery status:', error);
         discoveryStatus.style.color = 'red';
