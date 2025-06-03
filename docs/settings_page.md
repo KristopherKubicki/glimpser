@@ -1,6 +1,6 @@
 # Settings Page Overview
 
-The **Settings** interface lets you manage configuration values stored in the database. Each field includes a tooltip that explains its purpose. Use the "What does each setting do?" link to open a dedicated reference page.
+The **Settings** interface lets you manage configuration values stored in the database. Each field includes a tooltip that explains its purpose. A collapsible **Settings Reference** table on the page lists every configuration option with detailed descriptions.
 
 ## Sections
 
@@ -9,6 +9,4 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Configuration Management** – backup, download, and upload the JSON configuration file.
 - **Danger Mode** – update Chrome shortcuts with the required flags.
 - **Offline Preview** – toggle a Service Worker that caches recent images.
-- **Settings Reference** – available on a separate page with detailed explanations.
-
-You can also visit `/settings_help` directly if you prefer a standalone page.
+- **Settings Reference** – expand the table to read explanations for each setting.
