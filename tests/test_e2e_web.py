@@ -90,6 +90,9 @@ def live_server_with_user(tmp_path_factory):
     patcher = patch.dict(os.environ, env)
     patcher.start()
 
+    secure_patch = patch("app.config.SESSION_COOKIE_SECURE", False)
+    secure_patch.start()
+
     import generate_credentials
     import app.config as config
     import app.utils.db as db
@@ -119,6 +122,7 @@ def live_server_with_user(tmp_path_factory):
     server.shutdown()
     os.chdir(prev_cwd)
 
+    secure_patch.stop()
     patcher.stop()
     importlib.reload(config)
     importlib.reload(db)
