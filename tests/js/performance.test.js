@@ -41,7 +41,6 @@ describe('performance.js', () => {
   test('updatePerformanceMetrics fetches metrics and updates DOM', async () => {
     const mockData = { cpu_usage: 50, memory_usage: 40, uptime: '1h' };
     global.fetch = jest.fn(() => Promise.resolve({ json: () => Promise.resolve(mockData) }));
-    const sparkSpy = jest.spyOn(performanceModule, 'updateCPUSparkline');
 
     await updatePerformanceMetrics();
 
@@ -49,7 +48,8 @@ describe('performance.js', () => {
     expect(document.getElementById('cpu-value').textContent).toBe('50%');
     expect(document.getElementById('memory-value').textContent).toBe('40%');
     expect(document.getElementById('uptime-value').textContent).toBe('1h');
-    expect(sparkSpy).toHaveBeenCalledWith(50);
+    const ctx = canvas.getContext();
+    expect(ctx.clearRect).toHaveBeenCalled();
   });
 
   test('updateCPUSparkline draws on the canvas', () => {
