@@ -154,7 +154,10 @@ export function initTemplates() {
     }
 
     loadGroups();
-    loadTemplates();
+    const cameraTable = document.getElementById('camera-table');
+    if (!cameraTable) {
+      loadTemplates();
+    }
     setupSearch();
     setupSorting();
     updateHumanizedTimes();
