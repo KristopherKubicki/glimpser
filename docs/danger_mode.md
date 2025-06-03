@@ -45,3 +45,41 @@ so the feature is not enabled or disabled accidentally.
 Below the description, the page lists any cameras flagged as using Danger mode.
 Each item links directly to the camera's template details so you can quickly
 review or disable the setting.
+
+## Security Considerations
+
+Enabling the debugging port exposes your active Chrome session to other
+programs on the same machine. Keep your system on a trusted network and close
+Chrome when you are finished capturing. Avoid running Danger mode if untrusted
+software could access `http://localhost:9222`.
+
+## Connection Troubleshooting
+
+If Glimpser does not detect your Chrome instance:
+
+1. Visit `http://localhost:9222` in a browser. A JSON page should appear if the
+   port is open.
+2. Confirm Chrome was started with the flag and that no firewall is blocking the
+   connection.
+3. Try restarting Glimpser after verifying the port is reachable.
+
+## Customizing the Debugging Port
+
+If port `9222` is already in use, you may launch Chrome with a different port
+such as `--remote-debugging-port=9333`. Update any scripts that add the flag so
+they use the same value. Glimpser currently expects `9222`, so you must adjust
+the source code if you change it.
+
+## Temporary Enablement
+
+For extra safety, consider enabling Danger mode only for a single capture or a
+short time. After running a job, disable the feature on `/danger` so Chrome's
+debug port is not left open longer than needed.
+
+## Example Walkthrough
+
+1. Start Chrome with the remote debugging flag and sign in to the site you want
+   to capture.
+2. Open `/danger` in Glimpser and enable the mode.
+3. Trigger a capture for a camera that requires Danger mode.
+4. Once it finishes, disable Danger mode again.
