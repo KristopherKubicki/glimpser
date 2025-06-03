@@ -44,6 +44,42 @@ const errorIndicatorMessage = document.getElementById('capture-error-message');
 const streamErrorIndicator = document.getElementById('stream-error-indicator');
 const streamErrorMessage = document.getElementById('stream-error-message');
 
+// Restore previously selected camera, source and speed from localStorage so
+// reloading the page keeps user preferences. If the user specified a camera in
+// the URL query string that takes precedence.
+function loadSavedPreferences() {
+    if (!requestedCamera) {
+        const savedCam = localStorage.getItem('liveCamera');
+        const camSelect = document.getElementById('camera-selector');
+        if (
+            savedCam &&
+            camSelect &&
+            camSelect.querySelector(`option[value="${savedCam}"]`)
+        ) {
+            currentCamera = savedCam;
+            camSelect.value = savedCam;
+        }
+    }
+
+    const sourceSelect = document.getElementById('video-source');
+    const savedSource = localStorage.getItem('liveSource');
+    if (
+        savedSource &&
+        sourceSelect &&
+        sourceSelect.querySelector(`option[value="${savedSource}"]`)
+    ) {
+        sourceSelect.value = savedSource;
+    }
+
+    const savedSpeed = localStorage.getItem('playbackSpeed');
+    const speedSlider = document.getElementById('speed-slider');
+    if (savedSpeed && speedSlider) {
+        speedSlider.value = savedSpeed;
+    }
+}
+
+loadSavedPreferences();
+
 function resetVideo() {
     if (hlsInstance) {
         hlsInstance.destroy();
@@ -206,34 +242,37 @@ function changeCamera() {
     let isConnected = checkCameraConnection(currentCamera);
 
     if (selectedValue === 'All') {
-// Handle the "All" option separately
-currentCamera = 'All';
-templateDetails['All'] = {
-    url: '/stream.mp4', // Set the URL for the MP4 stream without a group
-    groupCameras: Object.keys(templateDetails).filter(key => key !== 'All'), // Add all cameras to groupCameras
-    // Add other necessary properties for the "All" group, if needed
-};
-	isConnected = true;
+        // Handle the "All" option separately
+        currentCamera = 'All';
+        templateDetails['All'] = {
+            url: '/stream.mp4', // Set the URL for the MP4 stream without a group
+            groupCameras: Object.keys(templateDetails).filter(key => key !== 'All'), // Add all cameras
+            // Add other necessary properties for the "All" group, if needed
+        };
+        isConnected = true;
     } else if (selectedValue.startsWith('group-')) {
-// Group is selected
-const groupName = selectedValue.split('group-')[1];
-currentCamera = 'group-' + groupName; // Use a unique identifier for the group
-const groupCameras = Object.entries(templateDetails)
-    .filter(([camera, details]) => details.groups && details.groups.split(',').map(s => s.trim()).includes(groupName))
-    .map(([camera, _]) => camera);
-// Update the special URL for the group with the group query parameter
-templateDetails[currentCamera] = {
-    url: `/stream.mp4?group=${groupName}`,
-    groupCameras: groupCameras,
-    groupName: groupName, // Add the groupName property
-    // Add other necessary properties for the group
-};
-	isConnected = true;
+        // Group is selected
+        const groupName = selectedValue.split('group-')[1];
+        currentCamera = 'group-' + groupName; // Use a unique identifier for the group
+        const groupCameras = Object.entries(templateDetails)
+            .filter(([camera, details]) => details.groups && details.groups.split(',').map(s => s.trim()).includes(groupName))
+            .map(([camera]) => camera);
+        // Update the special URL for the group with the group query parameter
+        templateDetails[currentCamera] = {
+            url: `/stream.mp4?group=${groupName}`,
+            groupCameras: groupCameras,
+            groupName: groupName, // Add the groupName property
+            // Add other necessary properties for the group
+        };
+        isConnected = true;
     } else {
-// Individual camera is selected
-currentCamera = selectedValue;
-isConnected = checkCameraConnection(currentCamera);
+        // Individual camera is selected
+        currentCamera = selectedValue;
+        isConnected = checkCameraConnection(currentCamera);
     }
+
+    // Persist the chosen camera so the selection sticks across sessions
+    localStorage.setItem('liveCamera', currentCamera);
 
     if (!isConnected) {
 showOfflineIndicator(currentCamera);
@@ -688,6 +727,10 @@ image.src = '/motion.mjpg?group=all';
 
 
 function changeVideoSource() {
+    const selector = document.getElementById('video-source');
+    if (selector) {
+        localStorage.setItem('liveSource', selector.value);
+    }
     updateFeed();
 }
 
@@ -695,6 +738,7 @@ function changeVideoSource() {
 const slider = document.getElementById('speed-slider');
 const speedDisplay = document.getElementById('speed-value');
 const speed = Math.pow(2, slider.value);
+localStorage.setItem('playbackSpeed', slider.value);
 video.playbackRate = parseFloat(speed.toFixed(2)); // Ensure the speed is a float with two decimal places
 speedDisplay.textContent = speed.toFixed(2) + 'x'; // Update the text to show two decimal places
 
@@ -814,6 +858,7 @@ function startCaptionPolling() {
 showLastScreenshot();
 updateTemplateDetails();
 updateSpeedContainer();
+updatePlaybackSpeed();
 updateSeekBar();
 playMJPG();
 startCaptionPolling();
