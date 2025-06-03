@@ -6,6 +6,10 @@ The process is split across two runners:
 - **Ubuntu** builds the Debian package and runs the test suite.
 - **Windows** builds the standalone executable using `build_windows.py`.
 
+The Ubuntu job also generates a small `release-badges.md` file that lists
+status badges for the current tag.  This file becomes the body of the GitHub
+release so that each tagged version shows the latest CI status.
+
 Both artifacts are attached to the GitHub release created for the tag. When the
 `PYPI_API_TOKEN` secret is available, Python distributions are also published to
 PyPI.
