@@ -1,3 +1,5 @@
+import { timeAgo, formatExactTime } from './templates.js';
+
 const video = document.getElementById('live-video');
 const image = document.getElementById('live-image');
 const templateDetailsContainer = document.getElementById('template-details');
@@ -458,8 +460,23 @@ video.play();
 
 
 
+function updateFrameTimestamp() {
+    const container = document.querySelector('.video-container');
+    if (!container) return;
+    const details = templateDetails[currentCamera];
+    if (!details || !details.last_screenshot_time) {
+        container.removeAttribute('data-timestamp');
+        container.removeAttribute('title');
+        return;
+    }
+    container.dataset.originalTimestamp = details.last_screenshot_time;
+    container.setAttribute('data-timestamp', timeAgo(details.last_screenshot_time));
+    container.setAttribute('title', formatExactTime(details.last_screenshot_time));
+}
+
 function refreshPNG() {
     image.src = '/last_screenshot/' + encodeURIComponent(currentCamera) + '?time=' + new Date().getTime();
+    updateFrameTimestamp();
 }
 
 function showLastScreenshot() {
@@ -480,6 +497,7 @@ function showLastScreenshot() {
     };
     pre.src = url;
     image.style.display = 'block';
+    updateFrameTimestamp();
 }
 
 
@@ -817,6 +835,8 @@ updateSpeedContainer();
 updateSeekBar();
 playMJPG();
 startCaptionPolling();
+updateFrameTimestamp();
+setInterval(updateFrameTimestamp, 60000);
 
 if (toggleDetailsButton) {
     toggleDetailsButton.addEventListener('click', () => {
