@@ -195,6 +195,30 @@ Example response:
 Trigger compilation of recent footage into a teaser video. Requires authentication.
 GET requests to this endpoint return `405 Method Not Allowed`.
 
+### 13. API Discovery and Status
+
+These utility endpoints expose basic information about the server.
+
+**GET /api/discover**
+
+Returns a JSON list of available endpoints with method and description.
+
+**GET /health**
+
+Checks the overall health of the application and returns system metrics.
+
+**GET /danger_status**
+
+Indicates whether Danger mode is ready for use.
+
+**GET /captions_status**
+
+Returns the latest caption text and timestamp.
+
+**GET /discovery_status**
+
+Reports the status of background camera discovery.
+
 ## Error Handling
 
 All endpoints may return the following error responses:
