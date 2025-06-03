@@ -3,10 +3,12 @@ import os
 import sys
 from unittest.mock import patch, MagicMock
 from requests.structures import CaseInsensitiveDict
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from unittest.mock import patch, sentinel
 
 import app.utils.screenshots as ss
+
 
 class TestHttpSession(unittest.TestCase):
     @patch("app.utils.screenshots.requests.Session")
@@ -24,6 +26,7 @@ class TestHttpSession(unittest.TestCase):
         mock_session_cls.assert_called_once()
         self.assertIn("User-Agent", sess1.headers)
         self.assertIn("Accept", sess1.headers)
+
 
 class TestGetDriver(unittest.TestCase):
     def setUp(self):

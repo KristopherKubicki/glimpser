@@ -1,5 +1,6 @@
 import unittest
 
+
 class TestListOperations(unittest.TestCase):
 
     def test_list_sorting(self):
@@ -16,4 +17,3 @@ class TestListOperations(unittest.TestCase):
         data = [1, 2, 3, 4, 5]
         filtered_data = list(filter(lambda x: x % 2 == 0, data))
         self.assertEqual(filtered_data, [2, 4])
-

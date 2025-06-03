@@ -12,6 +12,7 @@ from app.routes import read_logs_from_memory
 class DummyLock:
     def __enter__(self):
         return self
+
     def __exit__(self, exc_type, exc, tb):
         pass
 
@@ -67,30 +68,58 @@ class TestLogFiltering(unittest.TestCase):
 
     def test_level_filter(self):
         result = read_logs_from_memory(level="INFO")
-        expected = sorted([l for l in self.logs if l["level"] == "INFO"], key=lambda x: x["timestamp"], reverse=True)
+        expected = sorted(
+            [l for l in self.logs if l["level"] == "INFO"],
+            key=lambda x: x["timestamp"],
+            reverse=True,
+        )
         self.assertEqual(result, expected)
 
     def test_source_filter(self):
         result = read_logs_from_memory(source="camera")
-        expected = sorted([l for l in self.logs if l["source"] == "camera"], key=lambda x: x["timestamp"], reverse=True)
+        expected = sorted(
+            [l for l in self.logs if l["source"] == "camera"],
+            key=lambda x: x["timestamp"],
+            reverse=True,
+        )
         self.assertEqual(result, expected)
 
     def test_date_range_filter(self):
         start = datetime.datetime(2023, 1, 2).isoformat()
         end = datetime.datetime(2023, 1, 4, 23, 59, 59).isoformat()
         result = read_logs_from_memory(start_date=start, end_date=end)
-        expected = sorted([l for l in self.logs if datetime.datetime(2023, 1, 2) <= l["timestamp"] <= datetime.datetime(2023, 1, 4, 23, 59, 59)], key=lambda x: x["timestamp"], reverse=True)
+        expected = sorted(
+            [
+                l
+                for l in self.logs
+                if datetime.datetime(2023, 1, 2)
+                <= l["timestamp"]
+                <= datetime.datetime(2023, 1, 4, 23, 59, 59)
+            ],
+            key=lambda x: x["timestamp"],
+            reverse=True,
+        )
         self.assertEqual(result, expected)
 
     def test_search_filter(self):
         result = read_logs_from_memory(search="camera")
-        expected = sorted([l for l in self.logs if "camera" in l["message"].lower()], key=lambda x: x["timestamp"], reverse=True)
+        expected = sorted(
+            [l for l in self.logs if "camera" in l["message"].lower()],
+            key=lambda x: x["timestamp"],
+            reverse=True,
+        )
         self.assertEqual(result, expected)
 
     def test_combined_filters(self):
         start = datetime.datetime(2023, 1, 1).isoformat()
         end = datetime.datetime(2023, 1, 3, 23, 59, 59).isoformat()
-        result = read_logs_from_memory(level="ERROR", source="camera", start_date=start, end_date=end, search="error")
+        result = read_logs_from_memory(
+            level="ERROR",
+            source="camera",
+            start_date=start,
+            end_date=end,
+            search="error",
+        )
         expected = [self.logs[1]]
         self.assertEqual(result, expected)
 

@@ -5,7 +5,8 @@ import sys
 import os
 from unittest.mock import patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 
 class TestExceptionHandling(unittest.TestCase):
 
@@ -23,6 +24,7 @@ class TestExceptionHandling(unittest.TestCase):
         with self.assertRaises(IndexError):
             value = test_list[10]
 
+
 class TestListOperations(unittest.TestCase):
 
     def test_list_append(self):
@@ -39,6 +41,7 @@ class TestListOperations(unittest.TestCase):
         test_list = [3, 1, 4, 2]
         test_list.sort()
         self.assertEqual(test_list, [1, 2, 3, 4])
+
 
 class TestDictionaryOperations(unittest.TestCase):
 
@@ -63,6 +66,6 @@ class TestDictionaryOperations(unittest.TestCase):
         self.assertEqual(test_dict.get("key1", "default"), "value1")
         self.assertEqual(test_dict.get("key2", "default"), "default")
 
-if __name__ == '__main__':
-    unittest.main()
 
+if __name__ == "__main__":
+    unittest.main()

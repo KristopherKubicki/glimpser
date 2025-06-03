@@ -4,11 +4,12 @@ import tempfile
 import sys
 from unittest.mock import patch, mock_open
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.utils.screenshots import is_private_ip
 from app.utils.screenshots import remove_background
 from app.utils.retention_policy import get_files_sorted_by_creation_time
+
 
 class TestEnvironmentVariables(unittest.TestCase):
 
@@ -19,6 +20,7 @@ class TestEnvironmentVariables(unittest.TestCase):
     @patch.dict(os.environ, {"TEST_ENV_VAR": "12345"})
     def test_environment_variable_missing(self):
         self.assertIsNone(os.getenv("NON_EXISTENT_VAR"))
+
 
 class TestFileIO(unittest.TestCase):
 
@@ -47,6 +49,7 @@ class TestFileIO(unittest.TestCase):
 
         os.remove(temp_file_path)
 
+
 class TestStringProcessing(unittest.TestCase):
 
     def test_string_contains(self):
@@ -71,6 +74,6 @@ class TestStringProcessing(unittest.TestCase):
         self.assertEqual(string.lstrip(), "Hello, World!  ")
         self.assertEqual(string.rstrip(), "  Hello, World!")
 
-if __name__ == '__main__':
-    unittest.main()
 
+if __name__ == "__main__":
+    unittest.main()

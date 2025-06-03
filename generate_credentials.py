@@ -29,27 +29,27 @@ def upsert_setting(name, value, conn):
 
 
 def create_settings(conn):
-    create_settings_table = '''
+    create_settings_table = """
     CREATE TABLE IF NOT EXISTS settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
         value TEXT NOT NULL
     );
-    '''
+    """
     cursor = conn.cursor()
     cursor.execute(create_settings_table)
     conn.commit()
 
 
 def create_users(conn):
-    create_users_table = '''
+    create_users_table = """
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
         role TEXT
     );
-    '''
+    """
     cursor = conn.cursor()
     cursor.execute(create_users_table)
     conn.commit()
