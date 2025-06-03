@@ -512,6 +512,40 @@ def _fetch_http_banner(ip: str, port: int, timeout: int = 2) -> dict[str, str]:
     return info
 
 
+def _default_url(cam: dict) -> str | None:
+    """Return a sensible URL for ``cam`` based on its protocol."""
+
+    ip = cam.get("ip")
+    port = cam.get("port")
+    proto = cam.get("protocol")
+    info = cam.get("info", {})
+    if proto == "rtsp":
+        return f"rtsp://{ip}:{port}/"
+    if proto == "rtmp":
+        return f"rtmp://{ip}:{port}/live"
+    if proto in {"http", "hls"}:
+        path = info.get("path", "/")
+        return f"http://{ip}:{port}{path}"
+    if proto == "local":
+        return ip
+    return None
+
+
+def _classify_device(cam: dict) -> str | None:
+    """Return a simple device type label based on metadata."""
+
+    info = cam.get("info", {})
+    text = " ".join(str(v).lower() for v in info.values() if isinstance(v, str))
+    ports = info.get("open_ports", [])
+    if "nvr" in text or "dvr" in text:
+        return "nvr"
+    if "router" in text or "switch" in text:
+        return "router"
+    if "camera" in text or "onvif" in text or 554 in ports:
+        return "camera"
+    return None
+
+
 def _scan_rtsp_ports(subnets):
     found = []
     checked = set()
@@ -839,6 +873,13 @@ def discover_cameras(progress_callback=None, subnets=None):
                         banner = _fetch_http_banner(cam["ip"], p)
                         for k, v in banner.items():
                             info.setdefault(k, v)
+        if "url" not in cam:
+            url = _default_url(cam)
+            if url:
+                cam["url"] = url
+        dtype = _classify_device(cam)
+        if dtype:
+            cam.setdefault("info", {})["device_type"] = dtype
 
     _report("trace", len(result), [])
 

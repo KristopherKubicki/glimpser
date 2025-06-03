@@ -163,6 +163,14 @@ If an HTTP port responds, Glimpser also fetches the web page banner to capture
 the `Server` header, authentication realm, and page title when present. These
 values populate the **Info** column so you can quickly identify each device.
 
+Each result now tries to classify the kind of hardware discovered. Devices with
+RTSP ports or ONVIF data are labeled as **camera** while models referencing DVR
+or NVR become **nvr**. Routers and switches are recognized when their metadata
+contains those keywords. The detected type appears in the ``device_type`` field.
+
+Discovered entries also include a suggested ``url`` built from the protocol and
+port. This makes the "Add" action work immediately without manual edits.
+
 You can then add a discovered camera to your configuration directly from the `/discover` page.
 The "Add" button on this page now includes a tooltip (title attribute) for improved accessibility.
 
