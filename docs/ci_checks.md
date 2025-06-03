@@ -8,5 +8,6 @@ following tasks:
 - Lints JavaScript with `eslint` and verifies formatting with `prettier`.
 - Executes `pytest` and `jest` test suites.
 - Scans dependencies using `pip safety` and `npm audit`.
+- Caches Python and Node dependencies to speed up builds.
 
 These checks help catch regressions and security issues before code is merged.
