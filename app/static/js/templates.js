@@ -104,10 +104,21 @@ export function initTemplates() {
             div.style.height = `${height}px`;
           });
 
-        const cameraNameFontSize = Math.max(10, Math.min(14, value / 25));
-        const timestampFontSize = Math.max(8, Math.min(12, value / 30));
-        document.documentElement.style.setProperty('--camera-name-font-size', `${cameraNameFontSize}px`);
-        document.documentElement.style.setProperty('--timestamp-font-size', `${timestampFontSize}px`);
+        const scale = value / 360;
+        const cameraNameFontSize = Math.max(6, 14 * scale);
+        const timestampFontSize = Math.max(6, 12 * scale);
+        document.documentElement.style.setProperty(
+          '--tile-scale',
+          scale.toString(),
+        );
+        document.documentElement.style.setProperty(
+          '--camera-name-font-size',
+          `${cameraNameFontSize}px`,
+        );
+        document.documentElement.style.setProperty(
+          '--timestamp-font-size',
+          `${timestampFontSize}px`,
+        );
       };
 
       slider.addEventListener('input', handleSlider);
