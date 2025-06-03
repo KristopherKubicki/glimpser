@@ -464,6 +464,7 @@ export async function loadTemplates() {
                   <source src="/last_video/${name}" type="video/mp4">
                   Your browser does not support the video tag.
                 </video>
+                <div class="caption-overlay">${template.last_caption || ''}</div>
                 <div class="play-icon">&#9658;</div>
               </div>
             </a>

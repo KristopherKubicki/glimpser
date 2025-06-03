@@ -176,8 +176,8 @@ h1, h2 {
 #template-list {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px))); /* Use CSS variable */
-    gap: 10px;
-    padding: 20px;
+    gap: 5px;
+    padding: 10px;
     justify-content: center;
     max-width: 100%;
 }
@@ -352,11 +352,26 @@ video:hover + .play-icon {
 }
 
 .recent-screenshot {
-    border: 5px solid var(--accent-color);
+    border: 2px solid var(--accent-color);
 }
 
 .template-error {
-    border: 5px solid red;
+    border: 2px solid red;
+}
+
+.caption-overlay {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: calc(12px * var(--tile-scale, 1));
+    z-index: 5;
+    pointer-events: none;
+    max-height: 40%;
+    overflow-y: auto;
 }
 
 #status-legend {
