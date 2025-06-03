@@ -64,7 +64,18 @@ export function initNav() {
 
 
     const captionsIcon = document.getElementById('captions');
+    const captionPopup = document.getElementById('caption-popup');
     let lastCaptionTime = null;
+    let popupTimer;
+
+    const showCaptionPopup = (text) => {
+      if (!captionPopup) return;
+      captionPopup.textContent = text;
+      captionPopup.classList.add('show');
+      clearTimeout(popupTimer);
+      popupTimer = setTimeout(() => captionPopup.classList.remove('show'), 60000);
+    };
+
     const checkCaptions = async () => {
       if (!captionsIcon) return;
       try {
@@ -76,6 +87,7 @@ export function initNav() {
           if (!lastCaptionTime || ts > lastCaptionTime) {
             captionsIcon.classList.add('flash-caption');
             setTimeout(() => captionsIcon.classList.remove('flash-caption'), 5000);
+            showCaptionPopup(data.caption);
             lastCaptionTime = ts;
           }
           const ageSec = (Date.now() - ts.getTime()) / 1000;

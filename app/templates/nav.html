@@ -35,11 +35,14 @@
         <use href="{{ url_for('static', filename='icons/sprite.svg') }}#search" />
       </svg>
     </a>
-    <a href="/captions" id="captions" class="settings-icon" title="Read and update camera LLMs" aria-label="Read and update camera LLMs">
-      <svg width="20" height="20">
-        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#comment" />
-      </svg>
-    </a>
+    <div class="caption-container">
+      <a href="/captions" id="captions" class="settings-icon" title="Read and update camera LLMs" aria-label="Read and update camera LLMs">
+        <svg width="20" height="20">
+          <use href="{{ url_for('static', filename='icons/sprite.svg') }}#comment" />
+        </svg>
+      </a>
+      <div id="caption-popup" class="caption-popup" aria-live="polite"></div>
+    </div>
     <a href="/live" id="live" aria-label="Open Live page">
       <div id="coolClock" class="cool-clock" title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming." aria-label="Open Live page for realtime streaming">
         <div id="dateDisplay" class="clock-face">

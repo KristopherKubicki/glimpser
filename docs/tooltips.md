@@ -11,7 +11,8 @@ This document lists the main tooltips available in the Glimpser interface. Hover
 - **Danger Mode icon** – explains why danger mode may be disabled.
 - **Discover Cameras icon** – opens the camera discovery page.
 - **Captions icon** – reads and updates camera language models. The icon flashes
-  with the latest caption when group messages arrive. It stays green for one
+  with the latest caption when group messages arrive and shows a short popup
+  with the text. The popup fades out after a minute. It stays green for one
   minute after the most recent caption, turns yellow for the next five minutes
   and becomes red when no update has been received for over thirty minutes.
 - **Clock icon** – opens the live page with instructions for real‑time streaming.
