@@ -78,10 +78,12 @@ After capturing the content, Glimpser applies several post-processing steps:
    stroked fonts to improve readability without obscuring the image. Bounding
    boxes ensure the tint precisely covers the text.
 4. **Caption Overlay**: When captions or motion indicators are added, the text
-   is wrapped and rendered with the same improved font styling. Bounding-box
-   sizing keeps the overlay aligned with the caption.
-5. **Image Optimization**: Ensure the captured image is in the correct format and optimized for storage.
-6. **PNG Validation**: Verify the temporary screenshot file before renaming it to avoid leaving corrupt images.
+
+   is wrapped and rendered with the same improved font styling to avoid
+   overlapping the content.
+5. **Micro QR Overlay**: A tiny QR-style code containing the camera name is placed in the lower-right corner so screenshots can be tracked within the system.
+6. **Image Optimization**: Ensure the captured image is in the correct format and optimized for storage.
+7. **PNG Validation**: Verify the temporary screenshot file before renaming it to avoid leaving corrupt images.
 
 ## Status Code Caching
 
