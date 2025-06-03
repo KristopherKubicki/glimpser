@@ -165,8 +165,10 @@ class TestCameraDiscovery(unittest.TestCase):
     @patch("app.utils.camera_discovery._fetch_snmp_sysname")
     @patch("app.utils.camera_discovery._fetch_sdp")
     @patch("app.utils.camera_discovery.psutil.net_if_addrs")
+    @patch("app.utils.camera_discovery._local_video_devices", return_value=[])
     def test_discover_cameras_merge(
         self,
+        mock_local_video_devices,
         mock_addrs,
         mock_fetch_sdp,
         mock_fetch_snmp,
@@ -369,8 +371,10 @@ class TestCameraDiscovery(unittest.TestCase):
     @patch("app.utils.camera_discovery._scan_http_endpoints", return_value=[])
     @patch("app.utils.camera_discovery._scan_hls_streams", return_value=[])
     @patch("app.utils.camera_discovery._local_subnets", return_value=[])
+    @patch("app.utils.camera_discovery._local_video_devices", return_value=[])
     def test_latency_in_discover(
         self,
+        mock_local_video_devices,
         mock_subnets,
         *_mocks,
     ):
@@ -392,8 +396,10 @@ class TestCameraDiscovery(unittest.TestCase):
     @patch("app.utils.camera_discovery._scan_http_endpoints", return_value=[])
     @patch("app.utils.camera_discovery._scan_hls_streams", return_value=[])
     @patch("app.utils.camera_discovery._local_subnets", return_value=[])
+    @patch("app.utils.camera_discovery._local_video_devices", return_value=[])
     def test_banner_in_discover(
         self,
+        mock_local_video_devices,
         mock_subnets,
         mock_hls,
         mock_http,
