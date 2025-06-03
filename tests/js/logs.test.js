@@ -49,11 +49,11 @@ describe('logs.js', () => {
     expect(EventSource).toHaveBeenCalledTimes(1);
 
     esInstances[0].onerror(new Event('error'));
-    jest.advanceTimersByTime(3000);
-
-    expect(EventSource).toHaveBeenCalledTimes(2);
     const status = document.getElementById('log-connection-status');
     expect(status.classList.contains('hidden')).toBe(false);
+
+    jest.advanceTimersByTime(3000);
+    expect(EventSource).toHaveBeenCalledTimes(2);
 
     esInstances[1].onopen();
     expect(status.classList.contains('hidden')).toBe(true);

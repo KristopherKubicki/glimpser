@@ -30,6 +30,8 @@ describe('grid width slider', () => {
     initTemplates();
     document.dispatchEvent(new Event('DOMContentLoaded'));
     const slider = document.getElementById('grid-width-slider');
+    slider.min = '0';
+    slider.max = '1280';
     slider.value = '320';
     slider.dispatchEvent(new Event('input'));
     const list = document.getElementById('template-list');
