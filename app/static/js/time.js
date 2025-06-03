@@ -1,6 +1,6 @@
 export function initIndexTime() {
-  document.addEventListener('DOMContentLoaded', () => {
-    const elem = document.getElementById('index-time');
+  document.addEventListener("DOMContentLoaded", () => {
+    const elem = document.getElementById("index-time");
     if (!elem) return;
     const update = () => {
       const now = new Date();
@@ -11,4 +11,3 @@ export function initIndexTime() {
     setInterval(update, 1000);
   });
 }
-
