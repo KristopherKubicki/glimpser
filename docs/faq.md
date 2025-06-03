@@ -28,7 +28,7 @@ The slider automatically adjusts to the current browser width and now scales thu
 
 
 ### Why is the live feed slightly cropped on small screens?
-Older styles fixed the video container height with `overflow: hidden`, which could cut off controls on short displays. The container now allows scrolling so everything stays visible.
+The default `player.css` hides overflow to remove scroll bars. On very short displays this can clip the video controls. Change the `.video-container` rule to `overflow: auto` if you need to keep them in view.
 
 
 ## Troubleshooting
