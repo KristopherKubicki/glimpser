@@ -19,7 +19,7 @@ Key topics covered include:
 
 ## Viewing Captures
 
-On the **Live** page, pick a camera from the drop-down menu. The **Video Source** now defaults to **MJPG** so you immediately see a lightweight stream of the latest frames. Select **Live Video** if you want a direct real-time feed.
+On the **Live** page, pick a camera from the drop-down menu. The **Video Source** now defaults to **MJPG** so you immediately see a lightweight stream of the latest frames. Select **Live Video** if you want a direct real-time feed. Glimpser remembers your last selected camera, video source, and playback speed to streamline future visits.
 
 When watching a live stream, you can use keyboard shortcuts:
 `Space` or `k` toggles play/pause, `m` toggles mute, `f` toggles fullscreen,
