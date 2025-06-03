@@ -1,7 +1,7 @@
 export function initTooltips() {
-  document.addEventListener('DOMContentLoaded', () => {
-    const tooltip = document.createElement('div');
-    tooltip.className = 'dynamic-tooltip hidden';
+  document.addEventListener("DOMContentLoaded", () => {
+    const tooltip = document.createElement("div");
+    tooltip.className = "dynamic-tooltip hidden";
     document.body.appendChild(tooltip);
 
     const moveTooltip = (e) => {
@@ -10,24 +10,24 @@ export function initTooltips() {
     };
 
     const showTooltip = (e) => {
-      const target = e.target.closest('[title]');
+      const target = e.target.closest("[title]");
       if (!target) return;
-      const text = target.getAttribute('title');
+      const text = target.getAttribute("title");
       if (!text) return;
       tooltip.textContent = text;
       moveTooltip(e);
-      tooltip.classList.remove('hidden');
-      target.addEventListener('mousemove', moveTooltip);
+      tooltip.classList.remove("hidden");
+      target.addEventListener("mousemove", moveTooltip);
     };
 
     const hideTooltip = (e) => {
-      tooltip.classList.add('hidden');
-      e.target.removeEventListener('mousemove', moveTooltip);
+      tooltip.classList.add("hidden");
+      e.target.removeEventListener("mousemove", moveTooltip);
     };
 
-    document.addEventListener('mouseover', showTooltip);
-    document.addEventListener('focusin', showTooltip);
-    document.addEventListener('mouseout', hideTooltip);
-    document.addEventListener('focusout', hideTooltip);
+    document.addEventListener("mouseover", showTooltip);
+    document.addEventListener("focusin", showTooltip);
+    document.addEventListener("mouseout", hideTooltip);
+    document.addEventListener("focusout", hideTooltip);
   });
 }

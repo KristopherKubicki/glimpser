@@ -1,12 +1,13 @@
 export function initTemplates() {
-  document.addEventListener('DOMContentLoaded', () => {
-    const form = document.querySelector('#template-form form');
-    const groupDropdown = document.getElementById('group-dropdown');
-    const groupsInput = document.getElementById('groups');
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.querySelector("#template-form form");
+    const groupDropdown = document.getElementById("group-dropdown");
+    const groupsInput = document.getElementById("groups");
     const templateDetails = document
-      .getElementById('template-form')?.closest('details');
-    const slider = document.getElementById('grid-width-slider');
-    const templateList = document.getElementById('template-list');
+      .getElementById("template-form")
+      ?.closest("details");
+    const slider = document.getElementById("grid-width-slider");
+    const templateList = document.getElementById("template-list");
     const MAX_THUMBNAIL_HEIGHT = 720;
     const ASPECT_RATIO = 9 / 16;
     const MAX_THUMBNAIL_WIDTH = Math.round(MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO);
@@ -15,7 +16,7 @@ export function initTemplates() {
       const updateSliderLimits = () => {
         slider.max = Math.min(window.innerWidth, MAX_THUMBNAIL_WIDTH);
         const templateCount =
-          templateList?.querySelectorAll('.templateDiv').length || 1;
+          templateList?.querySelectorAll(".templateDiv").length || 1;
 
         // Minimum width needed to fit all tiles across the page
         const widthForColumns = Math.ceil(window.innerWidth / templateCount);
@@ -41,12 +42,15 @@ export function initTemplates() {
         if (parseFloat(slider.value) < computedMin) {
           slider.value = computedMin;
           if (templateList) {
-            templateList.style.setProperty('--grid-item-width', `${computedMin}px`);
+            templateList.style.setProperty(
+              "--grid-item-width",
+              `${computedMin}px`,
+            );
             const height = Math.min(
               Math.round((computedMin * 9) / 16),
               MAX_THUMBNAIL_HEIGHT,
             );
-            templateList.style.setProperty('--grid-item-height', `${height}px`);
+            templateList.style.setProperty("--grid-item-height", `${height}px`);
           }
         }
         if (templateList) {
@@ -55,24 +59,24 @@ export function initTemplates() {
             Math.round((width * 9) / 16),
             MAX_THUMBNAIL_HEIGHT,
           );
-          templateList.style.setProperty('--grid-item-height', `${height}px`);
+          templateList.style.setProperty("--grid-item-height", `${height}px`);
         }
       };
 
       updateSliderLimits();
-      window.addEventListener('resize', updateSliderLimits);
+      window.addEventListener("resize", updateSliderLimits);
       window.updateSliderLimits = updateSliderLimits;
-      slider.dispatchEvent(new Event('input'));
+      slider.dispatchEvent(new Event("input"));
     }
 
     function autofillGroup() {
-      if (groupsInput && groupDropdown && groupDropdown.value !== 'all') {
+      if (groupsInput && groupDropdown && groupDropdown.value !== "all") {
         groupsInput.value = groupDropdown.value;
       }
     }
 
     if (groupDropdown) {
-      groupDropdown.addEventListener('change', () => {
+      groupDropdown.addEventListener("change", () => {
         loadTemplates();
         if (templateDetails && templateDetails.open) {
           autofillGroup();
@@ -81,7 +85,7 @@ export function initTemplates() {
     }
 
     if (templateDetails) {
-      templateDetails.addEventListener('toggle', () => {
+      templateDetails.addEventListener("toggle", () => {
         if (templateDetails.open) {
           autofillGroup();
         }
@@ -95,77 +99,75 @@ export function initTemplates() {
           Math.round((value * 9) / 16),
           MAX_THUMBNAIL_HEIGHT,
         );
-        templateList.style.setProperty('--grid-item-width', `${value}px`);
-        templateList.style.setProperty('--grid-item-height', `${height}px`);
-        templateList
-          .querySelectorAll('.templateDiv')
-          .forEach((div) => {
-            div.style.width = `${value}px`;
-            div.style.height = `${height}px`;
-          });
+        templateList.style.setProperty("--grid-item-width", `${value}px`);
+        templateList.style.setProperty("--grid-item-height", `${height}px`);
+        templateList.querySelectorAll(".templateDiv").forEach((div) => {
+          div.style.width = `${value}px`;
+          div.style.height = `${height}px`;
+        });
 
         const scale = value / 360;
         const cameraNameFontSize = Math.max(6, 14 * scale);
         const timestampFontSize = Math.max(6, 12 * scale);
         document.documentElement.style.setProperty(
-          '--tile-scale',
+          "--tile-scale",
           scale.toString(),
         );
         document.documentElement.style.setProperty(
-          '--camera-name-font-size',
+          "--camera-name-font-size",
           `${cameraNameFontSize}px`,
         );
         document.documentElement.style.setProperty(
-          '--timestamp-font-size',
+          "--timestamp-font-size",
           `${timestampFontSize}px`,
         );
       };
 
-      slider.addEventListener('input', handleSlider);
-      slider.addEventListener('change', handleSlider);
+      slider.addEventListener("input", handleSlider);
+      slider.addEventListener("change", handleSlider);
       handleSlider();
     }
 
     if (form) {
-      form.addEventListener('submit', async (e) => {
+      form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
         const submitButton = form.querySelector('input[type="submit"]');
-        const feedbackElement = document.createElement('div');
-        feedbackElement.className = 'form-feedback';
+        const feedbackElement = document.createElement("div");
+        feedbackElement.className = "form-feedback";
         form.appendChild(feedbackElement);
 
         submitButton.disabled = true;
-        submitButton.innerHTML = 'Submitting...';
-        feedbackElement.textContent = 'Submitting form...';
+        submitButton.innerHTML = "Submitting...";
+        feedbackElement.textContent = "Submitting form...";
 
         try {
-          const response = await fetch('/templates', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          const response = await fetch("/templates", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
           });
           await response.json();
           loadTemplates();
           form.reset();
 
-          feedbackElement.textContent = 'Source successfully created!';
-          feedbackElement.style.color = 'green';
+          feedbackElement.textContent = "Source successfully created!";
+          feedbackElement.style.color = "green";
         } catch (error) {
-          console.error('Error:', error);
-          feedbackElement.textContent = 'An error occurred. Please try again.';
-          feedbackElement.style.color = 'red';
+          console.error("Error:", error);
+          feedbackElement.textContent = "An error occurred. Please try again.";
+          feedbackElement.style.color = "red";
         } finally {
           submitButton.disabled = false;
-          submitButton.innerHTML = 'Submit';
+          submitButton.innerHTML = "Submit";
           setTimeout(() => feedbackElement.remove(), 3000);
         }
       });
     }
 
     loadGroups();
-    const cameraTable = document.getElementById('camera-table');
+    const cameraTable = document.getElementById("camera-table");
     if (!cameraTable) {
       loadTemplates();
     }
@@ -180,23 +182,23 @@ export function initTemplates() {
 }
 
 export async function loadGroups() {
-  const groupDropdown = document.getElementById('group-dropdown');
+  const groupDropdown = document.getElementById("group-dropdown");
   if (!groupDropdown) return;
   groupDropdown.innerHTML = '<option value="all">Loading groups...</option>';
   groupDropdown.disabled = true;
 
   try {
-    const response = await fetch('/groups');
+    const response = await fetch("/groups");
     const groups = await response.json();
     groupDropdown.innerHTML = '<option value="all">All Groups</option>';
     groups.forEach((group) => {
-      const option = document.createElement('option');
+      const option = document.createElement("option");
       option.value = group;
       option.textContent = group;
       groupDropdown.appendChild(option);
     });
   } catch (error) {
-    console.error('Error loading groups:', error);
+    console.error("Error loading groups:", error);
     groupDropdown.innerHTML = '<option value="all">All Groups</option>';
   } finally {
     groupDropdown.disabled = false;
@@ -207,22 +209,22 @@ export function timeAgo(utcDateString) {
   const now = new Date();
   const utcDate = new Date(utcDateString);
   const diffInSeconds = Math.floor((now - utcDate) / 1000);
-  if (diffInSeconds < 0) return 'in the future';
+  if (diffInSeconds < 0) return "in the future";
 
   const intervals = [
-    { label: 'year', seconds: 31536000 },
-    { label: 'month', seconds: 2592000 },
-    { label: 'day', seconds: 86400 },
-    { label: 'hour', seconds: 3600 },
-    { label: 'minute', seconds: 60 },
-    { label: 'second', seconds: 1 },
+    { label: "year", seconds: 31536000 },
+    { label: "month", seconds: 2592000 },
+    { label: "day", seconds: 86400 },
+    { label: "hour", seconds: 3600 },
+    { label: "minute", seconds: 60 },
+    { label: "second", seconds: 1 },
   ];
 
   for (const { label, seconds } of intervals) {
     const count = Math.floor(diffInSeconds / seconds);
-    if (count >= 1) return `${count} ${label}${count > 1 ? 's' : ''} ago`;
+    if (count >= 1) return `${count} ${label}${count > 1 ? "s" : ""} ago`;
   }
-  return 'just now';
+  return "just now";
 }
 
 export function formatExactTime(utcDateString) {
@@ -231,28 +233,29 @@ export function formatExactTime(utcDateString) {
 }
 
 export function isMobile() {
-  return window.matchMedia('(hover: none)').matches;
+  return window.matchMedia("(hover: none)").matches;
 }
 
 export function updateGridLayout() {
-  const templateList = document.getElementById('template-list');
+  const templateList = document.getElementById("template-list");
   if (!templateList) return;
   if (isMobile()) {
-    templateList.style.gridTemplateColumns = '1fr';
+    templateList.style.gridTemplateColumns = "1fr";
   } else {
-    templateList.style.gridTemplateColumns = 'repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px)))';
+    templateList.style.gridTemplateColumns =
+      "repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px)))";
   }
 }
 
 export function templateBelongsToGroup(template, group) {
-  if (group === 'all') return true;
-  const templateGroups = template.groups ? template.groups.split(',') : [];
+  if (group === "all") return true;
+  const templateGroups = template.groups ? template.groups.split(",") : [];
   return templateGroups.includes(group);
 }
 
 export function updateHumanizedTimes() {
-  document.querySelectorAll('.humanized-time').forEach((element) => {
-    const timestamp = element.getAttribute('data-time');
+  document.querySelectorAll(".humanized-time").forEach((element) => {
+    const timestamp = element.getAttribute("data-time");
     if (timestamp) {
       element.textContent = timeAgo(timestamp);
       element.title = formatExactTime(timestamp);
@@ -261,17 +264,18 @@ export function updateHumanizedTimes() {
 
   document
     .querySelectorAll(
-      '.video-container[data-timestamp], .templateDiv img[data-timestamp], video.hover-video[data-timestamp]'
+      ".video-container[data-timestamp], .templateDiv img[data-timestamp], video.hover-video[data-timestamp]",
     )
     .forEach((element) => {
       const original =
-        element.dataset.originalTimestamp || element.getAttribute('data-timestamp');
+        element.dataset.originalTimestamp ||
+        element.getAttribute("data-timestamp");
       if (!element.dataset.originalTimestamp) {
         element.dataset.originalTimestamp = original;
       }
       if (original) {
-        element.setAttribute('data-timestamp', timeAgo(original));
-        element.setAttribute('title', formatExactTime(original));
+        element.setAttribute("data-timestamp", timeAgo(original));
+        element.setAttribute("title", formatExactTime(original));
       }
     });
 }
@@ -297,8 +301,8 @@ export function showStructuredInput(inputId) {
       <button type="button" onclick="generateXPath('${inputId}')">Generate XPath</button>
     </div>
   `;
-  input.insertAdjacentHTML('afterend', structuredInputHtml);
-  input.style.display = 'none';
+  input.insertAdjacentHTML("afterend", structuredInputHtml);
+  input.style.display = "none";
 }
 
 export function generateXPath(inputId) {
@@ -307,36 +311,40 @@ export function generateXPath(inputId) {
   const value = document.getElementById(`${inputId}_value`).value;
 
   let xpath = `//${tag}`;
-  xpath += attribute === 'data-*'
-    ? `[starts-with(@data-,'${value}')]`
-    : `[contains(@${attribute},'${value}')]`;
+  xpath +=
+    attribute === "data-*"
+      ? `[starts-with(@data-,'${value}')]`
+      : `[contains(@${attribute},'${value}')]`;
 
   document.getElementById(inputId).value = xpath;
-  document.getElementById(inputId).style.display = 'block';
+  document.getElementById(inputId).style.display = "block";
   document.querySelector(`#${inputId} + .structured-xpath-input`).remove();
 }
 
 export function setupSearch() {
-  const searchInput = document.getElementById('search-input');
-  const groupDropdown = document.getElementById('group-dropdown');
-  const cameraRows = document.querySelectorAll('.camera-row');
-  const filterColumn = document.getElementById('filter-column');
-  const filterValue = document.getElementById('filter-value');
-  const applyFilter = document.getElementById('apply-filter');
-  const templateList = document.getElementById('template-list');
+  const searchInput = document.getElementById("search-input");
+  const groupDropdown = document.getElementById("group-dropdown");
+  const cameraRows = document.querySelectorAll(".camera-row");
+  const filterColumn = document.getElementById("filter-column");
+  const filterValue = document.getElementById("filter-value");
+  const applyFilter = document.getElementById("apply-filter");
+  const templateList = document.getElementById("template-list");
   if (!searchInput || !groupDropdown) return;
 
   const filterCameras = () => {
     const searchTerm = searchInput.value.toLowerCase();
     const selectedGroup = groupDropdown.value;
-    const column = filterColumn ? filterColumn.value : '';
-    const filterVal = filterValue ? filterValue.value.trim().toLowerCase() : '';
+    const column = filterColumn ? filterColumn.value : "";
+    const filterVal = filterValue ? filterValue.value.trim().toLowerCase() : "";
     cameraRows.forEach((row) => {
-      const name = row.querySelector('td:first-child').textContent.toLowerCase();
-      const groups = row.dataset.groups.split(',');
+      const name = row
+        .querySelector("td:first-child")
+        .textContent.toLowerCase();
+      const groups = row.dataset.groups.split(",");
       const rowText = row.textContent.toLowerCase();
       const matchesSearch = rowText.includes(searchTerm);
-      const matchesGroup = selectedGroup === 'all' || groups.includes(selectedGroup);
+      const matchesGroup =
+        selectedGroup === "all" || groups.includes(selectedGroup);
       let matchesKpi = true;
       if (column && filterVal) {
         const dataVal = row.dataset[column];
@@ -350,39 +358,40 @@ export function setupSearch() {
           }
         }
       }
-      row.style.display = matchesSearch && matchesGroup && matchesKpi ? '' : 'none';
+      row.style.display =
+        matchesSearch && matchesGroup && matchesKpi ? "" : "none";
     });
   };
 
   if (templateList) {
-    searchInput.addEventListener('input', loadTemplates);
-    groupDropdown.addEventListener('change', loadTemplates);
+    searchInput.addEventListener("input", loadTemplates);
+    groupDropdown.addEventListener("change", loadTemplates);
   } else {
-    searchInput.addEventListener('input', filterCameras);
-    groupDropdown.addEventListener('change', filterCameras);
-    if (applyFilter) applyFilter.addEventListener('click', filterCameras);
+    searchInput.addEventListener("input", filterCameras);
+    groupDropdown.addEventListener("change", filterCameras);
+    if (applyFilter) applyFilter.addEventListener("click", filterCameras);
   }
 }
 
 export function templateMatchesSearch(template, searchQuery) {
   if (!searchQuery) return true;
   const name = template.name.toLowerCase();
-  const groups = template.groups ? template.groups.toLowerCase() : '';
+  const groups = template.groups ? template.groups.toLowerCase() : "";
   return name.includes(searchQuery) || groups.includes(searchQuery);
 }
 
 export async function loadTemplates() {
-  const groupDropdown = document.getElementById('group-dropdown');
-  const searchInput = document.getElementById('search-input');
-  const selectedGroup = groupDropdown ? groupDropdown.value || 'all' : 'all';
-  const searchQuery = searchInput ? searchInput.value.toLowerCase() : '';
+  const groupDropdown = document.getElementById("group-dropdown");
+  const searchInput = document.getElementById("search-input");
+  const selectedGroup = groupDropdown ? groupDropdown.value || "all" : "all";
+  const searchQuery = searchInput ? searchInput.value.toLowerCase() : "";
   const url = `/templates?group=${selectedGroup}&search=${searchQuery}&t=${new Date().getTime()}`;
 
   updateGridLayout();
 
-  const templateList = document.getElementById('template-list');
-  const captionsTable = document.querySelector('details table');
-  const templateContainer = document.querySelector('.template-container');
+  const templateList = document.getElementById("template-list");
+  const captionsTable = document.querySelector("details table");
+  const templateContainer = document.querySelector(".template-container");
 
   const isIndexPage = Boolean(templateList);
   const isCaptionsPage = Boolean(captionsTable && templateContainer);
@@ -390,18 +399,19 @@ export async function loadTemplates() {
   if (isIndexPage) {
     templateList.innerHTML = '<div class="loading">Loading templates...</div>';
   } else if (isCaptionsPage) {
-    templateContainer.innerHTML = '<div class="loading">Loading templates...</div>';
+    templateContainer.innerHTML =
+      '<div class="loading">Loading templates...</div>';
   }
 
   try {
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error('Network response was not ok');
+      throw new Error("Network response was not ok");
     }
 
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
       const message =
         '<div class="error">Session expired. Please log in again.</div>';
       if (isIndexPage) {
@@ -415,20 +425,23 @@ export async function loadTemplates() {
     const templates = await response.json();
 
     if (isIndexPage) {
-      templateList.innerHTML = '';
+      templateList.innerHTML = "";
     } else if (isCaptionsPage) {
-      templateContainer.innerHTML = '';
+      templateContainer.innerHTML = "";
     }
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (isMobile() && entry.isIntersecting) {
-          entry.target.play();
-        } else {
-          entry.target.pause();
-        }
-      });
-    }, { threshold: 0.5 });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (isMobile() && entry.isIntersecting) {
+            entry.target.play();
+          } else {
+            entry.target.pause();
+          }
+        });
+      },
+      { threshold: 0.5 },
+    );
 
     let hasTemplates = false;
     let templateCount = 0;
@@ -446,15 +459,18 @@ export async function loadTemplates() {
         const lastScreenshotDate = new Date(lastScreenshotTime);
         const oneMinuteAgo = new Date(Date.now() - 60000);
         const isRecent = lastScreenshotDate > oneMinuteAgo;
-        const videoContainerClass = isRecent ? 'video-container recent-screenshot' : 'video-container';
-        const errorClass = template.capture_failed ? 'template-error' : '';
+        const videoContainerClass = isRecent
+          ? "video-container recent-screenshot"
+          : "video-container";
+        const errorClass = template.capture_failed ? "template-error" : "";
 
         if (isIndexPage) {
-          const templateDiv = document.createElement('div');
-          templateDiv.classList.add('templateDiv');
-          templateDiv.style.opacity = '0';
-          templateDiv.style.transform = 'translateY(20px)';
-          templateDiv.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+          const templateDiv = document.createElement("div");
+          templateDiv.classList.add("templateDiv");
+          templateDiv.style.opacity = "0";
+          templateDiv.style.transform = "translateY(20px)";
+          templateDiv.style.transition =
+            "opacity 0.5s ease, transform 0.5s ease";
 
           templateDiv.innerHTML = `
             <a href='/templates/${name}'>
@@ -464,7 +480,7 @@ export async function loadTemplates() {
                   <source src="/last_video/${name}" type="video/mp4">
                   Your browser does not support the video tag.
                 </video>
-                <div class="caption-overlay">${template.last_caption || ''}</div>
+                <div class="caption-overlay">${template.last_caption || ""}</div>
                 <div class="play-icon">&#9658;</div>
               </div>
             </a>
@@ -474,24 +490,24 @@ export async function loadTemplates() {
 
           void templateDiv.offsetWidth;
           setTimeout(() => {
-            templateDiv.style.opacity = '1';
-            templateDiv.style.transform = 'translateY(0)';
+            templateDiv.style.opacity = "1";
+            templateDiv.style.transform = "translateY(0)";
           }, index * 100);
 
-          const video = templateDiv.querySelector('video');
+          const video = templateDiv.querySelector("video");
           observer.observe(video);
 
-          video.addEventListener('mouseenter', () => {
+          video.addEventListener("mouseenter", () => {
             video.playbackRate = 2.0;
             video.play();
           });
-          video.addEventListener('mouseleave', () => {
+          video.addEventListener("mouseleave", () => {
             video.playbackRate = 1.0;
             video.pause();
           });
         } else if (isCaptionsPage) {
-          const templateDiv = document.createElement('div');
-          templateDiv.classList.add('templateDiv');
+          const templateDiv = document.createElement("div");
+          templateDiv.classList.add("templateDiv");
           templateDiv.innerHTML = `
             <img src="/last_screenshot/${name}" alt="${name}" style="width:100%">
             <div class="camera-name">${name}</div>
@@ -506,9 +522,10 @@ export async function loadTemplates() {
     });
 
     if (!hasTemplates) {
-      const msg = document.createElement('div');
-      msg.className = 'no-templates';
-      msg.textContent = 'No templates found. Use "Add Template" above to create one.';
+      const msg = document.createElement("div");
+      msg.className = "no-templates";
+      msg.textContent =
+        'No templates found. Use "Add Template" above to create one.';
       if (isIndexPage) {
         templateList.appendChild(msg);
       } else if (isCaptionsPage) {
@@ -518,18 +535,19 @@ export async function loadTemplates() {
     }
 
     if (isIndexPage) {
-      window.addEventListener('resize', updateGridLayout);
+      window.addEventListener("resize", updateGridLayout);
     }
     if (window.updateSliderLimits) window.updateSliderLimits();
-    const slider = document.getElementById('grid-width-slider');
-    if (slider) slider.dispatchEvent(new Event('input'));
+    const slider = document.getElementById("grid-width-slider");
+    if (slider) slider.dispatchEvent(new Event("input"));
     updateHumanizedTimes();
     window.dispatchEvent(
-      new CustomEvent('templatesLoaded', { detail: { count: templateCount } }),
+      new CustomEvent("templatesLoaded", { detail: { count: templateCount } }),
     );
   } catch (error) {
-    console.error('Error loading templates:', error);
-    const errorMsg = '<div class="error">Error loading templates. Please try again.</div>';
+    console.error("Error loading templates:", error);
+    const errorMsg =
+      '<div class="error">Error loading templates. Please try again.</div>';
     if (isIndexPage) {
       templateList.innerHTML = errorMsg;
     } else if (isCaptionsPage) {
@@ -541,27 +559,27 @@ export async function loadTemplates() {
 export function setupTableSorting(tableId) {
   const headers = document.querySelectorAll(`#${tableId} th.sortable`);
   headers.forEach((th, index) => {
-    th.addEventListener('click', () => {
-      const type = th.dataset.type || 'string';
-      const tbody = th.closest('table').tBodies[0];
+    th.addEventListener("click", () => {
+      const type = th.dataset.type || "string";
+      const tbody = th.closest("table").tBodies[0];
       const rows = Array.from(tbody.rows);
-      const current = th.dataset.order === 'asc' ? 'asc' : 'desc';
+      const current = th.dataset.order === "asc" ? "asc" : "desc";
       rows.sort((a, b) => {
         const aVal = a.cells[index].dataset.value || a.cells[index].textContent;
         const bVal = b.cells[index].dataset.value || b.cells[index].textContent;
-        if (type === 'number') {
+        if (type === "number") {
           return parseFloat(aVal) - parseFloat(bVal);
         }
-        if (type === 'date') {
+        if (type === "date") {
           return new Date(aVal) - new Date(bVal);
         }
         return aVal.localeCompare(bVal);
       });
-      if (current === 'asc') {
+      if (current === "asc") {
         rows.reverse();
-        th.dataset.order = 'desc';
+        th.dataset.order = "desc";
       } else {
-        th.dataset.order = 'asc';
+        th.dataset.order = "asc";
       }
       rows.forEach((row) => tbody.appendChild(row));
     });
@@ -569,7 +587,7 @@ export function setupTableSorting(tableId) {
 }
 
 export function setupSorting() {
-  setupTableSorting('camera-table');
-  setupTableSorting('feed-status');
-  setupTableSorting('captions-table');
+  setupTableSorting("camera-table");
+  setupTableSorting("feed-status");
+  setupTableSorting("captions-table");
 }

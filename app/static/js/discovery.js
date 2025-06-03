@@ -1,9 +1,9 @@
-import { fetchJson } from './fetch_utils.js';
+import { fetchJson } from "./fetch_utils.js";
 
 export function initDiscoveryToggle() {
-  document.addEventListener('DOMContentLoaded', () => {
-    const stopBtn = document.getElementById('stop-discovery');
-    const statusSpan = document.getElementById('discovery-bg-status');
+  document.addEventListener("DOMContentLoaded", () => {
+    const stopBtn = document.getElementById("stop-discovery");
+    const statusSpan = document.getElementById("discovery-bg-status");
     if (!statusSpan) return;
 
     const minutes = (s) => `${Math.round(s / 60)}m`;
@@ -11,7 +11,7 @@ export function initDiscoveryToggle() {
       let text = d.status;
       if (d.running_for) {
         text += ` (${minutes(d.running_for)})`;
-      } else if (Number.isFinite(d.age) && d.status !== 'none') {
+      } else if (Number.isFinite(d.age) && d.status !== "none") {
         text += ` (${minutes(d.age)} ago)`;
       }
       if (d.next_run_in) {
@@ -21,31 +21,33 @@ export function initDiscoveryToggle() {
     };
 
     if (stopBtn) {
-      stopBtn.addEventListener('click', async () => {
+      stopBtn.addEventListener("click", async () => {
         const confirmStop = confirm(
-          'Are you sure you want to stop background discovery?'
+          "Are you sure you want to stop background discovery?",
         );
         if (!confirmStop) return;
         try {
-          const data = await fetchJson('/toggle_discovery', { method: 'POST' });
+          const data = await fetchJson("/toggle_discovery", { method: "POST" });
           statusSpan.textContent = formatStatus(data);
-          stopBtn.style.display = data.status === 'running' ? 'inline-block' : 'none';
+          stopBtn.style.display =
+            data.status === "running" ? "inline-block" : "none";
         } catch (err) {
-          statusSpan.textContent = 'error';
-          alert('Unable to stop discovery.');
+          statusSpan.textContent = "error";
+          alert("Unable to stop discovery.");
         }
       });
     }
 
-    fetchJson('/discovery_status')
+    fetchJson("/discovery_status")
       .then((data) => {
         statusSpan.textContent = formatStatus(data);
         if (stopBtn) {
-          stopBtn.style.display = data.status === 'running' ? 'inline-block' : 'none';
+          stopBtn.style.display =
+            data.status === "running" ? "inline-block" : "none";
         }
       })
       .catch(() => {
-        statusSpan.textContent = 'error';
+        statusSpan.textContent = "error";
       });
   });
 }
