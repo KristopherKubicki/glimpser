@@ -68,6 +68,31 @@ export function initNav() {
     let lastCaptionTime = null;
     let popupTimer;
 
+    let idle = false;
+    let idleTimer;
+    let pendingCaption = null;
+    const idleDelay = 3000; // ms
+
+    const markIdle = () => {
+      idle = true;
+      if (pendingCaption) {
+        showCaptionPopup(pendingCaption);
+        pendingCaption = null;
+      }
+    };
+
+    const resetIdleTimer = () => {
+      idle = false;
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(markIdle, idleDelay);
+    };
+
+    ['mousemove', 'keydown', 'scroll', 'touchstart'].forEach((evt) => {
+      document.addEventListener(evt, resetIdleTimer);
+    });
+
+    resetIdleTimer();
+
     const showCaptionPopup = (text) => {
       if (!captionPopup) return;
       captionPopup.textContent = text;

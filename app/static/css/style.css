@@ -538,6 +538,12 @@ nav a:hover, nav a.active {
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 14px;
+    line-height: 1.2;
+    max-width: 200px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
     opacity: 0;
     pointer-events: none;
     white-space: pre-line;
