@@ -1,4 +1,4 @@
-module.exports = [
+export default [
   {
     files: ["app/static/js/**/*.js"],
     languageOptions: {
