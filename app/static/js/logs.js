@@ -59,6 +59,5 @@ document.addEventListener("DOMContentLoaded", function () {
   startEventStream();
 });
 
-
 // Expose for legacy scripts that include this file via <script> tag
 window.updateTable = updateTable;
