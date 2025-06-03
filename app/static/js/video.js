@@ -1,9 +1,9 @@
 export function initVideoControls() {
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener("DOMContentLoaded", () => {
     setupStatusPageVideoHover();
     setupVideoControls();
 
-    const playAllButton = document.getElementById('play-all-button');
+    const playAllButton = document.getElementById("play-all-button");
     let playAllActive = false;
     let playAllObserver;
 
@@ -13,7 +13,7 @@ export function initVideoControls() {
         if (entry.isIntersecting) {
           entry.target
             .play()
-            .catch((e) => console.error('Error playing video:', e));
+            .catch((e) => console.error("Error playing video:", e));
         } else {
           entry.target.pause();
         }
@@ -21,21 +21,21 @@ export function initVideoControls() {
     }
 
     if (playAllButton) {
-      playAllButton.addEventListener('click', () => {
-        const videos = document.querySelectorAll('.templateDiv video');
+      playAllButton.addEventListener("click", () => {
+        const videos = document.querySelectorAll(".templateDiv video");
         if (playAllActive) {
           if (playAllObserver) playAllObserver.disconnect();
           videos.forEach((video) => {
             video.pause();
             video.currentTime = 0;
           });
-          playAllButton.textContent = 'Play All';
+          playAllButton.textContent = "Play All";
         } else {
           playAllObserver = new IntersectionObserver(handlePlayAll, {
             threshold: 0.25,
           });
           videos.forEach((video) => playAllObserver.observe(video));
-          playAllButton.textContent = 'Stop All';
+          playAllButton.textContent = "Stop All";
         }
         playAllActive = !playAllActive;
       });
@@ -44,44 +44,44 @@ export function initVideoControls() {
     setInterval(updateVideoSources, 60000 * 30);
   });
 
-  window.__onGCastApiAvailable = function(isAvailable) {
+  window.__onGCastApiAvailable = function (isAvailable) {
     if (isAvailable) initializeCastApi();
   };
 }
 
 export function updateVideoSources() {
-  const videos = document.querySelectorAll('.templateDiv video');
+  const videos = document.querySelectorAll(".templateDiv video");
   videos.forEach((video) => {
-    const name = video.getAttribute('data-name');
+    const name = video.getAttribute("data-name");
     const timestamp = new Date().getTime();
-    video.querySelector('source').src = `/last_video/${name}?t=${timestamp}`;
+    video.querySelector("source").src = `/last_video/${name}?t=${timestamp}`;
     video.poster = `/last_screenshot/${name}?t=${timestamp}`;
   });
 }
 
 export function setupVideoControls() {
-  const video = document.getElementById('live-video');
+  const video = document.getElementById("live-video");
   if (!video) return;
 
-  const playPauseButton = document.getElementById('play-pause');
-  const muteButton = document.getElementById('mute');
-  const fullScreenButton = document.getElementById('full-screen');
-  const seekBar = document.getElementById('seek-bar');
-  const volumeBar = document.getElementById('volume-bar');
-  const castButton = document.getElementById('cast-button');
+  const playPauseButton = document.getElementById("play-pause");
+  const muteButton = document.getElementById("mute");
+  const fullScreenButton = document.getElementById("full-screen");
+  const seekBar = document.getElementById("seek-bar");
+  const volumeBar = document.getElementById("volume-bar");
+  const castButton = document.getElementById("cast-button");
 
   if (playPauseButton) {
-    playPauseButton.addEventListener('click', () => {
+    playPauseButton.addEventListener("click", () => {
       video.paused ? video.play() : video.pause();
     });
   }
   if (muteButton) {
-    muteButton.addEventListener('click', () => {
+    muteButton.addEventListener("click", () => {
       video.muted = !video.muted;
     });
   }
   if (fullScreenButton) {
-    fullScreenButton.addEventListener('click', () => {
+    fullScreenButton.addEventListener("click", () => {
       if (video.requestFullscreen) video.requestFullscreen();
       else if (video.mozRequestFullScreen) video.mozRequestFullScreen();
       else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
@@ -89,64 +89,64 @@ export function setupVideoControls() {
     });
   }
   if (seekBar) {
-    seekBar.addEventListener('change', () => {
+    seekBar.addEventListener("change", () => {
       video.currentTime = video.duration * (seekBar.value / 100);
     });
-    video.addEventListener('timeupdate', () => {
+    video.addEventListener("timeupdate", () => {
       seekBar.value = (100 / video.duration) * video.currentTime;
     });
   }
   if (volumeBar) {
-    volumeBar.addEventListener('change', () => {
+    volumeBar.addEventListener("change", () => {
       video.volume = volumeBar.value;
     });
   }
   if (castButton) {
-    castButton.addEventListener('click', startCasting);
+    castButton.addEventListener("click", startCasting);
   }
 
-  document.addEventListener('keydown', (e) => {
+  document.addEventListener("keydown", (e) => {
     const tag = e.target.tagName.toLowerCase();
-    if (tag === 'input' || tag === 'textarea') return;
+    if (tag === "input" || tag === "textarea") return;
     switch (e.key) {
-      case ' ': // Spacebar
-      case 'k':
+      case " ": // Spacebar
+      case "k":
         e.preventDefault();
         video.paused ? video.play() : video.pause();
         break;
-      case 'm':
+      case "m":
         video.muted = !video.muted;
         break;
-      case 'f':
+      case "f":
         if (video.requestFullscreen) video.requestFullscreen();
         else if (video.mozRequestFullScreen) video.mozRequestFullScreen();
         else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
         else if (video.msRequestFullscreen) video.msRequestFullscreen();
         break;
-      case 'ArrowLeft':
-      case 'ArrowRight': {
-        const selector = document.getElementById('camera-selector');
+      case "ArrowLeft":
+      case "ArrowRight": {
+        const selector = document.getElementById("camera-selector");
         if (!selector) break;
-        const step = e.key === 'ArrowLeft' ? -1 : 1;
+        const step = e.key === "ArrowLeft" ? -1 : 1;
         const newIndex = selector.selectedIndex + step;
         if (newIndex >= 0 && newIndex < selector.options.length) {
           selector.selectedIndex = newIndex;
-          if (typeof changeCamera === 'function') changeCamera();
+          if (typeof changeCamera === "function") changeCamera();
         }
         break;
       }
-      case '[':
-      case ']': {
-        const slider = document.getElementById('speed-slider');
+      case "[":
+      case "]": {
+        const slider = document.getElementById("speed-slider");
         if (!slider) break;
         const step = parseFloat(slider.step) || 1;
-        const delta = e.key === '[' ? -step : step;
+        const delta = e.key === "[" ? -step : step;
         const newValue = Math.min(
           parseFloat(slider.max),
-          Math.max(parseFloat(slider.min), parseFloat(slider.value) + delta)
+          Math.max(parseFloat(slider.min), parseFloat(slider.value) + delta),
         );
         slider.value = newValue;
-        if (typeof updatePlaybackSpeed === 'function') updatePlaybackSpeed();
+        if (typeof updatePlaybackSpeed === "function") updatePlaybackSpeed();
         break;
       }
       default:
@@ -156,21 +156,21 @@ export function setupVideoControls() {
 }
 
 export function setupStatusPageVideoHover() {
-  const thumbnailVideoCells = document.querySelectorAll('.thumbnail-video');
+  const thumbnailVideoCells = document.querySelectorAll(".thumbnail-video");
   thumbnailVideoCells.forEach((cell) => {
-    const img = cell.querySelector('img.thumbnail');
-    const video = cell.querySelector('video.hover-video');
+    const img = cell.querySelector("img.thumbnail");
+    const video = cell.querySelector("video.hover-video");
     if (img && video) {
-      cell.addEventListener('mouseenter', () => {
-        img.style.display = 'none';
-        video.style.display = 'block';
+      cell.addEventListener("mouseenter", () => {
+        img.style.display = "none";
+        video.style.display = "block";
         video.play();
       });
-      cell.addEventListener('mouseleave', () => {
+      cell.addEventListener("mouseleave", () => {
         video.pause();
         video.currentTime = 0;
-        video.style.display = 'none';
-        img.style.display = 'block';
+        video.style.display = "none";
+        img.style.display = "block";
       });
     }
   });
@@ -184,11 +184,12 @@ export function initializeCastApi() {
 }
 
 export function startCasting() {
-  const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
+  const castSession =
+    cast.framework.CastContext.getInstance().getCurrentSession();
   if (castSession) {
     const mediaInfo = new chrome.cast.media.MediaInfo(
-      document.getElementById('live-video').src,
-      'video/mp4'
+      document.getElementById("live-video").src,
+      "video/mp4",
     );
     const request = new chrome.cast.media.LoadRequest(mediaInfo);
     castSession.loadMedia(request).then(
@@ -197,20 +198,20 @@ export function startCasting() {
         console.info(
           JSON.stringify({
             ts: Date.now(),
-            ctx: 'discover',
-            msg: 'Cast started',
-          })
+            ctx: "discover",
+            msg: "Cast started",
+          }),
         ),
-      (errorCode) => console.error('Error code: ' + errorCode)
+      (errorCode) => console.error("Error code: " + errorCode),
     );
   } else {
     // Structured log when no cast session is active
     console.info(
       JSON.stringify({
         ts: Date.now(),
-        ctx: 'discover',
-        msg: 'No active cast session',
-      })
+        ctx: "discover",
+        msg: "No active cast session",
+      }),
     );
   }
 }

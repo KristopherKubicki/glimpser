@@ -1,15 +1,15 @@
 export function initOffline() {
-  const checkbox = document.getElementById('offline-preview');
+  const checkbox = document.getElementById("offline-preview");
   if (!checkbox) return;
 
-  checkbox.checked = localStorage.getItem('offlinePreviewEnabled') === 'true';
+  checkbox.checked = localStorage.getItem("offlinePreviewEnabled") === "true";
 
-  checkbox.addEventListener('change', () => {
+  checkbox.addEventListener("change", () => {
     if (checkbox.checked) {
-      localStorage.setItem('offlinePreviewEnabled', 'true');
+      localStorage.setItem("offlinePreviewEnabled", "true");
       registerSW();
     } else {
-      localStorage.removeItem('offlinePreviewEnabled');
+      localStorage.removeItem("offlinePreviewEnabled");
       unregisterSW();
     }
   });
@@ -20,16 +20,16 @@ export function initOffline() {
 }
 
 function registerSW() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(console.error);
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(console.error);
   }
 }
 
 function unregisterSW() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(regs => {
-      regs.forEach(reg => {
-        if (reg.active && reg.active.scriptURL.includes('sw.js')) {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((reg) => {
+        if (reg.active && reg.active.scriptURL.includes("sw.js")) {
           reg.unregister();
         }
       });
