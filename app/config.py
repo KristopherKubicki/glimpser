@@ -62,6 +62,12 @@ LOGGING_PATH = (
     if _cli_args and _cli_args.log_path
     else os.getenv("GLIMPSER_LOGGING_PATH", "logs/glimpser.log")
 )
+
+# Ensure paths remain valid if the working directory changes.
+_db_rel = Path(DATABASE_PATH)
+DATABASE_PATH = str(_db_rel if _db_rel.is_absolute() else _BASE_DIR / _db_rel)
+_log_rel = Path(LOGGING_PATH)
+LOGGING_PATH = str(_log_rel if _log_rel.is_absolute() else _BASE_DIR / _log_rel)
 # Ensure the backup file lives inside the project directory unless an absolute
 # path is provided. This avoids errors when the working directory changes.
 _backup_env = os.getenv("GLIMPSER_BACKUP_PATH", "data/config_backup.json")
