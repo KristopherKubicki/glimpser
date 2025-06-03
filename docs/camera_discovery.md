@@ -2,7 +2,7 @@
 
 Glimpser includes a simple discovery feature to help find network cameras on your local LAN. The `/discover` page now loads immediately and only scans when you click the **Discover** button. A progress bar displays the number of completed stages so you know the scan is making progress. The page also shows which discovery stage is currently executing. The logic in `app/utils/camera_discovery.py` runs in parallel threads so results return faster. To keep the scan quick, each interface is limited to a `/24` subnet even if the reported mask is larger.
 The subnet list is now deduplicated so machines with multiple addresses per interface are scanned only once. Unreachable ports fail fast so discovery always completes even when some networks are inaccessible.
-Background discovery can run automatically every hour when the `DISCOVERY_AUTOSTART` setting is enabled. When disabled (the default), the search icon appears white until you start the scan from `/discover`. The icon turns green when a scan completed recently, yellow while scanning, and red if the last run failed.
+Background discovery can run automatically every hour when the `DISCOVERY_AUTOSTART` setting is enabled. When disabled (the default), the search icon appears white until you start the scan from `/discover`. The icon turns green when a scan completed recently, yellow while scanning, and red if the last run failed. Hovering over the icon now shows when the last scan finished and when the next one will run.
 After all scanning steps finish, Glimpser performs a two-hop traceroute to each
 discovered camera. The previous hop is stored in the ``upstream`` field so you
 can see which router or switch connects the device. Each progress message now
