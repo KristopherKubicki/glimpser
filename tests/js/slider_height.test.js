@@ -5,7 +5,12 @@ document.body.innerHTML = `
   <input id="grid-width-slider" type="range" value="360">
 `;
 
-const { initTemplates } = require('../../app/static/js/templates.js');
+let initTemplates;
+
+beforeAll(async () => {
+  const mod = await import('../../app/static/js/templates.js');
+  initTemplates = mod.initTemplates;
+});
 
 describe('grid width slider', () => {
   beforeEach(() => {

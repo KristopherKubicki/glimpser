@@ -12,12 +12,16 @@ document.body.innerHTML = `
   <input id="grid-width-slider" type="range">
 `;
 
-// Import the functions to test
-const {
-  loadTemplates,
-  updateGridLayout,
-  timeAgo,
-} = require('../../app/static/js/script.js');
+let loadTemplates;
+let updateGridLayout;
+let timeAgo;
+
+beforeAll(async () => {
+  const mod = await import('../../app/static/js/templates.js');
+  loadTemplates = mod.loadTemplates;
+  updateGridLayout = mod.updateGridLayout;
+  timeAgo = mod.timeAgo;
+});
 
 describe('script.js', () => {
   beforeEach(() => {

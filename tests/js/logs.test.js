@@ -8,8 +8,12 @@ document.body.innerHTML = `
   <select id="level-select"></select>
 `;
 
-// Import function to test
-const { updateTable } = require('../../app/static/js/logs.js');
+let updateTable;
+
+beforeAll(async () => {
+  const mod = await import('../../app/static/js/logs.js');
+  updateTable = mod.updateTable;
+});
 
 describe('logs.js', () => {
   beforeEach(() => {

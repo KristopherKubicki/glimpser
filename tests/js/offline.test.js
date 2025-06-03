@@ -18,8 +18,12 @@ Object.defineProperty(global.navigator, 'serviceWorker', {
   configurable: true,
 });
 
-// Import the function to test
-const { initOffline } = require('../../app/static/js/offline.js');
+let initOffline;
+
+beforeAll(async () => {
+  const mod = await import('../../app/static/js/offline.js');
+  initOffline = mod.initOffline;
+});
 
 describe('offline.js', () => {
   beforeEach(() => {
