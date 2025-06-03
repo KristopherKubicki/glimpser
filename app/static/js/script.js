@@ -9,6 +9,7 @@ import { initOffline } from './offline.js';
 import { initDangerToggle } from './danger.js';
 import { initIndexTime } from './time.js';
 import { initWelcome } from './welcome.js';
+import { initTooltips } from './tooltips.js';
 
 initTemplates();
 initVideoControls();
@@ -22,3 +23,4 @@ initOffline();
 initDangerToggle();
 initIndexTime();
 initWelcome();
+initTooltips();

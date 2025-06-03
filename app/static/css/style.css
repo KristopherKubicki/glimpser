@@ -151,6 +151,22 @@ main {
 }
 
 
+/* Simple dynamic tooltip component */
+.dynamic-tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 1000;
+    transition: opacity 0.2s;
+}
+
+.dynamic-tooltip.hidden {
+    opacity: 0;
+}
 .link {
     color: rgb(192, 192, 192);
 }
