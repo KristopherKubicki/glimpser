@@ -4,7 +4,12 @@ document.body.innerHTML = `<div id="index-time"></div>`;
 
 jest.useFakeTimers();
 
-const { initIndexTime } = require('../../app/static/js/time.js');
+let initIndexTime;
+
+beforeAll(async () => {
+  const mod = await import('../../app/static/js/time.js');
+  initIndexTime = mod.initIndexTime;
+});
 
 describe('time.js', () => {
   test('initIndexTime updates element with time and ISO title', () => {
