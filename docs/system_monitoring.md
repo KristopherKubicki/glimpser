@@ -61,10 +61,10 @@ can monitor recent caption text without leaving the dashboard.
 
 The navigation bar shows a captions icon that reflects how recent the last
 caption update was. It flashes with the newest caption text when a group message
-arrives and now displays a small popup with the latest caption. This popup fades
-out after one minute. The icon remains green for one minute after a caption,
-changes to yellow for the next five minutes and turns red once thirty minutes
-have passed without an update.
+arrives. A condensed popup with the latest caption appears in the top-right
+corner after the user has been idle for a few seconds. The icon remains green
+for one minute after a caption, changes to yellow for the next five minutes and
+turns red once thirty minutes have passed without an update.
 
 ## Danger Mode Indicator
 
