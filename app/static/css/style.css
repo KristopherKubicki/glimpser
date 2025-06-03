@@ -1431,3 +1431,9 @@ details > summary {
 .tab-content.active {
     display: block;
 }
+
+#log-connection-status {
+    text-align: center;
+    padding: 0.5rem;
+    color: var(--accent-color);
+}
