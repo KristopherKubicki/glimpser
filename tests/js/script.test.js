@@ -1,3 +1,5 @@
+import { jest } from '@jest/globals';
+
 // Mock the fetch function
 global.fetch = jest.fn(() =>
   Promise.resolve({

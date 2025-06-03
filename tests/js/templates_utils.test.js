@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 // tests/js/templates_utils.test.js
 
 document.body.innerHTML = `

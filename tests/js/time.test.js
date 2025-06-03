@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 // tests/js/time.test.js
 
 document.body.innerHTML = `<div id="index-time"></div>`;
