@@ -7,6 +7,7 @@ document.body.innerHTML = `
   <table id="log-table"><tbody></tbody></table>
   <input id="search-input" />
   <select id="level-select"></select>
+  <div id="log-connection-status" class="hidden"></div>
 `;
 
 let updateTable;
@@ -33,5 +34,28 @@ describe('logs.js', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0].textContent).toContain('INFO');
     expect(rows[1].textContent).toContain('WARN');
+  });
+
+  test('reconnects when the event stream errors', () => {
+    jest.useFakeTimers();
+    const esInstances = [];
+    global.EventSource = jest.fn(() => {
+      const es = { onmessage: null, onerror: null, onopen: null, close: jest.fn() };
+      esInstances.push(es);
+      return es;
+    });
+
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+    expect(EventSource).toHaveBeenCalledTimes(1);
+
+    esInstances[0].onerror(new Event('error'));
+    jest.advanceTimersByTime(3000);
+
+    expect(EventSource).toHaveBeenCalledTimes(2);
+    const status = document.getElementById('log-connection-status');
+    expect(status.classList.contains('hidden')).toBe(false);
+
+    esInstances[1].onopen();
+    expect(status.classList.contains('hidden')).toBe(true);
   });
 });

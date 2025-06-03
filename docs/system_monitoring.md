@@ -48,6 +48,7 @@ To filter logs by level and message text, you could request:
 2. Use the search box and dropdowns to filter log output.
 3. Hover over each field for a tooltip explaining the filter.
 4. Results update automatically via `/stream_logs`.
+5. If the connection drops, the viewer automatically reconnects after a few seconds and shows a short notice while retrying.
 
 The log viewer reads log lines from memory, ensuring minimal disk overhead.
 

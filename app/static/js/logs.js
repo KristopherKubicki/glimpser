@@ -14,50 +14,70 @@ export function updateTable(logs) {
   });
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-  const form = document.getElementById("log-filter-form");
-  const table = document.getElementById("log-table");
-  const searchInput = document.getElementById("search-input");
-  const levelSelect = document.getElementById("level-select");
+export function initLogs() {
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("log-filter-form");
+    const table = document.getElementById("log-table");
+    const searchInput = document.getElementById("search-input");
+    const levelSelect = document.getElementById("level-select");
+    const status = document.getElementById("log-connection-status");
 
-  let eventSource;
+    let eventSource;
+    let reconnectTimer;
 
-  function startEventStream() {
-    if (eventSource) {
-      eventSource.close();
+    function startEventStream() {
+      if (eventSource) {
+        eventSource.close();
+      }
+
+      const formData = new FormData(form);
+      const searchParams = new URLSearchParams(formData);
+      eventSource = new EventSource(`/stream_logs?${searchParams.toString()}`);
+      if (status) status.classList.add("hidden");
+
+      eventSource.onopen = () => {
+        if (status) status.classList.add("hidden");
+      };
+
+      eventSource.onmessage = (event) => {
+        const logs = JSON.parse(event.data);
+        updateTable(logs);
+      };
+
+      eventSource.onerror = (error) => {
+        console.error("EventSource failed:", error);
+        if (status) {
+          status.textContent = "Connection lost. Reconnecting...";
+          status.classList.remove("hidden");
+        }
+        eventSource.close();
+        clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(startEventStream, 3000);
+      };
     }
 
-    const formData = new FormData(form);
-    const searchParams = new URLSearchParams(formData);
-    eventSource = new EventSource(`/stream_logs?${searchParams.toString()}`);
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      startEventStream();
+    });
 
-    eventSource.onmessage = function (event) {
-      const logs = JSON.parse(event.data);
-      updateTable(logs);
-    };
+    searchInput.addEventListener("input", () => {
+      startEventStream();
+    });
 
-    eventSource.onerror = function (error) {
-      console.error("EventSource failed:", error);
-      eventSource.close();
-    };
-  }
+    levelSelect.addEventListener("change", () => {
+      startEventStream();
+    });
 
-  form.addEventListener("submit", function (e) {
-    e.preventDefault();
+    // Start the initial event stream
     startEventStream();
-  });
 
-  searchInput.addEventListener("input", function () {
-    startEventStream();
+    // expose for tests
+    window.__startLogStream = startEventStream;
   });
+}
 
-  levelSelect.addEventListener("change", function () {
-    startEventStream();
-  });
-
-  // Start the initial event stream
-  startEventStream();
-});
+initLogs();
 
 
 // Expose for legacy scripts that include this file via <script> tag
