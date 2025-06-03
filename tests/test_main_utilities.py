@@ -51,14 +51,14 @@ class TestMainUtilities(unittest.TestCase):
         t2 = MagicMock()
         mock_enumerate.return_value = [current, t1, t2]
 
-        main.cleanup_resources()
+        main.shutdown_manager.cleanup()
 
         mock_shutdown.assert_called_once_with(wait=True)
         t1.join.assert_called_once_with(timeout=0.01)
         t2.join.assert_called_once_with(timeout=0.01)
         mock_output.assert_called_once()
 
-    @patch("main.cleanup_resources")
+    @patch("main.shutdown_manager.cleanup")
     @patch("main.sys.exit")
     @patch("main.time.sleep")
     def test_graceful_shutdown_exits(self, mock_sleep, mock_exit, mock_cleanup):
