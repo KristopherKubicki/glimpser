@@ -28,28 +28,31 @@
          });
      </script>
 
-    <div class="filter-controls">
-        <label for="group-dropdown" title="Filter templates by group">Filter by Group:</label>
-        <select id="group-dropdown" title="Select a group to filter templates">
-            <!-- Options will be populated here -->
-        </select>
+    <details class="filter-controls">
+        <summary>Search &amp; Filters</summary>
+        <div class="controls-inner">
+            <label for="group-dropdown" title="Filter templates by group">Group:</label>
+            <select id="group-dropdown" title="Select a group to filter templates">
+                <!-- Options will be populated here -->
+            </select>
 
-        <label for="search-input" title="Search for cameras or groups">Search:</label>
-        <input type="text" id="search-input" placeholder="Search cameras or groups" title="Enter search terms">
+            <label for="search-input" title="Search for cameras or groups">Search:</label>
+            <input type="search" id="search-input" placeholder="Search cameras or groups" title="Enter search terms">
 
-        <label for="filter-column" title="KPI to filter">KPI:</label>
-        <select id="filter-column" title="Select KPI">
-            <option value="">All</option>
-            <option value="screenshot_count">Shots</option>
-            <option value="video_count">Videos</option>
-            <option value="storage_usage">Storage</option>
-            <option value="llm_response_count">LLM Resp</option>
-            <option value="llm_cost_estimate">LLM Cost</option>
-        </select>
-        <input type="text" id="filter-value" placeholder="Value" title="Filter value">
-        <button id="apply-filter" type="button" title="Filter table rows">Apply</button>
-        <input type="range" id="grid-width-slider" min="50" max="3840" value="360" title="Adjust thumbnail width">
-    </div>
+            <label for="filter-column" title="KPI to filter">KPI:</label>
+            <select id="filter-column" title="Select KPI">
+                <option value="">All</option>
+                <option value="screenshot_count">Shots</option>
+                <option value="video_count">Videos</option>
+                <option value="storage_usage">Storage</option>
+                <option value="llm_response_count">LLM Resp</option>
+                <option value="llm_cost_estimate">LLM Cost</option>
+            </select>
+            <input type="text" id="filter-value" placeholder="Value" title="Filter value">
+            <button id="apply-filter" type="button" title="Filter table rows">Apply</button>
+            <input type="range" id="grid-width-slider" min="50" max="3840" value="360" title="Adjust thumbnail width">
+        </div>
+    </details>
 
 
 <!-- Bulk management controls -->

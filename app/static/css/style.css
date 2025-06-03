@@ -1101,11 +1101,15 @@ input[type=submit]:hover {
 }
 
 .filter-controls {
+    margin-bottom: 15px;
+}
+
+.filter-controls .controls-inner {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
     align-items: center;
-    margin-bottom: 15px;
+    margin-top: 0.5rem;
 }
 
 .captions-table,
