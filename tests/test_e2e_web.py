@@ -1,4 +1,5 @@
 import os
+import shutil
 from threading import Thread
 from werkzeug.serving import make_server
 
@@ -19,6 +20,8 @@ import app
 
 try:
     from selenium import webdriver
+    from selenium.webdriver.chrome.service import Service as ChromeService
+    from selenium.webdriver.firefox.service import Service as FirefoxService
     from selenium.webdriver.common.by import By
     from selenium.common.exceptions import WebDriverException
 except Exception:  # pragma: no cover - optional dependency may not be present
@@ -56,16 +59,34 @@ def live_server(tmp_path_factory):
 def _create_driver():
     if webdriver is None:
         return None
-    for constructor, options in [
-        (webdriver.Chrome, webdriver.ChromeOptions()),
-        (webdriver.Firefox, webdriver.FirefoxOptions()),
-    ]:
+
+    # Skip attempts to download drivers from the internet by only trying
+    # browsers with executables already present on the system. Selenium's
+    # automatic driver download can take a long time and hang in CI where
+    # network access is restricted.
+    drivers = [
+        (
+            webdriver.Chrome,
+            webdriver.ChromeOptions(),
+            shutil.which("chromedriver"),
+        ),
+        (
+            webdriver.Firefox,
+            webdriver.FirefoxOptions(),
+            shutil.which("geckodriver"),
+        ),
+    ]
+    for constructor, options, driver_path in drivers:
+        if not driver_path:
+            continue
         try:
             if "Chrome" in constructor.__name__:
                 options.add_argument("--headless=new")
+                service = ChromeService(executable_path=driver_path)
             else:
                 options.add_argument("--headless")
-            return constructor(options=options)
+                service = FirefoxService(executable_path=driver_path)
+            return constructor(service=service, options=options)
         except WebDriverException:
             continue
         except Exception:  # pragma: no cover - fallback
