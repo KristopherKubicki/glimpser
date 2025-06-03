@@ -46,7 +46,9 @@ def network_idle_condition(driver, url, timeout=30, idle_time=0.25, stealth=Fals
                     .get("status")
                 )
 
-                if 400 <= lstatus <= 499:
+                # Treat any 4xx or 5xx response as a failure so the caller can
+                # bail out early on server errors.
+                if lstatus >= 400:
                     return False, lstatus
         if not events:
             not_moving += 1

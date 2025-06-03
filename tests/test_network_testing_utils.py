@@ -88,6 +88,26 @@ class TestNetworkTestingUtils(unittest.TestCase):
         self.assertFalse(result)
         self.assertEqual(status, 404)
 
+    def test_network_idle_condition_server_error(self):
+        log = {
+            "message": json.dumps(
+                {
+                    "message": {
+                        "method": "Network.responseReceived",
+                        "params": {"response": {"url": "http://ex", "status": 500}},
+                    }
+                }
+            )
+        }
+        driver = DummyDriver(performance_logs=[[log]])
+        gen = self._time_gen()
+        with patch("time.time", side_effect=gen), patch("time.sleep"):
+            result, status = network_idle_condition(
+                driver, "http://ex", timeout=0.1, idle_time=0
+            )
+        self.assertFalse(result)
+        self.assertEqual(status, 500)
+
     def test_network_idle_condition_stealth(self):
         driver = DummyDriver()
         gen = self._time_gen(step=0.2)
