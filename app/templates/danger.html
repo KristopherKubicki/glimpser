@@ -30,6 +30,19 @@
     </p>
   </section>
 
+  {% if danger_cameras %}
+  <section>
+    <h3>Cameras with Danger Enabled</h3>
+    <ul>
+      {% for camera in danger_cameras %}
+      <li>
+        <a href="{{ url_for('template_details', template_name=camera) }}" title="Open {{ camera }} details">{{ camera }}</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
   <form id="danger-form" method="post">
     <label for="danger-checkbox" title="Toggle danger mode">
       <input

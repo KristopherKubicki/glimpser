@@ -1003,7 +1003,16 @@ def init_routes(app):
             return redirect(url_for("danger_mode"))
 
         current = config.get_setting("DANGER_MODE", "True") == "True"
-        return render_template("danger.html", enabled=current, page_title="Danger Mode")
+        templates = template_manager.get_templates()
+        danger_cameras = sorted(
+            [name for name, t in templates.items() if t.get("danger")]
+        )
+        return render_template(
+            "danger.html",
+            enabled=current,
+            danger_cameras=danger_cameras,
+            page_title="Danger Mode",
+        )
 
     @app.route("/api/discover")
     @profile_route("/api/discover")
