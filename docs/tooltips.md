@@ -39,3 +39,7 @@ Interactive forms now include additional tooltips:
 - **Danger Mode** – the checkbox, save button and modal controls all include tooltips.
 - **Live video player** – tooltip now refreshes with the full caption as it updates.
 - **Info icon** – toggles camera metadata on the live page.
+
+## Dynamic Tooltips
+
+A small JavaScript helper now displays a custom tooltip when hovering or focusing on any element with a `title` attribute. These tooltips track the mouse cursor and update automatically when the `title` text changes, giving live feedback across the interface.
