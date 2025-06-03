@@ -6,7 +6,7 @@
     "lint:css": "stylelint 'app/static/css/**/*.css'",
     "lint:js": "eslint 'app/static/js/**/*.js'",
     "format:js": "prettier --check 'app/static/js/**/*.js'",
-    "test:js": "jest --env=jsdom",
+    "test:js": "node --experimental-vm-modules node_modules/jest/bin/jest.js --env=jsdom",
     "test": "npm run test:js"
   },
   "devDependencies": {

@@ -56,7 +56,7 @@ Front‑end utilities under `app/static/js` are tested with **Jest**. The tests
 use the JSDOM environment so that DOM APIs are available in Node. Run them with:
 
 ```sh
-npx jest --env=jsdom
+node --experimental-vm-modules node_modules/jest/bin/jest.js --env=jsdom
 ```
 
 New tests cover the offline service‑worker toggle and template helpers.
