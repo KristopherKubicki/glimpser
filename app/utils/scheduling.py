@@ -178,10 +178,11 @@ def apply_motion_icon(image, draw, font, font_size, top_offset, padding=6):
 def apply_caption(image, draw, font, font_size, caption, top_offset, padding=6):
     caption = caption[:64].replace("\n", " ")
     wrapped = textwrap.fill(caption, width=32)
-    text_w = int(draw.textlength(wrapped.split("\n")[0], font=font))
-    text_h = font_size * len(wrapped.split("\n"))
     x = padding
     y = int(image.height - int(font_size * 3) - top_offset)
+    bbox = draw.multiline_textbbox((x, y), wrapped, font=font, stroke_width=1)
+    text_w = bbox[2] - bbox[0]
+    text_h = bbox[3] - bbox[1]
     background = Image.new(
         "RGBA",
         (text_w + padding * 2, text_h + padding * 2),

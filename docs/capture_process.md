@@ -75,8 +75,10 @@ After capturing the content, Glimpser applies several post-processing steps:
 3. **Timestamp Addition**: Overlay the capture with the current time in the
    configured timezone. When different from UTC, the UTC time is displayed just
    below the local timestamp. The overlay uses a semi-transparent background and
-   stroked fonts to improve readability without obscuring the image.
+   stroked fonts to improve readability without obscuring the image. Bounding
+   boxes ensure the tint precisely covers the text.
 4. **Caption Overlay**: When captions or motion indicators are added, the text
+
    is wrapped and rendered with the same improved font styling to avoid
    overlapping the content.
 5. **Micro QR Overlay**: A tiny QR-style code containing the camera name is placed in the lower-right corner so screenshots can be tracked within the system.

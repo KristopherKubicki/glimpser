@@ -622,10 +622,11 @@ def add_timestamp(image_path, name="unknown", invert=False):
             padding = 6
 
             # Render the name in the upper-left corner
-            text_w = int(draw.textlength(name, font=font))
-            text_h = font_size
             x = padding
             y = int(padding + top_offset)
+            bbox = draw.textbbox((x, y), name, font=font, stroke_width=1)
+            text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
             background = Image.new(
                 "RGBA",
                 (text_w + padding * 2, text_h + padding * 2),
@@ -642,16 +643,18 @@ def add_timestamp(image_path, name="unknown", invert=False):
             )
 
             # Timestamp in the lower-right corner
-            text_w = int(draw.textlength(timestamp, font=font))
-            text_h = font_size
+            text_w = draw.textbbox((0, 0), timestamp, font=font, stroke_width=1)[2]
             x = image.width - text_w - padding
             y = int(image.height - top_offset - font_size * 2)
+            bbox = draw.textbbox((x, y), timestamp, font=font, stroke_width=1)
+            text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
             background = Image.new(
                 "RGBA",
                 (text_w + padding * 2, text_h + padding * 2),
                 (0, 0, 0, 128),
             )
-            image.paste(background, (x - padding, y - padding), background)
+            image.paste(background, (bbox[0] - padding, bbox[1] - padding), background)
 
             draw.text(
                 (x, y),
@@ -663,17 +666,25 @@ def add_timestamp(image_path, name="unknown", invert=False):
             )
 
             if utc_timestamp != timestamp:
-                text_w = int(draw.textlength(utc_timestamp + "Z", font=font_small))
+                tz_bbox = draw.textbbox(
+                    (0, 0), utc_timestamp + "Z", font=font_small, stroke_width=1
+                )
+                text_w = tz_bbox[2] - tz_bbox[0]
+                text_h = tz_bbox[3] - tz_bbox[1]
                 background = Image.new(
                     "RGBA",
-                    (text_w + padding * 2, font_small.size + padding * 2),
+                    (text_w + padding * 2, text_h + padding * 2),
                     (0, 0, 0, 128),
                 )
+                tz_x = x
+                tz_y = y + font_size + padding
                 image.paste(
-                    background, (x - padding, y + font_size - padding), background
+                    background,
+                    (tz_x - padding, tz_y - padding),
+                    background,
                 )
                 draw.text(
-                    (x, y + font_size + padding),
+                    (tz_x, tz_y),
                     utc_timestamp + "Z",
                     font=font_small,
                     fill=(255, 255, 255, 255),
