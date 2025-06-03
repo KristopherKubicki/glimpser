@@ -466,6 +466,41 @@ class TestCameraDiscovery(unittest.TestCase):
         # three responses.
         self.assertLessEqual(len(cams), 4)
 
+    @patch("app.utils.camera_discovery._detect_open_ports", return_value=[554])
+    @patch("app.utils.camera_discovery._probe_onvif", return_value=[])
+    @patch("app.utils.camera_discovery._probe_mdns", return_value=[])
+    @patch("app.utils.camera_discovery._probe_ssdp", return_value=[])
+    @patch("app.utils.camera_discovery._scan_rtsp_ports")
+    @patch("app.utils.camera_discovery._scan_rtmp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_sip_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_webrtc_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_snmp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_http_endpoints", return_value=[])
+    @patch("app.utils.camera_discovery._scan_hls_streams", return_value=[])
+    @patch("app.utils.camera_discovery._local_subnets", return_value=[])
+    def test_device_type_and_url(
+        self,
+        mock_subnets,
+        mock_hls,
+        mock_http,
+        mock_snmp,
+        mock_webrtc,
+        mock_sip,
+        mock_rtmp,
+        mock_rtsp,
+        mock_ssdp,
+        mock_mdns,
+        mock_onvif,
+        mock_ports,
+    ):
+        mock_rtsp.return_value = [
+            {"ip": "1.2.3.4", "protocol": "rtsp", "port": 554, "info": {}}
+        ]
+        cams = camera_discovery.discover_cameras()
+        cam = cams[0]
+        self.assertEqual(cam.get("url"), "rtsp://1.2.3.4:554/")
+        self.assertEqual(cam["info"].get("device_type"), "camera")
+
 
 if __name__ == "__main__":
     unittest.main()
