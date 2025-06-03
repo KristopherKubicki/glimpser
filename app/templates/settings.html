@@ -4,9 +4,10 @@
     <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger" title="Log out of the interface">Logout</a>
 
     <h2>Current Settings</h2>
-    <p>
-        <a href="{{ url_for('settings_help') }}" title="Open detailed reference">What does each setting do?</a>
-    </p>
+    <details class="settings-help">
+        <summary>What does each setting do?</summary>
+        {% include 'settings_help_table.html' %}
+    </details>
 
     <h3>Add New Setting</h3>
     <form id="add-setting-form" method="POST" action="{{ url_for('settings') }}">

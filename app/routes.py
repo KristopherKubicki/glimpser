@@ -1207,8 +1207,8 @@ def init_routes(app):
     @app.route("/settings_help")
     @login_required
     def settings_help():
-        """Display detailed explanations for each configuration option."""
-        return render_template("settings_explanation.html", page_title="Settings Guide")
+        """Redirect old help route to the main settings page."""
+        return redirect(url_for("settings"))
 
     @app.route("/logout")
     @login_required
