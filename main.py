@@ -235,35 +235,48 @@ def output_shutdown_stats():
     logging.info("Thank you for running Glimpser. Goodbye!")
 
 
-display_note = True
-cleanup_called = False
+class CleanupManager:
+    """Manage application shutdown state."""
+
+    def __init__(self):
+        self.display_note = True
+        self._cleanup_called = False
+        self._lock = threading.Lock()
+
+    def cleanup(self):
+        """Release resources and stop running threads."""
+        with self._lock:
+            if self._cleanup_called:
+                return
+            self._cleanup_called = True
+
+        try:
+            scheduler.shutdown(wait=True)
+        except Exception as e:
+            logging.error("Error shutting down scheduler: %s", e)
+
+        time.sleep(0.01)
+        for thread in threading.enumerate():
+            if thread != threading.current_thread():
+                self.display_note = False
+                try:
+                    thread.join(timeout=0.01)
+                    if thread.is_alive():
+                        logging.warning(
+                            "Thread %s is still alive after join", thread.name
+                        )
+                except Exception as e:
+                    logging.error("Error terminating thread %s: %s", thread.name, e)
+
+        output_shutdown_stats()
+
+
+shutdown_manager = CleanupManager()
 
 
 def cleanup_resources():
-    """Release resources and stop running threads."""
-    global display_note, cleanup_called
-
-    if cleanup_called:
-        return
-    cleanup_called = True
-
-    try:
-        scheduler.shutdown(wait=True)
-    except Exception as e:
-        logging.error("Error shutting down scheduler: %s", e)
-
-    time.sleep(0.01)
-    for thread in threading.enumerate():
-        if thread != threading.current_thread():
-            display_note = False
-            try:
-                thread.join(timeout=0.01)
-                if thread.is_alive():
-                    logging.warning("Thread %s is still alive after join", thread.name)
-            except Exception as e:
-                logging.error("Error terminating thread %s: %s", thread.name, e)
-
-    output_shutdown_stats()
+    """Backward-compatible cleanup wrapper."""
+    shutdown_manager.cleanup()
 
 
 def graceful_shutdown(signum, frame):

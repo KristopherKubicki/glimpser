@@ -232,3 +232,13 @@ could overlap the last buttons.
 - Since v0.9.1 SSDP scanning stops after five seconds so discovery continues even on busy networks.
 - Ensure UDP multicast traffic is allowed; blocked multicast causes timeouts.
 - Check `logs/glimpser.log` for `SSDP probe error` messages if the scan never finishes.
+
+## 14. Shutdown Issues
+
+### Problem: Threads remain alive when exiting Glimpser
+
+If shutdown is interrupted it can leave background threads running.
+
+**Solution:**
+- Glimpser now manages cleanup through `CleanupManager`, ensuring shutdown only runs once.
+- Calling `main.shutdown_manager.cleanup()` manually will join any remaining threads.
