@@ -24,6 +24,9 @@ from app.config import (
     backup_config,
     restore_config,
     DISCOVERY_AUTOSTART,
+    WATCHDOG_FAILURE_THRESHOLD,
+    WATCHDOG_RESTART_COOLDOWN,
+    WATCHDOG_MAX_FILE_HANDLES,
 )
 from app.utils.email_alerts import email_alert
 from app.utils.sms_alerts import sms_alert
@@ -175,10 +178,10 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
         rapid restart loops.
         """
         last_restart_time = 0
-        restart_cooldown = 900  # 15 minutes in seconds
-        max_file_handles = 1000  # Adjust this value based on your system's limits
+        restart_cooldown = WATCHDOG_RESTART_COOLDOWN
+        max_file_handles = WATCHDOG_MAX_FILE_HANDLES
         failure_count = 0
-        failure_threshold = 3
+        failure_threshold = WATCHDOG_FAILURE_THRESHOLD
 
         while True:
             time.sleep(10)  # Check every 10 seconds

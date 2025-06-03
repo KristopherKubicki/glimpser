@@ -326,6 +326,18 @@ LIVE_FALLBACK_FPS = int(get_setting("LIVE_FALLBACK_FPS", 1))
 # not wasted.
 LIVE_MAX_FAILURES = int(get_setting("LIVE_MAX_FAILURES", 10))
 
+# Watchdog configuration values. These control how aggressively the
+# watchdog restarts the application when health checks fail.
+WATCHDOG_FAILURE_THRESHOLD = int(
+    get_setting("WATCHDOG_FAILURE_THRESHOLD", 3)
+)
+WATCHDOG_RESTART_COOLDOWN = int(
+    get_setting("WATCHDOG_RESTART_COOLDOWN", 900)
+)
+WATCHDOG_MAX_FILE_HANDLES = int(
+    get_setting("WATCHDOG_MAX_FILE_HANDLES", 1000)
+)
+
 # Background discovery runs on a schedule when enabled.  Set this
 # to ``True`` to run an hourly scan automatically.
 DISCOVERY_AUTOSTART = get_setting("DISCOVERY_AUTOSTART", "False") == "True"
