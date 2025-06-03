@@ -1043,6 +1043,9 @@ def init_routes(app):
                     "path": "/captions_status",
                     "method": "GET",
                     "description": "Get the most recent caption and timestamp",
+                    "authentication_required": False,
+                },
+                {
                     "path": "/discovery_status",
                     "method": "GET",
                     "description": "Check background discovery status",
