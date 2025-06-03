@@ -59,6 +59,9 @@ use the JSDOM environment so that DOM APIs are available in Node. Run them with:
 node --experimental-vm-modules node_modules/jest/bin/jest.js --env=jsdom
 ```
 
+Jest is configured to treat `.js` files as ES modules via
+`extensionsToTreatAsEsm` in `jest.config.js` so that dynamic imports work.
+
 New tests cover the offline service‑worker toggle and template helpers.
 
 ## Playwright End‑to‑End Tests
