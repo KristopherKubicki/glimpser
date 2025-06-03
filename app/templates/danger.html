@@ -43,6 +43,21 @@
     </label>
     <button type="submit" title="Save danger mode setting">Save</button>
   </form>
+
+  <section>
+    <h3>Patch Chrome Shortcut</h3>
+    <p>
+      Use this tool to add the debugging flag to your Chrome shortcuts. After
+      running it, restart Chrome and open the browser with the profile you want
+      Danger Mode to use.
+    </p>
+    <form method="post">
+      <input type="hidden" name="action" value="update_shortcut" />
+      <button type="submit" title="Patch shortcuts for Danger mode">
+        Patch Chrome Shortcuts
+      </button>
+    </form>
+  </section>
 </main>
   {% from 'components.html' import confirm_modal %}
   {{ confirm_modal('danger') }}
