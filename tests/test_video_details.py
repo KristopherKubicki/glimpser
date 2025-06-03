@@ -91,7 +91,11 @@ class TestVideoDetails(unittest.TestCase):
         # Convert latest_date to a date object for comparison
         latest_date_obj = datetime.strptime(latest_date, "%Y-%m-%d %H:%M:%S").date()
 
-        self.assertEqual(latest_date_obj, expected_date, "The latest date does not match the expected date")
+        self.assertEqual(
+            latest_date_obj,
+            expected_date,
+            "The latest date does not match the expected date",
+        )
 
     def test_get_latest_file_empty_directory(self):
         latest_file = get_latest_file(self.temp_dir, ext="txt")

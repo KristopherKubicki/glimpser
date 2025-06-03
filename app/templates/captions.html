@@ -28,90 +28,42 @@
          });
      </script>
 
-    <details class="filter-controls">
-        <summary>Search &amp; Filters</summary>
-        <div class="controls-inner">
-            <label for="group-dropdown" title="Filter templates by group">Group:</label>
-            <select id="group-dropdown" title="Select a group to filter templates">
-                <!-- Options will be populated here -->
-            </select>
-
-            <label for="search-input" title="Search for cameras or groups">Search:</label>
-            <input type="search" id="search-input" placeholder="Search cameras or groups" title="Enter search terms">
-
-            <label for="filter-column" title="KPI to filter">KPI:</label>
-            <select id="filter-column" title="Select KPI">
-                <option value="">All</option>
-                <option value="screenshot_count">Shots</option>
-                <option value="video_count">Videos</option>
-                <option value="storage_usage">Storage</option>
-                <option value="llm_response_count">LLM Resp</option>
-                <option value="llm_cost_estimate">LLM Cost</option>
-            </select>
-            <input type="text" id="filter-value" placeholder="Value" title="Filter value">
-            <button id="apply-filter" type="button" title="Filter table rows">Apply</button>
-            <input type="range" id="grid-width-slider" min="50" max="3840" value="360" title="Adjust thumbnail width">
-        </div>
-    </details>
-
-
-<!-- Bulk management controls -->
-<details class="tsv-controls">
-    <summary>Bulk Caption Management</summary>
-    <div class="tsv-buttons">
-        <a href="/download_captions_tsv" class="btn btn-primary" title="Download captions as TSV file">Download Captions as TSV</a>
-
-        <form action="/upload_captions_tsv" method="post" enctype="multipart/form-data" class="tsv-upload-form">
-            <input type="file" name="tsv_file" id="tsv_file" accept=".tsv" title="Select TSV file to upload">
-            <button type="submit" class="btn btn-success" title="Upload caption TSV file">Upload TSV</button>
-        </form>
+    <div class="tabs">
+        <button class="tab-link active" data-tab="prompts-tab">Prompts</button>
+        <button class="tab-link" data-tab="history-tab">History</button>
+        <button class="tab-link" data-tab="bulk-tab">Bulk Tools</button>
     </div>
-    <p class="tsv-help">Download the TSV file, edit in a spreadsheet application, then upload to update captions.</p>
-</details>
 
-<!-- Add this to display flash messages -->
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    <div class="flash-messages">
-    {% for category, message in messages %}
-      <div class="alert alert-{{ category }}">{{ message }}</div>
-    {% endfor %}
-    </div>
-  {% endif %}
-{% endwith %}
+    <div id="prompts-tab" class="tab-content active">
+        <details class="filter-controls">
+            <summary>Search &amp; Filters</summary>
+            <div class="controls-inner">
+                <label for="group-dropdown" title="Filter templates by group">Group:</label>
+                <select id="group-dropdown" title="Select a group to filter templates">
+                    <!-- Options will be populated here -->
+                </select>
 
-    <details><summary>Captions</summary>
-        <table id="captions-table" class="captions-table">
-            <thead>
-            <tr>
-                <th class="sortable" data-type="date">Timestamp</th>
-                <th class="sortable" data-type="string">Caption</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% if not lcaptions %}
-            <tr class="no-data">
-                <td colspan="2">No captions available</td>
-            </tr>
-            {% else %}
-            {% for caption in lcaptions %}
-            {% for lc in caption %}
-            {% if caption[lc] != "" %}
-            <tr>
-                <td><span class="humanized-time" data-time="{{ lc }}">{{ lc }}</span></td>
-                <td>{{ caption[lc] }}</td>
-            </tr>
-            {% endif %}
-            {% endfor %}
-            {% endfor %}
-            {% endif %}
-            </tbody>
-        </table>
-    </details>
+                <label for="search-input" title="Search for cameras or groups">Search:</label>
+                <input type="search" id="search-input" placeholder="Search cameras or groups" title="Enter search terms">
 
-<h2>Camera Notes</h2>
-<div id="template-list">
-<table id="camera-table" class="camera-table">
+                <label for="filter-column" title="KPI to filter">KPI:</label>
+                <select id="filter-column" title="Select KPI">
+                    <option value="">All</option>
+                    <option value="screenshot_count">Shots</option>
+                    <option value="video_count">Videos</option>
+                    <option value="storage_usage">Storage</option>
+                    <option value="llm_response_count">LLM Resp</option>
+                    <option value="llm_cost_estimate">LLM Cost</option>
+                </select>
+                <input type="text" id="filter-value" placeholder="Value" title="Filter value">
+                <button id="apply-filter" type="button" title="Filter table rows">Apply</button>
+                <input type="range" id="grid-width-slider" min="50" max="3840" value="360" title="Adjust thumbnail width">
+            </div>
+        </details>
+
+        <h2>Camera Notes</h2>
+        <div id="template-list">
+        <table id="camera-table" class="camera-table">
     <thead>
         <tr>
             <th class="sortable" data-type="string">Camera</th>
@@ -170,6 +122,62 @@
     </tbody>
 </table>
 </div>
+</div>
+
+<div id="history-tab" class="tab-content">
+    <details><summary>Captions</summary>
+        <table id="captions-table" class="captions-table">
+            <thead>
+            <tr>
+                <th class="sortable" data-type="date">Timestamp</th>
+                <th class="sortable" data-type="string">Caption</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% if not lcaptions %}
+            <tr class="no-data">
+                <td colspan="2">No captions available</td>
+            </tr>
+            {% else %}
+            {% for caption in lcaptions %}
+            {% for lc in caption %}
+            {% if caption[lc] != "" %}
+            <tr>
+                <td><span class="humanized-time" data-time="{{ lc }}">{{ lc }}</span></td>
+                <td>{{ caption[lc] }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+            {% endfor %}
+            {% endif %}
+            </tbody>
+        </table>
+    </details>
+</div>
+
+<div id="bulk-tab" class="tab-content">
+    <details class="tsv-controls">
+        <summary>Bulk Caption Management</summary>
+        <div class="tsv-buttons">
+            <a href="/download_captions_tsv" class="btn btn-primary" title="Download captions as TSV file">Download Captions as TSV</a>
+
+            <form action="/upload_captions_tsv" method="post" enctype="multipart/form-data" class="tsv-upload-form">
+                <input type="file" name="tsv_file" id="tsv_file" accept=".tsv" title="Select TSV file to upload">
+                <button type="submit" class="btn btn-success" title="Upload caption TSV file">Upload TSV</button>
+            </form>
+        </div>
+        <p class="tsv-help">Download the TSV file, edit in a spreadsheet application, then upload to update captions.</p>
+    </details>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-messages">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
 </div>
 {% endblock %}
 

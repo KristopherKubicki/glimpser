@@ -10,6 +10,7 @@ import { initDangerToggle } from './danger.js';
 import { initIndexTime } from './time.js';
 import { initWelcome } from './welcome.js';
 import { initTooltips } from './tooltips.js';
+import { initCaptions } from './captions.js';
 
 initTemplates();
 initVideoControls();
@@ -24,3 +25,5 @@ initDangerToggle();
 initIndexTime();
 initWelcome();
 initTooltips();
+initCaptions();
+

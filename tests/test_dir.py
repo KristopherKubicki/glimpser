@@ -4,7 +4,8 @@ import sys
 import tempfile
 from unittest.mock import patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 
 class TestDirectoryManagement(unittest.TestCase):
 
@@ -26,4 +27,3 @@ class TestDirectoryManagement(unittest.TestCase):
         path = "/fake/directory"
         os.makedirs(path)
         mock_makedirs.assert_called_once_with(path)
-
