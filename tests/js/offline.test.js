@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 // tests/js/offline.test.js
 
 // Mock DOM element

@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 // tests/js/logs.test.js
 // Mock DOM elements for logs.js
 

@@ -59,8 +59,8 @@ use the JSDOM environment so that DOM APIs are available in Node. Run them with 
 npm test -- --coverage
 ```
 
-Jest is configured to treat `.js` files as ES modules via
-`extensionsToTreatAsEsm` in `jest.config.js` so that dynamic imports work.
+Jest runs in ESM mode because `package.json` declares `"type": "module"`.
+Dynamic imports work without additional configuration.
 
 New tests cover the offline service‑worker toggle and template helpers.
 

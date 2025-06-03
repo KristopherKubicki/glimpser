@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 // tests/js/performance.test.js
 // Mock DOM structure required by performance.js
 

@@ -1,4 +1,4 @@
-function updateTable(logs) {
+export function updateTable(logs) {
   const tbody = document.querySelector("#log-table tbody");
   if (!tbody) return;
   tbody.innerHTML = "";
@@ -59,7 +59,6 @@ document.addEventListener("DOMContentLoaded", function () {
   startEventStream();
 });
 
+
+// Expose for legacy scripts that include this file via <script> tag
 window.updateTable = updateTable;
-if (typeof module !== "undefined") {
-  module.exports = { updateTable };
-}

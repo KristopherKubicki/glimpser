@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 // tests/js/slider_height.test.js
 
 document.body.innerHTML = `
