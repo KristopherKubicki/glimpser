@@ -53,10 +53,10 @@ python -m coverage html
 ## JavaScript Unit Tests
 
 Front‑end utilities under `app/static/js` are tested with **Jest**. The tests
-use the JSDOM environment so that DOM APIs are available in Node. Run them with:
+use the JSDOM environment so that DOM APIs are available in Node. Run them with coverage enabled:
 
 ```sh
-node --experimental-vm-modules node_modules/jest/bin/jest.js --env=jsdom
+npm test -- --coverage
 ```
 
 Jest is configured to treat `.js` files as ES modules via

@@ -56,8 +56,8 @@ jobs:
       run: npm run lint:js
     - name: Check JavaScript formatting
       run: npm run format:js
-    - name: Run JavaScript tests
-      run: npm test
+    - name: Run JavaScript tests with coverage
+      run: npm test -- --coverage
     - name: Safety check
       run: safety check || true
     - name: Lint CSS

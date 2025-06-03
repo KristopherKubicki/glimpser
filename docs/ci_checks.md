@@ -6,7 +6,7 @@ following tasks:
 
 - Formats Python code with `black` and lints with `flake8`.
 - Lints JavaScript with `eslint` and verifies formatting with `prettier`.
-- Executes `pytest` and `jest` test suites.
+- Executes `pytest` and `jest` test suites and uploads coverage.
 - Scans dependencies using `pip safety` and `npm audit`.
 - Caches Python and Node dependencies to speed up builds.
 
