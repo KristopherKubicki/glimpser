@@ -36,6 +36,9 @@ Ensure that either **ChromeDriver** or **geckodriver** is installed and
 available on your `PATH`. If Selenium cannot create a browser driver the tests
 will be skipped automatically.
 
+All Selenium page and script timeouts are limited to **5 seconds** so that
+failing environments do not hang for long.
+
 Run the end-to-end tests with:
 
 ```sh
@@ -76,3 +79,5 @@ npx playwright test
 
 Playwright is optional, so the Node dependencies are not included in the
 repository. Install them locally to run the tests.
+The Playwright server is configured to start failing after **10 seconds** so
+that end-to-end tests finish quickly when the app fails to launch.

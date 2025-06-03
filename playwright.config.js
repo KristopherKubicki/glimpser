@@ -6,7 +6,8 @@ const config = {
   webServer: {
     command: 'python main.py',
     port: 5000,
-    timeout: 120 * 1000,
+    // Short timeout to avoid hanging CI jobs
+    timeout: 10 * 1000,
     reuseExistingServer: true,
   },
   use: {

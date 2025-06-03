@@ -99,6 +99,9 @@ def browser():
     driver = _create_driver()
     if driver is None:
         pytest.skip("Web driver not available")
+    # Reduce Selenium wait periods to avoid long hangs in CI
+    driver.set_page_load_timeout(5)
+    driver.set_script_timeout(5)
     yield driver
     driver.quit()
 

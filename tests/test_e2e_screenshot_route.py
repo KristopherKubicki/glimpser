@@ -98,10 +98,11 @@ def test_take_screenshot_route(screenshot_server):
         f"{base_url}/login",
         data={"username": "admin", "password": "pw"},
         allow_redirects=False,
+        timeout=5,
     )
     assert resp.status_code == 302
 
-    resp = session.get(f"{base_url}/take_screenshot/cam1")
+    resp = session.get(f"{base_url}/take_screenshot/cam1", timeout=5)
     assert resp.status_code == 200
     assert resp.json()["status"] == "success"
 
