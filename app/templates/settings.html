@@ -4,7 +4,9 @@
     <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger" title="Log out of the interface">Logout</a>
 
     <h2>Current Settings</h2>
-    <p><a href="#settings-help" title="Detailed explanation of each option">What does each setting do?</a></p>
+    <p>
+        <a href="{{ url_for('settings_help') }}" title="Open detailed reference">What does each setting do?</a>
+    </p>
 
     <h3>Add New Setting</h3>
     <form id="add-setting-form" method="POST" action="{{ url_for('settings') }}">
@@ -29,7 +31,7 @@
             <tbody>
                 {% for setting in settings %}
                 <tr>
-                    <td>{{ setting.name }}</td>
+                    <td title="{{ tooltips.get(setting.name, '') }}">{{ setting.name }}</td>
                     <td>
                         <input type="text" name="{{ setting.name }}" value="{{ setting.value }}" title="Edit value for {{ setting.name }}">
                     </td>
@@ -62,8 +64,6 @@
         <input type="checkbox" id="offline-preview" title="Cache snapshots for offline viewing">
         Enable offline preview
     </label>
-    <h3 id="settings-help">Settings Reference</h3>
-    {% include 'settings_help_table.html' %}
 </main>
     <script src="{{ url_for('static', filename='js/performance.js') }}"></script>
     <script>

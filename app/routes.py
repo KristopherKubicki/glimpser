@@ -67,6 +67,7 @@ from app.utils import (
     prompt_optimizer,
     camera_fix,
 )
+from app.utils.settings_tooltips import SETTINGS_TOOLTIPS
 from app.utils.screenshots import (
     is_chrome_debug_port_open,
     check_user_activity,
@@ -2404,7 +2405,10 @@ def init_routes(app):
 
         settings = get_all_settings()
         return render_template(
-            "settings.html", settings=settings, page_title="Settings"
+            "settings.html",
+            settings=settings,
+            tooltips=SETTINGS_TOOLTIPS,
+            page_title="Settings",
         )
 
     # Retained for backwards compatibility; redirect to the health endpoint.
