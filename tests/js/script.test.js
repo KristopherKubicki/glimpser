@@ -34,15 +34,21 @@ describe('script.js', () => {
   test('loadTemplates fetches data and updates the DOM', async () => {
     // Mock the fetch response
     global.fetch.mockResolvedValueOnce({
-      json: () => Promise.resolve({
-        template1: { last_screenshot_time: new Date().toISOString() },
-        template2: { last_screenshot_time: new Date().toISOString() },
-      }),
+      ok: true,
+      headers: { get: () => 'application/json' },
+      json: () =>
+        Promise.resolve({
+          template1: { last_screenshot_time: new Date().toISOString() },
+          template2: { last_screenshot_time: new Date().toISOString() },
+        }),
     });
 
     await loadTemplates();
 
-    expect(fetch).toHaveBeenCalledWith('/templates');
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/templates\?group=all&search=&t=\d+/),
+    );
     expect(document.getElementById('template-list').children.length).toBe(2);
   });
 

@@ -4,4 +4,5 @@
 export default {
   testEnvironment: 'jsdom',
   testPathIgnorePatterns: ['/node_modules/', 'tests/playwright/'],
+  setupFiles: ['<rootDir>/tests/js/setup.js'],
 };

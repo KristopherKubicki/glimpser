@@ -20,6 +20,13 @@ describe('grid width slider', () => {
   });
 
   test('adjusts height variable on input', () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({}),
+      }),
+    );
     initTemplates();
     document.dispatchEvent(new Event('DOMContentLoaded'));
     const slider = document.getElementById('grid-width-slider');
