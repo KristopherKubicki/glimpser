@@ -26,6 +26,7 @@
 
 	<!-- <button id="cast-button">Cast</button> -->
                 <button id="full-screen" title='fullscreen' aria-label="Toggle fullscreen"><i class="fas fa-expand"></i></button>
+                <button id="toggle-details" title="Show details" aria-label="Toggle details"><i class="fas fa-info-circle"></i></button>
 
     <select id="video-source" onchange="changeVideoSource()">
         <option value="png" title="View a series of PNG images">PNG Stream</option>
@@ -107,12 +108,14 @@
         const loadingIndicator = document.getElementById('loading-indicator');
         const playPauseIndicator = document.getElementById('play-pause-indicator');
         const playButton = document.getElementById('play-pause');
+        const toggleDetailsButton = document.getElementById('toggle-details');
         const offlineIndicator = document.getElementById('offline-indicator');
         const offlineMessage = document.getElementById('offline-message');
         const errorIndicator = document.getElementById('capture-error-indicator');
         const errorIndicatorMessage = document.getElementById('capture-error-message');
         const streamErrorIndicator = document.getElementById('stream-error-indicator');
         const streamErrorMessage = document.getElementById('stream-error-message');
+        let detailsVisible = false;
 
         function resetVideo() {
             if (hlsInstance) {

@@ -251,6 +251,10 @@ updateSpeedContainer();
 }
 
 function updateTemplateDetails() {
+    if (!detailsVisible) {
+        templateDetailsContainer.style.display = 'none';
+        return;
+    }
     const details = templateDetails[currentCamera];
     const isGroupView = currentCamera === 'All' || currentCamera.startsWith('group-');
 
@@ -813,6 +817,13 @@ updateSpeedContainer();
 updateSeekBar();
 playMJPG();
 startCaptionPolling();
+
+if (toggleDetailsButton) {
+    toggleDetailsButton.addEventListener('click', () => {
+        detailsVisible = !detailsVisible;
+        updateTemplateDetails();
+    });
+}
 
 function togglePlayback() {
     if (video.paused) {

@@ -54,8 +54,10 @@
 }
 .control-row {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
+    row-gap: 5px;
     width: 100%;
 }
 #error-message {
@@ -70,5 +72,13 @@
     display: none;
 }
 #template-details {
-    margin-top: 10px;
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 5px;
+    border-radius: 5px;
+    font-size: 0.9rem;
 }
