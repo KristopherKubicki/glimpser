@@ -19,7 +19,8 @@ from app.utils.scheduling import (
 
 
 class TestRunWithTimeout(unittest.TestCase):
-    def test_run_completes_before_timeout(self):
+    @patch("app.utils.scheduling.is_system_online", return_value=True)
+    def test_run_completes_before_timeout(self, _online):
         manager = multiprocessing.Manager()
         d = manager.dict()
 
@@ -29,7 +30,8 @@ class TestRunWithTimeout(unittest.TestCase):
         run_with_timeout(quick, args=(d,), timeout=2)
         self.assertTrue(d.get("done"))
 
-    def test_run_terminated_on_timeout(self):
+    @patch("app.utils.scheduling.is_system_online", return_value=True)
+    def test_run_terminated_on_timeout(self, _online):
         manager = multiprocessing.Manager()
         d = manager.dict()
 
