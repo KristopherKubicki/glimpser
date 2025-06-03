@@ -998,8 +998,15 @@ def init_routes(app):
     @login_required
     def danger_mode():
         if request.method == "POST":
-            enabled = "enabled" in request.form
-            update_setting("DANGER_MODE", "True" if enabled else "False")
+            action = request.form.get("action")
+            if action == "update_shortcut":
+                if update_chrome_shortcuts():
+                    flash("Chrome shortcuts updated", "success")
+                else:
+                    flash("Failed to update shortcuts", "error")
+            else:
+                enabled = "enabled" in request.form
+                update_setting("DANGER_MODE", "True" if enabled else "False")
             return redirect(url_for("danger_mode"))
 
         current = config.get_setting("DANGER_MODE", "True") == "True"
