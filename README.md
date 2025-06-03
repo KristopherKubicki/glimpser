@@ -10,19 +10,19 @@
 # Glimpser
 
 [![Python application](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml)
-[![Pylint](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
 [![Tests](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml)
+[![Pylint 3.8](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.8)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
+[![Pylint 3.9](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.9)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
+[![Pylint 3.10](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.10)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
+[![Pylint 3.11](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.11)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
+[![Pylint 3.12](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.12)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 [![GitHub release](https://img.shields.io/github/v/release/KristopherKubicki/glimpser)](https://github.com/KristopherKubicki/glimpser/releases/latest)
+[![PyPI version](https://img.shields.io/pypi/v/glimpser)](https://pypi.org/project/glimpser/)
 [![Coverage](https://codecov.io/gh/KristopherKubicki/glimpser/branch/main/graph/badge.svg)](https://codecov.io/gh/KristopherKubicki/glimpser)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/kristopherkubicki/glimpser/badge)](https://securityscorecards.dev/viewer/?uri=github.com/kristopherkubicki/glimpser)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/KristopherKubicki/glimpser/badge)](https://securityscorecards.dev/viewer/?uri=github.com/KristopherKubicki/glimpser)
 [![CodeQL](https://github.com/KristopherKubicki/glimpser/actions/workflows/codeql.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/codeql.yml)
 [![Docs Build](https://github.com/KristopherKubicki/glimpser/actions/workflows/docs-build.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/docs-build.yml)
-[![Python 3.8 Build](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=py3.8)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
-[![Python 3.9 Build](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=py3.9)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
-[![Python 3.10 Build](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=py3.10)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
-[![Python 3.11 Build](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=py3.11)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
-[![Python 3.12 Build](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=py3.12)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
 
 ## Introduction
 Glimpser is a straightforward yet powerful real-time monitoring application designed to capture, analyze, and summarize live data from various sources such as cameras, dashboards, and video streams. Utilizing advanced image processing techniques and AI models, Glimpser provides insightful summaries and alerts. It’s highly configurable, allowing users to tailor it to their specific monitoring needs through an easy-to-use interface.
