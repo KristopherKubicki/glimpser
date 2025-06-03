@@ -36,3 +36,4 @@ Interactive forms now include additional tooltips:
 - **Captions** – upload and filter controls have descriptive titles.
 - **Danger Mode** – the checkbox, save button and modal controls all include tooltips.
 - **Live video player** – tooltip now refreshes with the full caption as it updates.
+- **Info icon** – toggles camera metadata on the live page.
