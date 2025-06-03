@@ -194,4 +194,4 @@ outside the local network.
 
 ## Future improvements
 
-Remaining ideas include discovering cameras on remote networks and improving authentication options for protected feeds.
+Discovering cameras on remote networks remains on the roadmap. Authentication for protected feeds has been enhanced – you can now store a username and password with each template, and the capture routines will automatically supply these credentials.

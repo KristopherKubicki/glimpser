@@ -173,6 +173,8 @@ def validate_update_data(data: dict) -> dict:
         "proxy",
         "groups",
         "object_filter",
+        "auth_username",
+        "auth_password",
     ]:
         value = data.get(key)
         if key == "proxy":

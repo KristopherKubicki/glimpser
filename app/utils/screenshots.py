@@ -712,6 +712,8 @@ def download_image(
     dark=False,
     stealth=False,
     proxy=None,
+    username=None,
+    password=None,
 ):
     """Attempt to download an image directly from the URL and convert it to PNG format.
 
@@ -745,9 +747,7 @@ def download_image(
         headers = {"user-agent": lua}
         proxies = {"http": proxy, "https": proxy} if proxy else None
 
-        auth = None
-        for leach in re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url):
-            auth = requests.auth.HTTPBasicAuth(leach[0], leach[1])
+        auth = get_auth(url, username, password)
 
         request_kwargs = dict(
             stream=True,
@@ -761,8 +761,7 @@ def download_image(
 
         response = http_session().get(url, **request_kwargs)
         if response.status_code == 401 and auth is not None:
-            for leach in re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url):
-                auth = requests.auth.HTTPDigestAuth(leach[0], leach[1])
+            auth = get_digest_auth(url, username, password)
             request_kwargs = dict(
                 stream=True,
                 timeout=(timeout, timeout * 3),
@@ -814,6 +813,8 @@ def download_pdf(
     invert=False,
     dark=False,
     stealth=False,
+    username=None,
+    password=None,
 ):
     """
     Attempt to download the first page of a PDF from the URL and convert it to PNG format.
@@ -836,9 +837,7 @@ def download_pdf(
             lua = random_user_agent()
 
         headers = {"user-agent": lua}
-        auth = None
-        for leach in re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url):
-            auth = requests.auth.HTTPBasicAuth(leach[0], leach[1])
+        auth = get_auth(url, username, password)
 
         response = http_session().get(
             url,
@@ -852,8 +851,7 @@ def download_pdf(
 
         # Possibly re-try with DigestAuth if 401
         if response.status_code == 401 and auth is not None:
-            for leach in re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url):
-                auth = requests.auth.HTTPDigestAuth(leach[0], leach[1])
+            auth = get_digest_auth(url, username, password)
             response = http_session().get(
                 url,
                 stream=True,
@@ -1053,6 +1051,8 @@ def capture_or_download(name: str, template: dict) -> bool:
 
     # Extract parameters from the template
     url = template.get("url")
+    username = template.get("auth_username")
+    password = template.get("auth_password")
 
     # Disallow local file paths to avoid unintended file disclosure
     parsed = urlparse(url)
@@ -1106,7 +1106,9 @@ def capture_or_download(name: str, template: dict) -> bool:
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     # Determine content type
-    content_type, is_modified = get_content_type(url, danger, stealth=stealth)
+    content_type, is_modified = get_content_type(
+        url, danger, stealth=stealth, username=username, password=password
+    )
 
     # check if modified.
     if is_modified is False and not danger and not browser:
@@ -1124,13 +1126,17 @@ def capture_or_download(name: str, template: dict) -> bool:
             dark,
             stealth,
             template.get("proxy"),
+            username,
+            password,
         )
         if lsuc is True:
             return lsuc
         cas_error(url)
 
     if is_pdf_url(url, content_type) and not danger and not browser:
-        lsuc = download_pdf(url, output_path, timeout, name, invert)
+        lsuc = download_pdf(
+            url, output_path, timeout, name, invert, dark, stealth, username, password
+        )
         if lsuc is True:
             return lsuc
         cas_error(url)
@@ -1240,7 +1246,9 @@ def check_if_modified(url, headers) -> bool:
     return True  # Content has changed or was never checked before
 
 
-def get_content_type(url, danger, stealth=False) -> (str, bool):
+def get_content_type(
+    url, danger, stealth=False, username=None, password=None
+) -> (str, bool):
     """
     Determine the content type of the URL.
 
@@ -1279,7 +1287,7 @@ def get_content_type(url, danger, stealth=False) -> (str, bool):
         try:
             # extra header only for the GET probe
             hdrs = {"Range": "bytes=0-1024"} if verb == "GET" else {}
-            auth = get_auth(url)
+            auth = get_auth(url, username, password)
             resp = sess.request(
                 verb,
                 url,
@@ -1321,7 +1329,7 @@ def get_content_type(url, danger, stealth=False) -> (str, bool):
             if method == requests.get:
                 headers["Range"] = "bytes=0-1024"
 
-            auth = get_auth(url)
+            auth = get_auth(url, username, password)
             response = method(
                 url,
                 stream=True,
@@ -1365,16 +1373,24 @@ def get_content_type(url, danger, stealth=False) -> (str, bool):
     return content_type, modified
 
 
-def get_auth(url):
-    """Extract and return BasicAuth from URL if present."""
+def get_auth(url, username=None, password=None):
+    """Return :class:`HTTPBasicAuth` if credentials are available."""
     auth_match = re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url)
-    return requests.auth.HTTPBasicAuth(*auth_match[0]) if auth_match else None
+    if auth_match:
+        return requests.auth.HTTPBasicAuth(*auth_match[0])
+    if username and password:
+        return requests.auth.HTTPBasicAuth(username, password)
+    return None
 
 
-def get_digest_auth(url):
-    """Extract and return DigestAuth from URL if present."""
+def get_digest_auth(url, username=None, password=None):
+    """Return :class:`HTTPDigestAuth` if credentials are available."""
     auth_match = re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url)
-    return requests.auth.HTTPDigestAuth(*auth_match[0]) if auth_match else None
+    if auth_match:
+        return requests.auth.HTTPDigestAuth(*auth_match[0])
+    if username and password:
+        return requests.auth.HTTPDigestAuth(username, password)
+    return None
 
 
 def is_image_url(url, content_type):

@@ -63,6 +63,8 @@ class Template(db.Base):
     dedicated_xpath = Column(String, default="")
     callback_url = Column(String, default="")
     proxy = Column(String, default="")
+    auth_username = Column(String, default="")
+    auth_password = Column(String, default="")
     url = Column(String, default="")
     groups = Column(String, default="")
     invert = Column(Boolean, default=False)
@@ -120,6 +122,8 @@ class TemplateManager:
         Template.__table__.create(db.engine, checkfirst=True)
         # Automatically add newer columns when upgrading from older versions
         ensure_column("templates", "capture_failed", "BOOLEAN", "0")
+        ensure_column("templates", "auth_username", "VARCHAR(255)", "''")
+        ensure_column("templates", "auth_password", "VARCHAR(255)", "''")
 
     def get_session(self):
         """Return a new SQLAlchemy session bound to the app database."""

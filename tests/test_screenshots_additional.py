@@ -60,7 +60,9 @@ class TestScreenshotsExtras(unittest.TestCase):
         self.assertEqual(basic.password, "pass")
         self.assertEqual(digest.username, "user")
         self.assertEqual(digest.password, "pass")
-        self.assertIsNone(ss.get_auth("http://example.com"))
+        fallback = ss.get_auth("http://example.com", "u", "p")
+        self.assertEqual(fallback.username, "u")
+        self.assertEqual(fallback.password, "p")
 
     def test_url_type_helpers(self):
         self.assertTrue(ss.is_image_url("http://x/a.jpg", ""))
