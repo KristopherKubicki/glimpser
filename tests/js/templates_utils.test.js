@@ -4,12 +4,18 @@ document.body.innerHTML = `
   <div id="template-list"></div>
 `;
 
-const {
-  isMobile,
-  updateGridLayout,
-  templateBelongsToGroup,
-  templateMatchesSearch,
-} = require('../../app/static/js/templates.js');
+let isMobile;
+let updateGridLayout;
+let templateBelongsToGroup;
+let templateMatchesSearch;
+
+beforeAll(async () => {
+  const mod = await import('../../app/static/js/templates.js');
+  isMobile = mod.isMobile;
+  updateGridLayout = mod.updateGridLayout;
+  templateBelongsToGroup = mod.templateBelongsToGroup;
+  templateMatchesSearch = mod.templateMatchesSearch;
+});
 
 describe('templates.js utilities', () => {
   test('isMobile detects hover capability', () => {

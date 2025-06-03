@@ -20,11 +20,16 @@ canvas.getContext = jest.fn(() => ({
   stroke: jest.fn(),
 }));
 
-// Import functions to test
-const {
-  updatePerformanceMetrics,
-  updateCPUSparkline,
-} = require('../../app/static/js/performance.js');
+let updatePerformanceMetrics;
+let updateCPUSparkline;
+
+beforeAll(async () => {
+  global.fetch = jest.fn(() => Promise.resolve({ json: () => Promise.resolve({}) }));
+  global.setInterval = jest.fn();
+  const mod = await import('../../app/static/js/performance.js');
+  updatePerformanceMetrics = mod.updatePerformanceMetrics;
+  updateCPUSparkline = mod.updateCPUSparkline;
+});
 
 describe('performance.js', () => {
   beforeEach(() => {
