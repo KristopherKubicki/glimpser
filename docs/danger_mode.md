@@ -41,3 +41,7 @@ The `/danger` page explains what the feature does and when to use it. It notes
 that Glimpser attaches to your Chrome session via the debugging port and only
 activates when you are idle. Toggling the option now shows a confirmation modal
 so the feature is not enabled or disabled accidentally.
+
+Below the description, the page lists any cameras flagged as using Danger mode.
+Each item links directly to the camera's template details so you can quickly
+review or disable the setting.
