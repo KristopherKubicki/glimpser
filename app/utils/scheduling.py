@@ -29,6 +29,7 @@ from app.config import (
 )
 from app.utils.db import SessionLocal
 from app.models import Summary
+from .network import is_system_online
 
 from .detect import calculate_difference_fast
 from .image_processing import chatgpt_compare
@@ -96,8 +97,39 @@ scheduler = GracefulAPScheduler()
 
 
 def run_with_timeout(func, args=(), timeout=300):
-    process = multiprocessing.Process(target=func, args=args)
-    process.start()
+    """Run *func* in a separate process with a timeout.
+
+    If the system appears offline or process creation fails, the job is skipped
+    and the associated template is marked offline when possible.
+    """
+
+    if not is_system_online():
+        logging.warning(
+            "System offline, skipping job %s", getattr(func, "__name__", "unknown")
+        )
+        if args and isinstance(args[0], str):
+            try:
+                mark_offline(args[0])
+            except Exception:
+                pass
+        return
+
+    try:
+        process = multiprocessing.Process(target=func, args=args)
+        process.start()
+    except OSError as exc:
+        logging.error(
+            "Failed to start process for %s: %s",
+            getattr(func, "__name__", "unknown"),
+            exc,
+        )
+        if args and isinstance(args[0], str):
+            try:
+                mark_offline(args[0])
+            except Exception:
+                pass
+        return
+
     process.join(timeout)
     if process.is_alive():
         process.terminate()
