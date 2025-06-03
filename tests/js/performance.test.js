@@ -21,15 +21,16 @@ canvas.getContext = jest.fn(() => ({
   stroke: jest.fn(),
 }));
 
+let performanceModule;
 let updatePerformanceMetrics;
 let updateCPUSparkline;
 
 beforeAll(async () => {
   global.fetch = jest.fn(() => Promise.resolve({ json: () => Promise.resolve({}) }));
   global.setInterval = jest.fn();
-  const mod = await import('../../app/static/js/performance.js');
-  updatePerformanceMetrics = mod.updatePerformanceMetrics;
-  updateCPUSparkline = mod.updateCPUSparkline;
+  performanceModule = await import('../../app/static/js/performance.js');
+  updatePerformanceMetrics = performanceModule.updatePerformanceMetrics;
+  updateCPUSparkline = performanceModule.updateCPUSparkline;
 });
 
 describe('performance.js', () => {
@@ -40,7 +41,7 @@ describe('performance.js', () => {
   test('updatePerformanceMetrics fetches metrics and updates DOM', async () => {
     const mockData = { cpu_usage: 50, memory_usage: 40, uptime: '1h' };
     global.fetch = jest.fn(() => Promise.resolve({ json: () => Promise.resolve(mockData) }));
-    const sparkSpy = jest.spyOn(module, 'updateCPUSparkline');
+    const sparkSpy = jest.spyOn(performanceModule, 'updateCPUSparkline');
 
     await updatePerformanceMetrics();
 

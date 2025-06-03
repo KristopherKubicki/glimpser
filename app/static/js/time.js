@@ -1,5 +1,5 @@
 export function initIndexTime() {
-  document.addEventListener("DOMContentLoaded", () => {
+  const setup = () => {
     const elem = document.getElementById("index-time");
     if (!elem) return;
     const update = () => {
@@ -9,5 +9,11 @@ export function initIndexTime() {
     };
     update();
     setInterval(update, 1000);
-  });
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setup);
+  } else {
+    setup();
+  }
 }
