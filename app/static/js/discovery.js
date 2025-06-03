@@ -2,9 +2,9 @@ import { fetchJson } from './fetch_utils.js';
 
 export function initDiscoveryToggle() {
   document.addEventListener('DOMContentLoaded', () => {
-    const toggleBtn = document.getElementById('toggle-discovery');
+    const stopBtn = document.getElementById('stop-discovery');
     const statusSpan = document.getElementById('discovery-bg-status');
-    if (!toggleBtn || !statusSpan) return;
+    if (!statusSpan) return;
 
     const minutes = (s) => `${Math.round(s / 60)}m`;
     const formatStatus = (d) => {
@@ -20,29 +20,29 @@ export function initDiscoveryToggle() {
       return text;
     };
 
-    toggleBtn.addEventListener('click', async () => {
-      const confirmToggle = confirm(
-        `Are you sure you want to ${
-          toggleBtn.textContent.includes('Stop') ? 'stop' : 'start'
-        } background discovery?`
-      );
-      if (!confirmToggle) return;
-      try {
-        const data = await fetchJson('/toggle_discovery', { method: 'POST' });
-        statusSpan.textContent = formatStatus(data);
-        toggleBtn.textContent =
-          data.status === 'running' ? 'Stop Discovery' : 'Start Discovery';
-      } catch (err) {
-        statusSpan.textContent = 'error';
-        alert('Unable to toggle discovery.');
-      }
-    });
+    if (stopBtn) {
+      stopBtn.addEventListener('click', async () => {
+        const confirmStop = confirm(
+          'Are you sure you want to stop background discovery?'
+        );
+        if (!confirmStop) return;
+        try {
+          const data = await fetchJson('/toggle_discovery', { method: 'POST' });
+          statusSpan.textContent = formatStatus(data);
+          stopBtn.style.display = data.status === 'running' ? 'inline-block' : 'none';
+        } catch (err) {
+          statusSpan.textContent = 'error';
+          alert('Unable to stop discovery.');
+        }
+      });
+    }
 
     fetchJson('/discovery_status')
       .then((data) => {
         statusSpan.textContent = formatStatus(data);
-        toggleBtn.textContent =
-          data.status === 'running' ? 'Stop Discovery' : 'Start Discovery';
+        if (stopBtn) {
+          stopBtn.style.display = data.status === 'running' ? 'inline-block' : 'none';
+        }
       })
       .catch(() => {
         statusSpan.textContent = 'error';
