@@ -1,7 +1,7 @@
 let cpuData = [];
 const maxDataPoints = 60;
 
-function updatePerformanceMetrics() {
+export function updatePerformanceMetrics() {
   fetch("/health")
     .then((response) => response.json())
     .then((data) => {
@@ -22,7 +22,7 @@ function updatePerformanceMetrics() {
     });
 }
 
-function updateCPUSparkline(newValue) {
+export function updateCPUSparkline(newValue) {
   cpuData.push(newValue);
   if (cpuData.length > maxDataPoints) {
     cpuData.shift();
