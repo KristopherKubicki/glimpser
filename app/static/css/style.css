@@ -545,30 +545,19 @@ nav a:hover, nav a.active {
     position: relative;
 }
 
-.caption-popup {
-    position: absolute;
-    top: 24px;
-    right: 0;
-    background: rgba(0, 0, 0, 0.8);
+.caption-chyron {
+    background: rgba(0, 0, 0, 0.9);
     color: #fff;
     padding: 4px 8px;
-    border-radius: 4px;
     font-size: 14px;
     line-height: 1.2;
-    max-width: 200px;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    opacity: 0;
-    pointer-events: none;
     white-space: pre-line;
-    transition: opacity 0.5s;
-    z-index: 1000;
+    display: none;
+    text-align: center;
 }
 
-.caption-popup.show {
-    opacity: 1;
+.caption-chyron.show {
+    display: block;
 }
 
 .performance-indicator {

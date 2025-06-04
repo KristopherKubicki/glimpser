@@ -63,7 +63,7 @@ export function initNav() {
     };
 
     const captionsIcon = document.getElementById("captions");
-    const captionPopup = document.getElementById("caption-popup");
+    const captionChyron = document.getElementById("caption-chyron");
     let lastCaptionTime = null;
     let popupTimer;
 
@@ -75,7 +75,7 @@ export function initNav() {
     const markIdle = () => {
       idle = true;
       if (pendingCaption) {
-        showCaptionPopup(pendingCaption);
+        showCaption(pendingCaption);
         pendingCaption = null;
       }
     };
@@ -92,13 +92,13 @@ export function initNav() {
 
     resetIdleTimer();
 
-    const showCaptionPopup = (text) => {
-      if (!captionPopup) return;
-      captionPopup.textContent = text;
-      captionPopup.classList.add("show");
+    const showCaption = (text) => {
+      if (!captionChyron) return;
+      captionChyron.textContent = text;
+      captionChyron.classList.add("show");
       clearTimeout(popupTimer);
       popupTimer = setTimeout(
-        () => captionPopup.classList.remove("show"),
+        () => captionChyron.classList.remove("show"),
         60000,
       );
     };
@@ -117,7 +117,7 @@ export function initNav() {
               () => captionsIcon.classList.remove("flash-caption"),
               5000,
             );
-            showCaptionPopup(data.caption);
+            showCaption(data.caption);
             lastCaptionTime = ts;
           }
           const ageSec = (Date.now() - ts.getTime()) / 1000;
