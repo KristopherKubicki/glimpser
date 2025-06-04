@@ -1370,6 +1370,22 @@ details > summary {
     margin-bottom: 1em;
 }
 
+.discovery-page {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.discovery-progress {
+    width: 100%;
+    height: 20px;
+}
+
+.export-buttons {
+    margin-bottom: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
 /* Time display on index page */
 #index-time {
     position: fixed;
