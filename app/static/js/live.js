@@ -215,7 +215,16 @@ video.addEventListener("error", (e) => {
     // Ignore errors from blank or cleared sources when switching cameras
     return;
   }
+  if (
+    (currentCamera === "All" || currentCamera.startsWith("group-")) &&
+    typeof loopHandler === "function"
+  ) {
+    // Skip to the next camera when a clip fails to load
+    loopHandler();
+    return;
+  }
   showError("Error loading video: " + msg);
+  showLastScreenshot();
   setTimeout(() => {
     if (typeof updateFeed === "function") {
       updateFeed();
@@ -349,6 +358,7 @@ function updateFeed() {
     video.pause();
     video.src = "";
     image.src = "";
+    showLastScreenshot();
     updateSeekBar();
     return;
   } else if (details && details.capture_failed) {
@@ -358,6 +368,7 @@ function updateFeed() {
     video.pause();
     video.src = "";
     image.src = "";
+    showLastScreenshot();
     updateSeekBar();
     return;
   } else {
@@ -996,3 +1007,38 @@ window.updatePlaybackSpeed = updatePlaybackSpeed;
 window.selectNextCamera = selectNextCamera;
 window.selectPreviousCamera = selectPreviousCamera;
 window.togglePlayback = togglePlayback;
+
+// --- Mobile swipe handling ---
+// Allow quick camera changes on touch devices by swiping left or right
+let touchStartX = null;
+let touchStartY = null;
+
+function handleTouchStart(event) {
+  const firstTouch = event.touches[0];
+  touchStartX = firstTouch.clientX;
+  touchStartY = firstTouch.clientY;
+}
+
+function handleTouchEnd(event) {
+  if (touchStartX === null || touchStartY === null) return;
+
+  const touchEndX = event.changedTouches[0].clientX;
+  const touchEndY = event.changedTouches[0].clientY;
+  const diffX = touchEndX - touchStartX;
+  const diffY = touchEndY - touchStartY;
+
+  // Only trigger if the gesture is mostly horizontal and long enough
+  if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
+    if (diffX > 0) {
+      selectPreviousCamera();
+    } else {
+      selectNextCamera();
+    }
+  }
+
+  touchStartX = null;
+  touchStartY = null;
+}
+
+document.addEventListener("touchstart", handleTouchStart, { passive: true });
+document.addEventListener("touchend", handleTouchEnd, { passive: true });

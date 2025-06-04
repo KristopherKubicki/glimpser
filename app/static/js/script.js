@@ -11,6 +11,7 @@ import { initIndexTime } from "./time.js";
 import { initWelcome } from "./welcome.js";
 import { initTooltips } from "./tooltips.js";
 import { initCaptions } from "./captions.js";
+import { initSettingsSearch } from "./settings.js";
 
 initTemplates();
 initVideoControls();
@@ -26,3 +27,4 @@ initIndexTime();
 initWelcome();
 initTooltips();
 initCaptions();
+initSettingsSearch();

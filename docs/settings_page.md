@@ -10,6 +10,10 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Danger Mode** – update Chrome shortcuts with the required flags.
 - **Offline Preview** – toggle a Service Worker that caches recent images.
 - **Settings Reference** – expand the table to read explanations for each setting.
+- **Column Search** – click a header to filter rows by that column.
+
+Each row now includes an **Explanation** column so you can read a short
+description without opening the reference table.
 
 ### Dynamic Feedback
 

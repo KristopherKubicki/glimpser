@@ -10,7 +10,7 @@ The status page shows current system metrics and includes the live log viewer. M
 
 ### Feed Dashboard
 
-Below the system metrics the page lists each configured feed with a color-coded indicator.
+Below the system metrics the page lists each configured feed with a color-coded indicator. Hovering over a red or yellow dot now shows a short tooltip describing the issue, including when the feed went offline and the most recent related log entry if available.
 
 - **Green** – the feed is updating on schedule.
 - **Yellow** – the last capture is behind its configured frequency.
@@ -62,8 +62,8 @@ can monitor recent caption text without leaving the dashboard.
 
 The navigation bar shows a captions icon that reflects how recent the last
 caption update was. It flashes with the newest caption text when a group message
-arrives. A condensed popup with the latest caption appears in the top-right
-corner after the user has been idle for a few seconds. The icon remains green
+arrives. The most recent caption now appears in a chyron across the top of the
+page after the screen has been idle for a few seconds. The icon remains green
 for one minute after a caption, changes to yellow for the next five minutes and
 turns red once thirty minutes have passed without an update.
 

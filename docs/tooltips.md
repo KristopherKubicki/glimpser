@@ -11,11 +11,11 @@ This document lists the main tooltips available in the Glimpser interface. Hover
 - **Danger Mode icon** – explains why danger mode may be disabled.
 - **Discover Cameras icon** – opens the camera discovery page.
 - **Captions icon** – reads and updates camera language models. The icon flashes
-  with the latest caption when group messages arrive. A condensed popup with the
-  text appears in the top-right corner after the screen has been idle for a few
-  seconds. It stays green for one minute after the most recent caption, turns
-  yellow for the next five minutes and becomes red when no update has been
-  received for over thirty minutes.
+  with the latest caption when group messages arrive. The full caption appears
+  in a chyron across the top after the screen has been idle for a few seconds.
+  It stays green for one minute after the most recent caption, turns yellow for
+  the next five minutes and becomes red when no update has been received for
+  over thirty minutes.
 - **Clock icon** – opens the live page with instructions for real‑time streaming.
 - **Settings gear icon** – opens the settings page.
 - **Login link** – appears when not authenticated.
@@ -39,6 +39,7 @@ Interactive forms now include additional tooltips:
 - **Danger Mode** – the checkbox, save button and modal controls all include tooltips.
 - **Live video player** – tooltip now refreshes with the full caption as it updates.
 - **Info icon** – toggles camera metadata on the live page.
+- **Feed status indicators** – on the System Status page, red or yellow dots display a tooltip with offline time and the latest log message.
 
 ## Dynamic Tooltips
 

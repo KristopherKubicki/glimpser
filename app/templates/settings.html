@@ -20,12 +20,17 @@
         <button type="submit" title="Add setting">Add Setting</button>
     </form>
 
+    <div id="settings-search" class="hidden">
+        <label for="search-input" title="Filter the selected column">Search:</label>
+        <input type="text" id="search-input" title="Type to filter settings">
+    </div>
     <form method="POST" action="{{ url_for('settings') }}">
         <table class="settings-table">
             <thead>
                 <tr>
-                    <th>Setting</th>
-                    <th>Value</th>
+                    <th class="searchable">Setting</th>
+                    <th class="searchable">Value</th>
+                    <th class="searchable">Explanation</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -36,6 +41,7 @@
                     <td>
                         <input type="text" name="{{ setting.name }}" value="{{ setting.value }}" title="Edit value for {{ setting.name }}">
                     </td>
+                    <td class="setting-explanation">{{ tooltips.get(setting.name, '') }}</td>
                     <td>
                         <button type="submit" name="action" value="delete" title="Delete {{ setting.name }}" onclick="return confirmDeleteSetting('{{ setting.name }}')">Delete</button>
                     </td>

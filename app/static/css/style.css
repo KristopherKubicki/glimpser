@@ -190,6 +190,19 @@ h1, h2 {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+#template-controls {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+#template-controls input[type="text"],
+#template-controls select {
+    padding: 5px;
+}
+
 #template-list {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px))); /* Use CSS variable */
@@ -209,6 +222,13 @@ h1, h2 {
         padding: 10px; /* Larger padding for a taller dropdown */
         width: 100%; /* Full width on mobile */
         margin-bottom: 10px;
+    }
+    #template-controls {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    #template-controls input[type="text"] {
+        width: 100%;
     }
     #template-list {
         grid-template-columns: 1fr; /* Single column layout on mobile */
@@ -394,7 +414,7 @@ video:hover + .play-icon {
 #status-legend {
     display: flex;
     gap: 10px;
-    margin: 10px 0;
+    margin-left: 10px;
 }
 
 .status-item {
@@ -546,30 +566,19 @@ nav a:hover, nav a.active {
     position: relative;
 }
 
-.caption-popup {
-    position: absolute;
-    top: 24px;
-    right: 0;
-    background: rgba(0, 0, 0, 0.8);
+.caption-chyron {
+    background: rgba(0, 0, 0, 0.9);
     color: #fff;
     padding: 4px 8px;
-    border-radius: 4px;
     font-size: 14px;
     line-height: 1.2;
-    max-width: 200px;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    opacity: 0;
-    pointer-events: none;
     white-space: pre-line;
-    transition: opacity 0.5s;
-    z-index: 1000;
+    display: none;
+    text-align: center;
 }
 
-.caption-popup.show {
-    opacity: 1;
+.caption-chyron.show {
+    display: block;
 }
 
 .performance-indicator {
@@ -1175,6 +1184,14 @@ input[type=submit]:hover {
     gap: 10px;
     align-items: center;
     margin-top: 0.5rem;
+}
+
+#settings-search {
+    margin: 10px 0;
+}
+
+#settings-search input {
+    padding: 4px;
 }
 
 .captions-table,

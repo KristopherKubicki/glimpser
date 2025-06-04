@@ -1097,6 +1097,7 @@ def get_feed_status():
         offline_since = template.get("offline_since")
 
         status = "ok"
+        tooltip_parts: list[str] = []
         if capture_failed or offline_since:
             status = "error"
         elif last_shot:
@@ -1110,6 +1111,32 @@ def get_feed_status():
         else:
             status = "error"
 
+        if capture_failed:
+            tooltip_parts.append("Capture failed")
+        if offline_since:
+            tooltip_parts.append(f"Offline since {offline_since}")
+        if status == "slow" and last_shot and frequency:
+            try:
+                shot_time = datetime.datetime.strptime(last_shot, "%Y-%m-%d %H:%M:%S")
+                diff = int((now - shot_time).total_seconds())
+                tooltip_parts.append(
+                    f"Last shot {diff // 60}m ago; expected every {frequency}s"
+                )
+            except Exception:
+                pass
+
+        last_log = None
+        if status != "ok":
+            with log_cache_lock:
+                for log in reversed(log_cache):
+                    if name in log.get("message", ""):
+                        last_log = f"{log['level']}: {log['message']}"
+                        break
+        if last_log:
+            tooltip_parts.append(f"Last log: {last_log[:120]}")
+
+        tooltip = " | ".join(tooltip_parts) if tooltip_parts else "OK"
+
         feeds.append(
             {
                 "name": name,
@@ -1118,6 +1145,7 @@ def get_feed_status():
                 "last_caption_time": _iso(last_caption),
                 "last_caption_display": _humanize(last_caption),
                 "status": status,
+                "tooltip": tooltip,
             }
         )
 
