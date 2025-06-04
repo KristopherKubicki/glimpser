@@ -3,6 +3,7 @@
 
 import logging
 import os
+import subprocess
 import argparse
 import random
 import time
@@ -288,12 +289,9 @@ def graceful_shutdown(signum, frame):
 
 
 def clear_console():
-    # For Windows
-    if os.name == "nt":
-        _ = os.system("cls")
-    # For macOS and Linux
-    else:
-        _ = os.system("clear")
+    """Clear the terminal in a platform agnostic way."""
+    command = ["cls"] if os.name == "nt" else ["clear"]
+    subprocess.run(command, check=False)
 
 
 def clear_console_cli():
