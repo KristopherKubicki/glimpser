@@ -851,10 +851,13 @@ function updateSpeedContainer() {
   let cameraCount = 0;
   if (isGroupView) {
     if (currentCamera === "All") {
-      cameraCount = Object.keys(templateDetails).filter((k) => k !== "All").length;
+      cameraCount = Object.keys(templateDetails).filter(
+        (k) => k !== "All",
+      ).length;
     } else {
       const details = templateDetails[currentCamera];
-      cameraCount = details && details.groupCameras ? details.groupCameras.length : 0;
+      cameraCount =
+        details && details.groupCameras ? details.groupCameras.length : 0;
     }
   }
   const show = isGroupView && cameraCount > 1 && source !== "mjpg";
