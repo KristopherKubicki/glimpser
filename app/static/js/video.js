@@ -4,7 +4,9 @@ export function initVideoControls() {
     setupVideoControls();
 
     const playAllButton = document.getElementById("play-all-button");
+    const liveAllButton = document.getElementById("live-all-button");
     let playAllActive = false;
+    let liveAllActive = false;
     let playAllObserver;
 
     function handlePlayAll(entries) {
@@ -38,6 +40,27 @@ export function initVideoControls() {
           playAllButton.textContent = "Stop All";
         }
         playAllActive = !playAllActive;
+      });
+    }
+
+    if (liveAllButton) {
+      liveAllButton.addEventListener("click", () => {
+        const videos = document.querySelectorAll(".templateDiv video");
+        videos.forEach((video) => {
+          const name = video.getAttribute("data-name");
+          const source = video.querySelector("source");
+          if (liveAllActive) {
+            source.src = `/last_video/${name}`;
+            video.poster = `/last_screenshot/${name}`;
+          } else {
+            source.src = `/live_video?camera=${encodeURIComponent(name)}`;
+            video.poster = "";
+          }
+          video.load();
+          video.play().catch((e) => console.error("Error playing video:", e));
+        });
+        liveAllButton.textContent = liveAllActive ? "Live All" : "Stop Live";
+        liveAllActive = !liveAllActive;
       });
     }
 
