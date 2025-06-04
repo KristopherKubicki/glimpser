@@ -211,6 +211,17 @@ source. That could cause extra network requests and confusing behavior.
 - The player now destroys any active HLS or looping handlers before starting the
   new stream, so switching sources cleanly stops the old one.
 
+### Problem: Loop video or the "All" camera shows `Format error`
+
+This typically happens when Glimpser cannot locate a recent MP4 clip for a
+camera. The player attempts to load the file and the browser reports a *Format
+error* because the response is missing or invalid.
+
+**Solution:**
+- Ensure the `compile_to_teaser` job is running so group videos are generated.
+- When a clip fails to load, the live player now skips to the next camera
+  instead of stalling on the error message.
+
 ## 12. Layout Issues
 
 ### Problem: Buttons at the bottom of the Templates page are hidden
