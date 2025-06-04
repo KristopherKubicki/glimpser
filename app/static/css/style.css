@@ -573,18 +573,31 @@ nav a:hover, nav a.active {
 
 .caption-chyron {
     background: rgba(0, 0, 0, 0.9);
-    color: #fff;
+    color: #ccc;
     padding: 4px 8px;
     font-size: 14px;
     line-height: 1.2;
-    white-space: pre-line;
+    white-space: nowrap;
+    overflow: hidden;
     display: none;
-    text-align: center;
-    margin-left: auto; /* Keep logo on the left */
+    margin-left: 10px;
+    flex-grow: 1;
+    cursor: pointer;
 }
 
 .caption-chyron.show {
     display: block;
+}
+
+.caption-chyron.show span {
+    display: inline-block;
+    padding-left: 100%;
+    animation: chyron-scroll 15s linear infinite;
+}
+
+@keyframes chyron-scroll {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
 }
 
 .performance-indicator {
