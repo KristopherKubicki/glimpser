@@ -957,17 +957,27 @@ def init_routes(app):
     @app.route("/captions_status")
     @login_required
     def captions_status():
-        """Return the newest caption and its timestamp."""
+        """Return the newest global summary and its timestamp."""
         caption = ""
         timestamp = ""
+        session_db = SessionLocal()
         try:
-            templates = template_manager.get_templates_sorted_by_last_caption_time()
-            if templates:
-                _, info = templates[0]
-                caption = info.get("last_caption", "")
-                timestamp = info.get("last_caption_time", "")
+            rec = session_db.query(Summary).order_by(Summary.timestamp.desc()).first()
+            if rec:
+                try:
+                    data = json.loads(rec.content)
+                    if data:
+                        caption = next(iter(data.values()))
+                except Exception:
+                    caption = rec.content
+                timestamp = datetime.utcfromtimestamp(rec.timestamp).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
         except Exception as e:  # pragma: no cover - unexpected DB errors
             logging.error("error retrieving captions status: %s", e)
+        finally:
+            session_db.close()
+
         return jsonify({"caption": caption, "timestamp": timestamp})
 
     @app.route("/discovery_status")
