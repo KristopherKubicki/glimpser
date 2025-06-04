@@ -1,19 +1,11 @@
 # Dark Mode Support
 
-Glimpser's interface now adapts to your system's preferred color scheme and
-defaults to dark mode. The CSS defines variables for background and text colors
-with light and dark variants. Forms and tables use these variables so elements
-remain readable in both themes.
+Glimpser's interface now adapts to your system's preferred color scheme.
+The CSS defines variables for background and text colors with light and dark
+variants. Forms and tables use these variables so elements remain readable in
+both themes.
 
-Dark mode is the recommended scheme. You can customize the look by overriding
-the provided CSS variables:
-
-```css
-:root {
-    --bg-color: #1a1a1a;
-    --text-color: #eaeaea;
-}
-```
-
-Ensure that contrast ratios stay above accessibility guidelines when adjusting
-colors.
+A new `--table-border-color` variable controls table outlines. Dark mode
+defaults to a subtle `#444` while the light theme overrides it to `#ddd`.
+The settings page now uses this variable for its forms and tables so fields
+look consistent regardless of color scheme.

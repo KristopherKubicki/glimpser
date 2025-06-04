@@ -207,10 +207,13 @@ export async function loadGroups() {
 }
 
 export function timeAgo(utcDateString) {
+  if (!utcDateString) return "just now";
   const now = new Date();
-  const iso = utcDateString.includes("T")
-    ? utcDateString
-    : `${utcDateString.replace(" ", "T")}Z`;
+  const iso = utcDateString instanceof Date
+    ? utcDateString.toISOString()
+    : utcDateString.includes("T")
+      ? utcDateString
+      : `${utcDateString.replace(" ", "T")}Z`;
   const utcDate = new Date(iso);
   if (Number.isNaN(utcDate.getTime())) return "just now";
   const diffInSeconds = Math.floor((now - utcDate) / 1000);

@@ -42,7 +42,7 @@ html {
 .camera-list th,
 .camera-list td {
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--table-border-color);
     text-align: left;
 }
 
@@ -350,6 +350,7 @@ video:hover + .play-icon {
     --table-header-bg-color: #2a2a2a;
     --table-row-alt-bg-color: #1a1a1a;
     --table-hover-bg-color: #333;
+    --table-border-color: #444;
     /* Typography */
     /* stylelint-disable-next-line value-keyword-case */
     --font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -365,6 +366,7 @@ video:hover + .play-icon {
         --table-header-bg-color: #f2f2f2;
         --table-row-alt-bg-color: #fafafa;
         --table-hover-bg-color: #e0e0e0;
+        --table-border-color: #ddd;
     }
 }
 
@@ -1238,7 +1240,7 @@ input[type=submit]:hover {
 .settings-table th,
 .settings-table td {
     padding: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--table-border-color);
 }
 
 .captions-table th,
@@ -1379,7 +1381,7 @@ details > summary {
 .feed-status th,
 .feed-status td {
     padding: 6px 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--table-border-color);
 }
 .feed-status a {
     color: var(--text-color);
@@ -1414,6 +1416,45 @@ details > summary {
 .discovery-page {
     max-width: 800px;
     margin: 0 auto;
+}
+
+/* Settings Page */
+.settings-page {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.settings-help-table details {
+    border: 1px solid var(--table-border-color);
+    padding: 4px;
+    border-radius: 4px;
+    margin: 4px 0;
+}
+
+.settings-help-table summary {
+    color: var(--accent-color);
+    cursor: pointer;
+}
+
+.settings-page input[type="text"] {
+    background-color: var(--form-bg-color);
+    color: var(--form-text-color);
+    border: 1px solid var(--table-border-color);
+    border-radius: 4px;
+    padding: 4px;
+}
+
+.settings-page button {
+    background-color: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.settings-page button:hover {
+    background-color: var(--accent-color);
 }
 
 .discovery-progress {
@@ -1467,7 +1508,7 @@ details > summary {
         text-align: right;
         position: relative;
         padding-left: 50%;
-        border: 1px solid #ddd;
+        border: 1px solid var(--table-border-color);
     }
     .feed-status td::before,
     #log-table td::before {
