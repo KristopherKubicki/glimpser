@@ -29,6 +29,12 @@ This guide will walk you through the process of setting up Glimpser and running 
 
 5. Open your web browser and navigate to `http://127.0.0.1:8082` to complete the setup.
 
+   **Note:** Glimpser sets the `SESSION_COOKIE_SECURE` flag by default, so
+   browsers only send the login cookie over HTTPS. If you're running locally
+   without HTTPS, set `SESSION_COOKIE_SECURE=False` in your environment before
+   starting the app to allow non-HTTPS logins. See the
+   [Configuration Guide](configuration_guide.md#user-credentials) for details.
+
 ## Your First Monitoring Task
 
 1. Log in to the Glimpser web interface.
