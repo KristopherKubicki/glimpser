@@ -35,6 +35,38 @@ class TestDangerStatusEndpoint(unittest.TestCase):
             },
         )
 
+    @patch("app.routes.is_chrome_debug_port_open", return_value=False)
+    @patch("app.routes.check_user_activity", return_value=False)
+    def test_danger_port_closed(self, mock_idle, mock_port):
+        """Should report not ready when the debug port is closed."""
+        resp = self.client.get("/danger_status")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.get_json(),
+            {
+                "port_open": False,
+                "idle": True,
+                "enabled": True,
+                "ready": False,
+            },
+        )
+
+    @patch("app.routes.is_chrome_debug_port_open", return_value=True)
+    @patch("app.routes.check_user_activity", return_value=True)
+    def test_danger_user_active(self, mock_idle, mock_port):
+        """Should report not ready when user activity is detected."""
+        resp = self.client.get("/danger_status")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.get_json(),
+            {
+                "port_open": True,
+                "idle": False,
+                "enabled": True,
+                "ready": False,
+            },
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
