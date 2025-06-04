@@ -449,7 +449,7 @@ video:hover + .play-icon {
 header {
     background-color: #000; /* Dark background for better contrast */
     color: #fff; /* White text */
-    padding: 2px 2px; /* Padding for spacing */
+    padding: 0 4px; /* More compact padding */
     display: flex; /* Flexbox for layout */
     align-items: center; /* Vertically align items */
     justify-content: flex-start; /* Align items to the left */
@@ -462,14 +462,17 @@ header.fade-out {
 }
 
 header h1 {
-    font-size: 24px; /* Larger font size for title */
+    margin: 0; /* Remove default margins */
+    font-size: 20px; /* Compact font size */
     text-shadow: 2px 2px 4px rgba(0,0,0,0.5); /* Text shadow for readability */
+}
+header h1 img {
+    height: 20px; /* Keep logo small */
 }
 
 nav {
     display: flex; /* Flexbox for layout */
-    gap: 15px; /* Space between navigation items */
-    flex: 1; /* Allow nav to fill available space */
+    gap: 10px; /* Tighter spacing */
 }
 
 .menu-toggle {
@@ -484,7 +487,7 @@ nav {
 .nav-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 5px; /* Reduce spacing */
 }
 
 .nav-center {
@@ -498,7 +501,7 @@ nav {
 nav a {
     color: var(--text-color); /* Base text color */
     text-decoration: none; /* No underline */
-    padding: 6px 12px; /* Padding */
+    padding: 4px 8px; /* Compact padding */
     border-radius: 5px; /* Rounded corners */
     font-weight: 500; /* Slightly bolder text */
     transition: background-color 0.2s, color 0.2s; /* Smooth hover transition */
@@ -609,7 +612,7 @@ nav a:hover, nav a.active {
 
 @media screen and (max-width: 768px) { /* Responsive design for mobile */
     header h1 {
-        font-size: 20px; /* Smaller font size on mobile */
+        font-size: 18px; /* Smaller font size on mobile */
     }
 
     .menu-toggle {
@@ -627,7 +630,7 @@ nav a:hover, nav a.active {
         flex-direction: column;
         background-color: #000;
         position: absolute;
-        top: 40px;
+        top: 32px; /* Align with smaller header */
         left: 0;
         right: 0;
         padding: 10px;
