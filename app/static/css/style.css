@@ -1176,6 +1176,14 @@ input[type=submit]:hover {
     margin-top: 0.5rem;
 }
 
+#settings-search {
+    margin: 10px 0;
+}
+
+#settings-search input {
+    padding: 4px;
+}
+
 .captions-table,
 .camera-table,
 .settings-table {
