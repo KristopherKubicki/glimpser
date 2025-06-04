@@ -7,8 +7,20 @@ export function initNav() {
     const menuToggle = document.getElementById("menu-toggle");
 
     if (nav && menuToggle) {
-      menuToggle.addEventListener("click", () => {
+      const toggleNav = () => {
         nav.classList.toggle("active");
+        menuToggle.setAttribute(
+          "aria-expanded",
+          nav.classList.contains("active")
+        );
+      };
+
+      menuToggle.addEventListener("click", toggleNav);
+      menuToggle.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggleNav();
+        }
       });
     }
 

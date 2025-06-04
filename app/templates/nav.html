@@ -4,8 +4,14 @@
   </a>
 </h1>
 <div id="caption-chyron" class="caption-chyron" aria-live="polite"></div>
-<nav>
-  <button id="menu-toggle" class="menu-toggle" aria-label="Toggle navigation">☰</button>
+<nav id="main-nav">
+  <button
+    id="menu-toggle"
+    class="menu-toggle"
+    aria-label="Toggle navigation"
+    aria-expanded="false"
+    aria-controls="main-nav"
+  >☰</button>
   <div class="nav-left">
     {% for ag in active_groups %}
     <a href="/group/{{ ag }}" title="View group {{ ag }}">{{ ag }}</a>
