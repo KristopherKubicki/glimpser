@@ -575,6 +575,8 @@ nav a:hover, nav a.active {
     white-space: pre-line;
     display: none;
     text-align: center;
+    margin-left: auto;
+    flex-grow: 1;
 }
 
 .caption-chyron.show {
