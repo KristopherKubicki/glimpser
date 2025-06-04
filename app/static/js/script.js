@@ -1,7 +1,7 @@
 import { initTemplates } from "./templates.js";
 import { initVideoControls } from "./video.js";
 import { initSchedulerToggle } from "./scheduler.js";
-import { initDiscoveryToggle } from "./discovery.js";
+import { initDiscoveryToggle, initDiscoveryPage } from "./discovery.js";
 import { initNav } from "./nav.js";
 import { initFormValidation, initAddSettingValidation } from "./form.js";
 import { initFooterFade } from "./footer.js";
@@ -17,6 +17,7 @@ initTemplates();
 initVideoControls();
 initSchedulerToggle();
 initDiscoveryToggle();
+initDiscoveryPage();
 initNav();
 initFormValidation();
 initAddSettingValidation();
