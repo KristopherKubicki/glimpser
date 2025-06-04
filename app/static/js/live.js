@@ -972,6 +972,26 @@ function selectPreviousCamera() {
   changeCamera();
 }
 
+function selectNextSource() {
+  const selector = document.getElementById("video-source");
+  if (!selector) return;
+  const options = Array.from(selector.options);
+  const currentIndex = options.findIndex((opt) => opt.value === selector.value);
+  const nextIndex = (currentIndex + 1) % options.length;
+  selector.value = options[nextIndex].value;
+  changeVideoSource();
+}
+
+function selectPreviousSource() {
+  const selector = document.getElementById("video-source");
+  if (!selector) return;
+  const options = Array.from(selector.options);
+  const currentIndex = options.findIndex((opt) => opt.value === selector.value);
+  const prevIndex = (currentIndex - 1 + options.length) % options.length;
+  selector.value = options[prevIndex].value;
+  changeVideoSource();
+}
+
 document.addEventListener("keydown", (event) => {
   if (
     event.target.tagName === "INPUT" ||
@@ -997,6 +1017,14 @@ document.addEventListener("keydown", (event) => {
       selectPreviousCamera();
       event.preventDefault();
       break;
+    case "ArrowUp":
+      selectPreviousSource();
+      event.preventDefault();
+      break;
+    case "ArrowDown":
+      selectNextSource();
+      event.preventDefault();
+      break;
   }
 });
 
@@ -1006,6 +1034,8 @@ window.changeVideoSource = changeVideoSource;
 window.updatePlaybackSpeed = updatePlaybackSpeed;
 window.selectNextCamera = selectNextCamera;
 window.selectPreviousCamera = selectPreviousCamera;
+window.selectNextSource = selectNextSource;
+window.selectPreviousSource = selectPreviousSource;
 window.togglePlayback = togglePlayback;
 
 // --- Mobile swipe handling ---
@@ -1027,12 +1057,19 @@ function handleTouchEnd(event) {
   const diffX = touchEndX - touchStartX;
   const diffY = touchEndY - touchStartY;
 
-  // Only trigger if the gesture is mostly horizontal and long enough
+  // Horizontal swipe changes the camera
   if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
     if (diffX > 0) {
       selectPreviousCamera();
     } else {
       selectNextCamera();
+    }
+  } else if (Math.abs(diffY) > 50 && Math.abs(diffY) > Math.abs(diffX)) {
+    // Vertical swipe changes the media source
+    if (diffY > 0) {
+      selectNextSource();
+    } else {
+      selectPreviousSource();
     }
   }
 

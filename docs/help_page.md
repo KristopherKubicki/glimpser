@@ -22,9 +22,11 @@ Key topics covered include:
 On the **Live** page, pick a camera from the drop-down menu. The **Video Source** now defaults to **MJPG** so you immediately see a lightweight stream of the latest frames. Select **Live Video** if you want a direct real-time feed. Glimpser remembers your last selected camera, video source, and playback speed to streamline future visits.
 
 When watching a live stream, you can use keyboard shortcuts:
-`Space` or `k` toggles play/pause, `m` toggles mute, `f` toggles fullscreen,
-Left/Right arrows change the selected camera, and `[`/`]` adjust playback speed.
-On phones and tablets, swipe left or right on the video to switch cameras quickly.
+`Space` or `k` toggles play/pause, `m` toggles mute, `f` toggles fullscreen.
+Left/Right arrows change the selected camera, Up/Down arrows cycle through the
+available media types, and `[`/`]` adjust playback speed. On phones and tablets,
+swipe left or right on the video to switch cameras or swipe up or down to change
+the media type quickly.
 
 Navigate back to the main interface using the **Back to Glimpser** link at the
 bottom of the help page.
