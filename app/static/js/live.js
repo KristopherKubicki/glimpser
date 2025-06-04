@@ -855,7 +855,8 @@ function updateSpeedContainer() {
         (k) => k !== "All",
       ).length;
     } else {
-      cameraCount = (templateDetails[currentCamera].groupCameras || []).length;
+      const details = templateDetails[currentCamera];
+      cameraCount = details && details.groupCameras ? details.groupCameras.length : 0;
     }
   }
   const show = isGroupView && cameraCount > 1 && source !== "mjpg";
