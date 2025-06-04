@@ -92,9 +92,15 @@ export function initNav() {
 
     resetIdleTimer();
 
+    if (captionChyron) {
+      captionChyron.addEventListener("click", () => {
+        window.location.href = "/captions";
+      });
+    }
+
     const showCaption = (text) => {
       if (!captionChyron) return;
-      captionChyron.textContent = text;
+      captionChyron.innerHTML = `<span>${text}</span>`;
       captionChyron.classList.add("show");
       clearTimeout(popupTimer);
       popupTimer = setTimeout(
