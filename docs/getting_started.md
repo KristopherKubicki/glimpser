@@ -29,6 +29,12 @@ This guide will walk you through the process of setting up Glimpser and running 
 
 5. Open your web browser and navigate to `http://127.0.0.1:8082` to complete the setup.
 
+   **Note:** Glimpser sets the `SESSION_COOKIE_SECURE` flag by default, so
+   browsers only send the login cookie over HTTPS. If you're running locally
+   without HTTPS, set `SESSION_COOKIE_SECURE=False` in your environment before
+   starting the app to allow non-HTTPS logins. See the
+   [Configuration Guide](configuration_guide.md#user-credentials) for details.
+
 ## Your First Monitoring Task
 
 1. Log in to the Glimpser web interface.
@@ -49,7 +55,7 @@ This guide will walk you through the process of setting up Glimpser and running 
 
 8. Explore the auto-generated captions and summaries.
 9. Use the **Suggest Prompt** button on a template's detail page to have the system propose better caption text.
-10. Visit the **Captions** page to review and manage prompts. The view now has three tabs: **Prompts** (camera grid with filters), **History** (recent captions table), and **Bulk Tools** for TSV updates. Use the group filter and search box in the Prompts tab to quickly find a camera. KPI and caption columns can be sorted by clicking their headers, which display a ↕ icon. Rows show relative timestamps, and thumbnails appear dimmed until hovered. A width slider resizes thumbnails and adjusts their height, capping them at 720&nbsp;px.
+10. Visit the **Captions** page to review and manage prompts. The view now has three tabs: **Prompts** (camera grid with filters), **History** (recent captions table), and **Bulk Tools** for TSV updates. Use the group filter and search box in the Prompts tab to quickly find a camera. KPI and caption columns can be sorted by clicking their headers, which display a ↕ icon. Rows show relative timestamps, and thumbnails appear dimmed until hovered. A width slider resizes thumbnails and adjusts their height, capping them at 1080&nbsp;px.
 
 ## Next Steps
 

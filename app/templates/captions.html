@@ -19,13 +19,6 @@
                  }
             });
          }
-         // Event listener for Update button clicks
-         $(document).ready(function () {
-             $('#camera-table').on('click', '.update-button', function () {
-                 var templateName = $(this).data('template');
-                 updateTemplate(templateName);
-             });
-         });
      </script>
 
     <div class="tabs">
@@ -178,6 +171,8 @@
         </div>
       {% endif %}
     {% endwith %}
+  {% from 'components.html' import confirm_modal %}
+  {{ confirm_modal('update', 'Send updated prompt?', 'Send', 'Cancel') }}
 </div>
 {% endblock %}
 

@@ -35,6 +35,8 @@ export function initVideoControls() {
             video.load();
             video.pause();
             video.currentTime = 0;
+            video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
+            video.load();
           });
           playAllButton.textContent = "Play All";
         } else {
