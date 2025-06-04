@@ -624,7 +624,8 @@ export function setupCaptionsFilter() {
 
   const filter = () => {
     const term = searchInput.value.toLowerCase();
-    const start = startInput && startInput.value ? new Date(startInput.value) : null;
+    const start =
+      startInput && startInput.value ? new Date(startInput.value) : null;
     const end = endInput && endInput.value ? new Date(endInput.value) : null;
 
     rows.forEach((row) => {
@@ -634,7 +635,8 @@ export function setupCaptionsFilter() {
       let show = true;
       if (term && !text.includes(term)) show = false;
       if (start && rowDate && rowDate < start) show = false;
-      if (end && rowDate && rowDate > new Date(end.getTime() + 86400000 - 1)) show = false;
+      if (end && rowDate && rowDate > new Date(end.getTime() + 86400000 - 1))
+        show = false;
       row.style.display = show ? "" : "none";
     });
   };
