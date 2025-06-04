@@ -173,6 +173,7 @@ export function initTemplates() {
     }
     setupSearch();
     setupSorting();
+    setupCaptionsFilter();
     updateHumanizedTimes();
     setInterval(updateHumanizedTimes, 60000);
   });
@@ -207,7 +208,11 @@ export async function loadGroups() {
 
 export function timeAgo(utcDateString) {
   const now = new Date();
-  const utcDate = new Date(utcDateString);
+  const iso = utcDateString.includes("T")
+    ? utcDateString
+    : `${utcDateString.replace(" ", "T")}Z`;
+  const utcDate = new Date(iso);
+  if (Number.isNaN(utcDate.getTime())) return "just now";
   const diffInSeconds = Math.floor((now - utcDate) / 1000);
   if (diffInSeconds < 0) return "in the future";
 
@@ -399,7 +404,7 @@ export async function loadTemplates() {
   updateGridLayout();
 
   const templateList = document.getElementById("template-list");
-  const captionsTable = document.querySelector("details table");
+  const captionsTable = document.getElementById("captions-table");
   const templateContainer = document.querySelector(".template-container");
 
   const isIndexPage = Boolean(templateList);
@@ -599,4 +604,49 @@ export function setupSorting() {
   setupTableSorting("camera-table");
   setupTableSorting("feed-status");
   setupTableSorting("captions-table");
+}
+
+export function setupCaptionsFilter() {
+  const searchInput = document.getElementById("captions-search");
+  const startInput = document.getElementById("caption-start");
+  const endInput = document.getElementById("caption-end");
+  const clearBtn = document.getElementById("caption-clear");
+  const rows = document.querySelectorAll("#captions-table tbody tr");
+
+  if (!searchInput || rows.length === 0) return;
+
+  const parseDate = (str) => {
+    if (!str) return null;
+    const iso = str.includes("T") ? str : str.replace(" ", "T") + "Z";
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+
+  const filter = () => {
+    const term = searchInput.value.toLowerCase();
+    const start = startInput && startInput.value ? new Date(startInput.value) : null;
+    const end = endInput && endInput.value ? new Date(endInput.value) : null;
+
+    rows.forEach((row) => {
+      const timeElem = row.querySelector("td:first-child span");
+      const rowDate = timeElem ? parseDate(timeElem.dataset.time) : null;
+      const text = row.textContent.toLowerCase();
+      let show = true;
+      if (term && !text.includes(term)) show = false;
+      if (start && rowDate && rowDate < start) show = false;
+      if (end && rowDate && rowDate > new Date(end.getTime() + 86400000 - 1)) show = false;
+      row.style.display = show ? "" : "none";
+    });
+  };
+
+  searchInput.addEventListener("input", filter);
+  if (startInput) startInput.addEventListener("change", filter);
+  if (endInput) endInput.addEventListener("change", filter);
+  if (clearBtn)
+    clearBtn.addEventListener("click", () => {
+      searchInput.value = "";
+      if (startInput) startInput.value = "";
+      if (endInput) endInput.value = "";
+      filter();
+    });
 }

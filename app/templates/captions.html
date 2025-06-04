@@ -118,8 +118,16 @@
 </div>
 
 <div id="history-tab" class="tab-content">
-    <details><summary>Captions</summary>
-        <table id="captions-table" class="captions-table">
+    <h2>Captions</h2>
+    <div class="caption-filters">
+        <input type="search" id="captions-search" placeholder="Search captions or time" title="Filter captions">
+        <label for="caption-start">From:</label>
+        <input type="date" id="caption-start" title="Start date">
+        <label for="caption-end">To:</label>
+        <input type="date" id="caption-end" title="End date">
+        <button id="caption-clear" type="button" title="Clear filters">Clear</button>
+    </div>
+    <table id="captions-table" class="captions-table">
             <thead>
             <tr>
                 <th class="sortable" data-type="date">Timestamp</th>
@@ -145,7 +153,6 @@
             {% endif %}
             </tbody>
         </table>
-    </details>
 </div>
 
 <div id="bulk-tab" class="tab-content">
