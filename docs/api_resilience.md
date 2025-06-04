@@ -6,4 +6,4 @@ The helper `request_with_retry` in `app/utils/api_utils.py` wraps `requests.requ
 
 This approach keeps the application responsive even when external services are slow or offline.
 
-The scheduler now calls `is_system_online` before launching subprocesses. If the system is offline, jobs are skipped and marked offline instead of failing with file descriptor errors.
+The scheduler now calls `is_system_online` before launching subprocesses. If the system is offline, jobs are skipped and marked offline instead of failing with file descriptor errors. The helper checks each address listed in the `ONLINE_TEST_HOSTS` environment variable (default `8.8.8.8,1.1.1.1`) and returns online if any respond.
