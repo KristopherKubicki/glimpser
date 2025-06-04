@@ -1000,10 +1000,12 @@ def init_routes(app):
         if request.method == "POST":
             action = request.form.get("action")
             if action == "update_shortcut":
-                if update_chrome_shortcuts():
-                    flash("Chrome shortcuts updated", "success")
+                results = update_chrome_shortcuts()
+                if results:
+                    for path in results:
+                        flash(f"Updated {path}", "success")
                 else:
-                    flash("Failed to update shortcuts", "error")
+                    flash("No Chrome shortcuts updated", "error")
             else:
                 enabled = "enabled" in request.form
                 update_setting("DANGER_MODE", "True" if enabled else "False")
@@ -2408,10 +2410,12 @@ def init_routes(app):
                     else:
                         flash("Invalid file type", "error")
             elif action == "update_shortcut":
-                if update_chrome_shortcuts():
-                    flash("Chrome shortcuts updated", "success")
+                results = update_chrome_shortcuts()
+                if results:
+                    for path in results:
+                        flash(f"Updated {path}", "success")
                 else:
-                    flash("Failed to update shortcuts", "error")
+                    flash("No Chrome shortcuts updated", "error")
             else:
                 for name, value in request.form.items():
                     if (

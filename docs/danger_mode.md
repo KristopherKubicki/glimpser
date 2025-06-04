@@ -42,6 +42,10 @@ that Glimpser attaches to your Chrome session via the debugging port and only
 activates when you are idle. Toggling the option now shows a confirmation modal
 so the feature is not enabled or disabled accidentally.
 
+When you use the **Patch Chrome Shortcuts** button on this page, Glimpser now
+reports each shortcut it updated so you know exactly which `.lnk` files were
+modified.
+
 Below the description, the page lists any cameras flagged as using Danger mode.
 Each item links directly to the camera's template details so you can quickly
 review or disable the setting.

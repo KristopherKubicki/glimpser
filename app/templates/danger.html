@@ -2,6 +2,21 @@
 {% block content %}
 <main class="container danger-page">
   <h2>Danger Mode</h2>
+  <p>
+    Need a refresher? See the
+    <a href="../docs/danger_mode.md" target="_blank" title="Open Danger mode documentation">documentation</a>
+    for setup steps and security notes.
+  </p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-messages">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
 
   <section>
     <h3>What is it?</h3>

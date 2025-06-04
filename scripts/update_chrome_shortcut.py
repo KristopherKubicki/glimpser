@@ -21,11 +21,15 @@ def _update_shortcut(shortcut: Path, shell) -> bool:
     return False
 
 
-def update_chrome_shortcuts() -> bool:
-    """Update Chrome .lnk files to include the remote debugging flag."""
+def update_chrome_shortcuts() -> list[str]:
+    """Update Chrome .lnk files to include the remote debugging flag.
+
+    Returns a list of patched shortcut paths. An empty list indicates no
+    shortcuts were modified or the platform does not support updates.
+    """
     if os.name != "nt" or win32com is None:
         print("Shortcut update only supported on Windows with pywin32 installed")
-        return False
+        return []
 
     shell = win32com.client.Dispatch("WScript.Shell")
     locations = [
@@ -42,14 +46,15 @@ def update_chrome_shortcuts() -> bool:
         / "Programs",
     ]
 
-    updated = False
+    updated: list[str] = []
     for loc in locations:
         if loc.exists():
             for shortcut in loc.rglob("*.lnk"):
                 if "chrome" in shortcut.name.lower():
                     if _update_shortcut(shortcut, shell):
-                        print(f"Updated {shortcut}")
-                        updated = True
+                        path = str(shortcut)
+                        print(f"Updated {path}")
+                        updated.append(path)
     return updated
 
 
