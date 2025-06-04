@@ -592,7 +592,7 @@ nav a:hover, nav a.active {
 .caption-chyron.show span {
     display: inline-block;
     padding-left: 100%;
-    animation: chyron-scroll 15s linear infinite;
+    animation: chyron-scroll 60s linear infinite;
 }
 
 @keyframes chyron-scroll {
