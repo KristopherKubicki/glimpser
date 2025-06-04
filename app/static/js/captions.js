@@ -21,19 +21,17 @@ export function initCaptions() {
       if (pending) window.updateTemplate(pending);
     });
 
-    document
-      .getElementById("camera-table")
-      ?.addEventListener("click", (e) => {
-        const btn = e.target.closest(".update-button");
-        if (!btn) return;
-        e.preventDefault();
-        pending = btn.dataset.template;
-        if (modal) {
-          modal.style.display = "block";
-        } else {
-          window.updateTemplate(pending);
-        }
-      });
+    document.getElementById("camera-table")?.addEventListener("click", (e) => {
+      const btn = e.target.closest(".update-button");
+      if (!btn) return;
+      e.preventDefault();
+      pending = btn.dataset.template;
+      if (modal) {
+        modal.style.display = "block";
+      } else {
+        window.updateTemplate(pending);
+      }
+    });
 
     tabs.forEach((tab) => {
       tab.addEventListener("click", () => {
