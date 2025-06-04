@@ -63,7 +63,9 @@ can monitor recent caption text without leaving the dashboard.
 The navigation bar shows a captions icon that reflects how recent the last
 caption update was. It flashes with the newest caption text when a group message
 arrives. The most recent caption now appears in a chyron across the top of the
-page after the screen has been idle for a few seconds. The icon remains green
+page after the screen has been idle for a few seconds. The chyron now sits on
+the right side of the header so the Glimpser logo stays visible on the left.
+The icon remains green
 for one minute after a caption, changes to yellow for the next five minutes and
 turns red once thirty minutes have passed without an update.
 

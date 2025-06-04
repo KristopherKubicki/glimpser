@@ -452,7 +452,8 @@ header {
     padding: 2px 2px; /* Padding for spacing */
     display: flex; /* Flexbox for layout */
     align-items: center; /* Vertically align items */
-    justify-content: space-between; /* Space out the title and navigation */
+    justify-content: flex-start; /* Align items to the left */
+    gap: 10px; /* Space between nav and chyron */
     transition: opacity 0.5s; /* Smooth fade for inactivity */
 }
 
@@ -468,6 +469,7 @@ header h1 {
 nav {
     display: flex; /* Flexbox for layout */
     gap: 15px; /* Space between navigation items */
+    flex: 1; /* Allow nav to fill available space */
 }
 
 .menu-toggle {
@@ -575,8 +577,7 @@ nav a:hover, nav a.active {
     white-space: pre-line;
     display: none;
     text-align: center;
-    margin-left: auto;
-    flex-grow: 1;
+    margin-left: auto; /* Keep logo on the left */
 }
 
 .caption-chyron.show {
