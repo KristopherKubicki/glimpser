@@ -331,7 +331,11 @@ def main(argv=None):
         sys.exit(1)
 
     try:
-        logging.info("Starting web...")
+        logging.info(
+            "Starting web interface at http://%s:%s",
+            config.HOST,
+            config.PORT,
+        )
         app.run(
             host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True
         )
