@@ -224,6 +224,7 @@ video.addEventListener("error", (e) => {
     return;
   }
   showError("Error loading video: " + msg);
+  showLastScreenshot();
   setTimeout(() => {
     if (typeof updateFeed === "function") {
       updateFeed();
@@ -357,6 +358,7 @@ function updateFeed() {
     video.pause();
     video.src = "";
     image.src = "";
+    showLastScreenshot();
     updateSeekBar();
     return;
   } else if (details && details.capture_failed) {
@@ -366,6 +368,7 @@ function updateFeed() {
     video.pause();
     video.src = "";
     image.src = "";
+    showLastScreenshot();
     updateSeekBar();
     return;
   } else {

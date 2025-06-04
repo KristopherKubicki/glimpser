@@ -200,6 +200,8 @@ snapshot image rather than a true video stream.
 - Use the camera's RTSP or HTTP video stream URL when available.
 - Snapshot-only URLs now fall back to an MJPEG feed so the live view
   behaves like a regular video stream.
+- If playback fails entirely, the viewer now shows the last captured
+  screenshot so the page is never blank.
 
 ### Problem: Playback continues in the background after switching types
 
