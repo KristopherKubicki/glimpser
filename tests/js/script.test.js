@@ -87,4 +87,9 @@ describe('script.js', () => {
     expect(timeAgo(oneHourAgo)).toBe('1 hour ago');
     expect(timeAgo(oneDayAgo)).toBe('1 day ago');
   });
+
+  test('timeAgo handles null and undefined', () => {
+    expect(timeAgo(null)).toBe('just now');
+    expect(timeAgo(undefined)).toBe('just now');
+  });
 });
