@@ -17,7 +17,7 @@ If Chrome is not started with this flag, Danger mode will be unavailable.
 After Chrome updates, shortcuts may revert to their original command line. Two approaches can help keep the debug port enabled:
 
 - **Manual update**: Edit the desktop shortcut each time Chrome updates.
-- **Helper script**: Run `python scripts/update_chrome_shortcut.py` to rewrite the shortcut with the required flag. This can also be triggered from the *Update Chrome Shortcut* button on the Settings page or the *Patch Chrome Shortcuts* button on the Danger page.
+ - **Helper script**: Run `python scripts/update_chrome_shortcut.py` to rewrite the shortcut with the required flag. This can also be triggered from the *Update Chrome Shortcut* button on the Settings page or the *Patch Chrome Shortcuts* button on the Danger page. The page now shows which shortcuts were updated after the patch completes.
 
 After patching your shortcuts, restart Chrome and open it using the profile you intend to use with Danger mode.
 
@@ -37,8 +37,9 @@ Visit `/danger` to toggle the feature on or off. When disabled, captures marked 
 
 ## Danger Page Overview
 
-The `/danger` page explains what the feature does and when to use it. It notes
-that Glimpser attaches to your Chrome session via the debugging port and only
+The `/danger` page explains what the feature does and when to use it. A short
+help section near the top links back to this document. The page notes that
+Glimpser attaches to your Chrome session via the debugging port and only
 activates when you are idle. Toggling the option now shows a confirmation modal
 so the feature is not enabled or disabled accidentally.
 

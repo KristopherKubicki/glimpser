@@ -2,6 +2,19 @@
 {% block content %}
 <main class="container danger-page">
   <h2>Danger Mode</h2>
+  <p class="page-tip">
+    For a full walkthrough see the <code>docs/danger_mode.md</code> guide.
+    Use the button below if Chrome was not launched with the debugging flag.
+  </p>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
 
   <section>
     <h3>What is it?</h3>
