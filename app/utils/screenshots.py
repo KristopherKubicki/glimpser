@@ -1871,11 +1871,12 @@ def get_chrome_version(chrome_path):
     ):
         return int(chrome_version[chrome_path][0])
 
-    command = "%s --version" % chrome_path
-
     try:
         result = subprocess.run(
-            command.split(), capture_output=True, text=True, timeout=3
+            [chrome_path, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=3,
         )
         version = result.stdout.strip().split()[-1]
         version = int(version.split(".")[0])  # Return the major version

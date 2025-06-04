@@ -68,17 +68,17 @@ class TestMainUtilities(unittest.TestCase):
         mock_cleanup.assert_called_once()
         mock_exit.assert_called_once_with(0)
 
-    @patch("main.os.system")
-    def test_clear_console_windows(self, mock_system):
+    @patch("main.subprocess.run")
+    def test_clear_console_windows(self, mock_run):
         with patch.object(main.os, "name", "nt"):
             main.clear_console()
-            mock_system.assert_called_once_with("cls")
+            mock_run.assert_called_once_with(["cls"], check=False)
 
-    @patch("main.os.system")
-    def test_clear_console_posix(self, mock_system):
+    @patch("main.subprocess.run")
+    def test_clear_console_posix(self, mock_run):
         with patch.object(main.os, "name", "posix"):
             main.clear_console()
-            mock_system.assert_called_once_with("clear")
+            mock_run.assert_called_once_with(["clear"], check=False)
 
     @patch("main.clear_console")
     def test_clear_console_cli_calls_clear(self, mock_clear):
