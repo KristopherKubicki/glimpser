@@ -321,6 +321,14 @@ export function generateXPath(inputId) {
   document.querySelector(`#${inputId} + .structured-xpath-input`).remove();
 }
 
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
 export function setupSearch() {
   const searchInput = document.getElementById("search-input");
   const groupDropdown = document.getElementById("group-dropdown");
@@ -364,8 +372,9 @@ export function setupSearch() {
   };
 
   if (templateList) {
-    searchInput.addEventListener("input", loadTemplates);
-    groupDropdown.addEventListener("change", loadTemplates);
+    const debouncedLoad = debounce(loadTemplates, 300);
+    searchInput.addEventListener("input", debouncedLoad);
+    groupDropdown.addEventListener("change", debouncedLoad);
   } else {
     searchInput.addEventListener("input", filterCameras);
     groupDropdown.addEventListener("change", filterCameras);
