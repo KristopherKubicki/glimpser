@@ -45,6 +45,8 @@ const errorIndicator = document.getElementById("capture-error-indicator");
 const errorIndicatorMessage = document.getElementById("capture-error-message");
 const streamErrorIndicator = document.getElementById("stream-error-indicator");
 const streamErrorMessage = document.getElementById("stream-error-message");
+const seekBar = document.getElementById("seek-bar");
+let isSeeking = false;
 
 // Restore previously selected camera, source and speed from localStorage so
 // reloading the page keeps user preferences. If the user specified a camera in
@@ -874,6 +876,10 @@ function updateSeekBar() {
   seekBar.style.visibility = show ? "visible" : "hidden";
   seekBar.style.pointerEvents = show ? "auto" : "none";
   seekBar.disabled = !show;
+  if (show) {
+    seekBar.max = video.duration || 0;
+    seekBar.value = video.currentTime || 0;
+  }
 }
 
 function checkCameraConnection(cameraName) {
@@ -936,6 +942,41 @@ playMJPG();
 startCaptionPolling();
 updateFrameTimestamp();
 setInterval(updateFrameTimestamp, 60000);
+
+if (seekBar) {
+  video.addEventListener("loadedmetadata", () => {
+    seekBar.max = video.duration || 0;
+    seekBar.value = 0;
+  });
+
+  video.addEventListener("timeupdate", () => {
+    if (!isSeeking) {
+      seekBar.value = video.currentTime;
+    }
+  });
+
+  seekBar.addEventListener("input", () => {
+    video.currentTime = seekBar.value;
+  });
+
+  const stopSeek = () => {
+    if (isSeeking) {
+      isSeeking = false;
+      video.play();
+    }
+  };
+
+  seekBar.addEventListener("mousedown", () => {
+    isSeeking = true;
+    video.pause();
+  });
+  seekBar.addEventListener("mouseup", stopSeek);
+  seekBar.addEventListener("touchstart", () => {
+    isSeeking = true;
+    video.pause();
+  });
+  seekBar.addEventListener("touchend", stopSeek);
+}
 
 if (toggleDetailsButton) {
   toggleDetailsButton.addEventListener("click", () => {
