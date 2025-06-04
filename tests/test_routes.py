@@ -9,6 +9,7 @@ from flask import Flask
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.routes import init_routes
+from app.models import Summary
 from types import SimpleNamespace
 
 
@@ -574,20 +575,43 @@ class TestRoutes(unittest.TestCase):
         response = self.client.get("/group/unknown")
         self.assertEqual(response.status_code, 404)
 
-    @patch("app.routes.template_manager.get_templates_sorted_by_last_caption_time")
+    @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
-    def test_captions_status(self, mock_sorted):
-        mock_sorted.return_value = [
-            (
-                "cam1",
-                {"last_caption": "hello", "last_caption_time": "2024-01-01 00:00:00"},
-            )
-        ]
+    def test_captions_status(self, mock_session_local):
+        dummy_user = SimpleNamespace(id=1)
+
+        class DummyQuery:
+            def __init__(self, model):
+                self.model = model
+                self.order_called = False
+
+            def filter_by(self, **kwargs):
+                self.filter_kwargs = kwargs
+                return self
+
+            def order_by(self, *args, **kwargs):
+                self.order_called = True
+                return self
+
+            def first(self):
+                if self.model is Summary:
+                    return SimpleNamespace(timestamp=0, content='{"summary":"hello"}')
+                return dummy_user
+
+        class DummySession:
+            def query(self, model):
+                return DummyQuery(model)
+
+            def close(self):
+                pass
+
+        mock_session_local.return_value = DummySession()
+
         response = self.client.get("/captions_status")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.get_json(),
-            {"caption": "hello", "timestamp": "2024-01-01 00:00:00"},
+            {"caption": "hello", "timestamp": "1970-01-01 00:00:00"},
         )
 
 
