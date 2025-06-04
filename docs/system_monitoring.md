@@ -10,7 +10,7 @@ The status page shows current system metrics and includes the live log viewer. M
 
 ### Feed Dashboard
 
-Below the system metrics the page lists each configured feed with a color-coded indicator.
+Below the system metrics the page lists each configured feed with a color-coded indicator. Hovering over a red or yellow dot now shows a short tooltip describing the issue, including when the feed went offline and the most recent related log entry if available.
 
 - **Green** – the feed is updating on schedule.
 - **Yellow** – the last capture is behind its configured frequency.
