@@ -275,8 +275,11 @@
                 if (cameraName.startsWith('group-') || cameraName === 'All') {
                     const groupCams = cameraName === 'All'
                         ? Object.keys(templateDetails).filter(key => key !== 'All')
-                        : templateDetails[cameraName].groupCameras;
-                    return '/live_video?camera=' + encodeURIComponent(groupCams[0]);
+                        : (templateDetails[cameraName]?.groupCameras || []);
+                    if (groupCams.length > 0) {
+                        return '/live_video?camera=' + encodeURIComponent(groupCams[0]);
+                    }
+                    return null;
                 }
                 return '/live_video?camera=' + encodeURIComponent(cameraName);
             }
@@ -439,7 +442,7 @@ function changeCamera() {
                 video.src = '';
                 image.src = '';
                 return;
-            } else if (templateDetails[currentCamera].capture_failed) {
+            } else if (templateDetails[currentCamera] && templateDetails[currentCamera].capture_failed) {
                 hideOfflineIndicator();
                 showCaptureErrorIndicator(currentCamera);
                 hideLoadingIndicator();
