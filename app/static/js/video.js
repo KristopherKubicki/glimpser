@@ -28,6 +28,11 @@ export function initVideoControls() {
         if (playAllActive) {
           if (playAllObserver) playAllObserver.disconnect();
           videos.forEach((video) => {
+            const name = video.getAttribute("data-name");
+            const src = video.querySelector("source");
+            src.src = `/last_video/${name}`;
+            video.poster = `/last_screenshot/${name}`;
+            video.load();
             video.pause();
             video.currentTime = 0;
           });
@@ -36,8 +41,11 @@ export function initVideoControls() {
           playAllObserver = new IntersectionObserver(handlePlayAll, {
             threshold: 0.25,
           });
-          videos.forEach((video) => playAllObserver.observe(video));
-          playAllButton.textContent = "Stop All";
+          videos.forEach((video) => {
+            playAllObserver.observe(video);
+            video.play().catch((e) => console.error("Error playing video:", e));
+          });
+          playAllButton.textContent = "Stop";
         }
         playAllActive = !playAllActive;
       });
@@ -52,12 +60,15 @@ export function initVideoControls() {
           if (liveAllActive) {
             source.src = `/last_video/${name}`;
             video.poster = `/last_screenshot/${name}`;
+            video.load();
+            video.pause();
+            video.currentTime = 0;
           } else {
             source.src = `/live_video?camera=${encodeURIComponent(name)}`;
             video.poster = "";
+            video.load();
+            video.play().catch((e) => console.error("Error playing video:", e));
           }
-          video.load();
-          video.play().catch((e) => console.error("Error playing video:", e));
         });
         liveAllButton.textContent = liveAllActive ? "Live All" : "Stop Live";
         liveAllActive = !liveAllActive;
