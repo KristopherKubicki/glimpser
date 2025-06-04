@@ -8,7 +8,7 @@ export function initTemplates() {
       ?.closest("details");
     const slider = document.getElementById("grid-width-slider");
     const templateList = document.getElementById("template-list");
-    const MAX_THUMBNAIL_HEIGHT = 720;
+    const MAX_THUMBNAIL_HEIGHT = 1080;
     const ASPECT_RATIO = 9 / 16;
     const MAX_THUMBNAIL_WIDTH = Math.round(MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO);
 

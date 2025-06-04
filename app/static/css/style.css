@@ -1168,10 +1168,20 @@ input[type=submit]:hover {
     width: 100%;
 }
 
+.caption-box textarea,
+.caption-box .last-caption {
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
 .caption-box .last-caption {
     max-height: 6rem;
     overflow-y: auto;
     white-space: pre-wrap;
+}
+
+.chat-box label {
+    font-weight: 600;
 }
 
 .filter-controls {
@@ -1435,11 +1445,13 @@ details > summary {
     border: 1px solid #444;
     border-radius: 4px 4px 0 0;
     cursor: pointer;
+    color: var(--text-color);
+    font-weight: 600;
 }
 
 .tab-link.active {
     background-color: var(--accent-color);
-    color: #000;
+    color: #fff;
 }
 
 .tab-content {
