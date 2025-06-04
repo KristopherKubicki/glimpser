@@ -3,7 +3,9 @@
 Glimpser packages are generated automatically when a version tag is pushed to the repository.
 The process is split across two runners:
 
-- **Ubuntu** builds the Debian package and runs the test suite.
+- **Ubuntu** builds the Debian package and runs the test suite. The packaging
+  script now uses `rsync` to copy directories so unchanged files are skipped,
+  speeding up repeated builds.
 - **Windows** builds the standalone executable using `build_windows.py`.
 
 The Ubuntu job also generates a small `release-badges.md` file that lists
