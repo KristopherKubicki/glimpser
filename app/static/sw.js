@@ -1,6 +1,14 @@
 const CACHE_NAME = 'glimpser-offline-v1';
 const MAX_SHOTS = 20;
-const OFFLINE_URLS = ['/status', '/discover'];
+const OFFLINE_URLS = [
+  '/status',
+  '/discover',
+  '/settings',
+  '/templates',
+  '/static/css/style.css',
+  '/static/css/player.css',
+  '/static/js/script.js',
+];
 
 self.addEventListener('install', event => {
   event.waitUntil(
