@@ -13,7 +13,9 @@
     {{ pieces|join(' ') }}
 {%- endmacro %}
 {% block content %}
-    <h2>Discovered Cameras</h2>
+<main class="container discovery-page">
+    <h2 class="page-title">Discovered Cameras</h2>
+    <p class="intro-text">Use this page to scan your network for IP cameras. Provide an optional CIDR block to narrow the search.</p>
     <div class="discovery-controls" title="Manage background discovery">
         <button id="stop-discovery" class="btn btn-primary" title="Stop background discovery" style="display: none;">Stop Discovery</button>
         <span id="discovery-bg-status" title="Current background discovery status">Checking...</span>
@@ -29,7 +31,7 @@
     <div class="wizard-step" title="Review results and export if desired">
     <button id="export-json" title="Download results as JSON">Export JSON</button>
     <button id="export-csv" title="Download results as CSV">Export CSV</button>
-    <table>
+    <table class="camera-table">
         <thead>
             <tr>
                 <th title="Camera IP address">IP</th>
@@ -67,6 +69,7 @@
         </tbody>
     </table>
     </div>
+</main>
     <script>
     const button = document.getElementById('discover-btn');
     const msg = document.getElementById('discover-message');
