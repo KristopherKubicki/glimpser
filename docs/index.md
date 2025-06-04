@@ -49,4 +49,6 @@ The main dashboard now displays the current time in the lower right corner. Hove
 Thumbnails also now show the last capture time in a human readable
 "X ago" format, matching the tables on the Captions page.
 The Live View page displays the time of the latest frame in the
-lower-right corner using the same format.
+lower-right corner using the same format. Timestamp parsing was improved so
+times display correctly across time zones instead of always showing
+"just now".

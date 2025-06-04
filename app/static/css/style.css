@@ -1281,6 +1281,20 @@ details > summary {
     width: 12rem;
 }
 
+.caption-filters {
+    margin-bottom: 1rem;
+}
+
+.caption-filters input[type="search"],
+.caption-filters input[type="date"] {
+    margin-right: 0.5rem;
+    padding: 4px;
+}
+
+.caption-filters button {
+    padding: 4px 8px;
+}
+
 /* Utility classes for modals and embedded media */
 .live-embed {
     margin-bottom: 20px;
