@@ -215,6 +215,14 @@ video.addEventListener("error", (e) => {
     // Ignore errors from blank or cleared sources when switching cameras
     return;
   }
+  if (
+    (currentCamera === "All" || currentCamera.startsWith("group-")) &&
+    typeof loopHandler === "function"
+  ) {
+    // Skip to the next camera when a clip fails to load
+    loopHandler();
+    return;
+  }
   showError("Error loading video: " + msg);
   setTimeout(() => {
     if (typeof updateFeed === "function") {
