@@ -26,7 +26,7 @@ For now, you can store the launch command in a script and double-click it instea
 
 ## Using Danger Mode in Glimpser
 
-When Chrome's debug port is open and no user input has been detected for a short period, Glimpser shows an orange indicator in the navigation bar. A `!` appears in the icon when ready and an `×` explains why it's disabled when you hover over it.
+When Chrome's debug port is open and no user input has been detected for a short period, Glimpser shows an orange indicator in the navigation bar. The icon hides again when Danger mode is unavailable. A `!` appears when ready and an `×` in the tooltip explains why it's disabled.
 
 Captures marked as "Danger" in the template editor will use your running Chrome session. Glimpser opens a new tab, performs the capture, and closes the tab when finished. It skips the operation if you become active while the capture is pending.
 

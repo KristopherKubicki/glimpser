@@ -93,10 +93,11 @@ export function initNav() {
         const data = await fetchJson("/danger_status");
         if (!data) return;
         if (data.ready) {
+          dangerStatus.style.display = "flex";
           dangerStatus.style.color = "orange";
           dangerStatus.title = "Danger Mode Ready";
         } else {
-          dangerStatus.style.color = "grey";
+          dangerStatus.style.display = "none";
           const reason = [];
           if (!data.port_open) reason.push("Debug port closed");
           if (!data.idle) reason.push("User active");
