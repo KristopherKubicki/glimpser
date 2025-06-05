@@ -301,6 +301,28 @@ def clear_console_cli():
     clear_console()
 
 
+STARTUP_TIPS = [
+    "Set SESSION_COOKIE_SECURE=False when running without HTTPS.",
+    "Use --console-log to mirror logs to your terminal.",
+    "See docs/startup_tips.md for more tips.",
+]
+
+
+def display_startup_tips():
+    """Log common setup reminders."""
+    border = "-" * 60
+    logging.info(border)
+    logging.info("Startup Tips")
+    logging.info(border)
+    for tip in STARTUP_TIPS:
+        logging.info("* %s", tip)
+    logging.info(border)
+    if config.SESSION_COOKIE_SECURE:
+        logging.warning(
+            "SESSION_COOKIE_SECURE is enabled; browsers only send the login cookie over HTTPS."
+        )
+
+
 def is_port_in_use(port):
     # Skip the check if running in Docker
     if os.environ.get("IN_DOCKER"):
@@ -316,6 +338,7 @@ def main(argv=None):
     clear_console()
 
     logging.info(banner)
+    display_startup_tips()
 
     atexit.register(cleanup_resources)
     signal.signal(signal.SIGTERM, graceful_shutdown)

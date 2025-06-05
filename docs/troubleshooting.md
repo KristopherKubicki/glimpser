@@ -97,7 +97,8 @@ This guide addresses common issues that users might encounter while using Glimps
 - If you land back on the login page without errors, check that cookies are
   enabled. The page shows a "Login requires cookies" warning when the session
   cookie is missing. Running without HTTPS? Disable `SESSION_COOKIE_SECURE` so
-  your browser accepts the cookie.
+  your browser accepts the cookie. See [Startup Tips](startup_tips.md) for a
+  quick reminder of this and other common gotchas.
 
 
 ## Getting Further Help
