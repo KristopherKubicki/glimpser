@@ -10,6 +10,18 @@ export function initTemplates() {
       ?.closest("details");
     const slider = document.getElementById("grid-width-slider");
     const templateList = document.getElementById("template-list");
+    const captionToggle = document.getElementById("toggle-captions");
+    let captionsVisible = localStorage.getItem("showCaptions") !== "false";
+
+    const applyCaptionVisibility = (width) => {
+      const show = captionsVisible && (!width || width >= 150);
+      document.documentElement.classList.toggle("hide-captions", !show);
+      templateList
+        ?.querySelectorAll(".caption-overlay")
+        .forEach((o) => (o.style.display = show ? "block" : "none"));
+      if (captionToggle)
+        captionToggle.textContent = show ? "Hide Captions" : "Show Captions";
+    };
     const MAX_THUMBNAIL_HEIGHT = 1080;
     const ASPECT_RATIO = 9 / 16;
     const MAX_THUMBNAIL_WIDTH = Math.round(MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO);
@@ -54,6 +66,14 @@ export function initTemplates() {
       window.addEventListener("resize", updateSliderLimits);
       window.updateSliderLimits = updateSliderLimits;
       slider.dispatchEvent(new Event("input"));
+    }
+
+    if (captionToggle) {
+      captionToggle.addEventListener("click", () => {
+        captionsVisible = !captionsVisible;
+        localStorage.setItem("showCaptions", captionsVisible.toString());
+        applyCaptionVisibility(parseFloat(slider?.value || "0"));
+      });
     }
 
     function autofillGroup() {
@@ -107,6 +127,7 @@ export function initTemplates() {
           "--timestamp-font-size",
           `${timestampFontSize}px`,
         );
+        applyCaptionVisibility(value);
       };
 
       slider.addEventListener("input", handleSlider);
@@ -162,6 +183,7 @@ export function initTemplates() {
     setupCaptionsFilter();
     updateHumanizedTimes();
     setInterval(updateHumanizedTimes, 60000);
+    applyCaptionVisibility(parseFloat(slider?.value || "0"));
   });
 
   window.showStructuredInput = showStructuredInput;
@@ -579,6 +601,7 @@ export async function loadTemplates() {
     window.dispatchEvent(
       new CustomEvent("templatesLoaded", { detail: { count: templateCount } }),
     );
+    applyCaptionVisibility(parseFloat(slider?.value || "0"));
   } catch (error) {
     console.error("Error loading templates:", error);
     const errorMsg =
