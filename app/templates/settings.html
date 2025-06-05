@@ -3,6 +3,11 @@
 {% block content %}
 <main class="container settings-page">
     <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger" title="Log out of the interface">Logout</a>
+    <a id="theme-toggle" href="#" class="status-indicator" title="Toggle light or dark theme" aria-label="Toggle theme">
+        <svg width="18" height="18">
+            <use href="{{ url_for('static', filename='icons/sprite.svg') }}#sun" />
+        </svg>
+    </a>
 
     {# Help content now appears directly in the table, so the collapsible menu was removed #}
 
