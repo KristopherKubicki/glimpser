@@ -111,34 +111,18 @@ content %}
                 <span class="slider round"></span>
               </label>
               {% elif setting.name in choices %}
-              <select
-                name="{{ setting.name }}"
-                data-other-target="{{ setting.name }}-other"
-                title="Select value for {{ setting.name }}"
-              >
-                {% for option in choices[setting.name] %}
-                <option
-                  value="{{ option }}"
-                  {% if setting.value == option %}selected{% endif %}
-                >
-                  {{ option }}
-                </option>
-                {% endfor %}
-                <option
-                  value="__other__"
-                  {% if setting.value not in choices[setting.name] %}selected{% endif %}
-                >
-                  Other
-                </option>
-              </select>
               <input
                 type="text"
-                id="{{ setting.name }}-other"
-                name="{{ setting.name }}_other"
-                value="{% if setting.value not in choices[setting.name] %}{{ setting.value }}{% endif %}"
-                class="{% if setting.value in choices[setting.name] %}hidden{% endif %}"
-                placeholder="Custom value"
+                name="{{ setting.name }}"
+                list="{{ setting.name }}-options"
+                value="{{ setting.value }}"
+                title="Select or enter value for {{ setting.name }}"
               />
+              <datalist id="{{ setting.name }}-options">
+                {% for option in choices[setting.name] %}
+                <option value="{{ option }}"></option>
+                {% endfor %}
+              </datalist>
               {% elif setting.name == 'PORT' %}
               <input
                 type="number"
