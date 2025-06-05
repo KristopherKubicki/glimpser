@@ -441,6 +441,10 @@ body.light-mode {
   overflow-y: auto;
 }
 
+.hide-captions .caption-overlay {
+    display: none;
+}
+
 #status-legend {
   display: flex;
   gap: 5px;
