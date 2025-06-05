@@ -738,8 +738,18 @@ function playPNG() {
     pngInterval = setInterval(refreshGroupPNG, 10000 / speed);
   } else if (currentCamera === "All") {
     // Special handling for the "All" option
+    let cameraIndex = 0;
+    const allCameras = Object.keys(templateDetails).filter(
+      (key) => key !== "All",
+    );
     const refreshAllPNG = () => {
-      image.src = "/stream.png?time=" + new Date().getTime();
+      if (cameraIndex >= allCameras.length) {
+        cameraIndex = 0;
+      }
+      const cameraName = allCameras[cameraIndex];
+      image.src =
+        "/last_screenshot/" + cameraName + "?time=" + new Date().getTime();
+      cameraIndex++;
     };
     refreshAllPNG();
     clearInterval(pngInterval);
