@@ -551,6 +551,23 @@ def resize_and_pad(
     return background
 
 
+def _placeholder_screenshot() -> io.BytesIO:
+    """Return a simple PNG stating that no screenshot is available."""
+
+    text = "No screenshot available"
+    img = Image.new("RGB", (320, 240), "black")
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.load_default()
+    bbox = draw.textbbox((0, 0), text, font=font)
+    w = bbox[2] - bbox[0]
+    h = bbox[3] - bbox[1]
+    draw.text(((320 - w) / 2, (240 - h) / 2), text, fill="white", font=font)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return buf
+
+
 lock = Lock()
 
 
@@ -1317,9 +1334,13 @@ def init_routes(app: Flask) -> None:
         """
         Endpoint to receive and process an image submitted by a remote service or camera.
         """
+        raw_name = template_name
         template_name = validate_template_name(template_name)
         if template_name is None:
-            abort(404)
+            logging.warning("Unable to serve screenshot for %s", raw_name)
+            resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+            resp.status_code = 404
+            return resp
 
         # Check if the template exists and get the canonical name stored
         # in the database. ``get_template`` returns an attribute dictionary
@@ -1988,9 +2009,13 @@ def init_routes(app: Flask) -> None:
         """
         Serve the latest frame for a specific camera.
         """
+        raw_name = template_name
         template_name = validate_template_name(template_name)
         if template_name is None:
-            abort(404)
+            logging.warning("Unable to serve screenshot for %s", raw_name)
+            resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+            resp.status_code = 404
+            return resp
 
         path = os.path.join(
             os.path.dirname(os.path.join(__file__)),
@@ -2065,9 +2090,13 @@ def init_routes(app: Flask) -> None:
         Serve a specific screenshot by template name.
         """
 
+        raw_name = template_name
         template_name = validate_template_name(template_name)
         if template_name is None:
-            abort(404)
+            logging.warning("Unable to serve screenshot for %s", raw_name)
+            resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+            resp.status_code = 404
+            return resp
 
         for group_camera in re.findall(r"^group-(.+?)$", template_name):
             path = os.path.join(
@@ -2078,7 +2107,10 @@ def init_routes(app: Flask) -> None:
             )
             if os.path.exists(path):
                 return send_file(path)
-            abort(404)
+            logging.warning("Unable to serve screenshot for %s", template_name)
+            resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+            resp.status_code = 404
+            return resp
 
         # Placeholder logic to serve the screenshot
         path = os.path.join(
@@ -2088,7 +2120,10 @@ def init_routes(app: Flask) -> None:
             template_name,
         )
         if not os.path.exists(path):
-            abort(404)
+            logging.warning("Unable to serve screenshot for %s", template_name)
+            resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+            resp.status_code = 404
+            return resp
 
         lfiles = [f for f in glob.glob(path + "/*.png") if os.path.isfile(f)]
         lfiles.sort(key=os.path.getmtime, reverse=True)
@@ -2099,7 +2134,10 @@ def init_routes(app: Flask) -> None:
             except OSError:
                 continue
 
-        abort(404)
+        logging.warning("Unable to serve screenshot for %s", template_name)
+        resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+        resp.status_code = 404
+        return resp
 
     @app.route("/compile_teaser", methods=["POST"])
     @login_required

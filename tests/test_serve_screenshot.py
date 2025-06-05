@@ -1,3 +1,4 @@
+import io
 import os
 import sys
 import shutil
@@ -30,17 +31,30 @@ class TestServeScreenshot(unittest.TestCase):
         self.sc_patch.stop()
         shutil.rmtree(os.path.join(self.repo_root, self.sshot_dir), ignore_errors=True)
 
-    def test_empty_screenshot_returns_404(self):
+    @patch("app.routes.logging.warning")
+    def test_empty_screenshot_returns_placeholder(self, mock_warn):
         path = os.path.join(self.full_base, "cam1_20200101.png")
         open(path, "wb").close()
         resp = self.client.get("/last_screenshot/cam1")
         self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.mimetype, "image/png")
+        Image.open(io.BytesIO(resp.data))
+        mock_warn.assert_called_once()
 
     def test_valid_screenshot_served(self):
         path = os.path.join(self.full_base, "cam1_20200102.png")
         Image.new("RGB", (1, 1)).save(path)
         resp = self.client.get("/last_screenshot/cam1")
         self.assertEqual(resp.status_code, 200)
+
+    @patch("app.routes.logging.warning")
+    def test_missing_directory_returns_placeholder(self, mock_warn):
+        shutil.rmtree(self.full_base)
+        resp = self.client.get("/last_screenshot/cam1")
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.mimetype, "image/png")
+        Image.open(io.BytesIO(resp.data))
+        mock_warn.assert_called_once()
 
 
 if __name__ == "__main__":
