@@ -1069,7 +1069,40 @@ def init_routes(app: Flask) -> None:
     @app.route("/captions_status")
     @login_required
     def captions_status():
-        """Return the newest global summary and its timestamp."""
+        """Return the most recent caption and timestamp.
+
+        If a ``group`` query parameter is provided, the newest caption from
+        templates in that group is returned. Otherwise the latest global summary
+        is used.
+        """
+
+        group = request.args.get("group")
+        if group and group != "all":
+            templates = template_manager.get_templates()
+            latest_time = None
+            caption = ""
+            for name, tmpl in templates.items():
+                groups = [g.strip() for g in tmpl.get("groups", "").split(",")]
+                if group not in groups:
+                    continue
+                t = tmpl.get("last_caption_time")
+                if not t:
+                    continue
+                try:
+                    dt = datetime.strptime(t, "%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    continue
+                if not latest_time or dt > latest_time:
+                    latest_time = dt
+                    caption = tmpl.get("last_caption", "")
+            if latest_time:
+                return jsonify(
+                    {
+                        "caption": caption,
+                        "timestamp": latest_time.strftime("%Y-%m-%d %H:%M:%S"),
+                    }
+                )
+
         caption = ""
         timestamp = ""
         session_db = SessionLocal()
