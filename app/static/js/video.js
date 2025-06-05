@@ -38,12 +38,8 @@ export function initVideoControls() {
           if (playAllObserver) playAllObserver.disconnect();
           videos.forEach((video) => {
             const name = video.getAttribute("data-name");
-            const src = video.querySelector("source");
-            src.src = `/last_video/${name}`;
-            video.poster = `/last_screenshot/${name}`;
-            video.load();
             video.pause();
-            video.currentTime = 0;
+            video.src = "";
             video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
             video.load();
           });
@@ -53,10 +49,14 @@ export function initVideoControls() {
             threshold: 0.25,
           });
           videos.forEach((video) => {
+            const name = video.getAttribute("data-name");
+            const src = video.querySelector("source");
+            src.src = `/last_video/${name}`;
+            video.poster = `/last_screenshot/${name}`;
             playAllObserver.observe(video);
             safePlay(video);
           });
-          playAllButton.textContent = "Stop";
+          playAllButton.textContent = "Pause All";
         }
         playAllActive = !playAllActive;
       });
