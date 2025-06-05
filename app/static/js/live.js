@@ -448,7 +448,7 @@ function playM3U8() {
   // HLS streams are live and not seekable
   const seekBar = document.getElementById("seek-bar");
   if (seekBar) {
-    seekBar.style.visibility = "hidden";
+    seekBar.style.display = "none";
     seekBar.style.pointerEvents = "none";
     seekBar.disabled = true;
   }
@@ -661,7 +661,7 @@ function playLive() {
   // Live video cannot be scrubbed
   const seekBar = document.getElementById("seek-bar");
   if (seekBar) {
-    seekBar.style.visibility = "hidden";
+    seekBar.style.display = "none";
     seekBar.style.pointerEvents = "none";
     seekBar.disabled = true;
   }
@@ -721,8 +721,12 @@ function playPNG() {
   stopLiveSwitch();
   const slider = document.getElementById("speed-slider");
   const speed = Math.pow(2, slider.value);
-  document.getElementById("seek-bar").style.display = "none";
   const seekBar = document.getElementById("seek-bar");
+  if (seekBar) {
+    seekBar.style.display = "none";
+    seekBar.style.pointerEvents = "none";
+    seekBar.disabled = true;
+  }
   // Structured log for easier scraping by Grafana Loki
   console.info(
     JSON.stringify({
@@ -784,7 +788,7 @@ function playMJPG() {
   // MJPEG streams are continuous images, disable scrubbing
   const seekBar = document.getElementById("seek-bar");
   if (seekBar) {
-    seekBar.style.visibility = "hidden";
+    seekBar.style.display = "none";
     seekBar.style.pointerEvents = "none";
     seekBar.disabled = true;
   }
@@ -816,7 +820,7 @@ function playMotion() {
   image.style.display = "block";
   const seekBar = document.getElementById("seek-bar");
   if (seekBar) {
-    seekBar.style.visibility = "hidden";
+    seekBar.style.display = "none";
     seekBar.style.pointerEvents = "none";
     seekBar.disabled = true;
   }
@@ -974,7 +978,7 @@ function updateSeekBar() {
     currentCamera === "All" || currentCamera.startsWith("group-")
   );
   const show = isSingleCamera && (source === "mp4" || source === "loop");
-  seekBar.style.visibility = show ? "visible" : "hidden";
+  seekBar.style.display = show ? "block" : "none";
   seekBar.style.pointerEvents = show ? "auto" : "none";
   seekBar.disabled = !show;
   if (show) {
