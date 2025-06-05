@@ -62,7 +62,7 @@ npm test -- --coverage
 Jest runs in ESM mode because `package.json` declares `"type": "module"`.
 Dynamic imports work without additional configuration.
 
-New tests cover the offline service‑worker toggle and template helpers.
+New tests cover automatic Service Worker registration and template helpers.
 
 ## Playwright End‑to‑End Tests
 
