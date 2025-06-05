@@ -46,7 +46,14 @@
                     <tr>
                         <td title="{{ tooltips.get(setting.name, '') }}">{{ setting.name }}</td>
                         <td>
+                            {% if setting.value in ['True', 'False'] %}
+                            <label class="switch">
+                                <input type="checkbox" name="{{ setting.name }}" value="True" {% if setting.value == 'True' %}checked{% endif %} data-boolean>
+                                <span class="slider round"></span>
+                            </label>
+                            {% else %}
                             <input type="text" name="{{ setting.name }}" value="{{ setting.value }}" title="Edit value for {{ setting.name }}">
+                            {% endif %}
                         </td>
                         <td class="setting-explanation">{{ tooltips.get(setting.name, '') }}</td>
                         <td>

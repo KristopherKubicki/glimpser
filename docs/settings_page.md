@@ -13,7 +13,8 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Column Search** – click a header to filter rows by that column.
 
 Each row now includes an **Explanation** column so you can read a short
-description without opening the reference table.
+description without opening the reference table. Boolean values are
+displayed as toggle switches to avoid typing errors.
 
 ### Dynamic Feedback
 
