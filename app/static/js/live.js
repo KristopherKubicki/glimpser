@@ -609,7 +609,9 @@ function showLastScreenshot() {
   const pre = new Image();
   pre.onload = () => {
     image.src = pre.src;
+    hideLoadingIndicator();
   };
+  pre.onerror = hideLoadingIndicator;
   pre.src = url;
   image.style.display = "block";
   updateFrameTimestamp();
