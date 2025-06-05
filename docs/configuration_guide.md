@@ -77,7 +77,11 @@ user table in sync.
 
 You can change these paths via the settings table or by editing `app/config.py` if you maintain a custom build.
 
-## Email Settings
+## Notification Settings
+
+Email, SMS, and CAP alerts now appear under the **Notifications** tab.
+
+### Email
 
 To enable email notifications, configure the following:
 
@@ -89,7 +93,7 @@ To enable email notifications, configure the following:
 - `EMAIL_USE_TLS` – whether to use TLS (default `True`)
 - `EMAIL_USERNAME` and `EMAIL_PASSWORD` – authentication credentials (default user name `your-username`)
 
-## SMS Settings
+### SMS
 
 Configure these values to enable Twilio SMS alerts:
 
@@ -97,7 +101,7 @@ Configure these values to enable Twilio SMS alerts:
 - `TWILIO_TOKEN` – your Twilio auth token
 - `TWILIO_NUMBER` – phone number that receives alerts
 
-## CAP Settings
+### CAP
 
 Set these variables to enable Common Alerting Protocol alerts:
 
