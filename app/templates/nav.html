@@ -52,12 +52,17 @@
         </div>
       </div>
     </a>
-    <a href="/settings" class="settings-icon" title="Update settings" aria-label="Update settings">
-      <svg width="20" height="20">
-        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#gear" />
-      </svg>
-    </a>
-    {% else %}
+      <a href="/settings" class="settings-icon" title="Update settings" aria-label="Update settings">
+        <svg width="20" height="20">
+          <use href="{{ url_for('static', filename='icons/sprite.svg') }}#gear" />
+        </svg>
+      </a>
+      <a href="{{ url_for('logout') }}" class="settings-icon" title="Logout" aria-label="Logout">
+        <svg width="20" height="20">
+          <use href="{{ url_for('static', filename='icons/sprite.svg') }}#logout" />
+        </svg>
+      </a>
+      {% else %}
     <a href="{{ url_for('login') }}" class="settings-icon" title="Login" aria-label="Login">
       <svg width="20" height="20">
         <use href="{{ url_for('static', filename='icons/sprite.svg') }}#login" />

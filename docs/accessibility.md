@@ -20,3 +20,4 @@ The user interface now includes additional tooltips and descriptive alt text to 
 - The delete button text color now meets color contrast guidelines.
 - The live player styles moved to `player.css` and the index page uses
   `<section>` elements for clearer structure.
+- The Logout option now appears in the navigation bar instead of the Settings page for consistent placement.
