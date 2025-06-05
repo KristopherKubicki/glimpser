@@ -20,7 +20,7 @@ export function initNav() {
       const res = await fetch(url);
       const type = res.headers.get("content-type") || "";
       if (!res.ok || !type.includes("application/json")) {
-        throw new Error(`Unexpected response from ${url}`);
+        return null;
       }
       return res.json();
     };
@@ -29,6 +29,7 @@ export function initNav() {
       if (!healthStatus) return;
       try {
         const data = await fetchJson("/health");
+        if (!data) return;
         if (data.status === "healthy") {
           healthStatus.style.color = "green";
           healthStatus.title = "System Status: Healthy\n\n";
@@ -57,6 +58,7 @@ export function initNav() {
       if (!dangerStatus) return;
       try {
         const data = await fetchJson("/danger_status");
+        if (!data) return;
         if (data.ready) {
           dangerStatus.style.color = "orange";
           dangerStatus.title = "Danger Mode Ready";
@@ -130,6 +132,7 @@ export function initNav() {
       if (!captionsIcon) return;
       try {
         const data = await fetchJson("/captions_status");
+        if (!data) return;
         captionsIcon.title = data.caption || "";
         if (data.timestamp) {
           const ts = new Date(data.timestamp.replace(" ", "T") + "Z");

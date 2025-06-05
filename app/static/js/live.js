@@ -109,6 +109,8 @@ function resetVideo() {
     loopHandler = null;
   }
   video.removeEventListener("ended", handleVideoEnded);
+  video.pause();
+  video.removeAttribute("src");
 }
 
 function showLoadingIndicator() {
