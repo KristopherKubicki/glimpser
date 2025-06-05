@@ -46,3 +46,5 @@ Interactive forms now include additional tooltips:
 ## Dynamic Tooltips
 
 A small JavaScript helper now displays a custom tooltip when hovering or focusing on any element with a `title` attribute. These tooltips track the mouse cursor and update automatically when the `title` text changes, giving live feedback across the interface.
+
+To avoid the browser's default tooltip from also appearing, the script now temporarily removes the `title` attribute while showing the custom tooltip and restores it on mouseout.
