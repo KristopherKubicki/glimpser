@@ -23,6 +23,25 @@ SETTINGS_TOOLTIPS = {
     "TWILIO_SID": "Twilio account SID",
     "TWILIO_TOKEN": "Twilio authentication token",
     "TWILIO_NUMBER": "Sending phone number",
+    "CLOCK_OVERLAY": "Show clock on video overlay",
+    "CLOCK_DIGITAL": "Display clock as digital text",
+    "CLOCK_NAVBAR": "Show clock in the navigation bar",
+}
+
+# Predefined choices for select fields on the settings page. The "Other"
+# option reveals a text input allowing custom values.
+SETTINGS_CHOICES = {
+    "HOST": ["0.0.0.0", "127.0.0.1", "localhost"],
+    "LANG": ["en-US", "es-ES", "fr-FR", "de-DE"],
+    "LOG_LEVEL": ["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
+    "FLASK_LOG_LEVEL": ["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
+    "TZ": [
+        "UTC",
+        "America/New_York",
+        "America/Chicago",
+        "Europe/Berlin",
+        "Asia/Tokyo",
+    ],
 }
 
 # Settings categories used to group configuration values on the settings page.
@@ -97,4 +116,5 @@ SETTINGS_GROUPS = {
     "SMS": ["TWILIO_SID", "TWILIO_TOKEN", "TWILIO_NUMBER"],
     "CAP": ["CAP_ENDPOINT", "CAP_SENDER"],
     "MCP": ["MCP_SERVER_COMMAND", "MCP_SERVER_URL"],
+    "Clock": ["CLOCK_OVERLAY", "CLOCK_DIGITAL", "CLOCK_NAVBAR"],
 }

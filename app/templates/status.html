@@ -1,5 +1,154 @@
+
+
 {% extends 'base.html' %}
 {% from 'components.html' import card %}
 {% block content %}
 {% include '_status_tab.html' %}
 {% endblock %}
+
+                                             
+{% extends 'base.html' %} {% from 'components.html' import card %} {% block
+content %}
+
+<div class="scheduler-controls">
+  <button
+    id="toggle-scheduler"
+    class="btn btn-primary"
+    title="Start or stop the scheduler"
+  >
+    Loading...
+  </button>
+  <span id="scheduler-status" title="Current scheduler status"
+    >Checking status...</span
+  >
+</div>
+
+<h1>System Status</h1>
+
+{% call card('System Metrics') %}
+<ul class="metrics-list">
+  <li title="Current CPU utilization">
+    CPU Usage:
+    <progress
+      class="metric-bar"
+      value="{{ metrics.cpu_usage }}"
+      max="100"
+    ></progress>
+    {{ metrics.cpu_usage }}%
+  </li>
+  <li title="Current memory utilization">
+    Memory Usage:
+    <progress
+      class="metric-bar"
+      value="{{ metrics.memory_usage }}"
+      max="100"
+    ></progress>
+    {{ metrics.memory_usage }}%
+  </li>
+  <li title="Disk space used">
+    Disk Usage:
+    <progress
+      class="metric-bar"
+      value="{{ metrics.disk_usage }}"
+      max="100"
+    ></progress>
+    {{ metrics.disk_usage }}%
+  </li>
+  <li title="Open file handles">Open Files: {{ metrics.open_files }}</li>
+  <li title="Number of active threads">
+    Thread Count: {{ metrics.thread_count }}
+  </li>
+  <li title="System uptime">Uptime: {{ metrics.uptime }}</li>
+  <li title="Installed ffmpeg version">
+    FFmpeg Version: {{ metrics.ffmpeg_version }}
+  </li>
+  <li title="Hardware acceleration devices present">
+    Machine HW Accel: {{ metrics.machine_hwaccel }}
+  </li>
+  <li title="ffmpeg has hardware acceleration support">
+    FFmpeg HW Accel: {{ metrics.ffmpeg_hwaccel }}
+  </li>
+  <li title="Hardware acceleration enabled via config">
+    HW Accel Enabled: {{ metrics.hwaccel_enabled }}
+  </li>
+</ul>
+{% endcall %} {% call card('Feed Status') %}
+<table id="feed-status" class="feed-status">
+  <thead>
+    <tr>
+      <th class="sortable" data-type="string">Feed</th>
+      <th class="sortable" data-type="date">Last Image</th>
+      <th class="sortable" data-type="date">Last Caption</th>
+      <th class="sortable" data-type="number">Shots</th>
+      <th class="sortable" data-type="number">Videos</th>
+      <th class="sortable" data-type="number">Storage</th>
+      <th class="sortable" data-type="number">LLM Resp</th>
+      <th class="sortable" data-type="number">LLM Cost</th>
+      <th class="sortable" data-type="string">Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for feed in feeds %}
+    <tr class="{{ feed.status }}">
+      <td data-label="Feed" data-value="{{ feed.name }}">
+        <a href="{{ url_for('template_details', template_name=feed.name) }}"
+          >{{ feed.name }}</a
+        >
+      </td>
+      <td
+        data-label="Last Image"
+        data-value="{{ feed.last_screenshot_time or '' }}"
+      >
+        {% if feed.last_screenshot_display %}
+        <span
+          class="humanized-time"
+          data-time="{{ feed.last_screenshot_time }}"
+          title="{{ feed.last_screenshot_time }}"
+        >
+          {{ feed.last_screenshot_display }}
+        </span>
+        {% else %} N/A {% endif %}
+      </td>
+      <td
+        data-label="Last Caption"
+        data-value="{{ feed.last_caption_time or '' }}"
+      >
+        {% if feed.last_caption_display %}
+        <span
+          class="humanized-time"
+          data-time="{{ feed.last_caption_time }}"
+          title="{{ feed.last_caption_time }}"
+        >
+          {{ feed.last_caption_display }}
+        </span>
+        {% else %} N/A {% endif %}
+      </td>
+      <td data-label="Shots" data-value="{{ feed.screenshot_count }}">
+        {{ feed.screenshot_count }}
+      </td>
+      <td data-label="Videos" data-value="{{ feed.video_count }}">
+        {{ feed.video_count }}
+      </td>
+      <td data-label="Storage" data-value="{{ feed.storage_usage_bytes }}">
+        {{ feed.storage_usage }}
+      </td>
+      <td data-label="LLM Resp" data-value="{{ feed.llm_response_count }}">
+        {{ feed.llm_response_count }}
+      </td>
+      <td data-label="LLM Cost" data-value="{{ feed.llm_cost_estimate }}">
+        {{ feed.llm_cost_estimate }}
+      </td>
+      <td data-label="Status" data-value="{{ feed.status }}">
+        <span
+          class="status-dot {{ feed.status }}"
+          title="{{ feed.tooltip }}"
+        ></span>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p>Last summary generated: {{ last_summary or 'N/A' }}</p>
+{% endcall %} {% include 'logs.html' %} {% endblock %}
+

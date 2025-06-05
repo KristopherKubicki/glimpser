@@ -19,3 +19,7 @@ displayed as toggle switches to avoid typing errors.
 ### Dynamic Feedback
 
 Focusing any input field shows a tooltip on screen with a description pulled from the database. When adding a new setting, errors display inline so issues can be fixed before submitting the form.
+
+### Selectable Options
+
+Common settings like `HOST`, `LANG`, `LOG_LEVEL`, and `TZ` now use dropdowns with popular values. Choosing **Other** reveals a text field so you can enter a custom option. The `PORT` field enforces non‑privileged ports (1024–65535) to avoid permission errors.
