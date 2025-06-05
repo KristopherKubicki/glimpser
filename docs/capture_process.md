@@ -81,7 +81,7 @@ After capturing the content, Glimpser applies several post-processing steps:
 
    is wrapped and rendered with the same improved font styling to avoid
    overlapping the content.
-5. **Micro QR Overlay**: A tiny QR-style code containing the camera name is placed in the lower-right corner so screenshots can be tracked within the system.
+5. **Micro Barcode Overlay**: A small 1D barcode containing the camera name is placed in the lower-right corner so screenshots can be tracked within the system.
 6. **Image Optimization**: Ensure the captured image is in the correct format and optimized for storage.
 7. **PNG Validation**: Verify the temporary screenshot file before renaming it to avoid leaving corrupt images.
 

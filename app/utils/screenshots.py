@@ -700,11 +700,11 @@ def add_timestamp(image_path, name="unknown", invert=False):
             image.save(image_path, "PNG")
 
         try:
-            from .qrcode_overlay import add_micro_qr
+            from .qrcode_overlay import add_micro_barcode
 
-            add_micro_qr(image_path, name)
+            add_micro_barcode(image_path, name)
         except Exception as e:  # pragma: no cover - overlay failures are non-critical
-            logging.debug(f"Micro QR overlay failed: {e}")
+            logging.debug(f"Micro barcode overlay failed: {e}")
 
 
 def download_image(
