@@ -204,6 +204,12 @@ Remote sources such as **GOES16**, **ZoomEarth**, and **Dopler** can be added
 manually, but they are not discovered automatically because they are hosted
 outside the local network.
 
+When creating a new template you can now supply just the camera's base
+address (for example `http://192.168.1.10`). If the device speaks ONVIF,
+Glimpser queries it for the recommended snapshot and stream URIs and
+updates the template URL automatically. This makes initial setup similar to
+tools like Blue Iris.
+
 ## Future improvements
 
 Discovering cameras on remote networks remains on the roadmap. Authentication for protected feeds has been enhanced – you can now store a username and password with each template, and the capture routines will automatically supply these credentials.
