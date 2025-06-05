@@ -208,8 +208,7 @@ export function initNav() {
       minuteHand.style.transform = `rotate(${minutesDegrees}deg)`;
       hourHand.style.transform = `rotate(${hoursDegrees}deg)`;
 
-      digitalTime.title =
-        `${now.toLocaleTimeString()}\n${Intl.DateTimeFormat().resolvedOptions().timeZone}\n${now.toDateString()}`;
+      digitalTime.title = `${now.toLocaleTimeString()}\n${Intl.DateTimeFormat().resolvedOptions().timeZone}\n${now.toDateString()}`;
     };
 
     const setupNavFade = () => {
