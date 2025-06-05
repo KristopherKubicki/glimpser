@@ -11,7 +11,7 @@ import { initIndexTime } from "./time.js";
 import { initWelcome } from "./welcome.js";
 import { initTooltips } from "./tooltips.js";
 import { initCaptions } from "./captions.js";
-import { initSettingsSearch } from "./settings.js";
+import { initSettingsSearch, initEnumFields } from "./settings.js";
 import { initTabs } from "./tabs.js";
 import { initThemeToggle } from "./theme.js";
 
@@ -30,5 +30,6 @@ initWelcome();
 initTooltips();
 initCaptions();
 initSettingsSearch();
+initEnumFields();
 initTabs();
 initThemeToggle();

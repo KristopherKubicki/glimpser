@@ -1,114 +1,283 @@
-{% extends 'base.html' %}
-{% from 'components.html' import card %}
-{% block content %}
+{% extends 'base.html' %} {% from 'components.html' import card %} {% block
+content %}
 <main class="container settings-page">
+  {# Help content now appears directly in the table, so the collapsible menu was
+  removed #}
 
-    {# Help content now appears directly in the table, so the collapsible menu was removed #}
+  <div id="settings-search" class="hidden">
+    <label for="search-input" title="Filter the selected column">Search:</label>
+    <input type="text" id="search-input" title="Type to filter settings" />
+  </div>
 
-    <div id="settings-search" class="hidden">
-        <label for="search-input" title="Filter the selected column">Search:</label>
-        <input type="text" id="search-input" title="Type to filter settings">
-    </div>
+  <div class="tabs">
+    {% for group in grouped_settings.keys() %}
+    <button
+      type="button"
+      class="tab-link{% if loop.first %} active{% endif %}"
+      data-tab="{{ group|replace(' ', '-') }}-tab"
+    >
+      {{ group }}
+    </button>
+    {% if loop.first %}
+    <button type="button" class="tab-link" data-tab="discover-tab">
+      Discover
+    </button>
+    {% endif %} {% endfor %}
+    <button type="button" class="tab-link" data-tab="management-tab">
+      Management
+    </button>
+    <a
+      href="{{ url_for('logout') }}"
+      class="tab-link logout-link"
+      title="Log out of the interface"
+      >Logout</a
+    >
+    <a
+      id="theme-toggle"
+      href="#"
+      class="tab-link"
+      title="Toggle light or dark theme"
+      aria-label="Toggle theme"
+    >
+      <svg width="18" height="18">
+        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#sun" />
+      </svg>
+    </a>
+  </div>
 
-    <div class="tabs">
-        {% for group in grouped_settings.keys() %}
-        <button type="button" class="tab-link{% if loop.first %} active{% endif %}" data-tab="{{ group|replace(' ', '-') }}-tab">{{ group }}</button>
-        {% if loop.first %}
-        <button type="button" class="tab-link" data-tab="discover-tab">Discover</button>
-        {% endif %}
-        {% endfor %}
-        <button type="button" class="tab-link" data-tab="management-tab">Management</button>
-        <a href="{{ url_for('logout') }}" class="tab-link logout-link" title="Log out of the interface">Logout</a>
-        <a id="theme-toggle" href="#" class="tab-link" title="Toggle light or dark theme" aria-label="Toggle theme">
-            <svg width="18" height="18">
-                <use href="{{ url_for('static', filename='icons/sprite.svg') }}#sun" />
-            </svg>
-        </a>
-    </div>
-
-    <div id="add-setting-container" class="hidden">
-        <form id="add-setting-form" method="POST" action="{{ url_for('settings') }}">
-            <label for="new_name" title="Name of the new setting">Name:</label>
-            <input type="text" id="new_name" name="new_name" required title="Enter setting name">
-            <label for="new_value" title="Initial value for the setting">Value:</label>
-            <input type="text" id="new_value" name="new_value" required title="Enter setting value">
-            <div id="setting-error" class="form-error hidden"></div>
-            <button type="submit" name="action" value="add" title="Add setting">Add Setting</button>
-        </form>
-    </div>
-
-    <form method="POST" action="{{ url_for('settings') }}" id="settings-form">
-        {% for group, items in grouped_settings.items() %}
-        <div id="{{ group|replace(' ', '-') }}-tab" class="tab-content{% if loop.first %} active{% endif %}">
-            <h3>{{ group }} Settings</h3>
-            <table class="settings-table">
-                <thead>
-                    <tr>
-                        <th class="searchable">Setting</th>
-                        <th class="searchable">Value</th>
-                        <th class="searchable">Explanation</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for setting in items %}
-                    <tr>
-                        <td title="{{ tooltips.get(setting.name, '') }}">{{ setting.name }}</td>
-                        <td>
-                            {% if setting.value in ['True', 'False'] %}
-                            <label class="switch">
-                                <input type="checkbox" name="{{ setting.name }}" value="True" {% if setting.value == 'True' %}checked{% endif %} data-boolean>
-                                <span class="slider round"></span>
-                            </label>
-                            {% else %}
-                            <input type="text" name="{{ setting.name }}" value="{{ setting.value }}" title="Edit value for {{ setting.name }}">
-                            {% endif %}
-                        </td>
-                        <td class="setting-explanation">{{ tooltips.get(setting.name, '') }}</td>
-                        <td>
-                            <button type="submit" name="action" value="delete" title="Delete {{ setting.name }}" onclick="return confirmDeleteSetting('{{ setting.name }}')">Delete</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% if loop.first %}
-        <div id="discover-tab" class="tab-content">
-            {% include '_discover_tab.html' %}
-        </div>
-        {% endif %}
-        {% endfor %}
-
-        <div id="management-tab" class="tab-content">
-            <h3>Configuration Management</h3>
-            <button type="submit" name="action" value="backup" title="Create a JSON backup of all settings">Backup Configuration</button>
-            <button type="submit" name="action" value="download" title="Download the latest configuration backup">Download Configuration</button>
-            <input type="file" name="file" accept=".json" title="Select configuration file to upload">
-            <button type="submit" name="action" value="upload" title="Restore configuration from uploaded file" onclick="return confirmRestore()">Upload Configuration</button>
-
-            <h3>Danger Mode</h3>
-            <button type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode">Update Chrome Shortcut</button>
-
-        </div>
-
-        <input type="hidden" id="name_to_delete" name="name_to_delete" value="" title="Name of setting to delete">
-        <button type="submit" title="Save all changes">Save Changes</button>
+  <div id="add-setting-container" class="hidden">
+    <form
+      id="add-setting-form"
+      method="POST"
+      action="{{ url_for('settings') }}"
+    >
+      <label for="new_name" title="Name of the new setting">Name:</label>
+      <input
+        type="text"
+        id="new_name"
+        name="new_name"
+        required
+        title="Enter setting name"
+      />
+      <label for="new_value" title="Initial value for the setting"
+        >Value:</label
+      >
+      <input
+        type="text"
+        id="new_value"
+        name="new_value"
+        required
+        title="Enter setting value"
+      />
+      <div id="setting-error" class="form-error hidden"></div>
+      <button type="submit" name="action" value="add" title="Add setting">
+        Add Setting
+      </button>
     </form>
-</main>
-<script type="module" src="{{ url_for('static', filename='js/performance.js') }}"></script>
-<script type="module" src="{{ url_for('static', filename='js/tabs.js') }}"></script>
-<script>
-    function confirmDeleteSetting(name) {
-        if (confirm('Are you sure you want to delete ' + name + '?')) {
-            document.getElementById('name_to_delete').value = name;
-            return true;
-        }
-        return false;
-    }
+  </div>
 
-    function confirmRestore() {
-        return confirm('Restore configuration from the selected file? This will overwrite existing settings.');
+  <form method="POST" action="{{ url_for('settings') }}" id="settings-form">
+    {% for group, items in grouped_settings.items() %}
+    <div
+      id="{{ group|replace(' ', '-') }}-tab"
+      class="tab-content{% if loop.first %} active{% endif %}"
+    >
+      <h3>{{ group }} Settings</h3>
+      <table class="settings-table">
+        <thead>
+          <tr>
+            <th class="searchable">Setting</th>
+            <th class="searchable">Value</th>
+            <th class="searchable">Explanation</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for setting in items %}
+          <tr>
+            <td title="{{ tooltips.get(setting.name, '') }}">
+              {{ setting.name }}
+            </td>
+            <td>
+              {% if setting.value in ['True', 'False'] %}
+              <label class="switch">
+                <input
+                  type="checkbox"
+                  name="{{ setting.name }}"
+                  value="True"
+                  {%
+                  if
+                  setting.value=""
+                  ="True"
+                  %}checked{%
+                  endif
+                  %}
+                  data-boolean
+                />
+                <span class="slider round"></span>
+              </label>
+              {% elif setting.name in choices %}
+              <select
+                name="{{ setting.name }}"
+                data-other-target="{{ setting.name }}-other"
+                title="Select value for {{ setting.name }}"
+              >
+                {% for option in choices[setting.name] %}
+                <option
+                  value="{{ option }}"
+                  {%
+                  if
+                  setting.value=""
+                  ="option"
+                  %}selected{%
+                  endif
+                  %}
+                >
+                  {{ option }}
+                </option>
+                {% endfor %}
+                <option
+                  value="__other__"
+                  {%
+                  if
+                  setting.value
+                  not
+                  in
+                  choices[setting.name]
+                  %}selected{%
+                  endif
+                  %}
+                >
+                  Other
+                </option>
+              </select>
+              <input
+                type="text"
+                id="{{ setting.name }}-other"
+                name="{{ setting.name }}_other"
+                value="{% if setting.value not in choices[setting.name] %}{{ setting.value }}{% endif %}"
+                class="{% if setting.value in choices[setting.name] %}hidden{% endif %}"
+                placeholder="Custom value"
+              />
+              {% elif setting.name == 'PORT' %}
+              <input
+                type="number"
+                name="PORT"
+                min="1024"
+                max="65535"
+                value="{{ setting.value }}"
+                title="Edit port"
+              />
+              {% else %}
+              <input
+                type="text"
+                name="{{ setting.name }}"
+                value="{{ setting.value }}"
+                title="Edit value for {{ setting.name }}"
+              />
+              {% endif %}
+            </td>
+            <td class="setting-explanation">
+              {{ tooltips.get(setting.name, '') }}
+            </td>
+            <td>
+              <button
+                type="submit"
+                name="action"
+                value="delete"
+                title="Delete {{ setting.name }}"
+                onclick="return confirmDeleteSetting('{{ setting.name }}')"
+              >
+                Delete
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if loop.first %}
+    <div id="discover-tab" class="tab-content">
+      {% include '_discover_tab.html' %}
+    </div>
+    {% endif %} {% endfor %}
+
+    <div id="management-tab" class="tab-content">
+      <h3>Configuration Management</h3>
+      <button
+        type="submit"
+        name="action"
+        value="backup"
+        title="Create a JSON backup of all settings"
+      >
+        Backup Configuration
+      </button>
+      <button
+        type="submit"
+        name="action"
+        value="download"
+        title="Download the latest configuration backup"
+      >
+        Download Configuration
+      </button>
+      <input
+        type="file"
+        name="file"
+        accept=".json"
+        title="Select configuration file to upload"
+      />
+      <button
+        type="submit"
+        name="action"
+        value="upload"
+        title="Restore configuration from uploaded file"
+        onclick="return confirmRestore()"
+      >
+        Upload Configuration
+      </button>
+
+      <h3>Danger Mode</h3>
+      <button
+        type="submit"
+        name="action"
+        value="update_shortcut"
+        title="Update Chrome shortcuts for Danger mode"
+      >
+        Update Chrome Shortcut
+      </button>
+    </div>
+
+    <input
+      type="hidden"
+      id="name_to_delete"
+      name="name_to_delete"
+      value=""
+      title="Name of setting to delete"
+    />
+    <button type="submit" title="Save all changes">Save Changes</button>
+  </form>
+</main>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/performance.js') }}"
+></script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/tabs.js') }}"
+></script>
+<script>
+  function confirmDeleteSetting(name) {
+    if (confirm("Are you sure you want to delete " + name + "?")) {
+      document.getElementById("name_to_delete").value = name;
+      return true;
     }
+    return false;
+  }
+
+  function confirmRestore() {
+    return confirm(
+      "Restore configuration from the selected file? This will overwrite existing settings.",
+    );
+  }
 </script>
 {% endblock %}
