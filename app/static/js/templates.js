@@ -1,5 +1,19 @@
 export const NO_TIMESTAMP_PLACEHOLDER = "no timestamp";
 
+let captionsVisible = localStorage.getItem("showCaptions") !== "false";
+
+export function applyCaptionVisibility(width) {
+  const templateList = document.getElementById("template-list");
+  const captionToggle = document.getElementById("toggle-captions");
+  const show = captionsVisible && (!width || width >= 150);
+  document.documentElement.classList.toggle("hide-captions", !show);
+  templateList
+    ?.querySelectorAll(".caption-overlay")
+    .forEach((o) => (o.style.display = show ? "block" : "none"));
+  if (captionToggle)
+    captionToggle.textContent = show ? "Hide Captions" : "Show Captions";
+}
+
 export function initTemplates() {
   document.addEventListener("DOMContentLoaded", () => {
     const form = document.querySelector("#template-form form");
@@ -11,17 +25,6 @@ export function initTemplates() {
     const slider = document.getElementById("grid-width-slider");
     const templateList = document.getElementById("template-list");
     const captionToggle = document.getElementById("toggle-captions");
-    let captionsVisible = localStorage.getItem("showCaptions") !== "false";
-
-    const applyCaptionVisibility = (width) => {
-      const show = captionsVisible && (!width || width >= 150);
-      document.documentElement.classList.toggle("hide-captions", !show);
-      templateList
-        ?.querySelectorAll(".caption-overlay")
-        .forEach((o) => (o.style.display = show ? "block" : "none"));
-      if (captionToggle)
-        captionToggle.textContent = show ? "Hide Captions" : "Show Captions";
-    };
     const MAX_THUMBNAIL_HEIGHT = 1080;
     const ASPECT_RATIO = 9 / 16;
     const MAX_THUMBNAIL_WIDTH = Math.round(MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO);

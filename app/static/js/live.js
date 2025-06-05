@@ -53,6 +53,7 @@ const loadingIndicator = document.getElementById("loading-indicator");
 const playPauseIndicator = document.getElementById("play-pause-indicator");
 const errorMessage = document.getElementById("error-message");
 const playButton = document.getElementById("play-pause");
+const toggleDetailsButton = document.getElementById("toggle-details");
 const offlineIndicator = document.getElementById("offline-indicator");
 const offlineMessage = document.getElementById("offline-message");
 const errorIndicator = document.getElementById("capture-error-indicator");

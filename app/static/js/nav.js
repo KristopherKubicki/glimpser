@@ -340,8 +340,7 @@ export function initNav() {
       checkDiscovery();
       setInterval(checkDiscovery, 60000);
     }
-    updateCoolClock();
-    setInterval(updateCoolClock, 1000);
+    initClocks();
     setupNavFade();
   });
 }
