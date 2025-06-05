@@ -2101,14 +2101,13 @@ def init_routes(app: Flask) -> None:
     @app.route("/last_video/<string:template_name>")
     @login_required
     def serve_video(template_name: TemplateName):
-        """
-        Serve a specific video by template name.
-        """
+        """Return the latest MP4 for ``template_name`` if available."""
+
         template_name = validate_template_name(template_name)
         if template_name is None:
             abort(404)
 
-        # Placeholder logic to serve the video
+        # Base directory for this template's videos
         path = os.path.join(
             os.path.dirname(os.path.join(__file__)),
             "..",
@@ -2118,8 +2117,17 @@ def init_routes(app: Flask) -> None:
         if not os.path.exists(path):
             abort(404)
 
-        if os.path.exists(path + "/in_process.mp4"):
-            return send_file(path + "/in_process.mp4")
+        in_process = os.path.join(path, "in_process.mp4")
+        if os.path.exists(in_process):
+            return send_file(in_process)
+
+        # Fallback to the most recent finalized video
+        video_files = [
+            f for f in glob.glob(os.path.join(path, "*.mp4")) if os.path.isfile(f)
+        ]
+        if video_files:
+            latest = max(video_files, key=os.path.getmtime)
+            return send_file(latest)
 
         abort(404)
 
