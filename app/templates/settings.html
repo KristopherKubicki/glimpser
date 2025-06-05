@@ -25,6 +25,9 @@ content %}
     <button type="button" class="tab-link" data-tab="status-tab">
       System Status
     </button>
+    <button type="button" class="tab-link" data-tab="costs-tab">
+      Costs
+    </button>
     {% endif %} {% endfor %}
     <button type="button" class="tab-link" data-tab="management-tab">
       Management
@@ -182,6 +185,9 @@ content %}
         </div>
         <div id="status-tab" class="tab-content">
             {% include '_status_tab.html' %}
+        </div>
+        <div id="costs-tab" class="tab-content">
+            {% include '_costs_tab.html' %}
         </div>
         {% endif %}
         {% endfor %}
