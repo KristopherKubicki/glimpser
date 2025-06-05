@@ -5,6 +5,10 @@ The CSS defines variables for background and text colors with light and dark
 variants. Forms and tables use these variables so elements remain readable in
 both themes.
 
+You can force the interface into light or dark mode using the new toggle in the
+navigation bar. The switch stores your choice in `localStorage` so your
+preference persists across visits.
+
 A new `--table-border-color` variable controls table outlines. Dark mode
 defaults to a subtle `#444` while the light theme overrides it to `#ddd`.
 The settings page now uses this variable for its forms and tables so fields
