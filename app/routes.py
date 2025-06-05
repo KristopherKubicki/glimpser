@@ -72,7 +72,11 @@ from app.utils import (
     prompt_optimizer,
     camera_fix,
 )
-from app.utils.settings_tooltips import SETTINGS_TOOLTIPS, SETTINGS_GROUPS
+from app.utils.settings_tooltips import (
+    SETTINGS_TOOLTIPS,
+    SETTINGS_GROUPS,
+    SETTINGS_CHOICES,
+)
 from app.utils.screenshots import (
     is_chrome_debug_port_open,
     check_user_activity,
@@ -2591,13 +2595,31 @@ def init_routes(app: Flask) -> None:
                     update_setting(name, new_val)
 
                 for name, value in request.form.items():
-                    if name not in [
-                        "action",
-                        "new_name",
-                        "new_value",
-                        "name_to_delete",
-                    ] + email_settings + list(bool_settings):
+                    if (
+                        name
+                        in [
+                            "action",
+                            "new_name",
+                            "new_value",
+                            "name_to_delete",
+                        ]
+                        or name in email_settings
+                        or name in bool_settings
+                    ):
+                        continue
+
+                    if name in SETTINGS_CHOICES:
+                        # When "Other" is selected use the companion text field.
+                        if value == "__other__":
+                            value = request.form.get(f"{name}_other", "")
                         update_setting(name, value)
+                        continue
+
+                    if name.endswith("_other"):
+                        # Companion fields are handled above
+                        continue
+
+                    update_setting(name, value)
             return redirect(url_for("settings"))
 
         settings = get_all_settings()
@@ -2617,6 +2639,7 @@ def init_routes(app: Flask) -> None:
             "settings.html",
             grouped_settings=grouped_settings,
             tooltips=SETTINGS_TOOLTIPS,
+            choices=SETTINGS_CHOICES,
             page_title="Settings",
         )
 

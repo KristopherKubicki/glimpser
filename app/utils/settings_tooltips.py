@@ -25,6 +25,22 @@ SETTINGS_TOOLTIPS = {
     "TWILIO_NUMBER": "Sending phone number",
 }
 
+# Predefined choices for select fields on the settings page. The "Other"
+# option reveals a text input allowing custom values.
+SETTINGS_CHOICES = {
+    "HOST": ["0.0.0.0", "127.0.0.1", "localhost"],
+    "LANG": ["en-US", "es-ES", "fr-FR", "de-DE"],
+    "LOG_LEVEL": ["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
+    "FLASK_LOG_LEVEL": ["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
+    "TZ": [
+        "UTC",
+        "America/New_York",
+        "America/Chicago",
+        "Europe/Berlin",
+        "Asia/Tokyo",
+    ],
+}
+
 # Settings categories used to group configuration values on the settings page.
 # Keys are tab labels while the lists contain setting names assigned to each
 # category. Any values not present here fall under the "Other" tab.
