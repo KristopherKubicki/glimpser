@@ -12,11 +12,23 @@ export function initNav() {
       });
     }
 
+    /**
+     * Fetch JSON from an endpoint. If the response is not JSON or the
+     * request fails, an error is thrown so callers can handle it.
+     */
+    const fetchJson = async (url) => {
+      const res = await fetch(url);
+      const type = res.headers.get("content-type") || "";
+      if (!res.ok || !type.includes("application/json")) {
+        throw new Error(`Unexpected response from ${url}`);
+      }
+      return res.json();
+    };
+
     const checkHealth = async () => {
       if (!healthStatus) return;
       try {
-        const res = await fetch("/health");
-        const data = await res.json();
+        const data = await fetchJson("/health");
         if (data.status === "healthy") {
           healthStatus.style.color = "green";
           healthStatus.title = "System Status: Healthy\n\n";
@@ -44,8 +56,7 @@ export function initNav() {
     const checkDanger = async () => {
       if (!dangerStatus) return;
       try {
-        const res = await fetch("/danger_status");
-        const data = await res.json();
+        const data = await fetchJson("/danger_status");
         if (data.ready) {
           dangerStatus.style.color = "orange";
           dangerStatus.title = "Danger Mode Ready";
@@ -112,8 +123,7 @@ export function initNav() {
     const checkCaptions = async () => {
       if (!captionsIcon) return;
       try {
-        const res = await fetch("/captions_status");
-        const data = await res.json();
+        const data = await fetchJson("/captions_status");
         captionsIcon.title = data.caption || "";
         if (data.timestamp) {
           const ts = new Date(data.timestamp.replace(" ", "T") + "Z");
@@ -145,8 +155,7 @@ export function initNav() {
     const checkDiscovery = async () => {
       if (!discoveryStatus) return;
       try {
-        const res = await fetch("/discovery_status");
-        const data = await res.json();
+        const data = await fetchJson("/discovery_status");
         const fmt = (s) => `${Math.round(s / 60)}m`;
         if (data.status === "none") {
           discoveryStatus.style.color = "white";
