@@ -2,8 +2,6 @@
 {% block content %}
 <h2>Group {{ group_name }}</h2>
 <div>
-    <label for="group-dropdown" title="Filter templates by group">Filter by Group:</label>
-    <select id="group-dropdown" title="Select a group to filter templates"></select>
     <label for="search-input" title="Search for cameras or groups">Search:</label>
     <input type="text" id="search-input" placeholder="Search cameras or groups" title="Enter search terms">
     <input type="range" id="grid-width-slider" min="50" max="3840" value="360" title="Adjust the width of the template grid">
@@ -13,16 +11,10 @@
 <div id="template-list" title="List of all templates" role="region" aria-label="Templates"></div>
 <div id="index-time" class="corner-time" title=""></div>
 <script type="module">
-    import { loadGroups, loadTemplates } from '{{ url_for('static', filename='js/templates.js') }}';
+    import { loadTemplates } from '{{ url_for('static', filename='js/templates.js') }}';
     window.currentGroup = '{{ group_name }}';
     document.addEventListener('DOMContentLoaded', () => {
-        loadGroups().then(() => {
-            const dropdown = document.getElementById('group-dropdown');
-            if (dropdown) {
-                dropdown.value = '{{ group_name }}';
-            }
-            loadTemplates();
-        });
+        loadTemplates();
     });
 </script>
 {% endblock %}
