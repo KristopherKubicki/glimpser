@@ -1,0 +1,61 @@
+import os
+import sqlite3
+import importlib
+import unittest
+import tempfile
+import sys
+from unittest.mock import patch
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+import app
+import app.config as config
+import app.routes as routes
+
+
+class TestClockRoute(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.db_path = os.path.join(self.temp_dir.name, "test.db")
+
+        self.env_patch = patch.dict(
+            os.environ, {"GLIMPSER_DATABASE_PATH": self.db_path}
+        )
+        self.env_patch.start()
+
+        importlib.reload(config)
+        importlib.reload(routes)
+        importlib.reload(app)
+        conn = sqlite3.connect(self.db_path)
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL, value TEXT NOT NULL)"
+        )
+        conn.commit()
+        conn.close()
+        self.app = app.create_app(enable_watchdog=False, schedule=False)
+        self.client = self.app.test_client()
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        self.restart_patch = patch("app.routes.restart_server")
+        self.restart_patch.start()
+
+    def tearDown(self):
+        self.restart_patch.stop()
+        self.app_context.pop()
+        self.env_patch.stop()
+        importlib.reload(config)
+        importlib.reload(routes)
+        importlib.reload(app)
+        self.temp_dir.cleanup()
+
+    def test_clock_page(self):
+        with patch("app.routes.session", {"user_id": 1}), patch(
+            "app.routes.login_required", lambda x: x
+        ):
+            response = self.client.get("/clock")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Clock", response.data)
+
+
+if __name__ == "__main__":
+    unittest.main()

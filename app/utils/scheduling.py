@@ -54,6 +54,12 @@ from .template_manager import (
     update_last_screenshot_time,
     mark_offline,
     set_capture_failed,
+    get_screenshot_count,
+    get_video_count,
+    get_storage_usage,
+    get_storage_usage_bytes,
+    get_llm_response_count,
+    get_llm_cost_estimate,
 )
 from .email_alerts import email_alert
 from .sms_alerts import sms_alert
@@ -1155,6 +1161,12 @@ def get_feed_status():
         frequency = int(template.get("frequency", 0) or 0)
         capture_failed = template.get("capture_failed", False)
         offline_since = template.get("offline_since")
+        shot_count = get_screenshot_count(name)
+        video_count = get_video_count(name)
+        storage = get_storage_usage(name)
+        storage_bytes = get_storage_usage_bytes(name)
+        llm_responses = get_llm_response_count(name)
+        llm_cost = get_llm_cost_estimate(name)
 
         status = "ok"
         tooltip_parts: list[str] = []
@@ -1206,6 +1218,12 @@ def get_feed_status():
                 "last_caption_display": _humanize(last_caption),
                 "status": status,
                 "tooltip": tooltip,
+                "screenshot_count": shot_count,
+                "video_count": video_count,
+                "storage_usage": storage,
+                "storage_usage_bytes": storage_bytes,
+                "llm_response_count": llm_responses,
+                "llm_cost_estimate": llm_cost,
             }
         )
 

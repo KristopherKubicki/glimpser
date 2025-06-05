@@ -820,6 +820,20 @@ a {
   margin-left: 20px;
 }
 
+.clock-overlay {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    z-index: 10;
+}
+
+.digital-clock {
+    font-size: 14px;
+    line-height: 25px;
+    text-align: center;
+    color: var(--text-color);
+}
+
 .clock-face {
   width: 100%;
   height: 100%;
