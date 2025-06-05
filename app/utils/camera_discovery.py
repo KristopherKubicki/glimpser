@@ -170,6 +170,125 @@ def _onvif_get_device_info(xaddr: str, timeout: int = 2) -> dict[str, str]:
     return info
 
 
+def autodetect_onvif_endpoints(url: str, timeout: int = 3) -> dict[str, str]:
+    """Return stream and snapshot URLs derived from an ONVIF device service.
+
+    Parameters
+    ----------
+    url : str
+        Base camera URL or ONVIF device service address.
+    timeout : int
+        Request timeout in seconds.
+
+    Returns
+    -------
+    dict
+        Dictionary with optional ``stream`` and ``snapshot`` keys.
+    """
+
+    parsed = urlparse(url)
+    base = f"{parsed.scheme}://{parsed.netloc}"
+    xaddr = url if "device_service" in parsed.path else f"{base}/onvif/device_service"
+
+    # Step 1: locate the media service address via GetCapabilities
+    cap_body = (
+        "<?xml version='1.0' encoding='UTF-8'?>"
+        "<s:Envelope xmlns:s='http://www.w3.org/2003/05/soap-envelope'>"
+        "<s:Body>"
+        "<GetCapabilities xmlns='http://www.onvif.org/ver10/device/wsdl'>"
+        "<Category>All</Category>"
+        "</GetCapabilities>"
+        "</s:Body>"
+        "</s:Envelope>"
+    )
+    media_addr = None
+    try:
+        resp = requests.post(xaddr, data=cap_body, timeout=timeout)
+        if resp.ok:
+            xml = ET.fromstring(resp.content)
+            ns = {"tt": "http://www.onvif.org/ver10/schema"}
+            node = xml.find(".//tt:Capabilities/tt:Media/tt:XAddr", ns)
+            if node is not None and node.text:
+                media_addr = node.text
+    except Exception:
+        media_addr = None
+    if not media_addr:
+        media_addr = f"{base}/onvif/media_service"
+
+    # Step 2: fetch the first profile token
+    prof_body = (
+        "<?xml version='1.0' encoding='UTF-8'?>"
+        "<s:Envelope xmlns:s='http://www.w3.org/2003/05/soap-envelope'>"
+        "<s:Body>"
+        "<GetProfiles xmlns='http://www.onvif.org/ver10/media/wsdl'/>"
+        "</s:Body>"
+        "</s:Envelope>"
+    )
+    token = None
+    try:
+        resp = requests.post(media_addr, data=prof_body, timeout=timeout)
+        if resp.ok:
+            xml = ET.fromstring(resp.content)
+            ns = {"trt": "http://www.onvif.org/ver10/media/wsdl"}
+            prof = xml.find(".//trt:Profiles", ns)
+            if prof is not None:
+                token = prof.attrib.get("token")
+    except Exception:
+        token = None
+    if not token:
+        return {}
+
+    # Step 3: fetch stream URI and snapshot URI
+    result: dict[str, str] = {}
+    stream_body = (
+        "<?xml version='1.0' encoding='UTF-8'?>"
+        "<s:Envelope xmlns:s='http://www.w3.org/2003/05/soap-envelope' xmlns:trt='http://www.onvif.org/ver10/media/wsdl' xmlns:tt='http://www.onvif.org/ver10/schema'>"
+        "<s:Body>"
+        "<trt:GetStreamUri>"
+        "<trt:StreamSetup>"
+        "<tt:Stream>RTP-Unicast</tt:Stream>"
+        "<tt:Transport><tt:Protocol>RTSP</tt:Protocol></tt:Transport>"
+        "</trt:StreamSetup>"
+        f"<trt:ProfileToken>{token}</trt:ProfileToken>"
+        "</trt:GetStreamUri>"
+        "</s:Body>"
+        "</s:Envelope>"
+    )
+    try:
+        resp = requests.post(media_addr, data=stream_body, timeout=timeout)
+        if resp.ok:
+            xml = ET.fromstring(resp.content)
+            ns = {"tt": "http://www.onvif.org/ver10/schema"}
+            uri = xml.find(".//tt:Uri", ns)
+            if uri is not None and uri.text:
+                result["stream"] = uri.text
+    except Exception:
+        pass
+
+    snap_body = (
+        "<?xml version='1.0' encoding='UTF-8'?>"
+        "<s:Envelope xmlns:s='http://www.w3.org/2003/05/soap-envelope' xmlns:trt='http://www.onvif.org/ver10/media/wsdl' xmlns:tt='http://www.onvif.org/ver10/schema'>"
+        "<s:Body>"
+        "<trt:GetSnapshotUri>"
+        f"<trt:ProfileToken>{token}</trt:ProfileToken>"
+        "</trt:GetSnapshotUri>"
+        "</s:Body>"
+        "</s:Envelope>"
+    )
+    try:
+        resp = requests.post(media_addr, data=snap_body, timeout=timeout)
+        if resp.ok:
+            xml = ET.fromstring(resp.content)
+            ns = {"tt": "http://www.onvif.org/ver10/schema"}
+            uri = xml.find(".//tt:Uri", ns)
+            if uri is not None and uri.text:
+                result["snapshot"] = uri.text
+    except Exception:
+        pass
+
+    return result
+
+
 def _mac_manufacturer(mac: str | None) -> str | None:
     """Return the vendor name for ``mac`` using known mappings or remote lookup."""
 

@@ -4,6 +4,7 @@ import os
 import sys
 from ipaddress import ip_network
 from unittest.mock import patch
+from types import SimpleNamespace
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -536,6 +537,24 @@ class TestCameraDiscovery(unittest.TestCase):
         cam = cams[0]
         self.assertEqual(cam.get("url"), "rtsp://1.2.3.4:554/")
         self.assertEqual(cam["info"].get("device_type"), "camera")
+
+    @patch("app.utils.camera_discovery.requests.post")
+    def test_autodetect_onvif_endpoints(self, mock_post):
+        def _side_effect(url, data, timeout=3):
+            if "GetCapabilities" in data:
+                xml = "<Envelope><Body><Capabilities><Media><XAddr>http://1.2.3.4/onvif/media_service</XAddr></Media></Capabilities></Body></Envelope>"
+            elif "GetProfiles" in data:
+                xml = "<Envelope><Body><trt:GetProfilesResponse xmlns:trt='http://www.onvif.org/ver10/media/wsdl'><trt:Profiles token='p0'/></trt:GetProfilesResponse></Body></Envelope>"
+            elif "GetStreamUri" in data:
+                xml = "<Envelope><Body><tt:Uri xmlns:tt='http://www.onvif.org/ver10/schema'>rtsp://1.2.3.4/stream</tt:Uri></Body></Envelope>"
+            else:
+                xml = "<Envelope><Body><tt:Uri xmlns:tt='http://www.onvif.org/ver10/schema'>http://1.2.3.4/snap.jpg</tt:Uri></Body></Envelope>"
+            return SimpleNamespace(ok=True, content=xml.encode())
+
+        mock_post.side_effect = _side_effect
+        res = camera_discovery.autodetect_onvif_endpoints("http://1.2.3.4")
+        self.assertEqual(res["stream"], "rtsp://1.2.3.4/stream")
+        self.assertEqual(res["snapshot"], "http://1.2.3.4/snap.jpg")
 
 
 if __name__ == "__main__":

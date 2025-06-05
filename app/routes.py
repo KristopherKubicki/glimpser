@@ -2282,6 +2282,16 @@ def init_routes(app: Flask) -> None:
             template_name = validate_template_name(data["name"])
             if template_name is None:
                 abort(404)
+            url = data.get("url", "")
+            if url and ("onvif" in url or urlparse(url).path in {"", "/"}):
+                try:
+                    endpoints = camera_discovery.autodetect_onvif_endpoints(url)
+                    if endpoints.get("snapshot"):
+                        data["url"] = endpoints["snapshot"]
+                    elif endpoints.get("stream"):
+                        data["url"] = endpoints["stream"]
+                except Exception:
+                    pass
             if template_manager.save_template(template_name, data):
                 return jsonify({"status": "success", "message": "Template saved"})
 
