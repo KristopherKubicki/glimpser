@@ -42,6 +42,7 @@ from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 from ipaddress import ip_network
 import subprocess
+from urllib.parse import urlparse
 import struct
 import random
 
@@ -424,6 +425,14 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
     command = [config.FFMPEG_PATH]
     if config.FFMPEG_HWACCEL and config.FFMPEG_HWACCEL.lower() != "false":
         command.extend(["-hwaccel", config.FFMPEG_HWACCEL])
+
+    parsed = urlparse(url)
+    if parsed.scheme in ("http", "https"):
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+        command.extend(["-headers", f"User-Agent: {config.UA}\r\n"])
+        command.extend(["-headers", f"referer: {base_url}\r\n"])
+        command.extend(["-headers", f"origin: {base_url}\r\n"])
+        command.extend(["-seekable", "0"])
     command.extend(
         [
             "-reconnect",

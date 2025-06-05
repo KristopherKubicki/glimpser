@@ -204,6 +204,12 @@ snapshot image rather than a true video stream.
   behaves like a regular video stream.
 - If playback fails entirely, the viewer now shows the last captured
   screenshot so the page is never blank.
+- HTTP errors like `403 Forbidden` or repeated ffmpeg timeouts typically mean
+  the stream is blocked. Verify the URL is accessible from the host running
+  Glimpser and check for required credentials or firewall rules.
+- Some cameras reject ffmpeg if it does not send browser-style headers. The
+  live stream now includes the configured `UA`, `referer` and `origin` headers.
+  Adjust these settings if your camera expects a specific user agent.
 
 ### Problem: Playback continues in the background after switching types
 
