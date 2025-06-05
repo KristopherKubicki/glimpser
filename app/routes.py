@@ -66,6 +66,7 @@ from app.config import (
     CLOCK_OVERLAY,
     CLOCK_DIGITAL,
     CLOCK_NAVBAR,
+    ENFORCE_DOMAIN_IN_HOST,
 )
 from app.models import User, Summary
 from app.utils import (
@@ -935,6 +936,14 @@ def init_routes(app: Flask) -> None:
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Cache-Control"] = "no-store"
         return response
+
+    @app.before_request
+    def enforce_host_domain():
+        """Block requests missing a domain when enforcement is enabled."""
+        if config.ENFORCE_DOMAIN_IN_HOST:
+            host = request.headers.get("Host", "")
+            if "." not in host:
+                abort(403)
 
     @app.context_processor
     def inject_footer_data():
