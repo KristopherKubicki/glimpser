@@ -532,7 +532,22 @@ function playLoop() {
     } else {
       // If a specific group is selected, get the cameras in that group
       const groupName = currentCamera.split("group-")[1];
-      groupCameras = templateDetails["group-" + groupName].groupCameras;
+      const groupDetails = templateDetails["group-" + groupName];
+      if (groupDetails) {
+        groupCameras = groupDetails.groupCameras;
+      } else {
+        // Fallback: collect cameras belonging to the group on the fly
+        groupCameras = Object.entries(templateDetails)
+          .filter(
+            ([camera, details]) =>
+              details.groups &&
+              details.groups
+                .split(",")
+                .map((s) => s.trim())
+                .includes(groupName),
+          )
+          .map(([camera]) => camera);
+      }
     }
 
     if (!groupCameras || groupCameras.length === 0) {
@@ -684,7 +699,22 @@ function playLive() {
       );
     } else {
       const groupName = currentCamera.split("group-")[1];
-      groupCameras = templateDetails["group-" + groupName].groupCameras;
+      const groupDetails = templateDetails["group-" + groupName];
+      if (groupDetails) {
+        groupCameras = groupDetails.groupCameras;
+      } else {
+        // Fallback: collect cameras belonging to the group on the fly
+        groupCameras = Object.entries(templateDetails)
+          .filter(
+            ([camera, details]) =>
+              details.groups &&
+              details.groups
+                .split(",")
+                .map((s) => s.trim())
+                .includes(groupName),
+          )
+          .map(([camera]) => camera);
+      }
     }
 
     let cameraIndex = 0;
