@@ -3,7 +3,6 @@
 <main class="container settings-page">
     <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger" title="Log out of the interface">Logout</a>
 
-    <h2>Current Settings</h2>
     <details class="settings-help">
         <summary>What does each setting do?</summary>
         {% include 'settings_help_table.html' %}
@@ -24,66 +23,79 @@
         <label for="search-input" title="Filter the selected column">Search:</label>
         <input type="text" id="search-input" title="Type to filter settings">
     </div>
+
     <form method="POST" action="{{ url_for('settings') }}">
-        <table class="settings-table">
-            <thead>
-                <tr>
-                    <th class="searchable">Setting</th>
-                    <th class="searchable">Value</th>
-                    <th class="searchable">Explanation</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for setting in settings %}
-                <tr>
-                    <td title="{{ tooltips.get(setting.name, '') }}">{{ setting.name }}</td>
-                    <td>
-                        <input type="text" name="{{ setting.name }}" value="{{ setting.value }}" title="Edit value for {{ setting.name }}">
-                    </td>
-                    <td class="setting-explanation">{{ tooltips.get(setting.name, '') }}</td>
-                    <td>
-                        <button type="submit" name="action" value="delete" title="Delete {{ setting.name }}" onclick="return confirmDeleteSetting('{{ setting.name }}')">Delete</button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="tabs">
+            {% for group in grouped_settings.keys() %}
+            <button class="tab-link{% if loop.first %} active{% endif %}" data-tab="{{ group|replace(' ', '-') }}-tab">{{ group }}</button>
+            {% endfor %}
+            <button class="tab-link" data-tab="management-tab">Management</button>
+        </div>
+
+        {% for group, items in grouped_settings.items() %}
+        <div id="{{ group|replace(' ', '-') }}-tab" class="tab-content{% if loop.first %} active{% endif %}">
+            <h3>{{ group }} Settings</h3>
+            <table class="settings-table">
+                <thead>
+                    <tr>
+                        <th class="searchable">Setting</th>
+                        <th class="searchable">Value</th>
+                        <th class="searchable">Explanation</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for setting in items %}
+                    <tr>
+                        <td title="{{ tooltips.get(setting.name, '') }}">{{ setting.name }}</td>
+                        <td>
+                            <input type="text" name="{{ setting.name }}" value="{{ setting.value }}" title="Edit value for {{ setting.name }}">
+                        </td>
+                        <td class="setting-explanation">{{ tooltips.get(setting.name, '') }}</td>
+                        <td>
+                            <button type="submit" name="action" value="delete" title="Delete {{ setting.name }}" onclick="return confirmDeleteSetting('{{ setting.name }}')">Delete</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+
+        <div id="management-tab" class="tab-content">
+            <h3>Configuration Management</h3>
+            <button type="submit" name="action" value="backup" title="Create a JSON backup of all settings">Backup Configuration</button>
+            <button type="submit" name="action" value="download" title="Download the latest configuration backup">Download Configuration</button>
+            <input type="file" name="file" accept=".json" title="Select configuration file to upload">
+            <button type="submit" name="action" value="upload" title="Restore configuration from uploaded file" onclick="return confirmRestore()">Upload Configuration</button>
+
+            <h3>Danger Mode</h3>
+            <button type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode">Update Chrome Shortcut</button>
+
+            <h3>Offline Preview</h3>
+            <label>
+                <input type="checkbox" id="offline-preview" title="Cache snapshots for offline viewing">
+                Enable offline preview
+            </label>
+        </div>
+
         <input type="hidden" id="name_to_delete" name="name_to_delete" value="" title="Name of setting to delete">
         <button type="submit" title="Save all changes">Save Changes</button>
     </form>
-
-    <h3>Configuration Management</h3>
-    <form method="POST" action="{{ url_for('settings') }}" enctype="multipart/form-data">
-        <button type="submit" name="action" value="backup" title="Create a JSON backup of all settings">Backup Configuration</button>
-        <button type="submit" name="action" value="download" title="Download the latest configuration backup">Download Configuration</button>
-        <input type="file" name="file" accept=".json" title="Select configuration file to upload">
-        <button type="submit" name="action" value="upload" title="Restore configuration from uploaded file" onclick="return confirmRestore()">Upload Configuration</button>
-    </form>
-
-    <h3>Danger Mode</h3>
-    <form method="POST" action="{{ url_for('settings') }}">
-        <button type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode">Update Chrome Shortcut</button>
-    </form>
-
-    <h3>Offline Preview</h3>
-    <label>
-        <input type="checkbox" id="offline-preview" title="Cache snapshots for offline viewing">
-        Enable offline preview
-    </label>
 </main>
-    <script src="{{ url_for('static', filename='js/performance.js') }}"></script>
-    <script>
-        function confirmDeleteSetting(name) {
-            if (confirm('Are you sure you want to delete ' + name + '?')) {
-                document.getElementById('name_to_delete').value = name;
-                return true;
-            }
-            return false;
+<script src="{{ url_for('static', filename='js/performance.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tabs.js') }}"></script>
+<script>
+    function confirmDeleteSetting(name) {
+        if (confirm('Are you sure you want to delete ' + name + '?')) {
+            document.getElementById('name_to_delete').value = name;
+            return true;
         }
+        return false;
+    }
 
-        function confirmRestore() {
-            return confirm('Restore configuration from the selected file? This will overwrite existing settings.');
-        }
-    </script>
+    function confirmRestore() {
+        return confirm('Restore configuration from the selected file? This will overwrite existing settings.');
+    }
+</script>
 {% endblock %}
