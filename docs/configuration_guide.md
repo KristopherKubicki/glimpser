@@ -116,6 +116,7 @@ Settings controlling how frames are captured from video sources:
 - `ANALYZE_DURATION_OTHER` – analyzeduration for other protocols (default `20M`)
 - `LIVE_FALLBACK_FPS` – still-frame refresh rate when live video fails (default `1`)
 - `LIVE_MAX_FAILURES` – maximum consecutive ffmpeg failures before live view stops (default `10`)
+- `CHYRON_SPEED` – seconds the caption chyron scrolls; set to `0` to disable (default `0`)
 - `WATCHDOG_FAILURE_THRESHOLD` – number of failed health checks before a restart (default `3`)
 - `WATCHDOG_RESTART_COOLDOWN` – cooldown period between restarts in seconds (default `900`)
 - `WATCHDOG_MAX_FILE_HANDLES` – open file handle limit before triggering a restart (default `1000`)

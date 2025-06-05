@@ -65,7 +65,9 @@ caption update was. It flashes with the newest caption text when a group message
 arrives. After a few seconds of inactivity the latest global summary slowly
 scrolls across the top in a gray chyron. Clicking this text opens the `/captions`
 page for more
-details. The icon remains green for one minute after a caption, changes to
+details. The scroll duration comes from the `CHYRON_SPEED` setting which is
+`0` by default to disable the banner. The icon remains green for one minute
+after a caption, changes to
 yellow for the next five minutes and turns red once thirty minutes have passed
 without an update.
 
