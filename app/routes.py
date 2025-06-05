@@ -93,7 +93,10 @@ NODE_ENV = os.getenv("NODE_ENV", "development")
 from app.utils.scheduling import log_cache, log_cache_lock
 from app.utils.validators import validate_template_name, validate_update_data
 from app.utils.profiling import profile_route, get_latency_stats
-from scripts.update_chrome_shortcut import update_chrome_shortcuts
+from scripts.update_chrome_shortcut import (
+    update_chrome_shortcuts,
+    update_chrome_shortcuts_info,
+)
 
 
 def restart_server() -> None:
@@ -1077,7 +1080,7 @@ def init_routes(app: Flask) -> None:
         if request.method == "POST":
             action = request.form.get("action")
             if action == "update_shortcut":
-                paths = update_chrome_shortcuts()
+                paths, msg = update_chrome_shortcuts_info()
                 if paths:
                     joined = ", ".join(str(p) for p in paths)
                     flash(
@@ -1085,7 +1088,7 @@ def init_routes(app: Flask) -> None:
                         "success",
                     )
                 else:
-                    flash("Failed to update shortcuts", "error")
+                    flash(f"Failed to update shortcuts: {msg}", "error")
             else:
                 enabled = "enabled" in request.form
                 update_setting("DANGER_MODE", "True" if enabled else "False")

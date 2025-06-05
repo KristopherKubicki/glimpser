@@ -53,6 +53,19 @@ def update_chrome_shortcuts() -> list[Path]:
     return updated
 
 
+def update_chrome_shortcuts_info() -> tuple[list[Path], str]:
+    """Return updated paths and a message describing the result."""
+    if os.name != "nt" or win32com is None:
+        return [], "Shortcut update only supported on Windows with pywin32 installed"
+
+    paths = update_chrome_shortcuts()
+    if paths:
+        return paths, ""
+    if not shortcuts_need_patch():
+        return [], "Chrome shortcuts already include the debugging flag"
+    return [], "No Chrome shortcuts were updated. Check your permissions"
+
+
 def shortcuts_need_patch() -> bool:
     """Return True if any Chrome shortcuts are missing the debug flag."""
     if os.name != "nt" or win32com is None:
