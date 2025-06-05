@@ -310,7 +310,6 @@ export function initNav() {
       }
     };
 
-
     const setupNavFade = () => {
       const header = document.querySelector("header");
       const player = document.querySelector(".video-container");
