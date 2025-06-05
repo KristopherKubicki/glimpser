@@ -1,6 +1,6 @@
 1. Keep commits small and focused.
 2. Use conventional commit messages.
-3. Format code with `black`.
+3. Format code with `black` and/or `prettier`
 4. Run `flake8` for lint checks.
 5. Run tests with `pytest`.
 6. Document major changes in `docs/`.
