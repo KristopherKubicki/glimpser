@@ -13,7 +13,7 @@ import socket
 import app.config as config
 from app import create_app
 from app import scheduler
-from app.utils.scheduling import get_system_metrics
+from app.utils.scheduling import get_system_metrics, stop_background_tasks
 
 banner = """
           ____  _  _
@@ -255,6 +255,8 @@ class CleanupManager:
             scheduler.shutdown(wait=True)
         except Exception as e:
             logging.error("Error shutting down scheduler: %s", e)
+
+        stop_background_tasks()
 
         time.sleep(0.01)
         for thread in threading.enumerate():

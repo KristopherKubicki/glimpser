@@ -256,3 +256,5 @@ If shutdown is interrupted it can leave background threads running.
 **Solution:**
 - Glimpser now manages cleanup through `CleanupManager`, ensuring shutdown only runs once.
 - Calling `main.shutdown_manager.cleanup()` manually will join any remaining threads.
+- If threads still refuse to exit, call `app.utils.scheduling.stop_background_tasks()` to signal the
+  metrics and logging loops to terminate.
