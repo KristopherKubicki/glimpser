@@ -57,6 +57,7 @@ from app.config import (
     backup_config,
     restore_config,
     SENSITIVE_SETTINGS,
+    CHYRON_SPEED,
 )
 from app.models import User, Summary
 from app.utils import (
@@ -871,6 +872,7 @@ def init_routes(app: Flask) -> None:
             VERSION_OUTDATED=outdated,
             COMMIT_HASH=COMMIT_HASH,
             NODE_ENV=NODE_ENV,
+            CHYRON_SPEED=CHYRON_SPEED,
         )
 
     # Add a new route for the extended health check

@@ -75,6 +75,12 @@ export function initNav() {
 
     const captionsIcon = document.getElementById("captions");
     const captionChyron = document.getElementById("caption-chyron");
+    const chyronSpeed = captionChyron
+      ? parseFloat(captionChyron.dataset.speed || "0")
+      : 0;
+    if (captionChyron && chyronSpeed > 0) {
+      captionChyron.style.setProperty("--chyron-speed", `${chyronSpeed}s`);
+    }
     let lastCaptionTime = null;
     let popupTimer;
 
@@ -110,13 +116,13 @@ export function initNav() {
     }
 
     const showCaption = (text) => {
-      if (!captionChyron) return;
+      if (!captionChyron || chyronSpeed <= 0) return;
       captionChyron.innerHTML = `<span>${text}</span>`;
       captionChyron.classList.add("show");
       clearTimeout(popupTimer);
       popupTimer = setTimeout(
         () => captionChyron.classList.remove("show"),
-        240000,
+        chyronSpeed * 1000,
       );
     };
 
@@ -202,8 +208,7 @@ export function initNav() {
       minuteHand.style.transform = `rotate(${minutesDegrees}deg)`;
       hourHand.style.transform = `rotate(${hoursDegrees}deg)`;
 
-      digitalTime.title =
-        `${now.toLocaleTimeString()}\n${Intl.DateTimeFormat().resolvedOptions().timeZone}\n${now.toDateString()}`;
+      digitalTime.title = `${now.toLocaleTimeString()}\n${Intl.DateTimeFormat().resolvedOptions().timeZone}\n${now.toDateString()}`;
     };
 
     const setupNavFade = () => {

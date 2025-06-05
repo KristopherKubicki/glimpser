@@ -13,6 +13,8 @@ This document lists the main tooltips available in the Glimpser interface. Hover
 - **Captions icon** – reads and updates camera language models. The icon flashes
   with the latest caption when group messages arrive. After a short period of
   inactivity the newest global summary slowly scrolls across the top in gray text.
+  The `CHYRON_SPEED` setting controls how long the message scrolls and defaults
+  to `0` so the banner is hidden.
   Clicking the chyron opens the `/captions` page. It stays green for one minute after the
   most recent caption, turns yellow for the next five minutes and becomes red
   when no update has been received for over thirty minutes.
