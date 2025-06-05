@@ -1,118 +1,118 @@
 /* app/static/css/player.css */
+/* Video player layout */
 .video-container {
-    max-width: 100vw;
-    width: 100%;
-    height: 92vh;
-    max-height: 92vh;
-    position: relative;
-    /* Hide scroll bars for a cleaner live view */
-    overflow: hidden;
+  max-width: 100vw;
+  width: 100%;
+  max-height: 92vh;
+  position: relative;
+  /* Hide scroll bars for a cleaner live view */
+  overflow: hidden;
 }
 #live-video,
 #live-image {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    max-width: 100vw;
-    max-height: 92vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  max-width: 100vw;
+  max-height: 92vh;
 }
 .video-controls {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    opacity: 0;
-    transition: opacity 0.3s;
-    max-width: 100vw;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+  max-width: 100vw;
 }
 .video-container:hover .video-controls {
-    opacity: 1;
+  opacity: 1;
 }
 .video-controls button {
-    background-color: transparent;
-    border: none;
-    color: white;
-    font-size: 16px;
-    cursor: pointer;
-    padding: 5px 10px;
+  background-color: transparent;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 5px 10px;
 }
 .video-controls button:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.2);
 }
 #seek-bar {
-    width: 100%;
-    margin: 10px 0;
+  width: 100%;
+  margin: 10px 0;
 }
 #volume-bar {
-    width: 100px;
-    margin: 0 10px;
+  width: 100px;
+  margin: 0 10px;
 }
 .control-row {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    row-gap: 5px;
-    width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  row-gap: 5px;
+  width: 100%;
 }
 
 #jog-shuttle {
-    width: 60px;
-    height: 60px;
-    border: 2px solid white;
-    border-radius: 50%;
-    position: relative;
-    margin: 0 10px;
-    box-sizing: border-box;
-    cursor: pointer;
+  width: 60px;
+  height: 60px;
+  border: 2px solid white;
+  border-radius: 50%;
+  position: relative;
+  margin: 0 10px;
+  box-sizing: border-box;
+  cursor: pointer;
 }
 #jog-shuttle::before,
 #jog-shuttle::after {
-    content: "";
-    position: absolute;
-    background: white;
+  content: "";
+  position: absolute;
+  background: white;
 }
 #jog-shuttle::before {
-    top: 50%;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    transform: translateY(-50%);
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  transform: translateY(-50%);
 }
 #jog-shuttle::after {
-    left: 50%;
-    top: 0;
-    width: 2px;
-    height: 100%;
-    transform: translateX(-50%);
+  left: 50%;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  transform: translateX(-50%);
 }
 #error-message {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(255, 0, 0, 0.7);
-    color: white;
-    padding: 10px;
-    border-radius: 5px;
-    display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(255, 0, 0, 0.7);
+  color: white;
+  padding: 10px;
+  border-radius: 5px;
+  display: none;
 }
 #template-details {
-    display: none;
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background-color: rgba(0, 0, 0, 0.6);
-    color: white;
-    padding: 5px;
-    border-radius: 5px;
-    font-size: 0.9rem;
+  display: none;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 5px;
+  border-radius: 5px;
+  font-size: 0.9rem;
 }
