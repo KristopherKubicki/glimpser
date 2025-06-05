@@ -190,6 +190,14 @@ export async function loadGroups() {
   } finally {
     groupDropdown.disabled = false;
   }
+
+export function getSelectedGroup() {
+  const dropdown = document.getElementById("group-dropdown");
+  if (dropdown && dropdown.value) return dropdown.value;
+  const navDropdown = document.getElementById("nav-group-dropdown");
+  if (navDropdown && navDropdown.value) return navDropdown.value;
+  if (window.currentGroup) return window.currentGroup;
+  return "all";
 }
 
 export function timeAgo(utcDateString) {
@@ -335,11 +343,11 @@ export function setupSearch() {
   const filterValue = document.getElementById("filter-value");
   const applyFilter = document.getElementById("apply-filter");
   const templateList = document.getElementById("template-list");
-  if (!searchInput || !groupDropdown) return;
+  if (!searchInput) return;
 
   const filterCameras = () => {
     const searchTerm = searchInput.value.toLowerCase();
-    const selectedGroup = groupDropdown.value;
+    const selectedGroup = groupDropdown ? groupDropdown.value : getSelectedGroup();
     const column = filterColumn ? filterColumn.value : "";
     const filterVal = filterValue ? filterValue.value.trim().toLowerCase() : "";
     cameraRows.forEach((row) => {
@@ -372,10 +380,10 @@ export function setupSearch() {
   if (templateList) {
     const debouncedLoad = debounce(loadTemplates, 300);
     searchInput.addEventListener("input", debouncedLoad);
-    groupDropdown.addEventListener("change", debouncedLoad);
+    if (groupDropdown) groupDropdown.addEventListener("change", debouncedLoad);
   } else {
     searchInput.addEventListener("input", filterCameras);
-    groupDropdown.addEventListener("change", filterCameras);
+    if (groupDropdown) groupDropdown.addEventListener("change", filterCameras);
     if (applyFilter) applyFilter.addEventListener("click", filterCameras);
   }
 }
@@ -388,9 +396,8 @@ export function templateMatchesSearch(template, searchQuery) {
 }
 
 export async function loadTemplates() {
-  const groupDropdown = document.getElementById("group-dropdown");
   const searchInput = document.getElementById("search-input");
-  const selectedGroup = groupDropdown ? groupDropdown.value || "all" : "all";
+  const selectedGroup = getSelectedGroup();
   const searchQuery = searchInput ? searchInput.value.toLowerCase() : "";
   const url = `/templates?group=${selectedGroup}&search=${searchQuery}&t=${new Date().getTime()}`;
 
