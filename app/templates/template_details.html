@@ -5,6 +5,10 @@
 <script>
     const cameraMeta = {{ template_details|tojson }};
     window.templateDetails = { "{{ template_name }}": cameraMeta };
+    window.currentCamera = '{{ template_name }}';
+    {% if template_details.get('groups') %}
+    window.currentGroup = "{{ template_details.get('groups').split(',')[0].strip() }}";
+    {% endif %}
 </script>
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">

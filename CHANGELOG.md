@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Integration with Blue Iris, Home Assistant and Hubitat
 - Custom video controls including Play All/Pause All
 - Automatic group loading for cameras
+- Navigation dropdown now includes an "all" group and per-group camera menu
 - Live view tooltip refreshes with the latest caption
 - Add Template form auto-fills selected group
 - API discovery and paginated log view
