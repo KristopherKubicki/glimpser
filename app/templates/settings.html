@@ -105,13 +105,7 @@ content %}
                   type="checkbox"
                   name="{{ setting.name }}"
                   value="True"
-                  {%
-                  if
-                  setting.value=""
-                  ="True"
-                  %}checked{%
-                  endif
-                  %}
+                  {% if setting.value == 'True' %}checked{% endif %}
                   data-boolean
                 />
                 <span class="slider round"></span>
@@ -125,28 +119,14 @@ content %}
                 {% for option in choices[setting.name] %}
                 <option
                   value="{{ option }}"
-                  {%
-                  if
-                  setting.value=""
-                  ="option"
-                  %}selected{%
-                  endif
-                  %}
+                  {% if setting.value == option %}selected{% endif %}
                 >
                   {{ option }}
                 </option>
                 {% endfor %}
                 <option
                   value="__other__"
-                  {%
-                  if
-                  setting.value
-                  not
-                  in
-                  choices[setting.name]
-                  %}selected{%
-                  endif
-                  %}
+                  {% if setting.value not in choices[setting.name] %}selected{% endif %}
                 >
                   Other
                 </option>
