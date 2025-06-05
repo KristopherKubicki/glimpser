@@ -156,8 +156,8 @@
 </div>
 
 <div id="bulk-tab" class="tab-content">
-    <details class="tsv-controls">
-        <summary>Bulk Caption Management</summary>
+    <div class="tsv-controls">
+        <h3>Bulk Caption Management</h3>
         <div class="tsv-buttons">
             <a href="/download_captions_tsv" class="btn btn-primary" title="Download captions as TSV file">Download Captions as TSV</a>
 
@@ -167,7 +167,7 @@
             </form>
         </div>
         <p class="tsv-help">Download the TSV file, edit in a spreadsheet application, then upload to update captions.</p>
-    </details>
+    </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
