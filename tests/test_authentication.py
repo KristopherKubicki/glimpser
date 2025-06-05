@@ -237,6 +237,41 @@ class TestAuthentication(unittest.TestCase):
             self.assertEqual(response.status_code, 302)
             self.assertIn("/login", response.headers["Location"])
 
+    def test_login_required_refreshes_expiry(self):
+        login_attempts = {}  # reset
+        initial_expiry = (
+            datetime.datetime.now() + datetime.timedelta(minutes=5)
+        ).strftime("%Y-%m-%d %H:%M:%S")
+        session_data = {"user_id": 1, "expiry": initial_expiry}
+        dummy_user = SimpleNamespace(id=1, username=USER_NAME)
+
+        class DummyQuery:
+            def filter_by(self, **kwargs):
+                return self
+
+            def first(self):
+                return dummy_user
+
+        class DummySession:
+            def query(self, model):
+                return DummyQuery()
+
+            def close(self):
+                pass
+
+        with patch("app.routes.session", session_data), patch(
+            "app.routes.SessionLocal", return_value=DummySession()
+        ):
+            response = self.client.get("/protected")
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b"Protected Content", response.data)
+            self.assertNotEqual(session_data["expiry"], initial_expiry)
+            new_ts = datetime.datetime.strptime(
+                session_data["expiry"], "%Y-%m-%d %H:%M:%S"
+            )
+            old_ts = datetime.datetime.strptime(initial_expiry, "%Y-%m-%d %H:%M:%S")
+            self.assertGreater(new_ts, old_ts)
+
     def test_login_required_with_api_key(self):
         login_attempts = {}  # reset
         mock_api_key = "mock_api_key_for_testing"

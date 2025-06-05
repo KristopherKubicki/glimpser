@@ -10,16 +10,16 @@ The following environment variables are read in `app/config.py` and allow you to
 change where runtime data is stored. If not provided, the defaults shown below
 are used.
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `GLIMPSER_DATABASE_PATH` | `data/glimpser.db` | Location of the SQLite database file |
-| `GLIMPSER_LOGGING_PATH` | `logs/glimpser.log` | Path to the main log file |
-| `GLIMPSER_BACKUP_PATH` | `data/config_backup.json` | File used when backing up configuration |
+| Variable                 | Default                   | Purpose                                 |
+| ------------------------ | ------------------------- | --------------------------------------- |
+| `GLIMPSER_DATABASE_PATH` | `data/glimpser.db`        | Location of the SQLite database file    |
+| `GLIMPSER_LOGGING_PATH`  | `logs/glimpser.log`       | Path to the main log file               |
+| `GLIMPSER_BACKUP_PATH`   | `data/config_backup.json` | File used when backing up configuration |
 
 Relative paths are resolved from the application's root directory. Use an
 absolute path if the backup file should reside elsewhere.
 
-`app.config` parses the `.env` file only once when it is first imported.  Later
+`app.config` parses the `.env` file only once when it is first imported. Later
 imports reuse the existing values instead of re-reading the file.
 
 ## Core Settings
@@ -59,7 +59,8 @@ updated with `generate_credentials.py` or through the web interface.
   (default `True`)
 - `SESSION_COOKIE_HTTPONLY` – set `True` to prevent JavaScript access to the
   session cookie (default `True`)
-- `SESSION_TIMEOUT_MINUTES` – session lifetime in minutes (default `30`)
+- `SESSION_TIMEOUT_MINUTES` – session timeout after this many minutes of
+  inactivity (default `30`)
 
 User accounts are stored in the `users` table. Each record contains the
 `username`, `password_hash`, and an optional `role` that can be used for future
