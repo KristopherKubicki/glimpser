@@ -176,6 +176,12 @@ export function initNav() {
     };
 
     const updateCoolClock = () => {
+      const secondHand = document.querySelector(".second-hand");
+      const minuteHand = document.querySelector(".minute-hand");
+      const hourHand = document.querySelector(".hour-hand");
+      const digitalTime = document.getElementById("digitalTime");
+      if (!secondHand || !minuteHand || !hourHand || !digitalTime) return;
+
       const now = new Date();
       const secondsDegrees = (now.getSeconds() / 60) * 360;
       const minutesDegrees =
@@ -183,14 +189,11 @@ export function initNav() {
       const hoursDegrees =
         (now.getHours() / 12) * 360 + (now.getMinutes() / 60) * 30;
 
-      document.querySelector(".second-hand").style.transform =
-        `rotate(${secondsDegrees}deg)`;
-      document.querySelector(".minute-hand").style.transform =
-        `rotate(${minutesDegrees}deg)`;
-      document.querySelector(".hour-hand").style.transform =
-        `rotate(${hoursDegrees}deg)`;
+      secondHand.style.transform = `rotate(${secondsDegrees}deg)`;
+      minuteHand.style.transform = `rotate(${minutesDegrees}deg)`;
+      hourHand.style.transform = `rotate(${hoursDegrees}deg)`;
 
-      document.getElementById("digitalTime").title =
+      digitalTime.title =
         `${now.toLocaleTimeString()}\n${Intl.DateTimeFormat().resolvedOptions().timeZone}\n${now.toDateString()}`;
     };
 

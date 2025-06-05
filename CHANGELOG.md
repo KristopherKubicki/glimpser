@@ -52,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   backgrounds
 - Repeated stream errors on the `/live` page are now throttled to prevent
   frequent popups.
+- Fixed a crash on the login page caused by missing clock elements in `nav.js`.
 
 ## [0.2.7] - 2025-06-02
 
