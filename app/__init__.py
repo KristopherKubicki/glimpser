@@ -17,6 +17,9 @@ from app.utils.scheduling import (
     schedule_discovery,
     scheduler,
     start_log_caching,
+    start_metrics_collection,
+    stop_background_tasks,
+    stop_event,
 )
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 from app.config import (
@@ -183,7 +186,7 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
         failure_count = 0
         failure_threshold = WATCHDOG_FAILURE_THRESHOLD
 
-        while True:
+        while not stop_event.is_set():
             time.sleep(10)  # Check every 10 seconds
             if not app.debug:
                 try:
@@ -242,8 +245,6 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
         app.watchdog_thread = watchdog_thread
 
     # Start collecting metrics
-    from .utils.scheduling import start_metrics_collection
-
     start_metrics_collection()
 
     start_log_caching()

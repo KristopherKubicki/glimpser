@@ -974,8 +974,13 @@ system_metrics = {
 }
 
 
+stop_event = threading.Event()
+metrics_thread = None
+log_caching_thread = None
+
+
 def collect_system_metrics():
-    while True:
+    while not stop_event.is_set():
         system_metrics["cpu_usage"] = psutil.cpu_percent(interval=1)
         system_metrics["memory_usage"] = psutil.virtual_memory().percent
         system_metrics["thread_count"] = threading.active_count()
@@ -983,6 +988,7 @@ def collect_system_metrics():
 
 
 def start_metrics_collection():
+    global metrics_thread
     metrics_thread = threading.Thread(target=collect_system_metrics, daemon=True)
     metrics_thread.start()
 
@@ -1013,7 +1019,7 @@ def cache_logs():
     try:
         with open(log_file_path, "r") as file:
             file.seek(0, os.SEEK_END)  # Start at end of file
-            while True:
+            while not stop_event.is_set():
                 new_log = file.readline()
                 if new_log:
                     with log_cache_lock:
@@ -1046,12 +1052,21 @@ def cache_logs():
 
 
 def start_log_caching():
+    global log_caching_thread
     log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
     log_caching_thread.start()
 
     # No longer schedule cache_logs via the APScheduler.  The background thread
     # itself handles continuous log caching and avoids spawning additional
     # threads on scheduler restarts.
+
+
+def stop_background_tasks() -> None:
+    """Signal background threads to exit and wait for them."""
+    stop_event.set()
+    for t in (metrics_thread, log_caching_thread):
+        if t is not None:
+            t.join(timeout=1)
 
 
 def get_feed_status():
