@@ -64,6 +64,7 @@ const jogShuttle = document.getElementById("jog-shuttle");
 let jogInterval = null;
 let jogging = false;
 let isSeeking = false;
+let detailsVisible = false;
 // Throttle duplicate error messages so the overlay isn't spammed when
 // a camera repeatedly fails. Track the last message and time displayed.
 let lastErrorMessage = "";
