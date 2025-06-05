@@ -57,6 +57,9 @@ const errorIndicatorMessage = document.getElementById("capture-error-message");
 const streamErrorIndicator = document.getElementById("stream-error-indicator");
 const streamErrorMessage = document.getElementById("stream-error-message");
 const seekBar = document.getElementById("seek-bar");
+const jogShuttle = document.getElementById("jog-shuttle");
+let jogInterval = null;
+let jogging = false;
 let isSeeking = false;
 // Throttle duplicate error messages so the overlay isn't spammed when
 // a camera repeatedly fails. Track the last message and time displayed.
@@ -884,6 +887,61 @@ function stopLiveSwitch() {
   }
 }
 
+function applyJog(speed, direction) {
+  if (jogInterval) {
+    clearInterval(jogInterval);
+    jogInterval = null;
+  }
+  if (direction >= 0) {
+    video.playbackRate = speed;
+    safePlay(video);
+  } else {
+    video.pause();
+    jogInterval = setInterval(() => {
+      video.currentTime = Math.max(0, video.currentTime - 0.05 * speed);
+    }, 50);
+  }
+}
+
+function handleJogMove(e) {
+  if (!jogging) return;
+  const rect = jogShuttle.getBoundingClientRect();
+  const x = e.clientX - rect.left - rect.width / 2;
+  const radius = rect.width / 2;
+  const norm = Math.max(-1, Math.min(1, x / radius));
+  const level = Math.min(4, Math.floor(Math.abs(norm) * 4));
+  const speed = Math.pow(2, level);
+  if (speed === 0) return;
+  applyJog(speed, Math.sign(norm));
+}
+
+function stopJog() {
+  jogging = false;
+  if (jogInterval) {
+    clearInterval(jogInterval);
+    jogInterval = null;
+  }
+  video.pause();
+}
+
+function initJogShuttle() {
+  if (!jogShuttle) return;
+  jogShuttle.addEventListener("mousedown", (e) => {
+    jogging = true;
+    handleJogMove(e);
+  });
+  jogShuttle.addEventListener("touchstart", (e) => {
+    jogging = true;
+    handleJogMove(e.touches[0]);
+  });
+  window.addEventListener("touchmove", (e) => {
+    handleJogMove(e.touches[0]);
+  });
+  window.addEventListener("touchend", stopJog);
+  window.addEventListener("mousemove", handleJogMove);
+  window.addEventListener("mouseup", stopJog);
+}
+
 function updateSpeedContainer() {
   if (!speedContainer) return;
   const source = document.getElementById("video-source").value;
@@ -981,6 +1039,7 @@ updateTemplateDetails();
 updateSpeedContainer();
 updatePlaybackSpeed();
 updateSeekBar();
+initJogShuttle();
 playMJPG();
 startCaptionPolling();
 updateFrameTimestamp();
