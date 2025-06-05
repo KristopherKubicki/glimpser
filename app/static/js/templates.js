@@ -43,25 +43,10 @@ export function initTemplates() {
         slider.min = computedMin;
         if (parseFloat(slider.value) < computedMin) {
           slider.value = computedMin;
-          if (templateList) {
-            templateList.style.setProperty(
-              "--grid-item-width",
-              `${computedMin}px`,
-            );
-            const height = Math.min(
-              Math.round((computedMin * 9) / 16),
-              MAX_THUMBNAIL_HEIGHT,
-            );
-            templateList.style.setProperty("--grid-item-height", `${height}px`);
-          }
-        }
-        if (templateList) {
-          const width = parseFloat(slider.value);
-          const height = Math.min(
-            Math.round((width * 9) / 16),
-            MAX_THUMBNAIL_HEIGHT,
+          document.documentElement.style.setProperty(
+            "--tile-size",
+            `${computedMin}px`,
           );
-          templateList.style.setProperty("--grid-item-height", `${height}px`);
         }
       };
 
@@ -101,8 +86,7 @@ export function initTemplates() {
           Math.round((value * 9) / 16),
           MAX_THUMBNAIL_HEIGHT,
         );
-        templateList.style.setProperty("--grid-item-width", `${value}px`);
-        templateList.style.setProperty("--grid-item-height", `${height}px`);
+        document.documentElement.style.setProperty("--tile-size", `${value}px`);
         templateList.querySelectorAll(".templateDiv").forEach((div) => {
           div.style.width = `${value}px`;
           div.style.height = `${height}px`;
@@ -254,7 +238,7 @@ export function updateGridLayout() {
     templateList.style.gridTemplateColumns = "1fr";
   } else {
     templateList.style.gridTemplateColumns =
-      "repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px)))";
+      "repeat(auto-fit, minmax(50px, var(--tile-size)))";
   }
 }
 

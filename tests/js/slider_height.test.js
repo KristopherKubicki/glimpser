@@ -34,8 +34,6 @@ describe('grid width slider', () => {
     slider.max = '1280';
     slider.value = '320';
     slider.dispatchEvent(new Event('input'));
-    const list = document.getElementById('template-list');
-    expect(list.style.getPropertyValue('--grid-item-width')).toBe('320px');
-    expect(list.style.getPropertyValue('--grid-item-height')).toBe('180px');
+    expect(document.documentElement.style.getPropertyValue('--tile-size')).toBe('320px');
   });
 });
