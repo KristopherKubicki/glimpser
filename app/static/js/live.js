@@ -64,7 +64,9 @@ const jogShuttle = document.getElementById("jog-shuttle");
 let jogInterval = null;
 let jogging = false;
 let isSeeking = false;
-let detailsVisible = false;
+// Track whether template details are shown. Expose on window so inline
+// scripts and other modules can share this state.
+window.detailsVisible = false;
 // Throttle duplicate error messages so the overlay isn't spammed when
 // a camera repeatedly fails. Track the last message and time displayed.
 let lastErrorMessage = "";
@@ -369,7 +371,7 @@ function changeCamera() {
 }
 
 function updateTemplateDetails() {
-  if (!detailsVisible) {
+  if (!window.detailsVisible) {
     templateDetailsContainer.style.display = "none";
     return;
   }
@@ -1166,7 +1168,7 @@ if (seekBar) {
 
 if (toggleDetailsButton) {
   toggleDetailsButton.addEventListener("click", () => {
-    detailsVisible = !detailsVisible;
+    window.detailsVisible = !window.detailsVisible;
     updateTemplateDetails();
   });
 }
