@@ -50,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed unclosed `.form-error` block in `style.css` causing CSS lint failures
 - Timestamp and caption overlays now align correctly with their tinted
   backgrounds
+- Repeated stream errors on the `/live` page are now throttled to prevent
+  frequent popups.
 
 ## [0.2.7] - 2025-06-02
 

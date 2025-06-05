@@ -47,6 +47,10 @@ const streamErrorIndicator = document.getElementById("stream-error-indicator");
 const streamErrorMessage = document.getElementById("stream-error-message");
 const seekBar = document.getElementById("seek-bar");
 let isSeeking = false;
+// Throttle duplicate error messages so the overlay isn't spammed when
+// a camera repeatedly fails. Track the last message and time displayed.
+let lastErrorMessage = "";
+let lastErrorTime = 0;
 
 // Restore previously selected camera, source and speed from localStorage so
 // reloading the page keeps user preferences. If the user specified a camera in
@@ -126,6 +130,13 @@ function showPlayPauseIndicator(isPaused) {
 }
 
 function showError(message) {
+  const now = Date.now();
+  if (message === lastErrorMessage && now - lastErrorTime < 10000) {
+    return;
+  }
+  lastErrorMessage = message;
+  lastErrorTime = now;
+
   errorMessage.textContent = message;
   errorMessage.style.display = "block";
   showStreamErrorIndicator(message);
