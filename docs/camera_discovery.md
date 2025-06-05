@@ -5,6 +5,8 @@ The subnet list is now deduplicated so machines with multiple addresses per inte
 The page layout now uses card sections and wider progress indicators for a more professional feel while keeping controls grouped logically.
 Background discovery can run automatically every hour when the `DISCOVERY_AUTOSTART` setting is enabled. When disabled (the default), the search icon appears white until you start the scan from `/discover`. The icon turns green when a scan completed recently, yellow while scanning, and red if the last run failed. Hovering over the icon now shows when the last scan finished and when the next one will run.
 The scheduling call now triggers discovery in a background thread so the UI never hangs when you enable it.
+The page now polls `/discovery_status` every 30 seconds so the background state
+is always visible, including the remaining time until the next run.
 After all scanning steps finish, Glimpser performs a two-hop traceroute to each
 discovered camera. The previous hop is stored in the ``upstream`` field so you
 can see which router or switch connects the device. Each progress message now
