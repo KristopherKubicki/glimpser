@@ -191,6 +191,9 @@ export async function loadGroups() {
     groupDropdown.disabled = false;
   }
 
+  // Close the loadGroups function
+}
+
 export function getSelectedGroup() {
   const dropdown = document.getElementById("group-dropdown");
   if (dropdown && dropdown.value) return dropdown.value;
@@ -347,7 +350,9 @@ export function setupSearch() {
 
   const filterCameras = () => {
     const searchTerm = searchInput.value.toLowerCase();
-    const selectedGroup = groupDropdown ? groupDropdown.value : getSelectedGroup();
+    const selectedGroup = groupDropdown
+      ? groupDropdown.value
+      : getSelectedGroup();
     const column = filterColumn ? filterColumn.value : "";
     const filterVal = filterValue ? filterValue.value.trim().toLowerCase() : "";
     cameraRows.forEach((row) => {
