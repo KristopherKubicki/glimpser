@@ -35,9 +35,10 @@ Below are the available routes.
 Fetch a JSON list of configured templates. Optional query parameters `group` and `search` can be used to filter results.
 
 Example response:
+
 ```json
 {
-  "camera1": {"url": "rtsp://example"}
+  "camera1": { "url": "rtsp://example" }
 }
 ```
 
@@ -46,16 +47,20 @@ Example response:
 Create or update a template. Provide template details as JSON.
 
 Example request:
+
 ```json
 {
   "name": "camera1",
   "url": "rtsp://example"
 }
 ```
+
 Example response:
+
 ```json
-{"status": "success", "message": "Template saved"}
+{ "status": "success", "message": "Template saved" }
 ```
+
 Saving a template automatically stops any scheduled job for that
 camera and reschedules it using the updated parameters.
 
@@ -64,12 +69,15 @@ camera and reschedules it using the updated parameters.
 Remove a template by name.
 
 Example request:
+
 ```json
-{"name": "camera1"}
+{ "name": "camera1" }
 ```
+
 Example response:
+
 ```json
-{"status": "success", "message": "Template deleted"}
+{ "status": "success", "message": "Template deleted" }
 ```
 
 ### 2. View and Update Settings
@@ -120,7 +128,7 @@ Several other routes provide streaming functionality:
 - **GET /stream.m3u8** – HLS playlist referencing the latest videos.
   Optional `camera` or `group` query parameters filter the playlist to a
   single camera or group of cameras.
-- **GET /last_video/<template_name>** – Download the most recent MP4 for the given template.
+- **GET /last_video/<template_name>** – Download the most recent MP4 for the given template. Returns a 404 response if no video is available.
 - **GET /last_screenshot/<template_name>** – Retrieve the latest screenshot for a template.
 - **GET /last_teaser** – Returns the teaser video compiled from recent footage. Accepts an optional `group` query parameter to retrieve a group-specific teaser, e.g. `/last_teaser?group=frontdoor`.
 - **GET /test.rtsp** – Basic RTSP endpoint that serves MJPEG frames when used with `/rtsp_stream`. Send periodic `GET_PARAMETER` requests to keep the session alive.
@@ -135,8 +143,9 @@ Manually capture a screenshot for the specified template.
 Appending `?motion=true` forces motion analysis for the resulting frame.
 
 Example response:
+
 ```json
-{"status": "success", "message": "Screenshot for camera1 taken"}
+{ "status": "success", "message": "Screenshot for camera1 taken" }
 ```
 
 ### 7. View System Status
@@ -158,8 +167,9 @@ Streams log records via Server-Sent Events. Optional query parameters `level`, `
 Return a JSON array of archived MP4 filenames for the specified template. Combine with `/videos/<template_name>/<filename>` to download a particular file. Filenames are validated and requests with illegal characters return `404`.
 
 Example response:
+
 ```json
-{"videos": ["cam1_20240101.mp4", "cam1_20240102.mp4"]}
+{ "videos": ["cam1_20240101.mp4", "cam1_20240102.mp4"] }
 ```
 
 ### 10. List Stored Screenshots
@@ -171,8 +181,9 @@ Return a JSON array of screenshot filenames for the specified template. Individu
 Placeholder images created when no real screenshot is available end with `_blank.png`. The endpoint includes these names in the sorted list.
 
 Example response:
+
 ```json
-{"screenshots": ["cam1_20240101.png", "cam1_20240102.png"]}
+{ "screenshots": ["cam1_20240101.png", "cam1_20240102.png"] }
 ```
 
 ### 11. Suggest Caption Prompt
@@ -183,9 +194,9 @@ Analyze the latest screenshots for the template and return a short text prompt
 that can be used to improve future captions.
 
 Example response:
-```json
 
-{"prompt": "Busy roadway — highlight license plates"}
+```json
+{ "prompt": "Busy roadway — highlight license plates" }
 ```
 
 ### 12. Compile Teaser Video
