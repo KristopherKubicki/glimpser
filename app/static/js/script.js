@@ -13,6 +13,7 @@ import { initTooltips } from "./tooltips.js";
 import { initCaptions } from "./captions.js";
 import { initSettingsSearch } from "./settings.js";
 import { initTabs } from "./tabs.js";
+import { initThemeToggle } from "./theme.js";
 
 initTemplates();
 initVideoControls();
@@ -30,3 +31,4 @@ initTooltips();
 initCaptions();
 initSettingsSearch();
 initTabs();
+initThemeToggle();

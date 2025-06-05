@@ -374,6 +374,18 @@ video:hover + .play-icon {
     }
 }
 
+body.light-mode {
+    --bg-color: #ffffff;
+    --secondary-bg-color: #f2f2f2;
+    --text-color: #222;
+    --form-bg-color: #ffffff;
+    --form-text-color: #222;
+    --table-header-bg-color: #f2f2f2;
+    --table-row-alt-bg-color: #fafafa;
+    --table-hover-bg-color: #e0e0e0;
+    --table-border-color: #ddd;
+}
+
 .camera-name, .timestamp {
     position: absolute;
     color: white;
