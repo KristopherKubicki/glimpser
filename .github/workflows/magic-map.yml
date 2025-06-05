@@ -1,0 +1,30 @@
+name: Magic Map CI
+
+on:
+  push:
+    paths:
+      - 'magic_map/**'
+  pull_request:
+    paths:
+      - 'magic_map/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest black
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Check formatting
+        run: black --check magic_map
+      - name: Lint
+        run: flake8 magic_map
+      - name: Test
+        run: pytest magic_map/tests
