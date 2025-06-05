@@ -21,6 +21,46 @@ export function initCaptions() {
       if (pending) window.updateTemplate(pending);
     });
 
+    const chatOpen = document.getElementById("chat-open");
+    const chatModal = document.getElementById("chat-modal");
+    const chatClose = document.getElementById("chat-close");
+    const chatSubmit = document.getElementById("chat-submit");
+    const chatQuestion = document.getElementById("chat-question");
+    const chatAnswer = document.getElementById("chat-answer");
+
+    chatOpen?.addEventListener("click", () => {
+      if (chatModal) chatModal.style.display = "block";
+    });
+    chatClose?.addEventListener("click", () => {
+      if (chatModal) chatModal.style.display = "none";
+    });
+    chatSubmit?.addEventListener("click", async () => {
+      if (!chatQuestion || !chatQuestion.value) return;
+      const start = document.getElementById("caption-start")?.value;
+      const end = document.getElementById("caption-end")?.value;
+      const resp = await fetch("/captions_chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: chatQuestion.value, start, end }),
+      });
+      const data = await resp.json();
+      if (chatAnswer) {
+        chatAnswer.textContent = data.truncated
+          ? `${data.answer}\n(Input truncated)`
+          : data.answer;
+      }
+      const table = document.querySelector("#captions-table tbody");
+      if (table && data.answer) {
+        const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+        const rowQ = document.createElement("tr");
+        rowQ.innerHTML = `<td>${now}</td><td>Q: ${chatQuestion.value}</td>`;
+        const rowA = document.createElement("tr");
+        rowA.innerHTML = `<td>${now}</td><td>A: ${data.answer}</td>`;
+        table.prepend(rowA);
+        table.prepend(rowQ);
+      }
+    });
+
     document.getElementById("camera-table")?.addEventListener("click", (e) => {
       const btn = e.target.closest(".update-button");
       if (!btn) return;

@@ -1,69 +1,87 @@
-
-
-{% extends 'base.html' %}
-{% block content %}
+{% extends 'base.html' %} {% block content %}
 <div class="captions-page">
+  <script>
+    function updateTemplate(templateName) {
+      var notes = $("#notes-" + templateName).val();
+      $.ajax({
+        url: "/update_template/" + templateName,
+        type: "POST",
+        data: { notes: notes },
+        success: function (response) {
+          alert("Template updated successfully!");
+        },
+        error: function (error) {
+          alert("Error updating template: " + error.responseText);
+        },
+      });
+    }
+    function toggleChyron() {
+      fetch("/toggle_chyron", { method: "POST" })
+        .then((resp) => resp.json())
+        .then((data) => {
+          const btn = document.getElementById("toggle-chyron-btn");
+          if (data.speed !== undefined && btn) {
+            btn.textContent =
+              data.speed > 0 ? "Disable Chyron" : "Enable Chyron";
+          }
+        });
+    }
+  </script>
 
-     <script>
-         function updateTemplate(templateName) {
-             var notes = $('#notes-' + templateName).val();
-             $.ajax({
-                 url: '/update_template/' + templateName,
-                 type: 'POST',
-                 data: {notes: notes},
-                success: function(response) {
-                     alert('Template updated successfully!');
-                 },
-                 error: function(error) {
-                     alert('Error updating template: ' + error.responseText);
-                 }
-             });
-         }
-         function toggleChyron() {
-             fetch('/toggle_chyron', {method: 'POST'})
-                 .then(resp => resp.json())
-                 .then(data => {
-                     const btn = document.getElementById('toggle-chyron-btn');
-                     if (data.speed !== undefined && btn) {
-                         btn.textContent = data.speed > 0 ? 'Disable Chyron' : 'Enable Chyron';
-                     }
-                 });
-         }
-     </script>
+  <div class="tabs">
+    <button class="tab-link active" data-tab="prompts-tab">Prompts</button>
+    <button class="tab-link" data-tab="history-tab">History</button>
+    <button class="tab-link" data-tab="bulk-tab">Bulk Tools</button>
+  </div>
 
-    <div class="tabs">
-        <button class="tab-link active" data-tab="prompts-tab">Prompts</button>
-        <button class="tab-link" data-tab="history-tab">History</button>
-        <button class="tab-link" data-tab="bulk-tab">Bulk Tools</button>
-    </div>
+  <div id="prompts-tab" class="tab-content active">
+    <details class="filter-controls">
+      <summary>Search &amp; Filters</summary>
+      <div class="controls-inner">
+        <label for="search-input" title="Search for cameras or groups"
+          >Search:</label
+        >
+        <input
+          type="search"
+          id="search-input"
+          placeholder="Search cameras or groups"
+          title="Enter search terms"
+        />
 
-    <div id="prompts-tab" class="tab-content active">
-        <details class="filter-controls">
-            <summary>Search &amp; Filters</summary>
-            <div class="controls-inner">
-                <label for="search-input" title="Search for cameras or groups">Search:</label>
-                <input type="search" id="search-input" placeholder="Search cameras or groups" title="Enter search terms">
+        <label for="filter-column" title="KPI to filter">KPI:</label>
+        <select id="filter-column" title="Select KPI">
+          <option value="">All</option>
+          <option value="screenshot_count">Shots</option>
+          <option value="video_count">Videos</option>
+          <option value="storage_usage">Storage</option>
+          <option value="llm_response_count">LLM Resp</option>
+          <option value="llm_cost_estimate">LLM Cost</option>
+        </select>
+        <input
+          type="text"
+          id="filter-value"
+          placeholder="Value"
+          title="Filter value"
+        />
+        <button id="apply-filter" type="button" title="Filter table rows">
+          Apply
+        </button>
+        <input
+          type="range"
+          id="grid-width-slider"
+          min="50"
+          max="3840"
+          value="360"
+          title="Adjust thumbnail width"
+        />
+      </div>
+    </details>
 
-                <label for="filter-column" title="KPI to filter">KPI:</label>
-                <select id="filter-column" title="Select KPI">
-                    <option value="">All</option>
-                    <option value="screenshot_count">Shots</option>
-                    <option value="video_count">Videos</option>
-                    <option value="storage_usage">Storage</option>
-                    <option value="llm_response_count">LLM Resp</option>
-                    <option value="llm_cost_estimate">LLM Cost</option>
-                </select>
-                <input type="text" id="filter-value" placeholder="Value" title="Filter value">
-                <button id="apply-filter" type="button" title="Filter table rows">Apply</button>
-                <input type="range" id="grid-width-slider" min="50" max="3840" value="360" title="Adjust thumbnail width">
-            </div>
-        </details>
-
-        <h2>Camera Notes</h2>
-        <div id="template-list">
-        <table id="camera-table" class="camera-table">
-    <thead>
-        <tr>
+    <h2>Camera Notes</h2>
+    <div id="template-list">
+      <table id="camera-table" class="camera-table">
+        <thead>
+          <tr>
             <th class="sortable" data-type="string">Camera</th>
             <th class="sortable" data-type="date">Last</th>
             <th class="sortable" data-type="date">Next</th>
@@ -73,121 +91,225 @@
             <th class="sortable" data-type="number">LLM Resp</th>
             <th class="sortable" data-type="number">LLM Cost</th>
             <th>Caption</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for camera in template_details %}
-        <tr class="camera-row" data-groups="{{ template_details[camera]['groups'] }}" data-screenshot_count="{{ template_details[camera]['screenshot_count'] }}" data-video_count="{{ template_details[camera]['video_count'] }}" data-storage_usage="{{ template_details[camera]['storage_usage_bytes'] }}" data-llm_response_count="{{ template_details[camera]['llm_response_count'] }}" data-llm_cost_estimate="{{ template_details[camera]['llm_cost_estimate'] }}">
+          </tr>
+        </thead>
+        <tbody>
+          {% for camera in template_details %}
+          <tr
+            class="camera-row"
+            data-groups="{{ template_details[camera]['groups'] }}"
+            data-screenshot_count="{{ template_details[camera]['screenshot_count'] }}"
+            data-video_count="{{ template_details[camera]['video_count'] }}"
+            data-storage_usage="{{ template_details[camera]['storage_usage_bytes'] }}"
+            data-llm_response_count="{{ template_details[camera]['llm_response_count'] }}"
+            data-llm_cost_estimate="{{ template_details[camera]['llm_cost_estimate'] }}"
+          >
             <td>
-                <div class="templateDiv">
-                    <div class="video-container" data-timestamp="{{ template_details[camera]['last_screenshot_time'] }}">
-                        <div class="camera-name"><a href='/templates/{{camera}}' title="Open {{ camera }} details">{{camera}}</a></div>
-                        <video class="hover-video" loop muted poster="/last_screenshot/{{ camera }}">
-                            <source src="/last_video/{{ camera }}" type="video/mp4">
-                            Your browser does not support the video tag.
-                        </video>
-                    </div>
+              <div class="templateDiv">
+                <div
+                  class="video-container"
+                  data-timestamp="{{ template_details[camera]['last_screenshot_time'] }}"
+                >
+                  <div class="camera-name">
+                    <a
+                      href="/templates/{{camera}}"
+                      title="Open {{ camera }} details"
+                      >{{camera}}</a
+                    >
+                  </div>
+                  <video
+                    class="hover-video"
+                    loop
+                    muted
+                    poster="/last_screenshot/{{ camera }}"
+                  >
+                    <source src="/last_video/{{ camera }}" type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
                 </div>
+              </div>
             </td>
-            <td data-value="{{ template_details[camera]['last_screenshot'] }}"><span class="humanized-time" data-time="{{ template_details[camera]['last_screenshot'] }}">{{ template_details[camera]['last_screenshot'] }}</span></td>
-            <td data-value="{{ template_details[camera]['next_screenshot'] }}"><span class="humanized-time" data-time="{{ template_details[camera]['next_screenshot'] }}">{{ template_details[camera]['next_screenshot'] }}</span></td>
-            <td data-value="{{ template_details[camera]['screenshot_count'] }}">{{ template_details[camera]['screenshot_count'] }}</td>
-            <td data-value="{{ template_details[camera]['video_count'] }}">{{ template_details[camera]['video_count'] }}</td>
-            <td data-value="{{ template_details[camera]['storage_usage_bytes'] }}">{{ template_details[camera]['storage_usage'] }}</td>
-            <td data-value="{{ template_details[camera]['llm_response_count'] }}">{{ template_details[camera]['llm_response_count'] }}</td>
-            <td data-value="{{ template_details[camera]['llm_cost_estimate'] }}">{{ template_details[camera]['llm_cost_estimate'] }}</td>
+            <td data-value="{{ template_details[camera]['last_screenshot'] }}">
+              <span
+                class="humanized-time"
+                data-time="{{ template_details[camera]['last_screenshot'] }}"
+                >{{ template_details[camera]['last_screenshot'] }}</span
+              >
+            </td>
+            <td data-value="{{ template_details[camera]['next_screenshot'] }}">
+              <span
+                class="humanized-time"
+                data-time="{{ template_details[camera]['next_screenshot'] }}"
+                >{{ template_details[camera]['next_screenshot'] }}</span
+              >
+            </td>
+            <td data-value="{{ template_details[camera]['screenshot_count'] }}">
+              {{ template_details[camera]['screenshot_count'] }}
+            </td>
+            <td data-value="{{ template_details[camera]['video_count'] }}">
+              {{ template_details[camera]['video_count'] }}
+            </td>
+            <td
+              data-value="{{ template_details[camera]['storage_usage_bytes'] }}"
+            >
+              {{ template_details[camera]['storage_usage'] }}
+            </td>
+            <td
+              data-value="{{ template_details[camera]['llm_response_count'] }}"
+            >
+              {{ template_details[camera]['llm_response_count'] }}
+            </td>
+            <td
+              data-value="{{ template_details[camera]['llm_cost_estimate'] }}"
+            >
+              {{ template_details[camera]['llm_cost_estimate'] }}
+            </td>
             <td>
-                <form id="form-{{ camera }}" class="notes-form caption-box">
-                        <div class="chat-box">
-                            <div class="chat-prompt">
-                                <label for="notes-{{ camera }}">Prompt:</label>
-                                <textarea id="notes-{{ camera }}" class="notes-textarea">{{ template_details[camera]['notes'] }}</textarea>
-                            </div>
-                            <div class="chat-response">
-                                <label>Response:</label>
-                                <div class="last-caption">
-                                    {{ template_details[camera]['last_caption'] }}
-                                </div>
-                            </div>
-                        </div>
-                        <button class="update-button" data-template="{{ camera }}" title="Send updated prompt">
-                            Send
-                        </button>
-                </form>
+              <form id="form-{{ camera }}" class="notes-form caption-box">
+                <div class="chat-box">
+                  <div class="chat-prompt">
+                    <label for="notes-{{ camera }}">Prompt:</label>
+                    <textarea id="notes-{{ camera }}" class="notes-textarea">
+{{ template_details[camera]['notes'] }}</textarea
+                    >
+                  </div>
+                  <div class="chat-response">
+                    <label>Response:</label>
+                    <div class="last-caption">
+                      {{ template_details[camera]['last_caption'] }}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  class="update-button"
+                  data-template="{{ camera }}"
+                  title="Send updated prompt"
+                >
+                  Send
+                </button>
+              </form>
             </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-</div>
-</div>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-<div id="history-tab" class="tab-content">
+  <div id="history-tab" class="tab-content">
     <h2>Captions</h2>
     <div class="caption-filters">
-        <input type="search" id="captions-search" placeholder="Search captions or time" title="Filter captions">
-        <label for="caption-start">From:</label>
-        <input type="date" id="caption-start" title="Start date">
-        <label for="caption-end">To:</label>
-        <input type="date" id="caption-end" title="End date">
-        <button id="caption-clear" type="button" title="Clear filters">Clear</button>
-        <button id="toggle-chyron-btn" type="button" onclick="toggleChyron()" title="Toggle caption banner">
-            {% if CHYRON_SPEED|int > 0 %}Disable Chyron{% else %}Enable Chyron{% endif %}
-        </button>
+      <input
+        type="search"
+        id="captions-search"
+        placeholder="Search captions or time"
+        title="Filter captions"
+      />
+      <label for="caption-start">From:</label>
+      <input type="date" id="caption-start" title="Start date" />
+      <label for="caption-end">To:</label>
+      <input type="date" id="caption-end" title="End date" />
+      <button id="caption-clear" type="button" title="Clear filters">
+        Clear
+      </button>
+      <button id="chat-open" type="button" title="Ask about recent captions">
+        Chat
+      </button>
+      <button
+        id="toggle-chyron-btn"
+        type="button"
+        onclick="toggleChyron()"
+        title="Toggle caption banner"
+      >
+        {% if CHYRON_SPEED|int > 0 %}Disable Chyron{% else %}Enable Chyron{%
+        endif %}
+      </button>
     </div>
     <table id="captions-table" class="captions-table">
-            <thead>
-            <tr>
-                <th class="sortable" data-type="date">Timestamp</th>
-                <th class="sortable" data-type="string">Caption</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% if not lcaptions %}
-            <tr class="no-data">
-                <td colspan="2">No captions available</td>
-            </tr>
-            {% else %}
-            {% for caption in lcaptions %}
-            {% for lc in caption %}
-            {% if caption[lc] != "" %}
-            <tr>
-                <td><span class="humanized-time" data-time="{{ lc }}">{{ lc }}</span></td>
-                <td>{{ caption[lc] }}</td>
-            </tr>
-            {% endif %}
-            {% endfor %}
-            {% endfor %}
-            {% endif %}
-            </tbody>
-        </table>
-</div>
+      <thead>
+        <tr>
+          <th class="sortable" data-type="date">Timestamp</th>
+          <th class="sortable" data-type="string">Caption</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if not lcaptions %}
+        <tr class="no-data">
+          <td colspan="2">No captions available</td>
+        </tr>
+        {% else %} {% for caption in lcaptions %} {% for lc in caption %} {% if
+        caption[lc] != "" %}
+        <tr>
+          <td>
+            <span class="humanized-time" data-time="{{ lc }}">{{ lc }}</span>
+          </td>
+          <td>{{ caption[lc] }}</td>
+        </tr>
+        {% endif %} {% endfor %} {% endfor %} {% endif %}
+      </tbody>
+    </table>
+    <div id="chat-modal" class="modal">
+      <div class="modal-content">
+        <span id="chat-close" class="close-icon">&times;</span>
+        <textarea
+          id="chat-question"
+          class="prompt-textarea"
+          placeholder="Ask a question..."
+        ></textarea>
+        <button id="chat-submit" type="button">Ask</button>
+        <div id="chat-answer" class="chat-answer"></div>
+      </div>
+    </div>
+  </div>
 
-<div id="bulk-tab" class="tab-content">
+  <div id="bulk-tab" class="tab-content">
     <div class="tsv-controls">
-        <h3>Bulk Caption Management</h3>
-        <div class="tsv-buttons">
-            <a href="/download_captions_tsv" class="btn btn-primary" title="Download captions as TSV file">Download Captions as TSV</a>
+      <h3>Bulk Caption Management</h3>
+      <div class="tsv-buttons">
+        <a
+          href="/download_captions_tsv"
+          class="btn btn-primary"
+          title="Download captions as TSV file"
+          >Download Captions as TSV</a
+        >
 
-            <form action="/upload_captions_tsv" method="post" enctype="multipart/form-data" class="tsv-upload-form">
-                <input type="file" name="tsv_file" id="tsv_file" accept=".tsv" title="Select TSV file to upload">
-                <button type="submit" class="btn btn-success" title="Upload caption TSV file">Upload TSV</button>
-            </form>
-        </div>
-        <p class="tsv-help">Download the TSV file, edit in a spreadsheet application, then upload to update captions.</p>
+        <form
+          action="/upload_captions_tsv"
+          method="post"
+          enctype="multipart/form-data"
+          class="tsv-upload-form"
+        >
+          <input
+            type="file"
+            name="tsv_file"
+            id="tsv_file"
+            accept=".tsv"
+            title="Select TSV file to upload"
+          />
+          <button
+            type="submit"
+            class="btn btn-success"
+            title="Upload caption TSV file"
+          >
+            Upload TSV
+          </button>
+        </form>
+      </div>
+      <p class="tsv-help">
+        Download the TSV file, edit in a spreadsheet application, then upload to
+        update captions.
+      </p>
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="flash-messages">
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }}">{{ message }}</div>
-        {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
-  {% from 'components.html' import confirm_modal %}
-  {{ confirm_modal('update', 'Send updated prompt?', 'Send', 'Cancel') }}
+    {% with messages = get_flashed_messages(with_categories=true) %} {% if
+    messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %} {% endwith %} {% from 'components.html' import confirm_modal %}
+    {{ confirm_modal('update', 'Send updated prompt?', 'Send', 'Cancel') }}
+  </div>
+  {% endblock %}
 </div>
-{% endblock %}
-
