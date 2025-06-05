@@ -10,7 +10,7 @@ def request_with_retry(
     url: str,
     *,
     retries: int = 2,
-    timeout: int = 10,
+    timeout: int = 30,
     backoff_factor: float = 1.0,
     **kwargs: Any,
 ) -> requests.Response:
