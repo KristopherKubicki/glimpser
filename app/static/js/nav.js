@@ -105,7 +105,7 @@ export function initNav() {
       clearTimeout(popupTimer);
       popupTimer = setTimeout(
         () => captionChyron.classList.remove("show"),
-        60000,
+        240000,
       );
     };
 
