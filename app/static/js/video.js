@@ -1,3 +1,14 @@
+function safePlay(el) {
+  const promise = el.play();
+  if (promise && typeof promise.catch === "function") {
+    promise.catch((err) => {
+      if (err.name !== "AbortError") {
+        console.error("Error playing video:", err);
+      }
+    });
+  }
+}
+
 export function initVideoControls() {
   document.addEventListener("DOMContentLoaded", () => {
     setupStatusPageVideoHover();
@@ -13,9 +24,7 @@ export function initVideoControls() {
       entries.forEach((entry) => {
         if (!playAllActive) return;
         if (entry.isIntersecting) {
-          entry.target
-            .play()
-            .catch((e) => console.error("Error playing video:", e));
+          safePlay(entry.target);
         } else {
           entry.target.pause();
         }
@@ -45,7 +54,7 @@ export function initVideoControls() {
           });
           videos.forEach((video) => {
             playAllObserver.observe(video);
-            video.play().catch((e) => console.error("Error playing video:", e));
+            safePlay(video);
           });
           playAllButton.textContent = "Stop";
         }
@@ -69,7 +78,7 @@ export function initVideoControls() {
             source.src = `/live_video?camera=${encodeURIComponent(name)}`;
             video.poster = "";
             video.load();
-            video.play().catch((e) => console.error("Error playing video:", e));
+            safePlay(video);
           }
         });
         liveAllButton.textContent = liveAllActive ? "Live All" : "Stop Live";
@@ -108,7 +117,11 @@ export function setupVideoControls() {
 
   if (playPauseButton) {
     playPauseButton.addEventListener("click", () => {
-      video.paused ? video.play() : video.pause();
+      if (video.paused) {
+        safePlay(video);
+      } else {
+        video.pause();
+      }
     });
   }
   if (muteButton) {
@@ -148,7 +161,11 @@ export function setupVideoControls() {
       case " ": // Spacebar
       case "k":
         e.preventDefault();
-        video.paused ? video.play() : video.pause();
+        if (video.paused) {
+          safePlay(video);
+        } else {
+          video.pause();
+        }
         break;
       case "m":
         video.muted = !video.muted;
@@ -200,7 +217,7 @@ export function setupStatusPageVideoHover() {
       cell.addEventListener("mouseenter", () => {
         img.style.display = "none";
         video.style.display = "block";
-        video.play();
+        safePlay(video);
       });
       cell.addEventListener("mouseleave", () => {
         video.pause();

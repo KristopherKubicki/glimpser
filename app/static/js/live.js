@@ -1,6 +1,17 @@
 import { timeAgo, formatExactTime } from "./templates.js";
 
 const video = document.getElementById("live-video");
+
+function safePlay(el) {
+  const promise = el.play();
+  if (promise && typeof promise.catch === "function") {
+    promise.catch((err) => {
+      if (err.name !== "AbortError") {
+        console.error("Error playing video:", err);
+      }
+    });
+  }
+}
 const image = document.getElementById("live-image");
 const templateDetailsContainer = document.getElementById("template-details");
 const templateDetails = window.templateDetails || {};
@@ -457,7 +468,7 @@ function playM3U8() {
     hlsInstance.loadSource(m3u8Url);
     hlsInstance.attachMedia(video);
     hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
-      video.play().catch((e) => console.error("Error playing video:", e));
+      safePlay(video);
     });
     hlsInstance.on(Hls.Events.ERROR, function (event, data) {
       console.error("HLS error:", data);
@@ -486,7 +497,7 @@ function playM3U8() {
   } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
     video.src = m3u8Url;
     video.addEventListener("canplay", function () {
-      video.play().catch((e) => console.error("Error playing video:", e));
+      safePlay(video);
     });
     video.addEventListener("error", function (e) {
       console.error("Video error:", video.error);
@@ -528,7 +539,7 @@ function playLoop() {
       const cameraName = groupCameras[cameraIndex];
       video.src = `/last_video/${cameraName}`; // Update the video source with the current camera
       video.load();
-      video.play();
+      safePlay(video);
       cameraIndex++; // Move to the next camera
     };
 
@@ -538,7 +549,7 @@ function playLoop() {
     // Handling for individual cameras
     video.src = `/last_video/${currentCamera}`;
     video.load();
-    video.play();
+    safePlay(video);
   }
 }
 
@@ -609,7 +620,7 @@ function playMP4() {
     video.src = `/stream.mp4?camera=${encodeURIComponent(currentCamera)}`;
   }
   video.load();
-  video.play();
+  safePlay(video);
 
   // Remove any existing 'ended' event listeners
   video.removeEventListener("ended", handleVideoEnded);
@@ -629,7 +640,7 @@ function handleVideoEnded() {
     video.dataset.currentCamera = nextCamera;
   }
   video.load();
-  video.play();
+  safePlay(video);
 }
 
 function playLive() {
@@ -672,7 +683,7 @@ function playLive() {
       const cameraName = groupCameras[cameraIndex];
       video.src = "/live_video?camera=" + encodeURIComponent(cameraName);
       video.load();
-      video.play();
+      safePlay(video);
       cameraIndex++;
     };
 
@@ -683,7 +694,7 @@ function playLive() {
   } else {
     video.src = "/live_video?camera=" + encodeURIComponent(currentCamera);
     video.load();
-    video.play();
+    safePlay(video);
   }
 }
 
@@ -975,7 +986,7 @@ if (seekBar) {
   const stopSeek = () => {
     if (isSeeking) {
       isSeeking = false;
-      video.play();
+      safePlay(video);
     }
   };
 
@@ -1000,7 +1011,7 @@ if (toggleDetailsButton) {
 
 function togglePlayback() {
   if (video.paused) {
-    video.play();
+    safePlay(video);
   } else {
     video.pause();
   }
