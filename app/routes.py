@@ -109,7 +109,11 @@ NODE_ENV = os.getenv("NODE_ENV", "development")
 
 # from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock
-from app.utils.validators import validate_template_name, validate_update_data
+from app.utils.validators import (
+    validate_template_name,
+    validate_update_data,
+    validate_setting,
+)
 from app.utils.profiling import profile_route, get_latency_stats
 from scripts.update_chrome_shortcut import (
     update_chrome_shortcuts,
@@ -2628,7 +2632,11 @@ def init_routes(app: Flask) -> None:
                         "error",
                     )
                     return redirect(url_for("settings")), 400
-                update_setting(new_name, new_value)
+                sanitized = validate_setting(new_name, new_value)
+                if sanitized is None:
+                    flash(f"Invalid value for {new_name}", "error")
+                    return redirect(url_for("settings")), 400
+                update_setting(new_name, sanitized)
             elif action == "delete":
                 name_to_delete = request.form.get("name_to_delete")
                 if name_to_delete:
@@ -2637,7 +2645,11 @@ def init_routes(app: Flask) -> None:
                 for setting in email_settings:
                     value = request.form.get(setting)
                     if value is not None:
-                        update_setting(setting, value)
+                        sanitized = validate_setting(setting, value)
+                        if sanitized is None:
+                            flash(f"Invalid value for {setting}", "error")
+                            return redirect(url_for("settings")), 400
+                        update_setting(setting, sanitized)
             elif action == "backup":
                 if backup_config():
                     flash("Configuration backed up successfully", "success")
@@ -2705,11 +2717,16 @@ def init_routes(app: Flask) -> None:
                     ):
                         continue
 
-                    if name in SETTINGS_CHOICES:
-                        update_setting(name, value)
+                    sanitized = validate_setting(name, value)
+                    if sanitized is None:
+                        flash(f"Invalid value for {name}", "error")
                         continue
 
-                    update_setting(name, value)
+                    if name in SETTINGS_CHOICES:
+                        update_setting(name, sanitized)
+                        continue
+
+                    update_setting(name, sanitized)
             return redirect(url_for("settings"))
 
         settings = get_all_settings()
