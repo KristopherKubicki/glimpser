@@ -2642,14 +2642,7 @@ def init_routes(app: Flask) -> None:
                         continue
 
                     if name in SETTINGS_CHOICES:
-                        # When "Other" is selected use the companion text field.
-                        if value == "__other__":
-                            value = request.form.get(f"{name}_other", "")
                         update_setting(name, value)
-                        continue
-
-                    if name.endswith("_other"):
-                        # Companion fields are handled above
                         continue
 
                     update_setting(name, value)
