@@ -30,6 +30,10 @@
     <li title="Open file handles">Open Files: {{ metrics.open_files }}</li>
     <li title="Number of active threads">Thread Count: {{ metrics.thread_count }}</li>
     <li title="System uptime">Uptime: {{ metrics.uptime }}</li>
+    <li title="Installed ffmpeg version">FFmpeg Version: {{ metrics.ffmpeg_version }}</li>
+    <li title="Hardware acceleration devices present">Machine HW Accel: {{ metrics.machine_hwaccel }}</li>
+    <li title="ffmpeg has hardware acceleration support">FFmpeg HW Accel: {{ metrics.ffmpeg_hwaccel }}</li>
+    <li title="Hardware acceleration enabled via config">HW Accel Enabled: {{ metrics.hwaccel_enabled }}</li>
 </ul>
 {% endcall %}
 

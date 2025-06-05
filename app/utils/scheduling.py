@@ -11,6 +11,8 @@ import threading
 import time
 import multiprocessing
 from collections import deque
+import subprocess
+import shutil
 import textwrap
 
 from apscheduler.triggers.cron import CronTrigger
@@ -26,6 +28,8 @@ from app.config import (
     VIDEO_DIRECTORY,
     CLIP_MODEL_NAME,
     LOGGING_PATH,
+    FFMPEG_PATH,
+    FFMPEG_HWACCEL,
 )
 from app.utils.db import SessionLocal
 from app.models import Summary
@@ -979,6 +983,36 @@ metrics_thread = None
 log_caching_thread = None
 
 
+def ffmpeg_version() -> str:
+    """Return the installed FFmpeg version or 'unavailable'."""
+    try:
+        output = subprocess.check_output(
+            [FFMPEG_PATH, "-version"], stderr=subprocess.STDOUT, timeout=2
+        ).decode()
+        first = output.splitlines()[0]
+        match = re.search(r"ffmpeg version\s+([^\s]+)", first)
+        return match.group(1) if match else first
+    except Exception:
+        return "unavailable"
+
+
+def machine_supports_hwaccel() -> bool:
+    """Return ``True`` if GPU devices appear to be available."""
+    return os.path.exists("/dev/dri") or shutil.which("nvidia-smi") is not None
+
+
+def ffmpeg_supports_hwaccel() -> bool:
+    """Return ``True`` if ``ffmpeg`` reports any hardware acceleration methods."""
+    try:
+        output = subprocess.check_output(
+            [FFMPEG_PATH, "-hwaccels"], stderr=subprocess.STDOUT, timeout=2
+        ).decode()
+        lines = [l.strip() for l in output.splitlines() if l.strip()]
+        return len(lines) > 1
+    except Exception:
+        return False
+
+
 def collect_system_metrics():
     while not stop_event.is_set():
         system_metrics["cpu_usage"] = psutil.cpu_percent(interval=1)
@@ -1004,6 +1038,10 @@ def get_system_metrics():
         "open_files": open_files,
         "thread_count": system_metrics["thread_count"],
         "uptime": f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s",
+        "ffmpeg_version": ffmpeg_version(),
+        "machine_hwaccel": machine_supports_hwaccel(),
+        "ffmpeg_hwaccel": ffmpeg_supports_hwaccel(),
+        "hwaccel_enabled": bool(FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false"),
     }
 
 
