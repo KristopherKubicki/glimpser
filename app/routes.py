@@ -2665,16 +2665,6 @@ def init_routes(app: Flask) -> None:
                         flash("Configuration restored successfully", "success")
                     else:
                         flash("Invalid file type", "error")
-            elif action == "update_shortcut":
-                paths = update_chrome_shortcuts()
-                if paths:
-                    joined = ", ".join(str(p) for p in paths)
-                    flash(
-                        f"Updated {len(paths)} shortcut{'s' if len(paths) != 1 else ''}: {joined}",
-                        "success",
-                    )
-                else:
-                    flash("Failed to update shortcuts", "error")
             else:
                 current = {s["name"]: s["value"] for s in get_all_settings()}
                 bool_settings = {
