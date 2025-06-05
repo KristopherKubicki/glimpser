@@ -79,6 +79,8 @@ from app.utils.screenshots import (
     capture_frame_from_stream,
 )
 from app.utils.db import SessionLocal, engine
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
+import sqlite3
 from typing import Any, Callable, Generator, Iterable, Optional, List, Dict
 
 try:
@@ -284,13 +286,23 @@ def get_all_settings() -> List[Dict[str, Any]]:
 
     session = SessionLocal()
     try:
-        # Fetch all settings from the database
-        db_settings = {
-            row[0]: row[1]
-            for row in session.execute(
-                text("SELECT name, value FROM settings")
-            ).fetchall()
-        }
+        try:
+            # Fetch all settings from the database
+            db_settings = {
+                row[0]: row[1]
+                for row in session.execute(
+                    text("SELECT name, value FROM settings")
+                ).fetchall()
+            }
+        except (OperationalError, sqlite3.OperationalError) as e:
+            if "no such table" in str(e):
+                logging.warning("settings table does not exist")
+            else:
+                logging.warning("database error %s", e)
+            db_settings = {}
+        except SQLAlchemyError as e:  # pragma: no cover - unexpected errors
+            logging.warning("database error %s", e)
+            db_settings = {}
 
         # Fetch all settings from config.py that use get_setting()
         settings = {}
@@ -323,7 +335,6 @@ def get_all_settings() -> List[Dict[str, Any]]:
                 lsettings_list.append({"name": sl["name"], "value": sl["value"]})
 
         return lsettings_list
-
     finally:
         session.close()
 
@@ -358,6 +369,15 @@ def update_setting(name: str, value: str) -> bool:
             )
             delta = True
         session.commit()
+    except (OperationalError, sqlite3.OperationalError) as e:
+        if "no such table" in str(e):
+            logging.warning("settings table does not exist")
+        else:
+            logging.warning("database error %s", e)
+        session.rollback()
+    except SQLAlchemyError as e:  # pragma: no cover - unexpected errors
+        logging.warning("database error %s", e)
+        session.rollback()
     finally:
         session.close()
 
