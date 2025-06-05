@@ -10,4 +10,4 @@ location / {
 }
 ```
 
-Combined with the `<link rel="preload" as="fetch" crossorigin href="/static/icons/sprite.svg">` tag in `header.html`, pushing the sprite saves roughly 120&nbsp;ms on a 4G connection.
+Combined with the `<link rel="preload" href="/static/icons/sprite.svg" as="image" type="image/svg+xml" crossorigin>` tag in `header.html`, pushing the sprite saves roughly 120&nbsp;ms on a 4G connection.

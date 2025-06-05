@@ -10,7 +10,7 @@
     <meta property="og:description" content="{{ meta_description or 'Real-time monitoring and summarization for camera streams.' }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
-    <link rel="preload" as="fetch" crossorigin href="{{ url_for('static', filename='icons/sprite.svg') }}">
+    <link rel="preload" href="{{ url_for('static', filename='icons/sprite.svg') }}" as="image" type="image/svg+xml" crossorigin>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
 </head>
