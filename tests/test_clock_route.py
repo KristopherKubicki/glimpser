@@ -49,10 +49,10 @@ class TestClockRoute(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_clock_page(self):
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
-        ):
-            response = self.client.get("/clock")
+        with self.client.session_transaction() as sess:
+            sess["user_id"] = 1
+
+        response = self.client.get("/clock")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Clock", response.data)
 
