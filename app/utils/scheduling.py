@@ -837,8 +837,8 @@ def update_summary():
 
 
 def schedule_summarization():
+    """Run ``update_summary`` hourly without blocking the caller."""
 
-    # loop through the templates and
     try:
         scheduler.add_job(
             func=update_summary,
@@ -846,9 +846,16 @@ def schedule_summarization():
             id="summary",
             replace_existing=True,
         )
+        # queue an immediate one-off run so startup waits for nothing
+        scheduler.add_job(
+            func=update_summary,
+            trigger="date",
+            id="summary_init",
+            replace_existing=True,
+            run_date=datetime.datetime.now(),
+        )
     except Exception as e:
         logging.error("job schedule error: %s", e)
-    update_summary()
 
 
 def schedule_crawlers():
@@ -1241,9 +1248,16 @@ def schedule_discovery() -> None:
             id="background_discovery",
             replace_existing=True,
         )
+        # kick off an immediate scan in the background
+        scheduler.add_job(
+            func=run_discovery,
+            trigger="date",
+            id="background_discovery_now",
+            replace_existing=True,
+            run_date=datetime.datetime.now(),
+        )
     except Exception as e:
         logging.error("job schedule error: %s", e)
-    run_discovery()
 
 
 def stop_discovery() -> None:
