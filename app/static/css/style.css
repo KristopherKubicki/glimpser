@@ -1541,6 +1541,10 @@ details > summary {
     margin-bottom: 1rem;
 }
 
+#add-setting-container {
+    margin-bottom: 1rem;
+}
+
 .tab-link {
     padding: 0.5rem 1rem;
     background-color: var(--secondary-bg-color);
