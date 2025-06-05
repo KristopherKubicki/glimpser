@@ -2512,12 +2512,28 @@ def init_routes(app: Flask) -> None:
                 else:
                     flash("Failed to update shortcuts", "error")
             else:
+                current = {s["name"]: s["value"] for s in get_all_settings()}
+                bool_settings = {
+                    n for n, v in current.items() if v in ["True", "False"]
+                }
+                for name in bool_settings:
+                    if name in email_settings:
+                        continue
+                    new_val = (
+                        "True"
+                        if request.form.get(name)
+                        in ["True", "on", "1", "t", "y", "yes"]
+                        else "False"
+                    )
+                    update_setting(name, new_val)
+
                 for name, value in request.form.items():
-                    if (
-                        name
-                        not in ["action", "new_name", "new_value", "name_to_delete"]
-                        + email_settings
-                    ):
+                    if name not in [
+                        "action",
+                        "new_name",
+                        "new_value",
+                        "name_to_delete",
+                    ] + email_settings + list(bool_settings):
                         update_setting(name, value)
             return redirect(url_for("settings"))
 
