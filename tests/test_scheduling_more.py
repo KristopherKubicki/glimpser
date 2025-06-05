@@ -58,7 +58,17 @@ class TestAddMotionAndCaption(unittest.TestCase):
 
 class TestGetSystemMetrics(unittest.TestCase):
     @patch("app.utils.scheduling.psutil")
-    def test_metrics_fields(self, mock_psutil):
+    @patch("app.utils.scheduling.ffmpeg_version", return_value="6.0")
+    @patch("app.utils.scheduling.machine_supports_hwaccel", return_value=True)
+    @patch("app.utils.scheduling.ffmpeg_supports_hwaccel", return_value=True)
+    @patch.object(scheduling, "FFMPEG_HWACCEL", "cuda")
+    def test_metrics_fields(
+        self,
+        mock_ffmpeg_hwaccel,
+        mock_machine,
+        mock_version,
+        mock_psutil,
+    ):
         scheduling.system_metrics.update(
             {
                 "cpu_usage": 1.234,
@@ -76,6 +86,10 @@ class TestGetSystemMetrics(unittest.TestCase):
         self.assertEqual(metrics["open_files"], 3)
         self.assertEqual(metrics["thread_count"], 5)
         self.assertTrue(metrics["uptime"].startswith("1h 1m"))
+        self.assertEqual(metrics["ffmpeg_version"], "6.0")
+        self.assertTrue(metrics["machine_hwaccel"])
+        self.assertTrue(metrics["ffmpeg_hwaccel"])
+        self.assertTrue(metrics["hwaccel_enabled"])
 
 
 if __name__ == "__main__":
