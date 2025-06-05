@@ -7,7 +7,8 @@ This document lists the main tooltips available in the Glimpser interface. Hover
 - **Home** – returns to the dashboard.
 - **Group links** – open the page listing cameras in that group.
 - **Template title** – links to the template details page.
-- **System Performance icon** – shows CPU, memory and other metrics.
+- **System Performance icon** – shows CPU, memory and other metrics. It hides
+  when the system is healthy unless `HEALTH_STATUS_ALWAYS_VISIBLE` is set.
 - **Danger Mode icon** – appears only when Danger mode is available. Hovering over it explains why the feature may be disabled.
 - **Discover Cameras icon** – opens the camera discovery page.
 - **Captions icon** – reads and updates camera language models. The icon flashes

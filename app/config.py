@@ -338,6 +338,14 @@ LIVE_MAX_FAILURES = int(get_setting("LIVE_MAX_FAILURES", 10))
 # the banner remains visible after a caption arrives.
 CHYRON_SPEED = int(get_setting("CHYRON_SPEED", 0))
 
+# Whether the System Performance icon in the navigation bar should remain
+# visible even when the application reports healthy status. When set to
+# ``False`` the icon hides itself if all metrics look nominal to reduce
+# clutter. Set ``True`` to keep it visible at all times.
+HEALTH_STATUS_ALWAYS_VISIBLE = (
+    get_setting("HEALTH_STATUS_ALWAYS_VISIBLE", "False") == "True"
+)
+
 # Watchdog configuration values. These control how aggressively the
 # watchdog restarts the application when health checks fail.
 WATCHDOG_FAILURE_THRESHOLD = int(get_setting("WATCHDOG_FAILURE_THRESHOLD", 3))
