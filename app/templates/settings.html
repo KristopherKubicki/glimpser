@@ -21,6 +21,7 @@
         <button type="button" class="tab-link{% if loop.first %} active{% endif %}" data-tab="{{ group|replace(' ', '-') }}-tab">{{ group }}</button>
         {% if loop.first %}
         <button type="button" class="tab-link" data-tab="discover-tab">Discover</button>
+        <button type="button" class="tab-link" data-tab="status-tab">System Status</button>
         {% endif %}
         {% endfor %}
         <button type="button" class="tab-link" data-tab="management-tab">Management</button>
@@ -76,6 +77,9 @@
         {% if loop.first %}
         <div id="discover-tab" class="tab-content">
             {% include '_discover_tab.html' %}
+        </div>
+        <div id="status-tab" class="tab-content">
+            {% include '_status_tab.html' %}
         </div>
         {% endif %}
         {% endfor %}

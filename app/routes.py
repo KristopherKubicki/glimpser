@@ -2608,10 +2608,16 @@ def init_routes(app: Flask) -> None:
             if not placed:
                 grouped_settings["Other"].append(setting)
 
+        metrics = scheduling.get_system_metrics()
+        feeds = scheduling.get_feed_status()
+        last_summary = scheduling.get_last_summary_time()
         return render_template(
             "settings.html",
             grouped_settings=grouped_settings,
             tooltips=SETTINGS_TOOLTIPS,
+            metrics=metrics,
+            feeds=feeds,
+            last_summary=last_summary,
             page_title="Settings",
         )
 
@@ -2853,16 +2859,8 @@ def init_routes(app: Flask) -> None:
     @app.route("/status")
     @login_required
     def status():
-        metrics = scheduling.get_system_metrics()
-        feeds = scheduling.get_feed_status()
-        last_summary = scheduling.get_last_summary_time()
-        return render_template(
-            "status.html",
-            metrics=metrics,
-            feeds=feeds,
-            last_summary=last_summary,
-            page_title="System Status",
-        )
+        """Redirect to the System Status tab under Settings for consistency."""
+        return redirect(url_for("settings", tab="status-tab"))
 
     @app.route("/logs")
     @login_required
