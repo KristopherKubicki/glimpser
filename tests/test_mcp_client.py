@@ -24,6 +24,15 @@ class TestMCPClient(unittest.TestCase):
         result = asyncio.run(client.call_tool("bad"))
         self.assertEqual(result, {"error": "Unknown tool: bad"})
 
+    def test_register_local_tool(self):
+        def upper(params=None):
+            text = (params or {}).get("text", "")
+            return {"text": text.upper()}
+
+        mcp.register_local_tool("upper", "Uppercase text", upper)
+        result = mcp.call_tool_sync("upper", {"text": "hi"})
+        self.assertEqual(result, {"text": "HI"})
+
     def test_sync_helpers_use_config(self):
         with (
             patch("app.config.MCP_SERVER_COMMAND", "cmd"),
