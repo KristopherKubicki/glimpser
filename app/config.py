@@ -332,6 +332,11 @@ LIVE_FALLBACK_FPS = int(get_setting("LIVE_FALLBACK_FPS", 1))
 # not wasted.
 LIVE_MAX_FAILURES = int(get_setting("LIVE_MAX_FAILURES", 10))
 
+# Duration of the caption chyron scroll in seconds. Set to 0 to disable
+# the chyron entirely. When enabled, the same value controls how long
+# the banner remains visible after a caption arrives.
+CHYRON_SPEED = int(get_setting("CHYRON_SPEED", 0))
+
 # Watchdog configuration values. These control how aggressively the
 # watchdog restarts the application when health checks fail.
 WATCHDOG_FAILURE_THRESHOLD = int(get_setting("WATCHDOG_FAILURE_THRESHOLD", 3))

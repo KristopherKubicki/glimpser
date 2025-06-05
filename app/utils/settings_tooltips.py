@@ -16,6 +16,7 @@ SETTINGS_TOOLTIPS = {
     "FFMPEG_THREADS": "Threads for video processing",
     "LIVE_FALLBACK_FPS": "Frame rate for still image streams",
     "LIVE_MAX_FAILURES": "Max retries for live streams",
+    "CHYRON_SPEED": "Duration of caption banner in seconds",
     "EMAIL_ENABLED": "Toggle email notifications",
     "EMAIL_SMTP_SERVER": "SMTP server address",
     "EMAIL_RECIPIENTS": "Notification recipients",
