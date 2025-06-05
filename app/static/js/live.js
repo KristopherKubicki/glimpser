@@ -741,6 +741,13 @@ function playLive() {
       }
     }
 
+    if (!groupCameras || groupCameras.length === 0) {
+      console.warn("playLive: no cameras available for", currentCamera);
+      showError("No cameras available for live view");
+      showLastScreenshot();
+      return;
+    }
+
     let cameraIndex = 0;
     liveSwitchFunction = () => {
       if (cameraIndex >= groupCameras.length) {
