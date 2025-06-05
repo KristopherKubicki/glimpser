@@ -73,6 +73,13 @@ without an update.
 You can toggle the chyron from the **Captions** page using the button in the
 History tab.
 
+## System Performance Icon
+
+The System Performance icon in the navigation bar provides quick access to the
+`/status` page. When all metrics look healthy the icon now hides to reduce
+clutter. Set the `HEALTH_STATUS_ALWAYS_VISIBLE` option to `True` if you prefer
+to keep it shown at all times.
+
 ## Danger Mode Indicator
 
 When Chrome's remote debugging port is open and no user input has been detected for a short time, an orange icon appears in the navigation bar. The icon hides again when Danger mode is unavailable. Hovering over it explains why Danger mode may be disabled. See [Danger Mode](danger_mode.md) for setup instructions.

@@ -73,7 +73,7 @@ describe('script.js', () => {
     }));
 
     updateGridLayout();
-    expect(templateList.style.gridTemplateColumns).toBe('repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px)))');
+    expect(templateList.style.gridTemplateColumns).toBe('repeat(auto-fit, minmax(50px, var(--tile-size)))');
   });
 
   test('timeAgo returns correct human-readable time', () => {

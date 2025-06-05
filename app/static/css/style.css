@@ -205,7 +205,7 @@ h1, h2 {
 
 #template-list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px))); /* Use CSS variable */
+    grid-template-columns: repeat(auto-fit, minmax(50px, var(--tile-size))); /* Use CSS variable */
     gap: 5px;
     padding: 10px;
     justify-content: center;
@@ -272,8 +272,9 @@ select:hover {
     position: relative;
     border-radius: 5px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    width: var(--grid-item-width, 360px);
-    height: var(--grid-item-height, calc(var(--grid-item-width, 360px) * 0.5625));
+    flex: 0 0 var(--tile-size);
+    width: var(--tile-size);
+    aspect-ratio: 16 / 9;
 }
 
 .templateDiv::before {
@@ -337,6 +338,9 @@ video:hover + .play-icon {
 }
 
 :root {
+    --tile-size: 360px;
+    --grid-item-width: var(--tile-size);
+    --grid-item-height: calc(var(--tile-size) * 0.5625);
     --tile-scale: 1;
     --camera-name-font-size: 14px;
     --timestamp-font-size: 12px;
@@ -524,12 +528,14 @@ nav a {
     transition: background-color 0.2s, color 0.2s; /* Smooth hover transition */
 }
 
-#nav-group-dropdown {
+#nav-group-dropdown,
+#nav-camera-dropdown {
     background-color: var(--secondary-bg-color);
     color: var(--text-color);
     border: 1px solid var(--table-border-color);
     border-radius: 5px;
     padding: 4px 8px;
+    width: 120px; /* Prevent layout shift while content loads */
 }
 
 .status-indicator {
@@ -695,7 +701,8 @@ nav a:hover, nav a.active {
         padding: 1px 3px;
     }
 
-    #nav-group-dropdown {
+    #nav-group-dropdown,
+    #nav-camera-dropdown {
         width: 100%;
         margin-bottom: 5px;
     }
@@ -961,8 +968,9 @@ input:checked + .slider:before {
 
 .templateDiv {
     position: relative;
-    width: 100%;
-    height: var(--grid-item-height, calc(var(--grid-item-width, 360px) * 0.5625));
+    flex: 0 0 var(--tile-size);
+    width: var(--tile-size);
+    aspect-ratio: 16 / 9;
     overflow: hidden;
     background-color: #000;
     border-radius: 5px;
@@ -1226,8 +1234,9 @@ input[type=submit]:hover {
 
 /* Use the same tile width as the front page */
 .captions-page .templateDiv {
-    width: var(--grid-item-width, 360px);
-    height: var(--grid-item-height, calc(var(--grid-item-width, 360px) * 0.5625));
+    flex: 0 0 var(--tile-size);
+    width: var(--tile-size);
+    aspect-ratio: 16 / 9;
 }
 
 .captions-page .templateDiv::before {

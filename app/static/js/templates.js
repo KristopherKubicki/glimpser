@@ -43,25 +43,10 @@ export function initTemplates() {
         slider.min = computedMin;
         if (parseFloat(slider.value) < computedMin) {
           slider.value = computedMin;
-          if (templateList) {
-            templateList.style.setProperty(
-              "--grid-item-width",
-              `${computedMin}px`,
-            );
-            const height = Math.min(
-              Math.round((computedMin * 9) / 16),
-              MAX_THUMBNAIL_HEIGHT,
-            );
-            templateList.style.setProperty("--grid-item-height", `${height}px`);
-          }
-        }
-        if (templateList) {
-          const width = parseFloat(slider.value);
-          const height = Math.min(
-            Math.round((width * 9) / 16),
-            MAX_THUMBNAIL_HEIGHT,
+          document.documentElement.style.setProperty(
+            "--tile-size",
+            `${computedMin}px`,
           );
-          templateList.style.setProperty("--grid-item-height", `${height}px`);
         }
       };
 
@@ -101,8 +86,7 @@ export function initTemplates() {
           Math.round((value * 9) / 16),
           MAX_THUMBNAIL_HEIGHT,
         );
-        templateList.style.setProperty("--grid-item-width", `${value}px`);
-        templateList.style.setProperty("--grid-item-height", `${height}px`);
+        document.documentElement.style.setProperty("--tile-size", `${value}px`);
         templateList.querySelectorAll(".templateDiv").forEach((div) => {
           div.style.width = `${value}px`;
           div.style.height = `${height}px`;
@@ -206,6 +190,17 @@ export async function loadGroups() {
   } finally {
     groupDropdown.disabled = false;
   }
+
+  // Close the loadGroups function
+}
+
+export function getSelectedGroup() {
+  const dropdown = document.getElementById("group-dropdown");
+  if (dropdown && dropdown.value) return dropdown.value;
+  const navDropdown = document.getElementById("nav-group-dropdown");
+  if (navDropdown && navDropdown.value) return navDropdown.value;
+  if (window.currentGroup) return window.currentGroup;
+  return "all";
 }
 
 export function timeAgo(utcDateString) {
@@ -254,7 +249,7 @@ export function updateGridLayout() {
     templateList.style.gridTemplateColumns = "1fr";
   } else {
     templateList.style.gridTemplateColumns =
-      "repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px)))";
+      "repeat(auto-fit, minmax(50px, var(--tile-size)))";
   }
 }
 
@@ -351,11 +346,13 @@ export function setupSearch() {
   const filterValue = document.getElementById("filter-value");
   const applyFilter = document.getElementById("apply-filter");
   const templateList = document.getElementById("template-list");
-  if (!searchInput || !groupDropdown) return;
+  if (!searchInput) return;
 
   const filterCameras = () => {
     const searchTerm = searchInput.value.toLowerCase();
-    const selectedGroup = groupDropdown.value;
+    const selectedGroup = groupDropdown
+      ? groupDropdown.value
+      : getSelectedGroup();
     const column = filterColumn ? filterColumn.value : "";
     const filterVal = filterValue ? filterValue.value.trim().toLowerCase() : "";
     cameraRows.forEach((row) => {
@@ -388,10 +385,10 @@ export function setupSearch() {
   if (templateList) {
     const debouncedLoad = debounce(loadTemplates, 300);
     searchInput.addEventListener("input", debouncedLoad);
-    groupDropdown.addEventListener("change", debouncedLoad);
+    if (groupDropdown) groupDropdown.addEventListener("change", debouncedLoad);
   } else {
     searchInput.addEventListener("input", filterCameras);
-    groupDropdown.addEventListener("change", filterCameras);
+    if (groupDropdown) groupDropdown.addEventListener("change", filterCameras);
     if (applyFilter) applyFilter.addEventListener("click", filterCameras);
   }
 }
@@ -404,9 +401,8 @@ export function templateMatchesSearch(template, searchQuery) {
 }
 
 export async function loadTemplates() {
-  const groupDropdown = document.getElementById("group-dropdown");
   const searchInput = document.getElementById("search-input");
-  const selectedGroup = groupDropdown ? groupDropdown.value || "all" : "all";
+  const selectedGroup = getSelectedGroup();
   const searchQuery = searchInput ? searchInput.value.toLowerCase() : "";
   const url = `/templates?group=${selectedGroup}&search=${searchQuery}&t=${new Date().getTime()}`;
 
@@ -568,9 +564,17 @@ export async function loadTemplates() {
     if (isIndexPage) {
       window.addEventListener("resize", updateGridLayout);
     }
-    if (window.updateSliderLimits) window.updateSliderLimits();
-    const slider = document.getElementById("grid-width-slider");
-    if (slider) slider.dispatchEvent(new Event("input"));
+    if (window.updateSliderLimits) {
+      window.updateSliderLimits();
+      const slider = document.getElementById("grid-width-slider");
+      if (slider) {
+        slider.value = slider.min;
+        slider.dispatchEvent(new Event("input"));
+      }
+    } else {
+      const slider = document.getElementById("grid-width-slider");
+      if (slider) slider.dispatchEvent(new Event("input"));
+    }
     updateHumanizedTimes();
     window.dispatchEvent(
       new CustomEvent("templatesLoaded", { detail: { count: templateCount } }),

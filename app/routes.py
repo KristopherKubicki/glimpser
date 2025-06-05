@@ -60,6 +60,7 @@ from app.config import (
     SENSITIVE_SETTINGS,
     CHYRON_SPEED,
     NAV_ICON,
+    HEALTH_STATUS_ALWAYS_VISIBLE,
 )
 from app.models import User, Summary
 from app.utils import (
@@ -916,6 +917,7 @@ def init_routes(app: Flask) -> None:
             NODE_ENV=NODE_ENV,
             CHYRON_SPEED=CHYRON_SPEED,
             NAV_ICON=NAV_ICON,
+            HEALTH_STATUS_ALWAYS_VISIBLE=HEALTH_STATUS_ALWAYS_VISIBLE,
         )
 
     # Add a new route for the extended health check
