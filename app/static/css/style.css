@@ -708,6 +708,18 @@ nav a.active {
 
   nav a {
     margin-bottom: 5px; /* Add margin for stacked items */
+    font-size: 1.2rem; /* Larger tap targets */
+  }
+
+  .menu-toggle {
+    font-size: 2rem; /* Bigger hamburger icon */
+  }
+
+  /* Hide elements that waste space on mobile */
+  #navClock,
+  #caption-chyron,
+  .flash-messages {
+    display: none;
   }
 
   .settings-icon svg {
