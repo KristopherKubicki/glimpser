@@ -5,5 +5,6 @@ Glimpser now adapts to phones and tablets. The navigation menu collapses into a 
 The main template view scales thumbnails with the width slider and the page now uses smooth scrolling for longer lists.
 
 The header navigation also uses smaller padding so it stays out of the way on both mobile and desktop.
+Tapping a link or outside the menu now closes the navigation automatically on smaller screens.
 
 Offline preview keeps recently viewed pages and assets in the browser cache so the interface remains responsive even on poor connections.

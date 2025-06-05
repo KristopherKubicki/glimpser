@@ -7,8 +7,26 @@ export function initNav() {
     const menuToggle = document.getElementById("menu-toggle");
 
     if (nav && menuToggle) {
+      const closeNav = () => nav.classList.remove("active");
       menuToggle.addEventListener("click", () => {
         nav.classList.toggle("active");
+      });
+      nav.addEventListener("click", (e) => {
+        if (e.target.tagName === "A") {
+          closeNav();
+        }
+      });
+      document.addEventListener("click", (e) => {
+        if (nav.classList.contains("active") &&
+            !nav.contains(e.target) &&
+            e.target !== menuToggle) {
+          closeNav();
+        }
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          closeNav();
+        }
       });
     }
 
