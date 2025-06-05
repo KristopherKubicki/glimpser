@@ -14,10 +14,19 @@
 <h1>System Status</h1>
 
 {% call card('System Metrics') %}
-<ul>
-    <li title="Current CPU utilization">CPU Usage: {{ metrics.cpu_usage }}%</li>
-    <li title="Current memory utilization">Memory Usage: {{ metrics.memory_usage }}%</li>
-    <li title="Disk space used">Disk Usage: {{ metrics.disk_usage }}%</li>
+<ul class="metrics-list">
+    <li title="Current CPU utilization">CPU Usage:
+        <progress class="metric-bar" value="{{ metrics.cpu_usage }}" max="100"></progress>
+        {{ metrics.cpu_usage }}%
+    </li>
+    <li title="Current memory utilization">Memory Usage:
+        <progress class="metric-bar" value="{{ metrics.memory_usage }}" max="100"></progress>
+        {{ metrics.memory_usage }}%
+    </li>
+    <li title="Disk space used">Disk Usage:
+        <progress class="metric-bar" value="{{ metrics.disk_usage }}" max="100"></progress>
+        {{ metrics.disk_usage }}%
+    </li>
     <li title="Open file handles">Open Files: {{ metrics.open_files }}</li>
     <li title="Number of active threads">Thread Count: {{ metrics.thread_count }}</li>
     <li title="System uptime">Uptime: {{ metrics.uptime }}</li>

@@ -1419,6 +1419,17 @@ details > summary {
     background-color: red;
 }
 
+.metrics-list li {
+    margin-bottom: 0.25rem;
+}
+
+.metric-bar {
+    width: 8rem;
+    height: 0.6rem;
+    vertical-align: middle;
+    margin: 0 0.25rem;
+}
+
 
 /* simple layout for discovery wizard */
 .wizard-step {
