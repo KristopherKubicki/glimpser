@@ -233,6 +233,7 @@ sync_version(_PKG_VERSION)
 # Default to the package version if not overridden in the database
 VERSION = get_setting("VERSION", _PKG_VERSION)
 NAME = get_setting("NAME", "glimpser")
+NAV_ICON = get_setting("NAV_ICON", "img/glimpser_small.png")
 HOST = get_setting("HOST", "0.0.0.0")
 PORT = int(get_setting("PORT", 8082))
 DEBUG = get_setting("DEBUG", "False") == "True"
