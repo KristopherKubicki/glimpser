@@ -32,6 +32,7 @@ from flask import (
     Response,
     make_response,
     stream_with_context,
+    Flask,
 )
 
 from PIL import Image, ImageDraw, ImageFont
@@ -74,6 +75,7 @@ from app.utils.screenshots import (
     capture_frame_from_stream,
 )
 from app.utils.db import SessionLocal, engine
+from typing import Any, Callable, Generator, Iterable, Optional, List, Dict
 
 try:
     COMMIT_HASH = (
@@ -92,7 +94,9 @@ from app.utils.profiling import profile_route, get_latency_stats
 from scripts.update_chrome_shortcut import update_chrome_shortcuts
 
 
-def restart_server():
+def restart_server() -> None:
+    """Restart the current Python process in a background thread."""
+
     logging.info("Restarting server...")
 
     def delayed_restart():
@@ -138,6 +142,7 @@ def generate_timed_hash():
 
 
 def is_hash_valid(timed_hash: str) -> bool:
+    """Return ``True`` if ``timed_hash`` is valid and not expired."""
     try:
         hash_digest, expiration_time = timed_hash.split(".")
         to_hash = f"{API_KEY}{expiration_time}"
@@ -152,7 +157,9 @@ def is_hash_valid(timed_hash: str) -> bool:
         return False
 
 
-def login_required(f):
+def login_required(f: Callable) -> Callable:
+    """Decorator enforcing session or API key authentication for routes."""
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # Check for API key in headers, GET parameters, or POST form data
@@ -229,8 +236,14 @@ def login_required(f):
 
 # Function to read logs from the local text file and filter them based on query parameters
 def read_logs_from_memory(
-    level=None, source=None, start_date=None, end_date=None, search=None
-):
+    level: Optional[str] = None,
+    source: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    search: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Return in-memory logs filtered by the given criteria."""
+
     # global log_cache
 
     filtered_logs = []
@@ -254,7 +267,9 @@ def read_logs_from_memory(
     return sorted(filtered_logs, key=lambda x: x["timestamp"], reverse=True)
 
 
-def get_all_settings():
+def get_all_settings() -> List[Dict[str, Any]]:
+    """Return all configuration settings from the database and defaults."""
+
     session = SessionLocal()
     try:
         # Fetch all settings from the database
@@ -302,6 +317,7 @@ def get_all_settings():
 
 
 def update_setting(name: str, value: str) -> bool:
+    """Persist a configuration ``name`` and ``value`` to the database."""
 
     name = name.replace("'", "")[:32]
     value = value.replace("'", "")[:1024]
@@ -341,8 +357,8 @@ def update_setting(name: str, value: str) -> bool:
     return True
 
 
-def generate_video_stream(video_path: str):
-    """Yield video data in chunks and restart when the end is reached."""
+def generate_video_stream(video_path: str) -> Generator[bytes, None, None]:
+    """Yield video data from ``video_path`` in chunks indefinitely."""
 
     # The video preview on the UI expects an infinite generator. Read the
     # file in 1MB increments and loop back to the beginning once no more
@@ -366,7 +382,7 @@ def generate_video_stream(video_path: str):
         logging.debug("Restarting video stream")
 
 
-def generate_live_stream(url: str):
+def generate_live_stream(url: str) -> Generator[bytes, None, None]:
     """Yield video data directly from a remote URL using ``ffmpeg``.
 
     Some camera APIs expose JPEG snapshots rather than a continuous video
@@ -478,7 +494,8 @@ active_groups = []
 rtsp_sessions = {}
 
 
-def get_active_groups():
+def get_active_groups() -> List[str]:
+    """Return a sorted list of all active group names."""
     global active_groups
     templates = template_manager.get_templates()
     active_cameras = []
@@ -498,7 +515,11 @@ def get_active_groups():
     return active_cameras
 
 
-def resize_and_pad(img, size, color=(0, 0, 0)):
+def resize_and_pad(
+    img: Image.Image, size: tuple[int, int], color: tuple[int, int, int] = (0, 0, 0)
+) -> Image.Image:
+    """Resize ``img`` to fit ``size`` while preserving aspect ratio."""
+
     # Calculate the scaling factor to resize the image while maintaining the aspect ratio
     scale = max(size[0] / img.size[0], size[1] / img.size[1])
 
@@ -521,8 +542,13 @@ lock = Lock()
 
 
 def generate(
-    group=None, camera=None, filename="latest_camera.png", rtsp=False, session_id=None
-):
+    group: Optional[str] = None,
+    camera: Optional[str] = None,
+    filename: str = "latest_camera.png",
+    rtsp: bool = False,
+    session_id: Optional[str] = None,
+) -> Generator[bytes, None, None]:
+    """Yield MJPEG or RTP frames from the latest screenshot files."""
     # Treat explicit "all" values as no filter
     if group == "all":
         group = None
@@ -710,7 +736,7 @@ def generate(
         time.sleep(1 - (time.time() - ltime))
 
 
-def generate_fast_mjpg(camera: str):
+def generate_fast_mjpg(camera: str) -> Generator[bytes, None, None]:
     """Yield MJPEG frames by repeatedly capturing screenshots.
 
     The function calls ``scheduling.update_camera`` directly to grab a fresh
@@ -757,7 +783,7 @@ def generate_fast_mjpg(camera: str):
             time.sleep(delay - elapsed)
 
 
-def generate_caption_loop():
+def generate_caption_loop() -> Generator[bytes, None, None]:
     """Yield MJPEG frames showing the most recent caption."""
 
     boundary = b"frame"
@@ -813,7 +839,8 @@ def allowed_filename(filename: str) -> bool:
     return False
 
 
-def init_routes(app):
+def init_routes(app: Flask) -> None:
+    """Register all route handlers on the given ``app``."""
     # get_active_groups()
 
     @app.after_request
