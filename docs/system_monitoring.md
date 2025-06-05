@@ -6,7 +6,7 @@ This guide explains how to check Glimpser's health metrics and view live logs.
 
 **GET /status**
 
-The status page shows current system metrics and includes the live log viewer. Metrics are collected in a background thread. See `app/utils/scheduling.py` for implementation details. Raw values can also be retrieved programmatically from the `/health` endpoint.
+The status page shows current system metrics and includes the live log viewer. Metrics are collected in a background thread. See `app/utils/scheduling.py` for implementation details. Raw values can also be retrieved programmatically from the `/health` endpoint. The metrics list and feed dashboard are grouped into separate cards for a cleaner layout.
 
 ### Feed Dashboard
 
@@ -65,7 +65,9 @@ caption update was. It flashes with the newest caption text when a group message
 arrives. After a few seconds of inactivity the latest global summary slowly
 scrolls across the top in a gray chyron. Clicking this text opens the `/captions`
 page for more
-details. The icon remains green for one minute after a caption, changes to
+details. The scroll duration comes from the `CHYRON_SPEED` setting which is
+`0` by default to disable the banner. The icon remains green for one minute
+after a caption, changes to
 yellow for the next five minutes and turns red once thirty minutes have passed
 without an update.
 

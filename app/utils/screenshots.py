@@ -259,7 +259,15 @@ def on_press(key):
     user_active = True
 
 
-import ctypes, ctypes.util, os, time
+import ctypes
+import ctypes.util
+import os
+import threading
+import time
+
+_idle_lock = threading.Lock()
+_x11 = None
+_xss = None
 
 
 class XScreenSaverInfo(ctypes.Structure):
@@ -274,69 +282,65 @@ class XScreenSaverInfo(ctypes.Structure):
 
 
 def idle_seconds_x11() -> int:
-    """
-    Seconds since last keyboard/mouse event in *this* X display.
+    """Return idle seconds on X11 systems."""
 
-    Raises RuntimeError instead of segfaulting if:
-      * DISPLAY is unset,
-      * libXss is missing,
-      * XScreenSaver extension is not present/enabled.
-    """
     dpy_name = os.environ.get("DISPLAY")
     if not dpy_name:
         raise RuntimeError("$DISPLAY is not set – not running under X11.")
 
-    # ----------- open libraries ------------------------------------------------
-    libX11_path = ctypes.util.find_library("X11")
-    libXss_path = ctypes.util.find_library("Xss")  # screensaver ext.
-    if not (libX11_path and libXss_path):
-        raise RuntimeError("libX11 or libXss not found (install libx11-6 libxss1).")
+    global _x11, _xss
 
-    x11 = ctypes.cdll.LoadLibrary(libX11_path)
-    xss = ctypes.cdll.LoadLibrary(libXss_path)
+    with _idle_lock:
+        if _x11 is None or _xss is None:
+            libX11_path = ctypes.util.find_library("X11")
+            libXss_path = ctypes.util.find_library("Xss")
+            if not (libX11_path and libXss_path):
+                raise RuntimeError(
+                    "libX11 or libXss not found (install libx11-6 libxss1)."
+                )
 
-    # ----------- declare signatures (prevents segfaults) -----------------------
-    x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
-    x11.XOpenDisplay.restype = ctypes.c_void_p
+            _x11 = ctypes.cdll.LoadLibrary(libX11_path)
+            _xss = ctypes.cdll.LoadLibrary(libXss_path)
 
-    x11.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
-    x11.XDefaultRootWindow.restype = ctypes.c_ulong
+            _x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
+            _x11.XOpenDisplay.restype = ctypes.c_void_p
+            _x11.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
+            _x11.XDefaultRootWindow.restype = ctypes.c_ulong
+            _xss.XScreenSaverAllocInfo.restype = ctypes.POINTER(XScreenSaverInfo)
+            _xss.XScreenSaverQueryInfo.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_ulong,
+                ctypes.POINTER(XScreenSaverInfo),
+            ]
+            _xss.XScreenSaverQueryInfo.restype = ctypes.c_int
+            _x11.XFree.argtypes = [ctypes.c_void_p]
+            _x11.XFree.restype = None
+            _x11.XCloseDisplay.argtypes = [ctypes.c_void_p]
+            _x11.XCloseDisplay.restype = None
 
-    xss.XScreenSaverAllocInfo.restype = ctypes.POINTER(XScreenSaverInfo)
+        x11 = _x11
+        xss = _xss
 
-    xss.XScreenSaverQueryInfo.argtypes = [
-        ctypes.c_void_p,  # Display*
-        ctypes.c_ulong,  # Drawable (root win)
-        ctypes.POINTER(XScreenSaverInfo),  # info struct
-    ]
-    xss.XScreenSaverQueryInfo.restype = ctypes.c_int  # Status (non-zero = OK)
+        dpy = x11.XOpenDisplay(dpy_name.encode())
+        if not dpy:
+            raise RuntimeError(f"cannot open X display '{dpy_name}'")
 
-    x11.XFree.argtypes = [ctypes.c_void_p]
-    x11.XFree.restype = None
-    x11.XCloseDisplay.argtypes = [ctypes.c_void_p]
-    x11.XCloseDisplay.restype = None
+        info = xss.XScreenSaverAllocInfo()
+        if not info:
+            x11.XCloseDisplay(dpy)
+            raise RuntimeError("XScreenSaverAllocInfo returned NULL")
 
-    # ----------- do the work ---------------------------------------------------
-    dpy = x11.XOpenDisplay(dpy_name.encode())
-    if not dpy:
-        raise RuntimeError(f"cannot open X display '{dpy_name}'")
+        root = x11.XDefaultRootWindow(dpy)
+        status = xss.XScreenSaverQueryInfo(dpy, root, info)
+        if status == 0:
+            x11.XFree(info)
+            x11.XCloseDisplay(dpy)
+            raise RuntimeError("XScreenSaver extension not active on this X server")
 
-    info = xss.XScreenSaverAllocInfo()
-    if not info:
-        x11.XCloseDisplay(dpy)
-        raise RuntimeError("XScreenSaverAllocInfo returned NULL")
-
-    root = x11.XDefaultRootWindow(dpy)
-    status = xss.XScreenSaverQueryInfo(dpy, root, info)
-    if status == 0:
+        idle_ms = info.contents.idle
         x11.XFree(info)
         x11.XCloseDisplay(dpy)
-        raise RuntimeError("XScreenSaver extension not active on this X server")
-
-    idle_ms = info.contents.idle
-    x11.XFree(info)
-    x11.XCloseDisplay(dpy)
-    return idle_ms // 1000  # convert to whole seconds
+        return idle_ms // 1000
 
 
 def idle_seconds_loginctl() -> int:
@@ -528,7 +532,7 @@ def is_similar_color(color1, color2, threshold):
 
 def is_mostly_blank(
     image: Image.Image,
-    threshold: float = 0.92,
+    threshold: float = 0.98,
     blank_color=(255, 255, 255),
     text_std_threshold: int = 20,
     dark_threshold: int = 10,
@@ -696,11 +700,23 @@ def add_timestamp(image_path, name="unknown", invert=False):
             image.save(image_path, "PNG")
 
         try:
-            from .qrcode_overlay import add_micro_qr
+            from .qrcode_overlay import add_micro_barcode
 
-            add_micro_qr(image_path, name)
+            add_micro_barcode(image_path, name)
         except Exception as e:  # pragma: no cover - overlay failures are non-critical
-            logging.debug(f"Micro QR overlay failed: {e}")
+            logging.debug(f"Micro barcode overlay failed: {e}")
+
+
+def create_placeholder(image_path, name="unknown"):
+    """Generate a simple placeholder image with a timestamp."""
+    img = Image.new("RGB", (640, 360), color="black")
+    draw = ImageDraw.Draw(img)
+    font = load_font(20)
+    zone = tz.gettz(TZ) or tz.UTC
+    timestamp = datetime.datetime.now(zone).strftime("%Y-%m-%d %H:%M:%S")
+    text = f"{name}\n{timestamp}"
+    draw.multiline_text((10, 10), text, fill=(255, 255, 255), font=font)
+    img.save(image_path, "PNG")
 
 
 def download_image(
@@ -787,11 +803,18 @@ def download_image(
             image = remove_background(image)
             if dark:
                 apply_dark_mode(image)
-            # Save the image in PNG format
-            image.save(output_path, "PNG")
-            if os.path.exists(output_path) and _is_valid_png(output_path):
-                add_timestamp(output_path, name=name, invert=invert)
+
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            tmp_path = output_path + ".tmp"
+
+            # Save to a temporary file first so readers don't see partial data
+            image.save(tmp_path, "PNG")
+            if os.path.exists(tmp_path) and _is_valid_png(tmp_path):
+                add_timestamp(tmp_path, name=name, invert=invert)
+                os.replace(tmp_path, output_path)
                 return True
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
         else:
             response.close()
             logging.warning(f"Error downloading image: HTTP status code {status} {url}")
@@ -886,12 +909,19 @@ def download_pdf(
         image = remove_background(image)
         if dark:
             image = apply_dark_mode(image)
-        image.save(output_path, "PNG")
 
-        if os.path.exists(output_path) and _is_valid_png(output_path):
-            add_timestamp(output_path, name=name, invert=invert)
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        tmp_path = output_path + ".tmp"
+        image.save(tmp_path, "PNG")
+
+        if os.path.exists(tmp_path) and _is_valid_png(tmp_path):
+            add_timestamp(tmp_path, name=name, invert=invert)
+            os.replace(tmp_path, output_path)
             logging.debug(f"Successfully saved PDF page to {output_path}")
             lsuccess = True
+        else:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
         return lsuccess
 
     except Exception as e:
@@ -2594,21 +2624,25 @@ def _finalize_screenshot(tmp_path, final_path, name, invert, dark):
         with Image.open(tmp_path) as img:
             img = img.convert("RGB")
 
-            if is_mostly_blank(img):
+            blank = is_mostly_blank(img)
+            if blank:
                 logging.warning(f"[{name}] The captured screenshot looks mostly blank.")
-                os.remove(tmp_path)
-                return False
+                orig_path = final_path + ".orig.png"
+                os.rename(tmp_path, orig_path)
+                create_placeholder(tmp_path, name)
+                success = False
+            else:
+                # Optional background removal
+                img = remove_background(img)
 
-            # Optional background removal
-            img = remove_background(img)
+                # If you want to do naive “darkening” or inverting more thoroughly,
+                # you can do that here. For example:
+                # if dark:
+                #    img = apply_dark_mode(img)
 
-            # If you want to do naive “darkening” or inverting more thoroughly,
-            # you can do that here. For example:
-            # if dark:
-            #    img = apply_dark_mode(img)
-
-            # Save back
-            img.save(tmp_path, "PNG")
+                # Save back
+                img.save(tmp_path, "PNG")
+                success = True
 
         # Now add a timestamp overlay
         add_timestamp(tmp_path, name=name, invert=invert)
@@ -2618,7 +2652,7 @@ def _finalize_screenshot(tmp_path, final_path, name, invert, dark):
         os.rename(tmp_path, final_path)
 
         logging.debug(f"SAVED screenshot -> {final_path}")
-        return True
+        return success
 
     except Exception as e:
         logging.error(f"Screenshot finalization error: {e}")

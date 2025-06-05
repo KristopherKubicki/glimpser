@@ -30,11 +30,24 @@ export function initNav() {
       });
     }
 
+    /**
+     * Fetch JSON from an endpoint. If the response is not JSON or the
+     * request fails, an error is thrown so callers can handle it.
+     */
+    const fetchJson = async (url) => {
+      const res = await fetch(url);
+      const type = res.headers.get("content-type") || "";
+      if (!res.ok || !type.includes("application/json")) {
+        return null;
+      }
+      return res.json();
+    };
+
     const checkHealth = async () => {
       if (!healthStatus) return;
       try {
-        const res = await fetch("/health");
-        const data = await res.json();
+        const data = await fetchJson("/health");
+        if (!data) return;
         if (data.status === "healthy") {
           healthStatus.style.color = "green";
           healthStatus.title = "System Status: Healthy\n\n";
@@ -62,8 +75,8 @@ export function initNav() {
     const checkDanger = async () => {
       if (!dangerStatus) return;
       try {
-        const res = await fetch("/danger_status");
-        const data = await res.json();
+        const data = await fetchJson("/danger_status");
+        if (!data) return;
         if (data.ready) {
           dangerStatus.style.color = "orange";
           dangerStatus.title = "Danger Mode Ready";
@@ -82,6 +95,12 @@ export function initNav() {
 
     const captionsIcon = document.getElementById("captions");
     const captionChyron = document.getElementById("caption-chyron");
+    const chyronSpeed = captionChyron
+      ? parseFloat(captionChyron.dataset.speed || "0")
+      : 0;
+    if (captionChyron && chyronSpeed > 0) {
+      captionChyron.style.setProperty("--chyron-speed", `${chyronSpeed}s`);
+    }
     let lastCaptionTime = null;
     let popupTimer;
 
@@ -117,21 +136,21 @@ export function initNav() {
     }
 
     const showCaption = (text) => {
-      if (!captionChyron) return;
+      if (!captionChyron || chyronSpeed <= 0) return;
       captionChyron.innerHTML = `<span>${text}</span>`;
       captionChyron.classList.add("show");
       clearTimeout(popupTimer);
       popupTimer = setTimeout(
         () => captionChyron.classList.remove("show"),
-        60000,
+        chyronSpeed * 1000,
       );
     };
 
     const checkCaptions = async () => {
       if (!captionsIcon) return;
       try {
-        const res = await fetch("/captions_status");
-        const data = await res.json();
+        const data = await fetchJson("/captions_status");
+        if (!data) return;
         captionsIcon.title = data.caption || "";
         if (data.timestamp) {
           const ts = new Date(data.timestamp.replace(" ", "T") + "Z");
@@ -163,8 +182,7 @@ export function initNav() {
     const checkDiscovery = async () => {
       if (!discoveryStatus) return;
       try {
-        const res = await fetch("/discovery_status");
-        const data = await res.json();
+        const data = await fetchJson("/discovery_status");
         const fmt = (s) => `${Math.round(s / 60)}m`;
         if (data.status === "none") {
           discoveryStatus.style.color = "white";
@@ -194,6 +212,12 @@ export function initNav() {
     };
 
     const updateCoolClock = () => {
+      const secondHand = document.querySelector(".second-hand");
+      const minuteHand = document.querySelector(".minute-hand");
+      const hourHand = document.querySelector(".hour-hand");
+      const digitalTime = document.getElementById("digitalTime");
+      if (!secondHand || !minuteHand || !hourHand || !digitalTime) return;
+
       const now = new Date();
       const secondsDegrees = (now.getSeconds() / 60) * 360;
       const minutesDegrees =
@@ -201,15 +225,11 @@ export function initNav() {
       const hoursDegrees =
         (now.getHours() / 12) * 360 + (now.getMinutes() / 60) * 30;
 
-      document.querySelector(".second-hand").style.transform =
-        `rotate(${secondsDegrees}deg)`;
-      document.querySelector(".minute-hand").style.transform =
-        `rotate(${minutesDegrees}deg)`;
-      document.querySelector(".hour-hand").style.transform =
-        `rotate(${hoursDegrees}deg)`;
+      secondHand.style.transform = `rotate(${secondsDegrees}deg)`;
+      minuteHand.style.transform = `rotate(${minutesDegrees}deg)`;
+      hourHand.style.transform = `rotate(${hoursDegrees}deg)`;
 
-      document.getElementById("digitalTime").title =
-        `${now.toLocaleTimeString()}\n${Intl.DateTimeFormat().resolvedOptions().timeZone}\n${now.toDateString()}`;
+      digitalTime.title = `${now.toLocaleTimeString()}\n${Intl.DateTimeFormat().resolvedOptions().timeZone}\n${now.toDateString()}`;
     };
 
     const setupNavFade = () => {

@@ -13,7 +13,7 @@ import socket
 import app.config as config
 from app import create_app
 from app import scheduler
-from app.utils.scheduling import get_system_metrics
+from app.utils.scheduling import get_system_metrics, stop_background_tasks
 
 banner = """
           ____  _  _
@@ -256,6 +256,8 @@ class CleanupManager:
         except Exception as e:
             logging.error("Error shutting down scheduler: %s", e)
 
+        stop_background_tasks()
+
         time.sleep(0.01)
         for thread in threading.enumerate():
             if thread != threading.current_thread():
@@ -299,6 +301,28 @@ def clear_console_cli():
     clear_console()
 
 
+STARTUP_TIPS = [
+    "Set SESSION_COOKIE_SECURE=False when running without HTTPS.",
+    "Use --console-log to mirror logs to your terminal.",
+    "See docs/startup_tips.md for more tips.",
+]
+
+
+def display_startup_tips():
+    """Log common setup reminders."""
+    border = "-" * 60
+    logging.info(border)
+    logging.info("Startup Tips")
+    logging.info(border)
+    for tip in STARTUP_TIPS:
+        logging.info("* %s", tip)
+    logging.info(border)
+    if config.SESSION_COOKIE_SECURE:
+        logging.warning(
+            "SESSION_COOKIE_SECURE is enabled; browsers only send the login cookie over HTTPS."
+        )
+
+
 def is_port_in_use(port):
     # Skip the check if running in Docker
     if os.environ.get("IN_DOCKER"):
@@ -314,6 +338,7 @@ def main(argv=None):
     clear_console()
 
     logging.info(banner)
+    display_startup_tips()
 
     atexit.register(cleanup_resources)
     signal.signal(signal.SIGTERM, graceful_shutdown)
@@ -331,7 +356,11 @@ def main(argv=None):
         sys.exit(1)
 
     try:
-        logging.info("Starting web...")
+        logging.info(
+            "Starting web interface at http://%s:%s",
+            config.HOST,
+            config.PORT,
+        )
         app.run(
             host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True
         )

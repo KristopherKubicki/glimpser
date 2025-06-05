@@ -81,6 +81,7 @@ This guide addresses common issues that users might encounter while using Glimps
 **Solution:**
 - Check if the Glimpser server is running
 - Verify you're using the correct port (default is 8082)
+- Ensure the `HOST` setting is `0.0.0.0` so the server is reachable from other devices
 - Clear your browser cache and cookies
 - Confirm that WebSocket connections are allowed on your network
 
@@ -96,7 +97,8 @@ This guide addresses common issues that users might encounter while using Glimps
 - If you land back on the login page without errors, check that cookies are
   enabled. The page shows a "Login requires cookies" warning when the session
   cookie is missing. Running without HTTPS? Disable `SESSION_COOKIE_SECURE` so
-  your browser accepts the cookie.
+  your browser accepts the cookie. See [Startup Tips](startup_tips.md) for a
+  quick reminder of this and other common gotchas.
 
 
 ## Getting Further Help
@@ -255,3 +257,5 @@ If shutdown is interrupted it can leave background threads running.
 **Solution:**
 - Glimpser now manages cleanup through `CleanupManager`, ensuring shutdown only runs once.
 - Calling `main.shutdown_manager.cleanup()` manually will join any remaining threads.
+- If threads still refuse to exit, call `app.utils.scheduling.stop_background_tasks()` to signal the
+  metrics and logging loops to terminate.

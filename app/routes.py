@@ -32,6 +32,7 @@ from flask import (
     Response,
     make_response,
     stream_with_context,
+    Flask,
 )
 
 from PIL import Image, ImageDraw, ImageFont
@@ -56,6 +57,7 @@ from app.config import (
     backup_config,
     restore_config,
     SENSITIVE_SETTINGS,
+    CHYRON_SPEED,
 )
 from app.models import User, Summary
 from app.utils import (
@@ -67,13 +69,14 @@ from app.utils import (
     prompt_optimizer,
     camera_fix,
 )
-from app.utils.settings_tooltips import SETTINGS_TOOLTIPS
+from app.utils.settings_tooltips import SETTINGS_TOOLTIPS, SETTINGS_GROUPS
 from app.utils.screenshots import (
     is_chrome_debug_port_open,
     check_user_activity,
     capture_frame_from_stream,
 )
 from app.utils.db import SessionLocal, engine
+from typing import Any, Callable, Generator, Iterable, Optional, List, Dict
 
 try:
     COMMIT_HASH = (
@@ -92,7 +95,9 @@ from app.utils.profiling import profile_route, get_latency_stats
 from scripts.update_chrome_shortcut import update_chrome_shortcuts
 
 
-def restart_server():
+def restart_server() -> None:
+    """Restart the current Python process in a background thread."""
+
     logging.info("Restarting server...")
 
     def delayed_restart():
@@ -138,6 +143,7 @@ def generate_timed_hash():
 
 
 def is_hash_valid(timed_hash: str) -> bool:
+    """Return ``True`` if ``timed_hash`` is valid and not expired."""
     try:
         hash_digest, expiration_time = timed_hash.split(".")
         to_hash = f"{API_KEY}{expiration_time}"
@@ -152,7 +158,9 @@ def is_hash_valid(timed_hash: str) -> bool:
         return False
 
 
-def login_required(f):
+def login_required(f: Callable) -> Callable:
+    """Decorator enforcing session or API key authentication for routes."""
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # Check for API key in headers, GET parameters, or POST form data
@@ -229,8 +237,14 @@ def login_required(f):
 
 # Function to read logs from the local text file and filter them based on query parameters
 def read_logs_from_memory(
-    level=None, source=None, start_date=None, end_date=None, search=None
-):
+    level: Optional[str] = None,
+    source: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    search: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Return in-memory logs filtered by the given criteria."""
+
     # global log_cache
 
     filtered_logs = []
@@ -254,7 +268,9 @@ def read_logs_from_memory(
     return sorted(filtered_logs, key=lambda x: x["timestamp"], reverse=True)
 
 
-def get_all_settings():
+def get_all_settings() -> List[Dict[str, Any]]:
+    """Return all configuration settings from the database and defaults."""
+
     session = SessionLocal()
     try:
         # Fetch all settings from the database
@@ -302,6 +318,7 @@ def get_all_settings():
 
 
 def update_setting(name: str, value: str) -> bool:
+    """Persist a configuration ``name`` and ``value`` to the database."""
 
     name = name.replace("'", "")[:32]
     value = value.replace("'", "")[:1024]
@@ -341,8 +358,8 @@ def update_setting(name: str, value: str) -> bool:
     return True
 
 
-def generate_video_stream(video_path: str):
-    """Yield video data in chunks and restart when the end is reached."""
+def generate_video_stream(video_path: str) -> Generator[bytes, None, None]:
+    """Yield video data from ``video_path`` in chunks indefinitely."""
 
     # The video preview on the UI expects an infinite generator. Read the
     # file in 1MB increments and loop back to the beginning once no more
@@ -366,7 +383,7 @@ def generate_video_stream(video_path: str):
         logging.debug("Restarting video stream")
 
 
-def generate_live_stream(url: str):
+def generate_live_stream(url: str) -> Generator[bytes, None, None]:
     """Yield video data directly from a remote URL using ``ffmpeg``.
 
     Some camera APIs expose JPEG snapshots rather than a continuous video
@@ -431,6 +448,7 @@ def generate_live_stream(url: str):
     )
 
     failures = 0
+    last_log = 0.0
     while True:
         process = subprocess.Popen(
             command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -457,6 +475,7 @@ def generate_live_stream(url: str):
         if process.returncode == 0:
             return
 
+        now = time.time()
         if not chunk_yielded:
             failures += 1
             if failures >= config.LIVE_MAX_FAILURES:
@@ -464,10 +483,20 @@ def generate_live_stream(url: str):
                     "ffmpeg failed %s times without output, giving up", failures
                 )
                 return
+            if now - last_log > 10:
+                logging.warning(
+                    "ffmpeg exited with %s, retrying (%s/%s)",
+                    process.returncode,
+                    failures,
+                    config.LIVE_MAX_FAILURES,
+                )
+                last_log = now
         else:
             failures = 0
+            if now - last_log > 10:
+                logging.warning("ffmpeg exited with %s, retrying", process.returncode)
+                last_log = now
 
-        logging.error("ffmpeg exited with %s, retrying", process.returncode)
         time.sleep(2)
 
 
@@ -478,7 +507,8 @@ active_groups = []
 rtsp_sessions = {}
 
 
-def get_active_groups():
+def get_active_groups() -> List[str]:
+    """Return a sorted list of all active group names."""
     global active_groups
     templates = template_manager.get_templates()
     active_cameras = []
@@ -498,7 +528,11 @@ def get_active_groups():
     return active_cameras
 
 
-def resize_and_pad(img, size, color=(0, 0, 0)):
+def resize_and_pad(
+    img: Image.Image, size: tuple[int, int], color: tuple[int, int, int] = (0, 0, 0)
+) -> Image.Image:
+    """Resize ``img`` to fit ``size`` while preserving aspect ratio."""
+
     # Calculate the scaling factor to resize the image while maintaining the aspect ratio
     scale = max(size[0] / img.size[0], size[1] / img.size[1])
 
@@ -517,12 +551,34 @@ def resize_and_pad(img, size, color=(0, 0, 0)):
     return background
 
 
+def _placeholder_screenshot() -> io.BytesIO:
+    """Return a simple PNG stating that no screenshot is available."""
+
+    text = "No screenshot available"
+    img = Image.new("RGB", (320, 240), "black")
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.load_default()
+    bbox = draw.textbbox((0, 0), text, font=font)
+    w = bbox[2] - bbox[0]
+    h = bbox[3] - bbox[1]
+    draw.text(((320 - w) / 2, (240 - h) / 2), text, fill="white", font=font)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return buf
+
+
 lock = Lock()
 
 
 def generate(
-    group=None, camera=None, filename="latest_camera.png", rtsp=False, session_id=None
-):
+    group: Optional[str] = None,
+    camera: Optional[str] = None,
+    filename: str = "latest_camera.png",
+    rtsp: bool = False,
+    session_id: Optional[str] = None,
+) -> Generator[bytes, None, None]:
+    """Yield MJPEG or RTP frames from the latest screenshot files."""
     # Treat explicit "all" values as no filter
     if group == "all":
         group = None
@@ -710,7 +766,7 @@ def generate(
         time.sleep(1 - (time.time() - ltime))
 
 
-def generate_fast_mjpg(camera: str):
+def generate_fast_mjpg(camera: str) -> Generator[bytes, None, None]:
     """Yield MJPEG frames by repeatedly capturing screenshots.
 
     The function calls ``scheduling.update_camera`` directly to grab a fresh
@@ -757,7 +813,7 @@ def generate_fast_mjpg(camera: str):
             time.sleep(delay - elapsed)
 
 
-def generate_caption_loop():
+def generate_caption_loop() -> Generator[bytes, None, None]:
     """Yield MJPEG frames showing the most recent caption."""
 
     boundary = b"frame"
@@ -813,7 +869,8 @@ def allowed_filename(filename: str) -> bool:
     return False
 
 
-def init_routes(app):
+def init_routes(app: Flask) -> None:
+    """Register all route handlers on the given ``app``."""
     # get_active_groups()
 
     @app.after_request
@@ -844,6 +901,7 @@ def init_routes(app):
             VERSION_OUTDATED=outdated,
             COMMIT_HASH=COMMIT_HASH,
             NODE_ENV=NODE_ENV,
+            CHYRON_SPEED=CHYRON_SPEED,
         )
 
     # Add a new route for the extended health check
@@ -1276,9 +1334,13 @@ def init_routes(app):
         """
         Endpoint to receive and process an image submitted by a remote service or camera.
         """
+        raw_name = template_name
         template_name = validate_template_name(template_name)
         if template_name is None:
-            abort(404)
+            logging.warning("Unable to serve screenshot for %s", raw_name)
+            resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+            resp.status_code = 404
+            return resp
 
         # Check if the template exists and get the canonical name stored
         # in the database. ``get_template`` returns an attribute dictionary
@@ -1947,9 +2009,13 @@ def init_routes(app):
         """
         Serve the latest frame for a specific camera.
         """
+        raw_name = template_name
         template_name = validate_template_name(template_name)
         if template_name is None:
-            abort(404)
+            logging.warning("Unable to serve screenshot for %s", raw_name)
+            resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+            resp.status_code = 404
+            return resp
 
         path = os.path.join(
             os.path.dirname(os.path.join(__file__)),
@@ -2024,9 +2090,13 @@ def init_routes(app):
         Serve a specific screenshot by template name.
         """
 
+        raw_name = template_name
         template_name = validate_template_name(template_name)
         if template_name is None:
-            abort(404)
+            logging.warning("Unable to serve screenshot for %s", raw_name)
+            resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+            resp.status_code = 404
+            return resp
 
         for group_camera in re.findall(r"^group-(.+?)$", template_name):
             path = os.path.join(
@@ -2037,7 +2107,10 @@ def init_routes(app):
             )
             if os.path.exists(path):
                 return send_file(path)
-            abort(404)
+            logging.warning("Unable to serve screenshot for %s", template_name)
+            resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+            resp.status_code = 404
+            return resp
 
         # Placeholder logic to serve the screenshot
         path = os.path.join(
@@ -2047,7 +2120,10 @@ def init_routes(app):
             template_name,
         )
         if not os.path.exists(path):
-            abort(404)
+            logging.warning("Unable to serve screenshot for %s", template_name)
+            resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+            resp.status_code = 404
+            return resp
 
         lfiles = [f for f in glob.glob(path + "/*.png") if os.path.isfile(f)]
         lfiles.sort(key=os.path.getmtime, reverse=True)
@@ -2058,7 +2134,10 @@ def init_routes(app):
             except OSError:
                 continue
 
-        abort(404)
+        logging.warning("Unable to serve screenshot for %s", template_name)
+        resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+        resp.status_code = 404
+        return resp
 
     @app.route("/compile_teaser", methods=["POST"])
     @login_required
@@ -2443,9 +2522,21 @@ def init_routes(app):
             return redirect(url_for("settings"))
 
         settings = get_all_settings()
+        grouped_settings = {group: [] for group in SETTINGS_GROUPS}
+        grouped_settings["Other"] = []
+        for setting in settings:
+            placed = False
+            for group, names in SETTINGS_GROUPS.items():
+                if setting["name"] in names:
+                    grouped_settings[group].append(setting)
+                    placed = True
+                    break
+            if not placed:
+                grouped_settings["Other"].append(setting)
+
         return render_template(
             "settings.html",
-            settings=settings,
+            grouped_settings=grouped_settings,
             tooltips=SETTINGS_TOOLTIPS,
             page_title="Settings",
         )

@@ -22,6 +22,9 @@ class TestScreenshotCapture(unittest.TestCase):
     def tearDown(self):
         if os.path.exists(self.output_path):
             os.remove(self.output_path)
+        orig = self.output_path + ".orig.png"
+        if os.path.exists(orig):
+            os.remove(orig)
         os.rmdir(self.temp_dir)
 
     @patch("app.utils.screenshots._finalize_screenshot", return_value=True)
@@ -81,9 +84,10 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
     @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.create_placeholder")
     @patch("app.utils.screenshots.is_mostly_blank", return_value=True)
     def test_capture_screenshot_blank_image(
-        self, mock_blank, mock_get_path, mock_get_version, mock_launch
+        self, mock_blank, mock_placeholder, mock_get_path, mock_get_version, mock_launch
     ):
         mock_driver = MagicMock()
         mock_launch.return_value = mock_driver
@@ -96,13 +100,18 @@ class TestScreenshotCapture(unittest.TestCase):
             return True
 
         mock_driver.save_screenshot.side_effect = fake_save
+        mock_placeholder.side_effect = lambda path, name: Image.new("RGB", (1, 1)).save(
+            path
+        )
 
         result = capture_screenshot_and_har("http://example.com", self.output_path)
 
         self.assertFalse(result)
-        self.assertFalse(os.path.exists(self.output_path))
+        self.assertTrue(os.path.exists(self.output_path))
+        self.assertTrue(os.path.exists(self.output_path + ".orig.png"))
         self.assertFalse(os.path.exists(partial))
         mock_blank.assert_called()
+        mock_placeholder.assert_called_once()
 
     @patch("app.utils.screenshots._finalize_screenshot", return_value=True)
     @patch("app.utils.screenshots.launch_headless_chrome")

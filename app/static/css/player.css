@@ -63,6 +63,37 @@
     row-gap: 5px;
     width: 100%;
 }
+
+#jog-shuttle {
+    width: 60px;
+    height: 60px;
+    border: 2px solid white;
+    border-radius: 50%;
+    position: relative;
+    margin: 0 10px;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+#jog-shuttle::before,
+#jog-shuttle::after {
+    content: "";
+    position: absolute;
+    background: white;
+}
+#jog-shuttle::before {
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    transform: translateY(-50%);
+}
+#jog-shuttle::after {
+    left: 50%;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    transform: translateX(-50%);
+}
 #error-message {
     position: absolute;
     top: 50%;

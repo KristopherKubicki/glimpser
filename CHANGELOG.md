@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Console clearing command
 - Google Cast support
 - Integration with Blue Iris, Home Assistant and Hubitat
-- Custom video controls including Play All/Stop All
+- Custom video controls including Play All/Pause All
 - Automatic group loading for cameras
 - Live view tooltip refreshes with the latest caption
 - Add Template form auto-fills selected group
@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped scikit-image to 0.25.0
 - Bumped numpy to 1.26.0
 - Updated default VERSION to 0.2.7 for footer display
+- Bulk tools menu is expanded by default on the captions page
 
 ### Fixed
 - Addressed Python build issues and string concatenation errors
@@ -50,6 +51,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed unclosed `.form-error` block in `style.css` causing CSS lint failures
 - Timestamp and caption overlays now align correctly with their tinted
   backgrounds
+- Repeated stream errors on the `/live` page are now throttled to prevent
+  frequent popups.
+- Fixed a crash on the login page caused by missing clock elements in `nav.js`.
 
 ## [0.2.7] - 2025-06-02
 

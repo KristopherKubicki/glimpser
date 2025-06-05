@@ -38,16 +38,20 @@ export function initDiscoveryToggle() {
       });
     }
 
-    fetchJson("/discovery_status")
-      .then((data) => {
-        statusSpan.textContent = formatStatus(data);
-        if (stopBtn) {
-          stopBtn.style.display =
-            data.status === "running" ? "inline-block" : "none";
-        }
-      })
-      .catch(() => {
-        statusSpan.textContent = "error";
-      });
+    const refreshStatus = () =>
+      fetchJson("/discovery_status")
+        .then((data) => {
+          statusSpan.textContent = formatStatus(data);
+          if (stopBtn) {
+            stopBtn.style.display =
+              data.status === "running" ? "inline-block" : "none";
+          }
+        })
+        .catch(() => {
+          statusSpan.textContent = "error";
+        });
+
+    refreshStatus();
+    setInterval(refreshStatus, 30000);
   });
 }

@@ -77,6 +77,8 @@ class TestHtmlTemplates(unittest.TestCase):
             if (
                 attrs.get("rel") == "preload"
                 and attrs.get("as") == "image"
+                and attrs.get("type") == "image/svg+xml"
+                and "crossorigin" in attrs
                 and attrs.get("href") == expected_href
             ):
                 break

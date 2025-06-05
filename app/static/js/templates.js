@@ -1,3 +1,5 @@
+export const NO_TIMESTAMP_PLACEHOLDER = "no timestamp";
+
 export function initTemplates() {
   document.addEventListener("DOMContentLoaded", () => {
     const form = document.querySelector("#template-form form");
@@ -282,9 +284,12 @@ export function updateHumanizedTimes() {
       if (!element.dataset.originalTimestamp) {
         element.dataset.originalTimestamp = original;
       }
-      if (original) {
+      if (original && original !== NO_TIMESTAMP_PLACEHOLDER) {
         element.setAttribute("data-timestamp", timeAgo(original));
         element.setAttribute("title", formatExactTime(original));
+      } else if (original === NO_TIMESTAMP_PLACEHOLDER) {
+        element.setAttribute("data-timestamp", NO_TIMESTAMP_PLACEHOLDER);
+        element.removeAttribute("title");
       }
     });
 }
@@ -470,8 +475,12 @@ export async function loadTemplates() {
       ) {
         hasTemplates = true;
         templateCount += 1;
-        const lastScreenshotTime = template.last_screenshot_time;
-        const humanizedTimestamp = timeAgo(lastScreenshotTime);
+        const lastScreenshotTime =
+          template.last_screenshot_time || NO_TIMESTAMP_PLACEHOLDER;
+        const humanizedTimestamp =
+          lastScreenshotTime === NO_TIMESTAMP_PLACEHOLDER
+            ? NO_TIMESTAMP_PLACEHOLDER
+            : timeAgo(lastScreenshotTime);
         const nextCaptureTime = timeAgo(template.next_screenshot_time);
 
         const lastScreenshotDate = new Date(lastScreenshotTime);
@@ -529,7 +538,11 @@ export async function loadTemplates() {
           templateDiv.innerHTML = `
             <img src="/last_screenshot/${name}" alt="${name}" style="width:100%">
             <div class="camera-name">${name}</div>
-            <div class="timestamp" title="${formatExactTime(lastScreenshotTime)}">Last: ${humanizedTimestamp}</div>
+            <div class="timestamp" title="${
+              lastScreenshotTime === NO_TIMESTAMP_PLACEHOLDER
+                ? ""
+                : formatExactTime(lastScreenshotTime)
+            }">Last: ${humanizedTimestamp}</div>
             <div class="next-capture">Next: ${nextCaptureTime}</div>
             <textarea class="notes-textarea" id="notes-${name}" name="notes">${template.notes}</textarea>
             <button class="update-button" type="button" onclick="updateTemplate('${name}')">Update</button>

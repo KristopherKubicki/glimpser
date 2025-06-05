@@ -1,6 +1,17 @@
 import { timeAgo, formatExactTime } from "./templates.js";
 
 const video = document.getElementById("live-video");
+
+function safePlay(el) {
+  const promise = el.play();
+  if (promise && typeof promise.catch === "function") {
+    promise.catch((err) => {
+      if (err.name !== "AbortError") {
+        console.error("Error playing video:", err);
+      }
+    });
+  }
+}
 const image = document.getElementById("live-image");
 const templateDetailsContainer = document.getElementById("template-details");
 const templateDetails = window.templateDetails || {};
@@ -46,7 +57,14 @@ const errorIndicatorMessage = document.getElementById("capture-error-message");
 const streamErrorIndicator = document.getElementById("stream-error-indicator");
 const streamErrorMessage = document.getElementById("stream-error-message");
 const seekBar = document.getElementById("seek-bar");
+const jogShuttle = document.getElementById("jog-shuttle");
+let jogInterval = null;
+let jogging = false;
 let isSeeking = false;
+// Throttle duplicate error messages so the overlay isn't spammed when
+// a camera repeatedly fails. Track the last message and time displayed.
+let lastErrorMessage = "";
+let lastErrorTime = 0;
 
 // Restore previously selected camera, source and speed from localStorage so
 // reloading the page keeps user preferences. If the user specified a camera in
@@ -94,6 +112,8 @@ function resetVideo() {
     loopHandler = null;
   }
   video.removeEventListener("ended", handleVideoEnded);
+  video.pause();
+  video.removeAttribute("src");
 }
 
 function showLoadingIndicator() {
@@ -126,6 +146,13 @@ function showPlayPauseIndicator(isPaused) {
 }
 
 function showError(message) {
+  const now = Date.now();
+  if (message === lastErrorMessage && now - lastErrorTime < 10000) {
+    return;
+  }
+  lastErrorMessage = message;
+  lastErrorTime = now;
+
   errorMessage.textContent = message;
   errorMessage.style.display = "block";
   showStreamErrorIndicator(message);
@@ -446,7 +473,7 @@ function playM3U8() {
     hlsInstance.loadSource(m3u8Url);
     hlsInstance.attachMedia(video);
     hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
-      video.play().catch((e) => console.error("Error playing video:", e));
+      safePlay(video);
     });
     hlsInstance.on(Hls.Events.ERROR, function (event, data) {
       console.error("HLS error:", data);
@@ -475,7 +502,7 @@ function playM3U8() {
   } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
     video.src = m3u8Url;
     video.addEventListener("canplay", function () {
-      video.play().catch((e) => console.error("Error playing video:", e));
+      safePlay(video);
     });
     video.addEventListener("error", function (e) {
       console.error("Video error:", video.error);
@@ -508,6 +535,13 @@ function playLoop() {
       groupCameras = templateDetails["group-" + groupName].groupCameras;
     }
 
+    if (!groupCameras || groupCameras.length === 0) {
+      console.warn("playLoop: no cameras available for", currentCamera);
+      showError("No cameras available for loop");
+      showLastScreenshot();
+      return;
+    }
+
     let cameraIndex = 0;
 
     loopHandler = () => {
@@ -517,7 +551,7 @@ function playLoop() {
       const cameraName = groupCameras[cameraIndex];
       video.src = `/last_video/${cameraName}`; // Update the video source with the current camera
       video.load();
-      video.play();
+      safePlay(video);
       cameraIndex++; // Move to the next camera
     };
 
@@ -527,7 +561,7 @@ function playLoop() {
     // Handling for individual cameras
     video.src = `/last_video/${currentCamera}`;
     video.load();
-    video.play();
+    safePlay(video);
   }
 }
 
@@ -598,7 +632,7 @@ function playMP4() {
     video.src = `/stream.mp4?camera=${encodeURIComponent(currentCamera)}`;
   }
   video.load();
-  video.play();
+  safePlay(video);
 
   // Remove any existing 'ended' event listeners
   video.removeEventListener("ended", handleVideoEnded);
@@ -618,7 +652,7 @@ function handleVideoEnded() {
     video.dataset.currentCamera = nextCamera;
   }
   video.load();
-  video.play();
+  safePlay(video);
 }
 
 function playLive() {
@@ -661,7 +695,7 @@ function playLive() {
       const cameraName = groupCameras[cameraIndex];
       video.src = "/live_video?camera=" + encodeURIComponent(cameraName);
       video.load();
-      video.play();
+      safePlay(video);
       cameraIndex++;
     };
 
@@ -672,7 +706,7 @@ function playLive() {
   } else {
     video.src = "/live_video?camera=" + encodeURIComponent(currentCamera);
     video.load();
-    video.play();
+    safePlay(video);
   }
 }
 
@@ -716,8 +750,18 @@ function playPNG() {
     pngInterval = setInterval(refreshGroupPNG, 10000 / speed);
   } else if (currentCamera === "All") {
     // Special handling for the "All" option
+    let cameraIndex = 0;
+    const allCameras = Object.keys(templateDetails).filter(
+      (key) => key !== "All",
+    );
     const refreshAllPNG = () => {
-      image.src = "/stream.png?time=" + new Date().getTime();
+      if (cameraIndex >= allCameras.length) {
+        cameraIndex = 0;
+      }
+      const cameraName = allCameras[cameraIndex];
+      image.src =
+        "/last_screenshot/" + cameraName + "?time=" + new Date().getTime();
+      cameraIndex++;
     };
     refreshAllPNG();
     clearInterval(pngInterval);
@@ -843,6 +887,61 @@ function stopLiveSwitch() {
   }
 }
 
+function applyJog(speed, direction) {
+  if (jogInterval) {
+    clearInterval(jogInterval);
+    jogInterval = null;
+  }
+  if (direction >= 0) {
+    video.playbackRate = speed;
+    safePlay(video);
+  } else {
+    video.pause();
+    jogInterval = setInterval(() => {
+      video.currentTime = Math.max(0, video.currentTime - 0.05 * speed);
+    }, 50);
+  }
+}
+
+function handleJogMove(e) {
+  if (!jogging) return;
+  const rect = jogShuttle.getBoundingClientRect();
+  const x = e.clientX - rect.left - rect.width / 2;
+  const radius = rect.width / 2;
+  const norm = Math.max(-1, Math.min(1, x / radius));
+  const level = Math.min(4, Math.floor(Math.abs(norm) * 4));
+  const speed = Math.pow(2, level);
+  if (speed === 0) return;
+  applyJog(speed, Math.sign(norm));
+}
+
+function stopJog() {
+  jogging = false;
+  if (jogInterval) {
+    clearInterval(jogInterval);
+    jogInterval = null;
+  }
+  video.pause();
+}
+
+function initJogShuttle() {
+  if (!jogShuttle) return;
+  jogShuttle.addEventListener("mousedown", (e) => {
+    jogging = true;
+    handleJogMove(e);
+  });
+  jogShuttle.addEventListener("touchstart", (e) => {
+    jogging = true;
+    handleJogMove(e.touches[0]);
+  });
+  window.addEventListener("touchmove", (e) => {
+    handleJogMove(e.touches[0]);
+  });
+  window.addEventListener("touchend", stopJog);
+  window.addEventListener("mousemove", handleJogMove);
+  window.addEventListener("mouseup", stopJog);
+}
+
 function updateSpeedContainer() {
   if (!speedContainer) return;
   const source = document.getElementById("video-source").value;
@@ -940,6 +1039,7 @@ updateTemplateDetails();
 updateSpeedContainer();
 updatePlaybackSpeed();
 updateSeekBar();
+initJogShuttle();
 playMJPG();
 startCaptionPolling();
 updateFrameTimestamp();
@@ -964,7 +1064,7 @@ if (seekBar) {
   const stopSeek = () => {
     if (isSeeking) {
       isSeeking = false;
-      video.play();
+      safePlay(video);
     }
   };
 
@@ -989,7 +1089,7 @@ if (toggleDetailsButton) {
 
 function togglePlayback() {
   if (video.paused) {
-    video.play();
+    safePlay(video);
   } else {
     video.pause();
   }
@@ -1080,6 +1180,9 @@ window.selectPreviousCamera = selectPreviousCamera;
 window.selectNextSource = selectNextSource;
 window.selectPreviousSource = selectPreviousSource;
 window.togglePlayback = togglePlayback;
+
+// Allow pausing/resuming the video by clicking anywhere on the player
+video.addEventListener("click", togglePlayback);
 
 // --- Mobile swipe handling ---
 // Allow quick camera changes on touch devices by swiping left or right

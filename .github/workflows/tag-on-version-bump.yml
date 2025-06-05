@@ -8,8 +8,9 @@ jobs:
   tag_release:
     permissions:
       contents: write
-      # Allow the push to trigger other workflows (e.g. package release)
-      workflow: write
+      # "workflow" is not a valid permission key.
+      # A writeable contents token is sufficient for creating tags,
+      # which can then trigger other workflows.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -1,11 +1,11 @@
 # Settings Page Overview
 
-The **Settings** interface lets you manage configuration values stored in the database. Each field includes a tooltip that explains its purpose. A collapsible **Settings Reference** table on the page lists every configuration option with detailed descriptions.
+The **Settings** interface lets you manage configuration values stored in the database. Each field includes a tooltip that explains its purpose. A collapsible **Settings Reference** table lists every configuration option with detailed descriptions. Settings are organized into categories with navigation tabs just like the Captions page.
 
 ## Sections
 
 - **Add New Setting** – quickly create additional key/value pairs.
-- **Current Settings** – edit existing values or delete them.
+- **Current Settings** – edit existing values or delete them. Tabs switch between setting groups and the **Management** tab holds backup and offline options.
 - **Configuration Management** – backup, download, and upload the JSON configuration file.
 - **Danger Mode** – update Chrome shortcuts with the required flags.
 - **Offline Preview** – toggle a Service Worker that caches recent images.
