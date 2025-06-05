@@ -6,6 +6,9 @@ export function initNav() {
     const nav = document.querySelector("nav");
     const menuToggle = document.getElementById("menu-toggle");
     const groupDropdown = document.getElementById("nav-group-dropdown");
+    const cameraDropdown = document.getElementById("nav-camera-dropdown");
+    const currentGroup = window.currentGroup || null;
+    const currentCamera = window.currentCamera || null;
 
     if (nav && menuToggle) {
       menuToggle.addEventListener("click", () => {
@@ -24,9 +27,16 @@ export function initNav() {
           groups.forEach((g) => {
             const opt = document.createElement("option");
             opt.value = g;
-            opt.textContent = g;
+            opt.textContent = g === "all" ? "All" : g;
             groupDropdown.appendChild(opt);
           });
+        }
+        if (currentGroup) {
+          groupDropdown.value = currentGroup;
+          await loadNavCameras(currentGroup);
+          if (cameraDropdown && currentCamera) {
+            cameraDropdown.value = currentCamera;
+          }
         }
       } catch (error) {
         console.error("Error loading groups:", error);
@@ -35,11 +45,54 @@ export function initNav() {
       }
     };
 
+    const loadNavCameras = async (group) => {
+      if (!cameraDropdown) return;
+      if (!group || group === "all") {
+        cameraDropdown.style.display = "none";
+        return;
+      }
+      cameraDropdown.style.display = "";
+      cameraDropdown.innerHTML = '<option value="">Cameras</option>';
+      cameraDropdown.disabled = true;
+      try {
+        const cams = await fetchJson(`/templates?group=${encodeURIComponent(group)}`);
+        if (cams) {
+          Object.keys(cams)
+            .sort()
+            .forEach((c) => {
+              const opt = document.createElement("option");
+              opt.value = c;
+              opt.textContent = c;
+              cameraDropdown.appendChild(opt);
+            });
+        }
+      } catch (error) {
+        console.error("Error loading cameras:", error);
+      } finally {
+        cameraDropdown.disabled = false;
+      }
+    };
+
     if (groupDropdown) {
       groupDropdown.addEventListener("change", () => {
-        if (groupDropdown.value) {
+        if (!groupDropdown.value) return;
+        if (groupDropdown.value === "all") {
+          window.location.href = "/";
+        } else {
           window.location.href = `/group/${encodeURIComponent(
             groupDropdown.value,
+          )}`;
+        }
+        loadNavCameras(groupDropdown.value);
+      });
+      if (currentGroup) loadNavCameras(currentGroup);
+    }
+
+    if (cameraDropdown) {
+      cameraDropdown.addEventListener("change", () => {
+        if (cameraDropdown.value) {
+          window.location.href = `/templates/${encodeURIComponent(
+            cameraDropdown.value,
           )}`;
         }
       });

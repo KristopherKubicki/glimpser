@@ -1317,6 +1317,8 @@ def init_routes(app: Flask) -> None:
         """Render a page listing all cameras in a group."""
         group_name = secure_filename(group_name)
         groups = get_active_groups()
+        if group_name == "all":
+            return redirect(url_for("index"))
         if group_name not in groups:
             abort(404)
         return render_template(
@@ -1827,6 +1829,8 @@ def init_routes(app: Flask) -> None:
     def get_groups():
         # Assuming you have a function that returns a list of unique groups
         groups = get_active_groups()
+        if "all" not in groups:
+            groups = ["all"] + groups
         return jsonify(groups)
 
     @app.route("/captions")

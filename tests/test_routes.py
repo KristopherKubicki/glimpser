@@ -575,6 +575,23 @@ class TestRoutes(unittest.TestCase):
         response = self.client.get("/group/unknown")
         self.assertEqual(response.status_code, 404)
 
+    @patch("app.routes.get_active_groups")
+    @patch("app.routes.session", {"user_id": 1})
+    def test_group_page_all_redirect(self, mock_groups):
+        mock_groups.return_value = ["group1"]
+        response = self.client.get("/group/all")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/", response.headers["Location"])
+
+    @patch("app.routes.get_active_groups")
+    @patch("app.routes.session", {"user_id": 1})
+    def test_groups_endpoint_includes_all(self, mock_groups):
+        mock_groups.return_value = ["group1"]
+        response = self.client.get("/groups")
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertIn("all", data)
+
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
     def test_captions_status(self, mock_session_local):
