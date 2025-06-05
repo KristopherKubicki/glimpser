@@ -194,7 +194,7 @@ h1, h2 {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 5px;
     margin-bottom: 10px;
 }
 
@@ -434,8 +434,7 @@ body.light-mode {
 
 #status-legend {
     display: flex;
-    gap: 10px;
-    margin-left: 10px;
+    gap: 5px;
 }
 
 .status-item {

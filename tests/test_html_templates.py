@@ -58,8 +58,8 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn("username", inputs)
         self.assertIn("password", inputs)
 
-    def test_index_add_template_form_inputs(self):
-        parser = parse_template(Path("app/templates/index.html"))
+    def test_discover_add_camera_form_inputs(self):
+        parser = parse_template(Path("app/templates/_discover_tab.html"))
         add_form = None
         for form in parser.forms:
             if form["attrs"].get("id") == "add-template-form":
