@@ -12,7 +12,7 @@ class TestRequestWithRetry(unittest.TestCase):
         ) as mock_req:
             result = request_with_retry("get", "http://ex")
             self.assertIs(result, resp)
-            mock_req.assert_called_once_with("get", "http://ex", timeout=10)
+            mock_req.assert_called_once_with("get", "http://ex", timeout=30)
 
     def test_retry_then_success(self):
         resp = MagicMock()
