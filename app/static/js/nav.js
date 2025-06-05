@@ -21,6 +21,15 @@ export function initNav() {
       });
     }
 
+    const fetchJson = async (url) => {
+      const res = await fetch(url);
+      const type = res.headers.get("content-type") || "";
+      if (!res.ok || !type.includes("application/json")) {
+        return null;
+      }
+      return res.json();
+    };
+
     const loadNavGroups = async () => {
       if (!groupDropdown) return;
       groupDropdown.innerHTML = '<option value="">Loading...</option>';
@@ -119,19 +128,6 @@ export function initNav() {
         }
       });
     }
-
-    /**
-     * Fetch JSON from an endpoint. If the response is not JSON or the
-     * request fails, an error is thrown so callers can handle it.
-     */
-    const fetchJson = async (url) => {
-      const res = await fetch(url);
-      const type = res.headers.get("content-type") || "";
-      if (!res.ok || !type.includes("application/json")) {
-        return null;
-      }
-      return res.json();
-    };
 
     const checkHealth = async () => {
       if (!healthStatus) return;
