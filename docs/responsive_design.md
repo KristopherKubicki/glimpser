@@ -14,4 +14,7 @@ Selecting a group from that dropdown while on the **Live** page now updates the
 camera selector immediately without reloading the page, keeping navigation
 seamless.
 
+Template detail pages feature a back arrow in the header so you can quickly
+return to the dashboard or group view without taking up extra page space.
+
 Offline preview keeps recently viewed pages and assets in the browser cache so the interface remains responsive even on poor connections. This feature is enabled automatically.

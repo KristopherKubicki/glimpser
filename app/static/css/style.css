@@ -542,6 +542,17 @@ nav a {
     color 0.2s; /* Smooth hover transition */
 }
 
+.nav-back {
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+}
+
+.nav-back::before {
+  content: "\2190";
+  margin-right: 4px;
+}
+
 #nav-group-dropdown,
 #nav-camera-dropdown {
   background-color: var(--secondary-bg-color);
