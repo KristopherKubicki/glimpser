@@ -14,6 +14,8 @@ export function initTooltips() {
       if (!target) return;
       const text = target.getAttribute("title");
       if (!text) return;
+      target.setAttribute("data-title", text);
+      target.removeAttribute("title");
       tooltip.textContent = text;
       moveTooltip(e);
       tooltip.classList.remove("hidden");
@@ -23,6 +25,11 @@ export function initTooltips() {
     const hideTooltip = (e) => {
       tooltip.classList.add("hidden");
       e.target.removeEventListener("mousemove", moveTooltip);
+      const orig = e.target.getAttribute("data-title");
+      if (orig) {
+        e.target.setAttribute("title", orig);
+        e.target.removeAttribute("data-title");
+      }
     };
 
     document.addEventListener("mouseover", showTooltip);
