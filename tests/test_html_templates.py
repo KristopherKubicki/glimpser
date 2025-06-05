@@ -76,7 +76,8 @@ class TestHtmlTemplates(unittest.TestCase):
         for attrs in parser.link_tags:
             if (
                 attrs.get("rel") == "preload"
-                and attrs.get("as") == "image"
+                and attrs.get("as") == "fetch"
+                and "crossorigin" in attrs
                 and attrs.get("href") == expected_href
             ):
                 break
