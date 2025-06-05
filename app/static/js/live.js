@@ -73,6 +73,7 @@ function loadSavedPreferences() {
   if (!requestedCamera) {
     const savedCam = localStorage.getItem("liveCamera");
     const camSelect = document.getElementById("camera-selector");
+    const navGroup = document.getElementById("nav-group-dropdown");
     if (
       savedCam &&
       camSelect &&
@@ -80,6 +81,13 @@ function loadSavedPreferences() {
     ) {
       currentCamera = savedCam;
       camSelect.value = savedCam;
+    }
+    if (navGroup) {
+      if (currentCamera === "All") {
+        navGroup.value = "all";
+      } else if (currentCamera.startsWith("group-")) {
+        navGroup.value = currentCamera.split("group-")[1];
+      }
     }
   }
 
@@ -325,6 +333,17 @@ function changeCamera() {
     // Individual camera is selected
     currentCamera = selectedValue;
     isConnected = checkCameraConnection(currentCamera);
+  }
+
+  const navGroup = document.getElementById("nav-group-dropdown");
+  if (navGroup) {
+    if (selectedValue === "All") {
+      navGroup.value = "all";
+    } else if (selectedValue.startsWith("group-")) {
+      navGroup.value = selectedValue.split("group-")[1];
+    } else {
+      navGroup.value = "";
+    }
   }
 
   // Persist the chosen camera so the selection sticks across sessions
