@@ -125,6 +125,10 @@ def setup_config(args=None):
     # Update variables based on command-line arguments
     config.DATABASE_PATH = args.db_path
     config.HOST = args.host
+    if config.ENFORCE_DOMAIN_IN_HOST and "." not in config.HOST:
+        raise ValueError(
+            "HOST must include a domain when ENFORCE_DOMAIN_IN_HOST is enabled"
+        )
     config.PORT = args.port
     config.LOGGING_PATH = args.log_path
     config.DEBUG_MODE = args.debug
@@ -210,6 +214,11 @@ def create_application(args=None):
     else:
         setup_config()
         setup_logging()
+
+    if config.ENFORCE_DOMAIN_IN_HOST and "." not in config.HOST:
+        raise ValueError(
+            "HOST must include a domain when ENFORCE_DOMAIN_IN_HOST is enabled"
+        )
 
     ensure_directories()
     generate_credentials_if_needed()

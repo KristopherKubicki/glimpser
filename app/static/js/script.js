@@ -15,6 +15,7 @@ import { initSettingsSearch } from "./settings.js";
 import { initTabs } from "./tabs.js";
 import { initThemeToggle } from "./theme.js";
 import { initAutocomplete } from "./autocomplete.js";
+import { initCosts } from "./costs.js";
 
 initTemplates();
 initVideoControls();
@@ -34,3 +35,4 @@ initSettingsSearch();
 initTabs();
 initThemeToggle();
 initAutocomplete();
+initCosts();

@@ -66,6 +66,7 @@ from app.config import (
     CLOCK_OVERLAY,
     CLOCK_DIGITAL,
     CLOCK_NAVBAR,
+    ENFORCE_DOMAIN_IN_HOST,
 )
 from app.models import User, Summary
 from app.utils import (
@@ -77,6 +78,7 @@ from app.utils import (
     prompt_optimizer,
     camera_fix,
 )
+from app.utils.template_manager import LLM_COST_PER_TOKEN
 
 from app.utils.llm import ask_question
 from app.utils.settings_tooltips import SETTINGS_TOOLTIPS, SETTINGS_GROUPS
@@ -976,6 +978,14 @@ def init_routes(app: Flask) -> None:
         response.headers["Cache-Control"] = "no-store"
         return response
 
+    @app.before_request
+    def enforce_host_domain():
+        """Block requests missing a domain when enforcement is enabled."""
+        if config.ENFORCE_DOMAIN_IN_HOST:
+            host = request.headers.get("Host", "")
+            if "." not in host:
+                abort(403)
+
     @app.context_processor
     def inject_footer_data():
         outdated = False
@@ -1124,7 +1134,40 @@ def init_routes(app: Flask) -> None:
     @app.route("/captions_status")
     @login_required
     def captions_status():
-        """Return the newest global summary and its timestamp."""
+        """Return the most recent caption and timestamp.
+
+        If a ``group`` query parameter is provided, the newest caption from
+        templates in that group is returned. Otherwise the latest global summary
+        is used.
+        """
+
+        group = request.args.get("group")
+        if group and group != "all":
+            templates = template_manager.get_templates()
+            latest_time = None
+            caption = ""
+            for name, tmpl in templates.items():
+                groups = [g.strip() for g in tmpl.get("groups", "").split(",")]
+                if group not in groups:
+                    continue
+                t = tmpl.get("last_caption_time")
+                if not t:
+                    continue
+                try:
+                    dt = datetime.strptime(t, "%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    continue
+                if not latest_time or dt > latest_time:
+                    latest_time = dt
+                    caption = tmpl.get("last_caption", "")
+            if latest_time:
+                return jsonify(
+                    {
+                        "caption": caption,
+                        "timestamp": latest_time.strftime("%Y-%m-%d %H:%M:%S"),
+                    }
+                )
+
         caption = ""
         timestamp = ""
         session_db = SessionLocal()
@@ -2886,6 +2929,21 @@ def init_routes(app: Flask) -> None:
         metrics = scheduling.get_system_metrics()
         feeds = scheduling.get_feed_status()
         last_summary = scheduling.get_last_summary_time()
+
+        cost_data = []
+        templates = template_manager.get_templates()
+        for name, tmpl in templates.items():
+            tokens = template_manager.get_llm_token_usage(name)
+            group = tmpl.get("groups") or "Ungrouped"
+            cost_data.append(
+                {
+                    "name": name,
+                    "group": group,
+                    "tokens": tokens,
+                    "cost": round(tokens * LLM_COST_PER_TOKEN, 2),
+                }
+            )
+        cost_groups = sorted({c["group"] for c in cost_data})
         return render_template(
             "settings.html",
             grouped_settings=grouped_settings,
@@ -2894,6 +2952,8 @@ def init_routes(app: Flask) -> None:
             feeds=feeds,
             last_summary=last_summary,
             choices=SETTINGS_CHOICES,
+            cost_data=cost_data,
+            cost_groups=cost_groups,
             page_title="Settings",
         )
 
