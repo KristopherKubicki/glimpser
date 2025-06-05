@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="clock-page">
+  <div class="cool-clock" id="pageClock" data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}">
+    <div class="clock-face">
+      <div class="clock-hands">
+        <div class="hand hour-hand"></div>
+        <div class="hand minute-hand"></div>
+        <div class="hand second-hand"></div>
+      </div>
+      <div class="digital-clock"></div>
+    </div>
+  </div>
+</div>
+<script type="module" src="{{ url_for('static', filename='js/clock.js') }}"></script>
+{% endblock %}
