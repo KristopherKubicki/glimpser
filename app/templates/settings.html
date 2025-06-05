@@ -96,8 +96,8 @@
         <button type="submit" title="Save all changes">Save Changes</button>
     </form>
 </main>
-<script src="{{ url_for('static', filename='js/performance.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tabs.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/performance.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/tabs.js') }}"></script>
 <script>
     function confirmDeleteSetting(name) {
         if (confirm('Are you sure you want to delete ' + name + '?')) {
