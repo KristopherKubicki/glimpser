@@ -29,7 +29,8 @@ This guide provides a high-level look at Glimpser's core components and how they
 
 ## Scheduler Jobs (`app/utils/scheduling.py`)
 - Uses APScheduler to run periodic tasks.
-- Jobs include crawler scheduling, video archiving and summarization.
+- Jobs include crawler scheduling, video archiving, discovery and summarization.
+- Tasks run asynchronously so functions like `schedule_discovery` and `schedule_summarization` never block the caller.
 - Exposes a `GracefulAPScheduler` instance used by the Flask app.
 - Stale crawler jobs are removed when templates are updated.
 
