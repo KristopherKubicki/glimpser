@@ -6,7 +6,10 @@ function safePlay(el) {
   const promise = el.play();
   if (promise && typeof promise.catch === "function") {
     promise.catch((err) => {
-      if (err.name !== "AbortError") {
+      // Browsers may reject play() when switching clips or before
+      // the user interacts with the page. Ignore these common cases
+      // so console logs stay readable.
+      if (err.name !== "AbortError" && err.name !== "NotAllowedError") {
         console.error("Error playing video:", err);
       }
     });
@@ -61,6 +64,7 @@ const jogShuttle = document.getElementById("jog-shuttle");
 let jogInterval = null;
 let jogging = false;
 let isSeeking = false;
+let detailsVisible = false;
 // Throttle duplicate error messages so the overlay isn't spammed when
 // a camera repeatedly fails. Track the last message and time displayed.
 let lastErrorMessage = "";
@@ -739,6 +743,13 @@ function playLive() {
           )
           .map(([camera]) => camera);
       }
+    }
+
+    if (!groupCameras || groupCameras.length === 0) {
+      console.warn("playLive: no cameras available for", currentCamera);
+      showError("No cameras available for live view");
+      showLastScreenshot();
+      return;
     }
 
     let cameraIndex = 0;

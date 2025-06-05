@@ -207,6 +207,11 @@ def login_required(f: Callable) -> Callable:
                 flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
 
+            # Refresh expiry so the timeout is based on inactivity
+            session["expiry"] = (
+                datetime.now() + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
+            ).strftime("%Y-%m-%d %H:%M:%S")
+
             db_session = SessionLocal()
             try:
                 inspector = sa_inspect(engine)

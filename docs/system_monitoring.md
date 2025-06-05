@@ -29,6 +29,10 @@ name, last image time, last caption time, or status.
 - **Open Files** – number of file descriptors opened by the process
 - **Thread Count** – active thread count for the application
 - **Uptime** – elapsed time since the app started
+- **FFmpeg Version** – version string reported by the ffmpeg binary
+- **Machine HW Accel** – whether GPU devices are detected
+- **FFmpeg HW Accel** – whether ffmpeg supports hardware acceleration
+- **HW Accel Enabled** – if hardware acceleration is configured
 
 ## Streaming Logs
 

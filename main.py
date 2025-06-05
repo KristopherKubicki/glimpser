@@ -233,6 +233,10 @@ def output_shutdown_stats():
     logging.info("Open Files: %s", metrics["open_files"])
     logging.info("Thread Count: %s", metrics["thread_count"])
     logging.info("Uptime: %s", metrics["uptime"])
+    logging.info("FFmpeg Version: %s", metrics["ffmpeg_version"])
+    logging.info("Machine HW Accel: %s", metrics["machine_hwaccel"])
+    logging.info("FFmpeg HW Accel: %s", metrics["ffmpeg_hwaccel"])
+    logging.info("HW Accel Enabled: %s", metrics["hwaccel_enabled"])
     logging.info("Thank you for running Glimpser. Goodbye!")
 
 

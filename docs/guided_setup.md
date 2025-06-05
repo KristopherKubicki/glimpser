@@ -4,7 +4,7 @@ This walkthrough helps you configure Glimpser the first time you log in. Follow 
 
 ## Step 1: Add a Source
 
-After installation, log in to the web interface. If no templates exist, the **Add Template** form opens automatically. Enter the camera or dashboard URL, choose a refresh interval, and save.
+After installation, log in to the web interface. If no templates exist, the **Add Camera** form on the **Settings → Discover** tab opens automatically. Enter the camera or dashboard URL, choose a refresh interval, and save.
 
 ## Step 2: Configure Summaries
 
