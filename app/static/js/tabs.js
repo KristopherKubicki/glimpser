@@ -21,5 +21,13 @@ export function initTabs() {
         }
       });
     });
+
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    if (tab) {
+      const btn = document.querySelector(`.tab-link[data-tab="${tab}"]`);
+      btn?.click();
+      history.replaceState(null, "", window.location.pathname);
+    }
   });
 }

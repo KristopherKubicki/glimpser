@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'components.html' import card %}
 {% block content %}
 <main class="container settings-page">
     <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger" title="Log out of the interface">Logout</a>
@@ -13,6 +14,9 @@
     <div class="tabs">
         {% for group in grouped_settings.keys() %}
         <button type="button" class="tab-link{% if loop.first %} active{% endif %}" data-tab="{{ group|replace(' ', '-') }}-tab">{{ group }}</button>
+        {% if loop.first %}
+        <button type="button" class="tab-link" data-tab="discover-tab">Discover</button>
+        {% endif %}
         {% endfor %}
         <button type="button" class="tab-link" data-tab="management-tab">Management</button>
     </div>
@@ -64,6 +68,11 @@
                 </tbody>
             </table>
         </div>
+        {% if loop.first %}
+        <div id="discover-tab" class="tab-content">
+            {% include '_discover_tab.html' %}
+        </div>
+        {% endif %}
         {% endfor %}
 
         <div id="management-tab" class="tab-content">

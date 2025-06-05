@@ -52,7 +52,7 @@ To filter logs by level and message text, you could request:
 
 The log viewer reads log lines from memory, ensuring minimal disk overhead.
 
-The `/status` page also appears on the `/discover` screen as a **System Status**
+The `/status` page also appears on the Discover tab as a **System Status**
 camera. Adding it lets Glimpser capture periodic screenshots of its own health
 metrics.
 An accompanying **Internal Caption** camera shows `/internal_caption.mjpg` so you

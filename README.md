@@ -56,9 +56,9 @@ See [OpenSSF Scorecard](docs/scorecard.md) for details on the security badge.
   [HTTP Callback Guide](docs/http_callbacks.md) for setup details and payload
   examples.
 - **SMS Alerts**: Configure Twilio credentials to receive important notifications by text message.
- - **Camera Discovery**: Use the `/discover` page to automatically scan the local network for ONVIF, RTSP, RTMP, HTTP/MJPEG, HLS, and SSDP devices. The table now displays each camera's MAC address plus manufacturer and model information when available. Glimpser checks common system OUI databases, an online lookup service, and the ONVIF device service to gather these details.
+ - **Camera Discovery**: Open **Settings** and switch to the **Discover** tab to automatically scan the local network for ONVIF, RTSP, RTMP, HTTP/MJPEG, HLS, and SSDP devices. The table now displays each camera's MAC address plus manufacturer and model information when available. Glimpser checks common system OUI databases, an online lookup service, and the ONVIF device service to gather these details.
 - **Camera Fix Suggestions**: Validate a template and discover alternative URLs with `/suggest_fix/<template>`. See [Camera Fix Suggestions](docs/camera_fix.md).
-- **Local Cameras**: `/discover` also lists any available `/dev/video*` devices for easy webcam integration.
+ - **Local Cameras**: The Discover tab also lists any available `/dev/video*` devices for easy webcam integration.
 
 - **Web Interface**: A user-friendly web interface allows for easy monitoring and configuration. Users can view live feeds, summaries, and configure settings without delving into the code.
 
@@ -127,7 +127,7 @@ Glimpser uses a database-driven configuration to manage data sources and process
 The preferred method for capturing screenshots is through the Glimpser web interface. Simply navigate to the capture section, select your desired source, and click the capture button. This ensures a seamless and user-friendly experience.
 
 ### Adding a Camera Source
-Visit the `/discover` page to scan your network for ONVIF, RTSP, or local devices and click **Add** next to any result. You can also open **Add Source** in the web interface to manually supply a camera URL and group. See [Camera Discovery](docs/camera_discovery.md) for more details.
+Open the **Discover** tab under **Settings** to scan your network for ONVIF, RTSP, or local devices and click **Add** next to any result. You can also open **Add Source** in the web interface to manually supply a camera URL and group. See [Camera Discovery](docs/camera_discovery.md) for more details.
 
 ### Running Tests
 To ensure everything works as expected, you can run the included unit tests:
