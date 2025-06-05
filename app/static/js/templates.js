@@ -490,10 +490,11 @@ export async function loadTemplates() {
         const nextCaptureTime = timeAgo(template.next_screenshot_time);
 
         const lastScreenshotDate = new Date(lastScreenshotTime);
-        const ageMinutes =
-          (Date.now() - lastScreenshotDate.getTime()) / 60000;
+        const ageMinutes = (Date.now() - lastScreenshotDate.getTime()) / 60000;
         const videoContainerClass = "video-container";
-        const errorClass = template.capture_failed ? "template-error" : "recent-screenshot";
+        const errorClass = template.capture_failed
+          ? "template-error"
+          : "recent-screenshot";
         const borderColor = computeBorderColor(
           ageMinutes,
           template.capture_failed,
