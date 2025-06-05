@@ -178,10 +178,10 @@ port. This makes the "Add" action work immediately without manual edits.
 You can then add a discovered camera to your configuration directly from the Discover tab.
 The "Add" button on this page now includes a tooltip (title attribute) for improved accessibility.
 
-The discovery list also shows a **System Status** entry pointing at your local
-`/status` page (`http://127.0.0.1:8082/status`). You can add this item like any
-other camera to have Glimpser periodically capture screenshots of its own
-metrics page.
+The discovery list also shows a **System Status** entry pointing at the
+Settings page (`http://127.0.0.1:8082/settings?tab=status-tab`). You can add this
+item like any other camera to have Glimpser periodically capture screenshots of
+its own metrics tab.
 It now also includes an **Internal Caption** entry streaming `/internal_caption.mjpg`,
 which loops recent caption text for convenient review.
 

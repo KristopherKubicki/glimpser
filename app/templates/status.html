@@ -1,3 +1,12 @@
+
+
+{% extends 'base.html' %}
+{% from 'components.html' import card %}
+{% block content %}
+{% include '_status_tab.html' %}
+{% endblock %}
+
+                                             
 {% extends 'base.html' %} {% from 'components.html' import card %} {% block
 content %}
 
@@ -142,3 +151,4 @@ content %}
 
 <p>Last summary generated: {{ last_summary or 'N/A' }}</p>
 {% endcall %} {% include 'logs.html' %} {% endblock %}
+

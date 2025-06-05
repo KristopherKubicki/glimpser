@@ -44,7 +44,7 @@ This guide addresses common issues that users might encounter while using Glimps
 - Reduce the number of concurrent data sources
 - Increase the refresh interval for less critical sources
 - Check the `MAX_WORKERS` setting and adjust if necessary
-- Review the `/status` page to watch CPU and memory usage in real time
+- Open the *System Status* tab under Settings to watch CPU and memory usage in real time
 
 ### Problem: Out of memory errors
 
@@ -167,7 +167,7 @@ Remember to always include relevant log files, error messages, and your Glimpser
 
 ## 9. Logging and Debugging Tips
 
-Glimpser writes logs to the console and exposes them via the `/status` page. If something goes wrong:
+Glimpser writes logs to the console and exposes them via the *System Status* tab. If something goes wrong:
 - Use the **System Monitoring and Logs** guide to access live logs.
 - Increase the `LOG_LEVEL` or `FLASK_LOG_LEVEL` environment variable to `DEBUG` for more details.
 - Review recent entries for stack traces or connection errors.
