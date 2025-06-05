@@ -8,6 +8,11 @@
   /* Hide scroll bars for a cleaner live view */
   overflow: hidden;
 }
+
+.video-container.full-height {
+  height: 92vh;
+  max-height: 92vh;
+}
 #live-video,
 #live-image {
   position: absolute;
