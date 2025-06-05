@@ -18,8 +18,11 @@ Below the system metrics the page lists each configured feed with a color-coded 
 
 The dashboard also shows when the most recent system summary was generated.
 
+Additional KPI columns track the number of screenshots, videos, total storage
+used, LLM responses, and estimated LLM cost for each feed.
+
 The table headers are sortable. Click a column name to reorder feeds by feed
-name, last image time, last caption time, or status.
+name, last image time, last caption time, any KPI column, or status.
 
 ### Metrics
 
@@ -99,7 +102,6 @@ curl /profiling
 
 Use this information to identify slow endpoints and monitor performance.
 
-
 Baseline metrics from the main branch are stored in
 `docs/latency_baseline.json`. Run the helper script to refresh this file after
 tests:
@@ -110,4 +112,3 @@ python scripts/update_latency_baseline.py
 
 CI bots can compare the latest profiling results against this baseline to detect
 latency regressions.
-
