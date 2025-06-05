@@ -70,7 +70,7 @@ html {
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
 }
 
 .camera-list .thumbnail-video video.hover-video {
@@ -293,13 +293,13 @@ select:hover {
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover; /* This will cover the area of the .templateDiv, potentially clipping the video */
+    object-fit: contain; /* Scale video without cropping */
 }
 
-/* If you need to maintain the aspect ratio without clipping, use object-fit: contain; */
+/* Maintain aspect ratio without cropping */
 .templateDiv video {
-    object-fit: cover;
-    /*object-position: center; */ /* Aligns the video to the top, so the empty space, if any, will be at the bottom */
+    object-fit: contain;
+    /*object-position: center;*/
 }
 
 .play-icon {
@@ -896,7 +896,7 @@ button, a {
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
 }
 
 .camera-name, .timestamp, .next-capture {
@@ -1170,7 +1170,7 @@ input[type=submit]:hover {
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     filter: grayscale(40%);
     transition: filter 0.3s;
 }

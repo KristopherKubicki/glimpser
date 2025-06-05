@@ -24,7 +24,7 @@ Ensure the `EMAIL_ENABLED` setting is set to `True` and configure the remaining 
 ### How do I enable SMS alerts?
 Set `TWILIO_SID`, `TWILIO_TOKEN`, and `TWILIO_NUMBER` in the configuration. When these values are present, Glimpser will send important alerts via text message as well as email.
 ### Why is the thumbnail size slider so narrow?
-The slider automatically adjusts to the current browser width and now scales thumbnails vertically as well as horizontally. Sizes are capped around 1080&nbsp;px high so oversized images don't bog down the page. If the control still feels cramped, widen the window or tweak the CSS in `style.css` for your layout.
+The slider automatically adjusts to the current browser width and now scales thumbnails vertically as well as horizontally. Images are resized using `object-fit: contain` so nothing gets clipped. Sizes are capped around 1080&nbsp;px high so oversized previews don't bog down the page. If the control still feels cramped, widen the window or tweak the CSS in `style.css` for your layout.
 
 
 ### Why is the live feed slightly cropped on small screens?
