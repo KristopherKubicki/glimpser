@@ -81,19 +81,18 @@ def generate_credentials(args):
 
     create_users(conn)
 
+    # Determine username early so it is always defined
+    username = app.config.get_setting("USER_NAME", "admin")
+
     # Handle each setting individually
-    if args is None or args.username:
-        username = app.config.get_setting("USER_NAME", "admin")
-        if args:
-            username = args.username
-        else:
-            if sys.stdin.isatty():
-                username = input(
-                    f"Enter the username for login [{app.config.get_setting('USER_NAME', 'admin')}]: "
-                ) or app.config.get_setting("USER_NAME", "admin")
-            else:
-                username = app.config.get_setting("USER_NAME", "admin")
+    if args is None:
+        if sys.stdin.isatty():
+            username = input(f"Enter the username for login [{username}]: ") or username
         upsert_setting("USER_NAME", username.strip(), conn)
+    elif args.username is not None:
+        if args.username:
+            username = args.username
+            upsert_setting("USER_NAME", username.strip(), conn)
 
     if args is None or args.password or args.update_password:
         password = ""  # maybe populate with garbage

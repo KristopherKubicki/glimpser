@@ -153,6 +153,50 @@ class TestGenerateCredentials(unittest.TestCase):
         cur.execute("SELECT username, password_hash FROM users WHERE username='bob'")
         self.assertEqual(cur.fetchone(), ("bob", "h"))
 
+    @patch("generate_credentials.generate_password_hash", return_value="pw")
+    @patch(
+        "generate_credentials.app.config.get_setting", side_effect=lambda n, d=None: d
+    )
+    def test_update_password_only(self, mock_get, mock_hash):
+        """Updating only the password should still modify the users table."""
+        generate_credentials.create_settings(self.conn)
+        args = argparse.Namespace(
+            db_path=config.DATABASE_PATH,
+            username=None,
+            password="secret",
+            update_password=True,
+            secret_key=None,
+            update_key=False,
+        )
+        generate_credentials.generate_credentials(args)
+        self.conn.close()
+        self.conn = sqlite3.connect(config.DATABASE_PATH)
+        cur = self.conn.cursor()
+        cur.execute("SELECT username, password_hash FROM users WHERE username='admin'")
+        self.assertEqual(cur.fetchone(), ("admin", "pw"))
+
+    @patch("generate_credentials.generate_password_hash", return_value="h")
+    @patch(
+        "generate_credentials.app.config.get_setting", side_effect=lambda n, d=None: d
+    )
+    def test_update_key_only(self, mock_get, mock_hash):
+        """Updating only the secret key should still update the users table."""
+        generate_credentials.create_settings(self.conn)
+        args = argparse.Namespace(
+            db_path=config.DATABASE_PATH,
+            username=None,
+            password=None,
+            update_password=False,
+            secret_key="new",
+            update_key=True,
+        )
+        generate_credentials.generate_credentials(args)
+        self.conn.close()
+        self.conn = sqlite3.connect(config.DATABASE_PATH)
+        cur = self.conn.cursor()
+        cur.execute("SELECT username FROM users")
+        self.assertEqual(cur.fetchone()[0], "admin")
+
 
 if __name__ == "__main__":
     unittest.main()
