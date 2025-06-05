@@ -6,7 +6,10 @@ function safePlay(el) {
   const promise = el.play();
   if (promise && typeof promise.catch === "function") {
     promise.catch((err) => {
-      if (err.name !== "AbortError") {
+      // Browsers may reject play() when switching clips or before
+      // the user interacts with the page. Ignore these common cases
+      // so console logs stay readable.
+      if (err.name !== "AbortError" && err.name !== "NotAllowedError") {
         console.error("Error playing video:", err);
       }
     });

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - Bulk caption management with TSV import and export
 - Configuration backup and restore
 - System status and log viewing pages
@@ -35,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sortable KPI table on captions page with filtering
 
 ### Changed
+
 - Improved screenshot reliability
 - Enhanced camera list UI and video player controls
 - Updated package requirements and cleaned up imports
@@ -45,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bulk tools menu is expanded by default on the captions page
 
 ### Fixed
+
 - Addressed Python build issues and string concatenation errors
 - Fixed screenshot timeouts and setup script problems
 - Offline cameras now display an overlay and keep the camera selector usable
@@ -54,41 +57,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   backgrounds
 - Repeated stream errors on the `/live` page are now throttled to prevent
   frequent popups.
+- Loop playback no longer logs "NotAllowedError" when the browser blocks
+  auto-play.
 - Fixed a crash on the login page caused by missing clock elements in `nav.js`.
 
 ## [0.2.7] - 2025-06-02
 
 ### Changed
+
 - Bumped package version in setup.py to 0.2.7.
 
 ## [0.2.6] - 2025-06-01
 
 ### Changed
+
 - Bumped package version in setup.py to 0.2.6.
 
 ## [0.2.5] - 2025-05-31
 
 ### Changed
+
 - Bumped package version in setup.py to 0.2.5.
 
 ## [0.2.4] - 2025-05-28
 
 ### Changed
+
 - Bumped package version in setup.py to 0.2.4.
 
 ## [0.2.3] - 2025-05-27
 
 ### Changed
+
 - Bumped package version in setup.py to 0.2.3.
 
 ## [0.2.2] - 2025-05-26
 
 ### Changed
+
 - Bumped package version in setup.py to 0.2.2.
 
 ## [1.0.0] - 2023-06-15
 
 ### Added
+
 - Initial release of Glimpser
 - Real-time monitoring capabilities
 - Image processing and motion detection
@@ -97,9 +109,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Data retention policies
 
 ### Changed
+
 - N/A
 
 ### Fixed
+
 - Live video errors now fall back to the last screenshot so the live view never
   appears blank.
 
