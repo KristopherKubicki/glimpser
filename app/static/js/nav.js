@@ -5,10 +5,43 @@ export function initNav() {
     const discoveryStatus = document.getElementById("discover-status");
     const nav = document.querySelector("nav");
     const menuToggle = document.getElementById("menu-toggle");
+    const groupDropdown = document.getElementById("nav-group-dropdown");
 
     if (nav && menuToggle) {
       menuToggle.addEventListener("click", () => {
         nav.classList.toggle("active");
+      });
+    }
+
+    const loadNavGroups = async () => {
+      if (!groupDropdown) return;
+      groupDropdown.innerHTML = '<option value="">Loading...</option>';
+      groupDropdown.disabled = true;
+      try {
+        const groups = await fetchJson("/groups");
+        groupDropdown.innerHTML = '<option value="">Groups</option>';
+        if (groups && Array.isArray(groups)) {
+          groups.forEach((g) => {
+            const opt = document.createElement("option");
+            opt.value = g;
+            opt.textContent = g;
+            groupDropdown.appendChild(opt);
+          });
+        }
+      } catch (error) {
+        console.error("Error loading groups:", error);
+      } finally {
+        groupDropdown.disabled = false;
+      }
+    };
+
+    if (groupDropdown) {
+      groupDropdown.addEventListener("change", () => {
+        if (groupDropdown.value) {
+          window.location.href = `/group/${encodeURIComponent(
+            groupDropdown.value,
+          )}`;
+        }
       });
     }
 
@@ -233,6 +266,7 @@ export function initNav() {
       showNav();
     };
 
+    loadNavGroups();
     checkHealth();
     setInterval(checkHealth, 5000);
     checkDanger();

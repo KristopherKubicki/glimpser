@@ -513,6 +513,14 @@ nav a {
     transition: background-color 0.2s, color 0.2s; /* Smooth hover transition */
 }
 
+#nav-group-dropdown {
+    background-color: var(--secondary-bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--table-border-color);
+    border-radius: 5px;
+    padding: 4px 8px;
+}
+
 .status-indicator {
     display: flex;
     align-items: center;
@@ -674,6 +682,11 @@ nav a:hover, nav a.active {
     .performance-indicator {
         font-size: 10px;
         padding: 1px 3px;
+    }
+
+    #nav-group-dropdown {
+        width: 100%;
+        margin-bottom: 5px;
     }
 
     /* Enhance touch target sizes for mobile */
