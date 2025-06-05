@@ -149,6 +149,11 @@ class TestMain(unittest.TestCase):
             enable_watchdog=False, schedule=False, crawlers=False
         )
 
+    @patch("logging.info")
+    def test_display_startup_tips(self, mock_info):
+        main.display_startup_tips()
+        mock_info.assert_any_call("Startup Tips")
+
 
 if __name__ == "__main__":
     unittest.main()
