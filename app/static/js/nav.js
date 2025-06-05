@@ -83,6 +83,21 @@ export function initNav() {
     if (groupDropdown) {
       groupDropdown.addEventListener("change", () => {
         if (!groupDropdown.value) return;
+        if (
+          window.location.pathname.startsWith("/live") &&
+          typeof window.changeCamera === "function"
+        ) {
+          const camSelector = document.getElementById("camera-selector");
+          if (camSelector) {
+            camSelector.value =
+              groupDropdown.value === "all"
+                ? "All"
+                : `group-${groupDropdown.value}`;
+            window.changeCamera();
+            loadNavCameras(groupDropdown.value);
+            return;
+          }
+        }
         if (groupDropdown.value === "all") {
           window.location.href = "/";
         } else {

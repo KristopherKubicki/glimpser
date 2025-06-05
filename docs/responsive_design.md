@@ -10,4 +10,8 @@ Group links in the header are now available through a dropdown menu. The list
 populates asynchronously from the `/groups` endpoint and fits neatly inside the
 hamburger layout on small screens.
 
+Selecting a group from that dropdown while on the **Live** page now updates the
+camera selector immediately without reloading the page, keeping navigation
+seamless.
+
 Offline preview keeps recently viewed pages and assets in the browser cache so the interface remains responsive even on poor connections. This feature is enabled automatically.
