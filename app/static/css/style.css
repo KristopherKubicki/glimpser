@@ -1652,6 +1652,11 @@ details > summary {
     color: #fff;
 }
 
+.logout-link {
+    background-color: #e74c3c;
+    color: #fff;
+}
+
 .tab-content {
     display: none;
 }
