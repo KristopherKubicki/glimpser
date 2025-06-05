@@ -34,6 +34,7 @@ nav:
       - Recommendations: recommendations.md
       - Release Workflow: release_workflow.md
       - Settings Page: settings_page.md
+      - Configuration Management: config_management.md
       - System Monitoring: system_monitoring.md
       - Testing: testing.md
       - Tooltips: tooltips.md
