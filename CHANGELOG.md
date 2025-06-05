@@ -60,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Loop playback no longer logs "NotAllowedError" when the browser blocks
   auto-play.
 - Fixed a crash on the login page caused by missing clock elements in `nav.js`.
+- Prevented undefined camera requests from returning 404 errors when switching
+  live sources.
 
 ## [0.2.7] - 2025-06-02
 
