@@ -69,7 +69,7 @@ from app.utils import (
     prompt_optimizer,
     camera_fix,
 )
-from app.utils.settings_tooltips import SETTINGS_TOOLTIPS
+from app.utils.settings_tooltips import SETTINGS_TOOLTIPS, SETTINGS_GROUPS
 from app.utils.screenshots import (
     is_chrome_debug_port_open,
     check_user_activity,
@@ -2472,9 +2472,21 @@ def init_routes(app: Flask) -> None:
             return redirect(url_for("settings"))
 
         settings = get_all_settings()
+        grouped_settings = {group: [] for group in SETTINGS_GROUPS}
+        grouped_settings["Other"] = []
+        for setting in settings:
+            placed = False
+            for group, names in SETTINGS_GROUPS.items():
+                if setting["name"] in names:
+                    grouped_settings[group].append(setting)
+                    placed = True
+                    break
+            if not placed:
+                grouped_settings["Other"].append(setting)
+
         return render_template(
             "settings.html",
-            settings=settings,
+            grouped_settings=grouped_settings,
             tooltips=SETTINGS_TOOLTIPS,
             page_title="Settings",
         )

@@ -12,6 +12,7 @@ import { initWelcome } from "./welcome.js";
 import { initTooltips } from "./tooltips.js";
 import { initCaptions } from "./captions.js";
 import { initSettingsSearch } from "./settings.js";
+import { initTabs } from "./tabs.js";
 
 initTemplates();
 initVideoControls();
@@ -28,3 +29,4 @@ initWelcome();
 initTooltips();
 initCaptions();
 initSettingsSearch();
+initTabs();
