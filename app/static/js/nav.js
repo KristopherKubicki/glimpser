@@ -60,7 +60,9 @@ export function initNav() {
       cameraDropdown.innerHTML = '<option value="">Cameras</option>';
       cameraDropdown.disabled = true;
       try {
-        const cams = await fetchJson(`/templates?group=${encodeURIComponent(group)}`);
+        const cams = await fetchJson(
+          `/templates?group=${encodeURIComponent(group)}`,
+        );
         if (cams) {
           Object.keys(cams)
             .sort()
