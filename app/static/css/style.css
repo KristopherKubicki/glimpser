@@ -442,7 +442,7 @@ body.light-mode {
 }
 
 .hide-captions .caption-overlay {
-    display: none;
+  display: none;
 }
 
 #status-legend {
@@ -708,6 +708,18 @@ nav a.active {
 
   nav a {
     margin-bottom: 5px; /* Add margin for stacked items */
+    font-size: 1.2rem; /* Larger tap targets */
+  }
+
+  .menu-toggle {
+    font-size: 2rem; /* Bigger hamburger icon */
+  }
+
+  /* Hide elements that waste space on mobile */
+  #navClock,
+  #caption-chyron,
+  .flash-messages {
+    display: none;
   }
 
   .settings-icon svg {
@@ -825,17 +837,17 @@ a {
 }
 
 .clock-overlay {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    z-index: 10;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 10;
 }
 
 .digital-clock {
-    font-size: 14px;
-    line-height: 25px;
-    text-align: center;
-    color: var(--text-color);
+  font-size: 14px;
+  line-height: 25px;
+  text-align: center;
+  color: var(--text-color);
 }
 
 .clock-face {
