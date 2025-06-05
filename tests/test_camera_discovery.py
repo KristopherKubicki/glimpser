@@ -32,6 +32,34 @@ class TestCameraDiscovery(unittest.TestCase):
                     ptp=None,
                 )
             ],
+            "lo": [
+                snicaddr(
+                    family=socket.AF_INET,
+                    address="127.0.0.1",
+                    netmask="255.0.0.0",
+                    broadcast=None,
+                    ptp=None,
+                )
+            ],
+            "link0": [
+                snicaddr(
+                    family=socket.AF_INET,
+                    address="169.254.1.1",
+                    netmask="255.255.0.0",
+                    broadcast=None,
+                    ptp=None,
+                )
+            ],
+        }
+
+    def _mock_stats(self):
+        snicstats = camera_discovery.psutil._common.snicstats
+        # all interfaces are up to ensure filtering is based on address type
+        return {
+            "eth0": snicstats(isup=True, duplex=0, speed=0, mtu=1500, flags=0),
+            "wlan0": snicstats(isup=True, duplex=0, speed=0, mtu=1500, flags=0),
+            "lo": snicstats(isup=True, duplex=0, speed=0, mtu=65536, flags=0),
+            "link0": snicstats(isup=True, duplex=0, speed=0, mtu=1500, flags=0),
         }
 
     def _port_open_side_effect(self, ip, port, timeout=1):
@@ -56,9 +84,11 @@ class TestCameraDiscovery(unittest.TestCase):
         ]
         self.assertEqual(result, expected)
 
+    @patch("app.utils.camera_discovery.psutil.net_if_stats")
     @patch("app.utils.camera_discovery.psutil.net_if_addrs")
-    def test_local_subnets(self, mock_addrs):
+    def test_local_subnets(self, mock_addrs, mock_stats):
         mock_addrs.return_value = self._mock_interfaces()
+        mock_stats.return_value = self._mock_stats()
         result = camera_discovery._local_subnets()
         expected = {
             ip_network("192.168.1.5/255.255.255.252", strict=False),

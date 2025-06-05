@@ -267,11 +267,16 @@ def _local_subnets(max_prefixlen: int = 24):
     Some interfaces report very large networks (e.g. ``10.0.0.0/8``) which makes
     discovery scans effectively unbounded. To keep discovery responsive we cap
     the size of each subnet to at most ``max_prefixlen``. Duplicate networks are
-    removed so multi-homed interfaces only scan each subnet once.
+    removed so multi-homed interfaces only scan each subnet once. Interfaces that
+    are down or use loopback/link-local addresses are ignored so discovery focuses
+    on routable LAN segments.
     """
 
     subnets: set[ip_network] = set()
-    for addrs in psutil.net_if_addrs().values():
+    stats = psutil.net_if_stats()
+    for iface, addrs in psutil.net_if_addrs().items():
+        if stats.get(iface) and not stats[iface].isup:
+            continue
         for addr in addrs:
             if addr.family != socket.AF_INET:
                 continue
@@ -281,6 +286,8 @@ def _local_subnets(max_prefixlen: int = 24):
                 continue
             try:
                 net = ip_network(f"{ip}/{netmask}", strict=False)
+                if net.network_address.is_loopback or net.network_address.is_link_local:
+                    continue
                 if net.prefixlen < max_prefixlen:
                     net = ip_network(f"{ip}/{max_prefixlen}", strict=False)
                 subnets.add(net)
