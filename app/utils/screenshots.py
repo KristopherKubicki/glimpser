@@ -532,7 +532,7 @@ def is_similar_color(color1, color2, threshold):
 
 def is_mostly_blank(
     image: Image.Image,
-    threshold: float = 0.92,
+    threshold: float = 0.98,
     blank_color=(255, 255, 255),
     text_std_threshold: int = 20,
     dark_threshold: int = 10,
@@ -705,6 +705,18 @@ def add_timestamp(image_path, name="unknown", invert=False):
             add_micro_barcode(image_path, name)
         except Exception as e:  # pragma: no cover - overlay failures are non-critical
             logging.debug(f"Micro barcode overlay failed: {e}")
+
+
+def create_placeholder(image_path, name="unknown"):
+    """Generate a simple placeholder image with a timestamp."""
+    img = Image.new("RGB", (640, 360), color="black")
+    draw = ImageDraw.Draw(img)
+    font = load_font(20)
+    zone = tz.gettz(TZ) or tz.UTC
+    timestamp = datetime.datetime.now(zone).strftime("%Y-%m-%d %H:%M:%S")
+    text = f"{name}\n{timestamp}"
+    draw.multiline_text((10, 10), text, fill=(255, 255, 255), font=font)
+    img.save(image_path, "PNG")
 
 
 def download_image(
@@ -2612,21 +2624,25 @@ def _finalize_screenshot(tmp_path, final_path, name, invert, dark):
         with Image.open(tmp_path) as img:
             img = img.convert("RGB")
 
-            if is_mostly_blank(img):
+            blank = is_mostly_blank(img)
+            if blank:
                 logging.warning(f"[{name}] The captured screenshot looks mostly blank.")
-                os.remove(tmp_path)
-                return False
+                orig_path = final_path + ".orig.png"
+                os.rename(tmp_path, orig_path)
+                create_placeholder(tmp_path, name)
+                success = False
+            else:
+                # Optional background removal
+                img = remove_background(img)
 
-            # Optional background removal
-            img = remove_background(img)
+                # If you want to do naive “darkening” or inverting more thoroughly,
+                # you can do that here. For example:
+                # if dark:
+                #    img = apply_dark_mode(img)
 
-            # If you want to do naive “darkening” or inverting more thoroughly,
-            # you can do that here. For example:
-            # if dark:
-            #    img = apply_dark_mode(img)
-
-            # Save back
-            img.save(tmp_path, "PNG")
+                # Save back
+                img.save(tmp_path, "PNG")
+                success = True
 
         # Now add a timestamp overlay
         add_timestamp(tmp_path, name=name, invert=invert)
@@ -2636,7 +2652,7 @@ def _finalize_screenshot(tmp_path, final_path, name, invert, dark):
         os.rename(tmp_path, final_path)
 
         logging.debug(f"SAVED screenshot -> {final_path}")
-        return True
+        return success
 
     except Exception as e:
         logging.error(f"Screenshot finalization error: {e}")
