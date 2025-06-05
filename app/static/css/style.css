@@ -287,15 +287,14 @@ select:hover {
     display: block;
 }
 
+
 .templateDiv video {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain; /* Scale video without cropping */
-    transform-origin: 0 0; /* Prevent viewport from shifting */
-    transform: scale(var(--tile-scale, 1));
+    object-fit: contain; /* Show entire frame */
 }
 
 /* Maintain aspect ratio without cropping */
