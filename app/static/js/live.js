@@ -530,6 +530,13 @@ function playLoop() {
       groupCameras = templateDetails["group-" + groupName].groupCameras;
     }
 
+    if (!groupCameras || groupCameras.length === 0) {
+      console.warn("playLoop: no cameras available for", currentCamera);
+      showError("No cameras available for loop");
+      showLastScreenshot();
+      return;
+    }
+
     let cameraIndex = 0;
 
     loopHandler = () => {
