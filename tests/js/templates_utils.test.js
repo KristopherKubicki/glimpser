@@ -53,7 +53,7 @@ describe('templates.js utilities', () => {
       removeListener: jest.fn(),
     }));
     updateGridLayout();
-    expect(list.style.gridTemplateColumns).toBe('repeat(auto-fit, minmax(50px, var(--grid-item-width, 360px)))');
+    expect(list.style.gridTemplateColumns).toBe('repeat(auto-fit, minmax(50px, var(--tile-size)))');
   });
 
   test('templateBelongsToGroup correctly matches groups', () => {
