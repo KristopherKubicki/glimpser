@@ -1122,6 +1122,9 @@ window.selectNextSource = selectNextSource;
 window.selectPreviousSource = selectPreviousSource;
 window.togglePlayback = togglePlayback;
 
+// Allow pausing/resuming the video by clicking anywhere on the player
+video.addEventListener("click", togglePlayback);
+
 // --- Mobile swipe handling ---
 // Allow quick camera changes on touch devices by swiping left or right
 let touchStartX = null;
