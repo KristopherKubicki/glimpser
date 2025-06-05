@@ -15,5 +15,5 @@ test('login and open dashboard', async ({ page }) => {
   await page.fill('input[name="password"]', 'secret');
   await page.click('input[type="submit"]');
   await expect(page).toHaveURL('/');
-  await expect(page.locator('text=Add Template')).toBeVisible();
+  await expect(page.locator('#search-input')).toBeVisible();
 });
