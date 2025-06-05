@@ -81,6 +81,7 @@ This guide addresses common issues that users might encounter while using Glimps
 **Solution:**
 - Check if the Glimpser server is running
 - Verify you're using the correct port (default is 8082)
+- Ensure the `HOST` setting is `0.0.0.0` so the server is reachable from other devices
 - Clear your browser cache and cookies
 - Confirm that WebSocket connections are allowed on your network
 
