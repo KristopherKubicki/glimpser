@@ -3,7 +3,8 @@
 <main class="container danger-page">
   <h2>Danger Mode</h2>
   <p class="page-tip">
-    For a full walkthrough see the <code>docs/danger_mode.md</code> guide.
+    For a full walkthrough see the
+    <a href="../docs/danger_mode.md" target="_blank">Danger Mode documentation</a>.
     Use the button below if Chrome was not launched with the debugging flag.
   </p>
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -56,8 +57,9 @@
   </section>
   {% endif %}
 
-  <form id="danger-form" method="post">
-    <label for="danger-checkbox" title="Toggle danger mode">
+  <form id="danger-form" method="post" class="checkbox-row">
+    <span>Enable Danger Mode</span>
+    <label class="switch" title="Toggle danger mode">
       <input
         id="danger-checkbox"
         type="checkbox"
@@ -65,7 +67,7 @@
         {% if enabled %}checked{% endif %}
         title="Enable or disable danger mode"
       />
-      Enable Danger Mode
+      <span class="slider round"></span>
     </label>
     <button type="submit" title="Save danger mode setting">Save</button>
   </form>
