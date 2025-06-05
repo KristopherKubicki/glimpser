@@ -19,9 +19,7 @@ content %}
       {{ group }}
     </button>
     {% if loop.first %}
-    <button type="button" class="tab-link" data-tab="discover-tab">
-      Discover
-    </button>
+    <button type="button" class="tab-link" data-tab="add-tab">Add</button>
     {% endif %} {% endfor %}
     <button type="button" class="tab-link" data-tab="management-tab">
       Management
@@ -105,7 +103,13 @@ content %}
                   type="checkbox"
                   name="{{ setting.name }}"
                   value="True"
-                  {% if setting.value == 'True' %}checked{% endif %}
+                  {%
+                  if
+                  setting.value=""
+                  ="True"
+                  %}checked{%
+                  endif
+                  %}
                   data-boolean
                 />
                 <span class="slider round"></span>
@@ -119,14 +123,28 @@ content %}
                 {% for option in choices[setting.name] %}
                 <option
                   value="{{ option }}"
-                  {% if setting.value == option %}selected{% endif %}
+                  {%
+                  if
+                  setting.value=""
+                  ="option"
+                  %}selected{%
+                  endif
+                  %}
                 >
                   {{ option }}
                 </option>
                 {% endfor %}
                 <option
                   value="__other__"
-                  {% if setting.value not in choices[setting.name] %}selected{% endif %}
+                  {%
+                  if
+                  setting.value
+                  not
+                  in
+                  choices[setting.name]
+                  %}selected{%
+                  endif
+                  %}
                 >
                   Other
                 </option>
@@ -177,7 +195,7 @@ content %}
       </table>
     </div>
     {% if loop.first %}
-    <div id="discover-tab" class="tab-content">
+    <div id="add-tab" class="tab-content">
       {% include '_discover_tab.html' %}
     </div>
     {% endif %} {% endfor %}

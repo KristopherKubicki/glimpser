@@ -40,4 +40,8 @@
   <symbol id="moon" viewBox="0 0 24 24">
     <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" stroke="currentColor" stroke-width="2" fill="none" />
   </symbol>
-  </svg>
+  <symbol id="plus" viewBox="0 0 24 24">
+    <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" />
+    <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" />
+  </symbol>
+</svg>

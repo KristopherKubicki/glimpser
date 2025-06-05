@@ -552,7 +552,7 @@ export async function loadTemplates() {
       const msg = document.createElement("div");
       msg.className = "no-templates";
       msg.textContent =
-        'No templates found. Use "Add Camera" from the Settings → Discover tab to create one.';
+        'No templates found. Use "Add Camera" from the Settings → Add tab to create one.';
       if (isIndexPage) {
         templateList.appendChild(msg);
       } else if (isCaptionsPage) {

@@ -10,7 +10,7 @@ This document lists the main tooltips available in the Glimpser interface. Hover
 - **System Performance icon** – shows CPU, memory and other metrics. It hides
   when the system is healthy unless `HEALTH_STATUS_ALWAYS_VISIBLE` is set.
 - **Danger Mode icon** – appears only when Danger mode is available. Hovering over it explains why the feature may be disabled.
- - **Discover Cameras icon** – opens the Settings page to the Discover tab.
+ - **Discover Cameras icon** – opens the Settings page to the Add tab.
 - **Captions icon** – reads and updates camera language models. The icon flashes
   with the latest caption when group messages arrive. After a short period of
   inactivity the newest global summary slowly scrolls across the top in gray text.
@@ -36,7 +36,7 @@ These tooltips aim to make the interface self‑explanatory and easier to naviga
 
 Interactive forms now include additional tooltips:
 
-- **Add Camera** – explains each field on the Discover tab and the "Structured" XPath buttons.
+ - **Add Camera** – explains each field on the Add tab and the "Structured" XPath buttons.
 - **Template Details** – buttons like "Suggest Prompt" and "Suggest Fix" describe their actions.
 - **Captions** – upload and filter controls have descriptive titles.
 - **Danger Mode** – the checkbox, save button and modal controls all include tooltips.
