@@ -38,6 +38,8 @@ from flask import (
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
+import sqlite3
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 from ipaddress import ip_network
@@ -280,12 +282,18 @@ def get_all_settings() -> List[Dict[str, Any]]:
     session = SessionLocal()
     try:
         # Fetch all settings from the database
-        db_settings = {
-            row[0]: row[1]
-            for row in session.execute(
+        try:
+            db_rows = session.execute(
                 text("SELECT name, value FROM settings")
             ).fetchall()
-        }
+            db_settings = {row[0]: row[1] for row in db_rows}
+        except (OperationalError, sqlite3.OperationalError) as e:
+            if "no such table" in str(e):
+                # This is expected for a fresh database during initial setup.
+                logging.warning("table does not exist")
+            else:
+                logging.warning("database error %s", e)
+            db_settings = {}
 
         # Fetch all settings from config.py that use get_setting()
         settings = {}
