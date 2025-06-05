@@ -7,9 +7,12 @@
 <nav>
   <button id="menu-toggle" class="menu-toggle" aria-label="Toggle navigation">☰</button>
   <div class="nav-left">
-    {% for ag in active_groups %}
-    <a href="/group/{{ ag }}" title="View group {{ ag }}">{{ ag }}</a>
-    {% endfor %}
+    <select id="nav-group-dropdown" title="Select group to view">
+      <option value="all">All Groups</option>
+      {% for ag in active_groups %}
+      <option value="{{ ag }}" {% if ag == group_name %}selected{% endif %}>{{ ag }}</option>
+      {% endfor %}
+    </select>
     <!-- Discover icon moved to nav-right for consistency -->
   </div>
 

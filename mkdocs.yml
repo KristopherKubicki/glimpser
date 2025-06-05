@@ -17,6 +17,7 @@ nav:
       - Danger Mode: danger_mode.md
       - Dark Mode: dark_mode.md
       - Responsive Design: responsive_design.md
+      - Group Dropdown Navigation: navigation_groups.md
       - UI Design Guidelines: design_guidelines.md
       - Developer Guide: developer_guide.md
       - Docker Build Verification: docker_build.md

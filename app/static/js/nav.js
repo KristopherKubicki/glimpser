@@ -5,10 +5,18 @@ export function initNav() {
     const discoveryStatus = document.getElementById("discover-status");
     const nav = document.querySelector("nav");
     const menuToggle = document.getElementById("menu-toggle");
+    const groupDropdown = document.getElementById("nav-group-dropdown");
 
     if (nav && menuToggle) {
       menuToggle.addEventListener("click", () => {
         nav.classList.toggle("active");
+      });
+    }
+
+    if (groupDropdown) {
+      groupDropdown.addEventListener("change", () => {
+        const val = groupDropdown.value;
+        window.location.href = val === "all" ? "/" : `/group/${encodeURIComponent(val)}`;
       });
     }
 
