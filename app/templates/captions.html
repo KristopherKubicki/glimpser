@@ -17,7 +17,17 @@
                  error: function(error) {
                      alert('Error updating template: ' + error.responseText);
                  }
-            });
+             });
+         }
+         function toggleChyron() {
+             fetch('/toggle_chyron', {method: 'POST'})
+                 .then(resp => resp.json())
+                 .then(data => {
+                     const btn = document.getElementById('toggle-chyron-btn');
+                     if (data.speed !== undefined && btn) {
+                         btn.textContent = data.speed > 0 ? 'Disable Chyron' : 'Enable Chyron';
+                     }
+                 });
          }
      </script>
 
@@ -126,6 +136,9 @@
         <label for="caption-end">To:</label>
         <input type="date" id="caption-end" title="End date">
         <button id="caption-clear" type="button" title="Clear filters">Clear</button>
+        <button id="toggle-chyron-btn" type="button" onclick="toggleChyron()" title="Toggle caption banner">
+            {% if CHYRON_SPEED|int > 0 %}Disable Chyron{% else %}Enable Chyron{% endif %}
+        </button>
     </div>
     <table id="captions-table" class="captions-table">
             <thead>

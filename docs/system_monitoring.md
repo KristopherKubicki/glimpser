@@ -70,6 +70,8 @@ details. The scroll duration comes from the `CHYRON_SPEED` setting which is
 after a caption, changes to
 yellow for the next five minutes and turns red once thirty minutes have passed
 without an update.
+You can toggle the chyron from the **Captions** page using the button in the
+History tab.
 
 ## Danger Mode Indicator
 
