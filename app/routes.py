@@ -448,6 +448,7 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
     )
 
     failures = 0
+    last_log = 0.0
     while True:
         process = subprocess.Popen(
             command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -474,6 +475,7 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
         if process.returncode == 0:
             return
 
+        now = time.time()
         if not chunk_yielded:
             failures += 1
             if failures >= config.LIVE_MAX_FAILURES:
@@ -481,10 +483,20 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
                     "ffmpeg failed %s times without output, giving up", failures
                 )
                 return
+            if now - last_log > 10:
+                logging.warning(
+                    "ffmpeg exited with %s, retrying (%s/%s)",
+                    process.returncode,
+                    failures,
+                    config.LIVE_MAX_FAILURES,
+                )
+                last_log = now
         else:
             failures = 0
+            if now - last_log > 10:
+                logging.warning("ffmpeg exited with %s, retrying", process.returncode)
+                last_log = now
 
-        logging.error("ffmpeg exited with %s, retrying", process.returncode)
         time.sleep(2)
 
 
