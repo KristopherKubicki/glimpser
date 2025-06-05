@@ -449,6 +449,7 @@ export async function loadTemplates() {
 
   const isIndexPage = Boolean(templateList);
   const isCaptionsPage = Boolean(captionsTable && templateContainer);
+  const sliderElement = document.getElementById("grid-width-slider");
 
   if (isIndexPage) {
     templateList.innerHTML = '<div class="loading">Loading templates...</div>';
@@ -604,20 +605,18 @@ export async function loadTemplates() {
     }
     if (window.updateSliderLimits) {
       window.updateSliderLimits();
-      const slider = document.getElementById("grid-width-slider");
-      if (slider) {
-        slider.value = slider.min;
-        slider.dispatchEvent(new Event("input"));
+      if (sliderElement) {
+        sliderElement.value = sliderElement.min;
+        sliderElement.dispatchEvent(new Event("input"));
       }
-    } else {
-      const slider = document.getElementById("grid-width-slider");
-      if (slider) slider.dispatchEvent(new Event("input"));
+    } else if (sliderElement) {
+      sliderElement.dispatchEvent(new Event("input"));
     }
     updateHumanizedTimes();
     window.dispatchEvent(
       new CustomEvent("templatesLoaded", { detail: { count: templateCount } }),
     );
-    applyCaptionVisibility(parseFloat(slider?.value || "0"));
+    applyCaptionVisibility(parseFloat(sliderElement?.value || "0"));
   } catch (error) {
     console.error("Error loading templates:", error);
     const errorMsg =
