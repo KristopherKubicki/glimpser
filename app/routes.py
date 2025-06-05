@@ -61,6 +61,9 @@ from app.config import (
     CHYRON_SPEED,
     NAV_ICON,
     HEALTH_STATUS_ALWAYS_VISIBLE,
+    CLOCK_OVERLAY,
+    CLOCK_DIGITAL,
+    CLOCK_NAVBAR,
 )
 from app.models import User, Summary
 from app.utils import (
@@ -947,6 +950,9 @@ def init_routes(app: Flask) -> None:
             CHYRON_SPEED=CHYRON_SPEED,
             NAV_ICON=NAV_ICON,
             HEALTH_STATUS_ALWAYS_VISIBLE=HEALTH_STATUS_ALWAYS_VISIBLE,
+            CLOCK_OVERLAY=CLOCK_OVERLAY,
+            CLOCK_DIGITAL=CLOCK_DIGITAL,
+            CLOCK_NAVBAR=CLOCK_NAVBAR,
         )
 
     # Add a new route for the extended health check
@@ -2071,6 +2077,13 @@ def init_routes(app: Flask) -> None:
         return render_template(
             "live.html", template_details=templates, page_title="Live View"
         )
+
+    @app.route("/clock")
+    @login_required
+    def clock_page():
+        """Render a standalone clock page."""
+
+        return render_template("clock.html", page_title="Clock")
 
     @app.route("/latest_frame/<string:template_name>")
     @login_required
