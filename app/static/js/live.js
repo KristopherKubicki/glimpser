@@ -389,6 +389,7 @@ function updateFeed() {
     image.src = "";
     showLastScreenshot();
     updateSeekBar();
+    updateJogShuttle();
     return;
   } else if (details && details.capture_failed) {
     hideOfflineIndicator();
@@ -399,6 +400,7 @@ function updateFeed() {
     image.src = "";
     showLastScreenshot();
     updateSeekBar();
+    updateJogShuttle();
     return;
   } else {
     hideOfflineIndicator();
@@ -440,6 +442,7 @@ function updateFeed() {
   }
 
   updateSeekBar();
+  updateJogShuttle();
 }
 
 function playM3U8() {
@@ -990,6 +993,17 @@ function updateSeekBar() {
   }
 }
 
+function updateJogShuttle() {
+  if (!jogShuttle) return;
+  const source = document.getElementById("video-source").value;
+  const isSingleCamera = !(
+    currentCamera === "All" || currentCamera.startsWith("group-")
+  );
+  const show = isSingleCamera && (source === "mp4" || source === "loop");
+  jogShuttle.style.visibility = show ? "visible" : "hidden";
+  jogShuttle.style.pointerEvents = show ? "auto" : "none";
+}
+
 function checkCameraConnection(cameraName) {
   if (cameraName === "All" || cameraName.startsWith("group-")) {
     return true;
@@ -1046,6 +1060,7 @@ updateTemplateDetails();
 updateSpeedContainer();
 updatePlaybackSpeed();
 updateSeekBar();
+updateJogShuttle();
 initJogShuttle();
 playMJPG();
 startCaptionPolling();
