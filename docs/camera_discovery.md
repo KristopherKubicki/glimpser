@@ -1,9 +1,9 @@
 # Camera Discovery
 
-Glimpser includes a simple discovery feature to help find network cameras on your local LAN. The `/discover` page now loads immediately and only scans when you click the **Discover** button. Starting a scan automatically enables hourly background discovery if it isn't already running. Use the **Stop Discovery** button to halt it. A progress bar displays the number of completed stages so you know the scan is making progress. The page also shows which discovery stage is currently executing. The logic in `app/utils/camera_discovery.py` runs in parallel threads so results return faster. To keep the scan quick, each interface is limited to a `/24` subnet even if the reported mask is larger. Interfaces that are down or using loopback or link-local addresses are ignored so the default scan only targets routable LAN networks.
+Glimpser includes a simple discovery feature to help find network cameras on your local LAN. The **Discover** tab on the **Settings** page now loads immediately and only scans when you click the **Discover** button. Starting a scan automatically enables hourly background discovery if it isn't already running. Use the **Stop Discovery** button to halt it. A progress bar displays the number of completed stages so you know the scan is making progress. The page also shows which discovery stage is currently executing. The logic in `app/utils/camera_discovery.py` runs in parallel threads so results return faster. To keep the scan quick, each interface is limited to a `/24` subnet even if the reported mask is larger. Interfaces that are down or using loopback or link-local addresses are ignored so the default scan only targets routable LAN networks.
 The subnet list is now deduplicated so machines with multiple addresses per interface are scanned only once. Unreachable ports fail fast so discovery always completes even when some networks are inaccessible.
 The page layout now uses card sections and wider progress indicators for a more professional feel while keeping controls grouped logically.
-Background discovery can run automatically every hour when the `DISCOVERY_AUTOSTART` setting is enabled. When disabled (the default), the search icon appears white until you start the scan from `/discover`. The icon turns green when a scan completed recently, yellow while scanning, and red if the last run failed. Hovering over the icon now shows when the last scan finished and when the next one will run.
+Background discovery can run automatically every hour when the `DISCOVERY_AUTOSTART` setting is enabled. When disabled (the default), the search icon appears white until you start the scan from the Discover tab. The icon turns green when a scan completed recently, yellow while scanning, and red if the last run failed. Hovering over the icon now shows when the last scan finished and when the next one will run.
 The scheduling call now triggers discovery in a background thread so the UI never hangs when you enable it.
 The page now polls `/discovery_status` every 30 seconds so the background state
 is always visible, including the remaining time until the next run.
@@ -175,7 +175,7 @@ contains those keywords. The detected type appears in the ``device_type`` field.
 Discovered entries also include a suggested ``url`` built from the protocol and
 port. This makes the "Add" action work immediately without manual edits.
 
-You can then add a discovered camera to your configuration directly from the `/discover` page.
+You can then add a discovered camera to your configuration directly from the Discover tab.
 The "Add" button on this page now includes a tooltip (title attribute) for improved accessibility.
 
 The discovery list also shows a **System Status** entry pointing at your local
