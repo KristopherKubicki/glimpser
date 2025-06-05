@@ -1,6 +1,11 @@
 export function initNav() {
   document.addEventListener("DOMContentLoaded", () => {
     const healthStatus = document.getElementById("health-status");
+    const healthAlwaysVisible =
+      healthStatus && healthStatus.dataset.alwaysVisible === "true";
+    if (healthStatus && !healthAlwaysVisible) {
+      healthStatus.style.display = "none";
+    }
     const dangerStatus = document.getElementById("danger-status");
     const discoveryStatus = document.getElementById("discover-status");
     const nav = document.querySelector("nav");
@@ -55,7 +60,9 @@ export function initNav() {
       cameraDropdown.innerHTML = '<option value="">Cameras</option>';
       cameraDropdown.disabled = true;
       try {
-        const cams = await fetchJson(`/templates?group=${encodeURIComponent(group)}`);
+        const cams = await fetchJson(
+          `/templates?group=${encodeURIComponent(group)}`,
+        );
         if (cams) {
           Object.keys(cams)
             .sort()
@@ -119,7 +126,13 @@ export function initNav() {
         if (data.status === "healthy") {
           healthStatus.style.color = "green";
           healthStatus.title = "System Status: Healthy\n\n";
+          if (!healthAlwaysVisible) {
+            healthStatus.style.display = "none";
+          } else {
+            healthStatus.style.display = "flex";
+          }
         } else {
+          healthStatus.style.display = "flex";
           healthStatus.style.color = "red";
           healthStatus.title = "System Status: Degraded\n\n";
         }
