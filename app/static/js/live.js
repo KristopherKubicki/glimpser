@@ -876,7 +876,10 @@ function stopPNG() {
     clearInterval(pngInterval);
     pngInterval = null;
   }
-  image.src = "";
+  // Hide the image and clear the source so browsers don't briefly
+  // display the broken image icon when switching cameras.
+  image.style.display = "none";
+  image.removeAttribute("src");
 }
 
 function stopLiveSwitch() {
