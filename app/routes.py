@@ -1071,6 +1071,19 @@ def init_routes(app: Flask) -> None:
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
 
+    @app.route("/toggle_chyron", methods=["POST"])
+    @login_required
+    @profile_route("/toggle_chyron")
+    def toggle_chyron():
+        """Enable or disable the caption chyron."""
+        try:
+            current = config.get_setting("CHYRON_SPEED", "0")
+            new_speed = "0" if str(current) != "0" else "240"
+            update_setting("CHYRON_SPEED", new_speed)
+            return jsonify({"speed": int(new_speed)})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     @app.route("/danger", methods=["GET", "POST"])
     @login_required
     def danger_mode():
@@ -1833,7 +1846,7 @@ def init_routes(app: Flask) -> None:
     @login_required
     def captions():
 
-        # Load the most recent summaries from the database
+        # Load recent summaries from the database and convert timestamps to ISO
         entries = []
         try:
             session_db = SessionLocal()
@@ -1841,12 +1854,19 @@ def init_routes(app: Flask) -> None:
                 records = (
                     session_db.query(Summary)
                     .order_by(Summary.timestamp.desc())
-                    .limit(5)
+                    .limit(100)
                     .all()
                 )
                 for rec in records:
                     try:
-                        entries.append(json.loads(rec.content))
+                        data = json.loads(rec.content)
+                        for ts, text in data.items():
+                            try:
+                                dt = datetime.utcfromtimestamp(int(ts))
+                                iso_ts = dt.strftime("%Y-%m-%d %H:%M:%S")
+                            except Exception:
+                                iso_ts = ts
+                            entries.append({iso_ts: text})
                     except Exception:
                         pass
             finally:
