@@ -524,12 +524,14 @@ nav a {
     transition: background-color 0.2s, color 0.2s; /* Smooth hover transition */
 }
 
-#nav-group-dropdown {
+#nav-group-dropdown,
+#nav-camera-dropdown {
     background-color: var(--secondary-bg-color);
     color: var(--text-color);
     border: 1px solid var(--table-border-color);
     border-radius: 5px;
     padding: 4px 8px;
+    width: 120px; /* Prevent layout shift while content loads */
 }
 
 .status-indicator {
@@ -695,7 +697,8 @@ nav a:hover, nav a.active {
         padding: 1px 3px;
     }
 
-    #nav-group-dropdown {
+    #nav-group-dropdown,
+    #nav-camera-dropdown {
         width: 100%;
         margin-bottom: 5px;
     }
