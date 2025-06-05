@@ -1372,6 +1372,13 @@ details > summary {
     margin-bottom: 0.5rem;
 }
 
+.scheduler-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
 /* Status dashboard */
 .feed-status {
     width: 100%;

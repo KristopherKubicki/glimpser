@@ -1,6 +1,7 @@
 
 
 {% extends 'base.html' %}
+{% from 'components.html' import card %}
 {% block content %}
 
 <div class="scheduler-controls">
@@ -12,8 +13,7 @@
 
 <h1>System Status</h1>
 
-<!-- Display system metrics -->
-<h2>System Metrics</h2>
+{% call card('System Metrics') %}
 <ul>
     <li title="Current CPU utilization">CPU Usage: {{ metrics.cpu_usage }}%</li>
     <li title="Current memory utilization">Memory Usage: {{ metrics.memory_usage }}%</li>
@@ -22,8 +22,9 @@
     <li title="Number of active threads">Thread Count: {{ metrics.thread_count }}</li>
     <li title="System uptime">Uptime: {{ metrics.uptime }}</li>
 </ul>
+{% endcall %}
 
-<h2>Feed Status</h2>
+{% call card('Feed Status') %}
 <table id="feed-status" class="feed-status">
     <thead>
         <tr>
@@ -62,7 +63,7 @@
 </table>
 
 <p>Last summary generated: {{ last_summary or 'N/A' }}</p>
-
+{% endcall %}
 
 {% include 'logs.html' %}
 {% endblock %}
