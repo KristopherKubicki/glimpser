@@ -281,24 +281,38 @@ export function initNav() {
     };
 
     const updateCoolClock = () => {
-      const secondHand = document.querySelector(".second-hand");
-      const minuteHand = document.querySelector(".minute-hand");
-      const hourHand = document.querySelector(".hour-hand");
+      const clock = document.getElementById("coolClock");
       const digitalTime = document.getElementById("digitalTime");
-      if (!secondHand || !minuteHand || !hourHand || !digitalTime) return;
+      if (!clock || !digitalTime) return;
+
+      const mode = clock.dataset.mode || "analog";
+      const secondHand = clock.querySelector(".second-hand");
+      const minuteHand = clock.querySelector(".minute-hand");
+      const hourHand = clock.querySelector(".hour-hand");
 
       const now = new Date();
-      const secondsDegrees = (now.getSeconds() / 60) * 360;
-      const minutesDegrees =
-        (now.getMinutes() / 60) * 360 + (now.getSeconds() / 60) * 6;
-      const hoursDegrees =
-        (now.getHours() / 12) * 360 + (now.getMinutes() / 60) * 30;
-
-      secondHand.style.transform = `rotate(${secondsDegrees}deg)`;
-      minuteHand.style.transform = `rotate(${minutesDegrees}deg)`;
-      hourHand.style.transform = `rotate(${hoursDegrees}deg)`;
-
       digitalTime.title = `${now.toLocaleTimeString()}\n${Intl.DateTimeFormat().resolvedOptions().timeZone}\n${now.toDateString()}`;
+
+      if (mode === "digital") {
+        digitalTime.textContent = now.toLocaleTimeString();
+        [secondHand, minuteHand, hourHand].forEach((el) => {
+          if (el) el.style.display = "none";
+        });
+      } else {
+        const secondsDegrees = (now.getSeconds() / 60) * 360;
+        const minutesDegrees =
+          (now.getMinutes() / 60) * 360 + (now.getSeconds() / 60) * 6;
+        const hoursDegrees =
+          (now.getHours() / 12) * 360 + (now.getMinutes() / 60) * 30;
+
+        if (secondHand) secondHand.style.transform = `rotate(${secondsDegrees}deg)`;
+        if (minuteHand) minuteHand.style.transform = `rotate(${minutesDegrees}deg)`;
+        if (hourHand) hourHand.style.transform = `rotate(${hoursDegrees}deg)`;
+        [secondHand, minuteHand, hourHand].forEach((el) => {
+          if (el) el.style.display = "";
+        });
+        digitalTime.textContent = "";
+      }
     };
 
     const setupNavFade = () => {

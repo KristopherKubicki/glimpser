@@ -821,6 +821,18 @@ button, a {
     background-color: #ff0000;
 }
 
+/* Digital clock mode */
+.cool-clock[data-mode="digital"] .hand {
+    display: none;
+}
+
+.cool-clock[data-mode="digital"] #digitalTime {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
 /* Template Form Styles */
 #template-form, #edit-template {
     background-color: var(--form-bg-color);

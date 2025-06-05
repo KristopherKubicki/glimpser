@@ -29,6 +29,8 @@ can modify them in the application interface or directly in the database.
 
 - `NAME` – application name (default `glimpser`)
 - `NAV_ICON` – navigation logo path relative to the `static` directory. Set to an empty string to hide the logo (default `img/glimpser_small.png`)
+- `NAV_CLOCK_ENABLED` – set to `False` to hide the navigation clock (default `True`)
+- `NAV_CLOCK_MODE` – choose `analog` or `digital` clock style (default `analog`)
 - `VERSION` – application version (defaults to the installed package version and
   is updated automatically when it changes)
 - `LANG` – default language (default `en-US`)

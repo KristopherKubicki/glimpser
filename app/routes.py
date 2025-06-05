@@ -60,6 +60,8 @@ from app.config import (
     SENSITIVE_SETTINGS,
     CHYRON_SPEED,
     NAV_ICON,
+    NAV_CLOCK_ENABLED,
+    NAV_CLOCK_MODE,
 )
 from app.models import User, Summary
 from app.utils import (
@@ -916,6 +918,8 @@ def init_routes(app: Flask) -> None:
             NODE_ENV=NODE_ENV,
             CHYRON_SPEED=CHYRON_SPEED,
             NAV_ICON=NAV_ICON,
+            NAV_CLOCK_ENABLED=NAV_CLOCK_ENABLED,
+            NAV_CLOCK_MODE=NAV_CLOCK_MODE,
         )
 
     # Add a new route for the extended health check

@@ -16,6 +16,8 @@ SETTINGS_TOOLTIPS = {
     "FFMPEG_THREADS": "Threads for video processing",
     "LIVE_FALLBACK_FPS": "Frame rate for still image streams",
     "LIVE_MAX_FAILURES": "Max retries for live streams",
+    "NAV_CLOCK_ENABLED": "Show or hide the navigation clock",
+    "NAV_CLOCK_MODE": "Display the navigation clock in analog or digital mode",
     "CHYRON_SPEED": "Duration of caption banner in seconds",
     "EMAIL_ENABLED": "Toggle email notifications",
     "EMAIL_SMTP_SERVER": "SMTP server address",
@@ -41,6 +43,8 @@ SETTINGS_GROUPS = {
         "MAX_WORKERS",
         "LOG_LEVEL",
         "FLASK_LOG_LEVEL",
+        "NAV_CLOCK_ENABLED",
+        "NAV_CLOCK_MODE",
     ],
     "Credentials": [
         "USER_NAME",

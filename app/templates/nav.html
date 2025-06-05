@@ -44,8 +44,9 @@
         </svg>
       </a>
     </div>
+    {% if NAV_CLOCK_ENABLED %}
     <a href="/live" id="live" aria-label="Open Live page">
-      <div id="coolClock" class="cool-clock" title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming." aria-label="Open Live page for realtime streaming">
+      <div id="coolClock" class="cool-clock" data-mode="{{ NAV_CLOCK_MODE }}" title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming." aria-label="Open Live page for realtime streaming">
         <div id="dateDisplay" class="clock-face">
           <div id="digitalTime" class="clock-hands" title="">
             <div class="hand hour-hand"></div>
@@ -55,6 +56,7 @@
         </div>
       </div>
     </a>
+    {% endif %}
       <a href="/settings" class="settings-icon" title="Update settings" aria-label="Update settings">
         <svg width="20" height="20">
           <use href="{{ url_for('static', filename='icons/sprite.svg') }}#gear" />

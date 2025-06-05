@@ -234,6 +234,8 @@ sync_version(_PKG_VERSION)
 VERSION = get_setting("VERSION", _PKG_VERSION)
 NAME = get_setting("NAME", "glimpser")
 NAV_ICON = get_setting("NAV_ICON", "img/glimpser_small.png")
+NAV_CLOCK_ENABLED = get_setting("NAV_CLOCK_ENABLED", "True") == "True"
+NAV_CLOCK_MODE = get_setting("NAV_CLOCK_MODE", "analog")
 HOST = get_setting("HOST", "0.0.0.0")
 PORT = int(get_setting("PORT", 8082))
 DEBUG = get_setting("DEBUG", "False") == "True"

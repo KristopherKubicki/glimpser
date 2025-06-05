@@ -18,7 +18,7 @@ This document lists the main tooltips available in the Glimpser interface. Hover
   Clicking the chyron opens the `/captions` page. It stays green for one minute after the
   most recent caption, turns yellow for the next five minutes and becomes red
   when no update has been received for over thirty minutes.
-- **Clock icon** – opens the live page with instructions for real‑time streaming.
+- **Clock icon** – opens the live page with instructions for real‑time streaming. The display can switch between analog and digital or be disabled entirely via settings.
 - **Settings gear icon** – opens the settings page.
 - **Login link** – appears when not authenticated.
 

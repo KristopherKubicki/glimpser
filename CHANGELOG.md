@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Footer warns when a newer release is available
 - Stream error overlay distinguishes network and unsupported format errors
 - Sortable KPI table on captions page with filtering
+- Switchable digital or analog navigation clock with an option to hide it
 
 ### Changed
 - Improved screenshot reliability
