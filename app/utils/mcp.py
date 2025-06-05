@@ -22,20 +22,31 @@ except Exception:  # pragma: no cover - openai-agents may not be installed
 class _StubMCPServer:
     """Fallback server used when ``openai-agents`` is unavailable."""
 
+    def __init__(self) -> None:
+        self._tools: Dict[str, Dict[str, Any]] = {}
+        self.register_tool(
+            "echo",
+            "Return the provided text",
+            lambda params=None: {"text": (params or {}).get("text", "")},
+        )
+
+    def register_tool(self, name: str, description: str, func) -> None:
+        """Register a callable as a stub MCP tool."""
+        self._tools[name] = {"description": description, "func": func}
+
     async def list_tools(self) -> List[Dict[str, Any]]:
         return [
-            {
-                "name": "echo",
-                "description": "Return the provided text",
-            }
+            {"name": name, "description": info["description"]}
+            for name, info in self._tools.items()
         ]
 
     async def call_tool(
         self, name: str, params: Dict[str, Any] | None = None
     ) -> Dict[str, Any]:
-        if name != "echo":
+        info = self._tools.get(name)
+        if not info:
             return {"error": f"Unknown tool: {name}"}
-        return {"text": (params or {}).get("text", "")}
+        return info["func"](params)
 
 
 class MCPClient:
@@ -92,6 +103,14 @@ def _get_default_client() -> MCPClient:
             url=config.MCP_SERVER_URL,
         )
     return _default_client
+
+
+def register_local_tool(name: str, description: str, func) -> None:
+    """Register a stub MCP tool when no server is available."""
+    client = _get_default_client()
+    asyncio.run(client._ensure_server())
+    if isinstance(client._server, _StubMCPServer):  # type: ignore[attr-defined]
+        client._server.register_tool(name, description, func)
 
 
 def list_tools_sync() -> List[Dict[str, Any]]:
