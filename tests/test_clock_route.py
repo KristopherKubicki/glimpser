@@ -6,7 +6,9 @@ import tempfile
 import sys
 from unittest.mock import patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+)
 
 import app
 import app.config as config
@@ -25,6 +27,13 @@ class TestClockRoute(unittest.TestCase):
 
         importlib.reload(config)
         importlib.reload(routes)
+
+        # Disable authentication before the routes are registered so the
+        # patched ``login_required`` decorator is used when the application
+        # creates its route handlers.
+        self.login_patch = patch("app.routes.login_required", lambda x: x)
+        self.login_patch.start()
+
         importlib.reload(app)
         conn = sqlite3.connect(self.db_path)
         conn.execute(
@@ -42,6 +51,7 @@ class TestClockRoute(unittest.TestCase):
     def tearDown(self):
         self.restart_patch.stop()
         self.app_context.pop()
+        self.login_patch.stop()
         self.env_patch.stop()
         importlib.reload(config)
         importlib.reload(routes)
@@ -49,9 +59,7 @@ class TestClockRoute(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_clock_page(self):
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
-        ):
+        with patch("app.routes.session", {"user_id": 1}):
             response = self.client.get("/clock")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Clock", response.data)
