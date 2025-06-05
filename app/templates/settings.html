@@ -3,35 +3,32 @@
 <main class="container settings-page">
     <a href="{{ url_for('logout') }}" class="settings-icon btn btn-danger" title="Log out of the interface">Logout</a>
 
-    <details class="settings-help">
-        <summary>What does each setting do?</summary>
-        {% include 'settings_help_table.html' %}
-    </details>
-
-    <h3>Add New Setting</h3>
-    <form id="add-setting-form" method="POST" action="{{ url_for('settings') }}">
-        <input type="hidden" name="action" value="add" title="Add setting action">
-        <label for="new_name" title="Name of the new setting">Name:</label>
-        <input type="text" id="new_name" name="new_name" required title="Enter setting name">
-        <label for="new_value" title="Initial value for the setting">Value:</label>
-        <input type="text" id="new_value" name="new_value" required title="Enter setting value">
-        <div id="setting-error" class="form-error hidden"></div>
-        <button type="submit" title="Add setting">Add Setting</button>
-    </form>
+    {# Help content now appears directly in the table, so the collapsible menu was removed #}
 
     <div id="settings-search" class="hidden">
         <label for="search-input" title="Filter the selected column">Search:</label>
         <input type="text" id="search-input" title="Type to filter settings">
     </div>
 
-    <form method="POST" action="{{ url_for('settings') }}">
-        <div class="tabs">
-            {% for group in grouped_settings.keys() %}
-            <button class="tab-link{% if loop.first %} active{% endif %}" data-tab="{{ group|replace(' ', '-') }}-tab">{{ group }}</button>
-            {% endfor %}
-            <button class="tab-link" data-tab="management-tab">Management</button>
-        </div>
+    <div class="tabs">
+        {% for group in grouped_settings.keys() %}
+        <button type="button" class="tab-link{% if loop.first %} active{% endif %}" data-tab="{{ group|replace(' ', '-') }}-tab">{{ group }}</button>
+        {% endfor %}
+        <button type="button" class="tab-link" data-tab="management-tab">Management</button>
+    </div>
 
+    <div id="add-setting-container" class="hidden">
+        <form id="add-setting-form" method="POST" action="{{ url_for('settings') }}">
+            <label for="new_name" title="Name of the new setting">Name:</label>
+            <input type="text" id="new_name" name="new_name" required title="Enter setting name">
+            <label for="new_value" title="Initial value for the setting">Value:</label>
+            <input type="text" id="new_value" name="new_value" required title="Enter setting value">
+            <div id="setting-error" class="form-error hidden"></div>
+            <button type="submit" name="action" value="add" title="Add setting">Add Setting</button>
+        </form>
+    </div>
+
+    <form method="POST" action="{{ url_for('settings') }}" id="settings-form">
         {% for group, items in grouped_settings.items() %}
         <div id="{{ group|replace(' ', '-') }}-tab" class="tab-content{% if loop.first %} active{% endif %}">
             <h3>{{ group }} Settings</h3>
