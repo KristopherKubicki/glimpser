@@ -75,11 +75,16 @@ from app.utils import (
     prompt_optimizer,
     camera_fix,
 )
+
+from app.utils.llm import ask_question
+from app.utils.settings_tooltips import SETTINGS_TOOLTIPS, SETTINGS_GROUPS
+
 from app.utils.settings_tooltips import (
     SETTINGS_TOOLTIPS,
     SETTINGS_GROUPS,
     SETTINGS_CHOICES,
 )
+
 from app.utils.screenshots import (
     is_chrome_debug_port_open,
     check_user_activity,
@@ -2051,6 +2056,67 @@ def init_routes(app: Flask) -> None:
 
         flash("Invalid file format. Please upload a TSV file.", "error")
         return redirect(url_for("captions"))
+
+    @app.route("/captions_chat", methods=["POST"])
+    @login_required
+    def captions_chat():
+        """Answer a question using recent caption history."""
+
+        data = request.get_json(force=True) or {}
+        question = (data.get("question") or "").strip()
+        if not question:
+            return jsonify({"error": "Missing question"}), 400
+
+        start = data.get("start")
+        end = data.get("end")
+
+        session_db = SessionLocal()
+        try:
+            query = session_db.query(Summary).order_by(Summary.timestamp.desc())
+            if start:
+                try:
+                    start_ts = int(datetime.fromisoformat(start).timestamp())
+                    query = query.filter(Summary.timestamp >= start_ts)
+                except Exception:
+                    pass
+            if end:
+                try:
+                    end_ts = int(datetime.fromisoformat(end).timestamp())
+                    query = query.filter(Summary.timestamp <= end_ts)
+                except Exception:
+                    pass
+            records = query.limit(101).all()
+            truncated = len(records) > 100
+            records = records[:100]
+            captions = []
+            for rec in reversed(records):
+                try:
+                    jdata = json.loads(rec.content)
+                    captions.extend(jdata.values())
+                except Exception:
+                    captions.append(rec.content)
+        finally:
+            session_db.close()
+
+        history = "\n".join(captions)
+        answer = ask_question(question, history) or ""
+
+        ts = int(datetime.utcnow().timestamp())
+        session_db = SessionLocal()
+        try:
+            session_db.add(
+                Summary(timestamp=ts, content=json.dumps({ts: f"Q: {question}"}))
+            )
+            if answer:
+                ts2 = ts + 1
+                session_db.add(
+                    Summary(timestamp=ts2, content=json.dumps({ts2: f"A: {answer}"}))
+                )
+            session_db.commit()
+        finally:
+            session_db.close()
+
+        return jsonify({"answer": answer, "truncated": truncated})
 
     @app.route("/live")
     @login_required

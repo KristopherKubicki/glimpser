@@ -161,3 +161,45 @@ def summarize(
         if response is not None:
             logging.debug("GPT response text: %s", response.text)
         return None
+
+
+def ask_question(question: str, history: str = "", *, timeout: int = 10) -> str | None:
+    """Return the answer to ``question`` using ``history`` as context."""
+
+    if not question or not CHATGPT_KEY:
+        return None
+
+    headers = {"Authorization": f"Bearer {CHATGPT_KEY}"}
+    url = "https://api.openai.com/v1/chat/completions"
+
+    messages = [
+        {
+            "role": "system",
+            "content": "Answer the user's question using the provided caption history.",
+        },
+    ]
+    if history:
+        messages.append({"role": "user", "content": history})
+    messages.append({"role": "user", "content": question})
+
+    payload = {
+        "model": LLM_MODEL_VERSION or "gpt-4.1",
+        "messages": messages,
+        "max_tokens": 512,
+    }
+
+    try:
+        response = request_with_retry(
+            "post",
+            url,
+            headers=headers,
+            json=payload,
+            timeout=timeout,
+        )
+        result = response.json()
+        return (
+            result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        )
+    except Exception as e:  # pragma: no cover - network errors
+        logging.error("ChatGPT request failed: %s", e)
+    return None
