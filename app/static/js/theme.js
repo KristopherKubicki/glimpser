@@ -9,10 +9,17 @@ export function initThemeToggle() {
 
     const applyTheme = (theme) => {
       document.body.classList.toggle("light-mode", theme === "light");
-      useEl.setAttribute("href", `${sprite}#${theme === "light" ? "moon" : "sun"}`);
+      useEl.setAttribute(
+        "href",
+        `${sprite}#${theme === "light" ? "moon" : "sun"}`,
+      );
     };
 
-    let current = localStorage.getItem("theme") || (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    let current =
+      localStorage.getItem("theme") ||
+      (window.matchMedia("(prefers-color-scheme: light)").matches
+        ? "light"
+        : "dark");
     applyTheme(current);
 
     toggle.addEventListener("click", (e) => {
