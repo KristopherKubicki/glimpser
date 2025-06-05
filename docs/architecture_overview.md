@@ -5,7 +5,7 @@ This guide provides a high-level look at Glimpser's core components and how they
 ## Flask Application Initialization (`app/__init__.py`)
 - Creates the Flask application instance.
 - Loads configuration values and sets up logging.
-- Initializes routes from `app/routes.py`.
+- Initializes routes from the `app/routes` package.
 - Starts the background scheduler and optional watchdog thread.
   The watchdog performs health checks and only triggers a restart after a
   configurable number of failures. Tune `WATCHDOG_FAILURE_THRESHOLD`,
@@ -36,7 +36,7 @@ This guide provides a high-level look at Glimpser's core components and how they
 
 ## How Components Fit Together
 ```
- Client Request ---> Routes (app/routes.py) ----> Models (app/models/) ----> Database
+ Client Request ---> Routes (app/routes/) ----> Models (app/models/) ----> Database
                            |                           |
                            v                           v
                      Utility Functions ----> Scheduler Jobs / Background Tasks

@@ -108,6 +108,7 @@ data/
 glimpser.log
 .idea
 auth.py
+!app/routes/auth.py
 *.old
 *.tmp
 logs/*

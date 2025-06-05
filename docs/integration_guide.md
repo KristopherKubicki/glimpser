@@ -14,7 +14,7 @@ This guide provides instructions on how to integrate Glimpser with Blue Iris, Ho
 
 Before diving into specific integrations, it's important to understand the general concepts that apply to all integrations:
 
-1. **API Endpoints**: Glimpser provides several API endpoints that can be used for integration. These are defined in `app/routes.py`.
+1. **API Endpoints**: Glimpser provides several API endpoints that can be used for integration. These are defined in the `app/routes` package.
 
 2. **Configuration**: Glimpser's configuration settings in `app/config.py` may need to be adjusted for optimal integration.
 

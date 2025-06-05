@@ -815,6 +815,30 @@ def allowed_filename(filename: str) -> bool:
 
 def init_routes(app):
     # get_active_groups()
+    from .auth import bp as auth_bp
+    from .api import bp as api_bp
+    from .stream import bp as stream_bp
+
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(api_bp)
+    app.register_blueprint(stream_bp)
+    app.add_url_rule(
+        "/login",
+        endpoint="login",
+        view_func=app.view_functions["auth.login"],
+        methods=["GET", "POST"],
+    )
+    app.add_url_rule(
+        "/logout",
+        endpoint="logout",
+        view_func=app.view_functions["auth.logout"],
+    )
+    app.add_url_rule(
+        "/sso",
+        endpoint="sso_login",
+        view_func=app.view_functions["auth.sso_login"],
+        methods=["GET"],
+    )
 
     @app.after_request
     def add_security_headers(response):
@@ -1036,189 +1060,6 @@ def init_routes(app):
             page_title="Danger Mode",
         )
 
-    @app.route("/api/discover")
-    @profile_route("/api/discover")
-    def api_discover():
-        api_info = {
-            "version": "1.0",
-            "endpoints": [
-                {
-                    "path": "/health",
-                    "method": "GET",
-                    "description": "Check the health status of the API",
-                    "authentication_required": False,
-                },
-                {
-                    "path": "/danger_status",
-                    "method": "GET",
-                    "description": "Check if Danger mode is ready",
-                    "authentication_required": False,
-                },
-                {
-                    "path": "/captions_status",
-                    "method": "GET",
-                    "description": "Get the most recent caption and timestamp",
-                    "authentication_required": False,
-                },
-                {
-                    "path": "/discovery_status",
-                    "method": "GET",
-                    "description": "Check background discovery status",
-                    "authentication_required": False,
-                },
-                {
-                    "path": "/api/discover",
-                    "method": "GET",
-                    "description": "Get information about available API endpoints",
-                    "authentication_required": False,
-                },
-                {
-                    "path": "/login",
-                    "method": "GET, POST",
-                    "description": "User login endpoint",
-                    "authentication_required": False,
-                },
-                {
-                    "path": "/logout",
-                    "method": "GET",
-                    "description": "User logout endpoint",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/",
-                    "method": "GET",
-                    "description": "Main index page",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/templates",
-                    "method": "GET, POST, DELETE",
-                    "description": "Manage templates",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/settings",
-                    "method": "GET, POST",
-                    "description": "Manage application settings",
-                    "authentication_required": True,
-                },
-            ],
-        }
-        return jsonify(api_info), 200
-
-    @app.route("/mcp/tools")
-    @login_required
-    def mcp_tools():
-        """Return the list of tools exposed by the configured MCP server."""
-        from app.utils import mcp
-
-        tools = mcp.list_tools_sync()
-        return jsonify(tools)
-
-    @app.route("/mcp/tool/<string:name>", methods=["POST"])
-    @login_required
-    def mcp_call_tool(name):
-        """Call a tool on the configured MCP server."""
-        from app.utils import mcp
-
-        params = request.get_json(silent=True) or {}
-        result = mcp.call_tool_sync(name, params)
-        return jsonify(result)
-
-    @app.route("/login", methods=["GET", "POST"])
-    def login():
-        ip_address = request.remote_addr
-        now = datetime.now()
-
-        # Check if the IP address is locked out
-        if (
-            ip_address in login_attempts
-            and login_attempts[ip_address]["locked_until"] > now
-        ):
-            flash("Too many failed attempts. Please try again later.", "error")
-            logging.warning("Locked login attempt from %s", ip_address)
-            return render_template("login.html", page_title="Login"), 429
-
-        if request.method == "POST":
-            username = (request.form.get("username") or "").strip()
-            password = (request.form.get("password") or "").strip()
-            if not username or not password:
-                flash("Username and password are required", "error")
-                return render_template("login.html", page_title="Login"), 400
-
-            db_session = SessionLocal()
-            try:
-                user = db_session.query(User).filter_by(username=username).first()
-            finally:
-                db_session.close()
-
-            if user and check_password_hash(user.password_hash, password):
-                session["user_id"] = user.id
-                session["expiry"] = (
-                    now + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
-                ).strftime("%Y-%m-%d %H:%M:%S")
-                session.permanent = True
-                login_attempts.pop(
-                    ip_address, None
-                )  # Reset attempts on successful login
-                logging.info("Successful login for %s from %s", username, ip_address)
-                return redirect(url_for("index"))
-            else:
-                # Record the failed attempt
-                if ip_address not in login_attempts:
-                    login_attempts[ip_address] = {"attempts": 1, "locked_until": now}
-                else:
-                    login_attempts[ip_address]["attempts"] += 1
-
-                # Lockout after 5 failed attempts
-                if login_attempts[ip_address]["attempts"] >= 5:
-                    login_attempts[ip_address]["locked_until"] = now + timedelta(
-                        hours=24
-                    )
-
-                # Rate limit after 2 attempts per minute
-                if login_attempts[ip_address]["attempts"] % 2 == 0:
-                    login_attempts[ip_address]["locked_until"] = now + timedelta(
-                        minutes=1
-                    )
-                logging.warning(
-                    "Failed login attempt for %s from %s", username, ip_address
-                )
-                flash("Invalid username or password", "error")
-        return render_template("login.html", page_title="Login")
-
-    @app.route("/sso", methods=["GET"])
-    def sso_login():
-        token = request.args.get("token") or request.headers.get("X-SSO-Token")
-        if token != config.SSO_TOKEN or not token:
-            flash("Invalid SSO token", "error")
-            logging.warning("Invalid SSO token from %s", request.remote_addr)
-            return redirect(url_for("login"))
-
-        db_session = SessionLocal()
-        try:
-            user = (
-                db_session.query(User).filter_by(username=config.SSO_USERNAME).first()
-            )
-        finally:
-            db_session.close()
-
-        if not user:
-            flash("Configured SSO user not found", "error")
-            logging.error("SSO user %s not found", config.SSO_USERNAME)
-            return redirect(url_for("login"))
-
-        session["user_id"] = user.id
-        session["expiry"] = (
-            datetime.now() + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
-        ).strftime("%Y-%m-%d %H:%M:%S")
-        session.permanent = True
-        flash("Logged in via SSO", "success")
-        logging.info("SSO login for %s from %s", user.username, request.remote_addr)
-        return redirect(url_for("index"))
-
-    @app.route("/help")
-    @login_required
     def help_page():
         return render_template("help.html", page_title="Help")
 
@@ -1227,13 +1068,6 @@ def init_routes(app):
     def settings_help():
         """Redirect old help route to the main settings page."""
         return redirect(url_for("settings"))
-
-    @app.route("/logout")
-    @login_required
-    def logout():
-        session.pop("user_id", None)
-        flash("You have been logged out successfully.", "success")
-        return redirect(url_for("login"))
 
     @app.route("/")
     @login_required
@@ -1248,35 +1082,6 @@ def init_routes(app):
     @login_required
     def group_page(group_name: str):
         """Render a page listing all cameras in a group."""
-        group_name = secure_filename(group_name)
-        groups = get_active_groups()
-        if group_name not in groups:
-            abort(404)
-        return render_template(
-            "group.html", group_name=group_name, page_title=f"Group – {group_name}"
-        )
-
-    def get_active_templates():
-        templates = template_manager.get_templates()
-        active_cameras = []
-        for id, template in templates.items():
-            template.get("name")
-            last_screenshot_time = template.get("last_screenshot_time")
-            if last_screenshot_time:
-                last_update = datetime.strptime(
-                    last_screenshot_time, "%Y-%m-%d %H:%M:%S"
-                )
-                if last_update > datetime.utcnow() - timedelta(days=1):
-                    active_cameras.append(template)
-        return active_cameras
-
-    @app.route("/submit_image/<string:template_name>", methods=["POST"])
-    @login_required
-    def submit_image(template_name: TemplateName):
-        """
-        Endpoint to receive and process an image submitted by a remote service or camera.
-        """
-        template_name = validate_template_name(template_name)
         if template_name is None:
             abort(404)
 
@@ -1586,164 +1391,6 @@ def init_routes(app):
             generate(group=group, camera=camera, filename="last_motion_caption.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
-
-    @app.route("/fast_stream.mjpg", methods=["GET"])
-    @login_required
-    def fast_stream_mjpg():
-        camera = request.args.get("camera")
-        if not camera:
-            abort(400, "camera parameter required")
-        if not template_manager.get_template(camera):
-            abort(404)
-        return Response(
-            generate_fast_mjpg(camera),
-            mimetype="multipart/x-mixed-replace; boundary=frame",
-        )
-
-    @app.route("/rtsp_stream")
-    def rtsp_stream():
-        session_id = request.args.get("session")
-        if (
-            session_id not in rtsp_sessions
-            or rtsp_sessions[session_id]["state"] != "PLAYING"
-        ):
-            abort(400, "Invalid session or session not in PLAYING state")
-        return Response(
-            generate(rtsp=True, session_id=session_id), mimetype="application/x-rtp"
-        )
-
-    @app.route("/stream.mp4")
-    @login_required
-    def stream_mp4():
-        """Stream the latest MP4 for a camera or group."""
-
-        camera = request.args.get("camera")
-        if camera:
-            camera = validate_template_name(camera)
-            if camera is None:
-                abort(400, "Invalid camera name")
-            video_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                "..",
-                VIDEO_DIRECTORY,
-                camera,
-                "in_process.mp4",
-            )
-            if not os.path.exists(video_path):
-                abort(404)
-            return Response(
-                stream_with_context(generate_video_stream(video_path)),
-                mimetype="video/mp4",
-            )
-
-        # Default group
-        lgroup = "all"
-
-        # Get the group from the request arguments and validate
-        group = request.args.get("group")
-        if group and re.match(r"^[a-zA-Z0-9_]+$", group):
-            lgroup = group
-        else:
-            # If the group is provided but invalid, return a 400 Bad Request
-            if group:
-                abort(400, "Invalid group name. Group name must be alphanumeric.")
-
-        lgroup = secure_filename(lgroup)
-        video_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "..",
-            VIDEO_DIRECTORY,
-            f"{lgroup}_in_process.mp4",
-        )
-
-        if not os.path.exists(video_path):
-            abort(404)
-
-        # Stream the video in small chunks for continuous playback
-        return Response(
-            stream_with_context(generate_video_stream(video_path)),
-            mimetype="video/mp4",
-        )
-
-    @app.route("/live_video")
-    @login_required
-    def live_video():
-        camera = request.args.get("camera")
-        if not camera:
-            abort(400, "camera parameter required")
-        details = template_manager.get_template(camera)
-        if not details:
-            abort(404)
-        url = details.get("url")
-        if not url:
-            abort(404)
-        return Response(
-            stream_with_context(generate_live_stream(url)),
-            mimetype="video/mp4",
-        )
-
-    @app.route("/stream.m3u8")
-    @login_required
-    def playlist_m3u8():
-        path = os.path.join(
-            os.path.dirname(os.path.join(__file__)), "..", VIDEO_DIRECTORY
-        )
-
-        # Check if the video directory exists
-        if not os.path.exists(path):
-            abort(404)
-
-        camera = request.args.get("camera")
-        group = request.args.get("group")
-
-        # Generate playlist content
-        playlist_content = "#EXTM3U\n"
-        playlist_content += "#EXT-X-VERSION:3\n"
-        playlist_content += (
-            "#EXT-X-TARGETDURATION:10\n"  # Assuming each segment is up to 10 seconds
-        )
-        playlist_content += "#EXT-X-MEDIA-SEQUENCE:0\n"
-
-        templates = template_manager.get_templates()
-
-        filtered_templates = []
-        if camera:
-            camera = validate_template_name(camera)
-            if camera is None:
-                abort(400, "Invalid camera name")
-            details = templates.get(camera)
-            if details:
-                filtered_templates.append((camera, details))
-        elif group:
-            if not re.match(r"^[a-zA-Z0-9_]+$", group):
-                abort(400, "Invalid group name. Group name must be alphanumeric.")
-            for name, details in templates.items():
-                groups = [g.strip() for g in details.get("groups", "").split(",")]
-                if group in groups:
-                    valid = validate_template_name(name)
-                    if valid:
-                        filtered_templates.append((valid, details))
-        else:
-            for name, details in templates.items():
-                valid = validate_template_name(name)
-                if valid:
-                    filtered_templates.append((valid, details))
-
-        # Sort templates by 'last_video_time' descending
-        sorted_templates = sorted(
-            filtered_templates,
-            key=lambda x: (x[1].get("last_video_time", 0) or 0),
-            reverse=True,
-        )
-
-        for camera_name, _ in sorted_templates:
-            lkey = generate_timed_hash()
-            video_path = f"{request.url_root}last_video/{camera_name}?timed_key={lkey}"
-            playlist_content += f"#EXTINF:10.0,{camera_name}\n{video_path}\n"
-
-        playlist_content += "#EXT-X-ENDLIST\n"
-
-        return Response(playlist_content, mimetype="application/x-mpegURL")
 
     @app.route("/stream")
     @login_required

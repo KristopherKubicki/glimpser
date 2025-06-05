@@ -61,7 +61,7 @@ For more details, see [CONTRIBUTING.md](https://github.com/KristopherKubicki/gli
 
 ## Extending the Codebase
 
-- New routes can be added in `app/routes.py`.
+- New routes can be added in the `app/routes/` package.
 - Utility functions live in `app/utils/`.
 - Configuration defaults are defined in `app/config.py`.
 

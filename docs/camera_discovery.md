@@ -15,7 +15,7 @@ long the scan will take.
 
 ## How the `/discover` route works
 
-The route is defined in `app/routes.py`:
+The route is defined in the `app/routes` package:
 
 ```python
 @app.route('/discover', methods=['GET'])
