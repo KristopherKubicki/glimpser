@@ -84,6 +84,7 @@ After capturing the content, Glimpser applies several post-processing steps:
 5. **Micro QR Overlay**: A tiny QR-style code containing the camera name is placed in the lower-right corner so screenshots can be tracked within the system.
 6. **Image Optimization**: Ensure the captured image is in the correct format and optimized for storage.
 7. **PNG Validation**: Verify the temporary screenshot file before renaming it to avoid leaving corrupt images.
+8. **Atomic Writes**: Direct downloads first save to a `.tmp` file and move it into place only after validation so live streams never read a partially written PNG.
 
 ## Status Code Caching
 

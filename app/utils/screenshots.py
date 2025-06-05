@@ -791,11 +791,18 @@ def download_image(
             image = remove_background(image)
             if dark:
                 apply_dark_mode(image)
-            # Save the image in PNG format
-            image.save(output_path, "PNG")
-            if os.path.exists(output_path) and _is_valid_png(output_path):
-                add_timestamp(output_path, name=name, invert=invert)
+
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            tmp_path = output_path + ".tmp"
+
+            # Save to a temporary file first so readers don't see partial data
+            image.save(tmp_path, "PNG")
+            if os.path.exists(tmp_path) and _is_valid_png(tmp_path):
+                add_timestamp(tmp_path, name=name, invert=invert)
+                os.replace(tmp_path, output_path)
                 return True
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
         else:
             response.close()
             logging.warning(f"Error downloading image: HTTP status code {status} {url}")
@@ -890,12 +897,19 @@ def download_pdf(
         image = remove_background(image)
         if dark:
             image = apply_dark_mode(image)
-        image.save(output_path, "PNG")
 
-        if os.path.exists(output_path) and _is_valid_png(output_path):
-            add_timestamp(output_path, name=name, invert=invert)
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        tmp_path = output_path + ".tmp"
+        image.save(tmp_path, "PNG")
+
+        if os.path.exists(tmp_path) and _is_valid_png(tmp_path):
+            add_timestamp(tmp_path, name=name, invert=invert)
+            os.replace(tmp_path, output_path)
             logging.debug(f"Successfully saved PDF page to {output_path}")
             lsuccess = True
+        else:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
         return lsuccess
 
     except Exception as e:
