@@ -38,6 +38,8 @@ from flask import (
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
+import sqlite3
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 from ipaddress import ip_network
@@ -75,11 +77,16 @@ from app.utils import (
     prompt_optimizer,
     camera_fix,
 )
+
+from app.utils.llm import ask_question
+from app.utils.settings_tooltips import SETTINGS_TOOLTIPS, SETTINGS_GROUPS
+
 from app.utils.settings_tooltips import (
     SETTINGS_TOOLTIPS,
     SETTINGS_GROUPS,
     SETTINGS_CHOICES,
 )
+
 from app.utils.screenshots import (
     is_chrome_debug_port_open,
     check_user_activity,
@@ -293,22 +300,18 @@ def get_all_settings() -> List[Dict[str, Any]]:
 
     session = SessionLocal()
     try:
+        # Fetch all settings from the database
         try:
-            # Fetch all settings from the database
-            db_settings = {
-                row[0]: row[1]
-                for row in session.execute(
-                    text("SELECT name, value FROM settings")
-                ).fetchall()
-            }
+            db_rows = session.execute(
+                text("SELECT name, value FROM settings")
+            ).fetchall()
+            db_settings = {row[0]: row[1] for row in db_rows}
         except (OperationalError, sqlite3.OperationalError) as e:
             if "no such table" in str(e):
-                logging.warning("settings table does not exist")
+                # This is expected for a fresh database during initial setup.
+                logging.warning("table does not exist")
             else:
                 logging.warning("database error %s", e)
-            db_settings = {}
-        except SQLAlchemyError as e:  # pragma: no cover - unexpected errors
-            logging.warning("database error %s", e)
             db_settings = {}
 
         # Fetch all settings from config.py that use get_setting()
@@ -2052,6 +2055,67 @@ def init_routes(app: Flask) -> None:
         flash("Invalid file format. Please upload a TSV file.", "error")
         return redirect(url_for("captions"))
 
+    @app.route("/captions_chat", methods=["POST"])
+    @login_required
+    def captions_chat():
+        """Answer a question using recent caption history."""
+
+        data = request.get_json(force=True) or {}
+        question = (data.get("question") or "").strip()
+        if not question:
+            return jsonify({"error": "Missing question"}), 400
+
+        start = data.get("start")
+        end = data.get("end")
+
+        session_db = SessionLocal()
+        try:
+            query = session_db.query(Summary).order_by(Summary.timestamp.desc())
+            if start:
+                try:
+                    start_ts = int(datetime.fromisoformat(start).timestamp())
+                    query = query.filter(Summary.timestamp >= start_ts)
+                except Exception:
+                    pass
+            if end:
+                try:
+                    end_ts = int(datetime.fromisoformat(end).timestamp())
+                    query = query.filter(Summary.timestamp <= end_ts)
+                except Exception:
+                    pass
+            records = query.limit(101).all()
+            truncated = len(records) > 100
+            records = records[:100]
+            captions = []
+            for rec in reversed(records):
+                try:
+                    jdata = json.loads(rec.content)
+                    captions.extend(jdata.values())
+                except Exception:
+                    captions.append(rec.content)
+        finally:
+            session_db.close()
+
+        history = "\n".join(captions)
+        answer = ask_question(question, history) or ""
+
+        ts = int(datetime.utcnow().timestamp())
+        session_db = SessionLocal()
+        try:
+            session_db.add(
+                Summary(timestamp=ts, content=json.dumps({ts: f"Q: {question}"}))
+            )
+            if answer:
+                ts2 = ts + 1
+                session_db.add(
+                    Summary(timestamp=ts2, content=json.dumps({ts2: f"A: {answer}"}))
+                )
+            session_db.commit()
+        finally:
+            session_db.close()
+
+        return jsonify({"answer": answer, "truncated": truncated})
+
     @app.route("/live")
     @login_required
     def live():
@@ -2642,14 +2706,7 @@ def init_routes(app: Flask) -> None:
                         continue
 
                     if name in SETTINGS_CHOICES:
-                        # When "Other" is selected use the companion text field.
-                        if value == "__other__":
-                            value = request.form.get(f"{name}_other", "")
                         update_setting(name, value)
-                        continue
-
-                    if name.endswith("_other"):
-                        # Companion fields are handled above
                         continue
 
                     update_setting(name, value)
@@ -2668,10 +2725,16 @@ def init_routes(app: Flask) -> None:
             if not placed:
                 grouped_settings["Other"].append(setting)
 
+        metrics = scheduling.get_system_metrics()
+        feeds = scheduling.get_feed_status()
+        last_summary = scheduling.get_last_summary_time()
         return render_template(
             "settings.html",
             grouped_settings=grouped_settings,
             tooltips=SETTINGS_TOOLTIPS,
+            metrics=metrics,
+            feeds=feeds,
+            last_summary=last_summary,
             choices=SETTINGS_CHOICES,
             page_title="Settings",
         )
@@ -2914,16 +2977,8 @@ def init_routes(app: Flask) -> None:
     @app.route("/status")
     @login_required
     def status():
-        metrics = scheduling.get_system_metrics()
-        feeds = scheduling.get_feed_status()
-        last_summary = scheduling.get_last_summary_time()
-        return render_template(
-            "status.html",
-            metrics=metrics,
-            feeds=feeds,
-            last_summary=last_summary,
-            page_title="System Status",
-        )
+        """Redirect to the System Status tab under Settings for consistency."""
+        return redirect(url_for("settings", tab="status-tab"))
 
     @app.route("/logs")
     @login_required

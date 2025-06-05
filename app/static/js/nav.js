@@ -10,6 +10,10 @@ export function initNav() {
     }
     const dangerStatus = document.getElementById("danger-status");
     const discoveryStatus = document.getElementById("discover-status");
+    const onSettingsPage = window.location.pathname.startsWith("/settings");
+    if (discoveryStatus) {
+      discoveryStatus.style.display = onSettingsPage ? "flex" : "none";
+    }
     const nav = document.querySelector("nav");
     const menuToggle = document.getElementById("menu-toggle");
     const groupDropdown = document.getElementById("nav-group-dropdown");
@@ -306,7 +310,6 @@ export function initNav() {
       }
     };
 
-
     const setupNavFade = () => {
       const header = document.querySelector("header");
       const player = document.querySelector(".video-container");
@@ -333,9 +336,12 @@ export function initNav() {
     setInterval(checkDanger, 5000);
     checkCaptions();
     setInterval(checkCaptions, 10000);
-    checkDiscovery();
-    setInterval(checkDiscovery, 60000);
-    initClocks();
+    if (discoveryStatus && onSettingsPage) {
+      checkDiscovery();
+      setInterval(checkDiscovery, 60000);
+    }
+    updateCoolClock();
+    setInterval(updateCoolClock, 1000);
     setupNavFade();
   });
 }

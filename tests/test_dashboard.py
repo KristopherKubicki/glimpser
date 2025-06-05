@@ -25,7 +25,7 @@ class TestStatusDashboard(unittest.TestCase):
         self.session_patch.stop()
 
     def test_status_page_has_dashboard(self):
-        resp = self.client.get("/status")
+        resp = self.client.get("/status", follow_redirects=True)
         self.assertEqual(resp.status_code, 200)
         self.assertIn(b"Feed Status", resp.data)
 

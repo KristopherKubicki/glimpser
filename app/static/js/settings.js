@@ -30,23 +30,3 @@ export function initSettingsSearch() {
     input.addEventListener("input", filterRows);
   });
 }
-
-export function initEnumFields() {
-  document.addEventListener("DOMContentLoaded", () => {
-    const selects = document.querySelectorAll("select[data-other-target]");
-    selects.forEach((sel) => {
-      const targetId = sel.getAttribute("data-other-target");
-      const input = document.getElementById(targetId);
-      if (!input) return;
-      const toggle = () => {
-        if (sel.value === "__other__") {
-          input.classList.remove("hidden");
-        } else {
-          input.classList.add("hidden");
-        }
-      };
-      sel.addEventListener("change", toggle);
-      toggle();
-    });
-  });
-}

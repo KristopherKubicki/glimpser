@@ -10,6 +10,18 @@ export function initTemplates() {
       ?.closest("details");
     const slider = document.getElementById("grid-width-slider");
     const templateList = document.getElementById("template-list");
+    const captionToggle = document.getElementById("toggle-captions");
+    let captionsVisible = localStorage.getItem("showCaptions") !== "false";
+
+    const applyCaptionVisibility = (width) => {
+      const show = captionsVisible && (!width || width >= 150);
+      document.documentElement.classList.toggle("hide-captions", !show);
+      templateList
+        ?.querySelectorAll(".caption-overlay")
+        .forEach((o) => (o.style.display = show ? "block" : "none"));
+      if (captionToggle)
+        captionToggle.textContent = show ? "Hide Captions" : "Show Captions";
+    };
     const MAX_THUMBNAIL_HEIGHT = 1080;
     const ASPECT_RATIO = 9 / 16;
     const MAX_THUMBNAIL_WIDTH = Math.round(MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO);
@@ -54,6 +66,14 @@ export function initTemplates() {
       window.addEventListener("resize", updateSliderLimits);
       window.updateSliderLimits = updateSliderLimits;
       slider.dispatchEvent(new Event("input"));
+    }
+
+    if (captionToggle) {
+      captionToggle.addEventListener("click", () => {
+        captionsVisible = !captionsVisible;
+        localStorage.setItem("showCaptions", captionsVisible.toString());
+        applyCaptionVisibility(parseFloat(slider?.value || "0"));
+      });
     }
 
     function autofillGroup() {
@@ -107,6 +127,7 @@ export function initTemplates() {
           "--timestamp-font-size",
           `${timestampFontSize}px`,
         );
+        applyCaptionVisibility(value);
       };
 
       slider.addEventListener("input", handleSlider);
@@ -162,6 +183,7 @@ export function initTemplates() {
     setupCaptionsFilter();
     updateHumanizedTimes();
     setInterval(updateHumanizedTimes, 60000);
+    applyCaptionVisibility(parseFloat(slider?.value || "0"));
   });
 
   window.showStructuredInput = showStructuredInput;
@@ -240,6 +262,16 @@ export function formatExactTime(utcDateString) {
 
 export function isMobile() {
   return window.matchMedia("(hover: none)").matches;
+}
+
+export function computeBorderColor(ageMinutes, isError) {
+  const base = isError ? [255, 0, 0] : [26, 115, 232];
+  let step = 0;
+  if (ageMinutes >= 1) {
+    step = Math.floor(Math.log10(ageMinutes)) + 1;
+  }
+  const alpha = Math.pow(0.5, step);
+  return `rgba(${base[0]}, ${base[1]}, ${base[2]}, ${alpha})`;
 }
 
 export function updateGridLayout() {
@@ -480,12 +512,15 @@ export async function loadTemplates() {
         const nextCaptureTime = timeAgo(template.next_screenshot_time);
 
         const lastScreenshotDate = new Date(lastScreenshotTime);
-        const oneMinuteAgo = new Date(Date.now() - 60000);
-        const isRecent = lastScreenshotDate > oneMinuteAgo;
-        const videoContainerClass = isRecent
-          ? "video-container recent-screenshot"
-          : "video-container";
-        const errorClass = template.capture_failed ? "template-error" : "";
+        const ageMinutes = (Date.now() - lastScreenshotDate.getTime()) / 60000;
+        const videoContainerClass = "video-container";
+        const errorClass = template.capture_failed
+          ? "template-error"
+          : "recent-screenshot";
+        const borderColor = computeBorderColor(
+          ageMinutes,
+          template.capture_failed,
+        );
 
         if (isIndexPage) {
           const templateDiv = document.createElement("div");
@@ -497,7 +532,7 @@ export async function loadTemplates() {
 
           templateDiv.innerHTML = `
             <a href='/templates/${name}'>
-              <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}">
+              <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
                 <div class="camera-name">${name}</div>
                 <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none">
                   <source src="/last_video/${name}" type="video/mp4">
@@ -579,6 +614,7 @@ export async function loadTemplates() {
     window.dispatchEvent(
       new CustomEvent("templatesLoaded", { detail: { count: templateCount } }),
     );
+    applyCaptionVisibility(parseFloat(slider?.value || "0"));
   } catch (error) {
     console.error("Error loading templates:", error);
     const errorMsg =

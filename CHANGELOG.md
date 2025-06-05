@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped numpy to 1.26.0
 - Updated default VERSION to 0.2.7 for footer display
 - Bulk tools menu is expanded by default on the captions page
+- Enumerated settings use a single autocomplete field instead of a dropdown and separate text box
 
 ### Fixed
 

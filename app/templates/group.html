@@ -1,19 +1,43 @@
 {% extends 'base.html' %}
 {% block content %}
 <div>
-    <label for="search-input" title="Search for cameras or groups">Search:</label>
-    <input type="text" id="search-input" placeholder="Search cameras or groups" title="Enter search terms">
-    <input type="range" id="grid-width-slider" min="50" max="3840" value="360" title="Adjust the width of the template grid">
-    <button id="play-all-button" title="Play/Stop all videos">Play All</button>
-    <button id="live-all-button" title="Live stream all cameras">Live All</button>
+  <label for="search-input" title="Search for cameras or groups">Search:</label>
+  <input
+    type="text"
+    id="search-input"
+    placeholder="Search cameras or groups"
+    title="Enter search terms"
+  />
+  <input
+    type="range"
+    id="grid-width-slider"
+    min="50"
+    max="3840"
+    value="360"
+    title="Adjust the width of the template grid"
+  />
+  <button id="play-all-button" title="Play/Stop all videos">Play All</button>
+  <button id="live-all-button" title="Live stream all cameras">Live All</button>
+  <button
+    id="toggle-captions"
+    title="Toggle caption overlays"
+    aria-label="Toggle caption overlays"
+  >
+    Hide Captions
+  </button>
 </div>
-<div id="template-list" title="List of all templates" role="region" aria-label="Templates"></div>
+<div
+  id="template-list"
+  title="List of all templates"
+  role="region"
+  aria-label="Templates"
+></div>
 <div id="index-time" class="corner-time" title=""></div>
 <script type="module">
-    import { loadTemplates } from '{{ url_for('static', filename='js/templates.js') }}';
-    window.currentGroup = '{{ group_name }}';
-    document.addEventListener('DOMContentLoaded', () => {
-        loadTemplates();
-    });
+  import { loadTemplates } from '{{ url_for('static', filename='js/templates.js') }}';
+  window.currentGroup = '{{ group_name }}';
+  document.addEventListener('DOMContentLoaded', () => {
+      loadTemplates();
+  });
 </script>
 {% endblock %}

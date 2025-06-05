@@ -22,4 +22,4 @@ Focusing any input field shows a tooltip on screen with a description pulled fro
 
 ### Selectable Options
 
-Common settings like `HOST`, `LANG`, `LOG_LEVEL`, and `TZ` now use dropdowns with popular values. Choosing **Other** reveals a text field so you can enter a custom option. The `PORT` field enforces non‑privileged ports (1024–65535) to avoid permission errors.
+Common settings like `HOST`, `LANG`, `LOG_LEVEL`, and `TZ` now use a single autocomplete field. Typing shows suggestions for common values, but any text can be entered. The `PORT` field enforces non‑privileged ports (1024–65535) to avoid permission errors.
