@@ -152,13 +152,13 @@ Example response:
 
 **GET /status**
 
-Redirects to the *System Status* tab on the Settings page which displays metrics such as CPU, memory, and disk usage along with open file count, thread count, and uptime. These metrics are gathered in a background thread (see `app/utils/scheduling.py`).
+Redirects to the _System Status_ tab on the Settings page which displays metrics such as CPU, memory, and disk usage along with open file count, thread count, and uptime. These metrics are gathered in a background thread (see `app/utils/scheduling.py`).
 
 ### 8. Stream Logs
 
 **GET /stream_logs**
 
-Streams log records via Server-Sent Events. Optional query parameters `level`, `source`, `start_date`, `end_date`, and `search` allow filtering. The `/logs` page and *System Status* tab use this endpoint for the live log viewer.
+Streams log records via Server-Sent Events. Optional query parameters `level`, `source`, `start_date`, `end_date`, and `search` allow filtering. The `/logs` page and _System Status_ tab use this endpoint for the live log viewer.
 
 ### 9. List Stored Videos
 
@@ -229,6 +229,13 @@ Returns the latest caption text and timestamp.
 **GET /discovery_status**
 
 Reports the status of background camera discovery.
+
+### 14. Search Suggestions
+
+**GET /search_suggestions?q=term**
+
+Return a JSON array of camera or group names that contain the provided
+query string. At most ten results are returned.
 
 ## Error Handling
 
