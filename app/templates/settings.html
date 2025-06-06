@@ -25,6 +25,9 @@ content %}
     <button type="button" class="tab-link" data-tab="status-tab">
       System Status
     </button>
+    <button type="button" class="tab-link" data-tab="costs-tab">
+      Costs
+    </button>
     {% endif %} {% endfor %}
     <button type="button" class="tab-link" data-tab="management-tab">
       Management
@@ -48,7 +51,6 @@ content %}
     </a>
   </div>
 
-
   <form method="POST" action="{{ url_for('settings') }}" id="settings-form">
     {% for group, items in grouped_settings.items() %}
     <div
@@ -62,6 +64,9 @@ content %}
             <th class="searchable">Setting</th>
             <th class="searchable">Value</th>
             <th class="searchable">Explanation</th>
+            {% if group == 'File Locations' %}
+            <th>Disk</th>
+            {% endif %}
             <th>Action</th>
           </tr>
         </thead>
@@ -72,17 +77,18 @@ content %}
               {{ setting.name }}
             </td>
             <td>
-              {% if setting.value in ['True', 'False'] %}
+              {% if setting.value|lower in ['true', 'false'] %}
               <label class="switch">
                 <input
                   type="checkbox"
                   name="{{ setting.name }}"
                   value="True"
-                  {% if setting.value == 'True' %}checked{% endif %}
+                  {% if setting.value|lower == 'true' %}checked{% endif %}
                   data-boolean
                 />
                 <span class="slider round"></span>
               </label>
+
               {% elif setting.name in choices %}
               <input
                 type="text"
@@ -96,6 +102,21 @@ content %}
                 <option value="{{ option }}"></option>
                 {% endfor %}
               </datalist>
+              {% elif setting.name in numeric_fields %}
+              <input
+                type="number"
+                name="{{ setting.name }}"
+                min="0"
+                value="{{ setting.value }}"
+                title="Edit value for {{ setting.name }}"
+              />
+              {% elif setting.name in email_fields %}
+              <input
+                type="email"
+                name="{{ setting.name }}"
+                value="{{ setting.value }}"
+                title="Edit value for {{ setting.name }}"
+              />
               {% elif setting.name == 'PORT' %}
               <input
                 type="number"
@@ -105,6 +126,7 @@ content %}
                 value="{{ setting.value }}"
                 title="Edit port"
               />
+
               {% else %}
               <input
                 type="text"
@@ -117,6 +139,22 @@ content %}
             <td class="setting-explanation">
               {{ tooltips.get(setting.name, '') }}
             </td>
+            {% if group == 'File Locations' %}
+            {% set info = file_info.get(setting.name) %}
+            <td class="path-status">
+              {% if info and info.exists %}
+              <svg width="14" height="14">
+                <use href="{{ url_for('static', filename='icons/sprite.svg') }}#check" />
+              </svg>
+              <progress class="metric-bar" value="{{ info.free_pct }}" max="100"></progress>
+              <span class="disk-free">{{ info.free_pct }}%</span>
+              {% else %}
+              <svg width="14" height="14">
+                <use href="{{ url_for('static', filename='icons/sprite.svg') }}#alert" />
+              </svg>
+              {% endif %}
+            </td>
+            {% endif %}
             <td>
               <button
                 type="submit"
@@ -137,8 +175,55 @@ content %}
     <div id="discover-tab" class="tab-content">
       {% include '_discover_tab.html' %}
     </div>
+    <div id="status-tab" class="tab-content">
+      {% include '_status_tab.html' %}
+    </div>
     {% endif %} {% endfor %}
 
+
+    <div id="management-tab" class="tab-content">
+      <h3>Configuration Management</h3>
+      <button
+        type="submit"
+        name="action"
+        value="backup"
+        title="Create a JSON backup of all settings"
+      >
+        Backup Configuration
+      </button>
+      <button
+        type="submit"
+        name="action"
+        value="download"
+        title="Download the latest configuration backup"
+      >
+        Download Configuration
+      </button>
+      <input
+        type="file"
+        name="file"
+        accept=".json"
+        title="Select configuration file to upload"
+      />
+      <button
+        type="submit"
+        name="action"
+        value="upload"
+        title="Restore configuration from uploaded file"
+        onclick="return confirmRestore()"
+      >
+        Upload Configuration
+      </button>
+
+      <h3>Danger Mode</h3>
+      <button
+        type="submit"
+        name="action"
+        value="update_shortcut"
+        title="Update Chrome shortcuts for Danger mode"
+      >
+        Update Chrome Shortcut
+      </button>
 
     <form method="POST" action="{{ url_for('settings') }}" id="settings-form">
         {% for group, items in grouped_settings.items() %}
@@ -150,6 +235,9 @@ content %}
                         <th class="searchable">Setting</th>
                         <th class="searchable">Value</th>
                         <th class="searchable">Explanation</th>
+                        {% if group == 'File Locations' %}
+                        <th>Disk</th>
+                        {% endif %}
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -158,9 +246,9 @@ content %}
                     <tr>
                         <td title="{{ tooltips.get(setting.name, '') }}">{{ setting.name }}</td>
                         <td>
-                            {% if setting.value in ['True', 'False'] %}
+                            {% if setting.value|lower in ['true', 'false'] %}
                             <label class="switch">
-                                <input type="checkbox" name="{{ setting.name }}" value="True" {% if setting.value == 'True' %}checked{% endif %} data-boolean>
+                                <input type="checkbox" name="{{ setting.name }}" value="True" {% if setting.value|lower == 'true' %}checked{% endif %} data-boolean>
                                 <span class="slider round"></span>
                             </label>
                             {% else %}
@@ -168,6 +256,22 @@ content %}
                             {% endif %}
                         </td>
                         <td class="setting-explanation">{{ tooltips.get(setting.name, '') }}</td>
+                        {% if group == 'File Locations' %}
+                        {% set info = file_info.get(setting.name) %}
+                        <td class="path-status">
+                            {% if info and info.exists %}
+                            <svg width="14" height="14">
+                                <use href="{{ url_for('static', filename='icons/sprite.svg') }}#check" />
+                            </svg>
+                            <progress class="metric-bar" value="{{ info.free_pct }}" max="100"></progress>
+                            <span class="disk-free">{{ info.free_pct }}%</span>
+                            {% else %}
+                            <svg width="14" height="14">
+                                <use href="{{ url_for('static', filename='icons/sprite.svg') }}#alert" />
+                            </svg>
+                            {% endif %}
+                        </td>
+                        {% endif %}
                         <td>
                             <button type="submit" name="action" value="delete" title="Delete {{ setting.name }}" onclick="return confirmDeleteSetting('{{ setting.name }}')">Delete</button>
                         </td>
@@ -182,6 +286,9 @@ content %}
         </div>
         <div id="status-tab" class="tab-content">
             {% include '_status_tab.html' %}
+        </div>
+        <div id="costs-tab" class="tab-content">
+            {% include '_costs_tab.html' %}
         </div>
         {% endif %}
         {% endfor %}
@@ -199,16 +306,6 @@ content %}
             <h3>Danger Mode</h3>
             <button type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode">Update Chrome Shortcut</button>
 
-
-      <h3>Danger Mode</h3>
-      <button
-        type="submit"
-        name="action"
-        value="update_shortcut"
-        title="Update Chrome shortcuts for Danger mode"
-      >
-        Update Chrome Shortcut
-      </button>
     </div>
 
     <input
