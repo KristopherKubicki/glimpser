@@ -489,6 +489,9 @@ header {
   align-items: center; /* Vertically align items */
   justify-content: flex-start; /* Align items to the left */
   gap: 10px; /* Space between nav and chyron */
+  position: sticky; /* Keep nav visible while scrolling */
+  top: 0; /* Stick to the top of the viewport */
+  z-index: 1000; /* Stay above page content */
   transition: opacity 0.5s; /* Smooth fade for inactivity */
 }
 
