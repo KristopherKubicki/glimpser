@@ -488,6 +488,7 @@ body.light-mode {
 }
 
 /* Improve video controls on mobile */
+
 @media (max-width: 767px) {
   .templateDiv video::-webkit-media-controls-panel {
     display: flex !important;
