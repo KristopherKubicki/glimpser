@@ -86,6 +86,7 @@ To enable email notifications, configure the following:
 - `EMAIL_RECIPIENTS` – comma-separated list of recipients (default `recipient1@example.com,recipient2@example.com`)
 - `EMAIL_SMTP_SERVER` – SMTP server address (default `smtp.example.com`)
 - `EMAIL_SMTP_PORT` – server port (default `587`)
+- `EMAIL_SMTP_TIMEOUT` – connection timeout in seconds (default `5`)
 - `EMAIL_USE_TLS` – whether to use TLS (default `True`)
 - `EMAIL_USERNAME` and `EMAIL_PASSWORD` – authentication credentials (default user name `your-username`)
 
@@ -96,6 +97,7 @@ Configure these values to enable Twilio SMS alerts:
 - `TWILIO_SID` – your Twilio account SID
 - `TWILIO_TOKEN` – your Twilio auth token
 - `TWILIO_NUMBER` – phone number that receives alerts
+- `TWILIO_FROM_NUMBER` – number used as the sender (default is `TWILIO_NUMBER`)
 
 ## CAP Settings
 
