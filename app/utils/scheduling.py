@@ -30,6 +30,7 @@ from app.config import (
     LOGGING_PATH,
     FFMPEG_PATH,
     FFMPEG_HWACCEL,
+    get_setting,
 )
 from app.utils.db import SessionLocal
 from app.models import Summary
@@ -1037,6 +1038,7 @@ def get_system_metrics():
     uptime = time.time() - system_metrics["start_time"]
     disk_usage = psutil.disk_usage("/").percent
     open_files = len(psutil.Process().open_files())
+    ffmpeg_path = shutil.which(FFMPEG_PATH) or FFMPEG_PATH
     return {
         "cpu_usage": round(system_metrics["cpu_usage"], 1),
         "memory_usage": round(system_metrics["memory_usage"], 1),
@@ -1045,9 +1047,15 @@ def get_system_metrics():
         "thread_count": system_metrics["thread_count"],
         "uptime": f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s",
         "ffmpeg_version": ffmpeg_version(),
+        "ffmpeg_path": ffmpeg_path,
         "machine_hwaccel": machine_supports_hwaccel(),
         "ffmpeg_hwaccel": ffmpeg_supports_hwaccel(),
         "hwaccel_enabled": bool(FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false"),
+        "gpu_support": machine_supports_hwaccel(),
+        "ffmpeg_gpu_enabled": bool(
+            FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false"
+        ),
+        "danger_mode": get_setting("DANGER_MODE", "True") == "True",
     }
 
 
@@ -1151,7 +1159,7 @@ def get_feed_status():
             return None
         try:
             dt = datetime.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-            return dt.isoformat() + "Z"
+            return dt.isoformat()
         except Exception:
             return ts
 
