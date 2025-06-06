@@ -406,6 +406,7 @@ export function setupSearch() {
   const filterValue = document.getElementById("filter-value");
   const applyFilter = document.getElementById("apply-filter");
   const templateList = document.getElementById("template-list");
+  const cameraTable = document.getElementById("camera-table");
   if (!searchInput) return;
 
   if (searchContainer) {
@@ -475,7 +476,7 @@ export function setupSearch() {
     });
   };
 
-  if (templateList) {
+  if (templateList && !cameraTable) {
     const debouncedLoad = debounce(loadTemplates, 300);
     searchInput.addEventListener("input", debouncedLoad);
     if (groupDropdown) groupDropdown.addEventListener("change", debouncedLoad);

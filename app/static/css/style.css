@@ -422,6 +422,11 @@ body.light-mode {
   font-size: var(--camera-name-font-size);
 }
 
+.camera-name a {
+  color: inherit;
+  text-decoration: none;
+}
+
 .timestamp {
   bottom: 0;
   right: 0;
@@ -658,6 +663,14 @@ nav a.active {
 .settings-icon svg {
   width: 20px;
   height: 20px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+}
+
+#theme-toggle svg {
+  width: 18px;
+  height: 18px;
   fill: none;
   stroke: currentcolor;
   stroke-width: 2;
