@@ -154,6 +154,7 @@ class TestMain(unittest.TestCase):
         main.display_startup_tips()
         mock_info.assert_any_call("Startup Tips")
 
+
     @patch("main.get_system_metrics")
     @patch("logging.info")
     def test_display_startup_info(self, mock_info, mock_metrics):
@@ -176,6 +177,49 @@ class TestMain(unittest.TestCase):
         mock_info.assert_any_call("Startup Configuration")
         mock_info.assert_any_call("System Metrics")
 
+    def test_enforce_domain_host_setup_config(self):
+        args = MagicMock()
+        args.db_path = os.path.join(self.temp_dir, "db.sqlite")
+        args.host = "localhost"
+        args.port = 8080
+        args.log_path = os.path.join(self.temp_dir, "log.txt")
+        args.debug = False
+        args.screenshot_dir = os.path.join(self.temp_dir, "screenshots")
+        args.video_dir = os.path.join(self.temp_dir, "videos")
+        args.summaries_dir = os.path.join(self.temp_dir, "summaries")
+
+        old_enforce = config.ENFORCE_DOMAIN_IN_HOST
+        config.ENFORCE_DOMAIN_IN_HOST = True
+        with self.assertRaises(ValueError):
+            main.setup_config(args)
+        config.ENFORCE_DOMAIN_IN_HOST = old_enforce
+
+    @patch("main.create_app")
+    @patch("main.ensure_directories")
+    @patch("main.generate_credentials_if_needed")
+    def test_enforce_domain_host_create_application(
+        self, mock_generate, mock_ensure, mock_create_app
+    ):
+        args = MagicMock()
+        args.db_path = os.path.join(self.temp_dir, "db.sqlite")
+        args.host = "localhost"
+        args.port = 8080
+        args.log_path = os.path.join(self.temp_dir, "log.txt")
+        args.log_level = "INFO"
+        args.console_log = False
+        args.debug = False
+        args.screenshot_dir = os.path.join(self.temp_dir, "screenshots")
+        args.video_dir = os.path.join(self.temp_dir, "videos")
+        args.summaries_dir = os.path.join(self.temp_dir, "summaries")
+        args.no_scheduler = True
+        args.no_watchdog = True
+        args.no_crawlers = True
+
+        old_enforce = config.ENFORCE_DOMAIN_IN_HOST
+        config.ENFORCE_DOMAIN_IN_HOST = True
+        with self.assertRaises(ValueError):
+            main.create_application(args)
+        config.ENFORCE_DOMAIN_IN_HOST = old_enforce
 
 if __name__ == "__main__":
     unittest.main()

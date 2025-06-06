@@ -125,6 +125,10 @@ def setup_config(args=None):
     # Update variables based on command-line arguments
     config.DATABASE_PATH = args.db_path
     config.HOST = args.host
+    if config.ENFORCE_DOMAIN_IN_HOST and "." not in config.HOST:
+        raise ValueError(
+            "HOST must include a domain when ENFORCE_DOMAIN_IN_HOST is enabled"
+        )
     config.PORT = args.port
     config.LOGGING_PATH = args.log_path
     config.DEBUG_MODE = args.debug
@@ -211,6 +215,11 @@ def create_application(args=None):
         setup_config()
         setup_logging()
 
+    if config.ENFORCE_DOMAIN_IN_HOST and "." not in config.HOST:
+        raise ValueError(
+            "HOST must include a domain when ENFORCE_DOMAIN_IN_HOST is enabled"
+        )
+
     ensure_directories()
     generate_credentials_if_needed()
 
@@ -237,6 +246,9 @@ def output_shutdown_stats():
     logging.info("Machine HW Accel: %s", metrics["machine_hwaccel"])
     logging.info("FFmpeg HW Accel: %s", metrics["ffmpeg_hwaccel"])
     logging.info("HW Accel Enabled: %s", metrics["hwaccel_enabled"])
+    logging.info("GPU Support: %s", metrics["gpu_support"])
+    logging.info("FFmpeg GPU Enabled: %s", metrics["ffmpeg_gpu_enabled"])
+    logging.info("Danger Mode: %s", metrics["danger_mode"])
     logging.info("Thank you for running Glimpser. Goodbye!")
 
 
