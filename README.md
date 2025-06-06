@@ -206,6 +206,15 @@ To set up the project for development:
    ```sh
    pytest
    ```
+5. Install Node packages for linting and JS tests:
+   ```sh
+   npm install
+   ```
+6. Run JavaScript tests with coverage:
+   ```sh
+   npm test -- --coverage
+   ```
+   See [Developer Guide](docs/developer_guide.md) for details.
 
 ## Releases
 

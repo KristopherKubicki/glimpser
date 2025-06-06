@@ -28,5 +28,4 @@ available media types, and `[`/`]` adjust playback speed. On phones and tablets,
 swipe left or right on the video to switch cameras or swipe up or down to change
 the media type quickly.
 
-Navigate back to the main interface using the **Back to Glimpser** link at the
-bottom of the help page.
+Click the Glimpser logo in the navigation bar to return to the main interface.
