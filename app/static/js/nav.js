@@ -347,7 +347,68 @@ export function initNav() {
       showNav();
     };
 
-    loadNavGroups();
+    const setupCameraNavigation = () => {
+      const cameraDropdown = document.getElementById("nav-camera-dropdown");
+      if (!cameraDropdown) return;
+
+      const getOptions = () =>
+        Array.from(cameraDropdown.options).filter((o) => o.value);
+
+      const gotoCamera = (delta) => {
+        const opts = getOptions();
+        if (!opts.length) return;
+        const idx = opts.findIndex((o) => o.value === cameraDropdown.value);
+        const next = (idx + delta + opts.length) % opts.length;
+        const cam = opts[next].value;
+        cameraDropdown.value = cam;
+        window.location.href = `/templates/${encodeURIComponent(cam)}`;
+      };
+
+      document.addEventListener("keydown", (e) => {
+        if (
+          e.target.tagName === "INPUT" ||
+          e.target.tagName === "SELECT" ||
+          e.target.isContentEditable
+        )
+          return;
+        if (e.key === "ArrowRight" || e.key === "l") {
+          gotoCamera(1);
+          e.preventDefault();
+        } else if (e.key === "ArrowLeft" || e.key === "j") {
+          gotoCamera(-1);
+          e.preventDefault();
+        }
+      });
+
+      let touchStartX = null;
+      let touchStartY = null;
+      document.addEventListener(
+        "touchstart",
+        (evt) => {
+          const t = evt.touches[0];
+          touchStartX = t.clientX;
+          touchStartY = t.clientY;
+        },
+        { passive: true },
+      );
+      document.addEventListener(
+        "touchend",
+        (evt) => {
+          if (touchStartX === null || touchStartY === null) return;
+          const diffX = evt.changedTouches[0].clientX - touchStartX;
+          const diffY = evt.changedTouches[0].clientY - touchStartY;
+          if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
+            if (diffX > 0) gotoCamera(-1);
+            else gotoCamera(1);
+          }
+          touchStartX = null;
+          touchStartY = null;
+        },
+        { passive: true },
+      );
+    };
+
+    loadNavGroups().then(setupCameraNavigation);
     checkHealth();
     setInterval(checkHealth, 5000);
     checkDanger();
