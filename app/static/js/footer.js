@@ -3,6 +3,16 @@ export function initFooterFade() {
     const footer = document.querySelector("footer");
     if (!footer) return;
 
+    const updatePadding = () => {
+      document.documentElement.style.setProperty(
+        "--footer-space",
+        `${footer.offsetHeight}px`,
+      );
+    };
+
+    updatePadding();
+    window.addEventListener("resize", updatePadding);
+
     let fadeTimeout;
 
     const showFooter = () => {
