@@ -48,10 +48,14 @@ export function initTemplates() {
         const templateCount =
           templateList?.querySelectorAll(".templateDiv").length || 1;
 
-        // Minimum width needed to fit all tiles across the page
-        const widthForColumns = Math.ceil(window.innerWidth / templateCount);
+        const gap = parseFloat(getComputedStyle(templateList).gap || "0") || 0;
 
-        // Minimum width needed so combined rows fill the screen vertically
+        // Maximum width to fit all tiles across the page
+        const widthForColumns = Math.floor(
+          (window.innerWidth - gap * (templateCount - 1)) / templateCount,
+        );
+
+        // Maximum width so combined rows fill the screen vertically
         const aspectRatio = 9 / 16;
         const widthForHeight = Math.sqrt(
           (window.innerHeight * window.innerWidth) /
@@ -64,7 +68,7 @@ export function initTemplates() {
           50,
           Math.min(
             slider.max,
-            Math.ceil(Math.max(widthForColumns, widthForHeight)),
+            Math.floor(Math.min(widthForColumns, widthForHeight)),
           ),
         );
 
