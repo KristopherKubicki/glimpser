@@ -480,13 +480,17 @@ export function setupSearch() {
     });
   };
 
-  if (templateList && !cameraTable) {
+  const isCameraTable = cameraRows.length > 0;
+
+  if (templateList && !isCameraTable) {
     const debouncedLoad = debounce(loadTemplates, 300);
     searchInput.addEventListener("input", debouncedLoad);
     if (groupDropdown) groupDropdown.addEventListener("change", debouncedLoad);
   } else {
     searchInput.addEventListener("input", filterCameras);
     if (groupDropdown) groupDropdown.addEventListener("change", filterCameras);
+    if (filterColumn) filterColumn.addEventListener("change", filterCameras);
+    if (filterValue) filterValue.addEventListener("input", filterCameras);
     if (applyFilter) applyFilter.addEventListener("click", filterCameras);
   }
 }
