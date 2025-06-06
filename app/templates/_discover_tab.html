@@ -222,6 +222,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let plan = [];
         source.onmessage = (event) => {
             const data = JSON.parse(event.data);
+            if (data.error) {
+                console.error('Discovery error', data.error);
+                msg.textContent = `Error discovering cameras: ${data.error}`;
+                progress.style.display = 'none';
+                source.close();
+                return;
+            }
             if (data.total) {
                 progress.max = 100;
                 progress.value = 0;
@@ -253,8 +260,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
         source.onerror = (e) => {
-            console.error('Discovery error', e);
-            msg.textContent = 'Error discovering cameras';
+            console.error('Discovery connection error', e);
+            msg.textContent = `Error discovering cameras: ${e?.message || e}`;
             progress.style.display = 'none';
             source.close();
         };
