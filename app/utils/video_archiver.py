@@ -322,7 +322,6 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
             )
             try:
                 run_ffmpeg(concat_command, timeout=30)
-                os.remove(list_path)
                 os.rename(concat_video, in_process_video)
                 file_updated = True
                 output_video = os.path.join(VIDEO_DIRECTORY, "latest_camera.mp4")
@@ -337,7 +336,6 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
                     os.path.abspath(output_video),
                 )
             except Exception as e:
-                os.remove(list_path)
                 status = handle_concat_error(e, temp_video, in_process_video)
                 if status == ConcatStatus.RETRY and retries > 0:
                     logging.info("Retrying concatenation due to transient error")

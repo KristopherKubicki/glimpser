@@ -511,7 +511,6 @@ export async function loadTemplates() {
   const templateList = document.getElementById("template-list");
   const captionsTable = document.getElementById("captions-table");
   const templateContainer = document.querySelector(".template-container");
-  const slider = document.getElementById("grid-width-slider");
   const templateDetails = document
     .getElementById("template-form")
     ?.closest("details");
