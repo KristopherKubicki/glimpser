@@ -3,6 +3,7 @@
 from werkzeug.utils import secure_filename
 import re
 from urllib.parse import urlparse
+from typing import Callable
 
 
 def validate_proxy(proxy: str | None) -> str | None:
@@ -199,3 +200,38 @@ def validate_update_data(data: dict) -> dict:
         sanitized[key] = _to_bool(data.get(key, False))
 
     return sanitized
+
+
+# Validators for individual settings used on the Settings page.
+# Each function returns a sanitized string or ``None`` when the
+# provided value is invalid.
+
+
+def _validate_int_range(value: str | None, minimum: int, maximum: int) -> str | None:
+    try:
+        ivalue = int(value)
+    except (TypeError, ValueError):
+        return None
+    if ivalue < minimum or ivalue > maximum:
+        return None
+    return str(ivalue)
+
+
+def _validate_choice(value: str | None, choices: list[str]) -> str | None:
+    if value in choices:
+        return value
+    return None
+
+
+ALLOWED_LOG_LEVELS = ["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"]
+
+SETTING_VALIDATORS: dict[str, Callable[[str], str | None]] = {
+    "PORT": lambda v: _validate_int_range(v, 1024, 65535),
+    "EMAIL_SMTP_PORT": lambda v: _validate_int_range(v, 1, 65535),
+    "MAX_WORKERS": lambda v: _validate_int_range(v, 1, 128),
+    "LIVE_FALLBACK_FPS": lambda v: _validate_int_range(v, 1, 60),
+    "LIVE_MAX_FAILURES": lambda v: _validate_int_range(v, 1, 100),
+    "SESSION_TIMEOUT_MINUTES": lambda v: _validate_int_range(v, 1, 1440),
+    "LOG_LEVEL": lambda v: _validate_choice(v, ALLOWED_LOG_LEVELS),
+    "FLASK_LOG_LEVEL": lambda v: _validate_choice(v, ALLOWED_LOG_LEVELS),
+}

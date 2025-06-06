@@ -167,6 +167,14 @@ class TestSettingsRoute(unittest.TestCase):
             response = self.client.post("/settings", data={"action": "download"})
         self.assertEqual(response.status_code, 302)
 
+    def test_invalid_port_rejected(self):
+        with patch("app.routes.session", {"user_id": 1}), patch(
+            "app.routes.login_required", lambda x: x
+        ):
+            response = self.client.post("/settings", data={"PORT": "80"})
+        self.assertEqual(response.status_code, 400)
+        self.assertIsNone(self._get_value("PORT"))
+
 
 if __name__ == "__main__":
     unittest.main()

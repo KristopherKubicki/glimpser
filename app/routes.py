@@ -109,7 +109,11 @@ NODE_ENV = os.getenv("NODE_ENV", "development")
 
 # from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock
-from app.utils.validators import validate_template_name, validate_update_data
+from app.utils.validators import (
+    validate_template_name,
+    validate_update_data,
+    SETTING_VALIDATORS,
+)
 from app.utils.profiling import profile_route, get_latency_stats
 from scripts.update_chrome_shortcut import (
     update_chrome_shortcuts,
@@ -2708,6 +2712,14 @@ def init_routes(app: Flask) -> None:
                     if name in SETTINGS_CHOICES:
                         update_setting(name, value)
                         continue
+
+                    validator = SETTING_VALIDATORS.get(name)
+                    if validator:
+                        checked = validator(value)
+                        if checked is None:
+                            flash(f"Invalid value for {name}", "error")
+                            return redirect(url_for("settings")), 400
+                        value = checked
 
                     update_setting(name, value)
             return redirect(url_for("settings"))
