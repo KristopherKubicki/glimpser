@@ -672,14 +672,10 @@ def get_storage_usage_bytes(name: str) -> int:
 
 
 def record_llm_usage(name: str, tokens: int) -> None:
-    """Record token usage for ``name`` in ``LLM_USAGE_PATH``.
+    """Record token usage for ``name`` with a timestamp.
 
-    Parameters
-    ----------
-    name : str
-        Template name the tokens were used for.
-    tokens : int
-        Number of tokens consumed.
+    The data format was originally a single cumulative integer. This now stores
+    a list of timestamped entries while remaining backward compatible.
     """
     name = validate_template_name(name)
     if name is None or tokens <= 0:
@@ -692,7 +688,19 @@ def record_llm_usage(name: str, tokens: int) -> None:
     except Exception:
         data = {}
 
-    data[name] = data.get(name, 0) + int(tokens)
+    entry = data.get(name)
+    if isinstance(entry, int):
+        entry = {"total": entry, "entries": []}
+    elif isinstance(entry, list):
+        entry = {"total": sum(e.get("tokens", 0) for e in entry), "entries": entry}
+    elif not isinstance(entry, dict):
+        entry = {"total": 0, "entries": []}
+
+    entry["entries"].append(
+        {"time": datetime.utcnow().strftime("%Y-%m-%d"), "tokens": int(tokens)}
+    )
+    entry["total"] += int(tokens)
+    data[name] = entry
 
     try:
         with open(LLM_USAGE_PATH, "w") as f:
@@ -724,6 +732,8 @@ def get_llm_response_count(name: str) -> int:
         return 0
 
     entry = data.get(name, [])
+    if isinstance(entry, dict):
+        entry = entry.get("entries", [])
     if isinstance(entry, list):
         return len(entry)
     if isinstance(entry, int):
@@ -731,8 +741,10 @@ def get_llm_response_count(name: str) -> int:
     return 0
 
 
-def get_llm_cost_estimate(name: str) -> str:
-    """Estimate LLM cost for ``name`` based on recorded token usage."""
+def get_llm_cost_estimate(
+    name: str, start_date: str | None = None, end_date: str | None = None
+) -> str:
+    """Estimate LLM cost for ``name`` within an optional date range."""
 
     name = validate_template_name(name)
     if name is None:
@@ -744,9 +756,62 @@ def get_llm_cost_estimate(name: str) -> str:
     except Exception:
         data = {}
 
-    tokens = data.get(name, 0)
+    entry = data.get(name)
+    tokens = 0
+    if isinstance(entry, dict) and "entries" in entry:
+        entries = entry.get("entries", [])
+        sd = datetime.fromisoformat(start_date).date() if start_date else None
+        ed = datetime.fromisoformat(end_date).date() if end_date else None
+        for e in entries:
+            try:
+                dt = datetime.fromisoformat(e.get("time", "")).date()
+            except Exception:
+                continue
+            if sd and dt < sd:
+                continue
+            if ed and dt > ed:
+                continue
+            tokens += int(e.get("tokens", 0))
+        if not start_date and not end_date:
+            tokens = entry.get("total", tokens)
+    else:
+        tokens = entry if isinstance(entry, int) else 0
+
     cost = tokens * LLM_COST_PER_TOKEN
     return f"${cost:.2f}"
+
+
+def get_llm_token_usage(name: str) -> int:
+    """Return the total tokens recorded for ``name``."""
+
+    name = validate_template_name(name)
+    if name is None:
+        return 0
+
+    if not os.path.exists(LLM_USAGE_PATH):
+        return 0
+
+    try:
+        with open(LLM_USAGE_PATH, "r") as f:
+            data = json.load(f)
+    except Exception:
+        return 0
+
+    entry = data.get(name, 0)
+    if isinstance(entry, list):
+        total = 0
+        for val in entry:
+            if isinstance(val, int):
+                total += val
+            elif isinstance(val, dict) and "tokens" in val:
+                try:
+                    total += int(val["tokens"])
+                except Exception:
+                    continue
+        return total
+    if isinstance(entry, int):
+        return entry
+    return 0
 
 
 def update_last_screenshot_time(name: str) -> None:
