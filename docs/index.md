@@ -58,3 +58,5 @@ The Live View page displays the time of the latest frame in the
 lower-right corner using the same format. Timestamp parsing was improved so
 times display correctly across time zones instead of always showing
 "just now".
+Human readable timestamps now use the configured timezone instead of UTC for
+consistent display across the interface.

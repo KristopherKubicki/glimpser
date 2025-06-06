@@ -16,7 +16,7 @@ import shutil
 import textwrap
 
 from apscheduler.triggers.cron import CronTrigger
-from dateutil import parser
+from dateutil import parser, tz
 from flask_apscheduler import APScheduler
 from PIL import Image, ImageDraw, ImageFont
 from transformers import CLIPProcessor, CLIPModel
@@ -30,6 +30,7 @@ from app.config import (
     LOGGING_PATH,
     FFMPEG_PATH,
     FFMPEG_HWACCEL,
+    TZ,
 )
 from app.utils.db import SessionLocal
 from app.models import Summary
@@ -1117,7 +1118,8 @@ def get_feed_status():
     """Return a list of status dictionaries for each configured feed."""
 
     templates = get_templates()
-    now = datetime.datetime.utcnow()
+    zone = tz.gettz(TZ) or tz.UTC
+    now = datetime.datetime.now(zone)
     feeds = []
 
     def _humanize(ts: str | None) -> str | None:
@@ -1126,6 +1128,7 @@ def get_feed_status():
             return None
         try:
             dt = datetime.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+            dt = dt.replace(tzinfo=datetime.timezone.utc).astimezone(zone)
         except Exception:
             return ts
 
@@ -1151,7 +1154,8 @@ def get_feed_status():
             return None
         try:
             dt = datetime.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-            return dt.isoformat() + "Z"
+            dt = dt.replace(tzinfo=datetime.timezone.utc).astimezone(zone)
+            return dt.isoformat()
         except Exception:
             return ts
 
