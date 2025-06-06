@@ -16,7 +16,8 @@ def calculate_difference_fast(image_path_a, image_path_b, downsample_size=(100, 
         downsample_size (tuple): The new size for downsampling the images before comparison.
 
     Returns:
-        float: The SSIM index between the two downsampled images. Values closer to 0 indicate greater dissimilarity.
+        float: Dissimilarity score between the downsampled images where ``0``
+        means the images are identical.
     """
     try:
         # Open and resize the images

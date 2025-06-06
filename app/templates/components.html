@@ -10,6 +10,17 @@
 </div>
 {%- endmacro %}
 
+{% macro status_legend() -%}
+<span id="status-legend">
+  <span class="status-item"
+    ><span class="status-box recent" aria-hidden="true"></span> Recent</span>
+  >
+  <span class="status-item"
+    ><span class="status-box error" aria-hidden="true"></span> Error</span>
+  >
+</span>
+{%- endmacro %}
+
 {% macro card(title) -%}
 <div class="card">
   <div class="card-header">{{ title }}</div>
