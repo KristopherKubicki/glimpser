@@ -442,7 +442,7 @@ body.light-mode {
 }
 
 .hide-captions .caption-overlay {
-    display: none;
+  display: none;
 }
 
 #status-legend {
@@ -624,6 +624,8 @@ nav a.active {
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
+  max-width: 100%;
+  min-width: 0;
   display: none;
   margin-left: 10px;
   flex-grow: 1;
@@ -825,17 +827,17 @@ a {
 }
 
 .clock-overlay {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    z-index: 10;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 10;
 }
 
 .digital-clock {
-    font-size: 14px;
-    line-height: 25px;
-    text-align: center;
-    color: var(--text-color);
+  font-size: 14px;
+  line-height: 25px;
+  text-align: center;
+  color: var(--text-color);
 }
 
 .clock-face {
