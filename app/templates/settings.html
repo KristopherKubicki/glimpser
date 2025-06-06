@@ -194,18 +194,19 @@ content %}
             <button type="submit" name="action" value="upload" title="Restore configuration from uploaded file" onclick="return confirmRestore()">Upload Configuration</button>
 
             <h3>Danger Mode</h3>
+            <ul class="danger-info">
+                <li>Browser: {{ danger_info.browser }}</li>
+                <li>Path: {{ danger_info.path }}</li>
+                <li>
+                    Shortcut Patched:
+                    <span class="status-dot {{ 'ok' if danger_info.patched else 'error' }}" title="{{ 'patched' if danger_info.patched else 'needs patch' }}"></span>
+                </li>
+                <li>
+                    Running:
+                    <span class="status-dot {{ 'ok' if danger_info.running else 'error' }}" title="{{ 'running' if danger_info.running else 'not running' }}"></span>
+                </li>
+            </ul>
             <button type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode">Update Chrome Shortcut</button>
-
-
-      <h3>Danger Mode</h3>
-      <button
-        type="submit"
-        name="action"
-        value="update_shortcut"
-        title="Update Chrome shortcuts for Danger mode"
-      >
-        Update Chrome Shortcut
-      </button>
     </div>
 
     <input
