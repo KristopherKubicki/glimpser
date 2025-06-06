@@ -1,3 +1,5 @@
+import { updateHumanizedTimes } from "./templates.js";
+
 export function initCaptions() {
   document.addEventListener("DOMContentLoaded", () => {
     const tabs = document.querySelectorAll(".tab-link");
@@ -82,5 +84,40 @@ export function initCaptions() {
         document.getElementById(target)?.classList.add("active");
       });
     });
+
+    setupLiveHistoryUpdates();
   });
+}
+
+function setupLiveHistoryUpdates() {
+  const tbody = document.querySelector("#captions-table tbody");
+  const header = document.querySelector(
+    "#captions-table th.sortable[data-type='date']",
+  );
+  if (!tbody || !header) return;
+
+  let latest = tbody.querySelector("tr:not(.no-data) span[data-time]")?.dataset
+    .time;
+
+  const fetchLatest = async () => {
+    if (header.dataset.order !== "desc") return;
+    try {
+      const resp = await fetch("/captions_status");
+      const data = await resp.json();
+      if (!data.timestamp || !data.caption) return;
+      if (!latest || new Date(data.timestamp) > new Date(latest)) {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td><span class="humanized-time" data-time="${data.timestamp}">${data.timestamp}</span></td><td>${data.caption}</td>`;
+        tbody.prepend(row);
+        tbody.querySelector(".no-data")?.remove();
+        latest = data.timestamp;
+        updateHumanizedTimes();
+      }
+    } catch (err) {
+      console.error("Error updating captions", err);
+    }
+  };
+
+  fetchLatest();
+  setInterval(fetchLatest, 10000);
 }

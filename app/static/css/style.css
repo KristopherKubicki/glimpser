@@ -208,6 +208,7 @@ h2 {
     auto-fit,
     minmax(50px, var(--tile-size))
   ); /* Use CSS variable */
+
   gap: 5px;
   padding: 10px;
   justify-content: center;
@@ -236,6 +237,13 @@ h2 {
   #template-list {
     grid-template-columns: 1fr; /* Single column layout on mobile */
     padding: 10px; /* Reduce padding on mobile */
+  }
+  #grid-width-slider {
+    display: none;
+  }
+  .templateDiv {
+    width: 100%;
+    flex: 0 0 100%;
   }
 
   /* Improve form layout on mobile */
@@ -317,6 +325,7 @@ select:hover {
     255,
     0.7
   ); /* Semi-transparent white background */
+
   border-radius: 50%;
   padding: calc(5px * var(--tile-scale, 1));
   display: none; /* Hide by default */
@@ -487,6 +496,9 @@ header {
   align-items: center; /* Vertically align items */
   justify-content: flex-start; /* Align items to the left */
   gap: 10px; /* Space between nav and chyron */
+  position: sticky; /* Keep nav visible while scrolling */
+  top: 0; /* Stick to the top of the viewport */
+  z-index: 1000; /* Stay above page content */
   transition: opacity 0.5s; /* Smooth fade for inactivity */
 }
 
@@ -506,6 +518,7 @@ header h1 img {
 nav {
   display: flex; /* Flexbox for layout */
   gap: 10px; /* Tighter spacing */
+  margin-left: auto; /* Keep navigation on the right */
 }
 
 .menu-toggle {
@@ -521,6 +534,10 @@ nav {
   display: flex;
   align-items: center;
   gap: 5px; /* Reduce spacing */
+}
+
+.nav-right {
+  margin-left: auto; /* Keep icons aligned to the right */
 }
 
 .nav-center {
@@ -540,6 +557,17 @@ nav a {
   transition:
     background-color 0.2s,
     color 0.2s; /* Smooth hover transition */
+}
+
+.nav-back {
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+}
+
+.nav-back::before {
+  content: "\2190";
+  margin-right: 4px;
 }
 
 #nav-group-dropdown,
@@ -676,11 +704,12 @@ nav a.active {
 @media screen and (max-width: 768px) {
   /* Responsive design for mobile */
   header h1 {
-    font-size: 18px; /* Smaller font size on mobile */
+    font-size: 1.5rem; /* Larger font size for easier tapping */
   }
 
   .menu-toggle {
     display: block;
+    font-size: 2rem; /* Larger toggle for mobile */
   }
 
   nav:not(.active) .nav-left,
@@ -694,7 +723,7 @@ nav a.active {
     flex-direction: column;
     background-color: #000;
     position: absolute;
-    top: 32px; /* Align with smaller header */
+    top: 56px; /* Align with larger mobile header */
     left: 0;
     right: 0;
     padding: 10px;
@@ -708,11 +737,30 @@ nav a.active {
 
   nav a {
     margin-bottom: 5px; /* Add margin for stacked items */
+    font-size: 1.2rem; /* Bigger text for touch targets */
+    padding: 8px;
   }
 
-  .settings-icon svg {
-    width: 18px;
-    height: 18px;
+  .menu-toggle {
+    font-size: 2rem; /* Bigger hamburger icon */
+  }
+
+  /* Hide elements that waste space on mobile */
+  #navClock,
+  #caption-chyron,
+  .flash-messages {
+    display: none;
+  }
+
+  .settings-icon svg,
+  .status-indicator svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .cool-clock {
+    width: 32px;
+    height: 32px;
   }
 
   .performance-indicator {
@@ -1174,6 +1222,23 @@ footer.fade-out {
   padding: 2px 5px;
   border-radius: 2px;
 }
+
+@media (max-width: 600px) {
+  footer {
+    padding: 5px 10px 0;
+  }
+  .footer-nav {
+    gap: 5px;
+    font-size: 0.85em;
+  }
+  .footer-copy,
+  .footer-build {
+    display: none;
+  }
+  main {
+    padding-bottom: 45px;
+  }
+}
 .alert-success {
   background-color: #d4edda;
   border-color: #c3e6cb;
@@ -1242,6 +1307,7 @@ input[type="submit"]:hover {
 @media (max-width: 767px) {
   #grid-width-slider {
     width: 100%;
+    display: none; /* Hide slider on small screens */
   }
 }
 
@@ -1460,6 +1526,15 @@ details > summary {
   color: #ccc;
 }
 
+#camera-metadata ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+#camera-metadata li {
+  margin-bottom: 0.25em;
+}
+
 .modal {
   display: none;
   position: fixed;
@@ -1644,13 +1719,6 @@ details > summary {
   z-index: 10;
 }
 
-.group-links {
-  margin-top: 0.5em;
-}
-
-.group-links a {
-  margin-right: 0.5em;
-}
 
 @media screen and (max-width: 600px) {
   .feed-status,
