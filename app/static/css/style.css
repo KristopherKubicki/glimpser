@@ -1203,7 +1203,6 @@ footer.fade-out {
   gap: 10px;
   align-items: center;
   width: 100%;
-  max-width: 1200px;
   margin-bottom: 2px;
 }
 
@@ -1347,9 +1346,10 @@ input[type="submit"]:hover {
 
 /* Captions Page */
 .captions-page {
-  max-width: 1200px;
   margin: 0 auto;
   padding: 15px;
+  width: 100%;
+  max-width: none;
 }
 
 /* Use the same tile width as the front page */
