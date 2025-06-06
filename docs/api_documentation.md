@@ -152,13 +152,17 @@ Example response:
 
 **GET /status**
 
-Redirects to the *System Status* tab on the Settings page which displays metrics such as CPU, memory, and disk usage along with open file count, thread count, and uptime. These metrics are gathered in a background thread (see `app/utils/scheduling.py`).
+Redirects to the _System Status_ tab on the Settings page which displays metrics such as CPU, memory, and disk usage along with open file count, thread count, and uptime. These metrics are gathered in a background thread (see `app/utils/scheduling.py`).
 
 ### 8. Stream Logs
 
 **GET /stream_logs**
 
-Streams log records via Server-Sent Events. Optional query parameters `level`, `source`, `start_date`, `end_date`, and `search` allow filtering. The `/logs` page and *System Status* tab use this endpoint for the live log viewer.
+Streams log records via Server-Sent Events. Optional query parameters `level`, `source`, `start_date`, `end_date`, and `search` allow filtering. The `/logs` page and _System Status_ tab use this endpoint for the live log viewer.
+
+Authentication is required. When a session is missing or expired the server
+returns a `401` status with an SSE-formatted error message instead of redirecting
+to the login page.
 
 ### 9. List Stored Videos
 
