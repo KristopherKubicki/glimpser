@@ -1658,6 +1658,21 @@ details > summary {
   margin: 0 0.25rem;
 }
 
+.path-status {
+  white-space: nowrap;
+}
+
+.path-status svg {
+  vertical-align: middle;
+  margin-right: 0.25rem;
+}
+
+.path-status .metric-bar {
+  width: 5rem;
+  height: 0.5rem;
+  margin: 0 0.25rem;
+}
+
 /* simple layout for discovery wizard */
 .wizard-step {
   margin-bottom: 1em;

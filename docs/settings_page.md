@@ -11,6 +11,8 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Offline Preview** – cached snapshots are automatically enabled.
 - **Settings Reference** – expand the table to read explanations for each setting.
 - **Column Search** – click a header to filter rows by that column.
+- **File Location Checks** – paths in the _File Locations_ tab are validated and show
+  a small progress bar indicating remaining disk space.
 - **Interface** – UI-related options like the navigation logo now live on their own tab.
 
 Each row now includes an **Explanation** column so you can read a short
