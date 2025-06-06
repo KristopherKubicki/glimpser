@@ -148,8 +148,7 @@ main {
   padding: 1rem;
   flex-grow: 1;
   /* Reserve space for fixed footer so content isn't hidden */
-  padding-bottom: 60px;
-  padding-top: 40px; /* Prevent overlap with sticky header */
+  padding-bottom: var(--footer-space, 60px);
 }
 
 /* Simple dynamic tooltip component */
