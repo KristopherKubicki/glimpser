@@ -125,6 +125,10 @@ def setup_config(args=None):
     # Update variables based on command-line arguments
     config.DATABASE_PATH = args.db_path
     config.HOST = args.host
+    if config.ENFORCE_DOMAIN_IN_HOST and "." not in config.HOST:
+        raise ValueError(
+            "HOST must include a domain when ENFORCE_DOMAIN_IN_HOST is enabled"
+        )
     config.PORT = args.port
     config.LOGGING_PATH = args.log_path
     config.DEBUG_MODE = args.debug
@@ -211,6 +215,11 @@ def create_application(args=None):
         setup_config()
         setup_logging()
 
+    if config.ENFORCE_DOMAIN_IN_HOST and "." not in config.HOST:
+        raise ValueError(
+            "HOST must include a domain when ENFORCE_DOMAIN_IN_HOST is enabled"
+        )
+
     ensure_directories()
     generate_credentials_if_needed()
 
@@ -233,10 +242,17 @@ def output_shutdown_stats():
     logging.info("Open Files: %s", metrics["open_files"])
     logging.info("Thread Count: %s", metrics["thread_count"])
     logging.info("Uptime: %s", metrics["uptime"])
-    logging.info("FFmpeg Version: %s", metrics["ffmpeg_version"])
+    logging.info(
+        "FFmpeg Version: %s (%s)",
+        metrics["ffmpeg_version"],
+        metrics["ffmpeg_path"],
+    )
     logging.info("Machine HW Accel: %s", metrics["machine_hwaccel"])
     logging.info("FFmpeg HW Accel: %s", metrics["ffmpeg_hwaccel"])
     logging.info("HW Accel Enabled: %s", metrics["hwaccel_enabled"])
+    logging.info("GPU Support: %s", metrics["gpu_support"])
+    logging.info("FFmpeg GPU Enabled: %s", metrics["ffmpeg_gpu_enabled"])
+    logging.info("Danger Mode: %s", metrics["danger_mode"])
     logging.info("Thank you for running Glimpser. Goodbye!")
 
 
@@ -327,6 +343,55 @@ def display_startup_tips():
         )
 
 
+def _format_table(rows, headers):
+    col_widths = [
+        max(len(str(item)) for item in column) for column in zip(headers, *rows)
+    ]
+    header = " | ".join(h.ljust(w) for h, w in zip(headers, col_widths))
+    separator = "-+-".join("-" * w for w in col_widths)
+    lines = [header, separator]
+    for row in rows:
+        lines.append(" | ".join(str(item).ljust(w) for item, w in zip(row, col_widths)))
+    return "\n".join(lines)
+
+
+def display_startup_info(args=None):
+    """Log configuration and system metrics in table form."""
+    border = "-" * 60
+    logging.info(border)
+    logging.info("Startup Configuration")
+    logging.info(border)
+    config_table = [
+        ["Version", config.VERSION],
+        ["Host", config.HOST],
+        ["Port", config.PORT],
+        ["Debug Mode", config.DEBUG_MODE],
+        [
+            "Scheduler Enabled",
+            "No" if getattr(args, "no_scheduler", False) else "Yes",
+        ],
+        [
+            "Watchdog Enabled",
+            "No" if getattr(args, "no_watchdog", False) else "Yes",
+        ],
+    ]
+    logging.info("\n" + _format_table(config_table, ["Option", "Value"]))
+
+    metrics = get_system_metrics()
+    logging.info(border)
+    logging.info("System Metrics")
+    logging.info(border)
+    metrics_table = [
+        ["CPU Usage", f"{metrics['cpu_usage']}%"],
+        ["Memory Usage", f"{metrics['memory_usage']}%"],
+        ["Disk Usage", f"{metrics['disk_usage']}%"],
+        ["Thread Count", metrics["thread_count"]],
+        ["FFmpeg Version", metrics["ffmpeg_version"]],
+    ]
+    logging.info("\n" + _format_table(metrics_table, ["Metric", "Value"]))
+    logging.info(border)
+
+
 def is_port_in_use(port):
     # Skip the check if running in Docker
     if os.environ.get("IN_DOCKER"):
@@ -351,6 +416,7 @@ def main(argv=None):
     logging.info("Initializing...")
     args = parse_arguments(argv)
     app = create_application(args)
+    display_startup_info(args)
 
     if is_port_in_use(config.PORT) and config.DEBUG_MODE is False:
         logging.error(
