@@ -248,7 +248,12 @@ export function initNav() {
     const checkCaptions = async () => {
       if (!captionsIcon) return;
       try {
-        const data = await fetchJson("/captions_status");
+        const group = window.currentGroup;
+        const url =
+          group && group !== "all"
+            ? `/captions_status?group=${encodeURIComponent(group)}`
+            : "/captions_status";
+        const data = await fetchJson(url);
         if (!data) return;
         captionsIcon.title = data.caption || "";
         if (data.timestamp) {
