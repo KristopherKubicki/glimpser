@@ -149,6 +149,7 @@ main {
   flex-grow: 1;
   /* Reserve space for fixed footer so content isn't hidden */
   padding-bottom: 60px;
+  padding-top: 40px; /* Prevent overlap with sticky header */
 }
 
 /* Simple dynamic tooltip component */
@@ -500,6 +501,9 @@ header {
   top: 0; /* Stick to the top of the viewport */
   z-index: 1000; /* Stay above page content */
   transition: opacity 0.5s; /* Smooth fade for inactivity */
+  position: sticky; /* Keep header visible while scrolling */
+  top: 0;
+  z-index: 1000; /* Ensure header stays above content */
 }
 
 header.fade-out {
