@@ -152,12 +152,7 @@ content %}
     <div id="discover-tab" class="tab-content">
       {% include '_discover_tab.html' %}
     </div>
-    <div id="status-tab" class="tab-content">
-      {% include '_status_tab.html' %}
-    </div>
-    {% endif %}
-    {% endfor %}
-
+    {% endif %} {% endfor %}
         <div id="management-tab" class="tab-content">
             <h3>Configuration Management</h3>
             <button type="submit" name="action" value="backup" title="Create a JSON backup of all settings">Backup Configuration</button>
