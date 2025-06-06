@@ -234,15 +234,16 @@
           <td>
             <span class="humanized-time" data-time="{{ lc }}">{{ lc }}</span>
           </td>
-          <td>{{ caption[lc] }}</td>
-          <td>
+
+          <td class="caption-cell">
+            <span class="caption-text">{{ caption[lc] }}</span>
             <button
-              class="play-caption"
-              data-caption="{{ caption[lc]|e }}"
-              title="Play caption"
+              class="speech-btn"
               type="button"
+              aria-label="Play caption"
+              title="Play caption"
             >
-              &#9658;
+              ▶
             </button>
           </td>
         </tr>

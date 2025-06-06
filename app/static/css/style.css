@@ -1554,6 +1554,12 @@ details > summary {
   padding: 4px 8px;
 }
 
+.speech-btn {
+  margin-left: 0.5rem;
+  padding: 2px 6px;
+  font-size: 0.9em;
+}
+
 /* Highlight search matches in captions table */
 .captions-table mark {
   background-color: yellow;
