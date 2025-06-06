@@ -252,8 +252,10 @@ class TestVideoArchiver(unittest.TestCase):
         mock_glob.return_value = ["shot_blank.png", "shot_2.png"]
 
         captured_lines = []
+
         def fake_pipe(cmd, files):
             captured_lines.extend(files)
+
             class R:
                 returncode = 0
 

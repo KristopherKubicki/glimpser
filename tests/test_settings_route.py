@@ -174,11 +174,12 @@ class TestSettingsRoute(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
 
     def test_notification_tests(self):
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
-        ), patch("app.routes.send_sms_alert") as mock_sms, patch(
-            "app.routes.send_email_alert"
-        ) as mock_email:
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
+            patch("app.routes.send_sms_alert") as mock_sms,
+            patch("app.routes.send_email_alert") as mock_email,
+        ):
             response = self.client.post("/settings", data={"action": "test_sms"})
             self.assertEqual(response.status_code, 302)
             mock_sms.assert_called_once()

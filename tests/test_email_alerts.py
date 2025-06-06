@@ -57,22 +57,17 @@ class TestEmailAlerts(unittest.TestCase):
         smtp_mock = MagicMock()
         mock_cm = MagicMock()
         mock_cm.__enter__.return_value = smtp_mock
-        with patch("smtplib.SMTP", return_value=mock_cm) as mock_smtp, patch(
-            "app.utils.email_alerts.EMAIL_ENABLED", "True"
-        ), patch("app.utils.email_alerts.EMAIL_SENDER", "sender@example.com"), patch(
-            "app.utils.email_alerts.EMAIL_RECIPIENTS", "r@example.com"
-        ), patch(
-            "app.utils.email_alerts.EMAIL_SMTP_SERVER", "smtp.example.com"
-        ), patch(
-            "app.utils.email_alerts.EMAIL_SMTP_PORT", "587"
-        ), patch(
-            "app.utils.email_alerts.EMAIL_SMTP_TIMEOUT", 12
-        ), patch(
-            "app.utils.email_alerts.EMAIL_USE_TLS", "false"
-        ), patch(
-            "app.utils.email_alerts.EMAIL_USERNAME", "user"
-        ), patch(
-            "app.utils.email_alerts.EMAIL_PASSWORD", "pass"
+        with (
+            patch("smtplib.SMTP", return_value=mock_cm) as mock_smtp,
+            patch("app.utils.email_alerts.EMAIL_ENABLED", "True"),
+            patch("app.utils.email_alerts.EMAIL_SENDER", "sender@example.com"),
+            patch("app.utils.email_alerts.EMAIL_RECIPIENTS", "r@example.com"),
+            patch("app.utils.email_alerts.EMAIL_SMTP_SERVER", "smtp.example.com"),
+            patch("app.utils.email_alerts.EMAIL_SMTP_PORT", "587"),
+            patch("app.utils.email_alerts.EMAIL_SMTP_TIMEOUT", 12),
+            patch("app.utils.email_alerts.EMAIL_USE_TLS", "false"),
+            patch("app.utils.email_alerts.EMAIL_USERNAME", "user"),
+            patch("app.utils.email_alerts.EMAIL_PASSWORD", "pass"),
         ):
             send_email_alert("Subject", "Body")
             mock_smtp.assert_called_once_with("smtp.example.com", 587, timeout=12)

@@ -154,7 +154,6 @@ class TestMain(unittest.TestCase):
         main.display_startup_tips()
         mock_info.assert_any_call("Startup Tips")
 
-
     @patch("main.get_system_metrics")
     @patch("logging.info")
     def test_display_startup_info(self, mock_info, mock_metrics):
@@ -220,6 +219,7 @@ class TestMain(unittest.TestCase):
         with self.assertRaises(ValueError):
             main.create_application(args)
         config.ENFORCE_DOMAIN_IN_HOST = old_enforce
+
 
 if __name__ == "__main__":
     unittest.main()
