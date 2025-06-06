@@ -2904,10 +2904,15 @@ def init_routes(app: Flask) -> None:
                 )
 
             def run():
-                camera_discovery.discover_cameras(
-                    progress_callback=progress, subnets=nets
-                )
-                q.put({"done": True})
+                try:
+                    camera_discovery.discover_cameras(
+                        progress_callback=progress, subnets=nets
+                    )
+                except Exception as e:  # pragma: no cover - network
+                    logging.exception("discovery scan failed: %s", e)
+                    q.put({"error": str(e)})
+                finally:
+                    q.put({"done": True})
 
             thread = Thread(target=run, daemon=True)
             thread.start()
