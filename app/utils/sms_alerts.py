@@ -2,13 +2,7 @@
 
 import logging
 
-from app.config import (
-    TWILIO_SID,
-    TWILIO_TOKEN,
-    TWILIO_NUMBER,
-    TWILIO_FROM_NUMBER,
-)
-
+from app.config import TWILIO_SID, TWILIO_TOKEN, TWILIO_NUMBER, TWILIO_FROM_NUMBER
 
 def send_sms_alert(message):
     """Send an SMS alert using Twilio.
@@ -34,7 +28,8 @@ def send_sms_alert(message):
 
     try:
         client = Client(TWILIO_SID, TWILIO_TOKEN)
-        client.messages.create(body=message, from_=TWILIO_FROM_NUMBER, to=TWILIO_NUMBER)
+        from_number = TWILIO_FROM_NUMBER or TWILIO_NUMBER
+        client.messages.create(body=message, from_=from_number, to=TWILIO_NUMBER)
         logging.info("SMS alert sent successfully")
     except Exception as exc:
         logging.error("Error sending SMS alert: %s", exc)

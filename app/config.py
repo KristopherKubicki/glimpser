@@ -379,6 +379,7 @@ EMAIL_SMTP_TIMEOUT = int(get_setting("EMAIL_SMTP_TIMEOUT", 10))
 EMAIL_USE_TLS = get_setting("EMAIL_USE_TLS", "True")
 EMAIL_USERNAME = get_setting("EMAIL_USERNAME", "your-username")
 EMAIL_PASSWORD = get_setting("EMAIL_PASSWORD", "")
+EMAIL_SMTP_TIMEOUT = int(get_setting("EMAIL_SMTP_TIMEOUT", "5"))
 
 
 # SMS/Twilio settings
