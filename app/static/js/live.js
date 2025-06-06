@@ -1268,6 +1268,10 @@ window.selectNextSource = selectNextSource;
 window.selectPreviousSource = selectPreviousSource;
 window.togglePlayback = togglePlayback;
 
+if (playButton) {
+  playButton.addEventListener("click", togglePlayback);
+}
+
 // Allow pausing/resuming the video by clicking anywhere on the player
 video.addEventListener("click", togglePlayback);
 
