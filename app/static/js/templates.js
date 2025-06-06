@@ -417,13 +417,17 @@ export function setupSearch() {
     });
   };
 
-  if (templateList) {
+  const isCameraTable = cameraRows.length > 0;
+
+  if (templateList && !isCameraTable) {
     const debouncedLoad = debounce(loadTemplates, 300);
     searchInput.addEventListener("input", debouncedLoad);
     if (groupDropdown) groupDropdown.addEventListener("change", debouncedLoad);
   } else {
     searchInput.addEventListener("input", filterCameras);
     if (groupDropdown) groupDropdown.addEventListener("change", filterCameras);
+    if (filterColumn) filterColumn.addEventListener("change", filterCameras);
+    if (filterValue) filterValue.addEventListener("input", filterCameras);
     if (applyFilter) applyFilter.addEventListener("click", filterCameras);
   }
 }
@@ -440,6 +444,8 @@ export async function loadTemplates() {
   const selectedGroup = getSelectedGroup();
   const searchQuery = searchInput ? searchInput.value.toLowerCase() : "";
   const url = `/templates?group=${selectedGroup}&search=${searchQuery}&t=${new Date().getTime()}`;
+
+  const slider = document.getElementById("grid-width-slider");
 
   updateGridLayout();
 

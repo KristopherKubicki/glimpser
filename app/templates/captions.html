@@ -35,10 +35,10 @@
   </div>
 
   <div id="prompts-tab" class="tab-content active">
-    <details class="filter-controls">
+    <details class="filter-controls" open>
       <summary>Search &amp; Filters</summary>
       <div class="controls-inner">
-        <label for="search-input" title="Search for cameras or groups"
+        <label for="search-input" title="Search by name or group"
           >Search:</label
         >
         <input
@@ -48,8 +48,8 @@
           title="Enter search terms"
         />
 
-        <label for="filter-column" title="KPI to filter">KPI:</label>
-        <select id="filter-column" title="Select KPI">
+        <label for="filter-column" title="Metric to filter by">Metric:</label>
+        <select id="filter-column" title="Select metric">
           <option value="">All</option>
           <option value="screenshot_count">Shots</option>
           <option value="video_count">Videos</option>
@@ -60,11 +60,11 @@
         <input
           type="text"
           id="filter-value"
-          placeholder="Value"
-          title="Filter value"
+          placeholder="Minimum"
+          title="Minimum value or text"
         />
         <button id="apply-filter" type="button" title="Filter table rows">
-          Apply
+          Filter
         </button>
         <input
           type="range"
