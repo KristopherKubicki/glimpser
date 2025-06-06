@@ -506,6 +506,7 @@ header h1 img {
 nav {
   display: flex; /* Flexbox for layout */
   gap: 10px; /* Tighter spacing */
+  margin-left: auto; /* Keep navigation on the right */
 }
 
 .menu-toggle {
@@ -521,6 +522,10 @@ nav {
   display: flex;
   align-items: center;
   gap: 5px; /* Reduce spacing */
+}
+
+.nav-right {
+  margin-left: auto; /* Keep icons aligned to the right */
 }
 
 .nav-center {
