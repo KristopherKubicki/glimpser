@@ -56,3 +56,6 @@ nav:
       - OpenSSF Scorecard: scorecard.md
       - Startup Tips: startup_tips.md
       - UI Component Guide: style_guide.md
+      - Captions Live Update: captions_live_update.md
+      - Floating Navigation: floating_nav.md
+      - Search Autocomplete: search_autocomplete.md
