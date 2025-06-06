@@ -546,7 +546,11 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
                 logging.warning("ffmpeg exited with %s, retrying", process.returncode)
                 last_log = now
 
-        time.sleep(2)
+        # Slow down retries when ffmpeg repeatedly fails to avoid excessive
+        # process churn. The delay doubles after each failure up to the
+        # configured maximum but resets to two seconds once a chunk is sent.
+        delay = 2 if failures == 0 else min(2**failures, config.LIVE_MAX_RETRY_DELAY)
+        time.sleep(delay)
 
 
 login_attempts = {}
