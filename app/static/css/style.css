@@ -696,6 +696,7 @@ nav a.active {
   margin-left: 10px;
   flex-grow: 1;
   cursor: pointer;
+  max-width: 100%;
 }
 
 .caption-chyron.show {
@@ -705,6 +706,7 @@ nav a.active {
 .caption-chyron.show span {
   display: inline-block;
   padding-left: 100%;
+  min-width: 100%;
   /* Duration comes from the CSS variable; 0 disables animation */
   animation: chyron-scroll var(--chyron-speed) linear infinite;
 }
