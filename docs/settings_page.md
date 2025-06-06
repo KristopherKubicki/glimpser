@@ -11,10 +11,12 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Offline Preview** – cached snapshots are automatically enabled.
 - **Settings Reference** – expand the table to read explanations for each setting.
 - **Column Search** – click a header to filter rows by that column.
+- **Interface** – UI-related options like the navigation logo now live on their own tab.
 
 Each row now includes an **Explanation** column so you can read a short
 description without opening the reference table. Boolean values are
-displayed as toggle switches to avoid typing errors.
+displayed as toggle switches to avoid typing errors. Values such as `true`
+or `False` (any case) are recognized automatically.
 
 ### Dynamic Feedback
 
