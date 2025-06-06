@@ -17,8 +17,9 @@ export function initVideoControls() {
     const playAllButton = document.getElementById("play-all-button");
     const liveAllButton = document.getElementById("live-all-button");
     let playAllActive = false;
-    let liveAllActive = false;
     let playAllObserver;
+
+    if (liveAllButton) liveAllButton.style.display = "none";
 
     function handlePlayAll(entries) {
       entries.forEach((entry) => {
@@ -44,6 +45,7 @@ export function initVideoControls() {
             video.load();
           });
           playAllButton.textContent = "Play All";
+          if (liveAllButton) liveAllButton.style.display = "none";
         } else {
           playAllObserver = new IntersectionObserver(handlePlayAll, {
             threshold: 0.25,
@@ -57,6 +59,7 @@ export function initVideoControls() {
             safePlay(video);
           });
           playAllButton.textContent = "Pause All";
+          if (liveAllButton) liveAllButton.style.display = "inline-block";
         }
         playAllActive = !playAllActive;
       });
@@ -65,24 +68,17 @@ export function initVideoControls() {
     if (liveAllButton) {
       liveAllButton.addEventListener("click", () => {
         const videos = document.querySelectorAll(".templateDiv video");
+        if (playAllObserver) playAllObserver.disconnect();
         videos.forEach((video) => {
           const name = video.getAttribute("data-name");
-          const source = video.querySelector("source");
-          if (liveAllActive) {
-            source.src = `/last_video/${name}`;
-            video.poster = `/last_screenshot/${name}`;
-            video.load();
-            video.pause();
-            video.currentTime = 0;
-          } else {
-            source.src = `/live_video?camera=${encodeURIComponent(name)}`;
-            video.poster = "";
-            video.load();
-            safePlay(video);
-          }
+          video.pause();
+          video.src = "";
+          video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
+          video.load();
         });
-        liveAllButton.textContent = liveAllActive ? "Live All" : "Stop Live";
-        liveAllActive = !liveAllActive;
+        playAllActive = false;
+        playAllButton.textContent = "Play All";
+        liveAllButton.style.display = "none";
       });
     }
 
