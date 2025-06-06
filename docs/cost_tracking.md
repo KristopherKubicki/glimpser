@@ -5,6 +5,14 @@ Token counts are stored in `data/llm_usage.json` keyed by template name.
 Costs are calculated at `$0.005` per thousand tokens.
 Use the captions page to view each template's estimated cost.
 
+The KPI filter now includes **From** and **To** fields so you can select a date
+range when calculating costs. Leaving the fields blank continues to show the
+total cost for all time.
+
+The Settings page now includes a **Costs** tab with a summary table and pie
+chart. Filter by group or camera to see usage for specific feeds.
+
+
 ## LLM Response Cache
 
 Glimpser caches LLM responses in `data/llm_cache.json` keyed by a hash of the

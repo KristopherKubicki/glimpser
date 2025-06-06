@@ -61,8 +61,9 @@ class TestStreamPngRoute(unittest.TestCase):
                 raise FileNotFoundError
             return orig_getmtime(path)
 
-        with patch("glob.glob", side_effect=fake_glob), patch(
-            "os.path.getmtime", side_effect=fake_getmtime
+        with (
+            patch("glob.glob", side_effect=fake_glob),
+            patch("os.path.getmtime", side_effect=fake_getmtime),
         ):
             resp = self.client.get("/stream.png")
         self.assertEqual(resp.status_code, 200)
