@@ -16,6 +16,9 @@ Selecting a group from that dropdown while on the **Live** page now updates the
 camera selector immediately without reloading the page, keeping navigation
 seamless.
 
+Searching the template grid automatically opens the camera detail view when
+only one result matches, so you can jump straight to the live feed.
+
 Template detail pages feature a back arrow in the header so you can quickly
 return to the dashboard or group view without taking up extra page space.
 

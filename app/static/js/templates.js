@@ -535,6 +535,7 @@ export async function loadTemplates() {
 
     let hasTemplates = false;
     let templateCount = 0;
+    let firstTemplateName = null;
     Object.entries(templates).forEach(([name, template], index) => {
       if (
         templateBelongsToGroup(template, selectedGroup) &&
@@ -542,6 +543,7 @@ export async function loadTemplates() {
       ) {
         hasTemplates = true;
         templateCount += 1;
+        if (!firstTemplateName) firstTemplateName = name;
         const lastScreenshotTime =
           template.last_screenshot_time || NO_TIMESTAMP_PLACEHOLDER;
         const humanizedTimestamp =
@@ -647,6 +649,18 @@ export async function loadTemplates() {
     } else if (sliderElement) {
       sliderElement.dispatchEvent(new Event("input"));
     }
+    if (
+      isIndexPage &&
+      searchQuery &&
+      templateCount === 1 &&
+      firstTemplateName
+    ) {
+      window.location.href = `/templates/${encodeURIComponent(
+        firstTemplateName,
+      )}`;
+      return;
+    }
+
     updateHumanizedTimes();
     window.dispatchEvent(
       new CustomEvent("templatesLoaded", { detail: { count: templateCount } }),
