@@ -65,6 +65,12 @@ const jogShuttle = document.getElementById("jog-shuttle");
 let jogInterval = null;
 let jogging = false;
 let isSeeking = false;
+function getSourceElement() {
+  return (
+    document.getElementById("video-source") ||
+    document.getElementById("nav-source-dropdown")
+  );
+}
 // Track whether template details are shown. Expose on window so inline
 // scripts and other modules can share this state.
 window.detailsVisible = false;
@@ -98,7 +104,7 @@ function loadSavedPreferences() {
     }
   }
 
-  const sourceSelect = document.getElementById("video-source");
+  const sourceSelect = getSourceElement();
   const savedSource = localStorage.getItem("liveSource");
   if (
     savedSource &&
@@ -400,7 +406,8 @@ function updateTemplateDetails() {
 
 function updateFeed() {
   resetVideo();
-  const source = document.getElementById("video-source").value;
+  const sourceEl = getSourceElement();
+  const source = sourceEl ? sourceEl.value : "mjpg";
   const isConnected = checkCameraConnection(currentCamera);
   const details = templateDetails[currentCamera];
   updateSpeedContainer();
@@ -912,7 +919,7 @@ function playMotion() {
 }
 
 function changeVideoSource() {
-  const selector = document.getElementById("video-source");
+  const selector = getSourceElement();
   if (selector) {
     localStorage.setItem("liveSource", selector.value);
   }
@@ -1019,7 +1026,8 @@ function initJogShuttle() {
 
 function updateSpeedContainer() {
   if (!speedContainer) return;
-  const source = document.getElementById("video-source").value;
+  const srcEl = getSourceElement();
+  const source = srcEl ? srcEl.value : "mjpg";
   const isGroupView =
     currentCamera === "All" || currentCamera.startsWith("group-");
   let cameraCount = 0;
@@ -1044,7 +1052,8 @@ function updateSpeedContainer() {
 function updateSeekBar() {
   const seekBar = document.getElementById("seek-bar");
   if (!seekBar) return;
-  const source = document.getElementById("video-source").value;
+  const srcEl = getSourceElement();
+  const source = srcEl ? srcEl.value : "mjpg";
   const isSingleCamera = !(
     currentCamera === "All" || currentCamera.startsWith("group-")
   );
@@ -1060,7 +1069,8 @@ function updateSeekBar() {
 
 function updateJogShuttle() {
   if (!jogShuttle) return;
-  const source = document.getElementById("video-source").value;
+  const srcEl = getSourceElement();
+  const source = srcEl ? srcEl.value : "mjpg";
   const isSingleCamera = !(
     currentCamera === "All" || currentCamera.startsWith("group-")
   );
@@ -1131,6 +1141,17 @@ playMJPG();
 startCaptionPolling();
 updateFrameTimestamp();
 setInterval(updateFrameTimestamp, 60000);
+
+const navSource = document.getElementById("nav-source-dropdown");
+if (navSource) {
+  const localSelector = getSourceElement();
+  if (localSelector) navSource.value = localSelector.value;
+  navSource.addEventListener("change", () => {
+    const localSelect = document.getElementById("video-source");
+    if (localSelect) localSelect.value = navSource.value;
+    changeVideoSource();
+  });
+}
 
 if (seekBar) {
   video.addEventListener("loadedmetadata", () => {
@@ -1203,7 +1224,7 @@ function selectPreviousCamera() {
 }
 
 function selectNextSource() {
-  const selector = document.getElementById("video-source");
+  const selector = getSourceElement();
   if (!selector) return;
   const options = Array.from(selector.options);
   const currentIndex = options.findIndex((opt) => opt.value === selector.value);
@@ -1213,7 +1234,7 @@ function selectNextSource() {
 }
 
 function selectPreviousSource() {
-  const selector = document.getElementById("video-source");
+  const selector = getSourceElement();
   if (!selector) return;
   const options = Array.from(selector.options);
   const currentIndex = options.findIndex((opt) => opt.value === selector.value);

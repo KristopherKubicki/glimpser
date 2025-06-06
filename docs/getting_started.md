@@ -10,17 +10,20 @@ This guide will walk you through the process of setting up Glimpser and running 
 ## Installation
 
 1. Clone the Glimpser repository:
+
    ```
    git clone https://github.com/KristopherKubicki/glimpser.git
    cd glimpser
    ```
 
 2. Install the required dependencies:
+
    ```
    pip install -r requirements.txt
    ```
 
 3. Run the application:
+
    ```
    python3 main.py
    ```
@@ -51,7 +54,7 @@ This guide will walk you through the process of setting up Glimpser and running 
 6. Go to the "Monitoring" section to view your live data feed.
 
 7. On the **Live** page, select your camera. MJPG is selected by default, but choose **Live Video** from the
-   "Video Source" dropdown for direct streaming.
+   **Source** dropdown in the navigation bar for direct streaming.
 
 8. Explore the auto-generated captions and summaries.
 9. Use the **Suggest Prompt** button on a template's detail page to have the system propose better caption text.

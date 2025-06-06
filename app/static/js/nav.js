@@ -18,6 +18,7 @@ export function initNav() {
     const menuToggle = document.getElementById("menu-toggle");
     const groupDropdown = document.getElementById("nav-group-dropdown");
     const cameraDropdown = document.getElementById("nav-camera-dropdown");
+    const sourceDropdown = document.getElementById("nav-source-dropdown");
     const currentGroup = window.currentGroup || null;
     const currentCamera = window.currentCamera || null;
 
@@ -34,6 +35,28 @@ export function initNav() {
         return null;
       }
       return res.json();
+    };
+
+    const videoSources = [
+      { value: "png", label: "PNG Stream" },
+      { value: "loop", label: "Loop Videos" },
+      { value: "mp4", label: "MP4 Stream" },
+      { value: "live", label: "Live Video" },
+      { value: "motion", label: "Motion" },
+      { value: "mjpg", label: "MJPG" },
+    ];
+
+    const loadNavSources = () => {
+      if (!sourceDropdown) return;
+      sourceDropdown.innerHTML = "";
+      videoSources.forEach((src) => {
+        const opt = document.createElement("option");
+        opt.value = src.value;
+        opt.textContent = src.label;
+        sourceDropdown.appendChild(opt);
+      });
+      const saved = localStorage.getItem("liveSource") || "mjpg";
+      sourceDropdown.value = saved;
     };
 
     const loadNavGroups = async () => {
@@ -123,6 +146,20 @@ export function initNav() {
         loadNavCameras(groupDropdown.value);
       });
       if (currentGroup) loadNavCameras(currentGroup);
+    }
+
+    if (sourceDropdown) {
+      sourceDropdown.addEventListener("change", () => {
+        localStorage.setItem("liveSource", sourceDropdown.value);
+        if (
+          window.location.pathname.startsWith("/live") &&
+          typeof window.changeVideoSource === "function"
+        ) {
+          const localSelect = document.getElementById("video-source");
+          if (localSelect) localSelect.value = sourceDropdown.value;
+          window.changeVideoSource();
+        }
+      });
     }
 
     if (cameraDropdown) {
@@ -330,6 +367,7 @@ export function initNav() {
     };
 
     loadNavGroups();
+    loadNavSources();
     checkHealth();
     setInterval(checkHealth, 5000);
     checkDanger();
