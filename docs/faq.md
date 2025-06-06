@@ -30,6 +30,10 @@ Ensure the `EMAIL_ENABLED` setting is set to `True` and configure the remaining 
 
 Set `TWILIO_SID`, `TWILIO_TOKEN`, and `TWILIO_NUMBER` in the configuration. When these values are present, Glimpser will send important alerts via text message as well as email.
 
+### How do I send a test notification?
+
+Use the "Send Test Email" and "Send Test SMS" buttons in the settings page to verify your credentials.
+
 ### Why is the thumbnail size slider so narrow?
 
 The slider automatically adjusts to the current browser width and scales thumbnails vertically as well as horizontally. Thumbnails now resize by changing their width and height directly, so the entire frame stays visible. Sizes are capped around 1080&nbsp;px high to keep previews from slowing the page. If the control still feels cramped, widen the window or tweak the CSS in `style.css` for your layout.

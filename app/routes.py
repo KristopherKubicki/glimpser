@@ -124,6 +124,8 @@ from scripts.update_chrome_shortcut import (
     update_chrome_shortcuts,
     update_chrome_shortcuts_info,
 )
+from app.utils.email_alerts import send_email_alert
+from app.utils.sms_alerts import send_sms_alert
 
 
 def restart_server() -> None:
@@ -2825,6 +2827,14 @@ def init_routes(app: Flask) -> None:
                         flash("Configuration restored successfully", "success")
                     else:
                         flash("Invalid file type", "error")
+            elif action == "test_email":
+                send_email_alert(
+                    "Glimpser Test Email", "This is a test email from Glimpser."
+                )
+                flash("Email test triggered. Check logs for results.", "info")
+            elif action == "test_sms":
+                send_sms_alert("Test SMS from Glimpser")
+                flash("SMS test triggered. Check logs for results.", "info")
             elif action == "update_shortcut":
                 paths = update_chrome_shortcuts()
                 if paths:
