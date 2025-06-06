@@ -1,5 +1,17 @@
 export const NO_TIMESTAMP_PLACEHOLDER = "no timestamp";
 
+function safePlay(el) {
+  const promise = el.play();
+  if (promise && typeof promise.catch === "function") {
+    promise.catch((err) => {
+      // Ignore common interrupt errors so console output stays clean
+      if (err.name !== "AbortError" && err.name !== "NotAllowedError") {
+        console.error("Error playing video:", err);
+      }
+    });
+  }
+}
+
 let captionsVisible = localStorage.getItem("showCaptions") !== "false";
 
 export function applyCaptionVisibility(width) {
@@ -488,7 +500,7 @@ export async function loadTemplates() {
       (entries) => {
         entries.forEach((entry) => {
           if (isMobile() && entry.isIntersecting) {
-            entry.target.play();
+            safePlay(entry.target);
           } else {
             entry.target.pause();
           }
@@ -560,7 +572,7 @@ export async function loadTemplates() {
 
           video.addEventListener("mouseenter", () => {
             video.playbackRate = 2.0;
-            video.play();
+            safePlay(video);
           });
           video.addEventListener("mouseleave", () => {
             video.playbackRate = 1.0;
