@@ -792,6 +792,7 @@ function playPNG() {
   // When switching from video playback to PNG images, ensure any
   // ongoing video stream is stopped to avoid "media element" errors.
   resetVideo();
+  stopPNG();
   video.pause();
   video.src = "";
   stopLiveSwitch();
@@ -859,6 +860,7 @@ function playPNG() {
 function playMJPG() {
   // Stop any existing video stream before showing MJPEG frames
   resetVideo();
+  stopPNG();
   video.pause();
   video.src = "";
   stopLiveSwitch();
@@ -872,6 +874,7 @@ function playMJPG() {
     seekBar.style.pointerEvents = "none";
     seekBar.disabled = true;
   }
+  stopLiveSwitch();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     const groupName = currentCamera.split("group-")[1];
@@ -892,6 +895,7 @@ function playMJPG() {
 function playMotion() {
   // Stop any existing video stream before showing motion JPEG frames
   resetVideo();
+  stopPNG();
   video.pause();
   video.src = "";
   stopLiveSwitch();
@@ -904,6 +908,7 @@ function playMotion() {
     seekBar.style.pointerEvents = "none";
     seekBar.disabled = true;
   }
+  stopLiveSwitch();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     const groupName = currentCamera.split("group-")[1];
