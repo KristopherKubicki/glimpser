@@ -47,6 +47,7 @@ import subprocess
 from urllib.parse import urlparse
 import struct
 import random
+import psutil
 
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
@@ -347,6 +348,31 @@ def get_all_settings() -> List[Dict[str, Any]]:
         return lsettings_list
     finally:
         session.close()
+
+
+def file_location_metrics(
+    settings_list: List[Dict[str, Any]],
+) -> Dict[str, Dict[str, Any]]:
+    """Return existence and disk free percent for file location settings."""
+
+    metrics = {}
+    for item in settings_list:
+        path = os.path.expanduser(os.path.expandvars(str(item["value"])))
+        exists = os.path.exists(path)
+        free_pct = None
+        if exists:
+            try:
+                # psutil.disk_usage works for both files and directories. If
+                # the path is a file that doesn't exist yet, fall back to its
+                # parent directory so we can still report disk capacity.
+                target = path if os.path.isdir(path) else os.path.dirname(path)
+                usage = psutil.disk_usage(target)
+                free_pct = round(100 * usage.free / usage.total, 1)
+            except Exception:
+                free_pct = None
+        metrics[item["name"]] = {"exists": exists, "free_pct": free_pct}
+
+    return metrics
 
 
 def update_setting(name: str, value: str) -> bool:
@@ -2725,6 +2751,13 @@ def init_routes(app: Flask) -> None:
             if not placed:
                 grouped_settings["Other"].append(setting)
 
+        file_location_items = [
+            s
+            for s in settings
+            if s["name"] in SETTINGS_GROUPS.get("File Locations", [])
+        ]
+        file_info = file_location_metrics(file_location_items)
+
         metrics = scheduling.get_system_metrics()
         feeds = scheduling.get_feed_status()
         last_summary = scheduling.get_last_summary_time()
@@ -2736,6 +2769,7 @@ def init_routes(app: Flask) -> None:
             feeds=feeds,
             last_summary=last_summary,
             choices=SETTINGS_CHOICES,
+            file_info=file_info,
             page_title="Settings",
         )
 
