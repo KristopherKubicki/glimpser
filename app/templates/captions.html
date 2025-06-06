@@ -24,6 +24,9 @@
             btn.textContent =
               data.speed > 0 ? "Disable Chyron" : "Enable Chyron";
           }
+          if (window.updateChyron) {
+            window.updateChyron(data.speed);
+          }
         });
     }
   </script>

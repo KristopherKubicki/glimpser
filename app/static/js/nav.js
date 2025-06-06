@@ -194,12 +194,26 @@ export function initNav() {
 
     const captionsIcon = document.getElementById("captions");
     const captionChyron = document.getElementById("caption-chyron");
-    const chyronSpeed = captionChyron
+    let chyronSpeed = captionChyron
       ? parseFloat(captionChyron.dataset.speed || "0")
       : 0;
     if (captionChyron && chyronSpeed > 0) {
       captionChyron.style.setProperty("--chyron-speed", `${chyronSpeed}s`);
     }
+    window.updateChyron = async (speed) => {
+      if (!captionChyron) return;
+      chyronSpeed = speed;
+      captionChyron.dataset.speed = speed;
+      captionChyron.style.setProperty("--chyron-speed", `${speed}s`);
+      if (speed > 0) {
+        const data = await fetchJson("/captions_status");
+        if (data && data.caption) {
+          showCaption(data.caption);
+        }
+      } else {
+        captionChyron.classList.remove("show");
+      }
+    };
     let lastCaptionTime = null;
 
     let idle = false;
