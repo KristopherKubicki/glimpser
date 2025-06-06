@@ -246,6 +246,9 @@ def output_shutdown_stats():
     logging.info("Machine HW Accel: %s", metrics["machine_hwaccel"])
     logging.info("FFmpeg HW Accel: %s", metrics["ffmpeg_hwaccel"])
     logging.info("HW Accel Enabled: %s", metrics["hwaccel_enabled"])
+    logging.info("GPU Support: %s", metrics["gpu_support"])
+    logging.info("FFmpeg GPU Enabled: %s", metrics["ffmpeg_gpu_enabled"])
+    logging.info("Danger Mode: %s", metrics["danger_mode"])
     logging.info("Thank you for running Glimpser. Goodbye!")
 
 
