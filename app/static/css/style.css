@@ -237,6 +237,13 @@ h2 {
     grid-template-columns: 1fr; /* Single column layout on mobile */
     padding: 10px; /* Reduce padding on mobile */
   }
+  #grid-width-slider {
+    display: none;
+  }
+  .templateDiv {
+    width: 100%;
+    flex: 0 0 100%;
+  }
 
   /* Improve form layout on mobile */
   #template-form,
@@ -442,7 +449,7 @@ body.light-mode {
 }
 
 .hide-captions .caption-overlay {
-    display: none;
+  display: none;
 }
 
 #status-legend {
@@ -825,17 +832,17 @@ a {
 }
 
 .clock-overlay {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    z-index: 10;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 10;
 }
 
 .digital-clock {
-    font-size: 14px;
-    line-height: 25px;
-    text-align: center;
-    color: var(--text-color);
+  font-size: 14px;
+  line-height: 25px;
+  text-align: center;
+  color: var(--text-color);
 }
 
 .clock-face {
