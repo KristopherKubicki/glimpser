@@ -30,6 +30,7 @@ from app.config import (
     LOGGING_PATH,
     FFMPEG_PATH,
     FFMPEG_HWACCEL,
+    get_setting,
 )
 from app.utils.db import SessionLocal
 from app.models import Summary
@@ -1050,6 +1051,11 @@ def get_system_metrics():
         "machine_hwaccel": machine_supports_hwaccel(),
         "ffmpeg_hwaccel": ffmpeg_supports_hwaccel(),
         "hwaccel_enabled": bool(FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false"),
+        "gpu_support": machine_supports_hwaccel(),
+        "ffmpeg_gpu_enabled": bool(
+            FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false"
+        ),
+        "danger_mode": get_setting("DANGER_MODE", "True") == "True",
     }
 
 
@@ -1153,7 +1159,7 @@ def get_feed_status():
             return None
         try:
             dt = datetime.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-            return dt.isoformat() + "Z"
+            return dt.isoformat()
         except Exception:
             return ts
 

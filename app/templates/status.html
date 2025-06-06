@@ -72,6 +72,9 @@ content %} {% include '_status_tab.html' %} {% endblock %} {% extends
       class="status-dot {{ 'ok' if metrics.hwaccel_enabled else 'error' }}"
     ></span>
   </li>
+  <li title="Danger mode enabled setting">
+    Danger Mode: {{ metrics.danger_mode }}
+  </li>
 </ul>
 {% endcall %} {% call card('Feed Status') %}
 <table id="feed-status" class="feed-status">

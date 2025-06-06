@@ -93,6 +93,9 @@ class TestGetSystemMetrics(unittest.TestCase):
         self.assertTrue(metrics["machine_hwaccel"])
         self.assertTrue(metrics["ffmpeg_hwaccel"])
         self.assertTrue(metrics["hwaccel_enabled"])
+        self.assertTrue(metrics["gpu_support"])
+        self.assertTrue(metrics["ffmpeg_gpu_enabled"])
+        self.assertTrue(metrics["danger_mode"])
 
 
 if __name__ == "__main__":
