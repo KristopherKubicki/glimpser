@@ -260,8 +260,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
         source.onerror = (e) => {
-            console.error('Discovery connection error', e);
-            msg.textContent = `Error discovering cameras: ${e?.message || e}`;
+            console.error('Discovery error', e);
+            let text = 'Error discovering cameras';
+            if (e && e.message) {
+                text += `: ${e.message}`;
+            }
+            msg.textContent = text;
             progress.style.display = 'none';
             source.close();
         };
