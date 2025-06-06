@@ -1,6 +1,6 @@
 # Responsive Design
 
-Glimpser now adapts to phones and tablets. Tables reflow vertically to avoid horizontal scrolling and video grids automatically switch to a single column when viewed on devices without hover capability or small viewports. The navigation menu stays expanded on small screens and does not show the hamburger button except on the Settings page where collapsing the menu helps conserve space.
+Glimpser now adapts to phones and tablets. Tables reflow vertically to avoid horizontal scrolling and video grids automatically switch to a single column when viewed on devices without hover capability or small viewports. The navigation menu stays expanded on small screens and does not show the hamburger button except on the Settings page where collapsing the menu helps conserve space. JavaScript ensures the menu remains open elsewhere so mobile users can quickly access links.
 
 The main template view scales thumbnails with the width slider and the page now uses smooth scrolling for longer lists. Previews resize by adjusting their width and height, ensuring the full image remains visible without shifting or cropping. When a group is opened, the slider defaults to the smallest width that keeps all cameras visible without scrolling.
 
