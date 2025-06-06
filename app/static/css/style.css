@@ -1223,6 +1223,23 @@ footer.fade-out {
   padding: 2px 5px;
   border-radius: 2px;
 }
+
+@media (max-width: 600px) {
+  footer {
+    padding: 5px 10px 0;
+  }
+  .footer-nav {
+    gap: 5px;
+    font-size: 0.85em;
+  }
+  .footer-copy,
+  .footer-build {
+    display: none;
+  }
+  main {
+    padding-bottom: 45px;
+  }
+}
 .alert-success {
   background-color: #d4edda;
   border-color: #c3e6cb;
