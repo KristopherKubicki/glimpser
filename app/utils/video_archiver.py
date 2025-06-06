@@ -533,11 +533,9 @@ def compile_to_video(camera_path, video_path) -> bool:
                     else:
                         concatenate_videos(in_process_video, temp_video, video_path)
 
-    # Add new screenshots to the "in-process" video
-    # Assuming screenshots are added at a regular interval, they can be appended in order
-    # Here, you would add logic to append new screenshots to the "in-process" video using ffmpeg
-    # This part can be complex because ffmpeg doesn't natively append to videos without re-encoding
-    # You may want to consider alternative methods of video assembly if frequent appending is required
+    # Frames are encoded into temporary segments. When an existing
+    # in-process video is present, segments are concatenated using the
+    # concat demuxer without re-encoding.
 
 
 def archive_screenshots():
