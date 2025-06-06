@@ -207,6 +207,8 @@ snapshot image rather than a true video stream.
 - HTTP errors like `403 Forbidden` or repeated ffmpeg timeouts typically mean
   the stream is blocked. Verify the URL is accessible from the host running
   Glimpser and check for required credentials or firewall rules.
+- When ffmpeg repeatedly fails, retries now back off exponentially up to
+  `LIVE_MAX_RETRY_DELAY` seconds so the server isn't hammered.
 - Some cameras reject ffmpeg if it does not send browser-style headers. The
   live stream now includes the configured `UA`, `referer` and `origin` headers.
   Adjust these settings if your camera expects a specific user agent.

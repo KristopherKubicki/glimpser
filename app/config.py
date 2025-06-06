@@ -339,6 +339,11 @@ LIVE_FALLBACK_FPS = int(get_setting("LIVE_FALLBACK_FPS", 1))
 # not wasted.
 LIVE_MAX_FAILURES = int(get_setting("LIVE_MAX_FAILURES", 10))
 
+# Maximum seconds to wait between live stream restarts when ffmpeg exits
+# without producing any output. The delay increases exponentially on each
+# consecutive failure up to this limit.
+LIVE_MAX_RETRY_DELAY = int(get_setting("LIVE_MAX_RETRY_DELAY", 30))
+
 # Duration of the caption chyron scroll in seconds. Set to 0 to disable
 # the chyron entirely. When enabled, the same value controls how long
 # the banner remains visible after a caption arrives.
