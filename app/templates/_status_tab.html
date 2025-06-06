@@ -47,27 +47,6 @@
     Thread Count: {{ metrics.thread_count }}
   </li>
   <li title="System uptime">Uptime: {{ metrics.uptime }}</li>
-  <li title="Installed ffmpeg version">
-    FFmpeg: {{ metrics.ffmpeg_version }} ({{ metrics.ffmpeg_path }})
-  </li>
-  <li title="Hardware acceleration devices present">
-    Machine HW Accel:
-    <span
-      class="status-dot {{ 'ok' if metrics.machine_hwaccel else 'error' }}"
-    ></span>
-  </li>
-  <li title="ffmpeg has hardware acceleration support">
-    FFmpeg HW Accel:
-    <span
-      class="status-dot {{ 'ok' if metrics.ffmpeg_hwaccel else 'error' }}"
-    ></span>
-  </li>
-  <li title="Hardware acceleration enabled via config">
-    HW Accel Enabled:
-    <span
-      class="status-dot {{ 'ok' if metrics.hwaccel_enabled else 'error' }}"
-    ></span>
-  </li>
 </ul>
 {% endcall %} {% call card('Feed Status') %}
 <table id="feed-status" class="feed-status">
@@ -76,6 +55,11 @@
       <th class="sortable" data-type="string">Feed</th>
       <th class="sortable" data-type="date">Last Image</th>
       <th class="sortable" data-type="date">Last Caption</th>
+      <th class="sortable" data-type="number">Shots</th>
+      <th class="sortable" data-type="number">Videos</th>
+      <th class="sortable" data-type="number">Storage</th>
+      <th class="sortable" data-type="number">LLM Resp</th>
+      <th class="sortable" data-type="number">LLM Cost</th>
       <th class="sortable" data-type="string">Status</th>
     </tr>
   </thead>
@@ -114,6 +98,21 @@
           {{ feed.last_caption_display }}
         </span>
         {% else %} N/A {% endif %}
+      </td>
+      <td data-label="Shots" data-value="{{ feed.screenshot_count }}">
+        {{ feed.screenshot_count }}
+      </td>
+      <td data-label="Videos" data-value="{{ feed.video_count }}">
+        {{ feed.video_count }}
+      </td>
+      <td data-label="Storage" data-value="{{ feed.storage_usage_bytes }}">
+        {{ feed.storage_usage }}
+      </td>
+      <td data-label="LLM Resp" data-value="{{ feed.llm_response_count }}">
+        {{ feed.llm_response_count }}
+      </td>
+      <td data-label="LLM Cost" data-value="{{ feed.llm_cost_estimate }}">
+        {{ feed.llm_cost_estimate }}
       </td>
       <td data-label="Status" data-value="{{ feed.status }}">
         <span

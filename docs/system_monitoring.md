@@ -16,7 +16,9 @@ Below the system metrics the page lists each configured feed with a color-coded 
 - **Yellow** – the last capture is behind its configured frequency.
 - **Red** – capturing failed or the feed is offline.
 
-The dashboard also shows when the most recent system summary was generated.
+The dashboard also shows when the most recent system summary was generated. The
+same table appears on the _System Status_ tab under Settings so you can review
+usage metrics without leaving the configuration interface.
 
 Additional KPI columns track the number of screenshots, videos, total storage
 used, LLM responses, and estimated LLM cost for each feed.
