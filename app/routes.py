@@ -3238,6 +3238,28 @@ def init_routes(app: Flask) -> None:
     def logs():
         return render_template("logs.html", page_title="Logs")
 
+    @app.route("/cost_summary")
+    @login_required
+    def cost_summary_page():
+        templates = template_manager.get_templates()
+        costs = {
+            name: template_manager.get_llm_cost_estimate(name) for name in templates
+        }
+        return render_template(
+            "cost_summary.html", costs=costs, page_title="LLM Cost Summary"
+        )
+
+    @app.route("/api/llm_cost_summary")
+    @login_required
+    def api_llm_cost_summary():
+        start = request.args.get("start")
+        end = request.args.get("end")
+        templates = template_manager.get_templates()
+        costs = {
+            name: template_manager.get_llm_cost_estimate(name) for name in templates
+        }
+        return jsonify(costs)
+
     @app.route("/stream_logs")
     @login_required
     def stream_logs():

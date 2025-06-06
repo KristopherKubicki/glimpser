@@ -4,16 +4,10 @@ Glimpser now records the number of tokens used when generating captions.
 Token counts are stored in `data/llm_usage.json` keyed by template name.
 Costs are calculated at `$0.005` per thousand tokens.
 Use the captions page to view each template's estimated cost.
-The Settings page now includes a **Costs** tab with a summary table and pie
-chart. Filter by group or camera to see usage for specific feeds.
 
-The KPI filter now includes **From** and **To** fields so you can select a date
-range when calculating costs. Leaving the fields blank continues to show the
-total cost for all time.
-
-The Settings page now includes a **Costs** tab with a summary table and pie
-chart. Filter by group or camera to see usage for specific feeds.
-
+An additional **LLM Cost Summary** page now provides a date range picker to
+review costs for a specific period. Open the page from the navigation bar and
+select your desired start and end dates.
 
 ## LLM Response Cache
 

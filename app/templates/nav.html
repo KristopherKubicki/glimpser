@@ -110,6 +110,11 @@
           />
         </svg>
       </a>
+      <a href="/cost_summary" id="cost-summary" class="settings-icon" title="LLM Cost Summary" aria-label="LLM Cost Summary">
+        <svg width="20" height="20">
+          <use href="{{ url_for('static', filename='icons/sprite.svg') }}#gear" />
+        </svg>
+      </a>
     </div>
     <a href="/live" id="live" aria-label="Open Live page">
       <div id="nav-clock" class="cool-clock" data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}" style="{% if not CLOCK_NAVBAR %}display:none;{% endif %}" title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming." aria-label="Open Live page for realtime streaming">
