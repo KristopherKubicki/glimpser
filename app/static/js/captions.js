@@ -53,12 +53,25 @@ export function initCaptions() {
       if (table && data.answer) {
         const now = new Date().toISOString().replace("T", " ").slice(0, 19);
         const rowQ = document.createElement("tr");
-        rowQ.innerHTML = `<td>${now}</td><td>Q: ${chatQuestion.value}</td>`;
+        rowQ.innerHTML = `<td>${now}</td><td>Q: ${chatQuestion.value}</td><td><button class="play-caption" title="Play caption">&#9658;</button></td>`;
+        rowQ.querySelector("button").dataset.caption =
+          `Q: ${chatQuestion.value}`;
         const rowA = document.createElement("tr");
-        rowA.innerHTML = `<td>${now}</td><td>A: ${data.answer}</td>`;
+        rowA.innerHTML = `<td>${now}</td><td>A: ${data.answer}</td><td><button class="play-caption" title="Play caption">&#9658;</button></td>`;
+        rowA.querySelector("button").dataset.caption = `A: ${data.answer}`;
         table.prepend(rowA);
         table.prepend(rowQ);
       }
+    });
+
+    const captionsTable = document.getElementById("captions-table");
+    captionsTable?.addEventListener("click", (e) => {
+      const btn = e.target.closest(".play-caption");
+      if (!btn || !window.speechSynthesis) return;
+      const text = btn.dataset.caption;
+      if (!text) return;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
     });
 
     document.getElementById("camera-table")?.addEventListener("click", (e) => {
