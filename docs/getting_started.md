@@ -58,7 +58,8 @@ This guide will walk you through the process of setting up Glimpser and running 
 
 8. Explore the auto-generated captions and summaries.
 9. Use the **Suggest Prompt** button on a template's detail page to have the system propose better caption text.
-10. Visit the **Captions** page to review and manage prompts. The view now has three tabs: **Prompts** (camera grid with filters), **History** (recent captions table), and **Bulk Tools** for TSV updates. The History tab is always expanded and provides search and date range filters. Use the search box in the Prompts tab to quickly find a camera. KPI and caption columns can be sorted by clicking their headers, which display a ↕ icon. Rows show relative timestamps, and thumbnails appear dimmed until hovered. A width slider resizes thumbnails and adjusts their height, capping them at 1080&nbsp;px. The page itself now stretches to the full width of your browser so more cameras fit on screen.
+
+10. Visit the **Captions** page to review and manage prompts. The view now has three tabs: **Prompts** (camera grid with filters), **History** (recent captions table), and **Bulk Tools** for TSV updates. The History tab is always expanded and provides search and date range filters. Use the search box in the Prompts tab to quickly find a camera. A **Sort** dropdown orders cameras by the last or next capture time, while KPI and caption columns remain sortable by clicking their headers. Rows show relative timestamps, and thumbnails appear dimmed until hovered. A width slider resizes thumbnails and adjusts their height, capping them at 1080&nbsp;px.
 
 
 ## Next Steps
