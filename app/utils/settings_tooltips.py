@@ -26,13 +26,28 @@ SETTINGS_TOOLTIPS = {
     "CLOCK_OVERLAY": "Show clock on video overlay",
     "CLOCK_DIGITAL": "Display clock as digital text",
     "CLOCK_NAVBAR": "Show clock in the navigation bar",
+    "HEALTH_STATUS_ALWAYS_VISIBLE": "Keep the system performance icon visible",
+    "MAX_COMPRESSED_VIDEO_AGE": "Days to keep archived videos",
+    "NAV_ICON": "Path to the logo used in navigation",
+    "UA": "User-Agent string for website requests",
 }
 
 # Predefined choices for select fields on the settings page. The "Other"
 # option reveals a text input allowing custom values.
 SETTINGS_CHOICES = {
     "HOST": ["0.0.0.0", "127.0.0.1", "localhost"],
-    "LANG": ["en-US", "es-ES", "fr-FR", "de-DE"],
+    "LANG": [
+        "en-US",  # English
+        "es-ES",  # Spanish
+        "fr-FR",  # French
+        "de-DE",  # German
+        "zh-CN",  # Chinese Simplified
+        "ja-JP",  # Japanese
+        "pt-BR",  # Portuguese (Brazil)
+        "hi-IN",  # Hindi
+        "ar-SA",  # Arabic
+        "ru-RU",  # Russian
+    ],
     "LOG_LEVEL": ["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
     "FLASK_LOG_LEVEL": ["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
     "TZ": [
@@ -60,6 +75,9 @@ SETTINGS_GROUPS = {
         "MAX_WORKERS",
         "LOG_LEVEL",
         "FLASK_LOG_LEVEL",
+        "CLOCK_OVERLAY",
+        "CLOCK_DIGITAL",
+        "CLOCK_NAVBAR",
     ],
     "Credentials": [
         "USER_NAME",
@@ -103,7 +121,7 @@ SETTINGS_GROUPS = {
         "FFMPEG_HWACCEL",
         "FFMPEG_THREADS",
     ],
-    "Email": [
+    "Integrations": [
         "EMAIL_ENABLED",
         "EMAIL_SENDER",
         "EMAIL_RECIPIENTS",
@@ -112,9 +130,30 @@ SETTINGS_GROUPS = {
         "EMAIL_USE_TLS",
         "EMAIL_USERNAME",
         "EMAIL_PASSWORD",
+        "TWILIO_SID",
+        "TWILIO_TOKEN",
+        "TWILIO_NUMBER",
+        "MCP_SERVER_COMMAND",
+        "MCP_SERVER_URL",
+        "CLOCK_OVERLAY",
+        "CLOCK_DIGITAL",
+        "CLOCK_NAVBAR",
+        "CAP_ENDPOINT",
+        "CAP_SENDER",
     ],
-    "SMS": ["TWILIO_SID", "TWILIO_TOKEN", "TWILIO_NUMBER"],
-    "CAP": ["CAP_ENDPOINT", "CAP_SENDER"],
-    "MCP": ["MCP_SERVER_COMMAND", "MCP_SERVER_URL"],
-    "Clock": ["CLOCK_OVERLAY", "CLOCK_DIGITAL", "CLOCK_NAVBAR"],
 }
+
+# Fields that should only allow numeric values on the settings page.
+NUMERIC_FIELDS = {
+    "MAX_WORKERS",
+    "EMAIL_SMTP_PORT",
+    "LIVE_FALLBACK_FPS",
+    "LIVE_MAX_FAILURES",
+    "CHYRON_SPEED",
+    "WATCHDOG_FAILURE_THRESHOLD",
+    "WATCHDOG_RESTART_COOLDOWN",
+    "WATCHDOG_MAX_FILE_HANDLES",
+}
+
+# Fields that expect email addresses.
+EMAIL_FIELDS = {"EMAIL_SENDER", "EMAIL_RECIPIENTS"}

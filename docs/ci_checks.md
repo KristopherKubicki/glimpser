@@ -11,4 +11,6 @@ following tasks:
 - Scans dependencies using `pip safety` and `npm audit`.
 - Caches Python and Node dependencies to speed up builds.
 
-These checks help catch regressions and security issues before code is merged.
+Running `pre-commit run --all-files` locally will execute the same Black and
+Flake8 checks before they fail in CI. These checks help catch regressions and
+security issues before code is merged.

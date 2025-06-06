@@ -36,13 +36,16 @@ class TestGetDriver(unittest.TestCase):
         ss._DRIVER = None
 
     def test_driver_cached(self):
-        with patch(
-            "app.utils.screenshots.ChromeDriverManager.install",
-            return_value=sentinel.binary,
-        ) as mock_install, patch(
-            "app.utils.screenshots.webdriver.Chrome",
-            return_value=sentinel.driver,
-        ) as mock_chrome:
+        with (
+            patch(
+                "app.utils.screenshots.ChromeDriverManager.install",
+                return_value=sentinel.binary,
+            ) as mock_install,
+            patch(
+                "app.utils.screenshots.webdriver.Chrome",
+                return_value=sentinel.driver,
+            ) as mock_chrome,
+        ):
             driver1 = ss.get_driver(sentinel.options)
             driver2 = ss.get_driver(sentinel.options)
             self.assertIs(driver1, sentinel.driver)

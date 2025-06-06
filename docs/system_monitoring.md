@@ -34,10 +34,15 @@ name, last image time, last caption time, any KPI column, or status.
 - **Open Files** – number of file descriptors opened by the process
 - **Thread Count** – active thread count for the application
 - **Uptime** – elapsed time since the app started
-- **FFmpeg Version** – version string reported by the ffmpeg binary
+- **FFmpeg Version** – version string and path to the ffmpeg binary
 - **Machine HW Accel** – whether GPU devices are detected
 - **FFmpeg HW Accel** – whether ffmpeg supports hardware acceleration
 - **HW Accel Enabled** – if hardware acceleration is configured
+- **FFmpeg GPU Enabled** – whether ffmpeg is currently using GPU acceleration
+- **Danger Mode Enabled** – whether the DANGER_MODE setting is on
+
+Boolean metrics now display a green dot when enabled and a red dot when
+disabled to make the status easier to scan.
 
 ## Streaming Logs
 
@@ -69,10 +74,11 @@ can monitor recent caption text without leaving the dashboard.
 ## Caption Activity Indicator
 
 The navigation bar shows a captions icon that reflects how recent the last
+
 caption update was. It flashes with the newest caption text when a group message
-arrives. After a few seconds of inactivity the latest global summary slowly
-scrolls across the top in a gray chyron. Clicking this text opens the `/captions`
-page for more
+arrives. The latest global summary slowly scrolls across the top in a gray
+chyron and stays visible until a new caption replaces it. Clicking this text
+opens the `/captions` page for more
 details. The scroll duration comes from the `CHYRON_SPEED` setting which is
 `0` by default to disable the banner. The icon remains green for one minute
 after a caption, changes to
