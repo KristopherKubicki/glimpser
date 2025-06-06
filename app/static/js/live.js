@@ -665,7 +665,6 @@ function playMP4() {
   resetVideo();
   video.style.display = "block";
   stopLiveSwitch();
-  stopPNG();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     const groupName = currentCamera.split("group-")[1];
@@ -784,9 +783,10 @@ function playPNG() {
   resetVideo();
   video.pause();
   video.src = "";
+  stopLiveSwitch();
+  stopPNG();
   video.style.display = "none";
   image.style.display = "block";
-  stopLiveSwitch();
   const slider = document.getElementById("speed-slider");
   const speed = Math.pow(2, slider.value);
   const seekBar = document.getElementById("seek-bar");
@@ -803,7 +803,6 @@ function playPNG() {
       msg: `seekBar:${seekBar},speed:${speed}`,
     }),
   );
-  stopPNG();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     let cameraIndex = 0;
@@ -851,6 +850,8 @@ function playMJPG() {
   resetVideo();
   video.pause();
   video.src = "";
+  stopLiveSwitch();
+  stopPNG();
   video.style.display = "none";
   image.style.display = "block";
   // MJPEG streams are continuous images, disable scrubbing
@@ -860,8 +861,6 @@ function playMJPG() {
     seekBar.style.pointerEvents = "none";
     seekBar.disabled = true;
   }
-  stopLiveSwitch();
-  stopPNG();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     const groupName = currentCamera.split("group-")[1];
@@ -884,6 +883,8 @@ function playMotion() {
   resetVideo();
   video.pause();
   video.src = "";
+  stopLiveSwitch();
+  stopPNG();
   video.style.display = "none";
   image.style.display = "block";
   const seekBar = document.getElementById("seek-bar");
@@ -892,8 +893,6 @@ function playMotion() {
     seekBar.style.pointerEvents = "none";
     seekBar.disabled = true;
   }
-  stopLiveSwitch();
-  stopPNG();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     const groupName = currentCamera.split("group-")[1];
