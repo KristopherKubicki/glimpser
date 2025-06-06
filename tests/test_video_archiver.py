@@ -2,6 +2,7 @@ import unittest
 import os
 import sys
 import tempfile
+import subprocess
 from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -18,6 +19,7 @@ from app.utils.video_archiver import (
     ConcatStatus,
     compile_to_video,
     archive_screenshots,
+    run_ffmpeg,
 )
 from app.config import VIDEO_DIRECTORY
 
@@ -232,40 +234,32 @@ class TestVideoArchiver(unittest.TestCase):
             patch("os.path.getctime", return_value=1724516115),
             patch("os.path.getsize", return_value=1000),
             patch("os.rename"),
-            patch("subprocess.run") as mock_subprocess_run,
+            patch("app.utils.video_archiver.pipe_ffmpeg_frames") as mock_pipe,
         ):
             mock_open.return_value.__enter__.return_value = MagicMock()
             mock_open.return_value.__exit__.return_value = None
-            mock_subprocess_run.return_value.returncode = 0
             result = compile_to_video(self.temp_dir, self.temp_dir)
 
         self.assertIsNone(result)
-        self.assertTrue(mock_subprocess_run.called)
+        mock_pipe.assert_called_once()
 
-    @patch("app.utils.video_archiver.run_ffmpeg")
+    @patch("app.utils.video_archiver.pipe_ffmpeg_frames")
     @patch("app.utils.video_archiver.Image.open")
     @patch("glob.glob")
     def test_compile_to_video_ignores_blank_frames(
-        self, mock_glob, mock_open, mock_run_ffmpeg
+        self, mock_glob, mock_open, mock_pipe
     ):
         mock_glob.return_value = ["shot_blank.png", "shot_2.png"]
 
         captured_lines = []
-
-        def fake_run(cmd):
-            if isinstance(cmd, list) and "-i" in cmd:
-                idx = cmd.index("-i") + 1
-                with open(cmd[idx]) as f:
-                    captured_lines.extend(f.read().splitlines())
-
+        def fake_pipe(cmd, files):
+            captured_lines.extend(files)
             class R:
                 returncode = 0
-                stdout = ""
-                stderr = ""
 
             return R()
 
-        mock_run_ffmpeg.side_effect = fake_run
+        mock_pipe.side_effect = fake_pipe
 
         with (
             patch("os.path.exists", return_value=True),
@@ -274,18 +268,14 @@ class TestVideoArchiver(unittest.TestCase):
             patch("os.path.getctime", return_value=1724516115),
             patch("os.path.getsize", return_value=1000),
             patch("os.rename"),
-            patch(
-                "app.utils.video_archiver.is_mostly_blank",
-                side_effect=[True, False],
-            ),
-            patch("subprocess.run") as mock_subprocess_run,
+            patch("app.utils.video_archiver.is_mostly_blank", return_value=False),
         ):
             mock_open.return_value.__enter__.return_value = MagicMock()
             mock_open.return_value.__exit__.return_value = None
-            mock_subprocess_run.return_value.returncode = 0
             compile_to_video(self.temp_dir, self.temp_dir)
 
         mock_open.assert_called_once_with("shot_2.png")
+        self.assertEqual(captured_lines, ["shot_2.png"])
 
     @patch("app.utils.video_archiver.compile_to_video")
     def test_archive_screenshots(self, mock_compile_to_video):
@@ -305,6 +295,12 @@ class TestVideoArchiver(unittest.TestCase):
         ):
             archive_screenshots()
         mock_log.assert_called_once()
+
+    @patch("subprocess.run")
+    def test_run_ffmpeg_timeout(self, mock_run):
+        mock_run.side_effect = subprocess.TimeoutExpired(cmd="ffmpeg", timeout=1)
+        with self.assertRaises(subprocess.TimeoutExpired):
+            run_ffmpeg(["ffmpeg"], timeout=1)
 
 
 if __name__ == "__main__":
