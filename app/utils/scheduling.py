@@ -1157,7 +1157,7 @@ def get_feed_status():
             return None
         try:
             dt = datetime.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-            return dt.isoformat() + "Z"
+            return dt.isoformat()
         except Exception:
             return ts
 
