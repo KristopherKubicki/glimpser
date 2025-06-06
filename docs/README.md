@@ -1,12 +1,6 @@
-# Glimpser Documentation Overview
 
-This folder contains the full set of guides and references for Glimpser. Start with [docs/index.md](index.md) to browse all available topics.
+# Documentation Overview
 
-Key categories include:
+This directory contains all of the user and developer guides for Glimpser. The documentation is built with [MkDocs](https://www.mkdocs.org/) using `mkdocs.yml` at the project root to define the navigation.
 
-- **Getting Started** – installation and quick start guides.
-- **Architecture** – design notes and data flow diagrams.
-- **Developer Guides** – contributing, testing and release workflows.
-- **Reference** – command line usage and API details.
-
-Additional markdown files provide feature walk-throughs and troubleshooting tips.
+Start with the [documentation index](index.md) for a listing of every topic. Each markdown file here describes a feature, installation method, or operational guide.
