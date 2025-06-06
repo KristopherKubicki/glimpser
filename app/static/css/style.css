@@ -238,6 +238,13 @@ h2 {
     grid-template-columns: 1fr; /* Single column layout on mobile */
     padding: 10px; /* Reduce padding on mobile */
   }
+  #grid-width-slider {
+    display: none;
+  }
+  .templateDiv {
+    width: 100%;
+    flex: 0 0 100%;
+  }
 
   /* Improve form layout on mobile */
   #template-form,

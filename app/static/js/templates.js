@@ -23,6 +23,7 @@ export function initTemplates() {
       .getElementById("template-form")
       ?.closest("details");
     const slider = document.getElementById("grid-width-slider");
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
     const templateList = document.getElementById("template-list");
     const captionToggle = document.getElementById("toggle-captions");
     const MAX_THUMBNAIL_HEIGHT = 1080;
@@ -135,7 +136,17 @@ export function initTemplates() {
 
       slider.addEventListener("input", handleSlider);
       slider.addEventListener("change", handleSlider);
-      handleSlider();
+      if (isMobile) {
+        slider.style.display = "none";
+        slider.value = Math.min(window.innerWidth, slider.max);
+        handleSlider();
+        window.addEventListener("resize", () => {
+          slider.value = Math.min(window.innerWidth, slider.max);
+          handleSlider();
+        });
+      } else {
+        handleSlider();
+      }
     }
 
     if (form) {
