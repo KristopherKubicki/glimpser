@@ -237,11 +237,12 @@ error* because the response is missing or invalid.
 ### Problem: Buttons at the bottom of the Templates page are hidden
 
 The footer uses a fixed position at the bottom of the screen. On long pages this
-could overlap the last buttons.
+could overlap the last buttons. The site now calculates the footer height and
+sets a `--footer-space` CSS variable so mobile views always leave enough room.
 
 **Solution:**
 - Glimpser now adds extra padding to the `main` element so page content scrolls
-  fully above the footer. Update to the latest version or add a similar rule in
+  fully above the footer. Update to the latest version or mimic this logic in
   your custom CSS.
 
 ## 13. Camera Discovery Issues

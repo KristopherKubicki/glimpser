@@ -68,7 +68,6 @@
         <details title="Expand to add a new camera">
             <summary>Add Camera</summary>
             <div id="template-form" title="Form to add a new template">
-                <h3>Add Camera</h3>
                 <form id="add-template-form" action="/templates" method="post" onsubmit="return validateForm()" title="Enter details for the new template">
                     <div>
                         <label for="name" title="Name of the template">Template Name:</label>
@@ -150,13 +149,15 @@
     {% endcall %}
 </div>
 <script>
-const button = document.getElementById('discover-btn');
-const msg = document.getElementById('discover-message');
-const progress = document.getElementById('discover-progress');
-const body = document.getElementById('discover-body');
-const exportJson = document.getElementById('export-json');
-const exportCsv = document.getElementById('export-csv');
-const renderInfo = (info) => {
+document.addEventListener('DOMContentLoaded', () => {
+  const button = document.getElementById('discover-btn');
+  const msg = document.getElementById('discover-message');
+  const progress = document.getElementById('discover-progress');
+  const body = document.getElementById('discover-body');
+  const exportJson = document.getElementById('export-json');
+  const exportCsv = document.getElementById('export-csv');
+
+  const renderInfo = (info) => {
     if (!info) return '';
     const pieces = [];
     if (info.name) pieces.push(info.name);
@@ -164,14 +165,16 @@ const renderInfo = (info) => {
     if (info.path) pieces.push(info.path);
     if (info.sdp) pieces.push('SDP available');
     Object.entries(info).forEach(([k, v]) => {
-        if (!['name', 'xaddr', 'path', 'sdp', 'mac', 'manufacturer'].includes(k)) {
-            pieces.push(`${k}: ${v}`);
-        }
+      if (!['name', 'xaddr', 'path', 'sdp', 'mac', 'manufacturer'].includes(k)) {
+        pieces.push(`${k}: ${v}`);
+      }
     });
     return pieces.join(' ');
-};
-let results = [];
-if (button) {
+  };
+
+  let results = [];
+
+  if (button) {
     button.addEventListener('click', async () => {
         msg.textContent = 'Searching...';
         try {
@@ -274,6 +277,7 @@ const exportData = (fmt) => {
         URL.revokeObjectURL(url);
     });
 };
-if (exportJson) exportJson.addEventListener('click', () => exportData('json'));
-if (exportCsv) exportCsv.addEventListener('click', () => exportData('csv'));
+  if (exportJson) exportJson.addEventListener('click', () => exportData('json'));
+  if (exportCsv) exportCsv.addEventListener('click', () => exportData('csv'));
+});
 </script>

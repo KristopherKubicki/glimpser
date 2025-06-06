@@ -12,3 +12,11 @@ This page lists quick reminders that appear when Glimpser starts.
 - **Need more logging?** Start the app with `--console-log` to mirror log output to your terminal.
 
 Refer to this file any time you hit a startup issue.
+
+## Startup Information Tables
+
+The startup log now prints two tables. The first lists key configuration values
+such as the host, port and whether the scheduler is enabled. The second table
+shows current system metrics like CPU and memory usage. These summaries make it
+easy to confirm everything is set up correctly before connecting to the web
+interface.
