@@ -374,7 +374,7 @@ video:hover + .play-icon {
   --table-hover-bg-color: #333;
   --table-border-color: #444;
   /* Duration for the chyron scroll animation */
-  --chyron-speed: 240s;
+  --chyron-speed: 480s;
   /* Typography */
   /* stylelint-disable-next-line value-keyword-case */
   --font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
