@@ -112,11 +112,10 @@ class TestChatGPTImageComparison(unittest.TestCase):
         comparison = ChatGPTImageComparison()
 
         # Create temporary image files
-        with tempfile.NamedTemporaryFile(
-            suffix=".png", delete=False
-        ) as temp_file1, tempfile.NamedTemporaryFile(
-            suffix=".png", delete=False
-        ) as temp_file2:
+        with (
+            tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file1,
+            tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file2,
+        ):
             image1_path = temp_file1.name
             image2_path = temp_file2.name
 
