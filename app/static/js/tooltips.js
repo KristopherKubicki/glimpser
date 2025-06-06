@@ -8,11 +8,8 @@ export function initTooltips() {
       const offset = 10;
       const tooltipWidth = tooltip.offsetWidth;
       let left = e.pageX + offset;
-      if (left + tooltipWidth > window.innerWidth - offset) {
+      if (left + tooltipWidth > window.innerWidth) {
         left = e.pageX - tooltipWidth - offset;
-        if (left < offset) {
-          left = offset;
-        }
       }
       tooltip.style.left = `${left}px`;
       tooltip.style.top = `${e.pageY + offset}px`;
