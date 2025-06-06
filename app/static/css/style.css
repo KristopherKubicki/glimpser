@@ -442,7 +442,7 @@ body.light-mode {
 }
 
 .hide-captions .caption-overlay {
-  display: none;
+    display: none;
 }
 
 #status-legend {
@@ -676,11 +676,12 @@ nav a.active {
 @media screen and (max-width: 768px) {
   /* Responsive design for mobile */
   header h1 {
-    font-size: 22px; /* Larger font size for easier tapping */
+    font-size: 1.5rem; /* Larger font size for easier tapping */
   }
 
   .menu-toggle {
     display: block;
+    font-size: 2rem; /* Larger toggle for mobile */
   }
 
   nav:not(.active) .nav-left,
@@ -694,7 +695,7 @@ nav a.active {
     flex-direction: column;
     background-color: #000;
     position: absolute;
-    top: 48px; /* Align with larger mobile header */
+    top: 56px; /* Align with larger mobile header */
     left: 0;
     right: 0;
     padding: 10px;
@@ -708,18 +709,19 @@ nav a.active {
 
   nav a {
     margin-bottom: 5px; /* Add margin for stacked items */
-    font-size: 1.1rem; /* Bigger text for touch targets */
+    font-size: 1.2rem; /* Bigger text for touch targets */
+    padding: 8px;
   }
 
   .settings-icon svg,
   .status-indicator svg {
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
   }
 
   .cool-clock {
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
   }
 
   .performance-indicator {
@@ -832,17 +834,17 @@ a {
 }
 
 .clock-overlay {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  z-index: 10;
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    z-index: 10;
 }
 
 .digital-clock {
-  font-size: 14px;
-  line-height: 25px;
-  text-align: center;
-  color: var(--text-color);
+    font-size: 14px;
+    line-height: 25px;
+    text-align: center;
+    color: var(--text-color);
 }
 
 .clock-face {
