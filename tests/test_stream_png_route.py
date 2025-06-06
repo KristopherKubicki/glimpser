@@ -68,6 +68,18 @@ class TestStreamPngRoute(unittest.TestCase):
             resp = self.client.get("/stream.png")
         self.assertEqual(resp.status_code, 200)
 
+    def test_skips_invalid_png(self):
+        self.mock_tpl.return_value = {"cam1": {"name": "cam1"}}
+        img_dir = os.path.join(self.repo_root, self.sshot_dir, "cam1")
+        invalid = os.path.join(img_dir, "cam1_bad.png")
+        with open(invalid, "wb") as fh:
+            fh.write(b"not an image")
+        valid = os.path.join(img_dir, "cam1_good.png")
+        Image.new("RGB", (1, 1)).save(valid)
+        resp = self.client.get("/stream.png")
+        self.assertEqual(resp.status_code, 200)
+        self.assertGreater(len(resp.data), 0)
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

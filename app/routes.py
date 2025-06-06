@@ -1666,6 +1666,8 @@ def init_routes(app: Flask) -> None:
                 except OSError:
                     # File might have been removed between glob and stat
                     continue
+                if not screenshots._is_valid_png(f):
+                    continue
                 files_with_mtime.append((f, mtime))
             if not files_with_mtime:
                 continue
@@ -1683,12 +1685,22 @@ def init_routes(app: Flask) -> None:
         last_time = time.time()
         last_shot = most_recent_file
 
-        if os.path.exists(most_recent_file):
+        if os.path.exists(most_recent_file) and screenshots._is_valid_png(
+            most_recent_file
+        ):
             return send_file(most_recent_file)
-        if last_file and os.path.exists(last_file):
+        if (
+            last_file
+            and os.path.exists(last_file)
+            and screenshots._is_valid_png(last_file)
+        ):
             last_shot = last_file
             return send_file(last_file)  # better than nothing
-        if last_shot and os.path.exists(last_shot):
+        if (
+            last_shot
+            and os.path.exists(last_shot)
+            and screenshots._is_valid_png(last_shot)
+        ):
             return send_file(last_shot)
         abort(404)
 
