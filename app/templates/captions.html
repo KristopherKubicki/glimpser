@@ -83,8 +83,6 @@
         <thead>
           <tr>
             <th class="sortable" data-type="string">Camera</th>
-            <th class="sortable" data-type="date">Last</th>
-            <th class="sortable" data-type="date">Next</th>
             <th>Caption</th>
           </tr>
         </thead>
@@ -123,20 +121,6 @@
                   </video>
                 </div>
               </div>
-            </td>
-            <td data-value="{{ template_details[camera]['last_screenshot'] }}">
-              <span
-                class="humanized-time"
-                data-time="{{ template_details[camera]['last_screenshot'] }}"
-                >{{ template_details[camera]['last_screenshot'] }}</span
-              >
-            </td>
-            <td data-value="{{ template_details[camera]['next_screenshot'] }}">
-              <span
-                class="humanized-time"
-                data-time="{{ template_details[camera]['next_screenshot'] }}"
-                >{{ template_details[camera]['next_screenshot'] }}</span
-              >
             </td>
             <td>
               <form id="form-{{ camera }}" class="notes-form caption-box">
