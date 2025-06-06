@@ -327,6 +327,55 @@ def display_startup_tips():
         )
 
 
+def _format_table(rows, headers):
+    col_widths = [
+        max(len(str(item)) for item in column) for column in zip(headers, *rows)
+    ]
+    header = " | ".join(h.ljust(w) for h, w in zip(headers, col_widths))
+    separator = "-+-".join("-" * w for w in col_widths)
+    lines = [header, separator]
+    for row in rows:
+        lines.append(" | ".join(str(item).ljust(w) for item, w in zip(row, col_widths)))
+    return "\n".join(lines)
+
+
+def display_startup_info(args=None):
+    """Log configuration and system metrics in table form."""
+    border = "-" * 60
+    logging.info(border)
+    logging.info("Startup Configuration")
+    logging.info(border)
+    config_table = [
+        ["Version", config.VERSION],
+        ["Host", config.HOST],
+        ["Port", config.PORT],
+        ["Debug Mode", config.DEBUG_MODE],
+        [
+            "Scheduler Enabled",
+            "No" if getattr(args, "no_scheduler", False) else "Yes",
+        ],
+        [
+            "Watchdog Enabled",
+            "No" if getattr(args, "no_watchdog", False) else "Yes",
+        ],
+    ]
+    logging.info("\n" + _format_table(config_table, ["Option", "Value"]))
+
+    metrics = get_system_metrics()
+    logging.info(border)
+    logging.info("System Metrics")
+    logging.info(border)
+    metrics_table = [
+        ["CPU Usage", f"{metrics['cpu_usage']}%"],
+        ["Memory Usage", f"{metrics['memory_usage']}%"],
+        ["Disk Usage", f"{metrics['disk_usage']}%"],
+        ["Thread Count", metrics["thread_count"]],
+        ["FFmpeg Version", metrics["ffmpeg_version"]],
+    ]
+    logging.info("\n" + _format_table(metrics_table, ["Metric", "Value"]))
+    logging.info(border)
+
+
 def is_port_in_use(port):
     # Skip the check if running in Docker
     if os.environ.get("IN_DOCKER"):
@@ -351,6 +400,7 @@ def main(argv=None):
     logging.info("Initializing...")
     args = parse_arguments(argv)
     app = create_application(args)
+    display_startup_info(args)
 
     if is_port_in_use(config.PORT) and config.DEBUG_MODE is False:
         logging.error(

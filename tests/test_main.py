@@ -154,6 +154,28 @@ class TestMain(unittest.TestCase):
         main.display_startup_tips()
         mock_info.assert_any_call("Startup Tips")
 
+    @patch("main.get_system_metrics")
+    @patch("logging.info")
+    def test_display_startup_info(self, mock_info, mock_metrics):
+        mock_metrics.return_value = {
+            "cpu_usage": 0,
+            "memory_usage": 0,
+            "disk_usage": 0,
+            "open_files": 0,
+            "thread_count": 1,
+            "uptime": "0h 0m 0s",
+            "ffmpeg_version": "test",
+            "machine_hwaccel": False,
+            "ffmpeg_hwaccel": False,
+            "hwaccel_enabled": False,
+        }
+        args = MagicMock()
+        args.no_scheduler = False
+        args.no_watchdog = False
+        main.display_startup_info(args)
+        mock_info.assert_any_call("Startup Configuration")
+        mock_info.assert_any_call("System Metrics")
+
 
 if __name__ == "__main__":
     unittest.main()
