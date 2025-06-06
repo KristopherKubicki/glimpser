@@ -294,62 +294,69 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
         temp_video_duration = get_video_duration(temp_video)
         if in_process_duration > 0 and temp_video_duration > 0:
             concat_video = os.path.join(video_path, "in_process.concat.mp4")
-            list_file = None
-            with tempfile.NamedTemporaryFile(mode="w+", delete=False) as lf:
-                lf.write(f"file '{os.path.abspath(in_process_video)}'\n")
-                lf.write(f"file '{os.path.abspath(temp_video)}'\n")
-                list_file = lf.name
-            concat_command = [FFMPEG_PATH]
-            if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
-                concat_command.extend(["-hwaccel", FFMPEG_HWACCEL])
-            concat_command.extend(
-                [
-                    "-threads",
-                    str(FFMPEG_THREADS),
-                    "-f",
-                    "concat",
-                    "-safe",
-                    "0",
-                    "-i",
-                    list_file,
-                    "-c",
-                    "copy",
-                    "-movflags",
-                    "+faststart",
-                    "-y",
-                    os.path.abspath(concat_video),
-                ]
-            )
-            try:
-                run_ffmpeg(concat_command, timeout=30)
-                os.rename(concat_video, in_process_video)
-                file_updated = True
-                output_video = os.path.join(VIDEO_DIRECTORY, "latest_camera.mp4")
-                if os.path.exists(output_video + ".tmp"):
-                    os.unlink(output_video + ".tmp")
-                os.symlink(
-                    os.path.abspath(in_process_video),
-                    os.path.abspath(output_video + ".tmp"),
+            with tempfile.NamedTemporaryFile(mode="w+", suffix=".txt") as f:
+                f.write(f"file '{os.path.abspath(in_process_video)}'\n")
+                f.write(f"file '{os.path.abspath(temp_video)}'\n")
+                f.flush()
+
+                concat_command = [FFMPEG_PATH]
+                if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
+                    concat_command.extend(["-hwaccel", FFMPEG_HWACCEL])
+                concat_command.extend(
+                    [
+                        "-threads",
+                        str(FFMPEG_THREADS),
+                        "-err_detect",
+                        "ignore_err",
+                        "-fflags",
+                        "+igndts+ignidx+genpts+fastseek+discardcorrupt",
+                        "-an",
+                        "-dn",
+                        "-f",
+                        "concat",
+                        "-safe",
+                        "0",
+                        "-i",
+                        f.name,
+                        "-c",
+                        "copy",
+                        "-movflags",
+                        "+faststart",
+                        "-y",
+                        os.path.abspath(concat_video),
+                    ]
                 )
-                os.rename(
-                    os.path.abspath(output_video + ".tmp"),
-                    os.path.abspath(output_video),
-                )
-            except Exception as e:
-                status = handle_concat_error(e, temp_video, in_process_video)
-                if status == ConcatStatus.RETRY and retries > 0:
-                    logging.info("Retrying concatenation due to transient error")
-                    time.sleep(1)
-                    return concatenate_videos(
-                        in_process_video, temp_video, video_path, retries=retries - 1
+                try:
+                    run_ffmpeg(concat_command)
+                    os.rename(concat_video, in_process_video)
+                    file_updated = True
+                    output_video = os.path.join(VIDEO_DIRECTORY, "latest_camera.mp4")
+                    if os.path.exists(output_video + ".tmp"):
+                        os.unlink(output_video + ".tmp")
+                    os.symlink(
+                        os.path.abspath(in_process_video),
+                        os.path.abspath(output_video + ".tmp"),
                     )
-                elif status == ConcatStatus.RECOVERED:
-                    return True
-                else:
-                    return False
-            finally:
-                if list_file and os.path.exists(list_file):
-                    os.remove(list_file)
+                    os.rename(
+                        os.path.abspath(output_video + ".tmp"),
+                        os.path.abspath(output_video),
+                    )
+
+                except Exception as e:
+                    status = handle_concat_error(e, temp_video, in_process_video)
+                    if status == ConcatStatus.RETRY and retries > 0:
+                        logging.info("Retrying concatenation due to transient error")
+                        time.sleep(1)
+                        return concatenate_videos(
+                            in_process_video,
+                            temp_video,
+                            video_path,
+                            retries=retries - 1,
+                        )
+                    elif status == ConcatStatus.RECOVERED:
+                        return True
+                    else:
+                        return False
         elif os.path.exists(temp_video) and os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
             file_updated = True
