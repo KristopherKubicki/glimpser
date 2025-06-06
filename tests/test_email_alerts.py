@@ -48,7 +48,7 @@ class TestEmailAlerts(unittest.TestCase):
             "app.utils.email_alerts.EMAIL_PASSWORD", "pass"
         ):
             send_email_alert("Subject", "Body")
-            mock_smtp.assert_called_once_with("smtp.example.com", 587)
+            mock_smtp.assert_called_once_with("smtp.example.com", 587, timeout=5)
             smtp_mock.starttls.assert_called_once()
             smtp_mock.login.assert_called_once_with("user", "pass")
             smtp_mock.sendmail.assert_called_once()

@@ -96,6 +96,7 @@ Configure these values to enable Twilio SMS alerts:
 - `TWILIO_SID` – your Twilio account SID
 - `TWILIO_TOKEN` – your Twilio auth token
 - `TWILIO_NUMBER` – phone number that receives alerts
+- `TWILIO_FROM_NUMBER` – optional number used to send messages
 
 ## CAP Settings
 

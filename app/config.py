@@ -378,6 +378,9 @@ EMAIL_PASSWORD = get_setting("EMAIL_PASSWORD", "")
 TWILIO_SID = get_setting("TWILIO_SID", "")
 TWILIO_TOKEN = get_setting("TWILIO_TOKEN", "")
 TWILIO_NUMBER = get_setting("TWILIO_NUMBER", "")
+# Allows specifying a different sending number; defaults to TWILIO_NUMBER for
+# backward compatibility.
+TWILIO_FROM_NUMBER = get_setting("TWILIO_FROM_NUMBER", TWILIO_NUMBER)
 
 # Common Alerting Protocol settings
 CAP_ENDPOINT = get_setting("CAP_ENDPOINT", "")

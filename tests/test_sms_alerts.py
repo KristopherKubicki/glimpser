@@ -33,11 +33,14 @@ class TestSMSAlerts(unittest.TestCase):
         ):
             with patch("app.utils.sms_alerts.TWILIO_SID", "sid"), patch(
                 "app.utils.sms_alerts.TWILIO_TOKEN", "token"
-            ), patch("app.utils.sms_alerts.TWILIO_NUMBER", "+123"):
+            ), patch("app.utils.sms_alerts.TWILIO_NUMBER", "+123"), patch(
+                "app.utils.sms_alerts.TWILIO_FROM_NUMBER",
+                "+999",
+            ):
                 send_sms_alert("Body")
                 mock_client_class.assert_called_once_with("sid", "token")
                 client_instance.messages.create.assert_called_once_with(
-                    body="Body", from_="+123", to="+123"
+                    body="Body", from_="+999", to="+123"
                 )
 
     def test_sms_alert_wrapper(self):

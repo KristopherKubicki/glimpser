@@ -44,7 +44,12 @@ def send_email_alert(subject, body):
     message.attach(MIMEText(body, "plain"))
 
     try:
-        with smtplib.SMTP(EMAIL_SMTP_SERVER, int(EMAIL_SMTP_PORT)) as server:
+        # Use a short timeout so network issues fail fast during alerting
+        with smtplib.SMTP(
+            EMAIL_SMTP_SERVER,
+            int(EMAIL_SMTP_PORT),
+            timeout=5,
+        ) as server:
             if EMAIL_USE_TLS.lower() == "true":
                 server.starttls()
             server.login(EMAIL_USERNAME, EMAIL_PASSWORD)
