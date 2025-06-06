@@ -206,7 +206,7 @@ h2 {
   display: grid;
   grid-template-columns: repeat(
     auto-fit,
-    minmax(50px, var(--tile-size))
+  minmax(50px, var(--tile-size))
   ); /* Use CSS variable */
 
   gap: 5px;
@@ -578,6 +578,17 @@ nav a {
   border-radius: 5px;
   padding: 4px 8px;
   width: 120px; /* Prevent layout shift while content loads */
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-appearance: none; /* Hide default arrows */
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -moz-appearance: none;
+  appearance: none;
+  background-image: none;
+}
+
+/* Hide arrows in IE */
+select::-ms-expand {
+  display: none;
 }
 
 .status-indicator {
