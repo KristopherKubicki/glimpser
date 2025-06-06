@@ -5,8 +5,17 @@ export function initTooltips() {
     document.body.appendChild(tooltip);
 
     const moveTooltip = (e) => {
-      tooltip.style.left = `${e.pageX + 10}px`;
-      tooltip.style.top = `${e.pageY + 10}px`;
+      const offset = 10;
+      const tooltipWidth = tooltip.offsetWidth;
+      let left = e.pageX + offset;
+      if (left + tooltipWidth > window.innerWidth - offset) {
+        left = e.pageX - tooltipWidth - offset;
+        if (left < offset) {
+          left = offset;
+        }
+      }
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${e.pageY + offset}px`;
     };
 
     const showTooltip = (e) => {
