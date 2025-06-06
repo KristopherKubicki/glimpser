@@ -275,8 +275,6 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
                     "+igndts+ignidx+genpts+fastseek+discardcorrupt",
                     "-an",
                     "-dn",
-                    "-c:v",
-                    "h264",
                     "-i",
                     os.path.abspath(in_process_video),
                     "-i",
@@ -485,8 +483,6 @@ def compile_to_video(camera_path, video_path) -> bool:
                 "concat",
                 "-r",
                 "25",  # for some reason the standard for png?
-                "-c:v",
-                "png",
                 "-use_wallclock_as_timestamps",
                 "1",
                 "-err_detect",
