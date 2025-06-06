@@ -76,6 +76,7 @@ const jogShuttle = document.getElementById("jog-shuttle");
 let jogInterval = null;
 let jogging = false;
 let isSeeking = false;
+const groupSelector = document.getElementById("group-selector");
 // Track whether template details are shown. Expose on window so inline
 // scripts and other modules can share this state.
 window.detailsVisible = false;
@@ -83,6 +84,52 @@ window.detailsVisible = false;
 // a camera repeatedly fails. Track the last message and time displayed.
 let lastErrorMessage = "";
 let lastErrorTime = 0;
+
+function updateCameraOptions(group) {
+  const camSelect = document.getElementById("camera-selector");
+  if (!camSelect) return;
+  camSelect.innerHTML = "";
+  if (!group || group === "all") {
+    camSelect.style.display = "none";
+    const opt = document.createElement("option");
+    opt.value = "All";
+    opt.textContent = "All";
+    camSelect.appendChild(opt);
+    camSelect.value = "All";
+    return;
+  }
+  camSelect.style.display = "";
+  const groupOpt = document.createElement("option");
+  groupOpt.value = `group-${group}`;
+  groupOpt.textContent = `Group: ${group}`;
+  camSelect.appendChild(groupOpt);
+  Object.entries(templateDetails)
+    .filter(
+      ([cam, det]) =>
+        det.groups &&
+        det.groups
+          .split(",")
+          .map((s) => s.trim())
+          .includes(group),
+    )
+    .map(([cam]) => cam)
+    .sort()
+    .forEach((cam) => {
+      const opt = document.createElement("option");
+      opt.value = cam;
+      opt.textContent = cam;
+      camSelect.appendChild(opt);
+    });
+  camSelect.value = `group-${group}`;
+}
+
+function changeGroup() {
+  const group = groupSelector ? groupSelector.value : "all";
+  const navGroup = document.getElementById("nav-group-dropdown");
+  if (navGroup) navGroup.value = group;
+  updateCameraOptions(group);
+  changeCamera();
+}
 
 // Restore previously selected camera, source and speed from localStorage so
 // reloading the page keeps user preferences. If the user specified a camera in
@@ -99,6 +146,13 @@ function loadSavedPreferences() {
     ) {
       currentCamera = savedCam;
       camSelect.value = savedCam;
+      if (groupSelector) {
+        if (savedCam === "All") {
+          groupSelector.value = "all";
+        } else if (savedCam.startsWith("group-")) {
+          groupSelector.value = savedCam.split("group-")[1];
+        }
+      }
     }
     if (navGroup) {
       if (currentCamera === "All") {
@@ -107,6 +161,7 @@ function loadSavedPreferences() {
         navGroup.value = currentCamera.split("group-")[1];
       }
     }
+    if (groupSelector) updateCameraOptions(groupSelector.value);
   }
 
   const sourceSelect = document.getElementById("video-source");
@@ -361,6 +416,13 @@ function changeCamera() {
       navGroup.value = selectedValue.split("group-")[1];
     } else {
       navGroup.value = "";
+    }
+  }
+  if (groupSelector) {
+    if (selectedValue === "All") {
+      groupSelector.value = "all";
+    } else if (selectedValue.startsWith("group-")) {
+      groupSelector.value = selectedValue.split("group-")[1];
     }
   }
 

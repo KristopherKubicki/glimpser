@@ -57,6 +57,13 @@ export function initNav() {
           if (cameraDropdown && currentCamera) {
             cameraDropdown.value = currentCamera;
           }
+          const grpSelector = document.getElementById("group-selector");
+          if (grpSelector) {
+            grpSelector.value = currentGroup;
+            if (typeof window.updateCameraOptions === "function") {
+              window.updateCameraOptions(currentGroup);
+            }
+          }
         }
       } catch (error) {
         console.error("Error loading groups:", error);
@@ -100,15 +107,12 @@ export function initNav() {
         if (!groupDropdown.value) return;
         if (
           window.location.pathname.startsWith("/live") &&
-          typeof window.changeCamera === "function"
+          typeof window.changeGroup === "function"
         ) {
-          const camSelector = document.getElementById("camera-selector");
-          if (camSelector) {
-            camSelector.value =
-              groupDropdown.value === "all"
-                ? "All"
-                : `group-${groupDropdown.value}`;
-            window.changeCamera();
+          const grpSelector = document.getElementById("group-selector");
+          if (grpSelector) {
+            grpSelector.value = groupDropdown.value || "all";
+            window.changeGroup();
             loadNavCameras(groupDropdown.value);
             return;
           }
