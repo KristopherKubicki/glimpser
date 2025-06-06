@@ -72,13 +72,13 @@ content %}
               {{ setting.name }}
             </td>
             <td>
-              {% if setting.value in ['True', 'False'] %}
+              {% if setting.value|lower in ['true', 'false'] %}
               <label class="switch">
                 <input
                   type="checkbox"
                   name="{{ setting.name }}"
                   value="True"
-                  {% if setting.value == 'True' %}checked{% endif %}
+                  {% if setting.value|lower == 'true' %}checked{% endif %}
                   data-boolean
                 />
                 <span class="slider round"></span>
@@ -158,9 +158,9 @@ content %}
                     <tr>
                         <td title="{{ tooltips.get(setting.name, '') }}">{{ setting.name }}</td>
                         <td>
-                            {% if setting.value in ['True', 'False'] %}
+                            {% if setting.value|lower in ['true', 'false'] %}
                             <label class="switch">
-                                <input type="checkbox" name="{{ setting.name }}" value="True" {% if setting.value == 'True' %}checked{% endif %} data-boolean>
+                                <input type="checkbox" name="{{ setting.name }}" value="True" {% if setting.value|lower == 'true' %}checked{% endif %} data-boolean>
                                 <span class="slider round"></span>
                             </label>
                             {% else %}

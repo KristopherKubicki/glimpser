@@ -2678,7 +2678,7 @@ def init_routes(app: Flask) -> None:
             else:
                 current = {s["name"]: s["value"] for s in get_all_settings()}
                 bool_settings = {
-                    n for n, v in current.items() if v in ["True", "False"]
+                    n for n, v in current.items() if str(v).lower() in ["true", "false"]
                 }
                 for name in bool_settings:
                     if name in email_settings:
