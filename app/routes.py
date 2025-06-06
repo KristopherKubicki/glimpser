@@ -2900,6 +2900,9 @@ def init_routes(app: Flask) -> None:
             if not placed:
                 grouped_settings["Other"].append(setting)
 
+
+        # Remove empty groups to avoid blank headings in the UI
+        grouped_settings = {g: items for g, items in grouped_settings.items() if items}
         file_location_items = [
             s
             for s in settings
