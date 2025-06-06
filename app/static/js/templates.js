@@ -183,6 +183,7 @@ export function initTemplates() {
     }
     setupSearch();
     setupSorting();
+    setupSortMenu();
     setupCaptionsFilter();
     updateHumanizedTimes();
     setInterval(updateHumanizedTimes, 60000);
@@ -441,6 +442,8 @@ export async function loadTemplates() {
   const searchQuery = searchInput ? searchInput.value.toLowerCase() : "";
   const url = `/templates?group=${selectedGroup}&search=${searchQuery}&t=${new Date().getTime()}`;
 
+  const slider = document.getElementById("grid-width-slider");
+
   updateGridLayout();
 
   const templateList = document.getElementById("template-list");
@@ -664,6 +667,29 @@ export function setupSorting() {
   setupTableSorting("camera-table");
   setupTableSorting("feed-status");
   setupTableSorting("captions-table");
+}
+
+export function setupSortMenu() {
+  const menu = document.getElementById("sort-date");
+  if (!menu) return;
+  menu.addEventListener("change", () => sortCameraTable(menu.value));
+}
+
+export function sortCameraTable(option) {
+  const table = document.getElementById("camera-table");
+  if (!table) return;
+  const tbody = table.tBodies[0];
+  const rows = Array.from(tbody.rows);
+  const [field, direction] = option.split("_");
+  if (!field) {
+    rows.sort((a, b) => parseInt(a.dataset.index) - parseInt(b.dataset.index));
+  } else {
+    rows.sort(
+      (a, b) => new Date(a.dataset[field]) - new Date(b.dataset[field]),
+    );
+    if (direction === "desc") rows.reverse();
+  }
+  rows.forEach((row) => tbody.appendChild(row));
 }
 
 export function setupCaptionsFilter() {

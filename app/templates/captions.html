@@ -74,6 +74,14 @@
           value="360"
           title="Adjust thumbnail width"
         />
+        <label for="sort-date" title="Sort camera table">Sort:</label>
+        <select id="sort-date" title="Sort camera table">
+          <option value="">Default</option>
+          <option value="last_desc">Last &darr;</option>
+          <option value="last_asc">Last &uarr;</option>
+          <option value="next_asc">Next &uarr;</option>
+          <option value="next_desc">Next &darr;</option>
+        </select>
       </div>
     </details>
 
@@ -83,8 +91,6 @@
         <thead>
           <tr>
             <th class="sortable" data-type="string">Camera</th>
-            <th class="sortable" data-type="date">Last</th>
-            <th class="sortable" data-type="date">Next</th>
             <th>Caption</th>
           </tr>
         </thead>
@@ -92,6 +98,9 @@
           {% for camera in template_details %}
           <tr
             class="camera-row"
+            data-index="{{ loop.index0 }}"
+            data-last="{{ template_details[camera]['last_screenshot'] }}"
+            data-next="{{ template_details[camera]['next_screenshot'] }}"
             data-groups="{{ template_details[camera]['groups'] }}"
             data-screenshot_count="{{ template_details[camera]['screenshot_count'] }}"
             data-video_count="{{ template_details[camera]['video_count'] }}"
@@ -123,20 +132,6 @@
                   </video>
                 </div>
               </div>
-            </td>
-            <td data-value="{{ template_details[camera]['last_screenshot'] }}">
-              <span
-                class="humanized-time"
-                data-time="{{ template_details[camera]['last_screenshot'] }}"
-                >{{ template_details[camera]['last_screenshot'] }}</span
-              >
-            </td>
-            <td data-value="{{ template_details[camera]['next_screenshot'] }}">
-              <span
-                class="humanized-time"
-                data-time="{{ template_details[camera]['next_screenshot'] }}"
-                >{{ template_details[camera]['next_screenshot'] }}</span
-              >
             </td>
             <td>
               <form id="form-{{ camera }}" class="notes-form caption-box">
