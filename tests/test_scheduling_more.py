@@ -61,12 +61,12 @@ class TestGetSystemMetrics(unittest.TestCase):
     @patch("app.utils.scheduling.ffmpeg_version", return_value="6.0")
     @patch("app.utils.scheduling.machine_supports_hwaccel", return_value=True)
     @patch("app.utils.scheduling.ffmpeg_supports_hwaccel", return_value=True)
-    @patch("app.utils.scheduling.get_setting", return_value="True")
+    @patch("app.utils.scheduling.shutil.which", return_value="/usr/bin/ffmpeg")
     @patch.object(scheduling, "FFMPEG_HWACCEL", "cuda")
     def test_metrics_fields(
         self,
-        mock_ffmpeg_hwaccel,
-        mock_get_setting,
+        mock_which,
+        mock_ffmpeg_supports,
         mock_machine,
         mock_version,
         mock_psutil,
@@ -89,6 +89,7 @@ class TestGetSystemMetrics(unittest.TestCase):
         self.assertEqual(metrics["thread_count"], 5)
         self.assertTrue(metrics["uptime"].startswith("1h 1m"))
         self.assertEqual(metrics["ffmpeg_version"], "6.0")
+        self.assertEqual(metrics["ffmpeg_path"], "/usr/bin/ffmpeg")
         self.assertTrue(metrics["machine_hwaccel"])
         self.assertTrue(metrics["ffmpeg_hwaccel"])
         self.assertTrue(metrics["hwaccel_enabled"])
