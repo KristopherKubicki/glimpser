@@ -44,3 +44,6 @@ nav:
       - Log Cleaner: log_cleaner.md
       - Video Archiver: video_archiver.md
       - Governance: governance.md
+exclude_docs: |
+  *.tmp
+  draft/**
