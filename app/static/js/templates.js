@@ -603,6 +603,9 @@ export async function loadTemplates() {
       window.addEventListener("resize", updateGridLayout);
     }
     const slider = document.getElementById("grid-width-slider");
+    // Trigger a resize update on the slider if present. When
+    // `updateSliderLimits` exists, it adjusts the slider range and
+    // resets it to the minimum to ensure tiles fit the page.
     if (window.updateSliderLimits) {
       window.updateSliderLimits();
       if (slider) {
