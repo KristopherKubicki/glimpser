@@ -145,7 +145,7 @@ body {
 }
 
 main {
-  padding: 1rem;
+  padding: 0.5rem 1rem 60px;
   flex-grow: 1;
   /* Reserve space for fixed footer so content isn't hidden */
   padding-bottom: var(--footer-space, 60px);
