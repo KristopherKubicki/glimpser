@@ -347,9 +347,10 @@ class TestStorageUsage(unittest.TestCase):
             with open(os.path.join(vid_dir, "cam1", "cam1.mp4"), "wb") as f:
                 f.write(b"0" * 2048)
 
-            with patch(
-                "app.utils.template_manager.SCREENSHOT_DIRECTORY", sshot_dir
-            ), patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir):
+            with (
+                patch("app.utils.template_manager.SCREENSHOT_DIRECTORY", sshot_dir),
+                patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir),
+            ):
                 result = get_storage_usage("cam1")
                 self.assertEqual(result, "3.0 KB")
 
@@ -366,10 +367,13 @@ class TestStorageUsage(unittest.TestCase):
             with open(os.path.join(vid_dir, "cam1", "cam1.mp4"), "wb") as f:
                 f.write(b"0" * 2048)
 
-            with patch(
-                "app.utils.template_manager.SCREENSHOT_DIRECTORY",
-                sshot_dir,
-            ), patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir):
+            with (
+                patch(
+                    "app.utils.template_manager.SCREENSHOT_DIRECTORY",
+                    sshot_dir,
+                ),
+                patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir),
+            ):
                 result = get_storage_usage_bytes("cam1")
                 self.assertEqual(result, 3072)
 

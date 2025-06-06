@@ -5,6 +5,10 @@ files are rotated when they grow too large or when their creation date exceeds
 `MAX_COMPRESSED_VIDEO_AGE` days. FFmpeg stdout and stderr are logged to aid
 troubleshooting.
 
+Concatenation now uses FFmpeg's **concat demuxer** with `-c copy` so that
+existing segments are joined without re-encoding. This keeps the CPU overhead
+low and preserves the original image quality.
+
 Errors encountered during compilation are logged with the camera name so that
 failures can be diagnosed easily.
 
@@ -25,3 +29,8 @@ segments are merged without re-encoding.
 Videos automatically rotate into a `final_*.mp4` once roughly 600 frames
 (about 24 seconds) accumulate. A small tolerance in the duration check prevents
 rounding errors from delaying rotation.
+
+Frames are streamed to FFmpeg via `image2pipe`, which avoids writing
+intermediate PNG files. The resize filter runs before encoding and temporary
+segments are concatenated with the `concat` demuxer using `-c copy` so the
+encoded H.264 streams are preserved.

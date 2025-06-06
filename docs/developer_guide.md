@@ -20,6 +20,10 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    pip install pre-commit
    pre-commit install
    ```
+   Before pushing changes, run:
+   ```sh
+   pre-commit run --all-files
+   ```
 4. Copy the provided example environment file and update the values. Important
    variables include `SECRET_KEY` for session management, `CHATGPT_KEY` for AI
    features, and the various path settings used by the application.
