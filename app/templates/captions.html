@@ -219,12 +219,13 @@
         <tr>
           <th class="sortable" data-type="date">Timestamp</th>
           <th class="sortable" data-type="string">Caption</th>
+          <th>Play</th>
         </tr>
       </thead>
       <tbody>
         {% if not lcaptions %}
         <tr class="no-data">
-          <td colspan="2">No captions available</td>
+          <td colspan="3">No captions available</td>
         </tr>
         {% else %} {% for caption in lcaptions %} {% for lc in caption %} {% if
         caption[lc] != "" %}
@@ -233,6 +234,16 @@
             <span class="humanized-time" data-time="{{ lc }}">{{ lc }}</span>
           </td>
           <td>{{ caption[lc] }}</td>
+          <td>
+            <button
+              class="play-caption"
+              data-caption="{{ caption[lc]|e }}"
+              title="Play caption"
+              type="button"
+            >
+              &#9658;
+            </button>
+          </td>
         </tr>
         {% endif %} {% endfor %} {% endfor %} {% endif %}
       </tbody>
