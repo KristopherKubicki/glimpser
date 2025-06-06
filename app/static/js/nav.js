@@ -201,7 +201,6 @@ export function initNav() {
       captionChyron.style.setProperty("--chyron-speed", `${chyronSpeed}s`);
     }
     let lastCaptionTime = null;
-    let popupTimer;
 
     let idle = false;
     let idleTimer;
@@ -238,11 +237,7 @@ export function initNav() {
       if (!captionChyron || chyronSpeed <= 0) return;
       captionChyron.innerHTML = `<span>${text}</span>`;
       captionChyron.classList.add("show");
-      clearTimeout(popupTimer);
-      popupTimer = setTimeout(
-        () => captionChyron.classList.remove("show"),
-        chyronSpeed * 1000,
-      );
+      // Keep the caption visible until a new one arrives
     };
 
     const checkCaptions = async () => {

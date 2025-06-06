@@ -667,6 +667,8 @@ nav a.active {
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
+  max-width: 100%;
+  min-width: 0;
   display: none;
   margin-left: 10px;
   flex-grow: 1;
