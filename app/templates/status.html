@@ -1,14 +1,6 @@
-
-
-{% extends 'base.html' %}
-{% from 'components.html' import card %}
-{% block content %}
-{% include '_status_tab.html' %}
-{% endblock %}
-
-                                             
 {% extends 'base.html' %} {% from 'components.html' import card %} {% block
-content %}
+content %} {% include '_status_tab.html' %} {% endblock %} {% extends
+'base.html' %} {% from 'components.html' import card %} {% block content %}
 
 <div class="scheduler-controls">
   <button
@@ -70,6 +62,9 @@ content %}
   </li>
   <li title="Hardware acceleration enabled via config">
     HW Accel Enabled: {{ metrics.hwaccel_enabled }}
+  </li>
+  <li title="Danger mode enabled setting">
+    Danger Mode: {{ metrics.danger_mode }}
   </li>
 </ul>
 {% endcall %} {% call card('Feed Status') %}
@@ -151,4 +146,3 @@ content %}
 
 <p>Last summary generated: {{ last_summary or 'N/A' }}</p>
 {% endcall %} {% include 'logs.html' %} {% endblock %}
-

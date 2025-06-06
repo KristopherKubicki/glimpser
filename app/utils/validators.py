@@ -216,3 +216,69 @@ def validate_update_data(data: dict) -> dict:
         sanitized[key] = _to_bool(data.get(key, False))
 
     return sanitized
+
+
+INTEGER_RANGES = {
+    "PORT": (1024, 65535),
+    "EMAIL_SMTP_PORT": (1, 65535),
+    "MAX_WORKERS": (1, None),
+    "FFMPEG_THREADS": (1, None),
+    "NUM_FRAMES": (1, None),
+    "CAPTURE_TIMEOUT": (1, None),
+    "LIVE_FALLBACK_FPS": (1, None),
+    "LIVE_MAX_FAILURES": (1, None),
+    "CHYRON_SPEED": (0, None),
+    "WATCHDOG_FAILURE_THRESHOLD": (1, None),
+    "WATCHDOG_RESTART_COOLDOWN": (1, None),
+    "WATCHDOG_MAX_FILE_HANDLES": (1, None),
+    "SESSION_TIMEOUT_MINUTES": (1, None),
+}
+
+BOOLEAN_SETTINGS = {
+    "DEBUG",
+    "DEBUG_MODE",
+    "SESSION_COOKIE_SECURE",
+    "SESSION_COOKIE_HTTPONLY",
+    "CLOCK_OVERLAY",
+    "CLOCK_DIGITAL",
+    "CLOCK_NAVBAR",
+    "HEALTH_STATUS_ALWAYS_VISIBLE",
+    "DISCOVERY_AUTOSTART",
+    "EMAIL_ENABLED",
+    "EMAIL_USE_TLS",
+}
+
+
+def validate_setting(name: str, value: str) -> str | None:
+    """Return sanitized ``value`` for the given setting ``name``.
+
+    Unknown setting names are returned unchanged. Numeric settings are
+    validated against predefined ranges. Boolean settings normalize any
+    truthy value to ``"True"`` and everything else to ``"False"``.
+    ``None`` is returned when validation fails.
+    """
+
+    if value is None:
+        return None
+
+    key = str(name or "").upper()
+    val = str(value).strip()
+
+    if key in BOOLEAN_SETTINGS:
+        return (
+            "True" if val.lower() in {"true", "1", "t", "y", "yes", "on"} else "False"
+        )
+
+    if key in INTEGER_RANGES:
+        try:
+            ivalue = int(val)
+        except (TypeError, ValueError):
+            return None
+        min_val, max_val = INTEGER_RANGES[key]
+        if min_val is not None and ivalue < min_val:
+            return None
+        if max_val is not None and ivalue > max_val:
+            return None
+        return str(ivalue)
+
+    return val

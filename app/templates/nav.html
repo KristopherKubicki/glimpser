@@ -9,6 +9,16 @@
 <nav>
   <button id="menu-toggle" class="menu-toggle" aria-label="Toggle navigation">☰</button>
   <div class="nav-left">
+    {% if template_details is defined %}
+      {% if template_details.get('groups') %}
+        {% set __back_url = '/group/' ~ template_details.get('groups').split(',')[0].strip() %}
+        {% set __back_title = 'Back to Group' %}
+      {% else %}
+        {% set __back_url = url_for('index') %}
+        {% set __back_title = 'Back to Dashboard' %}
+      {% endif %}
+      <a href="{{ __back_url }}" class="nav-back" title="{{ __back_title }}">&#x2190;</a>
+    {% endif %}
     <select id="nav-group-dropdown" title="Jump to group"></select>
     <select id="nav-camera-dropdown" title="Jump to camera" style="display:none"></select>
     <!-- Discover icon moved to nav-right for consistency -->
@@ -45,7 +55,7 @@
       </a>
     </div>
     <a href="/live" id="live" aria-label="Open Live page">
-      <div id="navClock" class="cool-clock" data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}" style="{% if not CLOCK_NAVBAR %}display:none;{% endif %}" title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming." aria-label="Open Live page for realtime streaming">
+      <div id="nav-clock" class="cool-clock" data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}" style="{% if not CLOCK_NAVBAR %}display:none;{% endif %}" title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming." aria-label="Open Live page for realtime streaming">
         <div class="clock-face">
           <div class="clock-hands">
             <div class="hand hour-hand"></div>
