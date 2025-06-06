@@ -145,10 +145,9 @@ body {
 }
 
 main {
-  padding: 1rem;
+  padding: 0.5rem 1rem 60px;
   flex-grow: 1;
   /* Reserve space for fixed footer so content isn't hidden */
-  padding-bottom: 60px;
 }
 
 /* Simple dynamic tooltip component */
@@ -442,7 +441,7 @@ body.light-mode {
 }
 
 .hide-captions .caption-overlay {
-    display: none;
+  display: none;
 }
 
 #status-legend {
@@ -825,17 +824,17 @@ a {
 }
 
 .clock-overlay {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    z-index: 10;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 10;
 }
 
 .digital-clock {
-    font-size: 14px;
-    line-height: 25px;
-    text-align: center;
-    color: var(--text-color);
+  font-size: 14px;
+  line-height: 25px;
+  text-align: center;
+  color: var(--text-color);
 }
 
 .clock-face {

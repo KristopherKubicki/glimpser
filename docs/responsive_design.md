@@ -5,6 +5,7 @@ Glimpser now adapts to phones and tablets. The navigation menu collapses into a 
 The main template view scales thumbnails with the width slider and the page now uses smooth scrolling for longer lists. Previews resize by adjusting their width and height, ensuring the full image remains visible without shifting or cropping. When a group is opened, the slider defaults to the smallest width that keeps all cameras visible without scrolling.
 
 The header navigation also uses smaller padding so it stays out of the way on both mobile and desktop.
+The main content now has less top padding so on‑page controls like the search bar sit closer to the navigation.
 
 Group links in the header are now available through a dropdown menu. The list
 populates asynchronously from the `/groups` endpoint and fits neatly inside the
