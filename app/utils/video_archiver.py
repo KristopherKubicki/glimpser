@@ -45,6 +45,7 @@ def touch(fname, times=None):
 
 
 def trim_group_name(group_name):
+    """Normalize a group name by replacing spaces with underscores and converting to lowercase."""
     return group_name.replace(" ", "_").lower()
 
 
