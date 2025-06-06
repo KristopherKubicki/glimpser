@@ -1,3 +1,5 @@
+import { updateHumanizedTimes } from "./templates.js";
+
 export function initCaptions() {
   document.addEventListener("DOMContentLoaded", () => {
     const tabs = document.querySelectorAll(".tab-link");
@@ -53,12 +55,25 @@ export function initCaptions() {
       if (table && data.answer) {
         const now = new Date().toISOString().replace("T", " ").slice(0, 19);
         const rowQ = document.createElement("tr");
-        rowQ.innerHTML = `<td>${now}</td><td>Q: ${chatQuestion.value}</td>`;
+        rowQ.innerHTML = `<td>${now}</td><td>Q: ${chatQuestion.value}</td><td><button class="play-caption" title="Play caption">&#9658;</button></td>`;
+        rowQ.querySelector("button").dataset.caption =
+          `Q: ${chatQuestion.value}`;
         const rowA = document.createElement("tr");
-        rowA.innerHTML = `<td>${now}</td><td>A: ${data.answer}</td>`;
+        rowA.innerHTML = `<td>${now}</td><td>A: ${data.answer}</td><td><button class="play-caption" title="Play caption">&#9658;</button></td>`;
+        rowA.querySelector("button").dataset.caption = `A: ${data.answer}`;
         table.prepend(rowA);
         table.prepend(rowQ);
       }
+    });
+
+    const captionsTable = document.getElementById("captions-table");
+    captionsTable?.addEventListener("click", (e) => {
+      const btn = e.target.closest(".play-caption");
+      if (!btn || !window.speechSynthesis) return;
+      const text = btn.dataset.caption;
+      if (!text) return;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
     });
 
     document.getElementById("camera-table")?.addEventListener("click", (e) => {
@@ -122,5 +137,40 @@ export function initCaptions() {
         document.getElementById(target)?.classList.add("active");
       });
     });
+
+    setupLiveHistoryUpdates();
   });
+}
+
+function setupLiveHistoryUpdates() {
+  const tbody = document.querySelector("#captions-table tbody");
+  const header = document.querySelector(
+    "#captions-table th.sortable[data-type='date']",
+  );
+  if (!tbody || !header) return;
+
+  let latest = tbody.querySelector("tr:not(.no-data) span[data-time]")?.dataset
+    .time;
+
+  const fetchLatest = async () => {
+    if (header.dataset.order !== "desc") return;
+    try {
+      const resp = await fetch("/captions_status");
+      const data = await resp.json();
+      if (!data.timestamp || !data.caption) return;
+      if (!latest || new Date(data.timestamp) > new Date(latest)) {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td><span class="humanized-time" data-time="${data.timestamp}">${data.timestamp}</span></td><td>${data.caption}</td>`;
+        tbody.prepend(row);
+        tbody.querySelector(".no-data")?.remove();
+        latest = data.timestamp;
+        updateHumanizedTimes();
+      }
+    } catch (err) {
+      console.error("Error updating captions", err);
+    }
+  };
+
+  fetchLatest();
+  setInterval(fetchLatest, 10000);
 }

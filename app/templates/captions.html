@@ -1,4 +1,4 @@
-{% extends 'base.html' %} {% block content %}
+{% extends 'base.html' %} {% from 'components.html' import status_legend %} {% block content %}
 <div class="captions-page">
   <script>
     function updateTemplate(templateName) {
@@ -24,6 +24,9 @@
             btn.textContent =
               data.speed > 0 ? "Disable Chyron" : "Enable Chyron";
           }
+          if (window.updateChyron) {
+            window.updateChyron(data.speed);
+          }
         });
     }
   </script>
@@ -35,10 +38,10 @@
   </div>
 
   <div id="prompts-tab" class="tab-content active">
-    <details class="filter-controls">
+    <details class="filter-controls" open>
       <summary>Search &amp; Filters</summary>
       <div class="controls-inner">
-        <label for="search-input" title="Search for cameras or groups"
+        <label for="search-input" title="Search by name or group"
           >Search:</label
         >
         <input
@@ -48,8 +51,8 @@
           title="Enter search terms"
         />
 
-        <label for="filter-column" title="KPI to filter">KPI:</label>
-        <select id="filter-column" title="Select KPI">
+        <label for="filter-column" title="Metric to filter by">Metric:</label>
+        <select id="filter-column" title="Select metric">
           <option value="">All</option>
           <option value="screenshot_count">Shots</option>
           <option value="video_count">Videos</option>
@@ -60,11 +63,25 @@
         <input
           type="text"
           id="filter-value"
-          placeholder="Value"
-          title="Filter value"
+          placeholder="Minimum"
+          title="Minimum value or text"
+        />
+        <label for="cost-start" title="Start date for cost">From:</label>
+        <input
+          type="date"
+          id="cost-start"
+          title="Cost start"
+          value="{{ cost_start or '' }}"
+        />
+        <label for="cost-end" title="End date for cost">To:</label>
+        <input
+          type="date"
+          id="cost-end"
+          title="Cost end"
+          value="{{ cost_end or '' }}"
         />
         <button id="apply-filter" type="button" title="Filter table rows">
-          Apply
+          Filter
         </button>
         <input
           type="range"
@@ -74,6 +91,15 @@
           value="360"
           title="Adjust thumbnail width"
         />
+        {{ status_legend() }}
+        <label for="sort-date" title="Sort camera table">Sort:</label>
+        <select id="sort-date" title="Sort camera table">
+          <option value="">Default</option>
+          <option value="last_desc">Last &darr;</option>
+          <option value="last_asc">Last &uarr;</option>
+          <option value="next_asc">Next &uarr;</option>
+          <option value="next_desc">Next &darr;</option>
+        </select>
       </div>
     </details>
 
@@ -83,8 +109,6 @@
         <thead>
           <tr>
             <th class="sortable" data-type="string">Camera</th>
-            <th class="sortable" data-type="date">Last</th>
-            <th class="sortable" data-type="date">Next</th>
             <th>Caption</th>
           </tr>
         </thead>
@@ -92,6 +116,9 @@
           {% for camera in template_details %}
           <tr
             class="camera-row"
+            data-index="{{ loop.index0 }}"
+            data-last="{{ template_details[camera]['last_screenshot'] }}"
+            data-next="{{ template_details[camera]['next_screenshot'] }}"
             data-groups="{{ template_details[camera]['groups'] }}"
             data-screenshot_count="{{ template_details[camera]['screenshot_count'] }}"
             data-video_count="{{ template_details[camera]['video_count'] }}"
@@ -124,31 +151,15 @@
                 </div>
               </div>
             </td>
-            <td data-value="{{ template_details[camera]['last_screenshot'] }}">
-              <span
-                class="humanized-time"
-                data-time="{{ template_details[camera]['last_screenshot'] }}"
-                >{{ template_details[camera]['last_screenshot'] }}</span
-              >
-            </td>
-            <td data-value="{{ template_details[camera]['next_screenshot'] }}">
-              <span
-                class="humanized-time"
-                data-time="{{ template_details[camera]['next_screenshot'] }}"
-                >{{ template_details[camera]['next_screenshot'] }}</span
-              >
-            </td>
             <td>
               <form id="form-{{ camera }}" class="notes-form caption-box">
                 <div class="chat-box">
                   <div class="chat-prompt">
-                    <label for="notes-{{ camera }}">Prompt:</label>
                     <textarea id="notes-{{ camera }}" class="notes-textarea">
 {{ template_details[camera]['notes'] }}</textarea
                     >
                   </div>
                   <div class="chat-response">
-                    <label>Response:</label>
                     <div class="last-caption">
                       {{ template_details[camera]['last_caption'] }}
                     </div>
@@ -158,8 +169,13 @@
                   class="update-button"
                   data-template="{{ camera }}"
                   title="Send updated prompt"
+                  aria-label="Send updated prompt"
                 >
-                  Send
+                  <svg width="16" height="16" aria-hidden="true">
+                    <use
+                      href="{{ url_for('static', filename='icons/sprite.svg') }}#login"
+                    />
+                  </svg>
                 </button>
               </form>
             </td>
@@ -204,12 +220,13 @@
         <tr>
           <th class="sortable" data-type="date">Timestamp</th>
           <th class="sortable" data-type="string">Caption</th>
+          <th>Play</th>
         </tr>
       </thead>
       <tbody>
         {% if not lcaptions %}
         <tr class="no-data">
-          <td colspan="2">No captions available</td>
+          <td colspan="3">No captions available</td>
         </tr>
         {% else %} {% for caption in lcaptions %} {% for lc in caption %} {% if
         caption[lc] != "" %}
@@ -217,6 +234,7 @@
           <td>
             <span class="humanized-time" data-time="{{ lc }}">{{ lc }}</span>
           </td>
+
           <td class="caption-cell">
             <span class="caption-text">{{ caption[lc] }}</span>
             <button
