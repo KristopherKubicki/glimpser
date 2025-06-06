@@ -2725,6 +2725,9 @@ def init_routes(app: Flask) -> None:
             if not placed:
                 grouped_settings["Other"].append(setting)
 
+        # Remove empty groups to avoid blank headings in the UI
+        grouped_settings = {g: items for g, items in grouped_settings.items() if items}
+
         metrics = scheduling.get_system_metrics()
         feeds = scheduling.get_feed_status()
         last_summary = scheduling.get_last_summary_time()
