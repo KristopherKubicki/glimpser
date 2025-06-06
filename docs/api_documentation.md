@@ -234,6 +234,13 @@ Returns the latest caption text and timestamp.
 
 Reports the status of background camera discovery.
 
+### 14. Search Suggestions
+
+**GET /search_suggestions?q=term**
+
+Return a JSON array of camera or group names that contain the provided
+query string. At most ten results are returned.
+
 ## Error Handling
 
 All endpoints may return the following error responses:
