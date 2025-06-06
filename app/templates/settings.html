@@ -25,6 +25,9 @@ content %}
     <button type="button" class="tab-link" data-tab="status-tab">
       System Status
     </button>
+    <button type="button" class="tab-link" data-tab="costs-tab">
+      Costs
+    </button>
     {% endif %} {% endfor %}
     <button type="button" class="tab-link" data-tab="management-tab">
       Management
@@ -60,7 +63,6 @@ content %}
           <tr>
             <th class="searchable">Setting</th>
             <th class="searchable">Value</th>
-            <th class="searchable">Explanation</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -71,13 +73,13 @@ content %}
               {{ setting.name }}
             </td>
             <td>
-              {% if setting.value in ['True', 'False'] %}
+              {% if setting.value|lower in ['true', 'false'] %}
               <label class="switch">
                 <input
                   type="checkbox"
                   name="{{ setting.name }}"
                   value="True"
-                  {% if setting.value == 'True' %}checked{% endif %}
+                  {% if setting.value|lower == 'true' %}checked{% endif %}
                   data-boolean
                 />
                 <span class="slider round"></span>
@@ -90,9 +92,6 @@ content %}
                 title="Edit value for {{ setting.name }}"
               />
               {% endif %}
-            </td>
-            <td class="setting-explanation">
-              {{ tooltips.get(setting.name, '') }}
             </td>
             <td>
               <button
@@ -118,6 +117,7 @@ content %}
       {% include '_status_tab.html' %}
     </div>
     {% endif %} {% endfor %}
+
 
     <div id="management-tab" class="tab-content">
       <h3>Configuration Management</h3>
@@ -153,26 +153,10 @@ content %}
         Upload Configuration
       </button>
 
-      <h3>Danger Mode</h3>
-      <button
-        type="submit"
-        name="action"
-        value="update_shortcut"
-        title="Update Chrome shortcuts for Danger mode"
-      >
-        Update Chrome Shortcut
-      </button>
-    </div>
 
-    <input
-      type="hidden"
-      id="name_to_delete"
-      name="name_to_delete"
-      value=""
-      title="Name of setting to delete"
-    />
-    <button type="submit" title="Save all changes">Save Changes</button>
-  </form>
+      <input type="hidden" id="name_to_delete" name="name_to_delete" value="" title="Name of setting to delete" />
+      <button type="submit" title="Save all changes">Save Changes</button>
+    </form>
 </main>
 <script
   type="module"
