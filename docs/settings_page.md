@@ -15,10 +15,8 @@ The **Settings** interface lets you manage configuration values stored in the da
   a small progress bar indicating remaining disk space.
 - **Interface** – UI-related options like the navigation logo now live on their own tab.
 
-Each row now includes an **Explanation** column so you can read a short
-description without opening the reference table. Boolean values are
-displayed as toggle switches to avoid typing errors. Values such as `true`
-or `False` (any case) are recognized automatically.
+Hover over a setting name to see a tooltip with its explanation.
+Boolean values are displayed as toggle switches to avoid typing errors.
 
 ### Dynamic Feedback
 
