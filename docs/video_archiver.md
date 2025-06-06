@@ -23,3 +23,7 @@ and the operation is aborted so corrupted videos do not linger.
 Videos automatically rotate into a `final_*.mp4` once roughly 600 frames
 (about 24 seconds) accumulate. A small tolerance in the duration check prevents
 rounding errors from delaying rotation.
+
+The FFmpeg commands have been simplified so that each output is encoded only
+once. Redundant `-c:v` parameters were removed to prevent unnecessary
+transcoding, which keeps processing time minimal.
