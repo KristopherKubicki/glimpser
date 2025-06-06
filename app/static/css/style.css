@@ -149,6 +149,7 @@ main {
   flex-grow: 1;
   /* Reserve space for fixed footer so content isn't hidden */
   padding-bottom: 60px;
+  padding-top: 40px; /* Prevent overlap with sticky header */
 }
 
 /* Simple dynamic tooltip component */
@@ -442,7 +443,7 @@ body.light-mode {
 }
 
 .hide-captions .caption-overlay {
-    display: none;
+  display: none;
 }
 
 #status-legend {
@@ -488,6 +489,9 @@ header {
   justify-content: flex-start; /* Align items to the left */
   gap: 10px; /* Space between nav and chyron */
   transition: opacity 0.5s; /* Smooth fade for inactivity */
+  position: sticky; /* Keep header visible while scrolling */
+  top: 0;
+  z-index: 1000; /* Ensure header stays above content */
 }
 
 header.fade-out {
@@ -825,17 +829,17 @@ a {
 }
 
 .clock-overlay {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    z-index: 10;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 10;
 }
 
 .digital-clock {
-    font-size: 14px;
-    line-height: 25px;
-    text-align: center;
-    color: var(--text-color);
+  font-size: 14px;
+  line-height: 25px;
+  text-align: center;
+  color: var(--text-color);
 }
 
 .clock-face {
