@@ -121,7 +121,7 @@ SETTINGS_GROUPS = {
         "FFMPEG_HWACCEL",
         "FFMPEG_THREADS",
     ],
-    "Notifications": [
+    "Integrations": [
         "EMAIL_ENABLED",
         "EMAIL_SENDER",
         "EMAIL_RECIPIENTS",
@@ -133,15 +133,14 @@ SETTINGS_GROUPS = {
         "TWILIO_SID",
         "TWILIO_TOKEN",
         "TWILIO_NUMBER",
+        "MCP_SERVER_COMMAND",
+        "MCP_SERVER_URL",
+        "CLOCK_OVERLAY",
+        "CLOCK_DIGITAL",
+        "CLOCK_NAVBAR",
         "CAP_ENDPOINT",
         "CAP_SENDER",
     ],
-    "SMS": ["TWILIO_SID", "TWILIO_TOKEN", "TWILIO_NUMBER"],
-    "CAP": ["CAP_ENDPOINT", "CAP_SENDER"],
-    "MCP": ["MCP_SERVER_COMMAND", "MCP_SERVER_URL"],
-    "Clock": ["CLOCK_OVERLAY", "CLOCK_DIGITAL", "CLOCK_NAVBAR"],
-    "Interface": ["NAV_ICON", "HEALTH_STATUS_ALWAYS_VISIBLE", "UA"],
-    "Integrations": ["MCP_SERVER_COMMAND", "MCP_SERVER_URL"],
 }
 
 # Fields that should only allow numeric values on the settings page.
