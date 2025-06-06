@@ -12,9 +12,8 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Settings Reference** – expand the table to read explanations for each setting.
 - **Column Search** – click a header to filter rows by that column.
 
-Each row now includes an **Explanation** column so you can read a short
-description without opening the reference table. Boolean values are
-displayed as toggle switches to avoid typing errors.
+Hover over a setting name to see a tooltip with its explanation.
+Boolean values are displayed as toggle switches to avoid typing errors.
 
 ### Dynamic Feedback
 

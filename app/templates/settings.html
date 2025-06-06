@@ -61,7 +61,6 @@ content %}
           <tr>
             <th class="searchable">Setting</th>
             <th class="searchable">Value</th>
-            <th class="searchable">Explanation</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -114,9 +113,6 @@ content %}
               />
               {% endif %}
             </td>
-            <td class="setting-explanation">
-              {{ tooltips.get(setting.name, '') }}
-            </td>
             <td>
               <button
                 type="submit"
@@ -149,7 +145,6 @@ content %}
                     <tr>
                         <th class="searchable">Setting</th>
                         <th class="searchable">Value</th>
-                        <th class="searchable">Explanation</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -167,7 +162,6 @@ content %}
                             <input type="text" name="{{ setting.name }}" value="{{ setting.value }}" title="Edit value for {{ setting.name }}">
                             {% endif %}
                         </td>
-                        <td class="setting-explanation">{{ tooltips.get(setting.name, '') }}</td>
                         <td>
                             <button type="submit" name="action" value="delete" title="Delete {{ setting.name }}" onclick="return confirmDeleteSetting('{{ setting.name }}')">Delete</button>
                         </td>
