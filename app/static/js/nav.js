@@ -21,6 +21,12 @@ export function initNav() {
     const currentGroup = window.currentGroup || null;
     const currentCamera = window.currentCamera || null;
 
+    // Keep navigation expanded outside the Settings page so mobile users
+    // always see the full menu without a toggle button.
+    if (nav && !onSettingsPage) {
+      nav.classList.add("active");
+    }
+
     if (nav && menuToggle) {
       menuToggle.addEventListener("click", () => {
         nav.classList.toggle("active");
