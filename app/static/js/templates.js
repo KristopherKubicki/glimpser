@@ -602,16 +602,15 @@ export async function loadTemplates() {
     if (isIndexPage) {
       window.addEventListener("resize", updateGridLayout);
     }
+    const slider = document.getElementById("grid-width-slider");
     if (window.updateSliderLimits) {
       window.updateSliderLimits();
-      const slider = document.getElementById("grid-width-slider");
       if (slider) {
         slider.value = slider.min;
         slider.dispatchEvent(new Event("input"));
       }
-    } else {
-      const slider = document.getElementById("grid-width-slider");
-      if (slider) slider.dispatchEvent(new Event("input"));
+    } else if (slider) {
+      slider.dispatchEvent(new Event("input"));
     }
     updateHumanizedTimes();
     window.dispatchEvent(
