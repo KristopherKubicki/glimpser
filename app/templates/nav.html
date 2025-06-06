@@ -8,11 +8,13 @@
 <div id="caption-chyron" class="caption-chyron" aria-live="polite" data-speed="{{ CHYRON_SPEED }}"></div>
 <nav>
   <button id="menu-toggle" class="menu-toggle" aria-label="Toggle navigation">☰</button>
+  {% if session.get('user_id') %}
   <div class="nav-left">
     <select id="nav-group-dropdown" title="Jump to group"></select>
     <select id="nav-camera-dropdown" title="Jump to camera" style="display:none"></select>
     <!-- Discover icon moved to nav-right for consistency -->
   </div>
+  {% endif %}
 
   <div class="nav-center">
     {% if template_name %}

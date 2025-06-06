@@ -6,9 +6,9 @@ The main template view scales thumbnails with the width slider and the page now 
 
 The header navigation also uses smaller padding so it stays out of the way on both mobile and desktop.
 
-Group links in the header are now available through a dropdown menu. The list
-populates asynchronously from the `/groups` endpoint and fits neatly inside the
-hamburger layout on small screens.
+Group links in the header are now available through a dropdown menu when logged
+in. The list populates asynchronously from the `/groups` endpoint and fits
+neatly inside the hamburger layout on small screens.
 
 Selecting a group from that dropdown while on the **Live** page now updates the
 camera selector immediately without reloading the page, keeping navigation
