@@ -375,6 +375,7 @@ function debounce(fn, delay) {
 
 export function setupSearch() {
   const searchInput = document.getElementById("search-input");
+  const searchContainer = document.getElementById("search-container");
   const groupDropdown = document.getElementById("group-dropdown");
   const cameraRows = document.querySelectorAll(".camera-row");
   const filterColumn = document.getElementById("filter-column");
@@ -382,6 +383,27 @@ export function setupSearch() {
   const applyFilter = document.getElementById("apply-filter");
   const templateList = document.getElementById("template-list");
   if (!searchInput) return;
+
+  if (searchContainer) {
+    searchContainer.style.display = "none";
+    let fadeTimeout;
+    const showSearch = () => {
+      searchContainer.classList.remove("fade-out");
+      clearTimeout(fadeTimeout);
+      fadeTimeout = setTimeout(
+        () => searchContainer.classList.add("fade-out"),
+        3000,
+      );
+    };
+    ["mousemove", "scroll"].forEach((evt) => {
+      document.addEventListener(evt, showSearch);
+    });
+    window.addEventListener("templatesLoaded", (e) => {
+      const count = e.detail?.count ?? 0;
+      searchContainer.style.display = count > 10 ? "block" : "none";
+      if (count > 10) showSearch();
+    });
+  }
 
   const filterCameras = () => {
     const searchTerm = searchInput.value.toLowerCase();

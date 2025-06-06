@@ -1,13 +1,16 @@
-{% extends 'base.html' %}
-{% block content %}
+{% extends 'base.html' %} {% block content %}
 <div>
-  <label for="search-input" title="Search for cameras or groups">Search:</label>
-  <input
-    type="text"
-    id="search-input"
-    placeholder="Search cameras or groups"
-    title="Enter search terms"
-  />
+  <div id="search-container">
+    <label for="search-input" title="Search for cameras in this group"
+      >Search:</label
+    >
+    <input
+      type="text"
+      id="search-input"
+      placeholder="Search cameras"
+      title="Enter search terms"
+    />
+  </div>
   <input
     type="range"
     id="grid-width-slider"
