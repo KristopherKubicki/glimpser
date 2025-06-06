@@ -749,6 +749,39 @@ def get_llm_cost_estimate(name: str) -> str:
     return f"${cost:.2f}"
 
 
+def get_llm_token_usage(name: str) -> int:
+    """Return the total tokens recorded for ``name``."""
+
+    name = validate_template_name(name)
+    if name is None:
+        return 0
+
+    if not os.path.exists(LLM_USAGE_PATH):
+        return 0
+
+    try:
+        with open(LLM_USAGE_PATH, "r") as f:
+            data = json.load(f)
+    except Exception:
+        return 0
+
+    entry = data.get(name, 0)
+    if isinstance(entry, list):
+        total = 0
+        for val in entry:
+            if isinstance(val, int):
+                total += val
+            elif isinstance(val, dict) and "tokens" in val:
+                try:
+                    total += int(val["tokens"])
+                except Exception:
+                    continue
+        return total
+    if isinstance(entry, int):
+        return entry
+    return 0
+
+
 def update_last_screenshot_time(name: str) -> None:
     """Set ``last_screenshot_time`` to now and clear ``offline_since``."""
     name = validate_template_name(name)

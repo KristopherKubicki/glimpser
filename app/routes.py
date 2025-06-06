@@ -77,6 +77,7 @@ from app.utils import (
     prompt_optimizer,
     camera_fix,
 )
+from app.utils.template_manager import LLM_COST_PER_TOKEN
 
 from app.utils.llm import ask_question
 from app.utils.settings_tooltips import SETTINGS_TOOLTIPS, SETTINGS_GROUPS
@@ -2728,6 +2729,21 @@ def init_routes(app: Flask) -> None:
         metrics = scheduling.get_system_metrics()
         feeds = scheduling.get_feed_status()
         last_summary = scheduling.get_last_summary_time()
+
+        cost_data = []
+        templates = template_manager.get_templates()
+        for name, tmpl in templates.items():
+            tokens = template_manager.get_llm_token_usage(name)
+            group = tmpl.get("groups") or "Ungrouped"
+            cost_data.append(
+                {
+                    "name": name,
+                    "group": group,
+                    "tokens": tokens,
+                    "cost": round(tokens * LLM_COST_PER_TOKEN, 2),
+                }
+            )
+        cost_groups = sorted({c["group"] for c in cost_data})
         return render_template(
             "settings.html",
             grouped_settings=grouped_settings,
@@ -2736,6 +2752,8 @@ def init_routes(app: Flask) -> None:
             feeds=feeds,
             last_summary=last_summary,
             choices=SETTINGS_CHOICES,
+            cost_data=cost_data,
+            cost_groups=cost_groups,
             page_title="Settings",
         )
 
