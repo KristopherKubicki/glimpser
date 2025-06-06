@@ -352,10 +352,6 @@ select:hover {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-video:hover + .play-icon {
-  display: block; /* Show play icon on hover */
-}
-
 :root {
   --tile-size: 360px;
   --grid-item-width: var(--tile-size);
