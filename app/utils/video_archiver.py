@@ -67,6 +67,30 @@ def run_ffmpeg(command):
     return result
 
 
+def pipe_ffmpeg_frames(command, frame_files):
+    """Stream image frames to FFmpeg through stdin."""
+    process = subprocess.Popen(
+        command,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    for frame in frame_files:
+        with open(frame, "rb") as img:
+            process.stdin.write(img.read())
+    process.stdin.close()
+    stdout, stderr = process.communicate()
+    if stdout:
+        logging.debug("ffmpeg stdout: %s", stdout.decode().strip())
+    if stderr:
+        logging.debug("ffmpeg stderr: %s", stderr.decode().strip())
+    if process.returncode != 0:
+        raise subprocess.CalledProcessError(
+            process.returncode, command, output=stdout, stderr=stderr
+        )
+    return process
+
+
 def get_video_creation_time(video_path):
     """Return the creation_time metadata as a datetime object."""
     command = [
@@ -260,6 +284,11 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
         temp_video_duration = get_video_duration(temp_video)
         if in_process_duration > 0 and temp_video_duration > 0:
             concat_video = os.path.join(video_path, "in_process.concat.mp4")
+            list_file = None
+            with tempfile.NamedTemporaryFile(mode="w+", delete=False) as lf:
+                lf.write(f"file '{os.path.abspath(in_process_video)}'\n")
+                lf.write(f"file '{os.path.abspath(temp_video)}'\n")
+                list_file = lf.name
             concat_command = [FFMPEG_PATH]
             if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
                 concat_command.extend(["-hwaccel", FFMPEG_HWACCEL])
@@ -267,32 +296,18 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
                 [
                     "-threads",
                     str(FFMPEG_THREADS),
-                    # "-safe",  Option not found?  But it is found and used elsewhere?  Not surewhy this is..
-                    # "0",
-                    "-err_detect",
-                    "ignore_err",
-                    "-fflags",
-                    "+igndts+ignidx+genpts+fastseek+discardcorrupt",
-                    "-an",
-                    "-dn",
-                    "-c:v",
-                    "h264",
+                    "-f",
+                    "concat",
+                    "-safe",
+                    "0",
                     "-i",
-                    os.path.abspath(in_process_video),
-                    "-i",
-                    os.path.abspath(temp_video),
-                    "-filter_complex",
-                    "[0:v:0][1:v:0]concat=n=2:v=1:a=0[outv]",
-                    "-map",
-                    "[outv]",
-                    "-c:v",
-                    "libx264",
-                    "-pix_fmt",
-                    "yuv420p",
+                    list_file,
+                    "-c",
+                    "copy",
                     "-movflags",
                     "+faststart",
                     "-y",
-                    os.path.abspath(concat_video),  # Overwrite the in-process video
+                    os.path.abspath(concat_video),
                 ]
             )
             try:
@@ -310,7 +325,6 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
                     os.path.abspath(output_video + ".tmp"),
                     os.path.abspath(output_video),
                 )
-
             except Exception as e:
                 status = handle_concat_error(e, temp_video, in_process_video)
                 if status == ConcatStatus.RETRY and retries > 0:
@@ -323,6 +337,9 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
                     return True
                 else:
                     return False
+            finally:
+                if list_file and os.path.exists(list_file):
+                    os.remove(list_file)
         elif os.path.exists(temp_video) and os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
             file_updated = True
@@ -455,23 +472,14 @@ def compile_to_video(camera_path, video_path) -> bool:
     # print("compile", time.time(), video_mod_time, len(new_files))
 
     if len(new_files) > 0:
-        # Create a temporary file with the list of new frames
-        lcount = 0
-        temp_file_path = None
-        with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_file:
-            for file in new_files[-300:]:  # keep it short for now
-                if os.path.getsize(os.path.abspath(file)) > 10 and "_2" in file:
-                    temp_file.write(f"file '{os.path.abspath(file)}'\n")
-                    lcount += 1
-            temp_file_path = temp_file.name
-        if lcount == 0:
-            # nothing to do
-            os.remove(temp_file_path)
+        frame_files = [
+            f
+            for f in new_files[-300:]
+            if os.path.getsize(os.path.abspath(f)) > 10 and "_2" in f
+        ]
+        if not frame_files:
             return
-        if temp_file_path is None:
-            return  # should not be possible
 
-        # Create a temporary video with the new frames
         temp_video = os.path.join(video_path, "in_process.tmp.mp4")
 
         create_command = [FFMPEG_PATH]
@@ -482,23 +490,13 @@ def compile_to_video(camera_path, video_path) -> bool:
                 "-threads",
                 "5",
                 "-f",
-                "concat",
+                "image2pipe",
                 "-r",
-                "25",  # for some reason the standard for png?
-                "-c:v",
+                "25",
+                "-vcodec",
                 "png",
-                "-use_wallclock_as_timestamps",
-                "1",
-                "-err_detect",
-                "ignore_err",
-                "-fflags",
-                "+igndts+ignidx+genpts+fastseek+discardcorrupt",
-                "-copyts",
-                "-start_at_zero",
-                "-safe",
-                "0",
                 "-i",
-                os.path.abspath(temp_file_path),
+                "pipe:0",
                 "-c:v",
                 "libx264",
                 "-pix_fmt",
@@ -512,45 +510,28 @@ def compile_to_video(camera_path, video_path) -> bool:
         create_command.extend(
             ["-metadata", "creation_time=%sZ" % datetime.datetime.utcnow()]
         )
-        create_command.extend(["-metadata", "encoded_by=%s" % NAME])
-        create_command.extend(["-metadata", "version=%s" % VERSION])
-        create_command.extend(
-            ["-y", os.path.abspath(temp_video)]
-        )  # Overwrite if exists
+        create_command.extend(["-metadata", f"encoded_by={NAME}"])
+        create_command.extend(["-metadata", f"version={VERSION}"])
+        create_command.extend(["-y", os.path.abspath(temp_video)])
 
-        lout, lerr = None, None
         try:
-            run_ffmpeg(create_command)
+            pipe_ffmpeg_frames(create_command, frame_files)
             if is_video_expired(temp_video, MAX_COMPRESSED_VIDEO_AGE):
                 logging.warning("creation time mismatch for %s", temp_video)
         except Exception as e:
             logging.error("FFmpeg command failed: %s", e)
-
         finally:
-
-            if os.path.exists(temp_file_path):
-                os.remove(temp_file_path)  # Clean up the temporary file
-
-            # Concatenate the temporary video with the existing in-process video
-            if os.path.getsize(temp_video) > 0 and video_mod_time == 0:
-                # print("concatenate skip...", temp_video, lcount) # warning
-                os.rename(temp_video, in_process_video)
-            else:
-                ldur2 = get_video_duration(temp_video)
-                if os.path.getsize(temp_video) > 0 and ldur2 == 300 / 25:
-                    # print("concatenate skip2...", temp_video, lcount) # warning
+            if os.path.exists(temp_video) and os.path.getsize(temp_video) > 0:
+                if video_mod_time == 0:
                     os.rename(temp_video, in_process_video)
-                elif round(ldur2, 1) == round(
-                    (len(new_files) / 25), 1
-                ):  # this is a perfect encode...
-                    # print(" detected perfect encode... concatenating...", ldur, ldur2, len(new_files) / 25, video_mod_time, camera_path, os.path.getsize(temp_video), os.path.getsize(in_process_video))
-                    concatenate_videos(in_process_video, temp_video, video_path)
                 else:
-                    # this means a lot of frame drops
-                    # print("warning encoding miss!", lcount, video_mod_time, temp_video, os.path.getsize(temp_video) , ldur, ldur2, len(new_files) / 25, os.path.getsize(temp_video), os.path.getsize(in_process_video))
-                    # subprocess.run(create_command, check=True)
-                    # yeah concatenate anyway
-                    ltest = concatenate_videos(in_process_video, temp_video, video_path)
+                    ldur2 = get_video_duration(temp_video)
+                    if os.path.getsize(temp_video) > 0 and ldur2 == 300 / 25:
+                        os.rename(temp_video, in_process_video)
+                    elif round(ldur2, 1) == round((len(frame_files) / 25), 1):
+                        concatenate_videos(in_process_video, temp_video, video_path)
+                    else:
+                        concatenate_videos(in_process_video, temp_video, video_path)
 
     # Add new screenshots to the "in-process" video
     # Assuming screenshots are added at a regular interval, they can be appended in order
