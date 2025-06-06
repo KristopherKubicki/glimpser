@@ -7,7 +7,9 @@
 {% endif %}
 <div id="caption-chyron" class="caption-chyron" aria-live="polite" data-speed="{{ CHYRON_SPEED }}"></div>
 <nav>
+  {% if session.get('user_id') %}
   <button id="menu-toggle" class="menu-toggle" aria-label="Toggle navigation">☰</button>
+  {% endif %}
   <div class="nav-left">
     <select id="nav-group-dropdown" title="Jump to group"></select>
     <select id="nav-camera-dropdown" title="Jump to camera" style="display:none"></select>
