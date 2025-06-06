@@ -206,8 +206,9 @@ h2 {
   display: grid;
   grid-template-columns: repeat(
     auto-fit,
-    minmax(50px, var(--tile-size))
+  minmax(50px, var(--tile-size))
   ); /* Use CSS variable */
+
   gap: 5px;
   padding: 10px;
   justify-content: center;
@@ -317,6 +318,7 @@ select:hover {
     255,
     0.7
   ); /* Semi-transparent white background */
+
   border-radius: 50%;
   padding: calc(5px * var(--tile-scale, 1));
   display: none; /* Hide by default */
@@ -550,6 +552,17 @@ nav a {
   border-radius: 5px;
   padding: 4px 8px;
   width: 120px; /* Prevent layout shift while content loads */
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-appearance: none; /* Hide default arrows */
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -moz-appearance: none;
+  appearance: none;
+  background-image: none;
+}
+
+/* Hide arrows in IE */
+select::-ms-expand {
+  display: none;
 }
 
 .status-indicator {
