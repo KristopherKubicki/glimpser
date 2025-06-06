@@ -61,10 +61,12 @@ class TestGetSystemMetrics(unittest.TestCase):
     @patch("app.utils.scheduling.ffmpeg_version", return_value="6.0")
     @patch("app.utils.scheduling.machine_supports_hwaccel", return_value=True)
     @patch("app.utils.scheduling.ffmpeg_supports_hwaccel", return_value=True)
+    @patch("app.utils.scheduling.get_setting", return_value="True")
     @patch.object(scheduling, "FFMPEG_HWACCEL", "cuda")
     def test_metrics_fields(
         self,
         mock_ffmpeg_hwaccel,
+        mock_get_setting,
         mock_machine,
         mock_version,
         mock_psutil,
@@ -90,6 +92,9 @@ class TestGetSystemMetrics(unittest.TestCase):
         self.assertTrue(metrics["machine_hwaccel"])
         self.assertTrue(metrics["ffmpeg_hwaccel"])
         self.assertTrue(metrics["hwaccel_enabled"])
+        self.assertTrue(metrics["gpu_support"])
+        self.assertTrue(metrics["ffmpeg_gpu_enabled"])
+        self.assertTrue(metrics["danger_mode"])
 
 
 if __name__ == "__main__":
