@@ -73,6 +73,46 @@ export function initCaptions() {
       }
     });
 
+    const captionTable = document.querySelector("#captions-table tbody");
+    let activeBtn = null;
+    let paused = false;
+    captionTable?.addEventListener("click", (e) => {
+      const btn = e.target.closest(".speech-btn");
+      if (!btn) return;
+      const text = btn
+        .closest("td")
+        ?.querySelector(".caption-text")?.textContent;
+      if (!text) return;
+      if (
+        btn === activeBtn &&
+        speechSynthesis.speaking &&
+        !speechSynthesis.paused
+      ) {
+        speechSynthesis.pause();
+        btn.textContent = "\u25B6";
+        paused = true;
+        return;
+      }
+      if (btn === activeBtn && paused) {
+        speechSynthesis.resume();
+        btn.textContent = "\u23F8";
+        paused = false;
+        return;
+      }
+      speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.onend = () => {
+        if (activeBtn) activeBtn.textContent = "\u25B6";
+        activeBtn = null;
+        paused = false;
+      };
+      speechSynthesis.speak(utter);
+      if (activeBtn) activeBtn.textContent = "\u25B6";
+      activeBtn = btn;
+      btn.textContent = "\u23F8";
+      paused = false;
+    });
+
     tabs.forEach((tab) => {
       tab.addEventListener("click", () => {
         const target = tab.dataset.tab;

@@ -217,7 +217,17 @@
           <td>
             <span class="humanized-time" data-time="{{ lc }}">{{ lc }}</span>
           </td>
-          <td>{{ caption[lc] }}</td>
+          <td class="caption-cell">
+            <span class="caption-text">{{ caption[lc] }}</span>
+            <button
+              class="speech-btn"
+              type="button"
+              aria-label="Play caption"
+              title="Play caption"
+            >
+              ▶
+            </button>
+          </td>
         </tr>
         {% endif %} {% endfor %} {% endfor %} {% endif %}
       </tbody>
