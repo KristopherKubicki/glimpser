@@ -49,3 +49,15 @@ nav:
       - Log Cleaner: log_cleaner.md
       - Video Archiver: video_archiver.md
       - Governance: governance.md
+      - Border Legend: border_legend.md
+      - Caption Overlay Toggle: caption_overlay_toggle.md
+      - Chatbot: chatbot.md
+      - CI Checks: ci_checks.md
+      - Jog-Shuttle Control: jog_shuttle.md
+      - Live All Playback: live_all.md
+      - Live View Scrubbing: live_scrub.md
+      - MCP Integration: mcp_integration.md
+      - Onboarding: onboarding.md
+      - OpenSSF Scorecard: scorecard.md
+      - Startup Tips: startup_tips.md
+      - UI Component Guide: style_guide.md

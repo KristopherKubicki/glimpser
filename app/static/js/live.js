@@ -26,6 +26,17 @@ if (templateKeys.length === 1) {
   currentCamera = templateKeys[0];
 }
 
+// Ensure the synthetic "All" group is defined on page load so switching the
+// video source works even before the camera selector is changed. Without this
+// initialization, functions like playPNG() would crash when currentCamera is
+// "All" because templateDetails["All"] would be undefined.
+if (!templateDetails["All"]) {
+  templateDetails["All"] = {
+    url: "/stream.mp4",
+    groupCameras: templateKeys,
+  };
+}
+
 // Allow embedding the live view for a specific camera by reading the
 // ``camera`` query parameter. When provided and valid, restrict the camera
 // selector to that camera and start playback for it immediately.
@@ -665,7 +676,6 @@ function playMP4() {
   resetVideo();
   video.style.display = "block";
   stopLiveSwitch();
-  stopPNG();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     const groupName = currentCamera.split("group-")[1];
@@ -782,11 +792,13 @@ function playPNG() {
   // When switching from video playback to PNG images, ensure any
   // ongoing video stream is stopped to avoid "media element" errors.
   resetVideo();
+  stopPNG();
   video.pause();
   video.src = "";
+  stopLiveSwitch();
+  stopPNG();
   video.style.display = "none";
   image.style.display = "block";
-  stopLiveSwitch();
   const slider = document.getElementById("speed-slider");
   const speed = Math.pow(2, slider.value);
   const seekBar = document.getElementById("seek-bar");
@@ -803,7 +815,6 @@ function playPNG() {
       msg: `seekBar:${seekBar},speed:${speed}`,
     }),
   );
-  stopPNG();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     let cameraIndex = 0;
@@ -849,8 +860,11 @@ function playPNG() {
 function playMJPG() {
   // Stop any existing video stream before showing MJPEG frames
   resetVideo();
+  stopPNG();
   video.pause();
   video.src = "";
+  stopLiveSwitch();
+  stopPNG();
   video.style.display = "none";
   image.style.display = "block";
   // MJPEG streams are continuous images, disable scrubbing
@@ -861,7 +875,6 @@ function playMJPG() {
     seekBar.disabled = true;
   }
   stopLiveSwitch();
-  stopPNG();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     const groupName = currentCamera.split("group-")[1];
@@ -882,8 +895,11 @@ function playMJPG() {
 function playMotion() {
   // Stop any existing video stream before showing motion JPEG frames
   resetVideo();
+  stopPNG();
   video.pause();
   video.src = "";
+  stopLiveSwitch();
+  stopPNG();
   video.style.display = "none";
   image.style.display = "block";
   const seekBar = document.getElementById("seek-bar");
@@ -893,7 +909,6 @@ function playMotion() {
     seekBar.disabled = true;
   }
   stopLiveSwitch();
-  stopPNG();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     const groupName = currentCamera.split("group-")[1];
