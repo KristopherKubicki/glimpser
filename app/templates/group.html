@@ -1,5 +1,4 @@
-{% extends 'base.html' %}
-{% block content %}
+{% extends 'base.html' %} {% from 'components.html' import status_legend %} {% block content %}
 <div>
   <label for="search-input" title="Search for cameras or groups">Search:</label>
   <input
@@ -16,6 +15,7 @@
     value="360"
     title="Adjust the width of the template grid"
   />
+  {{ status_legend() }}
   <button id="play-all-button" title="Play/Stop all videos">Play All</button>
   <button id="live-all-button" title="Live stream all cameras">Live All</button>
   <button

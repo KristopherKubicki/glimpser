@@ -1,6 +1,6 @@
 <!-- app/templates/index.html -->
 
-{% extends 'base.html' %} {% block content %}
+{% extends 'base.html' %} {% from 'components.html' import status_legend %} {% block content %}
 
 <section id="template-controls">
   <input
@@ -17,14 +17,7 @@
     value="360"
     title="Adjust the width of the template grid"
   />
-  <span id="status-legend">
-    <span class="status-item"
-      ><span class="status-box recent" aria-hidden="true"></span> Recent</span
-    >
-    <span class="status-item"
-      ><span class="status-box error" aria-hidden="true"></span> Error</span
-    >
-  </span>
+  {{ status_legend() }}
   <button id="play-all-button" title="Play/Stop all videos">Play All</button>
   <button id="live-all-button" title="Live stream all cameras">Live All</button>
   <button
