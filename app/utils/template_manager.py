@@ -869,23 +869,6 @@ def set_capture_failed(name: str, failed: bool) -> None:
         session.close()
 
 
-def set_capture_failed(name: str, failed: bool) -> None:
-    """Set ``capture_failed`` flag for ``name``."""
-    name = validate_template_name(name)
-    if name is None:
-        return
-
-    manager = TemplateManager()
-    session = manager.get_session()
-    try:
-        template = session.query(Template).filter_by(name=name).first()
-        if template:
-            template.capture_failed = bool(failed)
-            session.commit()
-    finally:
-        session.close()
-
-
 def _update_scheduler_job(name: str, frequency: int) -> None:
     """Reschedule the APScheduler job for ``name`` if it exists.
 
