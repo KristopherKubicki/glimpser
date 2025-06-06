@@ -1532,6 +1532,12 @@ details > summary {
   padding: 4px 8px;
 }
 
+/* Highlight search matches in captions table */
+.captions-table mark {
+  background-color: yellow;
+  padding: 0;
+}
+
 /* Utility classes for modals and embedded media */
 .live-embed {
   margin-bottom: 20px;

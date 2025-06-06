@@ -730,8 +730,24 @@ export function setupCaptionsFilter() {
     return Number.isNaN(d.getTime()) ? null : d;
   };
 
+  // Escape user search term for safe use in RegExp
+  const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // Highlight occurrences of the search term within the caption cell
+  const highlight = (cell, term) => {
+    if (!cell) return;
+    const raw = cell.dataset.raw || cell.textContent;
+    cell.dataset.raw = raw;
+    if (!term) {
+      cell.innerHTML = raw;
+      return;
+    }
+    const regex = new RegExp(`(${escapeRegExp(term)})`, "gi");
+    cell.innerHTML = raw.replace(regex, "<mark>$1</mark>");
+  };
+
   const filter = () => {
-    const term = searchInput.value.toLowerCase();
+    const term = searchInput.value.toLowerCase().trim();
     const start =
       startInput && startInput.value ? new Date(startInput.value) : null;
     const end = endInput && endInput.value ? new Date(endInput.value) : null;
@@ -746,6 +762,11 @@ export function setupCaptionsFilter() {
       if (end && rowDate && rowDate > new Date(end.getTime() + 86400000 - 1))
         show = false;
       row.style.display = show ? "" : "none";
+      const captionCell = row.querySelector("td:nth-child(2)");
+      if (show) highlight(captionCell, term);
+      else if (captionCell)
+        captionCell.innerHTML =
+          captionCell.dataset.raw || captionCell.textContent;
     });
   };
 
