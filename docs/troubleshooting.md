@@ -232,6 +232,18 @@ error* because the response is missing or invalid.
 - When a clip fails to load, the live player now skips to the next camera
   instead of stalling on the error message.
 
+### Problem: "All" PNG stream always shows "No screenshot available"
+
+The live viewer requests `/stream.png` to display the most recent frame from any
+camera. If the newest PNG is corrupt or missing the placeholder image is shown
+instead.
+
+**Solution:**
+- Ensure each camera is capturing screenshots in `data/screenshots`.
+- Remove any zero-byte or invalid PNG files. Glimpser now skips corrupt images
+  when choosing the latest shot.
+- Use `/take_screenshot/<camera>` to capture a fresh frame if needed.
+
 ## 12. Layout Issues
 
 ### Problem: Buttons at the bottom of the Templates page are hidden
