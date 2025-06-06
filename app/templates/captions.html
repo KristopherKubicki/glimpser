@@ -1,4 +1,4 @@
-{% extends 'base.html' %} {% block content %}
+{% extends 'base.html' %} {% from 'components.html' import status_legend %} {% block content %}
 <div class="captions-page">
   <script>
     function updateTemplate(templateName) {
@@ -91,6 +91,7 @@
           value="360"
           title="Adjust thumbnail width"
         />
+        {{ status_legend() }}
         <label for="sort-date" title="Sort camera table">Sort:</label>
         <select id="sort-date" title="Sort camera table">
           <option value="">Default</option>
