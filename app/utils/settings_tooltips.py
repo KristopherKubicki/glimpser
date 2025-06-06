@@ -103,7 +103,7 @@ SETTINGS_GROUPS = {
         "FFMPEG_HWACCEL",
         "FFMPEG_THREADS",
     ],
-    "Email": [
+    "Integrations": [
         "EMAIL_ENABLED",
         "EMAIL_SENDER",
         "EMAIL_RECIPIENTS",
@@ -112,9 +112,14 @@ SETTINGS_GROUPS = {
         "EMAIL_USE_TLS",
         "EMAIL_USERNAME",
         "EMAIL_PASSWORD",
+        "TWILIO_SID",
+        "TWILIO_TOKEN",
+        "TWILIO_NUMBER",
+        "MCP_SERVER_COMMAND",
+        "MCP_SERVER_URL",
+        "CLOCK_OVERLAY",
+        "CLOCK_DIGITAL",
+        "CLOCK_NAVBAR",
     ],
-    "SMS": ["TWILIO_SID", "TWILIO_TOKEN", "TWILIO_NUMBER"],
     "CAP": ["CAP_ENDPOINT", "CAP_SENDER"],
-    "MCP": ["MCP_SERVER_COMMAND", "MCP_SERVER_URL"],
-    "Clock": ["CLOCK_OVERLAY", "CLOCK_DIGITAL", "CLOCK_NAVBAR"],
 }
