@@ -228,18 +228,17 @@ export function getSelectedGroup() {
   return "all";
 }
 
-export function timeAgo(utcDateString) {
-  if (!utcDateString) return "just now";
+export function timeAgo(dateString) {
+  if (!dateString) return "just now";
   const now = new Date();
-  const iso =
-    utcDateString instanceof Date
-      ? utcDateString.toISOString()
-      : utcDateString.includes("T")
-        ? utcDateString
-        : `${utcDateString.replace(" ", "T")}Z`;
-  const utcDate = new Date(iso);
-  if (Number.isNaN(utcDate.getTime())) return "just now";
-  const diffInSeconds = Math.floor((now - utcDate) / 1000);
+  const date =
+    dateString instanceof Date
+      ? dateString
+      : new Date(
+          dateString.includes("T") ? dateString : dateString.replace(" ", "T"),
+        );
+  if (Number.isNaN(date.getTime())) return "just now";
+  const diffInSeconds = Math.floor((now - date) / 1000);
   if (diffInSeconds < 0) return "in the future";
 
   const intervals = [
@@ -258,9 +257,14 @@ export function timeAgo(utcDateString) {
   return "just now";
 }
 
-export function formatExactTime(utcDateString) {
-  const date = new Date(utcDateString);
-  return `UTC: ${date.toUTCString()}\nLocal: ${date.toString()}`;
+export function formatExactTime(dateString) {
+  const date =
+    dateString instanceof Date
+      ? dateString
+      : new Date(
+          dateString.includes("T") ? dateString : dateString.replace(" ", "T"),
+        );
+  return date.toString();
 }
 
 export function isMobile() {
