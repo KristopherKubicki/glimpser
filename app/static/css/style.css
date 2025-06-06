@@ -510,6 +510,14 @@ header.fade-out {
   opacity: 0;
 }
 
+#search-container {
+  transition: opacity 0.5s;
+}
+
+#search-container.fade-out {
+  opacity: 0;
+}
+
 header h1 {
   margin: 0; /* Remove default margins */
   font-size: 20px; /* Compact font size */
