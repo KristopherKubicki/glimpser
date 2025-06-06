@@ -25,6 +25,9 @@ content %}
     <button type="button" class="tab-link" data-tab="status-tab">
       System Status
     </button>
+    <button type="button" class="tab-link" data-tab="costs-tab">
+      Costs
+    </button>
     {% endif %} {% endfor %}
     <button type="button" class="tab-link" data-tab="management-tab">
       Management
@@ -48,7 +51,6 @@ content %}
     </a>
   </div>
 
-
   <form method="POST" action="{{ url_for('settings') }}" id="settings-form">
     {% for group, items in grouped_settings.items() %}
     <div
@@ -61,7 +63,6 @@ content %}
           <tr>
             <th class="searchable">Setting</th>
             <th class="searchable">Value</th>
-            <th class="searchable">Explanation</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -72,17 +73,18 @@ content %}
               {{ setting.name }}
             </td>
             <td>
-              {% if setting.value in ['True', 'False'] %}
+              {% if setting.value|lower in ['true', 'false'] %}
               <label class="switch">
                 <input
                   type="checkbox"
                   name="{{ setting.name }}"
                   value="True"
-                  {% if setting.value == 'True' %}checked{% endif %}
+                  {% if setting.value|lower == 'true' %}checked{% endif %}
                   data-boolean
                 />
                 <span class="slider round"></span>
               </label>
+
               {% elif setting.name in choices %}
               <input
                 type="text"
@@ -96,6 +98,21 @@ content %}
                 <option value="{{ option }}"></option>
                 {% endfor %}
               </datalist>
+              {% elif setting.name in numeric_fields %}
+              <input
+                type="number"
+                name="{{ setting.name }}"
+                min="0"
+                value="{{ setting.value }}"
+                title="Edit value for {{ setting.name }}"
+              />
+              {% elif setting.name in email_fields %}
+              <input
+                type="email"
+                name="{{ setting.name }}"
+                value="{{ setting.value }}"
+                title="Edit value for {{ setting.name }}"
+              />
               {% elif setting.name == 'PORT' %}
               <input
                 type="number"
@@ -105,6 +122,7 @@ content %}
                 value="{{ setting.value }}"
                 title="Edit port"
               />
+
               {% else %}
               <input
                 type="text"
@@ -113,9 +131,6 @@ content %}
                 title="Edit value for {{ setting.name }}"
               />
               {% endif %}
-            </td>
-            <td class="setting-explanation">
-              {{ tooltips.get(setting.name, '') }}
             </td>
             <td>
               <button
@@ -138,19 +153,18 @@ content %}
       {% include '_discover_tab.html' %}
     </div>
     {% endif %} {% endfor %}
-
-
-
         <div id="management-tab" class="tab-content">
             <h3>Configuration Management</h3>
             <button type="submit" name="action" value="backup" title="Create a JSON backup of all settings">Backup Configuration</button>
             <button type="submit" name="action" value="download" title="Download the latest configuration backup">Download Configuration</button>
             <input type="file" name="file" accept=".json" title="Select configuration file to upload">
             <button type="submit" name="action" value="upload" title="Restore configuration from uploaded file" onclick="return confirmRestore()">Upload Configuration</button>
+            <h3>Notification Tests</h3>
+            <button type="submit" name="action" value="test_email" title="Send a test email to verify settings">Send Test Email</button>
+            <button type="submit" name="action" value="test_sms" title="Send a test SMS to verify settings">Send Test SMS</button>
 
             <h3>Danger Mode</h3>
             <button type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode">Update Chrome Shortcut</button>
-
 
     </div>
 
