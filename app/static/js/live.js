@@ -26,6 +26,17 @@ if (templateKeys.length === 1) {
   currentCamera = templateKeys[0];
 }
 
+// Ensure the synthetic "All" group is defined on page load so switching the
+// video source works even before the camera selector is changed. Without this
+// initialization, functions like playPNG() would crash when currentCamera is
+// "All" because templateDetails["All"] would be undefined.
+if (!templateDetails["All"]) {
+  templateDetails["All"] = {
+    url: "/stream.mp4",
+    groupCameras: templateKeys,
+  };
+}
+
 // Allow embedding the live view for a specific camera by reading the
 // ``camera`` query parameter. When provided and valid, restrict the camera
 // selector to that camera and start playback for it immediately.
@@ -665,7 +676,6 @@ function playMP4() {
   resetVideo();
   video.style.display = "block";
   stopLiveSwitch();
-  stopPNG();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     const groupName = currentCamera.split("group-")[1];
@@ -785,9 +795,10 @@ function playPNG() {
   stopPNG();
   video.pause();
   video.src = "";
+  stopLiveSwitch();
+  stopPNG();
   video.style.display = "none";
   image.style.display = "block";
-  stopLiveSwitch();
   const slider = document.getElementById("speed-slider");
   const speed = Math.pow(2, slider.value);
   const seekBar = document.getElementById("seek-bar");
@@ -852,6 +863,8 @@ function playMJPG() {
   stopPNG();
   video.pause();
   video.src = "";
+  stopLiveSwitch();
+  stopPNG();
   video.style.display = "none";
   image.style.display = "block";
   // MJPEG streams are continuous images, disable scrubbing
@@ -885,6 +898,8 @@ function playMotion() {
   stopPNG();
   video.pause();
   video.src = "";
+  stopLiveSwitch();
+  stopPNG();
   video.style.display = "none";
   image.style.display = "block";
   const seekBar = document.getElementById("seek-bar");
