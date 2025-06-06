@@ -45,16 +45,26 @@ def touch(fname, times=None):
 
 
 def trim_group_name(group_name):
+    """Normalize a group name by replacing spaces with underscores and converting to lowercase."""
     return group_name.replace(" ", "_").lower()
 
 
-def run_ffmpeg(command):
-    """Execute an FFmpeg command and log output."""
+def run_ffmpeg(command, timeout: int = 30):
+    """Execute an FFmpeg command and log output.
+
+    Parameters
+    ----------
+    command: list[str]
+        Full ffmpeg command to execute.
+    timeout: int, optional
+        Number of seconds before the process is terminated. Defaults to 30.
+    """
     result = subprocess.run(
         command,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        timeout=timeout,
     )
     if result.stdout:
         logging.debug("ffmpeg stdout: %s", result.stdout.strip())
@@ -229,7 +239,7 @@ def compile_videos(input_file, output_file):
     )
 
     try:
-        run_ffmpeg(create_command)
+        run_ffmpeg(create_command, timeout=30)
         if os.path.exists(output_file) and os.path.getsize(output_file) > 300:
             if is_video_expired(output_file, MAX_COMPRESSED_VIDEO_AGE):
                 logging.info("Rotating expired output %s", output_file)
@@ -311,7 +321,8 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
                 ]
             )
             try:
-                run_ffmpeg(concat_command)
+                run_ffmpeg(concat_command, timeout=30)
+                os.remove(list_path)
                 os.rename(concat_video, in_process_video)
                 file_updated = True
                 output_video = os.path.join(VIDEO_DIRECTORY, "latest_camera.mp4")
@@ -326,6 +337,7 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
                     os.path.abspath(output_video),
                 )
             except Exception as e:
+                os.remove(list_path)
                 status = handle_concat_error(e, temp_video, in_process_video)
                 if status == ConcatStatus.RETRY and retries > 0:
                     logging.info("Retrying concatenation due to transient error")

@@ -37,10 +37,14 @@ class TestFeedStatusTooltip(unittest.TestCase):
                 "message": "cam1 failed",
             }
         ]
-        with patch("app.utils.scheduling.get_templates", return_value=templates), patch(
-            "app.utils.scheduling.log_cache",
-            logs,
-        ), patch("app.utils.scheduling.log_cache_lock", DummyLock()):
+        with (
+            patch("app.utils.scheduling.get_templates", return_value=templates),
+            patch(
+                "app.utils.scheduling.log_cache",
+                logs,
+            ),
+            patch("app.utils.scheduling.log_cache_lock", DummyLock()),
+        ):
             feeds = scheduling.get_feed_status()
         tooltip = feeds[0]["tooltip"]
         self.assertIn("Offline since", tooltip)
