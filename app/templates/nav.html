@@ -6,6 +6,7 @@
 </h1>
 {% endif %}
 <div id="caption-chyron" class="caption-chyron" aria-live="polite" data-speed="{{ CHYRON_SPEED }}"></div>
+{# Detect settings page so the hamburger menu only appears there #}
 {% set on_settings_page = request.path.startswith('/settings') %}
 <nav{% if not on_settings_page %} class="active"{% endif %}>
   {% if on_settings_page %}
