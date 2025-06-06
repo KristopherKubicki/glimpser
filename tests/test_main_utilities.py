@@ -24,6 +24,9 @@ class TestMainUtilities(unittest.TestCase):
             "machine_hwaccel": True,
             "ffmpeg_hwaccel": True,
             "hwaccel_enabled": True,
+            "gpu_support": True,
+            "ffmpeg_gpu_enabled": True,
+            "danger_mode": True,
         }
         mock_metrics.return_value = metrics
 
@@ -41,6 +44,9 @@ class TestMainUtilities(unittest.TestCase):
             ("Machine HW Accel: %s", metrics["machine_hwaccel"]),
             ("FFmpeg HW Accel: %s", metrics["ffmpeg_hwaccel"]),
             ("HW Accel Enabled: %s", metrics["hwaccel_enabled"]),
+            ("GPU Support: %s", metrics["gpu_support"]),
+            ("FFmpeg GPU Enabled: %s", metrics["ffmpeg_gpu_enabled"]),
+            ("Danger Mode: %s", metrics["danger_mode"]),
             ("Thank you for running Glimpser. Goodbye!",),
         ]
         self.assertEqual([c.args for c in mock_log.call_args_list], expected)

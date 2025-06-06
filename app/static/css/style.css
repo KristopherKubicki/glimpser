@@ -208,6 +208,7 @@ h2 {
     auto-fit,
     minmax(50px, var(--tile-size))
   ); /* Use CSS variable */
+
   gap: 5px;
   padding: 10px;
   justify-content: center;
@@ -317,6 +318,7 @@ select:hover {
     255,
     0.7
   ); /* Semi-transparent white background */
+
   border-radius: 50%;
   padding: calc(5px * var(--tile-scale, 1));
   display: none; /* Hide by default */
@@ -442,7 +444,7 @@ body.light-mode {
 }
 
 .hide-captions .caption-overlay {
-    display: none;
+  display: none;
 }
 
 #status-legend {
@@ -487,6 +489,9 @@ header {
   align-items: center; /* Vertically align items */
   justify-content: flex-start; /* Align items to the left */
   gap: 10px; /* Space between nav and chyron */
+  position: sticky; /* Keep nav visible while scrolling */
+  top: 0; /* Stick to the top of the viewport */
+  z-index: 1000; /* Stay above page content */
   transition: opacity 0.5s; /* Smooth fade for inactivity */
 }
 
@@ -540,6 +545,17 @@ nav a {
   transition:
     background-color 0.2s,
     color 0.2s; /* Smooth hover transition */
+}
+
+.nav-back {
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+}
+
+.nav-back::before {
+  content: "\2190";
+  margin-right: 4px;
 }
 
 #nav-group-dropdown,
@@ -713,6 +729,17 @@ nav a.active {
     padding: 8px;
   }
 
+  .menu-toggle {
+    font-size: 2rem; /* Bigger hamburger icon */
+  }
+
+  /* Hide elements that waste space on mobile */
+  #navClock,
+  #caption-chyron,
+  .flash-messages {
+    display: none;
+  }
+
   .settings-icon svg,
   .status-indicator svg {
     width: 26px;
@@ -834,17 +861,17 @@ a {
 }
 
 .clock-overlay {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    z-index: 10;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 10;
 }
 
 .digital-clock {
-    font-size: 14px;
-    line-height: 25px;
-    text-align: center;
-    color: var(--text-color);
+  font-size: 14px;
+  line-height: 25px;
+  text-align: center;
+  color: var(--text-color);
 }
 
 .clock-face {
@@ -1252,6 +1279,7 @@ input[type="submit"]:hover {
 @media (max-width: 767px) {
   #grid-width-slider {
     width: 100%;
+    display: none; /* Hide slider on small screens */
   }
 }
 
@@ -1469,6 +1497,15 @@ details > summary {
   color: #ccc;
 }
 
+#camera-metadata ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+#camera-metadata li {
+  margin-bottom: 0.25em;
+}
+
 .modal {
   display: none;
   position: fixed;
@@ -1653,13 +1690,6 @@ details > summary {
   z-index: 10;
 }
 
-.group-links {
-  margin-top: 0.5em;
-}
-
-.group-links a {
-  margin-right: 0.5em;
-}
 
 @media screen and (max-width: 600px) {
   .feed-status,
