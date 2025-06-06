@@ -10,13 +10,15 @@ from app.utils.sms_alerts import send_sms_alert, sms_alert
 
 class TestSMSAlerts(unittest.TestCase):
     def test_send_sms_alert_disabled(self):
-        with patch("app.utils.sms_alerts.TWILIO_SID", ""), patch(
-            "app.utils.sms_alerts.TWILIO_TOKEN", ""
-        ), patch("app.utils.sms_alerts.TWILIO_NUMBER", ""), patch.dict(
-            "sys.modules", {"twilio": MagicMock(), "twilio.rest": MagicMock()}
-        ), patch(
-            "twilio.rest.Client"
-        ) as mock_client:
+        with (
+            patch("app.utils.sms_alerts.TWILIO_SID", ""),
+            patch("app.utils.sms_alerts.TWILIO_TOKEN", ""),
+            patch("app.utils.sms_alerts.TWILIO_NUMBER", ""),
+            patch.dict(
+                "sys.modules", {"twilio": MagicMock(), "twilio.rest": MagicMock()}
+            ),
+            patch("twilio.rest.Client") as mock_client,
+        ):
             send_sms_alert("body")
             mock_client.assert_not_called()
 
@@ -31,10 +33,10 @@ class TestSMSAlerts(unittest.TestCase):
                 "twilio.rest": dummy_twilio_rest,
             },
         ):
-            with patch("app.utils.sms_alerts.TWILIO_SID", "sid"), patch(
-                "app.utils.sms_alerts.TWILIO_TOKEN", "token"
-            ), patch("app.utils.sms_alerts.TWILIO_NUMBER", "+123"), patch(
-                "app.utils.sms_alerts.TWILIO_FROM_NUMBER", "+999"
+            with (
+                patch("app.utils.sms_alerts.TWILIO_SID", "sid"),
+                patch("app.utils.sms_alerts.TWILIO_TOKEN", "token"),
+                patch("app.utils.sms_alerts.TWILIO_NUMBER", "+123"),
             ):
                 send_sms_alert("Body")
                 mock_client_class.assert_called_once_with("sid", "token")
