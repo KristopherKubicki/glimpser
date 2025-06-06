@@ -63,6 +63,20 @@
           placeholder="Value"
           title="Filter value"
         />
+        <label for="cost-start" title="Start date for cost">From:</label>
+        <input
+          type="date"
+          id="cost-start"
+          title="Cost start"
+          value="{{ cost_start or '' }}"
+        />
+        <label for="cost-end" title="End date for cost">To:</label>
+        <input
+          type="date"
+          id="cost-end"
+          title="Cost end"
+          value="{{ cost_end or '' }}"
+        />
         <button id="apply-filter" type="button" title="Filter table rows">
           Apply
         </button>

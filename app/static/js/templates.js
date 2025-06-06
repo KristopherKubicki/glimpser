@@ -384,6 +384,18 @@ export function setupSearch() {
   if (!searchInput) return;
 
   const filterCameras = () => {
+    const costStart = document.getElementById("cost-start");
+    const costEnd = document.getElementById("cost-end");
+    if (costStart?.value || costEnd?.value) {
+      const params = new URLSearchParams(window.location.search);
+      if (costStart && costStart.value)
+        params.set("cost_start", costStart.value);
+      else params.delete("cost_start");
+      if (costEnd && costEnd.value) params.set("cost_end", costEnd.value);
+      else params.delete("cost_end");
+      window.location.search = params.toString();
+      return;
+    }
     const searchTerm = searchInput.value.toLowerCase();
     const selectedGroup = groupDropdown
       ? groupDropdown.value
