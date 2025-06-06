@@ -31,7 +31,7 @@ can modify them in the application interface or directly in the database.
 - `NAV_ICON` – navigation logo path relative to the `static` directory. Set to an empty string to hide the logo (default `img/glimpser_small.png`)
 - `VERSION` – application version (defaults to the installed package version and
   is updated automatically when it changes)
-- `LANG` – default language (default `en-US`)
+- `LANG` – default language (default `en-US`). The settings page lists common language codes such as `en-US`, `es-ES`, `fr-FR`, `de-DE`, `zh-CN`, `ja-JP`, `pt-BR`, `hi-IN`, `ar-SA`, and `ru-RU`.
 - `TZ` – timezone used for logs (default `UTC`)
 - `HOST` – address to bind the server (default `0.0.0.0`)
 - `PORT` – port for the web interface (default `8082`)

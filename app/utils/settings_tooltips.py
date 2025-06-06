@@ -32,7 +32,18 @@ SETTINGS_TOOLTIPS = {
 # option reveals a text input allowing custom values.
 SETTINGS_CHOICES = {
     "HOST": ["0.0.0.0", "127.0.0.1", "localhost"],
-    "LANG": ["en-US", "es-ES", "fr-FR", "de-DE"],
+    "LANG": [
+        "en-US",  # English
+        "es-ES",  # Spanish
+        "fr-FR",  # French
+        "de-DE",  # German
+        "zh-CN",  # Chinese Simplified
+        "ja-JP",  # Japanese
+        "pt-BR",  # Portuguese (Brazil)
+        "hi-IN",  # Hindi
+        "ar-SA",  # Arabic
+        "ru-RU",  # Russian
+    ],
     "LOG_LEVEL": ["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
     "FLASK_LOG_LEVEL": ["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
     "TZ": [
