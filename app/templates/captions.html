@@ -63,6 +63,20 @@
           placeholder="Value"
           title="Filter value"
         />
+        <label for="cost-start" title="Start date for cost">From:</label>
+        <input
+          type="date"
+          id="cost-start"
+          title="Cost start"
+          value="{{ cost_start or '' }}"
+        />
+        <label for="cost-end" title="End date for cost">To:</label>
+        <input
+          type="date"
+          id="cost-end"
+          title="Cost end"
+          value="{{ cost_end or '' }}"
+        />
         <button id="apply-filter" type="button" title="Filter table rows">
           Apply
         </button>
@@ -133,17 +147,35 @@
                 </div>
               </div>
             </td>
+
+            <td
+              data-value="{{ template_details[camera]['last_screenshot_time'] }}"
+            >
+              <span
+                class="humanized-time"
+                data-time="{{ template_details[camera]['last_screenshot_time'] }}"
+                >{{ template_details[camera]['last_screenshot_time'] }}</span
+              >
+            </td>
+            <td
+              data-value="{{ template_details[camera]['next_screenshot_time'] }}"
+            >
+              <span
+                class="humanized-time"
+                data-time="{{ template_details[camera]['next_screenshot_time'] }}"
+                >{{ template_details[camera]['next_screenshot_time'] }}</span
+              >
+            </td>
+
             <td>
               <form id="form-{{ camera }}" class="notes-form caption-box">
                 <div class="chat-box">
                   <div class="chat-prompt">
-                    <label for="notes-{{ camera }}">Prompt:</label>
                     <textarea id="notes-{{ camera }}" class="notes-textarea">
 {{ template_details[camera]['notes'] }}</textarea
                     >
                   </div>
                   <div class="chat-response">
-                    <label>Response:</label>
                     <div class="last-caption">
                       {{ template_details[camera]['last_caption'] }}
                     </div>
@@ -153,8 +185,13 @@
                   class="update-button"
                   data-template="{{ camera }}"
                   title="Send updated prompt"
+                  aria-label="Send updated prompt"
                 >
-                  Send
+                  <svg width="16" height="16" aria-hidden="true">
+                    <use
+                      href="{{ url_for('static', filename='icons/sprite.svg') }}#login"
+                    />
+                  </svg>
                 </button>
               </form>
             </td>
