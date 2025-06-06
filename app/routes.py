@@ -111,6 +111,8 @@ NODE_ENV = os.getenv("NODE_ENV", "development")
 
 # from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock
+from app.utils import validators
+from app.utils.validators import validate_template_name, validate_update_data
 from app.utils.validators import (
     validate_template_name,
     validate_update_data,
@@ -360,10 +362,14 @@ def get_all_settings() -> List[Dict[str, Any]]:
                 re.findall(r"^[A-Z_]+?$", sl["name"])
                 and sl["name"] not in SENSITIVE_SETTINGS
             ):
-                lsettings_list.append(
-                    {"name": sl["name"], "value": sl["value"]}
-                )
-
+                value = sl["value"]
+                if isinstance(value, str) and validators.is_bool_string(value):
+                    value = (
+                        "True"
+                        if value.strip().lower() in {"true", "on", "yes", "y", "t"}
+                        else "False"
+                    )
+                lsettings_list.append({"name": sl["name"], "value": value})
         return lsettings_list
     finally:
         session.close()
@@ -2913,15 +2919,15 @@ def init_routes(app: Flask) -> None:
             else:
                 current = {s["name"]: s["value"] for s in get_all_settings()}
                 bool_settings = {
-                    n for n, v in current.items() if v in ["True", "False"]
+                    n for n, v in current.items() if validators.is_bool_string(v)
                 }
                 for name in bool_settings:
                     if name in email_settings:
                         continue
                     new_val = (
                         "True"
-                        if request.form.get(name)
-                        in ["True", "on", "1", "t", "y", "yes"]
+                        if str(request.form.get(name, "")).lower()
+                        in {"true", "on", "1", "t", "y", "yes"}
                         else "False"
                     )
                     update_setting(name, new_val)

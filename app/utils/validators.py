@@ -5,6 +5,23 @@ import re
 from urllib.parse import urlparse
 
 
+def is_bool_string(value: object) -> bool:
+    """Return ``True`` when ``value`` looks like a boolean string."""
+
+    return str(value).strip().lower() in {
+        "true",
+        "false",
+        "on",
+        "off",
+        "yes",
+        "no",
+        "y",
+        "n",
+        "t",
+        "f",
+    }
+
+
 def validate_proxy(proxy: str | None) -> str | None:
     """Return the proxy string if valid, otherwise ``None``.
 
