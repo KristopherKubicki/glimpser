@@ -1271,6 +1271,7 @@ input[type="submit"]:hover {
 @media (max-width: 767px) {
   #grid-width-slider {
     width: 100%;
+    display: none; /* Hide slider on small screens */
   }
 }
 
