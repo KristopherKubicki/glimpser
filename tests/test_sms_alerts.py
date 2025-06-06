@@ -41,7 +41,7 @@ class TestSMSAlerts(unittest.TestCase):
                 send_sms_alert("Body")
                 mock_client_class.assert_called_once_with("sid", "token")
                 client_instance.messages.create.assert_called_once_with(
-                    body="Body", from_="+123", to="+123"
+                    body="Body", from_="+999", to="+123"
                 )
 
     def test_sms_alert_wrapper(self):

@@ -13,6 +13,8 @@ nav:
       - Camera Discovery: camera_discovery.md
       - Camera Fix: camera_fix.md
       - Capture Process: capture_process.md
+      - Captions Live Update: captions_live_update.md
+      - Floating Navigation Bar: floating_nav.md
       - Command Line Reference: command_line.md
       - Configuration Guide: configuration_guide.md
       - Cost Tracking: cost_tracking.md
@@ -33,6 +35,7 @@ nav:
       - Nginx HTTP/2 Push: nginx_http2_push.md
       - Offline Fonts: offline_fonts.md
       - Offline Preview: offline_preview.md
+      - Search Autocomplete: search_autocomplete.md
       - Recommendations: recommendations.md
       - Release Workflow: release_workflow.md
       - Settings Page: settings_page.md
@@ -46,3 +49,15 @@ nav:
       - Log Cleaner: log_cleaner.md
       - Video Archiver: video_archiver.md
       - Governance: governance.md
+      - Border Legend: border_legend.md
+      - Caption Overlay Toggle: caption_overlay_toggle.md
+      - Chatbot: chatbot.md
+      - CI Checks: ci_checks.md
+      - Jog-Shuttle Control: jog_shuttle.md
+      - Live All Playback: live_all.md
+      - Live View Scrubbing: live_scrub.md
+      - MCP Integration: mcp_integration.md
+      - Onboarding: onboarding.md
+      - OpenSSF Scorecard: scorecard.md
+      - Startup Tips: startup_tips.md
+      - UI Component Guide: style_guide.md
