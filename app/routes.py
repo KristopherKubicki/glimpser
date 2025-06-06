@@ -1894,6 +1894,8 @@ def init_routes(app: Flask) -> None:
     @app.route("/captions")
     @login_required
     def captions():
+        cost_start = request.args.get("cost_start")
+        cost_end = request.args.get("cost_end")
 
         # Load recent summaries from the database and convert timestamps to ISO
         entries = []
@@ -1954,7 +1956,9 @@ def init_routes(app: Flask) -> None:
                 template_manager.get_llm_response_count(name)
             )
             templates[name]["llm_cost_estimate"] = (
-                template_manager.get_llm_cost_estimate(name)
+                template_manager.get_llm_cost_estimate(
+                    name, start_date=cost_start, end_date=cost_end
+                )
             )
 
         # Get a list of active cameras (with updates within the last 1 day)
@@ -1963,6 +1967,8 @@ def init_routes(app: Flask) -> None:
             template_details=templates,
             lcaptions=entries,
             page_title="Captions",
+            cost_start=cost_start,
+            cost_end=cost_end,
         )
 
     @app.route("/download_captions_tsv")
