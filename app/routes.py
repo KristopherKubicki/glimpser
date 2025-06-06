@@ -628,6 +628,20 @@ def generate(
     session_id: Optional[str] = None,
 ) -> Generator[bytes, None, None]:
     """Yield MJPEG or RTP frames from the latest screenshot files."""
+
+    placeholder_jpeg: Optional[bytes] = None
+
+    def _placeholder_frame() -> bytes:
+        nonlocal placeholder_jpeg
+        if placeholder_jpeg is None:
+            buf = _placeholder_screenshot()
+            with Image.open(buf) as img:
+                img = resize_and_pad(img, (1280, 720))
+                tmp = io.BytesIO()
+                img.save(tmp, format="JPEG")
+                placeholder_jpeg = tmp.getvalue()
+        return placeholder_jpeg
+
     # Treat explicit "all" values as no filter
     if group == "all":
         group = None
@@ -794,6 +808,8 @@ def generate(
                         except Exception:
                             pass
 
+        if not frame:
+            frame = _placeholder_frame()
         if frame:
             if rtsp:
                 if session_id and session_id in rtsp_sessions:
