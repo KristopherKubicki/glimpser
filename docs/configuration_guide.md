@@ -31,9 +31,10 @@ can modify them in the application interface or directly in the database.
 - `NAV_ICON` – navigation logo path relative to the `static` directory. Set to an empty string to hide the logo (default `img/glimpser_small.png`)
 - `VERSION` – application version (defaults to the installed package version and
   is updated automatically when it changes)
-- `LANG` – default language (default `en-US`)
+- `LANG` – default language (default `en-US`). The settings page lists common language codes such as `en-US`, `es-ES`, `fr-FR`, `de-DE`, `zh-CN`, `ja-JP`, `pt-BR`, `hi-IN`, `ar-SA`, and `ru-RU`.
 - `TZ` – timezone used for logs (default `UTC`)
 - `HOST` – address to bind the server (default `0.0.0.0`)
+- `ENFORCE_DOMAIN_IN_HOST` – require a domain in the `Host` header (default `False`)
 - `PORT` – port for the web interface (default `8082`)
 - `DEBUG` – enable debug mode (default `False`)
 - `DEBUG_MODE` – runtime alias of `DEBUG` used by the command-line interface
@@ -77,7 +78,11 @@ user table in sync.
 
 You can change these paths via the settings table or by editing `app/config.py` if you maintain a custom build.
 
-## Email Settings
+## Notification Settings
+
+Email, SMS, and CAP alerts now appear under the **Notifications** tab.
+
+### Email
 
 To enable email notifications, configure the following:
 
@@ -90,16 +95,17 @@ To enable email notifications, configure the following:
 - `EMAIL_USE_TLS` – whether to use TLS (default `True`)
 - `EMAIL_USERNAME` and `EMAIL_PASSWORD` – authentication credentials (default user name `your-username`)
 
-## SMS Settings
+### SMS
 
 Configure these values to enable Twilio SMS alerts:
 
 - `TWILIO_SID` – your Twilio account SID
 - `TWILIO_TOKEN` – your Twilio auth token
+- `TWILIO_FROM_NUMBER` – number that sends the messages
 - `TWILIO_NUMBER` – phone number that receives alerts
 - `TWILIO_FROM_NUMBER` – number used as the sender (default is `TWILIO_NUMBER`)
 
-## CAP Settings
+### CAP
 
 Set these variables to enable Common Alerting Protocol alerts:
 
@@ -120,6 +126,7 @@ Settings controlling how frames are captured from video sources:
 - `ANALYZE_DURATION_OTHER` – analyzeduration for other protocols (default `20M`)
 - `LIVE_FALLBACK_FPS` – still-frame refresh rate when live video fails (default `1`)
 - `LIVE_MAX_FAILURES` – maximum consecutive ffmpeg failures before live view stops (default `10`)
+- `LIVE_MAX_RETRY_DELAY` – maximum seconds between live stream retries (default `30`)
 - `CHYRON_SPEED` – seconds the caption chyron scrolls; set to `0` to disable (default `0`)
 - `HEALTH_STATUS_ALWAYS_VISIBLE` – keep the System Performance icon visible even when the system is healthy (default `False`)
 - `WATCHDOG_FAILURE_THRESHOLD` – number of failed health checks before a restart (default `3`)
