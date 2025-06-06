@@ -1,0 +1,38 @@
+import os
+import sys
+import unittest
+from flask import Flask
+from unittest.mock import patch
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from app.routes import init_routes
+
+
+class TestSearchSuggestionsEndpoint(unittest.TestCase):
+    def setUp(self):
+        self.app = Flask(__name__)
+        self.login_patch = patch("app.routes.login_required", lambda x: x)
+        self.login_patch.start()
+        init_routes(self.app)
+        self.client = self.app.test_client()
+
+    def tearDown(self):
+        self.login_patch.stop()
+
+    @patch("app.routes.get_active_groups")
+    @patch("app.routes.template_manager.get_templates")
+    def test_search_suggestions(self, mock_get_templates, mock_get_groups):
+        mock_get_templates.return_value = {
+            "Cam1": {"name": "Cam1"},
+            "Cam2": {"name": "Cam2"},
+        }
+        mock_get_groups.return_value = ["GroupA", "GroupB"]
+
+        resp = self.client.get("/search_suggestions?q=cam")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.get_json(), ["Cam1", "Cam2"])
+
+
+if __name__ == "__main__":
+    unittest.main()

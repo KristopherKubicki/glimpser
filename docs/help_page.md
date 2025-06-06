@@ -33,3 +33,5 @@ disables remote playback so play and pause toggles stay uncluttered.
 
 Navigate back to the main interface using the **Back to Glimpser** link at the
 bottom of the help page.
+
+Click the Glimpser logo in the navigation bar to return to the main interface.

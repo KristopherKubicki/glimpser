@@ -11,10 +11,14 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Offline Preview** – cached snapshots are automatically enabled.
 - **Settings Reference** – expand the table to read explanations for each setting.
 - **Column Search** – click a header to filter rows by that column.
+- **File Location Checks** – paths in the _File Locations_ tab are validated and show
+  a small progress bar indicating remaining disk space.
+- **Interface** – UI-related options like the navigation logo now live on their own tab.
 
 Each row now includes an **Explanation** column so you can read a short
 description without opening the reference table. Boolean values are
-displayed as toggle switches to avoid typing errors.
+displayed as toggle switches to avoid typing errors. Values such as `true`
+or `False` (any case) are recognized automatically.
 
 ### Dynamic Feedback
 
@@ -22,4 +26,11 @@ Focusing any input field shows a tooltip on screen with a description pulled fro
 
 ### Selectable Options
 
+
 Common settings like `HOST`, `LANG`, `LOG_LEVEL`, and `TZ` now use a single autocomplete field. Typing shows suggestions for common values, but any text can be entered. The `PORT` field enforces non‑privileged ports (1024–65535) to avoid permission errors.
+Numeric settings such as `MAX_WORKERS` or `EMAIL_SMTP_PORT` use number inputs so invalid characters cannot be entered. Email fields validate that addresses are well formed before submission.
+
+### Validation
+
+Values submitted through the form are validated on the server. Numeric fields like `PORT` or `MAX_WORKERS` must contain valid integers within the accepted range. Boolean options are normalized to `True` or `False` so unexpected text does not pollute the database.
+
