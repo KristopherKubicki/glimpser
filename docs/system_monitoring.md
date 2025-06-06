@@ -33,9 +33,11 @@ name, last image time, last caption time, any KPI column, or status.
 - **Thread Count** – active thread count for the application
 - **Uptime** – elapsed time since the app started
 - **FFmpeg Version** – version string reported by the ffmpeg binary
-- **Machine HW Accel** – whether GPU devices are detected
+- **Machine HW Accel** – whether GPU devices are detected (GPU support)
 - **FFmpeg HW Accel** – whether ffmpeg supports hardware acceleration
 - **HW Accel Enabled** – if hardware acceleration is configured
+- **FFmpeg GPU Enabled** – whether ffmpeg is currently using GPU acceleration
+- **Danger Mode Enabled** – whether the DANGER_MODE setting is on
 
 ## Streaming Logs
 
@@ -67,6 +69,7 @@ can monitor recent caption text without leaving the dashboard.
 ## Caption Activity Indicator
 
 The navigation bar shows a captions icon that reflects how recent the last
+
 caption update was. It flashes with the newest caption text when a group message
 arrives. The latest global summary slowly scrolls across the top in a gray
 chyron and stays visible until a new caption replaces it. Clicking this text
