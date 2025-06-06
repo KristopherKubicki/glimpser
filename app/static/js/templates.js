@@ -228,18 +228,18 @@ export function getSelectedGroup() {
   return "all";
 }
 
-export function timeAgo(utcDateString) {
-  if (!utcDateString) return "just now";
+export function timeAgo(dateString) {
+  if (!dateString) return "just now";
   const now = new Date();
   const iso =
-    utcDateString instanceof Date
-      ? utcDateString.toISOString()
-      : utcDateString.includes("T")
-        ? utcDateString
-        : `${utcDateString.replace(" ", "T")}Z`;
-  const utcDate = new Date(iso);
-  if (Number.isNaN(utcDate.getTime())) return "just now";
-  const diffInSeconds = Math.floor((now - utcDate) / 1000);
+    dateString instanceof Date
+      ? dateString.toISOString()
+      : dateString.includes("T")
+        ? dateString
+        : dateString.replace(" ", "T");
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return "just now";
+  const diffInSeconds = Math.floor((now - parsed) / 1000);
   if (diffInSeconds < 0) return "in the future";
 
   const intervals = [
@@ -542,7 +542,6 @@ export async function loadTemplates() {
                   Your browser does not support the video tag.
                 </video>
                 <div class="caption-overlay">${template.last_caption || ""}</div>
-                <div class="play-icon">&#9658;</div>
               </div>
             </a>
             <a href='${template.url}' target='_blank' class='open-url-link' title='Open monitored page' aria-label='Open monitored page'>↗</a>

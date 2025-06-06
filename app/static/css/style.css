@@ -307,23 +307,6 @@ select:hover {
   /*object-position: center;*/
 }
 
-.play-icon {
-  position: absolute;
-  top: calc(10px * var(--tile-scale, 1));
-  right: calc(10px * var(--tile-scale, 1));
-  background-color: rgba(
-    255,
-    255,
-    255,
-    0.7
-  ); /* Semi-transparent white background */
-  border-radius: 50%;
-  padding: calc(5px * var(--tile-scale, 1));
-  display: none; /* Hide by default */
-  z-index: 5;
-  font-size: calc(16px * var(--tile-scale, 1));
-}
-
 .open-url-link {
   position: absolute;
   top: calc(10px * var(--tile-scale, 1));
@@ -339,10 +322,6 @@ select:hover {
 
 .open-url-link:hover {
   background-color: rgba(255, 255, 255, 0.2);
-}
-
-video:hover + .play-icon {
-  display: block; /* Show play icon on hover */
 }
 
 :root {
