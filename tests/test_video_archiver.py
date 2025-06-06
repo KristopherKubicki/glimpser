@@ -2,6 +2,7 @@ import unittest
 import os
 import sys
 import tempfile
+import subprocess
 from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -18,6 +19,7 @@ from app.utils.video_archiver import (
     ConcatStatus,
     compile_to_video,
     archive_screenshots,
+    run_ffmpeg,
 )
 from app.config import VIDEO_DIRECTORY
 
@@ -252,7 +254,7 @@ class TestVideoArchiver(unittest.TestCase):
 
         captured_lines = []
 
-        def fake_run(cmd):
+        def fake_run(cmd, timeout=30):
             if isinstance(cmd, list) and "-i" in cmd:
                 idx = cmd.index("-i") + 1
                 with open(cmd[idx]) as f:
@@ -305,6 +307,12 @@ class TestVideoArchiver(unittest.TestCase):
         ):
             archive_screenshots()
         mock_log.assert_called_once()
+
+    @patch("subprocess.run")
+    def test_run_ffmpeg_timeout(self, mock_run):
+        mock_run.side_effect = subprocess.TimeoutExpired(cmd="ffmpeg", timeout=1)
+        with self.assertRaises(subprocess.TimeoutExpired):
+            run_ffmpeg(["ffmpeg"], timeout=1)
 
 
 if __name__ == "__main__":

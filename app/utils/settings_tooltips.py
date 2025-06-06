@@ -64,6 +64,9 @@ SETTINGS_GROUPS = {
         "MAX_WORKERS",
         "LOG_LEVEL",
         "FLASK_LOG_LEVEL",
+        "CLOCK_OVERLAY",
+        "CLOCK_DIGITAL",
+        "CLOCK_NAVBAR",
     ],
     "Credentials": [
         "USER_NAME",
@@ -107,7 +110,7 @@ SETTINGS_GROUPS = {
         "FFMPEG_HWACCEL",
         "FFMPEG_THREADS",
     ],
-    "Email": [
+    "Notifications": [
         "EMAIL_ENABLED",
         "EMAIL_SENDER",
         "EMAIL_RECIPIENTS",
@@ -116,10 +119,16 @@ SETTINGS_GROUPS = {
         "EMAIL_USE_TLS",
         "EMAIL_USERNAME",
         "EMAIL_PASSWORD",
+        "TWILIO_SID",
+        "TWILIO_TOKEN",
+        "TWILIO_NUMBER",
+        "CAP_ENDPOINT",
+        "CAP_SENDER",
     ],
     "SMS": ["TWILIO_SID", "TWILIO_TOKEN", "TWILIO_NUMBER"],
     "CAP": ["CAP_ENDPOINT", "CAP_SENDER"],
     "MCP": ["MCP_SERVER_COMMAND", "MCP_SERVER_URL"],
     "Clock": ["CLOCK_OVERLAY", "CLOCK_DIGITAL", "CLOCK_NAVBAR"],
     "Interface": ["NAV_ICON", "HEALTH_STATUS_ALWAYS_VISIBLE", "UA"],
+    "Integrations": ["MCP_SERVER_COMMAND", "MCP_SERVER_URL"],
 }

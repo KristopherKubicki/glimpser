@@ -25,3 +25,7 @@ Focusing any input field shows a tooltip on screen with a description pulled fro
 ### Selectable Options
 
 Common settings like `HOST`, `LANG`, `LOG_LEVEL`, and `TZ` now use a single autocomplete field. Typing shows suggestions for common values, but any text can be entered. The `PORT` field enforces non‑privileged ports (1024–65535) to avoid permission errors.
+
+### Validation
+
+Values submitted through the form are validated on the server. Numeric fields like `PORT` or `MAX_WORKERS` must contain valid integers within the accepted range. Boolean options are normalized to `True` or `False` so unexpected text does not pollute the database.
