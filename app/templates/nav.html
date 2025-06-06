@@ -17,9 +17,11 @@
   data-speed="{{ CHYRON_SPEED }}"
 ></div>
 <nav>
-  <button id="menu-toggle" class="menu-toggle" aria-label="Toggle navigation">
-    ☰
-  </button>
+
+  {% if session.get('user_id') %}
+  <button id="menu-toggle" class="menu-toggle" aria-label="Toggle navigation">☰</button>
+  {% endif %}
+
   <div class="nav-left">
     {% if template_details is defined %}
       {% if template_details.get('groups') %}
