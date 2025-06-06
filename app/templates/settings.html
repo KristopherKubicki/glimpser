@@ -152,31 +152,27 @@ content %}
     <div id="discover-tab" class="tab-content">
       {% include '_discover_tab.html' %}
     </div>
-    {% endif %} {% endfor %}
-        <div id="management-tab" class="tab-content">
-            <h3>Configuration Management</h3>
-            <button type="submit" name="action" value="backup" title="Create a JSON backup of all settings">Backup Configuration</button>
-            <button type="submit" name="action" value="download" title="Download the latest configuration backup">Download Configuration</button>
-            <input type="file" name="file" accept=".json" title="Select configuration file to upload">
-            <button type="submit" name="action" value="upload" title="Restore configuration from uploaded file" onclick="return confirmRestore()">Upload Configuration</button>
-            <h3>Notification Tests</h3>
-            <button type="submit" name="action" value="test_email" title="Send a test email to verify settings">Send Test Email</button>
-            <button type="submit" name="action" value="test_sms" title="Send a test SMS to verify settings">Send Test SMS</button>
+      {% endif %}
+      {% endfor %}
 
-            <h3>Danger Mode</h3>
-            <button type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode">Update Chrome Shortcut</button>
+      <div id="status-tab" class="tab-content">
+        {% include '_status_tab.html' %}
+      </div>
 
-    </div>
+      <div id="management-tab" class="tab-content">
+        <h3>Configuration Management</h3>
+        <button type="submit" name="action" value="backup" title="Create a JSON backup of all settings">Backup Configuration</button>
+        <button type="submit" name="action" value="download" title="Download the latest configuration backup">Download Configuration</button>
+        <input type="file" name="file" accept=".json" title="Select configuration file to upload" />
+        <button type="submit" name="action" value="upload" title="Restore configuration from uploaded file" onclick="return confirmRestore()">Upload Configuration</button>
 
-    <input
-      type="hidden"
-      id="name_to_delete"
-      name="name_to_delete"
-      value=""
-      title="Name of setting to delete"
-    />
-    <button type="submit" title="Save all changes">Save Changes</button>
-  </form>
+        <h3>Danger Mode</h3>
+        <button type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode">Update Chrome Shortcut</button>
+      </div>
+
+      <input type="hidden" id="name_to_delete" name="name_to_delete" value="" title="Name of setting to delete" />
+      <button type="submit" title="Save all changes">Save Changes</button>
+    </form>
 </main>
 <script
   type="module"

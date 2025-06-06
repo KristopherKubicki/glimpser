@@ -43,9 +43,10 @@ class TestImageComparison(unittest.TestCase):
 
     def test_calculate_difference_fast_error(self):
         """Invalid paths should log an error and return ``None``."""
-        with patch("app.utils.detect.Image.open", side_effect=OSError), patch(
-            "app.utils.detect.logging.error"
-        ) as mock_log:
+        with (
+            patch("app.utils.detect.Image.open", side_effect=OSError),
+            patch("app.utils.detect.logging.error") as mock_log,
+        ):
             result = calculate_difference_fast("bad", "worse")
             self.assertIsNone(result)
             mock_log.assert_called_once()

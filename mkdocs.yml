@@ -1,7 +1,7 @@
 site_name: Glimpser Documentation
 docs_dir: docs
 site_dir: site
-exclude:
+exclude_docs:
   - README.md
 nav:
   - Home: index.md

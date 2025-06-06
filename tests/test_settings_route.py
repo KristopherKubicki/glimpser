@@ -80,8 +80,9 @@ class TestSettingsRoute(unittest.TestCase):
         return row[0] if row else None
 
     def test_add_and_delete_setting(self):
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
         ):
             response = self.client.post(
                 "/settings",
@@ -91,8 +92,9 @@ class TestSettingsRoute(unittest.TestCase):
         self.assertIn("/settings", response.headers["Location"])
         self.assertEqual(self._get_value("TEST"), "1")
 
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
         ):
             response = self.client.post(
                 "/settings", data={"action": "delete", "name_to_delete": "TEST"}
@@ -112,8 +114,9 @@ class TestSettingsRoute(unittest.TestCase):
             "EMAIL_USERNAME": "user",
             "EMAIL_PASSWORD": "pass",
         }
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
         ):
             response = self.client.post("/settings", data=payload)
         self.assertEqual(response.status_code, 302)
@@ -127,8 +130,9 @@ class TestSettingsRoute(unittest.TestCase):
         conn.commit()
         conn.close()
 
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
         ):
             response = self.client.post("/settings", data={"action": "backup"})
         self.assertEqual(response.status_code, 302)
@@ -145,8 +149,9 @@ class TestSettingsRoute(unittest.TestCase):
         with open(upload_path, "w") as f:
             json.dump(config, f)
 
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
         ):
             with open(upload_path, "rb") as file_data:
                 response = self.client.post(
@@ -161,8 +166,9 @@ class TestSettingsRoute(unittest.TestCase):
         """Downloading settings should not crash when no backup exists."""
         if os.path.exists(self.backup_path):
             os.remove(self.backup_path)
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
         ):
             response = self.client.post("/settings", data={"action": "download"})
         self.assertEqual(response.status_code, 302)

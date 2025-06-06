@@ -262,6 +262,15 @@ def login_required(f: Callable) -> Callable:
             if api_key:
                 return jsonify({"error": "Invalid API key"}), 401
             else:
+                # For Server-Sent Events endpoints, return an SSE-formatted
+                # authentication error so the client can handle it without
+                # interpreting an HTML login page. This avoids the browser
+                # warning: "EventSource's response has a MIME type
+                # ('text/html') that is not 'text/event-stream'."
+                if "text/event-stream" in request.headers.get("Accept", ""):
+                    message = 'data: {"error": "unauthorized"}\n\n'
+                    return Response(message, status=401, mimetype="text/event-stream")
+
                 # When no session cookie is present the user might have cookies
                 # disabled or the SESSION_COOKIE_SECURE flag could block the
                 # cookie over HTTP. Provide a hint and log for easier debugging
