@@ -88,6 +88,45 @@ content %}
                 />
                 <span class="slider round"></span>
               </label>
+
+              {% elif setting.name in choices %}
+              <input
+                type="text"
+                name="{{ setting.name }}"
+                list="{{ setting.name }}-options"
+                value="{{ setting.value }}"
+                title="Select or enter value for {{ setting.name }}"
+              />
+              <datalist id="{{ setting.name }}-options">
+                {% for option in choices[setting.name] %}
+                <option value="{{ option }}"></option>
+                {% endfor %}
+              </datalist>
+              {% elif setting.name in numeric_fields %}
+              <input
+                type="number"
+                name="{{ setting.name }}"
+                min="0"
+                value="{{ setting.value }}"
+                title="Edit value for {{ setting.name }}"
+              />
+              {% elif setting.name in email_fields %}
+              <input
+                type="email"
+                name="{{ setting.name }}"
+                value="{{ setting.value }}"
+                title="Edit value for {{ setting.name }}"
+              />
+              {% elif setting.name == 'PORT' %}
+              <input
+                type="number"
+                name="PORT"
+                min="1024"
+                max="65535"
+                value="{{ setting.value }}"
+                title="Edit port"
+              />
+
               {% else %}
               <input
                 type="text"

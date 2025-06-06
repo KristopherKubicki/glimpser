@@ -27,7 +27,8 @@ Focusing any input field shows a tooltip on screen with a description pulled fro
 ### Selectable Options
 
 
-Common settings like `HOST`, `LANG`, `LOG_LEVEL`, and `TZ` now use a single autocomplete field. Typing shows suggestions for common values, but any text can be entered. For the `LANG` dropdown, popular codes such as `en-US`, `es-ES`, `fr-FR`, `de-DE`, `zh-CN`, `ja-JP`, `pt-BR`, `hi-IN`, `ar-SA`, and `ru-RU` are listed. The `PORT` field enforces non‑privileged ports (1024–65535) to avoid permission errors.
+Common settings like `HOST`, `LANG`, `LOG_LEVEL`, and `TZ` now use a single autocomplete field. Typing shows suggestions for common values, but any text can be entered. The `PORT` field enforces non‑privileged ports (1024–65535) to avoid permission errors.
+Numeric settings such as `MAX_WORKERS` or `EMAIL_SMTP_PORT` use number inputs so invalid characters cannot be entered. Email fields validate that addresses are well formed before submission.
 
 ### Validation
 

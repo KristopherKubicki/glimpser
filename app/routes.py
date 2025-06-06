@@ -82,12 +82,12 @@ from app.utils import (
 from app.utils.template_manager import LLM_COST_PER_TOKEN
 
 from app.utils.llm import ask_question
-from app.utils.settings_tooltips import SETTINGS_TOOLTIPS, SETTINGS_GROUPS
-
 from app.utils.settings_tooltips import (
     SETTINGS_TOOLTIPS,
     SETTINGS_GROUPS,
     SETTINGS_CHOICES,
+    NUMERIC_FIELDS,
+    EMAIL_FIELDS,
 )
 
 from app.utils.screenshots import (
@@ -2923,6 +2923,8 @@ def init_routes(app: Flask) -> None:
             feeds=feeds,
             last_summary=last_summary,
             choices=SETTINGS_CHOICES,
+            numeric_fields=NUMERIC_FIELDS,
+            email_fields=EMAIL_FIELDS,
             file_info=file_info,
             cost_data=cost_data,
             cost_groups=cost_groups,
