@@ -32,10 +32,13 @@ name, last image time, last caption time, any KPI column, or status.
 - **Open Files** – number of file descriptors opened by the process
 - **Thread Count** – active thread count for the application
 - **Uptime** – elapsed time since the app started
-- **FFmpeg Version** – version string reported by the ffmpeg binary
+- **FFmpeg Version** – version string and path to the ffmpeg binary
 - **Machine HW Accel** – whether GPU devices are detected
 - **FFmpeg HW Accel** – whether ffmpeg supports hardware acceleration
 - **HW Accel Enabled** – if hardware acceleration is configured
+
+Boolean metrics now display a green dot when enabled and a red dot when
+disabled to make the status easier to scan.
 
 ## Streaming Logs
 
