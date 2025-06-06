@@ -1,7 +1,18 @@
 export function initFooterFade() {
   document.addEventListener("DOMContentLoaded", () => {
     const footer = document.querySelector("footer");
-    if (!footer) return;
+    const main = document.querySelector("main");
+    if (!footer || !main) return;
+
+    const updatePadding = () => {
+      document.documentElement.style.setProperty(
+        "--footer-space",
+        `${footer.offsetHeight}px`,
+      );
+    };
+
+    updatePadding();
+    window.addEventListener("resize", updatePadding);
 
     let fadeTimeout;
 
