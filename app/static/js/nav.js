@@ -114,7 +114,7 @@ export function initNav() {
           }
         }
         if (groupDropdown.value === "all") {
-          window.location.href = "/";
+          window.location.href = "/live";
         } else {
           window.location.href = `/group/${encodeURIComponent(
             groupDropdown.value,
