@@ -90,11 +90,6 @@ from app.utils.settings_tooltips import (
     EMAIL_FIELDS,
 )
 
-from app.utils.screenshots import (
-    is_chrome_debug_port_open,
-    check_user_activity,
-    capture_frame_from_stream,
-)
 from app.utils.db import SessionLocal, engine
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 import sqlite3
@@ -123,6 +118,13 @@ from app.utils.profiling import profile_route, get_latency_stats
 from scripts.update_chrome_shortcut import (
     update_chrome_shortcuts,
     update_chrome_shortcuts_info,
+    shortcuts_need_patch,
+)
+from app.utils.screenshots import (
+    is_chrome_debug_port_open,
+    check_user_activity,
+    capture_frame_from_stream,
+    get_chrome_path,
 )
 from app.utils.email_alerts import send_email_alert
 from app.utils.sms_alerts import send_sms_alert
@@ -1146,12 +1148,17 @@ def init_routes(app: Flask) -> None:
         port_open = is_chrome_debug_port_open("127.0.0.1", 9222)
         idle = not check_user_activity(timeout=1)
         enabled = config.get_setting("DANGER_MODE", "True") == "True"
+        browser_path = get_chrome_path()
+        patched = not shortcuts_need_patch()
         return jsonify(
             {
                 "port_open": port_open,
                 "idle": idle,
                 "enabled": enabled,
                 "ready": port_open and idle and enabled,
+                "browser": os.path.basename(browser_path) if browser_path else None,
+                "path": browser_path,
+                "patched": patched,
             }
         )
 
@@ -2937,6 +2944,15 @@ def init_routes(app: Flask) -> None:
         metrics = scheduling.get_system_metrics()
         feeds = scheduling.get_feed_status()
         last_summary = scheduling.get_last_summary_time()
+        
+        chrome_path = get_chrome_path()
+        danger_info = {
+            "browser": os.path.basename(chrome_path) if chrome_path else "N/A",
+            "path": chrome_path or "N/A",
+            "patched": not shortcuts_need_patch(),
+            "running": is_chrome_debug_port_open("127.0.0.1", 9222),
+        }
+
 
         cost_data = []
         templates = template_manager.get_templates()
@@ -2952,6 +2968,8 @@ def init_routes(app: Flask) -> None:
                 }
             )
         cost_groups = sorted({c["group"] for c in cost_data})
+
+     
         return render_template(
             "settings.html",
             grouped_settings=grouped_settings,
@@ -2959,6 +2977,7 @@ def init_routes(app: Flask) -> None:
             metrics=metrics,
             feeds=feeds,
             last_summary=last_summary,
+            danger_info=danger_info,
             choices=SETTINGS_CHOICES,
             numeric_fields=NUMERIC_FIELDS,
             email_fields=EMAIL_FIELDS,
