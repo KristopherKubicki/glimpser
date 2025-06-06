@@ -50,7 +50,17 @@ nav:
       - Log Cleaner: log_cleaner.md
       - Video Archiver: video_archiver.md
       - Governance: governance.md
-exclude_docs: |
-  *.tmp
-  draft/**
+      - Border Legend: border_legend.md
+      - Caption Overlay Toggle: caption_overlay_toggle.md
+      - Chatbot: chatbot.md
+      - CI Checks: ci_checks.md
+      - Jog Shuttle: jog_shuttle.md
+      - Live All: live_all.md
+      - Live Scrub: live_scrub.md
+      - MCP Integration: mcp_integration.md
+      - Onboarding Guide: onboarding.md
+      - Scorecard: scorecard.md
+      - Startup Tips: startup_tips.md
+      - Style Guide: style_guide.md
+
 
