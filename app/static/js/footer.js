@@ -1,8 +1,7 @@
 export function initFooterFade() {
   document.addEventListener("DOMContentLoaded", () => {
     const footer = document.querySelector("footer");
-    const main = document.querySelector("main");
-    if (!footer || !main) return;
+    if (!footer) return;
 
     const updatePadding = () => {
       document.documentElement.style.setProperty(
