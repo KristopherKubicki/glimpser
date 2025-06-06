@@ -251,7 +251,11 @@ if (button) {
         };
         source.onerror = (e) => {
             console.error('Discovery error', e);
-            msg.textContent = 'Error discovering cameras';
+            let text = 'Error discovering cameras';
+            if (e && e.message) {
+                text += `: ${e.message}`;
+            }
+            msg.textContent = text;
             progress.style.display = 'none';
             source.close();
         };
