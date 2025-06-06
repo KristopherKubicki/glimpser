@@ -26,6 +26,10 @@ SETTINGS_TOOLTIPS = {
     "CLOCK_OVERLAY": "Show clock on video overlay",
     "CLOCK_DIGITAL": "Display clock as digital text",
     "CLOCK_NAVBAR": "Show clock in the navigation bar",
+    "HEALTH_STATUS_ALWAYS_VISIBLE": "Keep the system performance icon visible",
+    "MAX_COMPRESSED_VIDEO_AGE": "Days to keep archived videos",
+    "NAV_ICON": "Path to the logo used in navigation",
+    "UA": "User-Agent string for website requests",
 }
 
 # Predefined choices for select fields on the settings page. The "Other"
@@ -71,6 +75,9 @@ SETTINGS_GROUPS = {
         "MAX_WORKERS",
         "LOG_LEVEL",
         "FLASK_LOG_LEVEL",
+        "CLOCK_OVERLAY",
+        "CLOCK_DIGITAL",
+        "CLOCK_NAVBAR",
     ],
     "Credentials": [
         "USER_NAME",
@@ -114,7 +121,7 @@ SETTINGS_GROUPS = {
         "FFMPEG_HWACCEL",
         "FFMPEG_THREADS",
     ],
-    "Email": [
+    "Notifications": [
         "EMAIL_ENABLED",
         "EMAIL_SENDER",
         "EMAIL_RECIPIENTS",
@@ -123,9 +130,16 @@ SETTINGS_GROUPS = {
         "EMAIL_USE_TLS",
         "EMAIL_USERNAME",
         "EMAIL_PASSWORD",
+        "TWILIO_SID",
+        "TWILIO_TOKEN",
+        "TWILIO_NUMBER",
+        "CAP_ENDPOINT",
+        "CAP_SENDER",
     ],
     "SMS": ["TWILIO_SID", "TWILIO_TOKEN", "TWILIO_NUMBER"],
     "CAP": ["CAP_ENDPOINT", "CAP_SENDER"],
     "MCP": ["MCP_SERVER_COMMAND", "MCP_SERVER_URL"],
     "Clock": ["CLOCK_OVERLAY", "CLOCK_DIGITAL", "CLOCK_NAVBAR"],
+    "Interface": ["NAV_ICON", "HEALTH_STATUS_ALWAYS_VISIBLE", "UA"],
+    "Integrations": ["MCP_SERVER_COMMAND", "MCP_SERVER_URL"],
 }
