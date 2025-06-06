@@ -546,7 +546,11 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
                 logging.warning("ffmpeg exited with %s, retrying", process.returncode)
                 last_log = now
 
-        time.sleep(2)
+        # Exponential backoff avoids hammering the server when ffmpeg
+        # repeatedly fails. Cap the delay so the viewer eventually gives
+        # up rather than hanging indefinitely.
+        delay = min(2**failures, 30)
+        time.sleep(delay)
 
 
 login_attempts = {}
