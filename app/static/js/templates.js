@@ -511,6 +511,10 @@ export async function loadTemplates() {
   const templateList = document.getElementById("template-list");
   const captionsTable = document.getElementById("captions-table");
   const templateContainer = document.querySelector(".template-container");
+  const slider = document.getElementById("grid-width-slider");
+  const templateDetails = document
+    .getElementById("template-form")
+    ?.closest("details");
 
   const isIndexPage = Boolean(templateList);
   const isCaptionsPage = Boolean(captionsTable && templateContainer);
@@ -672,12 +676,12 @@ export async function loadTemplates() {
     }
     if (window.updateSliderLimits) {
       window.updateSliderLimits();
-      if (sliderElement) {
-        sliderElement.value = sliderElement.min;
-        sliderElement.dispatchEvent(new Event("input"));
+      if (slider) {
+        slider.value = slider.min;
+        slider.dispatchEvent(new Event("input"));
       }
-    } else if (sliderElement) {
-      sliderElement.dispatchEvent(new Event("input"));
+    } else {
+      if (slider) slider.dispatchEvent(new Event("input"));
     }
     if (
       isIndexPage &&
