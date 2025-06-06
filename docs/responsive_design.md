@@ -14,4 +14,7 @@ Selecting a group from that dropdown while on the **Live** page now updates the
 camera selector immediately without reloading the page, keeping navigation
 seamless.
 
+Searching the template grid automatically opens the camera detail view when
+only one result matches, so you can jump straight to the live feed.
+
 Offline preview keeps recently viewed pages and assets in the browser cache so the interface remains responsive even on poor connections. This feature is enabled automatically.
