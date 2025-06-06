@@ -434,8 +434,6 @@ function changeCamera() {
             templateDetailsContainer.style.display = 'block';
             templateDetailsContainer.innerHTML = `
                 <div>
-                    <strong>Last Screenshot:</strong> ${details.last_screenshot_time || 'N/A'}<br/>
-                    <strong>Last Video:</strong> ${details.last_video_time || 'N/A'}<br/>
                     <strong>Last Caption:</strong> ${details.last_caption || 'N/A'}<br/>
                     ${details.offline_since ? `<strong>Offline Since:</strong> ${details.offline_since}<br/>` : ''}
                     ${details.capture_failed ? '<strong>Capture Failed</strong><br/>' : ''}
