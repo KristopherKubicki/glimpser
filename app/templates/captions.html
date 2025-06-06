@@ -138,18 +138,22 @@
                 </div>
               </div>
             </td>
-            <td data-value="{{ template_details[camera]['last_screenshot'] }}">
+            <td
+              data-value="{{ template_details[camera]['last_screenshot_time'] }}"
+            >
               <span
                 class="humanized-time"
-                data-time="{{ template_details[camera]['last_screenshot'] }}"
-                >{{ template_details[camera]['last_screenshot'] }}</span
+                data-time="{{ template_details[camera]['last_screenshot_time'] }}"
+                >{{ template_details[camera]['last_screenshot_time'] }}</span
               >
             </td>
-            <td data-value="{{ template_details[camera]['next_screenshot'] }}">
+            <td
+              data-value="{{ template_details[camera]['next_screenshot_time'] }}"
+            >
               <span
                 class="humanized-time"
-                data-time="{{ template_details[camera]['next_screenshot'] }}"
-                >{{ template_details[camera]['next_screenshot'] }}</span
+                data-time="{{ template_details[camera]['next_screenshot_time'] }}"
+                >{{ template_details[camera]['next_screenshot_time'] }}</span
               >
             </td>
             <td>

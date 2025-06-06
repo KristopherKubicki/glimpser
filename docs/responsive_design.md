@@ -4,7 +4,7 @@ Glimpser now adapts to phones and tablets. The navigation menu collapses into a 
 
 The main template view scales thumbnails with the width slider and the page now uses smooth scrolling for longer lists. Previews resize by adjusting their width and height, ensuring the full image remains visible without shifting or cropping. When a group is opened, the slider defaults to the smallest width that keeps all cameras visible without scrolling.
 
-The header navigation also uses smaller padding so it stays out of the way on both mobile and desktop.
+The header navigation collapses into a stacked menu on small screens. Links grow larger with extra padding so they're easier to tap. The clock, scrolling caption chyron and temporary flash messages are all hidden on phones to maximize space.
 
 Group links in the header are now available through a dropdown menu. The list
 populates asynchronously from the `/groups` endpoint and fits neatly inside the
@@ -13,5 +13,8 @@ hamburger layout on small screens.
 Selecting a group from that dropdown while on the **Live** page now updates the
 camera selector immediately without reloading the page, keeping navigation
 seamless.
+
+Template detail pages feature a back arrow in the header so you can quickly
+return to the dashboard or group view without taking up extra page space.
 
 Offline preview keeps recently viewed pages and assets in the browser cache so the interface remains responsive even on poor connections. This feature is enabled automatically.

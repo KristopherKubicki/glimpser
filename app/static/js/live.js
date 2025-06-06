@@ -26,6 +26,17 @@ if (templateKeys.length === 1) {
   currentCamera = templateKeys[0];
 }
 
+// Ensure the synthetic "All" group is defined on page load so switching the
+// video source works even before the camera selector is changed. Without this
+// initialization, functions like playPNG() would crash when currentCamera is
+// "All" because templateDetails["All"] would be undefined.
+if (!templateDetails["All"]) {
+  templateDetails["All"] = {
+    url: "/stream.mp4",
+    groupCameras: templateKeys,
+  };
+}
+
 // Allow embedding the live view for a specific camera by reading the
 // ``camera`` query parameter. When provided and valid, restrict the camera
 // selector to that camera and start playback for it immediately.
