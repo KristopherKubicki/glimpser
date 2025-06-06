@@ -442,7 +442,7 @@ body.light-mode {
 }
 
 .hide-captions .caption-overlay {
-    display: none;
+  display: none;
 }
 
 #status-legend {
@@ -487,6 +487,9 @@ header {
   align-items: center; /* Vertically align items */
   justify-content: flex-start; /* Align items to the left */
   gap: 10px; /* Space between nav and chyron */
+  position: sticky; /* Keep nav visible while scrolling */
+  top: 0; /* Stick to the top of the viewport */
+  z-index: 1000; /* Stay above page content */
   transition: opacity 0.5s; /* Smooth fade for inactivity */
 }
 
@@ -825,17 +828,17 @@ a {
 }
 
 .clock-overlay {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    z-index: 10;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 10;
 }
 
 .digital-clock {
-    font-size: 14px;
-    line-height: 25px;
-    text-align: center;
-    color: var(--text-color);
+  font-size: 14px;
+  line-height: 25px;
+  text-align: center;
+  color: var(--text-color);
 }
 
 .clock-face {
