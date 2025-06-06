@@ -35,6 +35,7 @@ nav:
       - Nginx HTTP/2 Push: nginx_http2_push.md
       - Offline Fonts: offline_fonts.md
       - Offline Preview: offline_preview.md
+      - Web Notifications: web_notifications.md
       - Search Autocomplete: search_autocomplete.md
       - Recommendations: recommendations.md
       - Release Workflow: release_workflow.md

@@ -3286,3 +3286,30 @@ def init_routes(app: Flask) -> None:
     @login_required
     def profiling_data():
         return jsonify(get_latency_stats())
+
+    notifications = []
+    MAX_NOTIFICATIONS = 100
+
+    @app.route("/send_notification", methods=["POST"])
+    @login_required
+    def send_notification():
+        data = request.get_json(force=True)
+        notifications.append(
+            {"title": data.get("title", "Notification"), "body": data.get("body", "")}
+        )
+        if len(notifications) > MAX_NOTIFICATIONS:
+            notifications.pop(0)
+        return jsonify({"status": "queued"})
+
+    @app.route("/stream_notifications")
+    @login_required
+    def stream_notifications():
+        def generate(last=len(notifications)):
+            while True:
+                if last < len(notifications):
+                    data = notifications[last]
+                    last += 1
+                    yield f"data: {json.dumps(data)}\n\n"
+                time.sleep(1)
+
+        return Response(stream_with_context(generate()), mimetype="text/event-stream")
