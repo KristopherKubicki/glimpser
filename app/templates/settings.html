@@ -96,6 +96,21 @@ content %}
                 <option value="{{ option }}"></option>
                 {% endfor %}
               </datalist>
+              {% elif setting.name in numeric_fields %}
+              <input
+                type="number"
+                name="{{ setting.name }}"
+                min="0"
+                value="{{ setting.value }}"
+                title="Edit value for {{ setting.name }}"
+              />
+              {% elif setting.name in email_fields %}
+              <input
+                type="email"
+                name="{{ setting.name }}"
+                value="{{ setting.value }}"
+                title="Edit value for {{ setting.name }}"
+              />
               {% elif setting.name == 'PORT' %}
               <input
                 type="number"

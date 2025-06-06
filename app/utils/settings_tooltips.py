@@ -118,3 +118,18 @@ SETTINGS_GROUPS = {
     "MCP": ["MCP_SERVER_COMMAND", "MCP_SERVER_URL"],
     "Clock": ["CLOCK_OVERLAY", "CLOCK_DIGITAL", "CLOCK_NAVBAR"],
 }
+
+# Fields that should only allow numeric values on the settings page.
+NUMERIC_FIELDS = {
+    "MAX_WORKERS",
+    "EMAIL_SMTP_PORT",
+    "LIVE_FALLBACK_FPS",
+    "LIVE_MAX_FAILURES",
+    "CHYRON_SPEED",
+    "WATCHDOG_FAILURE_THRESHOLD",
+    "WATCHDOG_RESTART_COOLDOWN",
+    "WATCHDOG_MAX_FILE_HANDLES",
+}
+
+# Fields that expect email addresses.
+EMAIL_FIELDS = {"EMAIL_SENDER", "EMAIL_RECIPIENTS"}
