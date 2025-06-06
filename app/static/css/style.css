@@ -442,7 +442,7 @@ body.light-mode {
 }
 
 .hide-captions .caption-overlay {
-    display: none;
+  display: none;
 }
 
 #status-legend {
@@ -825,17 +825,17 @@ a {
 }
 
 .clock-overlay {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    z-index: 10;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 10;
 }
 
 .digital-clock {
-    font-size: 14px;
-    line-height: 25px;
-    text-align: center;
-    color: var(--text-color);
+  font-size: 14px;
+  line-height: 25px;
+  text-align: center;
+  color: var(--text-color);
 }
 
 .clock-face {
@@ -1436,6 +1436,12 @@ details > summary {
 
 .caption-filters button {
   padding: 4px 8px;
+}
+
+/* Highlight search matches in captions table */
+.captions-table mark {
+  background-color: yellow;
+  padding: 0;
 }
 
 /* Utility classes for modals and embedded media */
