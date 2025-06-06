@@ -11,6 +11,8 @@
     {% endif %}
 </script>
 
+
+
 <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
 
 <div class="video-container full-height">
@@ -119,8 +121,6 @@ function updateVideo(templateName) {
 
     <div id="camera-metadata">
         <ul>
-            <li><strong>Last Screenshot:</strong> {{ template_details.last_screenshot_time }}</li>
-            <li><strong>Last Video:</strong> {{ template_details.last_video_time }}</li>
             <li><strong>Last Caption:</strong> {{ template_details.last_caption }}</li>
             <li><strong>Caption Time:</strong> {{ template_details.last_caption_time }}</li>
             {% if template_details.offline_since %}
@@ -236,13 +236,6 @@ function updateVideo(templateName) {
             <div class="form-row">
                 <label for="groups" title="Groups for the template">Groups:</label>
                 <input type="text" id="groups" name="groups" value="{{ template_details.groups }}" title="Enter comma-separated group names">
-                {% if template_details.groups %}
-                <div class="group-links">
-                    {% for g in template_details.groups.split(',') %}
-                    <a href="/group/{{ g.strip() }}" class="group-link" title="View group {{ g.strip() }}">{{ g.strip() }}</a>
-                    {% endfor %}
-                </div>
-                {% endif %}
             </div>
 
             <div class="form-row">

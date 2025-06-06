@@ -1,14 +1,6 @@
-
-
-{% extends 'base.html' %}
-{% from 'components.html' import card %}
-{% block content %}
-{% include '_status_tab.html' %}
-{% endblock %}
-
-                                             
 {% extends 'base.html' %} {% from 'components.html' import card %} {% block
-content %}
+content %} {% include '_status_tab.html' %} {% endblock %} {% extends
+'base.html' %} {% from 'components.html' import card %} {% block content %}
 
 <div class="scheduler-controls">
   <button
@@ -60,16 +52,28 @@ content %}
   </li>
   <li title="System uptime">Uptime: {{ metrics.uptime }}</li>
   <li title="Installed ffmpeg version">
-    FFmpeg Version: {{ metrics.ffmpeg_version }}
+    FFmpeg: {{ metrics.ffmpeg_version }} ({{ metrics.ffmpeg_path }})
   </li>
   <li title="Hardware acceleration devices present">
-    Machine HW Accel: {{ metrics.machine_hwaccel }}
+    Machine HW Accel:
+    <span
+      class="status-dot {{ 'ok' if metrics.machine_hwaccel else 'error' }}"
+    ></span>
   </li>
   <li title="ffmpeg has hardware acceleration support">
-    FFmpeg HW Accel: {{ metrics.ffmpeg_hwaccel }}
+    FFmpeg HW Accel:
+    <span
+      class="status-dot {{ 'ok' if metrics.ffmpeg_hwaccel else 'error' }}"
+    ></span>
   </li>
   <li title="Hardware acceleration enabled via config">
-    HW Accel Enabled: {{ metrics.hwaccel_enabled }}
+    HW Accel Enabled:
+    <span
+      class="status-dot {{ 'ok' if metrics.hwaccel_enabled else 'error' }}"
+    ></span>
+  </li>
+  <li title="Danger mode enabled setting">
+    Danger Mode: {{ metrics.danger_mode }}
   </li>
 </ul>
 {% endcall %} {% call card('Feed Status') %}
@@ -151,4 +155,3 @@ content %}
 
 <p>Last summary generated: {{ last_summary or 'N/A' }}</p>
 {% endcall %} {% include 'logs.html' %} {% endblock %}
-

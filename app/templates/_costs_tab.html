@@ -1,0 +1,47 @@
+<div class="costs-page">
+  {% call card('LLM Cost Summary') %}
+  <div class="cost-controls">
+    <label for="cost-group">Group:</label>
+    <select id="cost-group">
+      <option value="">All</option>
+      {% for g in cost_groups %}
+      <option value="{{ g }}">{{ g }}</option>
+      {% endfor %}
+    </select>
+    <label for="cost-camera">Camera:</label>
+    <select id="cost-camera">
+      <option value="">All</option>
+      {% for item in cost_data %}
+      <option value="{{ item.name }}">{{ item.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <canvas id="costChart"></canvas>
+  <table id="cost-table" class="cost-table">
+    <thead>
+      <tr>
+        <th>Camera</th>
+        <th>Tokens</th>
+        <th>Cost</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in cost_data %}
+      <tr data-group="{{ item.group }}" data-name="{{ item.name }}">
+        <td>{{ item.name }}</td>
+        <td>{{ item.tokens }}</td>
+        <td>${{ '%.2f'|format(item.cost) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endcall %}
+</div>
+<script id="cost-data" type="application/json">
+  {{ cost_data|tojson }}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/costs.js') }}"
+></script>

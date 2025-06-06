@@ -1,5 +1,17 @@
 export const NO_TIMESTAMP_PLACEHOLDER = "no timestamp";
 
+function safePlay(el) {
+  const promise = el.play();
+  if (promise && typeof promise.catch === "function") {
+    promise.catch((err) => {
+      // Ignore common interrupt errors so console output stays clean
+      if (err.name !== "AbortError" && err.name !== "NotAllowedError") {
+        console.error("Error playing video:", err);
+      }
+    });
+  }
+}
+
 let captionsVisible = localStorage.getItem("showCaptions") !== "false";
 
 export function applyCaptionVisibility(width) {
@@ -23,6 +35,7 @@ export function initTemplates() {
       .getElementById("template-form")
       ?.closest("details");
     const slider = document.getElementById("grid-width-slider");
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
     const templateList = document.getElementById("template-list");
     const captionToggle = document.getElementById("toggle-captions");
     const MAX_THUMBNAIL_HEIGHT = 1080;
@@ -35,10 +48,14 @@ export function initTemplates() {
         const templateCount =
           templateList?.querySelectorAll(".templateDiv").length || 1;
 
-        // Minimum width needed to fit all tiles across the page
-        const widthForColumns = Math.ceil(window.innerWidth / templateCount);
+        const gap = parseFloat(getComputedStyle(templateList).gap || "0") || 0;
 
-        // Minimum width needed so combined rows fill the screen vertically
+        // Maximum width to fit all tiles across the page
+        const widthForColumns = Math.floor(
+          (window.innerWidth - gap * (templateCount - 1)) / templateCount,
+        );
+
+        // Maximum width so combined rows fill the screen vertically
         const aspectRatio = 9 / 16;
         const widthForHeight = Math.sqrt(
           (window.innerHeight * window.innerWidth) /
@@ -51,7 +68,7 @@ export function initTemplates() {
           50,
           Math.min(
             slider.max,
-            Math.ceil(Math.max(widthForColumns, widthForHeight)),
+            Math.floor(Math.min(widthForColumns, widthForHeight)),
           ),
         );
 
@@ -135,7 +152,17 @@ export function initTemplates() {
 
       slider.addEventListener("input", handleSlider);
       slider.addEventListener("change", handleSlider);
-      handleSlider();
+      if (isMobile) {
+        slider.style.display = "none";
+        slider.value = Math.min(window.innerWidth, slider.max);
+        handleSlider();
+        window.addEventListener("resize", () => {
+          slider.value = Math.min(window.innerWidth, slider.max);
+          handleSlider();
+        });
+      } else {
+        handleSlider();
+      }
     }
 
     if (form) {
@@ -183,6 +210,7 @@ export function initTemplates() {
     }
     setupSearch();
     setupSorting();
+    setupSortMenu();
     setupCaptionsFilter();
     updateHumanizedTimes();
     setInterval(updateHumanizedTimes, 60000);
@@ -258,9 +286,14 @@ export function timeAgo(dateString) {
   return "just now";
 }
 
-export function formatExactTime(utcDateString) {
-  const date = new Date(utcDateString);
-  return `UTC: ${date.toUTCString()}\nLocal: ${date.toString()}`;
+export function formatExactTime(dateString) {
+  const date =
+    dateString instanceof Date
+      ? dateString
+      : new Date(
+          dateString.includes("T") ? dateString : dateString.replace(" ", "T"),
+        );
+  return date.toString();
 }
 
 export function isMobile() {
@@ -375,15 +408,50 @@ function debounce(fn, delay) {
 
 export function setupSearch() {
   const searchInput = document.getElementById("search-input");
+  const searchContainer = document.getElementById("search-container");
   const groupDropdown = document.getElementById("group-dropdown");
   const cameraRows = document.querySelectorAll(".camera-row");
   const filterColumn = document.getElementById("filter-column");
   const filterValue = document.getElementById("filter-value");
   const applyFilter = document.getElementById("apply-filter");
   const templateList = document.getElementById("template-list");
+  const cameraTable = document.getElementById("camera-table");
   if (!searchInput) return;
 
+  if (searchContainer) {
+    searchContainer.style.display = "none";
+    let fadeTimeout;
+    const showSearch = () => {
+      searchContainer.classList.remove("fade-out");
+      clearTimeout(fadeTimeout);
+      fadeTimeout = setTimeout(
+        () => searchContainer.classList.add("fade-out"),
+        3000,
+      );
+    };
+    ["mousemove", "scroll"].forEach((evt) => {
+      document.addEventListener(evt, showSearch);
+    });
+    window.addEventListener("templatesLoaded", (e) => {
+      const count = e.detail?.count ?? 0;
+      searchContainer.style.display = count > 10 ? "block" : "none";
+      if (count > 10) showSearch();
+    });
+  }
+
   const filterCameras = () => {
+    const costStart = document.getElementById("cost-start");
+    const costEnd = document.getElementById("cost-end");
+    if (costStart?.value || costEnd?.value) {
+      const params = new URLSearchParams(window.location.search);
+      if (costStart && costStart.value)
+        params.set("cost_start", costStart.value);
+      else params.delete("cost_start");
+      if (costEnd && costEnd.value) params.set("cost_end", costEnd.value);
+      else params.delete("cost_end");
+      window.location.search = params.toString();
+      return;
+    }
     const searchTerm = searchInput.value.toLowerCase();
     const selectedGroup = groupDropdown
       ? groupDropdown.value
@@ -417,13 +485,17 @@ export function setupSearch() {
     });
   };
 
-  if (templateList) {
+  const isCameraTable = cameraRows.length > 0;
+
+  if (templateList && !isCameraTable) {
     const debouncedLoad = debounce(loadTemplates, 300);
     searchInput.addEventListener("input", debouncedLoad);
     if (groupDropdown) groupDropdown.addEventListener("change", debouncedLoad);
   } else {
     searchInput.addEventListener("input", filterCameras);
     if (groupDropdown) groupDropdown.addEventListener("change", filterCameras);
+    if (filterColumn) filterColumn.addEventListener("change", filterCameras);
+    if (filterValue) filterValue.addEventListener("input", filterCameras);
     if (applyFilter) applyFilter.addEventListener("click", filterCameras);
   }
 }
@@ -441,14 +513,20 @@ export async function loadTemplates() {
   const searchQuery = searchInput ? searchInput.value.toLowerCase() : "";
   const url = `/templates?group=${selectedGroup}&search=${searchQuery}&t=${new Date().getTime()}`;
 
+  const slider = document.getElementById("grid-width-slider");
+
   updateGridLayout();
 
   const templateList = document.getElementById("template-list");
   const captionsTable = document.getElementById("captions-table");
   const templateContainer = document.querySelector(".template-container");
+  const templateDetails = document
+    .getElementById("template-form")
+    ?.closest("details");
 
   const isIndexPage = Boolean(templateList);
   const isCaptionsPage = Boolean(captionsTable && templateContainer);
+  const sliderElement = document.getElementById("grid-width-slider");
 
   if (isIndexPage) {
     templateList.innerHTML = '<div class="loading">Loading templates...</div>';
@@ -488,7 +566,7 @@ export async function loadTemplates() {
       (entries) => {
         entries.forEach((entry) => {
           if (isMobile() && entry.isIntersecting) {
-            entry.target.play();
+            safePlay(entry.target);
           } else {
             entry.target.pause();
           }
@@ -499,6 +577,7 @@ export async function loadTemplates() {
 
     let hasTemplates = false;
     let templateCount = 0;
+    let firstTemplateName = null;
     Object.entries(templates).forEach(([name, template], index) => {
       if (
         templateBelongsToGroup(template, selectedGroup) &&
@@ -506,6 +585,7 @@ export async function loadTemplates() {
       ) {
         hasTemplates = true;
         templateCount += 1;
+        if (!firstTemplateName) firstTemplateName = name;
         const lastScreenshotTime =
           template.last_screenshot_time || NO_TIMESTAMP_PLACEHOLDER;
         const humanizedTimestamp =
@@ -537,7 +617,7 @@ export async function loadTemplates() {
             <a href='/templates/${name}'>
               <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
                 <div class="camera-name">${name}</div>
-                <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none">
+                <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback>
                   <source src="/last_video/${name}" type="video/mp4">
                   Your browser does not support the video tag.
                 </video>
@@ -559,7 +639,7 @@ export async function loadTemplates() {
 
           video.addEventListener("mouseenter", () => {
             video.playbackRate = 2.0;
-            video.play();
+            safePlay(video);
           });
           video.addEventListener("mouseleave", () => {
             video.playbackRate = 1.0;
@@ -603,20 +683,30 @@ export async function loadTemplates() {
     }
     if (window.updateSliderLimits) {
       window.updateSliderLimits();
-      const slider = document.getElementById("grid-width-slider");
       if (slider) {
         slider.value = slider.min;
         slider.dispatchEvent(new Event("input"));
       }
     } else {
-      const slider = document.getElementById("grid-width-slider");
       if (slider) slider.dispatchEvent(new Event("input"));
     }
+    if (
+      isIndexPage &&
+      searchQuery &&
+      templateCount === 1 &&
+      firstTemplateName
+    ) {
+      window.location.href = `/templates/${encodeURIComponent(
+        firstTemplateName,
+      )}`;
+      return;
+    }
+
     updateHumanizedTimes();
     window.dispatchEvent(
       new CustomEvent("templatesLoaded", { detail: { count: templateCount } }),
     );
-    applyCaptionVisibility(parseFloat(slider?.value || "0"));
+    applyCaptionVisibility(parseFloat(sliderElement?.value || "0"));
   } catch (error) {
     console.error("Error loading templates:", error);
     const errorMsg =
@@ -665,6 +755,29 @@ export function setupSorting() {
   setupTableSorting("captions-table");
 }
 
+export function setupSortMenu() {
+  const menu = document.getElementById("sort-date");
+  if (!menu) return;
+  menu.addEventListener("change", () => sortCameraTable(menu.value));
+}
+
+export function sortCameraTable(option) {
+  const table = document.getElementById("camera-table");
+  if (!table) return;
+  const tbody = table.tBodies[0];
+  const rows = Array.from(tbody.rows);
+  const [field, direction] = option.split("_");
+  if (!field) {
+    rows.sort((a, b) => parseInt(a.dataset.index) - parseInt(b.dataset.index));
+  } else {
+    rows.sort(
+      (a, b) => new Date(a.dataset[field]) - new Date(b.dataset[field]),
+    );
+    if (direction === "desc") rows.reverse();
+  }
+  rows.forEach((row) => tbody.appendChild(row));
+}
+
 export function setupCaptionsFilter() {
   const searchInput = document.getElementById("captions-search");
   const startInput = document.getElementById("caption-start");
@@ -681,8 +794,24 @@ export function setupCaptionsFilter() {
     return Number.isNaN(d.getTime()) ? null : d;
   };
 
+  // Escape user search term for safe use in RegExp
+  const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // Highlight occurrences of the search term within the caption cell
+  const highlight = (cell, term) => {
+    if (!cell) return;
+    const raw = cell.dataset.raw || cell.textContent;
+    cell.dataset.raw = raw;
+    if (!term) {
+      cell.innerHTML = raw;
+      return;
+    }
+    const regex = new RegExp(`(${escapeRegExp(term)})`, "gi");
+    cell.innerHTML = raw.replace(regex, "<mark>$1</mark>");
+  };
+
   const filter = () => {
-    const term = searchInput.value.toLowerCase();
+    const term = searchInput.value.toLowerCase().trim();
     const start =
       startInput && startInput.value ? new Date(startInput.value) : null;
     const end = endInput && endInput.value ? new Date(endInput.value) : null;
@@ -697,6 +826,11 @@ export function setupCaptionsFilter() {
       if (end && rowDate && rowDate > new Date(end.getTime() + 86400000 - 1))
         show = false;
       row.style.display = show ? "" : "none";
+      const captionCell = row.querySelector("td:nth-child(2)");
+      if (show) highlight(captionCell, term);
+      else if (captionCell)
+        captionCell.innerHTML =
+          captionCell.dataset.raw || captionCell.textContent;
     });
   };
 
