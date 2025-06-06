@@ -692,11 +692,12 @@ nav a.active {
 @media screen and (max-width: 768px) {
   /* Responsive design for mobile */
   header h1 {
-    font-size: 18px; /* Smaller font size on mobile */
+    font-size: 1.5rem; /* Larger font size for easier tapping */
   }
 
   .menu-toggle {
     display: block;
+    font-size: 2rem; /* Larger toggle for mobile */
   }
 
   nav:not(.active) .nav-left,
@@ -710,7 +711,7 @@ nav a.active {
     flex-direction: column;
     background-color: #000;
     position: absolute;
-    top: 32px; /* Align with smaller header */
+    top: 56px; /* Align with larger mobile header */
     left: 0;
     right: 0;
     padding: 10px;
@@ -724,7 +725,8 @@ nav a.active {
 
   nav a {
     margin-bottom: 5px; /* Add margin for stacked items */
-    font-size: 1.2rem; /* Larger tap targets */
+    font-size: 1.2rem; /* Bigger text for touch targets */
+    padding: 8px;
   }
 
   .menu-toggle {
@@ -738,9 +740,15 @@ nav a.active {
     display: none;
   }
 
-  .settings-icon svg {
-    width: 18px;
-    height: 18px;
+  .settings-icon svg,
+  .status-indicator svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .cool-clock {
+    width: 32px;
+    height: 32px;
   }
 
   .performance-indicator {
