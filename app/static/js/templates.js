@@ -23,6 +23,7 @@ export function initTemplates() {
       .getElementById("template-form")
       ?.closest("details");
     const slider = document.getElementById("grid-width-slider");
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
     const templateList = document.getElementById("template-list");
     const captionToggle = document.getElementById("toggle-captions");
     const MAX_THUMBNAIL_HEIGHT = 1080;
@@ -135,7 +136,17 @@ export function initTemplates() {
 
       slider.addEventListener("input", handleSlider);
       slider.addEventListener("change", handleSlider);
-      handleSlider();
+      if (isMobile) {
+        slider.style.display = "none";
+        slider.value = Math.min(window.innerWidth, slider.max);
+        handleSlider();
+        window.addEventListener("resize", () => {
+          slider.value = Math.min(window.innerWidth, slider.max);
+          handleSlider();
+        });
+      } else {
+        handleSlider();
+      }
     }
 
     if (form) {
@@ -384,6 +395,18 @@ export function setupSearch() {
   if (!searchInput) return;
 
   const filterCameras = () => {
+    const costStart = document.getElementById("cost-start");
+    const costEnd = document.getElementById("cost-end");
+    if (costStart?.value || costEnd?.value) {
+      const params = new URLSearchParams(window.location.search);
+      if (costStart && costStart.value)
+        params.set("cost_start", costStart.value);
+      else params.delete("cost_start");
+      if (costEnd && costEnd.value) params.set("cost_end", costEnd.value);
+      else params.delete("cost_end");
+      window.location.search = params.toString();
+      return;
+    }
     const searchTerm = searchInput.value.toLowerCase();
     const selectedGroup = groupDropdown
       ? groupDropdown.value
@@ -449,6 +472,7 @@ export async function loadTemplates() {
 
   const isIndexPage = Boolean(templateList);
   const isCaptionsPage = Boolean(captionsTable && templateContainer);
+  const sliderElement = document.getElementById("grid-width-slider");
 
   if (isIndexPage) {
     templateList.innerHTML = '<div class="loading">Loading templates...</div>';
@@ -604,20 +628,18 @@ export async function loadTemplates() {
     }
     if (window.updateSliderLimits) {
       window.updateSliderLimits();
-      const slider = document.getElementById("grid-width-slider");
-      if (slider) {
-        slider.value = slider.min;
-        slider.dispatchEvent(new Event("input"));
+      if (sliderElement) {
+        sliderElement.value = sliderElement.min;
+        sliderElement.dispatchEvent(new Event("input"));
       }
-    } else {
-      const slider = document.getElementById("grid-width-slider");
-      if (slider) slider.dispatchEvent(new Event("input"));
+    } else if (sliderElement) {
+      sliderElement.dispatchEvent(new Event("input"));
     }
     updateHumanizedTimes();
     window.dispatchEvent(
       new CustomEvent("templatesLoaded", { detail: { count: templateCount } }),
     );
-    applyCaptionVisibility(parseFloat(slider?.value || "0"));
+    applyCaptionVisibility(parseFloat(sliderElement?.value || "0"));
   } catch (error) {
     console.error("Error loading templates:", error);
     const errorMsg =
