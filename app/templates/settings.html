@@ -84,45 +84,6 @@ content %}
                 />
                 <span class="slider round"></span>
               </label>
-
-              {% elif setting.name in choices %}
-              <input
-                type="text"
-                name="{{ setting.name }}"
-                list="{{ setting.name }}-options"
-                value="{{ setting.value }}"
-                title="Select or enter value for {{ setting.name }}"
-              />
-              <datalist id="{{ setting.name }}-options">
-                {% for option in choices[setting.name] %}
-                <option value="{{ option }}"></option>
-                {% endfor %}
-              </datalist>
-              {% elif setting.name in numeric_fields %}
-              <input
-                type="number"
-                name="{{ setting.name }}"
-                min="0"
-                value="{{ setting.value }}"
-                title="Edit value for {{ setting.name }}"
-              />
-              {% elif setting.name in email_fields %}
-              <input
-                type="email"
-                name="{{ setting.name }}"
-                value="{{ setting.value }}"
-                title="Edit value for {{ setting.name }}"
-              />
-              {% elif setting.name == 'PORT' %}
-              <input
-                type="number"
-                name="PORT"
-                min="1024"
-                max="65535"
-                value="{{ setting.value }}"
-                title="Edit port"
-              />
-
               {% else %}
               <input
                 type="text"
@@ -152,72 +113,46 @@ content %}
     <div id="discover-tab" class="tab-content">
       {% include '_discover_tab.html' %}
     </div>
+    <div id="status-tab" class="tab-content">
+      {% include '_status_tab.html' %}
+    </div>
     {% endif %} {% endfor %}
 
 
-    <form method="POST" action="{{ url_for('settings') }}" id="settings-form">
-        {% for group, items in grouped_settings.items() %}
-        <div id="{{ group|replace(' ', '-') }}-tab" class="tab-content{% if loop.first %} active{% endif %}">
-            <h3>{{ group }} Settings</h3>
-            <table class="settings-table">
-                <thead>
-                    <tr>
-                        <th class="searchable">Setting</th>
-                        <th class="searchable">Value</th>
-                        <th class="searchable">Explanation</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for setting in items %}
-                    <tr>
-                        <td title="{{ tooltips.get(setting.name, '') }}">{{ setting.name }}</td>
-                        <td>
-                            {% if setting.value in ['True', 'False'] %}
-                            <label class="switch">
-                                <input type="checkbox" name="{{ setting.name }}" value="True" {% if setting.value == 'True' %}checked{% endif %} data-boolean>
-                                <span class="slider round"></span>
-                            </label>
-                            {% else %}
-                            <input type="text" name="{{ setting.name }}" value="{{ setting.value }}" title="Edit value for {{ setting.name }}">
-                            {% endif %}
-                        </td>
-                        <td class="setting-explanation">{{ tooltips.get(setting.name, '') }}</td>
-                        <td>
-                            <button type="submit" name="action" value="delete" title="Delete {{ setting.name }}" onclick="return confirmDeleteSetting('{{ setting.name }}')">Delete</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% if loop.first %}
-        <div id="discover-tab" class="tab-content">
-            {% include '_discover_tab.html' %}
-        </div>
-        <div id="status-tab" class="tab-content">
-            {% include '_status_tab.html' %}
-        </div>
-        <div id="costs-tab" class="tab-content">
-            {% include '_costs_tab.html' %}
-        </div>
-        {% endif %}
-        {% endfor %}
+    <div id="management-tab" class="tab-content">
+      <h3>Configuration Management</h3>
+      <button
+        type="submit"
+        name="action"
+        value="backup"
+        title="Create a JSON backup of all settings"
+      >
+        Backup Configuration
+      </button>
+      <button
+        type="submit"
+        name="action"
+        value="download"
+        title="Download the latest configuration backup"
+      >
+        Download Configuration
+      </button>
+      <input
+        type="file"
+        name="file"
+        accept=".json"
+        title="Select configuration file to upload"
+      />
+      <button
+        type="submit"
+        name="action"
+        value="upload"
+        title="Restore configuration from uploaded file"
+        onclick="return confirmRestore()"
+      >
+        Upload Configuration
+      </button>
 
-      <div id="status-tab" class="tab-content">
-        {% include '_status_tab.html' %}
-      </div>
-
-      <div id="management-tab" class="tab-content">
-        <h3>Configuration Management</h3>
-        <button type="submit" name="action" value="backup" title="Create a JSON backup of all settings">Backup Configuration</button>
-        <button type="submit" name="action" value="download" title="Download the latest configuration backup">Download Configuration</button>
-        <input type="file" name="file" accept=".json" title="Select configuration file to upload" />
-        <button type="submit" name="action" value="upload" title="Restore configuration from uploaded file" onclick="return confirmRestore()">Upload Configuration</button>
-
-        <h3>Danger Mode</h3>
-        <button type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode">Update Chrome Shortcut</button>
-      </div>
 
       <input type="hidden" id="name_to_delete" name="name_to_delete" value="" title="Name of setting to delete" />
       <button type="submit" title="Save all changes">Save Changes</button>
