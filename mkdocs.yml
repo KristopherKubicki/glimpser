@@ -13,6 +13,7 @@ nav:
       - Camera Discovery: camera_discovery.md
       - Camera Fix: camera_fix.md
       - Capture Process: capture_process.md
+      - Browser Driver Management: driver_pool.md
       - Captions Live Update: captions_live_update.md
       - Floating Navigation Bar: floating_nav.md
       - Command Line Reference: command_line.md
@@ -74,5 +75,3 @@ nav:
       - Scorecard: scorecard.md
       - Startup Tips: startup_tips.md
       - Style Guide: style_guide.md
-
-
