@@ -93,10 +93,14 @@ export function initTemplates() {
         );
 
         slider.min = computedMin;
-        slider.value = computedMin;
+        if (isMobile) {
+          slider.value = Math.min(window.innerWidth, slider.max);
+        } else {
+          slider.value = computedMin;
+        }
         document.documentElement.style.setProperty(
           "--tile-size",
-          `${computedMin}px`,
+          `${slider.value}px`,
         );
         slider.dispatchEvent(new Event("input"));
       };
