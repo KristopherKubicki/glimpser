@@ -17,21 +17,18 @@
   data-speed="{{ CHYRON_SPEED }}"
 ></div>
 <nav>
-
   {% if session.get('user_id') %}
-  <button id="menu-toggle" class="menu-toggle" aria-label="Toggle navigation">☰</button>
+  <button id="menu-toggle" class="menu-toggle" aria-label="Toggle navigation">
+    ☰
+  </button>
   {% endif %}
 
   <div class="nav-left">
-    {% if template_details is defined %}
-      {% if template_details.get('groups') %}
-        {% set __back_url = '/group/' ~ template_details.get('groups').split(',')[0].strip() %}
-        {% set __back_title = 'Back to Group' %}
-      {% else %}
-        {% set __back_url = url_for('index') %}
-        {% set __back_title = 'Back to Dashboard' %}
-      {% endif %}
-    {% endif %}
+    {% if template_details is defined %} {% if template_details.get('groups') %}
+    {% set __back_url = '/group/' ~
+    template_details.get('groups').split(',')[0].strip() %} {% set __back_title
+    = 'Back to Group' %} {% else %} {% set __back_url = url_for('index') %} {%
+    set __back_title = 'Back to Dashboard' %} {% endif %} {% endif %}
     <select id="nav-group-dropdown" title="Jump to group"></select>
     <select
       id="nav-camera-dropdown"
@@ -83,6 +80,20 @@
         />
       </svg>
     </a>
+    <a
+      id="discover-status"
+      href="/settings?tab=discover-tab"
+      class="status-indicator"
+      title="Discovery running"
+      aria-label="Discovery running"
+      style="display: none"
+    >
+      <svg width="20" height="20">
+        <use
+          href="{{ url_for('static', filename='icons/sprite.svg') }}#search"
+        />
+      </svg>
+    </a>
     <div class="caption-container">
       <a
         href="/captions"
@@ -99,7 +110,14 @@
       </a>
     </div>
     <a href="/live" id="live" aria-label="Open Live page">
-      <div id="nav-clock" class="cool-clock" data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}" style="{% if not CLOCK_NAVBAR %}display:none;{% endif %}" title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming." aria-label="Open Live page for realtime streaming">
+      <div
+        id="nav-clock"
+        class="cool-clock"
+        data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}"
+        style="{% if not CLOCK_NAVBAR %}display:none;{% endif %}"
+        title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming."
+        aria-label="Open Live page for realtime streaming"
+      >
         <div class="clock-face">
           <div class="clock-hands">
             <div class="hand hour-hand"></div>

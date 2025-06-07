@@ -9,6 +9,7 @@ export function initNav() {
       healthStatus.style.display = "none";
     }
     const dangerStatus = document.getElementById("danger-status");
+    const discoveryStatus = document.getElementById("discover-status");
     const onSettingsPage = window.location.pathname.startsWith("/settings");
     const nav = document.querySelector("nav");
     const menuToggle = document.getElementById("menu-toggle");
@@ -195,6 +196,27 @@ export function initNav() {
         }
       } catch (error) {
         console.error("Error fetching danger status:", error);
+      }
+    };
+
+    const checkDiscovery = async () => {
+      if (!discoveryStatus) return;
+      try {
+        const data = await fetchJson("/discovery_status");
+        if (!data) return;
+        if (data.running) {
+          discoveryStatus.style.display = "flex";
+          discoveryStatus.style.color = "orange";
+          const fmt = (s) => `${Math.round(s / 60)}m`;
+          const title = data.running_for
+            ? `Discovery running\nRunning for ${fmt(data.running_for)}`
+            : "Discovery running";
+          discoveryStatus.title = title;
+        } else {
+          discoveryStatus.style.display = "none";
+        }
+      } catch (error) {
+        console.error("Error fetching discovery status:", error);
       }
     };
 
@@ -389,6 +411,8 @@ export function initNav() {
     setInterval(checkDanger, 5000);
     checkCaptions();
     setInterval(checkCaptions, 10000);
+    checkDiscovery();
+    setInterval(checkDiscovery, 10000);
     initClocks();
     setupNavFade();
   });
