@@ -1399,6 +1399,14 @@ input[type="submit"]:hover {
   display: none;
 }
 
+.advanced-only {
+  display: none;
+}
+
+body.advanced-enabled .advanced-only {
+  display: inline-block;
+}
+
 .video-overlay {
   position: absolute;
   top: 50%;
