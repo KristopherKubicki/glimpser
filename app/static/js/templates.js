@@ -73,13 +73,12 @@ export function initTemplates() {
         );
 
         slider.min = computedMin;
-        if (parseFloat(slider.value) < computedMin) {
-          slider.value = computedMin;
-          document.documentElement.style.setProperty(
-            "--tile-size",
-            `${computedMin}px`,
-          );
-        }
+        slider.value = computedMin;
+        document.documentElement.style.setProperty(
+          "--tile-size",
+          `${computedMin}px`,
+        );
+        slider.dispatchEvent(new Event("input"));
       };
 
       updateSliderLimits();
