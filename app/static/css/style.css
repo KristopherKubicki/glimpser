@@ -371,6 +371,8 @@ select:hover {
   --table-row-alt-bg-color: #1a1a1a;
   --table-hover-bg-color: #333;
   --table-border-color: #444;
+  --danger-on-color: #ff4d4d;
+  --danger-off-color: #bf616a;
   /* Duration for the chyron scroll animation */
   --chyron-speed: 480s;
   /* Typography */
@@ -1871,4 +1873,15 @@ details > summary {
   text-align: center;
   padding: 0.5rem;
   color: var(--accent-color);
+}
+
+.danger-mode-box {
+  border: 2px solid var(--danger-off-color);
+  padding: 0.5rem;
+  margin-top: 1rem;
+  border-radius: 4px;
+}
+
+.danger-mode-box.on {
+  border-color: var(--danger-on-color);
 }

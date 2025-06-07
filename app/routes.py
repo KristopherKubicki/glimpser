@@ -2875,7 +2875,7 @@ def init_routes(app: Flask) -> None:
                 send_sms_alert("Test SMS from Glimpser")
                 flash("SMS test triggered. Check logs for results.", "info")
             elif action == "update_shortcut":
-                paths = update_chrome_shortcuts()
+                paths, msg = update_chrome_shortcuts_info()
                 if paths:
                     joined = ", ".join(str(p) for p in paths)
                     flash(
@@ -2883,7 +2883,7 @@ def init_routes(app: Flask) -> None:
                         "success",
                     )
                 else:
-                    flash("Failed to update shortcuts", "error")
+                    flash(f"Failed to update shortcuts: {msg}", "error")
             else:
                 current = {s["name"]: s["value"] for s in get_all_settings()}
                 bool_settings = {
@@ -2951,6 +2951,7 @@ def init_routes(app: Flask) -> None:
         metrics = scheduling.get_system_metrics()
         feeds = scheduling.get_feed_status()
         last_summary = scheduling.get_last_summary_time()
+        danger_enabled = config.get_setting("DANGER_MODE", "True") == "True"
         cost_summary, total_tokens, total_cost = template_manager.get_llm_cost_summary()
         
         chrome_path = get_chrome_path()
@@ -2974,6 +2975,7 @@ def init_routes(app: Flask) -> None:
             total_cost=total_cost,
             danger_info=danger_info,
             choices=SETTINGS_CHOICES,
+            danger_enabled=danger_enabled,
             numeric_fields=NUMERIC_FIELDS,
             email_fields=EMAIL_FIELDS,
             file_info=file_info,
