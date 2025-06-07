@@ -112,8 +112,10 @@ Stream a camera directly from its configured URL in real time. Specify `camera` 
 Example: `/live_video?camera=frontdoor`
 
 If the underlying `ffmpeg` process exits unexpectedly the server now
-restarts it automatically. This ensures the client receives a valid MP4
-stream whenever the camera becomes available again.
+restarts it automatically. When repeated failures occur the delay between
+attempts grows exponentially (up to 30 seconds) to reduce log spam. This
+ensures the client receives a valid MP4 stream whenever the camera becomes
+available again while avoiding rapid restarts.
 
 ### 5. Additional Streaming Endpoints
 
