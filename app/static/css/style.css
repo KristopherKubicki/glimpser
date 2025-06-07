@@ -1101,6 +1101,42 @@ input:checked + .slider:before {
   margin-top: 20px;
 }
 
+.template-actions {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: opacity 0.5s;
+  z-index: 1000;
+}
+
+.template-actions.fade-out {
+  opacity: 0;
+}
+
+.template-actions button {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+}
+.template-actions p {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.videos-grid,
+.screenshots-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
 @media (max-width: 600px) {
   .form-row {
     grid-template-columns: 1fr;

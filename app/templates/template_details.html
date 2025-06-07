@@ -436,16 +436,46 @@ function suggestFix(name) {
 function closePromptModal() {
     document.getElementById('prompt-modal').style.display = 'none';
 }
+
+function openModal(id) {
+    document.getElementById(id).style.display = 'block';
+}
+
+function closeGenericModal(id) {
+    document.getElementById(id).style.display = 'none';
+}
 </script>
 
 
 
 
-    <button id="instant-screenshot-btn" onclick="takeInstantScreenshot('{{ template_name }}')" title="Take a screenshot of the template immediately">Take Instant Screenshot</button>
-    <button id="update-video-btn" onclick="updateVideo('{{ template_name }}')" title="Update the video for this template">Update Video</button>
-    <button id="show-camera-details-btn" onclick="showCameraDetails('{{ template_name }}')" title="Show camera details and endpoints">Show Camera Details</button>
-    <button id="open-url-btn" onclick="window.open('{{ template_details.url }}', '_blank')" title="Open the monitored page">Open Page</button>
-    <br/>
+    <div class="template-actions fade-out">
+        <p><strong>Last Caption:</strong> {{ template_details.last_caption }}</p>
+        <p><strong>Caption Time:</strong> {{ template_details.last_caption_time }}</p>
+        <button onclick="openModal('videos-modal')" title="Show recent videos">Recent Videos</button>
+        <button onclick="openModal('captures-modal')" title="Show recent screenshots">Recent Captures</button>
+        <button onclick="openModal('edit-template-modal')" title="Edit this template">Edit Template</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const actions = document.querySelector('.template-actions');
+            if (!actions) return;
+            let fadeTimeout;
+            const show = () => {
+                actions.classList.remove('fade-out');
+                clearTimeout(fadeTimeout);
+                fadeTimeout = setTimeout(() => actions.classList.add('fade-out'), 3000);
+            };
+            ['mouseenter', 'mousemove'].forEach((evt) => {
+                actions.addEventListener(evt, show);
+            });
+            actions.addEventListener('mouseleave', () => {
+                fadeTimeout = setTimeout(() => actions.classList.add('fade-out'), 3000);
+            });
+            show();
+        });
+    </script>
 
 
 
@@ -460,6 +490,102 @@ function closePromptModal() {
     <div class="modal-content">
       <span onclick="closePromptModal()" class="close-icon" title="Close dialog">&times;</span>
       <textarea id="prompt-text" class="prompt-textarea"></textarea>
+    </div>
+  </div>
+
+  <div id="videos-modal" class="modal">
+    <div class="modal-content">
+      <span onclick="closeGenericModal('videos-modal')" class="close-icon" title="Close dialog">&times;</span>
+      <div class="videos-grid">
+        {% for video in videos %}
+        <div class="video">
+          <video src="/videos/{{template_name}}/{{video}}" height="200" autoplay loop muted title="Recent video capture: {{video}}"></video>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div id="captures-modal" class="modal">
+    <div class="modal-content">
+      <span onclick="closeGenericModal('captures-modal')" class="close-icon" title="Close dialog">&times;</span>
+      <div class="screenshots-grid">
+        {% for screenshot in screenshots %}
+        <div class="screenshot">
+          <a href='/screenshots/{{template_name}}/{{screenshot}}' title="View full-size screenshot"><img src="/screenshots/{{template_name}}/{{screenshot}}" loading="lazy" alt="Screenshot" height='200' title="Recent screenshot: {{screenshot}}" /></a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div id="edit-template-modal" class="modal">
+    <div class="modal-content">
+      <span onclick="closeGenericModal('edit-template-modal')" class="close-icon" title="Close dialog">&times;</span>
+      <div class="edit-template-container">
+        <h3>Edit Template Details</h3>
+        <form id="edit-template-form" action="/update_template/{{ template_name }}" method="post" onsubmit="return validateForm()" title="Form to edit template details">
+            <div class="form-row">
+                <label for="url" title="URL to monitor">URL:</label>
+                <input type="url" id="url" name="url" value="{{ template_details.url }}" required title="Enter the URL to monitor" />
+            </div>
+
+            <div class="form-row">
+                <label for="frequency" title="How often to check the URL">Frequency (minutes):</label>
+                <input type="number" id="frequency" name="frequency" value="{{ template_details.frequency }}" min="1" required title="Enter how often to check the URL (in minutes)" />
+            </div>
+
+            <div class="form-row">
+                <label for="timeout" title="Maximum time to wait for a response">Timeout (seconds):</label>
+                <input type="number" id="timeout" name="timeout" value="{{ template_details.timeout }}" min="1" required title="Enter the maximum time to wait for a response (in seconds)" />
+            </div>
+
+            <div class="form-row">
+                <label for="notes" title="Additional notes">Notes:</label>
+                <textarea id="notes" name="notes" title="Enter any additional notes or comments">{{ template_details.notes }}</textarea>
+            </div>
+            <button type="button" onclick="suggestPrompt('{{ template_name }}')" title="Generate a prompt">Suggest Prompt</button>
+            <button type="button" onclick="suggestFix('{{ template_name }}')" title="Suggest troubleshooting tips">Suggest Fix</button>
+
+            <div class="form-row">
+                <label for="object_filter" title="Filter for specific objects">Object Filter:</label>
+                <input type="text" id="object_filter" name="object_filter" value="{{ template_details.object_filter }}" title="Enter object types to filter (e.g., 'person,car')" />
+            </div>
+
+            <div class="form-row">
+                <label for="object_confidence" title="Minimum confidence for object detection">Object Confidence:</label>
+                <input type="number" id="object_confidence" name="object_confidence" value="{{ template_details.object_confidence }}" min="0" max="1" step="0.01" title="Enter the minimum confidence level for object detection (0-1)" />
+            </div>
+
+            <div class="form-row">
+                <label for="motion" title="Percentage of motion required to trigger an alert">Motion Percent:</label>
+                <input type="number" id="motion" name="motion" value="{{ template_details.motion }}" min="0" max="1" step="0.01" title="Enter the percentage of motion required to trigger an alert" />
+            </div>
+
+            <div class="form-row">
+                <label for="popup_xpath">Popup XPath:</label>
+                <div class="xpath-input-container">
+                    <input type="text" id="popup_xpath" name="popup_xpath" value="{{ template_details.popup_xpath }}" />
+                    <button type="button" onclick="showStructuredInput('popup_xpath')" title="Open structured XPath editor">Structured</button>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <label for="dedicated_xpath">Dedicated XPath:</label>
+                <div class="xpath-input-container">
+                    <input type="text" id="dedicated_xpath" name="dedicated_xpath" value="{{ template_details.dedicated_xpath }}" />
+                    <button type="button" onclick="showStructuredInput('dedicated_xpath')" title="Open structured XPath editor">Structured</button>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <label for="callback_url" title="URL for notifications">Callback URL:</label>
+                <input type="url" id="callback_url" name="callback_url" value="{{ template_details.callback_url }}" title="Enter URL to receive notifications" />
+            </div>
+
+            <button type="submit" title="Save template changes">Save</button>
+        </form>
+      </div>
     </div>
   </div>
 {% endblock %}
