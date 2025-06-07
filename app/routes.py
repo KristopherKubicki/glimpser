@@ -2666,7 +2666,7 @@ def init_routes(app: Flask) -> None:
                     else:
                         flash("Invalid file type", "error")
             elif action == "update_shortcut":
-                paths = update_chrome_shortcuts()
+                paths, msg = update_chrome_shortcuts_info()
                 if paths:
                     joined = ", ".join(str(p) for p in paths)
                     flash(
@@ -2674,7 +2674,7 @@ def init_routes(app: Flask) -> None:
                         "success",
                     )
                 else:
-                    flash("Failed to update shortcuts", "error")
+                    flash(f"Failed to update shortcuts: {msg}", "error")
             else:
                 current = {s["name"]: s["value"] for s in get_all_settings()}
                 bool_settings = {
@@ -2728,6 +2728,7 @@ def init_routes(app: Flask) -> None:
         metrics = scheduling.get_system_metrics()
         feeds = scheduling.get_feed_status()
         last_summary = scheduling.get_last_summary_time()
+        danger_enabled = config.get_setting("DANGER_MODE", "True") == "True"
         return render_template(
             "settings.html",
             grouped_settings=grouped_settings,
@@ -2736,6 +2737,7 @@ def init_routes(app: Flask) -> None:
             feeds=feeds,
             last_summary=last_summary,
             choices=SETTINGS_CHOICES,
+            danger_enabled=danger_enabled,
             page_title="Settings",
         )
 
