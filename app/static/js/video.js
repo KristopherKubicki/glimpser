@@ -209,7 +209,6 @@ export function setupVideoControls() {
 
 export function setupStatusPageVideoHover() {
   const thumbnailVideoCells = document.querySelectorAll(".thumbnail-video");
-  console.log("setup!");
   thumbnailVideoCells.forEach((cell) => {
     const img = cell.querySelector("img.thumbnail");
     const video = cell.querySelector("video.hover-video");

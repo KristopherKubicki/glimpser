@@ -669,7 +669,6 @@ export async function loadTemplates() {
           let resetTimeout;
 
           video.addEventListener("mouseenter", (e) => {
-            console.log("pos");
             clearTimeout(resetTimeout);
             video.style.display = "block";
             // Load metadata on first hover so currentTime can be set
@@ -694,7 +693,10 @@ export async function loadTemplates() {
             resetTimeout = setTimeout(() => {
               video.pause();
               video.currentTime = 0;
-              video.style.display = "none";
+              //video.style.display = "none";
+              // Reset to the poster image on hover exit
+              video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
+              video.load();
             }, 1000); // restore screenshot a bit after leaving
           });
         } else if (isCaptionsPage) {
