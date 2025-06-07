@@ -55,6 +55,7 @@ nav:
       - Captions Chatbot: chatbot.md
       - Continuous Integration Checks: ci_checks.md
       - Jog-Shuttle Control: jog_shuttle.md
+      - Player Known Issues: player_known_issues.md
       - Live All Playback: live_all.md
       - Live View Scrubbing: live_scrub.md
       - MCP Integration: mcp_integration.md

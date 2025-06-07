@@ -11,6 +11,7 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [Live View Scrubbing](live_scrub.md)
 - [Search Bar Autocomplete](search_autocomplete.md)
 - [Jog-Shuttle Control](jog_shuttle.md)
+- [Player Known Issues](player_known_issues.md)
 - [Developer Guide](developer_guide.md)
 - [Testing and Coverage](testing.md)
 - [Release Workflow](release_workflow.md)
