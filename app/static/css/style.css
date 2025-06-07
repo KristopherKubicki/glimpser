@@ -1105,14 +1105,15 @@ input:checked + .slider:before {
 
 .template-actions {
   position: fixed;
-  bottom: 10px;
-  left: 10px;
+  bottom: 0.5rem;
+  left: 0.5rem;
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  background-color: rgba(0, 0, 0, 0.8);
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.7);
   color: #fff;
-  padding: 0.5rem;
+  padding: 0.25rem 0.5rem;
   border-radius: 4px;
   transition: opacity 0.5s;
   z-index: 1000;
@@ -1123,13 +1124,13 @@ input:checked + .slider:before {
 }
 
 .template-actions button {
-  padding: 6px 12px;
-  font-size: 0.9rem;
+  padding: 4px 8px;
+  font-size: 0.8rem;
 }
 
 .template-actions p {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
 .videos-grid,
