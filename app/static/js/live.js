@@ -938,20 +938,18 @@ function playMJPG() {
     seekBar.disabled = true;
   }
   stopLiveSwitch();
+  stopPNG();
+  const ts = Date.now();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     const groupName = currentCamera.split("group-")[1];
-    image.src = `/stream.mjpg?group=${encodeURIComponent(groupName)}`;
+    image.src = `/stream.mjpg?group=${encodeURIComponent(groupName)}&time=${ts}`;
   } else if (currentCamera === "All") {
     // Special handling for the "All" option
-    image.src = "/stream.mjpg?group=all";
+    image.src = `/stream.mjpg?group=all&time=${ts}`;
   } else {
     // URL for individual cameras
-    image.src =
-      "/stream.mjpg?camera=" +
-      encodeURIComponent(currentCamera) +
-      "&time=" +
-      new Date().getTime();
+    image.src = `/stream.mjpg?camera=${encodeURIComponent(currentCamera)}&time=${ts}`;
   }
 }
 
@@ -972,20 +970,18 @@ function playMotion() {
     seekBar.disabled = true;
   }
   stopLiveSwitch();
+  stopPNG();
+  const ts = Date.now();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     const groupName = currentCamera.split("group-")[1];
-    image.src = `/motion.mjpg?group=${encodeURIComponent(groupName)}`;
+    image.src = `/motion.mjpg?group=${encodeURIComponent(groupName)}&time=${ts}`;
   } else if (currentCamera === "All") {
     // Special handling for the "All" option
-    image.src = "/motion.mjpg?group=all";
+    image.src = `/motion.mjpg?group=all&time=${ts}`;
   } else {
     // URL for individual cameras
-    image.src =
-      "/motion.mjpg?camera=" +
-      encodeURIComponent(currentCamera) +
-      "&time=" +
-      new Date().getTime();
+    image.src = `/motion.mjpg?camera=${encodeURIComponent(currentCamera)}&time=${ts}`;
   }
 }
 
