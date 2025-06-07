@@ -122,18 +122,17 @@ content %}
                 />
                 {% endif %}
             </td>
-            <td>
-              <button
-                type="submit"
-                name="action"
-                value="delete"
-                title="Delete {{ setting.name }}"
-                onclick="return confirmDeleteSetting('{{ setting.name }}')"
-                class="advanced-only"
-              >
-                Delete
-              </button>
-            </td>
+              <td class="advanced-only">
+                <button
+                  type="submit"
+                  name="action"
+                  value="delete"
+                  title="Delete {{ setting.name }}"
+                  onclick="return confirmDeleteSetting('{{ setting.name }}')"
+                  >
+                  Delete
+                </button>
+              </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -160,7 +159,7 @@ content %}
                         <th class="searchable">Setting</th>
                         <th class="searchable">Value</th>
                         <th class="searchable">Explanation</th>
-                        <th>Action</th>
+                        <th class="advanced-only">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -180,7 +179,7 @@ content %}
                               {% endif %}
                         </td>
                         <td class="setting-explanation">{{ tooltips.get(setting.name, '') }}</td>
-                        <td>
+                        <td class="advanced-only">
                             <button type="submit" name="action" value="delete" title="Delete {{ setting.name }}" onclick="return confirmDeleteSetting('{{ setting.name }}')" class="advanced-only">Delete</button>
                         </td>
                     </tr>
@@ -201,9 +200,10 @@ content %}
         {% endif %}
         {% endfor %}
 
-        <div id="management-tab" class="tab-content">
-            <h3>Configuration Management</h3>
-            <button type="submit" name="action" value="backup" title="Create a JSON backup of all settings">Backup Configuration</button>
+          <div id="management-tab" class="tab-content">
+              <h3>Configuration Management</h3>
+              <button id="advanced-toggle" class="settings-icon" type="button" title="Toggle advanced options">Advanced</button>
+              <button type="submit" name="action" value="backup" title="Create a JSON backup of all settings">Backup Configuration</button>
             <button type="submit" name="action" value="download" title="Download the latest configuration backup">Download Configuration</button>
             <input type="file" name="file" accept=".json" title="Select configuration file to upload">
             <button type="submit" name="action" value="upload" title="Restore configuration from uploaded file" onclick="return confirmRestore()">Upload Configuration</button>
@@ -225,9 +225,10 @@ content %}
          </div>
     </div>
 
-    <div id="management-tab" class="tab-content">
-      <h3>Configuration Management</h3>
-      <button
+      <div id="management-tab" class="tab-content">
+        <h3>Configuration Management</h3>
+        <button id="advanced-toggle" class="settings-icon" type="button" title="Toggle advanced options">Advanced</button>
+        <button
         type="submit"
         name="action"
         value="backup"
