@@ -66,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed a duplicate form on the settings page that caused repeated element IDs
 - Prevented undefined camera requests from returning 404 errors when switching
   live sources.
+- Sanitized log messages in the UI to prevent XSS vulnerabilities
 
 ## [0.2.7] - 2025-06-02
 
