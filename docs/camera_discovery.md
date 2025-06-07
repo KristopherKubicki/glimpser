@@ -37,6 +37,11 @@ An optional CIDR can be supplied via the new input field to restrict discovery t
 
 During the scan you will see messages like `Scanning onvif (3 found)...`. The stage name shows which discovery method just finished, while the number in parentheses reflects how many cameras have been detected so far.
 
+If a discovery step raises an exception, the stream now includes an `error` field
+containing the message. The Discover page displays this text after the generic
+"Error discovering cameras" notice so you can quickly identify what failed
+without digging through log files.
+
 ## Camera scanning logic
 
 The discovery code combines multiple approaches:
