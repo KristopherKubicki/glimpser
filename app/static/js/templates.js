@@ -49,34 +49,27 @@ export function initTemplates() {
           templateList?.querySelectorAll(".templateDiv").length || 1;
 
         const gap = parseFloat(getComputedStyle(templateList).gap || "0") || 0;
+        let optimalWidth = 50;
 
-        // Maximum width to fit all tiles across the page
-        const widthForColumns = Math.floor(
-          (window.innerWidth - gap * (templateCount - 1)) / templateCount,
-        );
+        for (let cols = 1; cols <= templateCount; cols++) {
+          const rows = Math.ceil(templateCount / cols);
+          const widthHoriz = Math.floor(
+            (window.innerWidth - gap * (cols - 1)) / cols,
+          );
+          const widthVert = Math.floor(
+            window.innerHeight / (rows * ASPECT_RATIO),
+          );
+          const candidate = Math.min(widthHoriz, widthVert, slider.max);
+          if (candidate > optimalWidth) optimalWidth = candidate;
+        }
 
-        // Maximum width so combined rows fill the screen vertically
-        const aspectRatio = 9 / 16;
-        const widthForHeight = Math.sqrt(
-          (window.innerHeight * window.innerWidth) /
-            (templateCount * aspectRatio),
-        );
-        const widthForMaxHeight = MAX_THUMBNAIL_HEIGHT / aspectRatio;
-        slider.max = Math.min(slider.max, widthForMaxHeight);
+        optimalWidth = Math.max(50, Math.min(optimalWidth, slider.max));
 
-        const computedMin = Math.max(
-          50,
-          Math.min(
-            slider.max,
-            Math.floor(Math.min(widthForColumns, widthForHeight)),
-          ),
-        );
-
-        slider.min = computedMin;
-        slider.value = computedMin;
+        slider.min = optimalWidth;
+        slider.value = optimalWidth;
         document.documentElement.style.setProperty(
           "--tile-size",
-          `${computedMin}px`,
+          `${optimalWidth}px`,
         );
         slider.dispatchEvent(new Event("input"));
       };
