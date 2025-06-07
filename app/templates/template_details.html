@@ -441,11 +441,32 @@ function closePromptModal() {
 
 
 
-    <button id="instant-screenshot-btn" onclick="takeInstantScreenshot('{{ template_name }}')" title="Take a screenshot of the template immediately">Take Instant Screenshot</button>
-    <button id="update-video-btn" onclick="updateVideo('{{ template_name }}')" title="Update the video for this template">Update Video</button>
-    <button id="show-camera-details-btn" onclick="showCameraDetails('{{ template_name }}')" title="Show camera details and endpoints">Show Camera Details</button>
-    <button id="open-url-btn" onclick="window.open('{{ template_details.url }}', '_blank')" title="Open the monitored page">Open Page</button>
-    <br/>
+    <div class="template-actions">
+        <button id="instant-screenshot-btn" onclick="takeInstantScreenshot('{{ template_name }}')" title="Take instant screenshot">Snapshot</button>
+        <button id="update-video-btn" onclick="updateVideo('{{ template_name }}')" title="Update video">Update Video</button>
+        <button id="show-camera-details-btn" onclick="showCameraDetails('{{ template_name }}')" title="Show camera details">Details</button>
+        <button id="open-url-btn" onclick="window.open('{{ template_details.url }}', '_blank')" title="Open page">Open</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const actions = document.querySelector('.template-actions');
+            if (!actions) return;
+            let fadeTimeout;
+            const show = () => {
+                actions.classList.remove('fade-out');
+                clearTimeout(fadeTimeout);
+                fadeTimeout = setTimeout(() => actions.classList.add('fade-out'), 3000);
+            };
+            ['mouseenter', 'mousemove'].forEach((evt) => {
+                actions.addEventListener(evt, show);
+            });
+            actions.addEventListener('mouseleave', () => {
+                fadeTimeout = setTimeout(() => actions.classList.add('fade-out'), 3000);
+            });
+            show();
+        });
+    </script>
 
 
 

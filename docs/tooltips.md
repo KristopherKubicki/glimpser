@@ -38,6 +38,7 @@ Interactive forms now include additional tooltips:
 
 - **Add Camera** – explains each field on the Discover tab and the "Structured" XPath buttons.
 - **Template Details** – buttons like "Suggest Prompt" and "Suggest Fix" describe their actions.
+- **Template toolbar** – quick actions fade in when hovering over the top-right corner of the details page.
 - **Captions** – upload and filter controls have descriptive titles. The metric dropdown filters feeds by count or storage and updates the list immediately.
 - **Danger Mode** – the checkbox, save button and modal controls all include tooltips.
 - **Live video player** – tooltip now refreshes with the full caption as it updates.
