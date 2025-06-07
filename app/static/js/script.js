@@ -17,6 +17,7 @@ import { initTabs } from "./tabs.js";
 import { initThemeToggle } from "./theme.js";
 import { initAutocomplete } from "./autocomplete.js";
 import { initCosts } from "./costs.js";
+import { initAdvanced } from "./advanced.js";
 
 initTemplates();
 initVideoControls();
@@ -38,3 +39,4 @@ initTabs();
 initThemeToggle();
 initAutocomplete();
 initCosts();
+initAdvanced();

@@ -1,6 +1,7 @@
 <!-- app/templates/template_details.html -->
 
 {% extends 'base.html' %}
+{% from 'components.html' import confirm_modal %}
 {% block content %}
 <script>
     const cameraMeta = {{ template_details|tojson }};
@@ -273,9 +274,10 @@ function updateVideo(templateName) {
         </form>
     </div>
     <div id="delete-template" class="form-actions">
-        <button id="delete-btn" onclick="confirmDelete('{{ template_name }}')" title="Delete this template permanently">Delete Template</button>
+        <button id="delete-btn" onclick="confirmDelete('{{ template_name }}')" title="Delete this template permanently" class="advanced-only">Delete Template</button>
     </div>
     <div id="undo-container" style="display:none" class="form-actions"></div>
+    {{ confirm_modal('delete-template', 'Delete this template?', 'Delete', 'Cancel') }}
 </details>
 
 <script>
@@ -317,25 +319,38 @@ function validateForm() {
 }
 
 
+let pendingTemplate = null;
 function confirmDelete(templateName) {
-    const confirmed = confirm("Are you sure you want to delete this template?");
-    if (!confirmed) return;
-    const templateData = window.templateDetails[templateName] || {};
-    fetch('/templates', {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: templateName })
-    })
-    .then(response => response.json())
-    .then(data => {
-        alert(data.message);
-        if(data.status === 'success') {
-            showUndo(templateName, templateData);
-        }
-    })
-    .catch(error => console.error('Error:', error));
+    const modal = document.getElementById('delete-template-modal');
+    const msg = document.getElementById('delete-template-modal-message');
+    const confirmBtn = document.getElementById('delete-template-confirm');
+    const cancelBtn = document.getElementById('delete-template-cancel');
+    const closeBtn = document.getElementById('delete-template-close');
+    if (!modal || !msg || !confirmBtn) return;
+    pendingTemplate = templateName;
+    msg.textContent = `Delete template ${templateName}?`;
+    modal.style.display = 'block';
+    const hide = () => { modal.style.display = 'none'; };
+    cancelBtn?.addEventListener('click', hide, { once: true });
+    closeBtn?.addEventListener('click', hide, { once: true });
+    confirmBtn.addEventListener('click', () => {
+        hide();
+        const templateData = window.templateDetails[pendingTemplate] || {};
+        fetch('/templates', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: pendingTemplate })
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if(data.status === 'success') {
+                showUndo(pendingTemplate, templateData);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+        pendingTemplate = null;
+    }, { once: true });
 }
 
 function showUndo(name, data) {
