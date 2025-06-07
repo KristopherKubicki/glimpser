@@ -110,27 +110,25 @@ export function initNav() {
 
     if (groupDropdown) {
       groupDropdown.addEventListener("change", () => {
-        if (!groupDropdown.value) return;
+        const selected = groupDropdown.value || "all";
         if (
           window.location.pathname.startsWith("/live") &&
           typeof window.changeGroup === "function"
         ) {
           const grpSelector = document.getElementById("group-selector");
           if (grpSelector) {
-            grpSelector.value = groupDropdown.value || "all";
+            grpSelector.value = selected;
             window.changeGroup();
-            loadNavCameras(groupDropdown.value);
+            loadNavCameras(selected);
             return;
           }
         }
-        if (groupDropdown.value === "all") {
+        if (selected === "all") {
           window.location.href = "/live";
         } else {
-          window.location.href = `/group/${encodeURIComponent(
-            groupDropdown.value,
-          )}`;
+          window.location.href = `/group/${encodeURIComponent(selected)}`;
         }
-        loadNavCameras(groupDropdown.value);
+        loadNavCameras(selected);
       });
       if (currentGroup) loadNavCameras(currentGroup);
     }
