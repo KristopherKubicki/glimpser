@@ -159,6 +159,7 @@ Redirects to the *System Status* tab on the Settings page which displays metrics
 **GET /stream_logs**
 
 Streams log records via Server-Sent Events. Optional query parameters `level`, `source`, `start_date`, `end_date`, and `search` allow filtering. The `/logs` page and *System Status* tab use this endpoint for the live log viewer.
+The endpoint only emits new records when they appear and sends a small `heartbeat` comment roughly every 30 seconds so idle connections stay open without unnecessary traffic.
 
 ### 9. List Stored Videos
 

@@ -42,6 +42,7 @@ name, last image time, last caption time, any KPI column, or status.
 **GET /stream_logs**
 
 This endpoint delivers log entries using Server‑Sent Events. Optional query parameters allow filtering by level, source, date range, and text search. The `/logs` page and the *System Status* tab consume this endpoint to display updates in real time.
+Updates are pushed only when new log lines appear. To keep idle connections alive the server sends a `heartbeat` comment roughly every 30 seconds.
 
 To filter logs by level and message text, you could request:
 
