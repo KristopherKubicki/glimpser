@@ -40,7 +40,8 @@ export function initVideoControls() {
           videos.forEach((video) => {
             const name = video.getAttribute("data-name");
             video.pause();
-            video.src = "";
+            //video.src = "";
+            video.removeAttribute("src");
             video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
             video.load();
           });
@@ -54,8 +55,10 @@ export function initVideoControls() {
             const name = video.getAttribute("data-name");
             const src = video.querySelector("source");
             src.src = `/last_video/${name}`;
+            video.removeAttribute("src");
             video.poster = `/last_screenshot/${name}`;
             playAllObserver.observe(video);
+            video.load();
             safePlay(video);
           });
           playAllButton.textContent = "Pause All";
@@ -206,10 +209,12 @@ export function setupVideoControls() {
 
 export function setupStatusPageVideoHover() {
   const thumbnailVideoCells = document.querySelectorAll(".thumbnail-video");
+  console.log("setup!");
   thumbnailVideoCells.forEach((cell) => {
     const img = cell.querySelector("img.thumbnail");
     const video = cell.querySelector("video.hover-video");
     if (img && video) {
+      // Update frame based on cursor position over the tile.
       const scrub = (e) => {
         const rect = cell.getBoundingClientRect();
         const ratio = (e.clientX - rect.left) / rect.width;
@@ -219,21 +224,43 @@ export function setupStatusPageVideoHover() {
         }
       };
 
-      cell.addEventListener("mouseenter", () => {
+      let resetTimeout;
+
+      cell.addEventListener("mouseenter", (e) => {
+        console.log("pos");
+        clearTimeout(resetTimeout);
         img.style.display = "none";
         video.style.display = "block";
-        video.currentTime = 0;
-        safePlay(video);
+        //safePlay(video);
+        // Load metadata on first hover so currentTime can be set
+        if (video.readyState === 0) {
+          video.load();
+        }
         video.pause();
+        if (video.readyState >= 1) {
+          scrub(e);
+        } else {
+          const onLoad = () => {
+            scrub(e);
+            video.removeEventListener("loadedmetadata", onLoad);
+          };
+          video.addEventListener("loadedmetadata", onLoad);
+        }
       });
 
       cell.addEventListener("mousemove", scrub);
 
       cell.addEventListener("mouseleave", () => {
-        video.pause();
-        video.currentTime = 0;
-        video.style.display = "none";
-        img.style.display = "block";
+        //video.pause();
+        //video.currentTime = 0;
+        //video.style.display = "none";
+        //img.style.display = "block";
+        resetTimeout = setTimeout(() => {
+          video.pause();
+          video.currentTime = 0;
+          video.style.display = "none";
+          img.style.display = "block";
+        }, 1000); // restore screenshot a bit after leaving
       });
     }
   });
