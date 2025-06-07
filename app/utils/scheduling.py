@@ -47,6 +47,8 @@ from .screenshots import (
     throttle_cache,
     load_font,
     cas_error,
+    check_user_activity,
+    is_chrome_debug_port_open,
 )
 from .template_manager import (
     get_template,
@@ -1141,6 +1143,10 @@ def get_feed_status():
     now = datetime.datetime.utcnow()
     feeds = []
 
+    danger_enabled = get_setting("DANGER_MODE", "True") == "True"
+    port_open = is_chrome_debug_port_open("127.0.0.1", 9222)
+    user_idle = not check_user_activity(timeout=1)
+
     def _humanize(ts: str | None) -> str | None:
         """Return a simple "time ago" string for the given timestamp."""
         if not ts:
@@ -1230,6 +1236,14 @@ def get_feed_status():
 
         tooltip = " | ".join(tooltip_parts) if tooltip_parts else "OK"
 
+        danger = bool(template.get("danger", False))
+        danger_reason = None
+        if danger:
+            if not (danger_enabled and port_open):
+                danger_reason = "disabled"
+            elif not user_idle:
+                danger_reason = "user"
+
         feeds.append(
             {
                 "name": name,
@@ -1245,6 +1259,8 @@ def get_feed_status():
                 "storage_usage_bytes": storage_bytes,
                 "llm_response_count": llm_responses,
                 "llm_cost_estimate": llm_cost,
+                "danger": danger,
+                "danger_reason": danger_reason,
             }
         )
 
