@@ -50,6 +50,18 @@ class TestFeedStatusTooltip(unittest.TestCase):
         self.assertIn("Offline since", tooltip)
         self.assertIn("Last log:", tooltip)
 
+    def test_danger_reason_set(self):
+        now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        templates = {"cam1": {"danger": True, "last_screenshot_time": now}}
+        with (
+            patch("app.utils.scheduling.get_templates", return_value=templates),
+            patch("app.utils.scheduling.check_user_activity", return_value=True),
+            patch("app.utils.scheduling.is_chrome_debug_port_open", return_value=True),
+            patch("app.utils.scheduling.get_setting", return_value="True"),
+        ):
+            feeds = scheduling.get_feed_status()
+        self.assertEqual(feeds[0]["danger_reason"], "user")
+
 
 if __name__ == "__main__":
     unittest.main()

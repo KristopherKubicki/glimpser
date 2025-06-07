@@ -65,7 +65,9 @@
   </thead>
   <tbody>
     {% for feed in feeds %}
-    <tr class="{{ feed.status }}">
+    <tr
+      class="{{ feed.status }}{% if feed.danger_reason %} danger-{{ feed.danger_reason }}{% endif %}"
+    >
       <td data-label="Feed" data-value="{{ feed.name }}">
         <a href="{{ url_for('template_details', template_name=feed.name) }}"
           >{{ feed.name }}</a
@@ -115,6 +117,19 @@
         {{ feed.llm_cost_estimate }}
       </td>
       <td data-label="Status" data-value="{{ feed.status }}">
+        {% if feed.danger_reason %}
+        <svg
+          width="12"
+          height="12"
+          class="danger-icon {{ feed.danger_reason }}"
+          aria-label="Danger mode required"
+          title="{{ 'Danger mode disabled' if feed.danger_reason == 'disabled' else 'User active' }}"
+        >
+          <use
+            href="{{ url_for('static', filename='icons/sprite.svg') }}#alert"
+          />
+        </svg>
+        {% endif %}
         <span
           class="status-dot {{ feed.status }}"
           title="{{ feed.tooltip }}"

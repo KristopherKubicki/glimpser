@@ -15,6 +15,10 @@ Below the system metrics the page lists each configured feed with a color-coded 
 - **Green** – the feed is updating on schedule.
 - **Yellow** – the last capture is behind its configured frequency.
 - **Red** – capturing failed or the feed is offline.
+- Cameras marked as **Danger** show a hazard icon when the feature is required.
+  The icon is orange if Danger mode is available but suppressed due to recent
+  user activity and red when Danger mode is disabled or Chrome's debugging port
+  is closed. Rows for disabled feeds are slightly greyed out.
 
 The dashboard also shows when the most recent system summary was generated. The
 same table appears on the _System Status_ tab under Settings so you can review

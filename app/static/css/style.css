@@ -1734,6 +1734,21 @@ details > summary {
   background-color: red;
 }
 
+.danger-icon {
+  vertical-align: middle;
+  margin-right: 0.25rem;
+}
+.danger-icon.disabled {
+  color: red;
+}
+.danger-icon.user {
+  color: orange;
+}
+
+.feed-status tr.danger-disabled {
+  opacity: 0.5;
+}
+
 .metrics-list li {
   margin-bottom: 0.25rem;
 }
