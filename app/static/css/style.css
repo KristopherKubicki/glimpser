@@ -1934,3 +1934,10 @@ details > summary {
 .danger-mode-box.on {
   border-color: var(--danger-on-color);
 }
+
+/* Spacing for management actions */
+#management-tab button,
+#management-tab input[type="file"] {
+  margin: 0.5rem 0;
+  display: block;
+}

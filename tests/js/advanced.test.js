@@ -1,7 +1,7 @@
 import { jest } from "@jest/globals";
 
 document.body.innerHTML = `
-  <button id="advanced-toggle"></button>
+  <input id="advanced-toggle" type="checkbox" />
 `;
 
 let initAdvanced;
@@ -16,10 +16,12 @@ afterEach(() => {
   sessionStorage.clear();
 });
 
-test("click toggles advanced state and stores it", () => {
+test("change toggles advanced state and stores it", () => {
   initAdvanced();
   document.dispatchEvent(new Event("DOMContentLoaded"));
-  document.getElementById("advanced-toggle").click();
+  const el = document.getElementById("advanced-toggle");
+  el.checked = true;
+  el.dispatchEvent(new Event("change"));
   expect(document.body.classList.contains("advanced-enabled")).toBe(true);
   expect(sessionStorage.getItem("advanced-enabled")).toBe("true");
 });
@@ -29,4 +31,5 @@ test("initial state reads from sessionStorage", () => {
   initAdvanced();
   document.dispatchEvent(new Event("DOMContentLoaded"));
   expect(document.body.classList.contains("advanced-enabled")).toBe(true);
+  expect(document.getElementById("advanced-toggle").checked).toBe(true);
 });
