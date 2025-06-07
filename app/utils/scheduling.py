@@ -46,6 +46,7 @@ from .screenshots import (
     is_mostly_blank,
     throttle_cache,
     load_font,
+    cas_error,
 )
 from .template_manager import (
     get_template,
@@ -146,6 +147,18 @@ def run_with_timeout(func, args=(), timeout=300):
         process.terminate()
         process.join()
         logging.warning("Process terminated due to timeout")
+        if args and isinstance(args[0], str):
+            try:
+                mark_offline(args[0])
+            except Exception:
+                pass
+            try:
+                if len(args) > 1 and isinstance(args[1], dict):
+                    url = args[1].get("url")
+                    if url:
+                        cas_error(url)
+            except Exception:
+                pass
 
 
 MAX_IMAGE_TIME_DIFF = datetime.timedelta(minutes=5)
