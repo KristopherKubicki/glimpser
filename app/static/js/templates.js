@@ -707,7 +707,7 @@ export async function loadTemplates() {
           const templateDiv = document.createElement("div");
           templateDiv.classList.add("templateDiv");
           templateDiv.innerHTML = `
-            <img src="/last_screenshot/${name}" alt="${name}" style="width:100%">
+            <img src="/last_screenshot/${name}" alt="${name}" style="width:100%" title="${template.last_caption} (${humanizedTimestamp})">
             <div class="camera-name">${name}</div>
             <div class="timestamp" title="${
               lastScreenshotTime === NO_TIMESTAMP_PLACEHOLDER

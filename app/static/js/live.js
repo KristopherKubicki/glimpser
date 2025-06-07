@@ -463,6 +463,7 @@ function updateTemplateDetails() {
   }
 
   video.title = details.last_caption;
+  image.title = details.last_caption;
   templateDetailsContainer.style.display = "block";
   templateDetailsContainer.innerHTML = `
         <div>

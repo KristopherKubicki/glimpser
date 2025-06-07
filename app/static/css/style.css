@@ -1115,6 +1115,7 @@ input:checked + .slider:before {
   position: fixed;
   bottom: 0.5rem;
   left: 0.5rem;
+  right: initial;
   display: flex;
   flex-direction: row;
   align-items: center;
