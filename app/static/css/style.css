@@ -552,14 +552,6 @@ nav {
   margin-left: auto; /* Keep navigation on the right */
 }
 
-.menu-toggle {
-  display: none;
-  background: none;
-  border: none;
-  color: var(--text-color);
-  font-size: 1.5rem;
-}
-
 .nav-left,
 .nav-right {
   display: flex;
@@ -760,29 +752,6 @@ nav a.active {
     font-size: 1.5rem; /* Larger font size for easier tapping */
   }
 
-  .menu-toggle {
-    display: block;
-    font-size: 2rem; /* Larger toggle for mobile */
-  }
-
-  nav:not(.active) .nav-left,
-  nav:not(.active) .nav-right {
-    display: none;
-  }
-
-  nav.active .nav-left,
-  nav.active .nav-right {
-    display: flex;
-    flex-direction: column;
-    background-color: #000;
-    position: absolute;
-    top: 56px; /* Align with larger mobile header */
-    left: 0;
-    right: 0;
-    padding: 10px;
-    z-index: 100;
-  }
-
   nav {
     flex-direction: column; /* Stack navigation items on mobile */
     align-items: flex-start;
@@ -792,10 +761,6 @@ nav a.active {
     margin-bottom: 5px; /* Add margin for stacked items */
     font-size: 1.2rem; /* Bigger text for touch targets */
     padding: 8px;
-  }
-
-  .menu-toggle {
-    font-size: 2rem; /* Bigger hamburger icon */
   }
 
   /* Hide elements that waste space on mobile */
