@@ -13,6 +13,7 @@ import tempfile
 import time
 import uuid
 from datetime import datetime, timedelta
+from dateutil import tz
 
 from functools import wraps
 from threading import Lock, Thread
@@ -125,6 +126,7 @@ from app.utils.screenshots import (
     check_user_activity,
     capture_frame_from_stream,
     get_chrome_path,
+    load_font,
 )
 from app.utils.email_alerts import send_email_alert
 from app.utils.sms_alerts import send_sms_alert
@@ -695,6 +697,45 @@ def _placeholder_screenshot() -> io.BytesIO:
     return buf
 
 
+def _overlay_stream_timestamp(frame: bytes) -> bytes:
+    """Return ``frame`` with a live timestamp overlay."""
+    try:
+        with Image.open(io.BytesIO(frame)) as img:
+            img = img.convert("RGB")
+            draw = ImageDraw.Draw(img)
+            zone = tz.gettz(config.TZ) or tz.UTC
+            timestamp = datetime.now(zone).strftime("%H:%M:%S")
+            text = f"\u25cf {timestamp}"
+            font_size = max(10, int(img.height * 0.03))
+            font = load_font(font_size)
+            padding = 4
+            bbox = draw.textbbox((0, 0), text, font=font, stroke_width=1)
+            text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
+            x = img.width - text_w - padding
+            y = img.height - int(font_size * 3.5)
+            background = Image.new(
+                "RGBA",
+                (text_w + padding * 2, text_h + padding * 2),
+                (0, 0, 0, 128),
+            )
+            img.paste(background, (x - padding, y - padding), background)
+            draw.text(
+                (x, y),
+                text,
+                font=font,
+                fill=(255, 255, 255, 255),
+                stroke_width=1,
+                stroke_fill=(0, 0, 0, 255),
+            )
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG")
+            return buf.getvalue()
+    except Exception as exc:  # pragma: no cover - overlay failures are noncritical
+        logging.debug("Stream timestamp overlay failed: %s", exc)
+        return frame
+
+
 lock = Lock()
 
 
@@ -890,6 +931,7 @@ def generate(
         if not frame:
             frame = _placeholder_frame()
         if frame:
+            frame = _overlay_stream_timestamp(frame)
             if rtsp:
                 if session_id and session_id in rtsp_sessions:
                     session = rtsp_sessions[session_id]
