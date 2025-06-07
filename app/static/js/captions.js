@@ -82,5 +82,13 @@ export function initCaptions() {
         document.getElementById(target)?.classList.add("active");
       });
     });
+
+    const page = document.querySelector(".captions-page");
+    const latest = page?.dataset.latestCaption || "";
+    const chyron = document.getElementById("caption-chyron");
+    const speed = chyron ? parseFloat(chyron.dataset.speed || "0") : 0;
+    if (latest && speed > 0) {
+      window.dispatchEvent(new CustomEvent("showChyron", { detail: latest }));
+    }
   });
 }

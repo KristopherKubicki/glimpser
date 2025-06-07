@@ -1,5 +1,5 @@
 {% extends 'base.html' %} {% block content %}
-<div class="captions-page">
+<div class="captions-page" data-latest-caption="{{ latest_caption }}">
   <script>
     function updateTemplate(templateName) {
       var notes = $("#notes-" + templateName).val();
