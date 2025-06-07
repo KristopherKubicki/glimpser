@@ -363,6 +363,7 @@ export function initNav() {
         if (
           e.target.tagName === "INPUT" ||
           e.target.tagName === "SELECT" ||
+          e.target.tagName === "TEXTAREA" ||
           e.target.isContentEditable
         )
           return;

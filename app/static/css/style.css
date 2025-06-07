@@ -1646,11 +1646,20 @@ details > summary {
 }
 
 .modal-content {
-  background-color: #fefefe;
+  background-color: #222;
+  color: #eee;
   margin: 15% auto;
   padding: 20px;
   border: 1px solid #888;
   width: 80%;
+  border-radius: 8px;
+}
+#chat-modal .modal-content {
+  width: 90%;
+  max-width: 600px;
+}
+#chat-submit {
+  margin-top: 0.5rem;
 }
 
 .close-icon {

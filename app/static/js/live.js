@@ -1311,6 +1311,7 @@ document.addEventListener("keydown", (event) => {
   if (
     event.target.tagName === "INPUT" ||
     event.target.tagName === "SELECT" ||
+    event.target.tagName === "TEXTAREA" ||
     event.target.isContentEditable
   ) {
     return;
