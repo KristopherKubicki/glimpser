@@ -1,0 +1,27 @@
+{% call card('LLM Cost Summary') %}
+<table class="cost-table">
+  <thead>
+    <tr>
+      <th>Template</th>
+      <th>Tokens</th>
+      <th>Cost</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for entry in cost_summary %}
+    <tr>
+      <td>{{ entry.name }}</td>
+      <td>{{ entry.tokens }}</td>
+      <td>{{ entry.cost }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <th>Total</th>
+      <th>{{ total_tokens }}</th>
+      <th>{{ total_cost }}</th>
+    </tr>
+  </tfoot>
+</table>
+{% endcall %}

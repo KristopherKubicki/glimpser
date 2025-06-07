@@ -1,13 +1,16 @@
-{% extends 'base.html' %}
-{% block content %}
+{% extends 'base.html' %} {% from 'components.html' import status_legend %} {% block content %}
 <div>
-  <label for="search-input" title="Search for cameras or groups">Search:</label>
-  <input
-    type="text"
-    id="search-input"
-    placeholder="Search cameras or groups"
-    title="Enter search terms"
-  />
+  <div id="search-container">
+    <label for="search-input" title="Search for cameras in this group"
+      >Search:</label
+    >
+    <input
+      type="text"
+      id="search-input"
+      placeholder="Search cameras"
+      title="Enter search terms"
+    />
+  </div>
   <input
     type="range"
     id="grid-width-slider"
@@ -16,8 +19,15 @@
     value="360"
     title="Adjust the width of the template grid"
   />
+  {{ status_legend() }}
   <button id="play-all-button" title="Play/Stop all videos">Play All</button>
-  <button id="live-all-button" title="Live stream all cameras">Live All</button>
+  <button
+    id="live-all-button"
+    style="display: none"
+    title="Return to latest screenshot"
+  >
+    Live
+  </button>
   <button
     id="toggle-captions"
     title="Toggle caption overlays"

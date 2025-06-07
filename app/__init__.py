@@ -244,8 +244,9 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
         watchdog_thread.start()
         app.watchdog_thread = watchdog_thread
 
-    # Start collecting metrics
-    start_metrics_collection()
+    # Start collecting metrics only when background scheduling is enabled.
+    if schedule:
+        start_metrics_collection()
 
     start_log_caching()
 

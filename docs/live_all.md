@@ -1,5 +1,7 @@
-# Live All Playback
+# Dashboard Live Button
 
-The dashboard offers a **Live All** button next to **Play All**. **Live All** switches every tile to a real-time stream and clicking it again restores the latest screenshot.
+When **Play All** is active the button label toggles between _Play All_ and _Pause All_. Each tile plays its latest archived clip while visible.
 
-The **Play All** button now toggles between *Play All* and *Pause All*. Clicking *Play All* starts playback of each camera's most recent archived video while the tiles are onscreen. Choosing *Pause All* stops playback and shows the newest screenshot without contacting the live stream.
+A **Live** button appears whenever playback is running or paused. Selecting **Live** stops all players and restores the most recent screenshot for every tile, returning the dashboard to the default view.
+
+
