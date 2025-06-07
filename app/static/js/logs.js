@@ -28,6 +28,14 @@ export function updateTable(logs) {
   });
 }
 
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
 export function initLogs() {
   document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("log-filter-form");
@@ -38,7 +46,6 @@ export function initLogs() {
 
     let eventSource;
     let reconnectTimer;
-    let inputTimer;
 
     function startEventStream() {
       if (eventSource) {
@@ -76,11 +83,8 @@ export function initLogs() {
       startEventStream();
     });
 
-    searchInput.addEventListener("input", () => {
-      clearTimeout(inputTimer);
-      // debounce to avoid excessive stream restarts while typing
-      inputTimer = setTimeout(startEventStream, 300);
-    });
+    const debouncedStart = debounce(startEventStream, 300);
+    searchInput.addEventListener("input", debouncedStart);
 
     levelSelect.addEventListener("change", () => {
       startEventStream();
