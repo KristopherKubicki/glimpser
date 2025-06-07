@@ -204,17 +204,34 @@ export function setupVideoControls() {
   });
 }
 
+
+
+
 export function setupStatusPageVideoHover() {
   const thumbnailVideoCells = document.querySelectorAll(".thumbnail-video");
   thumbnailVideoCells.forEach((cell) => {
     const img = cell.querySelector("img.thumbnail");
     const video = cell.querySelector("video.hover-video");
     if (img && video) {
+      const scrub = (e) => {
+        const rect = cell.getBoundingClientRect();
+        const ratio = (e.clientX - rect.left) / rect.width;
+        const clamped = Math.max(0, Math.min(1, ratio));
+        if (!Number.isNaN(video.duration)) {
+          video.currentTime = video.duration * clamped;
+        }
+      };
+
       cell.addEventListener("mouseenter", () => {
         img.style.display = "none";
         video.style.display = "block";
+        video.currentTime = 0;
         safePlay(video);
+        video.pause();
       });
+
+      cell.addEventListener("mousemove", scrub);
+
       cell.addEventListener("mouseleave", () => {
         video.pause();
         video.currentTime = 0;
@@ -224,6 +241,8 @@ export function setupStatusPageVideoHover() {
     }
   });
 }
+
+
 
 export function initializeCastApi() {
   cast.framework.CastContext.getInstance().setOptions({
