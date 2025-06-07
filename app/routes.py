@@ -558,27 +558,39 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
     failures = 0
     last_log = 0.0
     while True:
-        process = subprocess.Popen(
-            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        chunk_yielded = False
-
+        process: subprocess.Popen | None = None
         try:
-            while True:
-                chunk = process.stdout.read(1024 * 1024)
-                if not chunk:
-                    break
-                yield chunk
-                chunk_yielded = True
-                if process.poll() is not None:
-                    break
+            process = subprocess.Popen(
+                command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            chunk_yielded = False
+
+            try:
+                while True:
+                    try:
+                        chunk = process.stdout.read(1024 * 1024)
+                    except BrokenPipeError:
+                        raise GeneratorExit
+                    if not chunk:
+                        break
+                    yield chunk
+                    chunk_yielded = True
+                    if process.poll() is not None:
+                        break
+            except GeneratorExit:
+                if process:
+                    process.kill()
+                    process.wait(timeout=1)
+                return
+            finally:
+                if process:
+                    process.kill()
+                    process.wait(timeout=1)
         except GeneratorExit:
-            process.kill()
-            process.wait(timeout=1)
+            if process:
+                process.kill()
+                process.wait(timeout=1)
             return
-        finally:
-            process.kill()
-            process.wait(timeout=1)
 
         if process.returncode == 0:
             return
@@ -617,6 +629,7 @@ last_shot = None
 last_time = None
 active_groups = []
 rtsp_sessions = {}
+active_log_streams: dict[tuple[int, str, str], bool] = {}
 
 
 def get_active_groups() -> List[str]:
@@ -3264,26 +3277,40 @@ def init_routes(app: Flask) -> None:
         end_date = request.args.get("end_date")
         search = request.args.get("search")
 
+        user_id = session.get("user_id", 0)
+        combo = (int(user_id), level or "", search or "")
+        if combo in active_log_streams:
+            # avoid spawning duplicate streams for the same parameters
+            return Response(
+                "event: duplicate\ndata: {}\n\n",
+                mimetype="text/event-stream",
+            )
+        active_log_streams[combo] = True
+
         def generate():
-            while True:
-                # Get query parameters for filtering logs
+            try:
+                while True:
+                    # Read and filter logs from memory
+                    logs = read_logs_from_memory(
+                        level=level,
+                        source=source,
+                        start_date=start_date,
+                        end_date=end_date,
+                        search=search,
+                    )
 
-                # Read and filter logs from memory
-                logs = read_logs_from_memory(
-                    level=level,
-                    source=source,
-                    start_date=start_date,
-                    end_date=end_date,
-                    search=search,
-                )
+                    # Limit the number of logs sent to improve performance
+                    logs = logs[:50]
 
-                # Limit the number of logs sent to improve performance
-                logs = logs[:50]
+                    yield f"data: {json.dumps(logs, default=str)}\n\n"
+                    time.sleep(1)  # Send updates every second
+            finally:
+                active_log_streams.pop(combo, None)
 
-                yield f"data: {json.dumps(logs, default=str)}\n\n"
-                time.sleep(1)  # Send updates every second
-
-        return Response(generate(), mimetype="text/event-stream")
+        return Response(
+            stream_with_context(generate()),
+            mimetype="text/event-stream",
+        )
 
     @app.route("/search_suggestions")
     @login_required
