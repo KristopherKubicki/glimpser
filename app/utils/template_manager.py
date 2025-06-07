@@ -749,6 +749,29 @@ def get_llm_cost_estimate(name: str) -> str:
     return f"${cost:.2f}"
 
 
+def get_llm_cost_summary() -> tuple[list[dict[str, object]], int, str]:
+    """Return LLM usage totals and overall cost."""
+
+    try:
+        with open(LLM_USAGE_PATH, "r") as f:
+            data = json.load(f)
+    except Exception:
+        data = {}
+
+    summary = []
+    total_tokens = 0
+    for name in sorted(data):
+        tokens = data.get(name, 0)
+        if isinstance(tokens, list):
+            tokens = sum(int(t) for t in tokens)
+        total_tokens += tokens
+        cost = tokens * LLM_COST_PER_TOKEN
+        summary.append({"name": name, "tokens": tokens, "cost": f"${cost:.2f}"})
+
+    total_cost = total_tokens * LLM_COST_PER_TOKEN
+    return summary, total_tokens, f"${total_cost:.2f}"
+
+
 def update_last_screenshot_time(name: str) -> None:
     """Set ``last_screenshot_time`` to now and clear ``offline_since``."""
     name = validate_template_name(name)

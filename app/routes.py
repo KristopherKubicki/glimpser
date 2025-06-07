@@ -2728,6 +2728,7 @@ def init_routes(app: Flask) -> None:
         metrics = scheduling.get_system_metrics()
         feeds = scheduling.get_feed_status()
         last_summary = scheduling.get_last_summary_time()
+        cost_summary, total_tokens, total_cost = template_manager.get_llm_cost_summary()
         return render_template(
             "settings.html",
             grouped_settings=grouped_settings,
@@ -2735,6 +2736,9 @@ def init_routes(app: Flask) -> None:
             metrics=metrics,
             feeds=feeds,
             last_summary=last_summary,
+            cost_summary=cost_summary,
+            total_tokens=total_tokens,
+            total_cost=total_cost,
             choices=SETTINGS_CHOICES,
             page_title="Settings",
         )
