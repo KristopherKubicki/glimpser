@@ -6,6 +6,10 @@ Costs are calculated at `$0.005` per thousand tokens.
 Use the captions page to view each template's estimated cost.
 An overall cost summary now appears under **Settings → Costs**.
 
+An additional **LLM Cost Summary** page now provides a date range picker to
+review costs for a specific period. Open the page from the navigation bar and
+select your desired start and end dates.
+
 ## LLM Response Cache
 
 Glimpser caches LLM responses in `data/llm_cache.json` keyed by a hash of the
