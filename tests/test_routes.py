@@ -300,6 +300,8 @@ class TestRoutes(unittest.TestCase):
             lcaptions=[],
             latest_caption="",
             page_title="Captions",
+            cost_start=None,
+            cost_end=None,
         )
 
     @patch("app.routes.SessionLocal")

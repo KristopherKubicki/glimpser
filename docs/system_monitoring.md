@@ -6,7 +6,7 @@ This guide explains how to check Glimpser's health metrics and view live logs.
 
 **GET /status**
 
-This endpoint now redirects to the *System Status* tab on the Settings page. The tab shows current system metrics and includes the live log viewer. Metrics are collected in a background thread. See `app/utils/scheduling.py` for implementation details. Raw values can also be retrieved programmatically from the `/health` endpoint. The metrics list and feed dashboard are grouped into separate cards for a cleaner layout. CPU, memory, and disk usage display small progress bars for a quick visual indicator.
+This endpoint now redirects to the _System Status_ tab on the Settings page. The tab shows current system metrics and includes the live log viewer. Metrics are collected in a background thread. See `app/utils/scheduling.py` for implementation details. Raw values can also be retrieved programmatically from the `/health` endpoint. The metrics list and feed dashboard are grouped into separate cards for a cleaner layout. CPU, memory, and disk usage display small progress bars for a quick visual indicator.
 
 ### Feed Dashboard
 
@@ -16,7 +16,9 @@ Below the system metrics the page lists each configured feed with a color-coded 
 - **Yellow** – the last capture is behind its configured frequency.
 - **Red** – capturing failed or the feed is offline.
 
-The dashboard also shows when the most recent system summary was generated.
+The dashboard also shows when the most recent system summary was generated. The
+same table appears on the _System Status_ tab under Settings so you can review
+usage metrics without leaving the configuration interface.
 
 Additional KPI columns track the number of screenshots, videos, total storage
 used, LLM responses, and estimated LLM cost for each feed.
@@ -32,16 +34,21 @@ name, last image time, last caption time, any KPI column, or status.
 - **Open Files** – number of file descriptors opened by the process
 - **Thread Count** – active thread count for the application
 - **Uptime** – elapsed time since the app started
-- **FFmpeg Version** – version string reported by the ffmpeg binary
+- **FFmpeg Version** – version string and path to the ffmpeg binary
 - **Machine HW Accel** – whether GPU devices are detected
 - **FFmpeg HW Accel** – whether ffmpeg supports hardware acceleration
 - **HW Accel Enabled** – if hardware acceleration is configured
+- **FFmpeg GPU Enabled** – whether ffmpeg is currently using GPU acceleration
+- **Danger Mode Enabled** – whether the DANGER_MODE setting is on
+
+Boolean metrics now display a green dot when enabled and a red dot when
+disabled to make the status easier to scan.
 
 ## Streaming Logs
 
 **GET /stream_logs**
 
-This endpoint delivers log entries using Server‑Sent Events. Optional query parameters allow filtering by level, source, date range, and text search. The `/logs` page and the *System Status* tab consume this endpoint to display updates in real time.
+This endpoint delivers log entries using Server‑Sent Events. Optional query parameters allow filtering by level, source, date range, and text search. The `/logs` page and the _System Status_ tab consume this endpoint to display updates in real time.
 
 To filter logs by level and message text, you could request:
 
@@ -51,7 +58,7 @@ To filter logs by level and message text, you could request:
 
 ## Using the Live Log Viewer
 
-1. Open the *System Status* tab under Settings or navigate to `/logs` after logging in.
+1. Open the _System Status_ tab under Settings or navigate to `/logs` after logging in.
 2. Use the search box and dropdowns to filter log output.
 3. Hover over each field for a tooltip explaining the filter.
 4. Results update automatically via `/stream_logs`.
@@ -59,7 +66,7 @@ To filter logs by level and message text, you could request:
 
 The log viewer reads log lines from memory, ensuring minimal disk overhead.
 
-The *System Status* tab also appears as a **System Status** camera under Discover.
+The _System Status_ tab also appears as a **System Status** camera under Discover.
 Adding it lets Glimpser capture periodic screenshots of its own health metrics.
 An accompanying **Internal Caption** camera shows `/internal_caption.mjpg` so you
 can monitor recent caption text without leaving the dashboard.
@@ -67,10 +74,11 @@ can monitor recent caption text without leaving the dashboard.
 ## Caption Activity Indicator
 
 The navigation bar shows a captions icon that reflects how recent the last
+
 caption update was. It flashes with the newest caption text when a group message
-arrives. After a few seconds of inactivity the latest global summary slowly
-scrolls across the top in a gray chyron. Clicking this text opens the `/captions`
-page for more
+arrives. The latest global summary slowly scrolls across the top in a gray
+chyron and stays visible until a new caption replaces it. Clicking this text
+opens the `/captions` page for more
 details. The scroll duration comes from the `CHYRON_SPEED` setting which is
 `0` by default to disable the banner. The icon remains green for one minute
 after a caption, changes to
@@ -84,7 +92,7 @@ Opening the Captions page now also restarts the scrolling banner when
 ## System Performance Icon
 
 The System Performance icon in the navigation bar provides quick access to the
-*System Status* tab. When all metrics look healthy the icon now hides to reduce
+_System Status_ tab. When all metrics look healthy the icon now hides to reduce
 clutter. Set the `HEALTH_STATUS_ALWAYS_VISIBLE` option to `True` if you prefer
 to keep it shown at all times.
 
