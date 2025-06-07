@@ -227,9 +227,13 @@ snapshot image rather than a true video stream.
 - HTTP errors like `403 Forbidden` or repeated ffmpeg timeouts typically mean
   the stream is blocked. Verify the URL is accessible from the host running
   Glimpser and check for required credentials or firewall rules.
+- When ffmpeg repeatedly fails, retries now back off exponentially up to
+  `LIVE_MAX_RETRY_DELAY` seconds so the server isn't hammered.
 - Some cameras reject ffmpeg if it does not send browser-style headers. The
   live stream now includes the configured `UA`, `referer` and `origin` headers.
   Adjust these settings if your camera expects a specific user agent.
+- When ffmpeg repeatedly fails, the server now waits progressively longer
+  between restart attempts to reduce log noise.
 
 ### Problem: Playback continues in the background after switching types
 
@@ -254,17 +258,30 @@ error_ because the response is missing or invalid.
 - When a clip fails to load, the live player now skips to the next camera
   instead of stalling on the error message.
 
+### Problem: "All" PNG stream always shows "No screenshot available"
+
+The live viewer requests `/stream.png` to display the most recent frame from any
+camera. If the newest PNG is corrupt or missing the placeholder image is shown
+instead.
+
+**Solution:**
+- Ensure each camera is capturing screenshots in `data/screenshots`.
+- Remove any zero-byte or invalid PNG files. Glimpser now skips corrupt images
+  when choosing the latest shot.
+- Use `/take_screenshot/<camera>` to capture a fresh frame if needed.
+
 ## 12. Layout Issues
 
 ### Problem: Buttons at the bottom of the Templates page are hidden
 
 The footer uses a fixed position at the bottom of the screen. On long pages this
-could overlap the last buttons.
+could overlap the last buttons. The site now calculates the footer height and
+sets a `--footer-space` CSS variable so mobile views always leave enough room.
 
 **Solution:**
 
 - Glimpser now adds extra padding to the `main` element so page content scrolls
-  fully above the footer. Update to the latest version or add a similar rule in
+  fully above the footer. Update to the latest version or mimic this logic in
   your custom CSS.
 
 ## 13. Camera Discovery Issues
