@@ -2996,10 +2996,12 @@ def init_routes(app: Flask) -> None:
         search = request.args.get("search")
 
         def generate():
-            while True:
-                # Get query parameters for filtering logs
+            last_ts = None
+            last_len = 0
+            heartbeat_interval = 30
+            last_beat = time.time()
 
-                # Read and filter logs from memory
+            while True:
                 logs = read_logs_from_memory(
                     level=level,
                     source=source,
@@ -3008,11 +3010,19 @@ def init_routes(app: Flask) -> None:
                     search=search,
                 )
 
-                # Limit the number of logs sent to improve performance
                 logs = logs[:50]
+                newest = logs[0]["timestamp"] if logs else None
 
-                yield f"data: {json.dumps(logs, default=str)}\n\n"
-                time.sleep(1)  # Send updates every second
+                if newest != last_ts or len(logs) != last_len:
+                    last_ts = newest
+                    last_len = len(logs)
+                    yield f"data: {json.dumps(logs, default=str)}\n\n"
+                    last_beat = time.time()
+                elif time.time() - last_beat >= heartbeat_interval:
+                    yield ": heartbeat\n\n"
+                    last_beat = time.time()
+
+                time.sleep(1)
 
         return Response(generate(), mimetype="text/event-stream")
 

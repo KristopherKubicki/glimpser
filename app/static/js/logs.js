@@ -1,3 +1,9 @@
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = String(str);
+  return div.innerHTML;
+}
+
 export function updateTable(logs) {
   const tbody = document.querySelector("#log-table tbody");
   if (!tbody) return;
@@ -5,10 +11,10 @@ export function updateTable(logs) {
   logs.forEach((log) => {
     const row = document.createElement("tr");
     row.innerHTML = `
-            <td data-label="Timestamp">${log.timestamp}</td>
-            <td data-label="Level">${log.level}</td>
-            <td data-label="Source">${log.source}</td>
-            <td data-label="Message">${log.message}</td>
+            <td data-label="Timestamp">${escapeHtml(log.timestamp)}</td>
+            <td data-label="Level">${escapeHtml(log.level)}</td>
+            <td data-label="Source">${escapeHtml(log.source)}</td>
+            <td data-label="Message">${escapeHtml(log.message)}</td>
         `;
     tbody.appendChild(row);
   });
