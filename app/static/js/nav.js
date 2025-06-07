@@ -9,11 +9,7 @@ export function initNav() {
       healthStatus.style.display = "none";
     }
     const dangerStatus = document.getElementById("danger-status");
-    const discoveryStatus = document.getElementById("discover-status");
     const onSettingsPage = window.location.pathname.startsWith("/settings");
-    if (discoveryStatus) {
-      discoveryStatus.style.display = onSettingsPage ? "flex" : "none";
-    }
     const nav = document.querySelector("nav");
     const menuToggle = document.getElementById("menu-toggle");
     const groupDropdown = document.getElementById("nav-group-dropdown");
@@ -306,38 +302,6 @@ export function initNav() {
       }
     };
 
-    const checkDiscovery = async () => {
-      if (!discoveryStatus) return;
-      try {
-        const data = await fetchJson("/discovery_status");
-        const fmt = (s) => `${Math.round(s / 60)}m`;
-        if (data.status === "none") {
-          discoveryStatus.style.color = "white";
-        } else if (data.status === "running") {
-          discoveryStatus.style.color = "orange";
-        } else if (data.status === "ready") {
-          discoveryStatus.style.color = "green";
-        } else if (data.status === "error") {
-          discoveryStatus.style.color = "red";
-        } else {
-          discoveryStatus.style.color = "grey";
-        }
-        let title = `Background discovery: ${data.status}`;
-        if (data.running_for) {
-          title += `\nRunning for ${fmt(data.running_for)}`;
-        } else if (Number.isFinite(data.age) && data.status !== "none") {
-          title += `\nLast run ${fmt(data.age)} ago`;
-        }
-        if (data.next_run_in) {
-          title += `\nNext in ${fmt(data.next_run_in)}`;
-        }
-        discoveryStatus.title = title;
-      } catch (error) {
-        console.error("Error fetching discovery status:", error);
-        discoveryStatus.style.color = "red";
-      }
-    };
-
     const setupNavFade = () => {
       const header = document.querySelector("header");
       const player = document.querySelector(".video-container");
@@ -425,10 +389,6 @@ export function initNav() {
     setInterval(checkDanger, 5000);
     checkCaptions();
     setInterval(checkCaptions, 10000);
-    if (discoveryStatus && onSettingsPage) {
-      checkDiscovery();
-      setInterval(checkDiscovery, 60000);
-    }
     initClocks();
     setupNavFade();
   });
