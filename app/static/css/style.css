@@ -208,7 +208,7 @@ h2 {
   display: grid;
   grid-template-columns: repeat(
     auto-fit,
-  minmax(50px, var(--tile-size))
+    minmax(50px, var(--tile-size))
   ); /* Use CSS variable */
 
   gap: 5px;
@@ -289,6 +289,9 @@ select:hover {
   flex: 0 0 var(--tile-size);
   width: var(--tile-size);
   aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .templateDiv::before {
@@ -303,9 +306,6 @@ select:hover {
 }
 
 .templateDiv video {
-  position: absolute;
-  top: 0;
-  left: 0;
   width: 100%;
   height: 100%;
   object-fit: contain; /* Show entire frame */
@@ -883,9 +883,13 @@ a {
 
 /* Adjust padding and margin for better spacing */
 .video-container {
+  position: relative;
   padding: 5px; /* Space around the preview */
   height: 100%;
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #speed-control-container {
@@ -1408,6 +1412,9 @@ input[type="submit"]:hover {
   flex: 0 0 var(--tile-size);
   width: var(--tile-size);
   aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .captions-page .templateDiv::before {
@@ -1416,16 +1423,16 @@ input[type="submit"]:hover {
 
 /* Position the video container to cover the entire tile */
 .captions-page .video-container {
-  position: absolute;
+  position: relative;
   inset: 0;
   padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Ensure captions thumbnails fill the container and appear dimmed */
 .captions-page .templateDiv video {
-  position: absolute;
-  top: 0;
-  left: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -1796,7 +1803,6 @@ details > summary {
   font-size: var(--timestamp-font-size);
   z-index: 10;
 }
-
 
 @media screen and (max-width: 600px) {
   .feed-status,
