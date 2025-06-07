@@ -204,9 +204,6 @@ export function setupVideoControls() {
   });
 }
 
-
-
-
 export function setupStatusPageVideoHover() {
   const thumbnailVideoCells = document.querySelectorAll(".thumbnail-video");
   thumbnailVideoCells.forEach((cell) => {
@@ -241,8 +238,6 @@ export function setupStatusPageVideoHover() {
     }
   });
 }
-
-
 
 export function initializeCastApi() {
   cast.framework.CastContext.getInstance().setOptions({
