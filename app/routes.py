@@ -2979,8 +2979,6 @@ def init_routes(app: Flask) -> None:
             numeric_fields=NUMERIC_FIELDS,
             email_fields=EMAIL_FIELDS,
             file_info=file_info,
-            cost_data=cost_data,
-            cost_groups=cost_groups,
             page_title="Settings",
         )
 
