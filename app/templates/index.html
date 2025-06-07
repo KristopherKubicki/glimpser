@@ -2,7 +2,9 @@
 
 {% extends 'base.html' %} {% block content %}
 
-<section id="template-controls">
+<details id="controls-wrapper">
+  <summary>Controls</summary>
+  <section id="template-controls">
   <input
     type="text"
     id="search-input"
@@ -34,7 +36,8 @@
   >
     Hide Captions
   </button>
-</section>
+  </section>
+</details>
 
 <section id="template-list-section">
   <div

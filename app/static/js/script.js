@@ -14,6 +14,7 @@ import { initCaptions } from "./captions.js";
 import { initSettingsSearch } from "./settings.js";
 import { initTabs } from "./tabs.js";
 import { initThemeToggle } from "./theme.js";
+import { initControlsDropdown } from "./controls.js";
 
 initTemplates();
 initVideoControls();
@@ -32,3 +33,4 @@ initCaptions();
 initSettingsSearch();
 initTabs();
 initThemeToggle();
+initControlsDropdown();
