@@ -1,4 +1,4 @@
-{% extends 'base.html' %} {% from 'components.html' import card %} {% block
+{% extends 'base.html' %} {% from 'components.html' import card, confirm_modal %} {% block
 content %}
 <main class="container settings-page">
   {# Help content now appears directly in the table, so the collapsible menu was
@@ -129,6 +129,7 @@ content %}
                 value="delete"
                 title="Delete {{ setting.name }}"
                 onclick="return confirmDeleteSetting('{{ setting.name }}')"
+                class="advanced-only"
               >
                 Delete
               </button>
@@ -180,7 +181,7 @@ content %}
                         </td>
                         <td class="setting-explanation">{{ tooltips.get(setting.name, '') }}</td>
                         <td>
-                            <button type="submit" name="action" value="delete" title="Delete {{ setting.name }}" onclick="return confirmDeleteSetting('{{ setting.name }}')">Delete</button>
+                            <button type="submit" name="action" value="delete" title="Delete {{ setting.name }}" onclick="return confirmDeleteSetting('{{ setting.name }}')" class="advanced-only">Delete</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -261,6 +262,7 @@ content %}
       <input type="hidden" id="name_to_delete" name="name_to_delete" value="" title="Name of setting to delete" />
       <button type="submit" title="Save all changes">Save Changes</button>
     </form>
+  {{ confirm_modal('delete-setting', 'Delete this setting?', 'Delete', 'Cancel') }}
 </main>
 <script
   type="module"
@@ -271,18 +273,40 @@ content %}
   src="{{ url_for('static', filename='js/tabs.js') }}"
 ></script>
 <script>
-  function confirmDeleteSetting(name) {
-    if (confirm("Are you sure you want to delete " + name + "?")) {
-      document.getElementById("name_to_delete").value = name;
-      return true;
-    }
-    return false;
-  }
+  document.addEventListener("DOMContentLoaded", () => {
+    const modal = document.getElementById("delete-setting-modal");
+    const msg = document.getElementById("delete-setting-modal-message");
+    const confirmBtn = document.getElementById("delete-setting-confirm");
+    const cancelBtn = document.getElementById("delete-setting-cancel");
+    const closeBtn = document.getElementById("delete-setting-close");
+    let pending = null;
 
-  function confirmRestore() {
-    return confirm(
-      "Restore configuration from the selected file? This will overwrite existing settings.",
-    );
-  }
+    const hide = () => {
+      if (modal) modal.style.display = "none";
+    };
+
+    cancelBtn?.addEventListener("click", hide);
+    closeBtn?.addEventListener("click", hide);
+    confirmBtn?.addEventListener("click", () => {
+      if (!pending) return;
+      document.getElementById("name_to_delete").value = pending;
+      pending = null;
+      hide();
+      document.getElementById("settings-form").submit();
+    });
+
+    window.confirmDeleteSetting = (name) => {
+      if (!modal || !msg) return false;
+      pending = name;
+      msg.textContent = `Delete ${name}?`;
+      modal.style.display = "block";
+      return false;
+    };
+
+    window.confirmRestore = () =>
+      confirm(
+        "Restore configuration from the selected file? This will overwrite existing settings.",
+      );
+  });
 </script>
 {% endblock %}

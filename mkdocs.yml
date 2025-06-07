@@ -1,12 +1,13 @@
 site_name: Glimpser Documentation
 docs_dir: docs
 site_dir: site
-exclude_docs:
-  - README.md
+exclude_docs: |
+  README.md
 nav:
   - Home: index.md
   - Guides:
       - Accessibility Improvements: accessibility.md
+      - Agentic Instructions: AGENTS.md
       - API Documentation: api_documentation.md
       - API Resilience: api_resilience.md
       - Architecture Overview: architecture_overview.md

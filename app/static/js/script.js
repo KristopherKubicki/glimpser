@@ -15,8 +15,10 @@ import { initCaptions } from "./captions.js";
 import { initSettingsSearch } from "./settings.js";
 import { initTabs } from "./tabs.js";
 import { initThemeToggle } from "./theme.js";
+import { initControlsDropdown } from "./controls.js";
 import { initAutocomplete } from "./autocomplete.js";
 import { initCosts } from "./costs.js";
+import { initAdvanced } from "./advanced.js";
 
 initTemplates();
 initVideoControls();
@@ -36,5 +38,7 @@ initCaptions();
 initSettingsSearch();
 initTabs();
 initThemeToggle();
+initControlsDropdown();
 initAutocomplete();
 initCosts();
+initAdvanced();

@@ -48,6 +48,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
 import threading
+from typing import Dict
 
 try:
     from pynput import mouse, keyboard
@@ -87,6 +88,7 @@ lurl_cache = {}
 lurl_cache_time = {}
 throttle_cache = {}
 chrome_version = {}
+_browser_gl_cache: Dict[str, bool] = {}
 last_modified_cache = {}
 etag_cache = {}
 
@@ -1943,6 +1945,39 @@ def extract_version(driver_path):
         return 135
 
 
+def _machine_supports_hwaccel() -> bool:
+    """Return True if GPU devices appear available."""
+    return os.path.exists("/dev/dri") or shutil.which("nvidia-smi") is not None
+
+
+def _hwaccel_enabled() -> bool:
+    return bool(FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false")
+
+
+def browser_supports_gl(chrome_path: str) -> bool:
+    cached = _browser_gl_cache.get(chrome_path)
+    if cached is not None:
+        return cached
+    try:
+        subprocess.check_call(
+            [
+                chrome_path,
+                "--headless=new",
+                "--use-gl=egl",
+                "--disable-gpu",
+                "about:blank",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
+        result = True
+    except Exception:
+        result = False
+    _browser_gl_cache[chrome_path] = result
+    return result
+
+
 def is_port_open(host, port, timeout=5):
     """Check if a network port is open on the specified host."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -2271,19 +2306,26 @@ def capture_screenshot_and_har_nodriver(
     # For efficiency, consider reusing one launch() if you do multiple captures.
 
     try:
-        with nodriver.launch(
-            headless=headless,
-            extra_args=[
-                "--no-sandbox",
-                "--disable-gpu",
-                f"--window-size={width},{height}",
-                "--disable-dev-shm-usage",
-                "--disable-background-networking",
-                "--disable-translate",
-                "--disable-extensions",
-                "--disable-sync",
-            ],
-        ) as browser:
+        extra = [
+            "--no-sandbox",
+            "--disable-gpu",
+            f"--window-size={width},{height}",
+            "--disable-dev-shm-usage",
+            "--disable-background-networking",
+            "--disable-translate",
+            "--disable-extensions",
+            "--disable-sync",
+        ]
+        chrome_path = get_chrome_path()
+        if (
+            chrome_path
+            and _hwaccel_enabled()
+            and _machine_supports_hwaccel()
+            and browser_supports_gl(chrome_path)
+        ):
+            extra.append("--use-gl=egl")
+
+        with nodriver.launch(headless=headless, extra_args=extra) as browser:
             cdp = browser.connect()
 
             # Apply user agent override if desired
@@ -2468,6 +2510,12 @@ def capture_screenshot_and_har(
         driver_options.add_argument("--no-sandbox")
         driver_options.add_argument("--disable-dev-shm-usage")
         driver_options.add_argument("--disable-gpu")
+        if (
+            _hwaccel_enabled()
+            and _machine_supports_hwaccel()
+            and browser_supports_gl(chrome_path)
+        ):
+            driver_options.add_argument("--use-gl=egl")
         if stealth:
             apply_stealth_options(driver_options)
         else:
