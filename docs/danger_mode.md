@@ -17,9 +17,6 @@ If Chrome is not started with this flag, Danger mode will be unavailable.
 After Chrome updates, shortcuts may revert to their original command line. Two approaches can help keep the debug port enabled:
 
 - **Manual update**: Edit the desktop shortcut each time Chrome updates.
-- **Shortcut location**: On Windows, shortcuts are typically found in
-  `C:\Users\<user>\Desktop` or
-  `%APPDATA%\Microsoft\Windows\Start Menu\Programs`.
 - **Helper script**: Run `python scripts/update_chrome_shortcut.py` to rewrite the shortcut with the required flag. This can also be triggered from the _Update Chrome Shortcut_ button on the Settings page or the _Patch Chrome Shortcuts_ button on the Danger page. The page now shows which shortcuts were updated after the patch completes.
 - **Check script**: Run `python scripts/check_danger_mode.py` to print whether the debug port is detected and if your shortcuts still require patching.
 
@@ -38,6 +35,8 @@ Be cautious with this feature, as it can interact with your browser while you ar
 ## Enabling or Disabling Danger Mode
 
 Visit `/danger` to toggle the feature on or off. When disabled, captures marked as "Danger" are skipped even if Chrome's debugging port is open.
+
+The **Management** tab on the Settings page summarizes Danger mode. It shows the detected browser path, indicates if your Chrome shortcuts already include the debugging flag, and reports whether the debugging port is open. Green or red dots highlight the patched and running state.
 
 ## Danger Page Overview
 
