@@ -44,3 +44,16 @@ nav:
       - Log Cleaner: log_cleaner.md
       - Video Archiver: video_archiver.md
       - Governance: governance.md
+exclude_docs: |
+  border_legend.md
+  caption_overlay_toggle.md
+  chatbot.md
+  ci_checks.md
+  jog_shuttle.md
+  live_all.md
+  live_scrub.md
+  mcp_integration.md
+  onboarding.md
+  scorecard.md
+  startup_tips.md
+  style_guide.md
