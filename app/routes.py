@@ -2943,6 +2943,7 @@ def init_routes(app: Flask) -> None:
         metrics = scheduling.get_system_metrics()
         feeds = scheduling.get_feed_status()
         last_summary = scheduling.get_last_summary_time()
+        cost_summary, total_tokens, total_cost = template_manager.get_llm_cost_summary()
         
         chrome_path = get_chrome_path()
         danger_info = {
@@ -2952,23 +2953,7 @@ def init_routes(app: Flask) -> None:
             "running": is_chrome_debug_port_open("127.0.0.1", 9222),
         }
 
-
-        cost_data = []
-        templates = template_manager.get_templates()
-        for name, tmpl in templates.items():
-            tokens = template_manager.get_llm_token_usage(name)
-            group = tmpl.get("groups") or "Ungrouped"
-            cost_data.append(
-                {
-                    "name": name,
-                    "group": group,
-                    "tokens": tokens,
-                    "cost": round(tokens * LLM_COST_PER_TOKEN, 2),
-                }
-            )
-        cost_groups = sorted({c["group"] for c in cost_data})
-
-     
+    
         return render_template(
             "settings.html",
             grouped_settings=grouped_settings,
@@ -2976,6 +2961,9 @@ def init_routes(app: Flask) -> None:
             metrics=metrics,
             feeds=feeds,
             last_summary=last_summary,
+            cost_summary=cost_summary,
+            total_tokens=total_tokens,
+            total_cost=total_cost,
             danger_info=danger_info,
             choices=SETTINGS_CHOICES,
             numeric_fields=NUMERIC_FIELDS,
