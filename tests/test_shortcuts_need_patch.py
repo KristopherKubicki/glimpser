@@ -37,8 +37,9 @@ class TestShortcutsNeedPatch(unittest.TestCase):
             desktop = self._setup_env(tmpdir)
             (desktop / "Chrome.lnk").touch()
             stub = self._win32_stub("")
-            with self._patch_os(), patch.object(
-                update_chrome_shortcut, "win32com", stub
+            with (
+                self._patch_os(),
+                patch.object(update_chrome_shortcut, "win32com", stub),
             ):
                 self.assertTrue(update_chrome_shortcut.shortcuts_need_patch())
 
@@ -47,8 +48,9 @@ class TestShortcutsNeedPatch(unittest.TestCase):
             desktop = self._setup_env(tmpdir)
             (desktop / "Chrome.lnk").touch()
             stub = self._win32_stub(update_chrome_shortcut.FLAG)
-            with self._patch_os(), patch.object(
-                update_chrome_shortcut, "win32com", stub
+            with (
+                self._patch_os(),
+                patch.object(update_chrome_shortcut, "win32com", stub),
             ):
                 self.assertFalse(update_chrome_shortcut.shortcuts_need_patch())
 
