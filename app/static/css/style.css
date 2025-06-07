@@ -1103,6 +1103,26 @@ input:checked + .slider:before {
   margin-top: 20px;
 }
 
+.template-actions {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  transition: opacity 0.5s;
+  z-index: 1000;
+}
+
+.template-actions.fade-out {
+  opacity: 0;
+}
+
+.template-actions button {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 600px) {
   .form-row {
     grid-template-columns: 1fr;
