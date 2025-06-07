@@ -73,7 +73,10 @@ const streamErrorIndicator = document.getElementById("stream-error-indicator");
 const streamErrorMessage = document.getElementById("stream-error-message");
 const seekBar = document.getElementById("seek-bar");
 const jogShuttle = document.getElementById("jog-shuttle");
-let jogInterval = null;
+// Track jog state and throttle updates via requestAnimationFrame
+let jogRaf = null;
+let jogSpeed = 1;
+let jogDirection = 1;
 let jogging = false;
 let isSeeking = false;
 const groupSelector = document.getElementById("group-selector");
@@ -1037,19 +1040,16 @@ function stopLiveSwitch() {
   }
 }
 
-function applyJog(speed, direction) {
-  if (jogInterval) {
-    clearInterval(jogInterval);
-    jogInterval = null;
-  }
-  if (direction >= 0) {
-    video.playbackRate = speed;
-    safePlay(video);
-  } else {
-    video.pause();
-    jogInterval = setInterval(() => {
-      video.currentTime = Math.max(0, video.currentTime - 0.05 * speed);
-    }, 50);
+function scheduleJogUpdate() {
+  if (!jogRaf) {
+    jogRaf = requestAnimationFrame(() => {
+      if (jogDirection < 0) {
+        video.currentTime = Math.max(0, video.currentTime - 0.05 * jogSpeed);
+      } else {
+        video.playbackRate = jogSpeed;
+      }
+      jogRaf = null;
+    });
   }
 }
 
@@ -1060,28 +1060,37 @@ function handleJogMove(e) {
   const radius = rect.width / 2;
   const norm = Math.max(-1, Math.min(1, x / radius));
   const level = Math.min(4, Math.floor(Math.abs(norm) * 4));
-  const speed = Math.pow(2, level);
-  if (speed === 0) return;
-  applyJog(speed, Math.sign(norm));
+  jogSpeed = Math.pow(2, level);
+  if (jogSpeed === 0) return;
+  jogDirection = Math.sign(norm);
+  scheduleJogUpdate();
 }
 
 function stopJog() {
+  if (!jogging) return;
   jogging = false;
-  if (jogInterval) {
-    clearInterval(jogInterval);
-    jogInterval = null;
+  if (jogRaf) {
+    cancelAnimationFrame(jogRaf);
+    jogRaf = null;
   }
-  video.pause();
+  if (jogDirection >= 0) {
+    video.playbackRate = jogSpeed;
+    safePlay(video);
+  } else {
+    video.pause();
+  }
 }
 
 function initJogShuttle() {
   if (!jogShuttle) return;
   jogShuttle.addEventListener("mousedown", (e) => {
     jogging = true;
+    video.pause();
     handleJogMove(e);
   });
   jogShuttle.addEventListener("touchstart", (e) => {
     jogging = true;
+    video.pause();
     handleJogMove(e.touches[0]);
   });
   window.addEventListener("touchmove", (e) => {
