@@ -234,14 +234,15 @@ class TestVideoArchiver(unittest.TestCase):
             patch("os.path.getctime", return_value=1724516115),
             patch("os.path.getsize", return_value=1000),
             patch("os.rename"),
-            patch("app.utils.video_archiver.pipe_ffmpeg_frames") as mock_pipe,
+            patch("app.utils.video_archiver.run_ffmpeg") as mock_run_ffmpeg,
         ):
             mock_open.return_value.__enter__.return_value = MagicMock()
             mock_open.return_value.__exit__.return_value = None
+            mock_run_ffmpeg.return_value.returncode = 0
             result = compile_to_video(self.temp_dir, self.temp_dir)
 
         self.assertIsNone(result)
-        mock_pipe.assert_called_once()
+        self.assertTrue(mock_run_ffmpeg.called)
 
     @patch("app.utils.video_archiver.pipe_ffmpeg_frames")
     @patch("app.utils.video_archiver.Image.open")
