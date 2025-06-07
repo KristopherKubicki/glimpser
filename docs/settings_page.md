@@ -7,7 +7,10 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Add New Setting** – quickly create additional key/value pairs.
 - **Current Settings** – edit existing values or delete them. Tabs switch between setting groups and the **Management** tab holds backup and offline options.
 - **Configuration Management** – backup, download, and upload the JSON configuration file.
-- **Danger Mode** – update Chrome shortcuts with the required flags.
+- **Danger Mode** – update Chrome shortcuts with the required flags. The page
+  lists typical paths such as `%USERPROFILE%\Desktop` and
+  `%APPDATA%\Microsoft\Windows\Start Menu\Programs` so you know which
+  shortcuts are patched.
 - **Offline Preview** – cached snapshots are automatically enabled.
 - **Settings Reference** – expand the table to read explanations for each setting.
 - **Column Search** – click a header to filter rows by that column.

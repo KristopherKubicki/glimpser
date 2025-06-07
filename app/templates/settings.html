@@ -193,19 +193,17 @@ content %}
             <input type="file" name="file" accept=".json" title="Select configuration file to upload">
             <button type="submit" name="action" value="upload" title="Restore configuration from uploaded file" onclick="return confirmRestore()">Upload Configuration</button>
 
-            <h3>Danger Mode</h3>
-            <button type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode">Update Chrome Shortcut</button>
-
-
-      <h3>Danger Mode</h3>
-      <button
-        type="submit"
-        name="action"
-        value="update_shortcut"
-        title="Update Chrome shortcuts for Danger mode"
-      >
-        Update Chrome Shortcut
-      </button>
+            <div class="danger-section {{ 'on' if danger_enabled else 'off' }}">
+                <h3>Danger Mode</h3>
+                <p>
+                    Shortcuts are typically located in
+                    <code>%USERPROFILE%\Desktop</code> and
+                    <code>%APPDATA%\Microsoft\Windows\Start Menu\Programs</code>.
+                    You can also run
+                    <code>python scripts/update_chrome_shortcut.py</code> manually.
+                </p>
+                <button type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode">Update Chrome Shortcut</button>
+            </div>
     </div>
 
     <input
