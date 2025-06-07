@@ -24,9 +24,9 @@ describe("slider initialization", () => {
   });
 
   test.each([
-    [1920, 1080, 4, 480],
+    [1920, 1080, 4, 960],
     [1920, 1080, 2, 960],
-    [1280, 720, 4, 320],
+    [1280, 720, 4, 640],
   ])(
     "computes min width %ipx x %ipx with %i cameras",
     (width, height, count, expected) => {

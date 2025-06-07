@@ -4,6 +4,7 @@ import logging
 
 from app.config import TWILIO_SID, TWILIO_TOKEN, TWILIO_NUMBER, TWILIO_FROM_NUMBER
 
+
 def send_sms_alert(message):
     """Send an SMS alert using Twilio.
 

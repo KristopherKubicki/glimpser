@@ -33,10 +33,11 @@ class TestSMSAlerts(unittest.TestCase):
                 "twilio.rest": dummy_twilio_rest,
             },
         ):
-            with patch("app.utils.sms_alerts.TWILIO_SID", "sid"), patch(
-                "app.utils.sms_alerts.TWILIO_TOKEN", "token"
-            ), patch("app.utils.sms_alerts.TWILIO_NUMBER", "+123"), patch(
-                "app.utils.sms_alerts.TWILIO_FROM_NUMBER", "+999"
+            with (
+                patch("app.utils.sms_alerts.TWILIO_SID", "sid"),
+                patch("app.utils.sms_alerts.TWILIO_TOKEN", "token"),
+                patch("app.utils.sms_alerts.TWILIO_NUMBER", "+123"),
+                patch("app.utils.sms_alerts.TWILIO_FROM_NUMBER", "+999"),
             ):
                 send_sms_alert("Body")
                 mock_client_class.assert_called_once_with("sid", "token")
