@@ -145,10 +145,10 @@ body {
 }
 
 main {
-  padding: 1rem;
+  padding: 0.5rem 1rem 60px;
   flex-grow: 1;
   /* Reserve space for fixed footer so content isn't hidden */
-  padding-bottom: 60px;
+  padding-bottom: var(--footer-space, 60px);
 }
 
 /* Simple dynamic tooltip component */
@@ -162,6 +162,8 @@ main {
   pointer-events: none;
   z-index: 1000;
   transition: opacity 0.2s;
+  max-width: 300px;
+  white-space: normal;
 }
 
 .dynamic-tooltip.hidden {
@@ -217,6 +219,7 @@ h2 {
     auto-fit,
     minmax(50px, var(--tile-size))
   ); /* Use CSS variable */
+
   gap: 5px;
   padding: 10px;
   justify-content: center;
@@ -245,6 +248,13 @@ h2 {
   #template-list {
     grid-template-columns: 1fr; /* Single column layout on mobile */
     padding: 10px; /* Reduce padding on mobile */
+  }
+  #grid-width-slider {
+    display: none;
+  }
+  .templateDiv {
+    width: 100%;
+    flex: 0 0 100%;
   }
 
   /* Improve form layout on mobile */
@@ -288,6 +298,9 @@ select:hover {
   flex: 0 0 var(--tile-size);
   width: var(--tile-size);
   aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .templateDiv::before {
@@ -302,9 +315,6 @@ select:hover {
 }
 
 .templateDiv video {
-  position: absolute;
-  top: 0;
-  left: 0;
   width: 100%;
   height: 100%;
   object-fit: contain; /* Show entire frame */
@@ -326,6 +336,7 @@ select:hover {
     255,
     0.7
   ); /* Semi-transparent white background */
+
   border-radius: 50%;
   padding: calc(5px * var(--tile-scale, 1));
   display: none; /* Hide by default */
@@ -350,10 +361,6 @@ select:hover {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-video:hover + .play-icon {
-  display: block; /* Show play icon on hover */
-}
-
 :root {
   --tile-size: 360px;
   --grid-item-width: var(--tile-size);
@@ -373,8 +380,10 @@ video:hover + .play-icon {
   --table-row-alt-bg-color: #1a1a1a;
   --table-hover-bg-color: #333;
   --table-border-color: #444;
+  --danger-on-color: #ff4d4d;
+  --danger-off-color: #bf616a;
   /* Duration for the chyron scroll animation */
-  --chyron-speed: 240s;
+  --chyron-speed: 480s;
   /* Typography */
   /* stylelint-disable-next-line value-keyword-case */
   --font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -421,6 +430,11 @@ body.light-mode {
   font-size: var(--camera-name-font-size);
 }
 
+.camera-name a {
+  color: inherit;
+  text-decoration: none;
+}
+
 .timestamp {
   bottom: 0;
   right: 0;
@@ -451,7 +465,7 @@ body.light-mode {
 }
 
 .hide-captions .caption-overlay {
-    display: none;
+  display: none;
 }
 
 #status-legend {
@@ -481,6 +495,7 @@ body.light-mode {
 }
 
 /* Improve video controls on mobile */
+
 @media (max-width: 767px) {
   .templateDiv video::-webkit-media-controls-panel {
     display: flex !important;
@@ -495,11 +510,22 @@ header {
   display: flex; /* Flexbox for layout */
   align-items: center; /* Vertically align items */
   justify-content: flex-start; /* Align items to the left */
-  gap: 10px; /* Space between nav and chyron */
+  gap: 10px; /* Space between nav and chyron */ /* Keep nav visible while scrolling */ /* Stick to the top of the viewport */ /* Stay above page content */
   transition: opacity 0.5s; /* Smooth fade for inactivity */
+  position: sticky; /* Keep header visible while scrolling */
+  top: 0;
+  z-index: 1000; /* Ensure header stays above content */
 }
 
 header.fade-out {
+  opacity: 0;
+}
+
+#search-container {
+  transition: opacity 0.5s;
+}
+
+#search-container.fade-out {
   opacity: 0;
 }
 
@@ -515,6 +541,7 @@ header h1 img {
 nav {
   display: flex; /* Flexbox for layout */
   gap: 10px; /* Tighter spacing */
+  margin-left: auto; /* Keep navigation on the right */
 }
 
 .menu-toggle {
@@ -530,6 +557,10 @@ nav {
   display: flex;
   align-items: center;
   gap: 5px; /* Reduce spacing */
+}
+
+.nav-right {
+  margin-left: auto; /* Keep icons aligned to the right */
 }
 
 .nav-center {
@@ -551,6 +582,17 @@ nav a {
     color 0.2s; /* Smooth hover transition */
 }
 
+.nav-back {
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+}
+
+.nav-back::before {
+  content: "\2190";
+  margin-right: 4px;
+}
+
 #nav-group-dropdown,
 #nav-camera-dropdown {
   background-color: var(--secondary-bg-color);
@@ -559,6 +601,17 @@ nav a {
   border-radius: 5px;
   padding: 4px 8px;
   width: 120px; /* Prevent layout shift while content loads */
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-appearance: none; /* Hide default arrows */
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -moz-appearance: none;
+  appearance: none;
+  background-image: none;
+}
+
+/* Hide arrows in IE */
+select::-ms-expand {
+  display: none;
 }
 
 .status-indicator {
@@ -621,6 +674,14 @@ nav a.active {
   stroke-width: 2;
 }
 
+#theme-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+}
+
 .caption-container {
   position: relative;
 }
@@ -633,10 +694,12 @@ nav a.active {
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
+  min-width: 0;
   display: none;
   margin-left: 10px;
   flex-grow: 1;
   cursor: pointer;
+  max-width: 100%;
 }
 
 .caption-chyron.show {
@@ -646,6 +709,7 @@ nav a.active {
 .caption-chyron.show span {
   display: inline-block;
   padding-left: 100%;
+  min-width: 100%;
   /* Duration comes from the CSS variable; 0 disables animation */
   animation: chyron-scroll var(--chyron-speed) linear infinite;
 }
@@ -685,11 +749,12 @@ nav a.active {
 @media screen and (max-width: 768px) {
   /* Responsive design for mobile */
   header h1 {
-    font-size: 18px; /* Smaller font size on mobile */
+    font-size: 1.5rem; /* Larger font size for easier tapping */
   }
 
   .menu-toggle {
     display: block;
+    font-size: 2rem; /* Larger toggle for mobile */
   }
 
   nav:not(.active) .nav-left,
@@ -703,7 +768,7 @@ nav a.active {
     flex-direction: column;
     background-color: #000;
     position: absolute;
-    top: 32px; /* Align with smaller header */
+    top: 56px; /* Align with larger mobile header */
     left: 0;
     right: 0;
     padding: 10px;
@@ -717,11 +782,30 @@ nav a.active {
 
   nav a {
     margin-bottom: 5px; /* Add margin for stacked items */
+    font-size: 1.2rem; /* Bigger text for touch targets */
+    padding: 8px;
   }
 
-  .settings-icon svg {
-    width: 18px;
-    height: 18px;
+  .menu-toggle {
+    font-size: 2rem; /* Bigger hamburger icon */
+  }
+
+  /* Hide elements that waste space on mobile */
+  #nav-clock,
+  #caption-chyron,
+  .flash-messages {
+    display: none;
+  }
+
+  .settings-icon svg,
+  .status-indicator svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .cool-clock {
+    width: 32px;
+    height: 32px;
   }
 
   .performance-indicator {
@@ -804,9 +888,13 @@ a {
 
 /* Adjust padding and margin for better spacing */
 .video-container {
+  position: relative;
   padding: 5px; /* Space around the preview */
   height: 100%;
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #speed-control-container {
@@ -834,17 +922,17 @@ a {
 }
 
 .clock-overlay {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    z-index: 10;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 10;
 }
 
 .digital-clock {
-    font-size: 14px;
-    line-height: 25px;
-    text-align: center;
-    color: var(--text-color);
+  font-size: 14px;
+  line-height: 25px;
+  text-align: center;
+  color: var(--text-color);
 }
 
 .clock-face {
@@ -1031,6 +1119,9 @@ input:checked + .slider:before {
 
 .templateDiv {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 var(--tile-size);
   width: var(--tile-size);
   aspect-ratio: 16 / 9;
@@ -1097,17 +1188,28 @@ video.hover-video[data-timestamp]::after {
   pointer-events: none;
 }
 
+.notes-form {
+  position: relative;
+}
+
 .notes-textarea {
   width: 100%;
   height: 60px;
   margin-top: 5px;
   resize: vertical;
+  background-color: var(--form-bg-color);
+  color: var(--form-text-color);
+  border: 1px solid var(--table-border-color);
+  padding-right: 2rem;
 }
 
 .update-button {
-  width: 100%;
-  padding: 5px;
-  margin-top: 5px;
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: auto;
+  padding: 4px;
+  margin-top: 0;
 }
 
 /* Footer Styles */
@@ -1164,7 +1266,6 @@ footer.fade-out {
   gap: 10px;
   align-items: center;
   width: 100%;
-  max-width: 1200px;
   margin-bottom: 2px;
 }
 
@@ -1183,6 +1284,23 @@ footer.fade-out {
   text-decoration: none;
   padding: 2px 5px;
   border-radius: 2px;
+}
+
+@media (max-width: 600px) {
+  footer {
+    padding: 5px 10px 0;
+  }
+  .footer-nav {
+    gap: 5px;
+    font-size: 0.85em;
+  }
+  .footer-copy,
+  .footer-build {
+    display: none;
+  }
+  main {
+    padding-bottom: 45px;
+  }
 }
 .alert-success {
   background-color: #d4edda;
@@ -1252,6 +1370,7 @@ input[type="submit"]:hover {
 @media (max-width: 767px) {
   #grid-width-slider {
     width: 100%;
+    display: none; /* Hide slider on small screens */
   }
 }
 
@@ -1290,9 +1409,10 @@ input[type="submit"]:hover {
 
 /* Captions Page */
 .captions-page {
-  max-width: 1200px;
   margin: 0 auto;
   padding: 15px;
+  width: 100%;
+  max-width: none;
 }
 
 /* Use the same tile width as the front page */
@@ -1300,6 +1420,9 @@ input[type="submit"]:hover {
   flex: 0 0 var(--tile-size);
   width: var(--tile-size);
   aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .captions-page .templateDiv::before {
@@ -1308,16 +1431,16 @@ input[type="submit"]:hover {
 
 /* Position the video container to cover the entire tile */
 .captions-page .video-container {
-  position: absolute;
+  position: relative;
   inset: 0;
   padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Ensure captions thumbnails fill the container and appear dimmed */
 .captions-page .templateDiv video {
-  position: absolute;
-  top: 0;
-  left: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -1447,6 +1570,18 @@ details > summary {
   padding: 4px 8px;
 }
 
+.speech-btn {
+  margin-left: 0.5rem;
+  padding: 2px 6px;
+  font-size: 0.9em;
+}
+
+/* Highlight search matches in captions table */
+.captions-table mark {
+  background-color: yellow;
+  padding: 0;
+}
+
 /* Utility classes for modals and embedded media */
 .live-embed {
   margin-bottom: 20px;
@@ -1467,6 +1602,15 @@ details > summary {
 #camera-metadata {
   margin: 10px 0;
   color: #ccc;
+}
+
+#camera-metadata ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+#camera-metadata li {
+  margin-bottom: 0.25em;
 }
 
 .modal {
@@ -1581,6 +1725,21 @@ details > summary {
   margin: 0 0.25rem;
 }
 
+.path-status {
+  white-space: nowrap;
+}
+
+.path-status svg {
+  vertical-align: middle;
+  margin-right: 0.25rem;
+}
+
+.path-status .metric-bar {
+  width: 5rem;
+  height: 0.5rem;
+  margin: 0 0.25rem;
+}
+
 /* simple layout for discovery wizard */
 .wizard-step {
   margin-bottom: 1em;
@@ -1651,14 +1810,6 @@ details > summary {
   color: white;
   font-size: var(--timestamp-font-size);
   z-index: 10;
-}
-
-.group-links {
-  margin-top: 0.5em;
-}
-
-.group-links a {
-  margin-right: 0.5em;
 }
 
 @media screen and (max-width: 600px) {
@@ -1736,4 +1887,15 @@ details > summary {
   text-align: center;
   padding: 0.5rem;
   color: var(--accent-color);
+}
+
+.danger-mode-box {
+  border: 2px solid var(--danger-off-color);
+  padding: 0.5rem;
+  margin-top: 1rem;
+  border-radius: 4px;
+}
+
+.danger-mode-box.on {
+  border-color: var(--danger-on-color);
 }
