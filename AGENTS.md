@@ -8,3 +8,4 @@
 8. PR description must mention test results.
 9. Explain complex logic in comments.
 10. Each PR should have a single purpose.
+11. Subdirectory `AGENTS.md` files must be no more than 10 lines.
