@@ -2,6 +2,9 @@
 
 Glimpser now adapts to phones and tablets. The navigation menu collapses into a hamburger button on narrow screens and tables reflow vertically to avoid horizontal scrolling. Video grids automatically switch to a single column when viewed on devices without hover capability or small viewports.
 
+A single `--tile-gap` CSS variable controls spacing around each tile. On
+phones the gap shrinks to one pixel so the layout stays dense.
+
 The main template view scales thumbnails with the width slider and the page now uses smooth scrolling for longer lists. Previews resize by adjusting their width and height, ensuring the full image remains visible without shifting or cropping. When a group is opened, the slider defaults to the smallest width that keeps all cameras visible without scrolling.
 
 The header navigation also uses smaller padding so it stays out of the way on both mobile and desktop.
