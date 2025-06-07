@@ -67,6 +67,7 @@ To filter logs by level and message text, you could request:
 3. Hover over each field for a tooltip explaining the filter.
 4. Results update automatically via `/stream_logs`.
 5. If the connection drops, the viewer automatically reconnects after a few seconds and shows a short notice while retrying. Duplicate requests with the same level and search text are ignored server-side to avoid unnecessary generators.
+6. When the connection cannot be established, the browser console now logs the EventSource state to aid troubleshooting.
 
 The log viewer reads log lines from memory, ensuring minimal disk overhead.
 
