@@ -30,10 +30,12 @@ class TestHttpSession(unittest.TestCase):
 
 class TestGetDriver(unittest.TestCase):
     def setUp(self):
-        ss._DRIVER = None
+        if hasattr(ss._driver_local, "driver"):
+            ss._driver_local.driver = None
 
     def tearDown(self):
-        ss._DRIVER = None
+        if hasattr(ss._driver_local, "driver"):
+            ss._driver_local.driver = None
 
     def test_driver_cached(self):
         with (
