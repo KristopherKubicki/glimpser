@@ -2064,6 +2064,7 @@ def init_routes(app: Flask) -> None:
 
         # Load recent summaries from the database and convert timestamps to ISO
         entries = []
+        latest_caption = ""
         try:
             session_db = SessionLocal()
             try:
@@ -2089,6 +2090,12 @@ def init_routes(app: Flask) -> None:
                 session_db.close()
         except Exception:
             entries = []
+
+        if entries:
+            try:
+                latest_caption = next(iter(entries[0].values()))
+            except Exception:
+                latest_caption = ""
 
         # Get templates and calculate next capture time
         templates = template_manager.get_templates()
@@ -2131,6 +2138,7 @@ def init_routes(app: Flask) -> None:
             "captions.html",
             template_details=templates,
             lcaptions=entries,
+            latest_caption=latest_caption,
             page_title="Captions",
             cost_start=cost_start,
             cost_end=cost_end,

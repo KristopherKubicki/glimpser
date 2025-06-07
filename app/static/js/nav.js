@@ -257,6 +257,10 @@ export function initNav() {
       });
     }
 
+    window.addEventListener("showChyron", (e) => {
+      if (e.detail) showCaption(e.detail);
+    });
+
     const showCaption = (text) => {
       if (!captionChyron || chyronSpeed <= 0) return;
       captionChyron.innerHTML = `<span>${text}</span>`;

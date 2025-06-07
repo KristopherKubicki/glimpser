@@ -86,6 +86,8 @@ yellow for the next five minutes and turns red once thirty minutes have passed
 without an update.
 You can toggle the chyron from the **Captions** page using the button in the
 History tab.
+Opening the Captions page now also restarts the scrolling banner when
+`CHYRON_SPEED` is set above zero.
 
 ## System Performance Icon
 
