@@ -2,6 +2,8 @@ import unittest
 import socket
 import os
 import sys
+import tempfile
+from pathlib import Path
 from ipaddress import ip_network
 from unittest.mock import patch
 from types import SimpleNamespace
@@ -555,6 +557,36 @@ class TestCameraDiscovery(unittest.TestCase):
         res = camera_discovery.autodetect_onvif_endpoints("http://1.2.3.4")
         self.assertEqual(res["stream"], "rtsp://1.2.3.4/stream")
         self.assertEqual(res["snapshot"], "http://1.2.3.4/snap.jpg")
+
+    def test_load_local_ouis(self):
+        """_load_local_ouis should parse valid lines and ignore others."""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            f1 = Path(tmpdir) / "manuf1"
+            f1.write_text(
+                "\n".join(
+                    [
+                        "# comment",
+                        "001122 VendorA",
+                        "33-44-55 VendorB",
+                        "invalidline",
+                        "00aa Short",
+                    ]
+                )
+            )
+            f2 = Path(tmpdir) / "manuf2"
+            f2.write_text("66:77:88 VendorC\n")
+            missing = Path(tmpdir) / "missing"
+
+            with patch.object(
+                camera_discovery,
+                "_OUI_FILES",
+                [str(f1), str(missing), str(f2)],
+            ):
+                vendors = camera_discovery._load_local_ouis()
+
+        expected = {"001122": "VendorA", "334455": "VendorB", "667788": "VendorC"}
+        self.assertEqual(vendors, expected)
 
 
 if __name__ == "__main__":
