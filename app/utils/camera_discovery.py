@@ -186,6 +186,21 @@ def autodetect_onvif_endpoints(url: str, timeout: int = 3) -> dict[str, str]:
         Dictionary with optional ``stream`` and ``snapshot`` keys.
     """
 
+    def is_valid_url(url: str) -> bool:
+        parsed = urlparse(url)
+        if not parsed.scheme or not parsed.netloc:
+            return False
+        try:
+            ip = socket.gethostbyname(parsed.hostname)
+            if ip.startswith(("127.", "10.", "192.168.", "172.")):
+                return False
+        except socket.error:
+            return False
+        return True
+
+    if not is_valid_url(url):
+        raise ValueError("Invalid or unsafe URL provided.")
+
     parsed = urlparse(url)
     base = f"{parsed.scheme}://{parsed.netloc}"
     xaddr = url if "device_service" in parsed.path else f"{base}/onvif/device_service"
