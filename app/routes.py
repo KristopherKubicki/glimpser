@@ -2728,6 +2728,7 @@ def init_routes(app: Flask) -> None:
         metrics = scheduling.get_system_metrics()
         feeds = scheduling.get_feed_status()
         last_summary = scheduling.get_last_summary_time()
+        danger_enabled = config.get_setting("DANGER_MODE", "True") == "True"
         return render_template(
             "settings.html",
             grouped_settings=grouped_settings,
@@ -2737,6 +2738,7 @@ def init_routes(app: Flask) -> None:
             last_summary=last_summary,
             choices=SETTINGS_CHOICES,
             page_title="Settings",
+            danger_enabled=danger_enabled,
         )
 
     # Retained for backwards compatibility; redirect to the health endpoint.

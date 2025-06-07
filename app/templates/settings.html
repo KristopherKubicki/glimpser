@@ -193,20 +193,11 @@ content %}
             <input type="file" name="file" accept=".json" title="Select configuration file to upload">
             <button type="submit" name="action" value="upload" title="Restore configuration from uploaded file" onclick="return confirmRestore()">Upload Configuration</button>
 
-            <h3>Danger Mode</h3>
-            <button type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode">Update Chrome Shortcut</button>
-
-
-      <h3>Danger Mode</h3>
-      <button
-        type="submit"
-        name="action"
-        value="update_shortcut"
-        title="Update Chrome shortcuts for Danger mode"
-      >
-        Update Chrome Shortcut
-      </button>
-    </div>
+            <div id="danger-section" class="danger-section{% if danger_enabled %} active{% endif %}">
+                <h3>Danger Mode</h3>
+                <button type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode">Update Chrome Shortcut</button>
+            </div>
+        </div>
 
     <input
       type="hidden"
