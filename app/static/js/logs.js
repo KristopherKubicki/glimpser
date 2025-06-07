@@ -4,14 +4,36 @@ export function updateTable(logs) {
   tbody.innerHTML = "";
   logs.forEach((log) => {
     const row = document.createElement("tr");
-    row.innerHTML = `
-            <td data-label="Timestamp">${log.timestamp}</td>
-            <td data-label="Level">${log.level}</td>
-            <td data-label="Source">${log.source}</td>
-            <td data-label="Message">${log.message}</td>
-        `;
+
+    const timestampCell = document.createElement("td");
+    timestampCell.dataset.label = "Timestamp";
+    timestampCell.textContent = log.timestamp;
+
+    const levelCell = document.createElement("td");
+    levelCell.dataset.label = "Level";
+    levelCell.textContent = log.level;
+
+    const sourceCell = document.createElement("td");
+    sourceCell.dataset.label = "Source";
+    sourceCell.textContent = log.source;
+
+    const messageCell = document.createElement("td");
+    messageCell.dataset.label = "Message";
+    // Use textContent to avoid interpreting HTML in log messages
+    messageCell.textContent = log.message;
+
+    row.append(timestampCell, levelCell, sourceCell, messageCell);
+
     tbody.appendChild(row);
   });
+}
+
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
 }
 
 export function initLogs() {
@@ -61,9 +83,8 @@ export function initLogs() {
       startEventStream();
     });
 
-    searchInput.addEventListener("input", () => {
-      startEventStream();
-    });
+    const debouncedStart = debounce(startEventStream, 300);
+    searchInput.addEventListener("input", debouncedStart);
 
     levelSelect.addEventListener("change", () => {
       startEventStream();
