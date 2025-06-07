@@ -939,9 +939,14 @@ def download_pdf(
 
 
 def is_enhanced(url):
-    extractors = youtube_dl.extractor.gen_extractors()
-    for e in extractors:
-        if e.suitable(url) and e.IE_NAME != "generic":
+    """Return True if ``yt_dlp`` has a specialized extractor for the URL."""
+    try:
+        extractors = youtube_dl.extractor.list_extractors()
+    except Exception as e:  # pragma: no cover - defensive
+        logging.warning("yt_dlp extractor check failed: %s", e)
+        return False
+    for extractor in extractors:
+        if extractor.suitable(url) and extractor.IE_NAME != "generic":
             return True
     return False
 
