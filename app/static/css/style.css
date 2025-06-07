@@ -208,6 +208,14 @@ h2 {
   font-weight: 600;
 }
 
+#controls-wrapper {
+  transition: opacity 0.5s;
+}
+
+#controls-wrapper.fade-out {
+  opacity: 0;
+}
+
 #template-controls input[type="text"],
 #template-controls select {
   padding: 5px;

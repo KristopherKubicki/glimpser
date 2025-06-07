@@ -6,17 +6,27 @@ export function initControlsDropdown() {
     let hideTimeout;
     const scheduleHide = () => {
       clearTimeout(hideTimeout);
-      hideTimeout = setTimeout(() => details.removeAttribute("open"), 5000);
+      hideTimeout = setTimeout(() => {
+        details.classList.add("fade-out");
+        setTimeout(() => {
+          details.removeAttribute("open");
+          details.classList.remove("fade-out");
+        }, 500);
+      }, 5000);
     };
 
-    details.addEventListener("toggle", () => {
-      if (details.open) scheduleHide();
-    });
+    const showControls = () => {
+      if (!details.open) return;
+      details.classList.remove("fade-out");
+      scheduleHide();
+    };
+
+    details.addEventListener("toggle", showControls);
+
+    if (details.open) showControls();
 
     ["mousemove", "scroll"].forEach((evt) => {
-      document.addEventListener(evt, () => {
-        if (details.open) scheduleHide();
-      });
+      document.addEventListener(evt, showControls);
     });
   });
 }
