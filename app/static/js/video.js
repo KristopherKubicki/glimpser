@@ -137,9 +137,12 @@ export function setupVideoControls() {
     seekBar.addEventListener("change", () => {
       video.currentTime = video.duration * (seekBar.value / 100);
     });
-    video.addEventListener("timeupdate", () => {
+    const syncSeekBar = () => {
       seekBar.value = (100 / video.duration) * video.currentTime;
-    });
+    };
+    // Ensure we don't stack multiple timeupdate listeners across reloads
+    video.removeEventListener("timeupdate", syncSeekBar);
+    video.addEventListener("timeupdate", syncSeekBar);
   }
   if (volumeBar) {
     volumeBar.addEventListener("change", () => {

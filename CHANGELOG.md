@@ -67,6 +67,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prevented undefined camera requests from returning 404 errors when switching
   live sources.
 - Sanitized log messages in the UI to prevent XSS vulnerabilities
+- Removed duplicate `timeupdate` handlers in the video player to fix
+  progress bar jitter and memory leaks.
 
 ## [0.2.7] - 2025-06-02
 

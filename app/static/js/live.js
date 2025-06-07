@@ -1222,11 +1222,14 @@ if (seekBar) {
     seekBar.value = 0;
   });
 
-  video.addEventListener("timeupdate", () => {
+  const syncSeekBar = () => {
     if (!isSeeking) {
       seekBar.value = video.currentTime;
     }
-  });
+  };
+  // Remove any lingering listeners from prior sessions to avoid duplicates
+  video.removeEventListener("timeupdate", syncSeekBar);
+  video.addEventListener("timeupdate", syncSeekBar);
 
   seekBar.addEventListener("input", () => {
     video.currentTime = seekBar.value;
