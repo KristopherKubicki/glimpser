@@ -38,6 +38,7 @@ export function initLogs() {
 
     let eventSource;
     let reconnectTimer;
+    let inputTimer;
 
     function startEventStream() {
       if (eventSource) {
@@ -76,7 +77,9 @@ export function initLogs() {
     });
 
     searchInput.addEventListener("input", () => {
-      startEventStream();
+      clearTimeout(inputTimer);
+      // debounce to avoid excessive stream restarts while typing
+      inputTimer = setTimeout(startEventStream, 300);
     });
 
     levelSelect.addEventListener("change", () => {
