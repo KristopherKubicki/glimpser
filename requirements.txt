@@ -27,3 +27,5 @@ nodriver
 pytest
 flax==0.8.5
 jax[cpu]==0.6.1
+black==25.1.0
+flake8==7.0.0
