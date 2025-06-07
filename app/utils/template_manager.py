@@ -796,8 +796,8 @@ def get_llm_cost_summary() -> tuple[list[dict[str, object]], int, str]:
         tokens = data.get(name, 0)
         if isinstance(tokens, list):
             tokens = sum(int(t) for t in tokens)
-        if isinstance(tokens, dict): # risky but worth it for backwards compat
-            tokens = int(tokens.get('total',0))
+        if isinstance(tokens, dict):  # risky but worth it for backwards compat
+            tokens = int(tokens.get("total", 0))
         total_tokens += tokens
         cost = tokens * LLM_COST_PER_TOKEN
         summary.append({"name": name, "tokens": tokens, "cost": f"${cost:.2f}"})

@@ -51,25 +51,45 @@ export function initTemplates() {
         const gap = parseFloat(getComputedStyle(templateList).gap || "0") || 0;
 
         // Maximum width to fit all tiles across the page
-        const widthForColumns = Math.floor(
-          (window.innerWidth - gap * (templateCount - 1)) / templateCount,
-        );
+        //const widthForColumns = Math.floor(
+        //  (window.innerWidth - gap * (templateCount - 1)) / templateCount,
+        //);
+        // Iterate over possible column counts to find the largest
+        // tile width that fits the viewport both horizontally and vertically.
+        let bestWidth = 50;
+        for (let cols = 1; cols <= templateCount; cols++) {
+          const maxWidthForCols = Math.floor(
+            (window.innerWidth - gap * (cols - 1)) / cols,
+          );
+          if (maxWidthForCols < 50) break;
+          const rows = Math.ceil(templateCount / cols);
+          const tileHeight = maxWidthForCols * ASPECT_RATIO;
+          const totalHeight = rows * tileHeight + gap * (rows - 1);
+          if (
+            totalHeight <= window.innerHeight &&
+            maxWidthForCols > bestWidth
+          ) {
+            bestWidth = maxWidthForCols;
+          }
+        }
 
         // Maximum width so combined rows fill the screen vertically
-        const aspectRatio = 9 / 16;
-        const widthForHeight = Math.sqrt(
-          (window.innerHeight * window.innerWidth) /
-            (templateCount * aspectRatio),
-        );
-        const widthForMaxHeight = MAX_THUMBNAIL_HEIGHT / aspectRatio;
+        //const aspectRatio = 9 / 16;
+        //const widthForHeight = Math.sqrt(
+        //  (window.innerHeight * window.innerWidth) /
+        //    (templateCount * aspectRatio),
+        //);
+        //const widthForMaxHeight = MAX_THUMBNAIL_HEIGHT / aspectRatio;
+        const widthForMaxHeight = MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO;
         slider.max = Math.min(slider.max, widthForMaxHeight);
 
         const computedMin = Math.max(
           50,
-          Math.min(
-            slider.max,
-            Math.floor(Math.min(widthForColumns, widthForHeight)),
-          ),
+          //  Math.min(
+          //    slider.max,
+          //    Math.floor(Math.min(widthForColumns, widthForHeight)),
+          //  ),
+          Math.min(slider.max, Math.floor(bestWidth)),
         );
 
         slider.min = computedMin;
@@ -636,13 +656,48 @@ export async function loadTemplates() {
           const video = templateDiv.querySelector("video");
           observer.observe(video);
 
-          video.addEventListener("mouseenter", () => {
-            video.playbackRate = 2.0;
-            safePlay(video);
-          });
-          video.addEventListener("mouseleave", () => {
-            video.playbackRate = 1.0;
+          // Update frame based on cursor position over the tile.
+          const scrub = (e) => {
+            const rect = video.getBoundingClientRect();
+            const ratio = (e.clientX - rect.left) / rect.width;
+            const clamped = Math.max(0, Math.min(1, ratio));
+            if (!Number.isNaN(video.duration)) {
+              video.currentTime = video.duration * clamped;
+            }
+          };
+
+          let resetTimeout;
+
+          video.addEventListener("mouseenter", (e) => {
+            clearTimeout(resetTimeout);
+            video.style.display = "block";
+            // Load metadata on first hover so currentTime can be set
+            if (video.readyState === 0) {
+              video.load();
+            }
             video.pause();
+            if (video.readyState >= 1) {
+              scrub(e);
+            } else {
+              const onLoad = () => {
+                scrub(e);
+                video.removeEventListener("loadedmetadata", onLoad);
+              };
+              video.addEventListener("loadedmetadata", onLoad);
+            }
+          });
+
+          video.addEventListener("mousemove", scrub);
+
+          video.addEventListener("mouseleave", () => {
+            resetTimeout = setTimeout(() => {
+              video.pause();
+              video.currentTime = 0;
+              //video.style.display = "none";
+              // Reset to the poster image on hover exit
+              video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
+              video.load();
+            }, 1000); // restore screenshot a bit after leaving
           });
         } else if (isCaptionsPage) {
           const templateDiv = document.createElement("div");
