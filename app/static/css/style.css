@@ -199,6 +199,15 @@ h2 {
   margin-bottom: 10px;
 }
 
+#controls-wrapper:not([open]) #template-controls {
+  display: none;
+}
+
+#controls-wrapper summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
 #template-controls input[type="text"],
 #template-controls select {
   padding: 5px;
@@ -284,9 +293,6 @@ select:hover {
   background-color: black;
   overflow: hidden;
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border-radius: 5px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   flex: 0 0 var(--tile-size);
@@ -504,10 +510,7 @@ header {
   display: flex; /* Flexbox for layout */
   align-items: center; /* Vertically align items */
   justify-content: flex-start; /* Align items to the left */
-  gap: 10px; /* Space between nav and chyron */
-  position: sticky; /* Keep nav visible while scrolling */
-  top: 0; /* Stick to the top of the viewport */
-  z-index: 1000; /* Stay above page content */
+  gap: 10px; /* Space between nav and chyron */ /* Keep nav visible while scrolling */ /* Stick to the top of the viewport */ /* Stay above page content */
   transition: opacity 0.5s; /* Smooth fade for inactivity */
   position: sticky; /* Keep header visible while scrolling */
   top: 0;
@@ -691,7 +694,6 @@ nav a.active {
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
-  max-width: 100%;
   min-width: 0;
   display: none;
   margin-left: 10px;
@@ -789,7 +791,7 @@ nav a.active {
   }
 
   /* Hide elements that waste space on mobile */
-  #navClock,
+  #nav-clock,
   #caption-chyron,
   .flash-messages {
     display: none;
@@ -1415,9 +1417,6 @@ input[type="submit"]:hover {
 
 /* Use the same tile width as the front page */
 .captions-page .templateDiv {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex: 0 0 var(--tile-size);
   width: var(--tile-size);
   aspect-ratio: 16 / 9;

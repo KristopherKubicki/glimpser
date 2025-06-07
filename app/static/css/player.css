@@ -121,6 +121,7 @@
   border-radius: 5px;
   font-size: 0.9rem;
 }
+
 @media (max-height: 480px) {
   .video-container {
     overflow: auto;

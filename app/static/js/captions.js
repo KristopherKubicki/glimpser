@@ -147,7 +147,6 @@ export function initCaptions() {
     }
 
     setupLiveHistoryUpdates();
-
   });
 }
 
