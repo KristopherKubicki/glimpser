@@ -75,6 +75,10 @@ const seekBar = document.getElementById("seek-bar");
 const jogShuttle = document.getElementById("jog-shuttle");
 let jogInterval = null;
 let jogging = false;
+let lastJogEvent = null;
+let jogFrame = null;
+let lastJogSpeed = 0;
+let lastJogDirection = 0;
 let isSeeking = false;
 const groupSelector = document.getElementById("group-selector");
 // Track whether template details are shown. Expose on window so inline
@@ -1053,16 +1057,29 @@ function applyJog(speed, direction) {
   }
 }
 
-function handleJogMove(e) {
-  if (!jogging) return;
+function processJogMove() {
+  if (!lastJogEvent) return;
   const rect = jogShuttle.getBoundingClientRect();
-  const x = e.clientX - rect.left - rect.width / 2;
+  const x = lastJogEvent.clientX - rect.left - rect.width / 2;
   const radius = rect.width / 2;
   const norm = Math.max(-1, Math.min(1, x / radius));
   const level = Math.min(4, Math.floor(Math.abs(norm) * 4));
   const speed = Math.pow(2, level);
   if (speed === 0) return;
-  applyJog(speed, Math.sign(norm));
+  lastJogSpeed = speed;
+  lastJogDirection = Math.sign(norm);
+  applyJog(lastJogSpeed, lastJogDirection);
+}
+
+function handleJogMove(e) {
+  if (!jogging) return;
+  lastJogEvent = e;
+  if (!jogFrame) {
+    jogFrame = requestAnimationFrame(() => {
+      jogFrame = null;
+      processJogMove();
+    });
+  }
 }
 
 function stopJog() {
@@ -1071,17 +1088,19 @@ function stopJog() {
     clearInterval(jogInterval);
     jogInterval = null;
   }
-  video.pause();
+  applyJog(lastJogSpeed, lastJogDirection);
 }
 
 function initJogShuttle() {
   if (!jogShuttle) return;
   jogShuttle.addEventListener("mousedown", (e) => {
     jogging = true;
+    video.pause();
     handleJogMove(e);
   });
   jogShuttle.addEventListener("touchstart", (e) => {
     jogging = true;
+    video.pause();
     handleJogMove(e.touches[0]);
   });
   window.addEventListener("touchmove", (e) => {
