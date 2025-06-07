@@ -1349,6 +1349,13 @@ footer.fade-out {
   width: 100%;
   margin: 20px auto;
 }
+.login-form .form-field {
+  margin-bottom: 1rem;
+}
+.login-form label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
 
 input[type="text"],
 input[type="password"] {
