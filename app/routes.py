@@ -117,16 +117,25 @@ from scripts.update_chrome_shortcut import (
 )
 
 
+def running_under_gunicorn() -> bool:
+    """Return ``True`` if executing inside a Gunicorn worker."""
+
+    server_software = os.environ.get("SERVER_SOFTWARE", "").lower()
+    return "gunicorn" in server_software
+
+
 def restart_server() -> None:
-    """Restart the current Python process in a background thread."""
+    """Restart the process or exit so an external supervisor can restart it."""
 
     logging.info("Restarting server...")
 
     def delayed_restart():
-        time.sleep(1)  # 1-second delay
+        time.sleep(1)
+        if running_under_gunicorn():
+            logging.info("Exiting for Gunicorn restart")
+            os._exit(0)
         os.execv(sys.executable, [sys.executable] + sys.argv)
 
-    # Start the delayed restart in a separate thread
     restart_thread = Thread(target=delayed_restart)
     restart_thread.start()
 
