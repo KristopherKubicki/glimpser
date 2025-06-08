@@ -862,7 +862,6 @@ function playPNG() {
   video.pause();
   video.src = "";
   stopLiveSwitch();
-  stopPNG();
   video.style.display = "none";
   image.style.display = "block";
   const slider = document.getElementById("speed-slider");
@@ -930,7 +929,6 @@ function playMJPG() {
   video.pause();
   video.src = "";
   stopLiveSwitch();
-  stopPNG();
   video.style.display = "none";
   image.style.display = "block";
   // MJPEG streams are continuous images, disable scrubbing
@@ -940,8 +938,6 @@ function playMJPG() {
     seekBar.style.pointerEvents = "none";
     seekBar.disabled = true;
   }
-  stopLiveSwitch();
-  stopPNG();
   const ts = Date.now();
   const details = templateDetails[currentCamera];
   if (
