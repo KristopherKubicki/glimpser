@@ -6,6 +6,7 @@ import { initNav } from "./nav.js";
 import { initFormValidation, initAddSettingValidation } from "./form.js";
 import { initFooterFade } from "./footer.js";
 import { initOffline } from "./offline.js";
+import { initNotifications } from "./notifications.js";
 import { initDangerToggle } from "./danger.js";
 import { initIndexTime } from "./time.js";
 import { initWelcome } from "./welcome.js";
@@ -14,6 +15,11 @@ import { initCaptions } from "./captions.js";
 import { initSettingsSearch } from "./settings.js";
 import { initTabs } from "./tabs.js";
 import { initThemeToggle } from "./theme.js";
+import { initControlsDropdown } from "./controls.js";
+import { initAutocomplete } from "./autocomplete.js";
+import { initCosts } from "./costs.js";
+import { initAdvanced } from "./advanced.js";
+import { initCliHelp } from "./cli_help.js";
 
 function initNetworkBanner() {
   document.addEventListener("DOMContentLoaded", () => {
@@ -51,6 +57,7 @@ initFormValidation();
 initAddSettingValidation();
 initFooterFade();
 initOffline();
+initNotifications();
 initDangerToggle();
 initIndexTime();
 initWelcome();
@@ -60,3 +67,8 @@ initSettingsSearch();
 initTabs();
 initThemeToggle();
 initNetworkBanner();
+initControlsDropdown();
+initAutocomplete();
+initCosts();
+initAdvanced();
+initCliHelp();

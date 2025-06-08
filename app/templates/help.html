@@ -1,117 +1,132 @@
+{% extends 'base.html' %} {% from 'components.html' import card %} {% block
+content %}
+<main class="container help-page">
+  <h2 class="page-title">Glimpser Help</h2>
+  <div class="tabs">
+    <button class="tab-link active" data-tab="basics-tab">Basics</button>
+    <button class="tab-link" data-tab="usage-tab">Usage</button>
+    <button class="tab-link" data-tab="advanced-tab">Advanced</button>
+    <button class="tab-link" data-tab="support-tab">Support</button>
+  </div>
 
-{% extends 'base.html' %}
-{% block content %}
+  <div id="basics-tab" class="tab-content active">
+    {% call card('Getting Started') %}
+    <p>
+      Glimpser monitors webpages and cameras. To begin, open
+      <strong>Settings</strong> and choose the <strong>Discover</strong> tab.
+      Fill in the Add Camera form and click <em>Submit</em>.
+    </p>
+    {% endcall %} {% call card('Example: time.gov Template') %}
+    <p>Follow these steps to create a time.gov template.</p>
+    <ol>
+      <li>Open the Discover tab to access the Add Camera form.</li>
+      <li>
+        Enter the following values:
+        <ul class="template-details">
+          <li><strong>Template Name:</strong> "US Official Time"</li>
+          <li><strong>URL:</strong> "https://time.gov"</li>
+          <li><strong>Frequency:</strong> 60 minutes</li>
+          <li><strong>Dedicated XPath:</strong> //div[@id='time-display']</li>
+        </ul>
+      </li>
+      <li>Submit the form to create the template.</li>
+    </ol>
+    {% endcall %}
+  </div>
 
-    <main class="container">
-        <h2 class="page-title">Glimpser Help</h2>
+  <div id="usage-tab" class="tab-content">
+    {% call card('Managing Templates') %}
+    <p>You can manage templates from the dashboard.</p>
+    <ul>
+      <li>View all templates in a grid.</li>
+      <li>Click a template to see details and recent captures.</li>
+      <li>Edit or delete from the template page.</li>
+    </ul>
+    {% endcall %} {% call card('Viewing Captures') %}
+    <p>Ways to review your captures:</p>
+    <ul>
+      <li>The home page shows the latest capture for each template.</li>
+      <li>Select <em>Live</em> for real-time updates.</li>
+      <li>Check <em>Captions</em> for AI descriptions.</li>
+    </ul>
+    {% endcall %} {% call card('Using the CLI') %}
+    <p>
+      Control Glimpser from the command line. Run
+      <code>glimpser --help</code> to list all commands.
+    </p>
+    <button id="load-cli-help" class="btn">Show CLI Help</button>
+    <pre id="cli-help" class="cli-help hidden" aria-live="polite"></pre>
+    {% endcall %}
+  </div>
 
-        <section class="help-section">
-            <h3 class="section-title">Getting Started</h3>
-            <p>Glimpser is a powerful tool for monitoring and capturing screenshots from various sources. Here's how to get started:</p>
-            <ol>
-                <li>Open the <strong>Settings</strong> page and switch to the <strong>Discover</strong> tab.</li>
-                <li>Fill in the Add Camera form with the name, URL, and frequency.</li>
-                <li>Click "Submit" to create your new camera.</li>
-            </ol>
-        </section>
+  <div id="advanced-tab" class="tab-content">
+    {% call card('Offline Access') %}
+    <p>
+      The help page caches after your first visit so you can read it offline.
+    </p>
+    {% endcall %} {% call card('Advanced Features') %}
+    <ul>
+      <li>
+        Schedule archiving with the
+        <a href="../docs/video_archiver.md" target="_blank">video archiver</a>.
+      </li>
+      <li>
+        Track language model costs with the
+        <a href="../docs/cost_tracking.md" target="_blank">cost dashboard</a>.
+      </li>
+      <li>
+        Discover cameras automatically with the
+        <a href="../docs/camera_discovery.md" target="_blank">discovery tool</a
+        >.
+      </li>
+    </ul>
+    {% endcall %} {% call card('Configuration and Docs') %}
+    <p>
+      Settings live in <code>app/config.py</code> and can be overridden with
+      environment variables like <code>GLIMPSER_DATABASE_PATH</code>. See the
+      <a href="../docs/index.md" target="_blank">documentation</a> for detailed
+      guides.
+    </p>
+    {% endcall %}
+  </div>
 
-        <section class="help-section">
-            <h3 class="section-title">Adding a Template: Example with time.gov</h3>
-            <p>Let's walk through the process of adding a template for time.gov:</p>
-            <ol>
-                <li>Open the Discover tab to access the Add Camera form.</li>
-                <li>Fill in the following details:
-                    <ul class="template-details">
-                        <li><strong>Template Name:</strong> Enter "US Official Time"</li>
-                        <li><strong>URL:</strong> Enter "https://time.gov"</li>
-                        <li><strong>Frequency (minutes):</strong> Enter "60" to capture once per hour</li>
-                        <li><strong>Timeout (seconds):</strong> Enter "10" for a reasonable load time</li>
-                        <li><strong>Notes:</strong> You can enter "Official US time website" or leave it blank</li>
-                        <li><strong>Object Filter:</strong> Leave blank as we don't need to filter specific objects</li>
-                        <li><strong>Object Confidence:</strong> Leave blank as we're not using object detection</li>
-                        <li><strong>Popup XPath:</strong> Leave blank as time.gov doesn't have popups we need to handle</li>
-                        <li><strong>Dedicated XPath:</strong> Enter "//div[@id='time-display']" to focus on the time display</li>
-                        <li><strong>Callback URL:</strong> Leave blank unless you have a specific callback service</li>
-                        <li><strong>Proxy:</strong> Leave blank unless you need to use a proxy</li>
-                        <li><strong>Groups:</strong> You can enter "Time" or leave it blank</li>
-                        <li><strong>Rollback Frames:</strong> Enter "0" as we don't need to rollback for this static display</li>
-                        <li><strong>Invert:</strong> Leave unchecked</li>
-                        <li><strong>Dark Mode:</strong> You can check this if you prefer a dark background</li>
-                        <li><strong>Headless:</strong> Leave checked for background processing</li>
-                        <li><strong>Stealth:</strong> Leave unchecked as time.gov doesn't require stealth mode</li>
-                    </ul>
-                </li>
-                <li>Click "Submit" to create your new template.</li>
-                <li>You should now see the "US Official Time" template on your home page, which will update every hour with the current official US time.</li>
-            </ol>
-        </section>
-
-        <section class="help-section">
-            <h3 class="section-title">Managing Templates</h3>
-            <p>You can manage your templates from the home page:</p>
-            <ul>
-                <li>View all templates in a grid layout.</li>
-                <li>Click on a template to view its details and recent captures.</li>
-                <li>Edit a template by clicking "Edit Template" on its details page.</li>
-                <li>Delete a template using the "Delete Template" button on its details page.</li>
-            </ul>
-        </section>
-
-        <section class="help-section">
-            <h3 class="section-title">Viewing Captures</h3>
-            <p>Glimpser provides several ways to view your captures:</p>
-            <ul>
-                <li>On the home page, you can see the most recent capture for each template.</li>
-                <li>Click on a template to view its recent screenshots and videos.</li>
-                <li>Use the "Live" page to see real-time updates of your captures.</li>
-                <li>The "Captions" page shows AI-generated descriptions of your captures.</li>
-            </ul>
-        </section>
-
-        <section class="help-section">
-            <h3 class="section-title">Offline Access</h3>
-            <p>This help page is available offline once you've visited it while online. You can access it anytime, even without an internet connection.</p>
-        </section>
-        <section class="help-section">
-            <h3 class="section-title">Using the CLI</h3>
-            <p>You can control Glimpser from the command line. Run <code>glimpser --help</code> to see all available commands.</p>
-        </section>
-
-        <section class="help-section">
-            <h3 class="section-title">Advanced Features</h3>
-            <ul>
-                <li>Schedule automatic archiving with the <a href="../docs/video_archiver.md" target="_blank">video archiver</a>.</li>
-                <li>Track language model usage and cost in the <a href="../docs/cost_tracking.md" target="_blank">cost tracking</a> dashboard.</li>
-                <li>Automatically discover network cameras using the <a href="../docs/camera_discovery.md" target="_blank">discovery tool</a>.</li>
-            </ul>
-        </section>
-
-        <section class="help-section">
-            <h3 class="section-title">Configuration Files</h3>
-            <p>Settings are stored in <code>app/config.py</code> and the database. Most values can be overridden with environment variables like <code>GLIMPSER_DATABASE_PATH</code>.</p>
-        </section>
-
-        <section class="help-section">
-            <h3 class="section-title">Documentation</h3>
-            <p>See the <a href="../docs/index.md" target="_blank">docs/</a> directory for detailed guides.</p>
-        </section>
-
-        <section class="help-section">
-            <h3 class="section-title">Troubleshooting</h3>
-            <p>If you run into problems, check the <a href="../docs/troubleshooting.md" target="_blank">troubleshooting guide</a> for common solutions. The <a href="../docs/faq.md" target="_blank">FAQ</a> covers additional tips.</p>
-        </section>
-
-        <section class="help-section">
-            <h3 class="section-title">Contributing &amp; Feedback</h3>
-            <p>Glimpser is an open source project. You can view the source code or open issues on <a href="https://github.com/KristopherKubicki/glimpser" target="_blank">GitHub</a>. Contributions are welcome!</p>
-        </section>
-
-        <section class="help-section">
-            <h3 class="section-title">Need More Help?</h3>
-            <p>If you need further assistance, please visit <a href="https://glimpser.net" target="_blank">glimpser.net</a> or the <a href="https://github.com/KristopherKubicki/glimpser" target="_blank">GitHub repository</a> for updates and to report issues.</p>
-        </section>
-        <p><a href="{{ url_for('index') }}">Back to Glimpser</a></p>
-    </main>
-
+  <div id="support-tab" class="tab-content">
+    {% call card('Troubleshooting') %}
+    <p>
+      If you run into problems, read the
+      <a href="../docs/troubleshooting.md" target="_blank"
+        >troubleshooting guide</a
+      >
+      and <a href="../docs/faq.md" target="_blank">FAQ</a>.
+    </p>
+    {% endcall %} {% call card('Quick Docs') %}
+    <ul class="quick-docs">
+      <li>
+        <a href="../docs/getting_started.md" target="_blank">Getting Started</a>
+      </li>
+      <li>
+        <a href="../docs/configuration_guide.md" target="_blank"
+          >Configuration Guide</a
+        >
+      </li>
+      <li>
+        <a href="../docs/troubleshooting.md" target="_blank">Troubleshooting</a>
+      </li>
+      <li><a href="../docs/faq.md" target="_blank">FAQ</a></li>
+    </ul>
+    {% endcall %} {% call card('Contributing & Feedback') %}
+    <p>
+      Glimpser is open source on
+      <a href="https://github.com/KristopherKubicki/glimpser" target="_blank"
+        >GitHub</a
+      >. Contributions are welcome!
+    </p>
+    {% endcall %} {% call card('Need More Help?') %}
+    <p>
+      Visit <a href="https://glimpser.net" target="_blank">glimpser.net</a> for
+      updates or to report issues.
+    </p>
+    {% endcall %}
+  </div>
+</main>
 {% endblock %}
-
