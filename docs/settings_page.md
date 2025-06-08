@@ -12,13 +12,13 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Settings Reference** – expand the table to read explanations for each setting.
 - **Column Search** – click a header to filter rows by that column.
 - **System Status** – view CPU, memory, disk usage, and live logs.
-- **Certain tabs start collapsed** – File Locations, Capture, Credentials,
-  Integrations, Management, and Other appear collapsed until expanded.
+- **Certain tabs start collapsed** – Capture, Credentials & Management, and
+  Integrations & Other appear collapsed until expanded.
 
 All form elements now use unique IDs across tabs to avoid browser warnings.
 
-- **File Location Checks** – paths in the _File Locations_ tab are validated and show
-  a small progress bar indicating remaining disk space.
+- **File Location Checks** – paths in the Capture tab are validated and show a
+  small progress bar indicating remaining disk space.
 - **Interface** – UI-related options like the navigation logo now live on their own tab.
 
 Hover over a setting name to see a tooltip with its explanation.
