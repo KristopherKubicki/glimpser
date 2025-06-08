@@ -18,16 +18,14 @@ from app import scheduler
 from app.utils.cli import build_argument_parser, cli_help_text
 from app.utils.scheduling import get_system_metrics, stop_background_tasks
 
-# Retro-styled banner printed at startup. ANSI color codes give the
-# text a light cyan glow reminiscent of early 2000s terminal apps.
-banner = rf"""\033[96m
-   ____ _ _                 ____
-  / ___| (_) ___ ___  _ __  / ___|  ___ _ ____   _____ _ __
- | |  _| | |/ __/ _ \| '_ \ \___ \ / _ \ '__\ \ / / _ \ '__|
- | |_| | | | (_| (_) | | | | ___) |  __/ |   \ V /  __/ |
-  \____|_|_|\___\___/|_| |_|____/ \___|_|    \_/ \___|_| v{config.VERSION}
+banner = """\033[96m
+          ____  _  _
+         / ___|| |(_)_ __ ___  _ __  ___  ___ _ __
+        | |  _ | || | '_ ` _ `| '_ `/ __|/ _ ` '__|
+        | |_| || || | | | | | | |_) `__ '  __/ |
+         `____||_||_|_| |_| |_| .__/|___/`___|_| v{config.VERSION}
+                              |_|
 \033[0m"""
-
 
 def parse_arguments(arg_list=None):
     """Return parsed command-line arguments."""
