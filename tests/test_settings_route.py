@@ -53,11 +53,17 @@ class TestSettingsRoute(unittest.TestCase):
         # Avoid restarting the interpreter during tests
         self.restart_patch = patch("app.routes.restart_server")
         self.restart_patch.start()
+        self.chrome_patch = patch("app.routes.get_chrome_version", return_value=120)
+        self.shortcut_patch = patch("app.routes.first_shortcut_path", return_value=None)
+        self.chrome_patch.start()
+        self.shortcut_patch.start()
 
     def tearDown(self):
         self.restart_patch.stop()
         self.app_context.pop()
         self.env_patch.stop()
+        self.chrome_patch.stop()
+        self.shortcut_patch.stop()
 
         # Reload modules back to default environment
         import app

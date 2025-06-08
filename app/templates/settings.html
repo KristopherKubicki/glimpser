@@ -178,10 +178,20 @@
         Upload Configuration
       </button>
 
-      <h3>Danger Mode</h3>
+      <h3>
+        Danger Mode
+        <a
+          href="../docs/danger_mode.md"
+          target="_blank"
+          title="Open Danger Mode documentation"
+          >docs</a
+        >
+      </h3>
       <ul class="danger-info">
         <li>Browser: {{ danger_info.browser }}</li>
         <li>Path: {{ danger_info.path }}</li>
+        <li>Version: {{ danger_info.version }}</li>
+        <li>Shortcut: {{ danger_info.shortcut }}</li>
         <li>
           Shortcut Patched:
           <span
