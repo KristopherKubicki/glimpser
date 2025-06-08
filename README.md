@@ -14,6 +14,8 @@
 [![Pylint 3.10](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.10)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
 [![Pylint 3.11](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.11)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
 [![Pylint 3.12](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.12)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
+[![Pylint 3.13](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.13)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
+[![Pylint 3.14](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.14)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 [![GitHub release](https://img.shields.io/github/v/release/KristopherKubicki/glimpser)](https://github.com/KristopherKubicki/glimpser/releases/latest)
 [![PyPI version](https://img.shields.io/pypi/v/glimpser)](https://pypi.org/project/glimpser/)
@@ -66,7 +68,7 @@ See [OpenSSF Scorecard](docs/scorecard.md) for details on the security badge.
 
 ### Prerequisites
 
-- Python 3.8 to 3.12
+ - Python 3.8 to 3.14
 
 ### Steps
 

@@ -7,7 +7,7 @@ This guide addresses common issues that users might encounter while using Glimps
 ### Problem: Dependencies fail to install
 
 **Solution:**
-- Ensure you're using Python 3.8 or newer (tested up to 3.12): `python --version`
+- Ensure you're using Python 3.8 or newer (tested up to 3.14): `python --version`
 - Update pip: `pip install --upgrade pip`
 - If you're on Windows, make sure you have the necessary C++ build tools installed for certain packages.
 - Double-check that you're working in the correct virtual environment.
