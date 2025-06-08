@@ -46,7 +46,8 @@ name, last image time, last caption time, any KPI column, or status.
 - **Danger Mode Enabled** – whether the DANGER_MODE setting is on
 
 Boolean metrics now display a green dot when enabled and a red dot when
-disabled to make the status easier to scan.
+disabled to make the status easier to scan. GPU acceleration uses a yellow dot
+when hardware is available but not currently active.
 
 ## Streaming Logs
 
