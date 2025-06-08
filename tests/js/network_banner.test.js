@@ -36,3 +36,21 @@ test("shows banner when offline", async () => {
   expect(banner.classList.contains("show")).toBe(true);
   expect(banner.textContent).toBe("Offline mode");
 });
+
+test("updates banner on online/offline events", async () => {
+  global.fetch.mockResolvedValue({
+    json: () => Promise.resolve({ online: true }),
+  });
+  initNetworkBanner();
+  document.dispatchEvent(new Event("DOMContentLoaded"));
+  await Promise.resolve();
+  const banner = document.getElementById("network-banner");
+
+  window.dispatchEvent(new Event("offline"));
+  expect(banner.classList.contains("show")).toBe(true);
+  expect(banner.textContent).toBe("Offline mode");
+
+  window.dispatchEvent(new Event("online"));
+  expect(banner.classList.contains("show")).toBe(false);
+  expect(banner.textContent).toBe("");
+});
