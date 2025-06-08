@@ -11,7 +11,9 @@ slider to view recent spending.
 An additional **LLM Cost Summary** page now provides a date range picker to
 review costs for a specific period. Use the **Since Last Restart** shortcut to
 fill the start date with the server start time. A pie chart shows how costs are
-distributed across templates.
+distributed across templates. When more than 15 templates are present, the chart
+automatically groups the least expensive templates into a single **Other** slice
+to remain legible.
 
 ## LLM Response Cache
 

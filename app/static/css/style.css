@@ -1721,7 +1721,8 @@ body.advanced-enabled .advanced-only {
 
 .captions-table,
 .camera-table,
-.settings-table {
+.settings-table,
+.cost-table {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 20px;
@@ -1732,27 +1733,32 @@ body.advanced-enabled .advanced-only {
 .camera-table th,
 .camera-table td,
 .settings-table th,
-.settings-table td {
+.settings-table td,
+.cost-table th,
+.cost-table td {
   padding: 8px;
   border: 1px solid var(--table-border-color);
 }
 
 .captions-table th,
 .camera-table th,
-.settings-table th {
+.settings-table th,
+.cost-table th {
   background-color: var(--table-header-bg-color);
 }
 
 /* Indicate sortable KPI columns */
 .camera-table th.sortable,
 .feed-status th.sortable,
-.captions-table th.sortable {
+.captions-table th.sortable,
+.cost-table th.sortable {
   cursor: pointer;
 }
 
 .camera-table th.sortable::after,
 .feed-status th.sortable::after,
-.captions-table th.sortable::after {
+.captions-table th.sortable::after,
+.cost-table th.sortable::after {
   content: " \2195";
   font-size: 0.8em;
   opacity: 0.6;
@@ -1764,11 +1770,13 @@ details > summary {
   margin: 1rem 0;
 }
 
-.captions-table tr:nth-child(even) {
+.captions-table tr:nth-child(even),
+.cost-table tr:nth-child(even) {
   background-color: var(--table-row-alt-bg-color);
 }
 
-.captions-table tr:hover {
+.captions-table tr:hover,
+.cost-table tr:hover {
   background-color: var(--table-hover-bg-color);
 }
 
