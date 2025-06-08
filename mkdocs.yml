@@ -79,6 +79,7 @@ nav:
       - Live All: live_all.md
       - Live Scrub: live_scrub.md
       - Rotate Button: rotate_button.md
+      - Edit Template Preview: edit_template_preview.md
       - MCP Integration: mcp_integration.md
       - Onboarding Guide: onboarding.md
       - Scorecard: scorecard.md
