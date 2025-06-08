@@ -16,3 +16,8 @@ look consistent regardless of color scheme.
 
 Hyperlinks also switch to a lighter blue in dark mode so links remain legible on
 the dark background.
+
+The captions page uses the same theme variables. Prompt and response fields now
+inherit `--form-bg-color` and `--form-text-color` so text remains legible when
+switching themes.
+
