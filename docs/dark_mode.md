@@ -13,3 +13,7 @@ A new `--table-border-color` variable controls table outlines. Dark mode
 defaults to a subtle `#444` while the light theme overrides it to `#ddd`.
 The settings page now uses this variable for its forms and tables so fields
 look consistent regardless of color scheme.
+
+The captions page uses the same theme variables. Prompt and response fields now
+inherit `--form-bg-color` and `--form-text-color` so text remains legible when
+switching themes.

@@ -208,6 +208,7 @@ h2 {
     auto-fit,
     minmax(50px, var(--tile-size))
   ); /* Use CSS variable */
+
   gap: 5px;
   padding: 10px;
   justify-content: center;
@@ -317,6 +318,7 @@ select:hover {
     255,
     0.7
   ); /* Semi-transparent white background */
+
   border-radius: 50%;
   padding: calc(5px * var(--tile-scale, 1));
   display: none; /* Hide by default */
@@ -1093,6 +1095,8 @@ video.hover-video[data-timestamp]::after {
   height: 60px;
   margin-top: 5px;
   resize: vertical;
+  background-color: var(--form-bg-color);
+  color: var(--form-text-color);
 }
 
 .update-button {
@@ -1324,6 +1328,9 @@ input[type="submit"]:hover {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  background-color: var(--secondary-bg-color);
+  padding: 0.5rem;
+  border-radius: 4px;
 }
 
 .caption-box textarea {
@@ -1340,6 +1347,25 @@ input[type="submit"]:hover {
   max-height: 6rem;
   overflow-y: auto;
   white-space: pre-wrap;
+}
+
+.chat-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chat-prompt,
+.chat-response {
+  flex: 1 1 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-response .last-caption {
+  background-color: var(--form-bg-color);
+  padding: 0.5rem;
+  border-radius: 4px;
 }
 
 .chat-box label {
