@@ -7,9 +7,7 @@ repos:
       - id: black
         name: black
         entry: black
-        language: python
-        # install the exact version you need inside the hook venv
-        additional_dependencies: ["black==25.1.0"]
+        language: system
         types: [python]
 
   # keep flake8 (example)
@@ -18,7 +16,23 @@ repos:
       - id: flake8
         name: flake8
         entry: flake8
-        language: python
-        # install the exact version you need inside the hook venv
-        additional_dependencies: ["flake8==7.0.0"]
+        language: system
         types: [python]
+
+  - repo: local
+    hooks:
+      - id: lint-js
+        name: lint js
+        entry: npm run lint:js
+        language: system
+        pass_filenames: false
+      - id: format-js
+        name: format js write
+        entry: npm run format:js:write
+        language: system
+        pass_filenames: false
+      - id: lint-css
+        name: lint css
+        entry: npm run lint:css
+        language: system
+        pass_filenames: false

@@ -14,9 +14,12 @@ export function initUrlTester() {
       controller = new AbortController();
       status.textContent = "…";
       try {
-        const res = await fetch(`/templates/test_url?url=${encodeURIComponent(url)}`, {
-          signal: controller.signal,
-        });
+        const res = await fetch(
+          `/templates/test_url?url=${encodeURIComponent(url)}`,
+          {
+            signal: controller.signal,
+          },
+        );
         const data = await res.json();
         if (res.ok && data.ok) {
           status.textContent = "✓";
