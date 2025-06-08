@@ -5,7 +5,6 @@ import logging
 import os
 import subprocess
 import argparse
-import random
 import time
 import signal
 import sys
