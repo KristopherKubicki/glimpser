@@ -1337,6 +1337,13 @@ def init_routes(app: Flask) -> None:
         """Return current network connectivity status."""
         return jsonify({"online": is_system_online()})
 
+    @app.route("/discover/subnets")
+    @login_required
+    def discover_subnets():
+        """Return local IPv4 subnets as strings."""
+        nets = camera_discovery._local_subnets()
+        return jsonify([str(n) for n in nets])
+
     @app.route("/toggle_discovery", methods=["POST"])
     @login_required
     @profile_route("/toggle_discovery")

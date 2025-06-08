@@ -55,3 +55,47 @@ export function initDiscoveryToggle() {
     setInterval(refreshStatus, 30000);
   });
 }
+
+export function initSubnetInput() {
+  document.addEventListener("DOMContentLoaded", async () => {
+    const input = document.getElementById("cidr-input");
+    if (!input) return;
+
+    let datalist = document.getElementById("cidr-options");
+    if (!datalist) {
+      datalist = document.createElement("datalist");
+      datalist.id = "cidr-options";
+      if (input.parentNode) {
+        input.parentNode.insertBefore(datalist, input.nextSibling);
+      }
+    }
+    input.setAttribute("list", "cidr-options");
+
+    try {
+      const res = await fetch("/discover/subnets");
+      const nets = await res.json();
+      datalist.innerHTML = nets
+        .map((n) => `<option value="${n}"></option>`)
+        .join("");
+    } catch (err) {
+      console.warn("subnet fetch failed", err);
+    }
+
+    const isValidCidr = (value) => {
+      if (!/^\d{1,3}(?:\.\d{1,3}){3}\/\d{1,2}$/.test(value)) return false;
+      const [ip, prefix] = value.split("/");
+      if (ip.split(".").some((o) => +o > 255)) return false;
+      const p = parseInt(prefix, 10);
+      return p >= 0 && p <= 32;
+    };
+
+    input.addEventListener("input", () => {
+      const val = input.value.trim();
+      if (val && !isValidCidr(val)) {
+        input.setCustomValidity("Invalid CIDR");
+      } else {
+        input.setCustomValidity("");
+      }
+    });
+  });
+}
