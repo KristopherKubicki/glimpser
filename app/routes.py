@@ -12,6 +12,7 @@ import sys
 import tempfile
 import time
 import uuid
+import requests
 from datetime import datetime, timedelta
 from dateutil import tz
 
@@ -57,6 +58,7 @@ from app.config import (
     API_KEY,
     SCREENSHOT_DIRECTORY,
     VIDEO_DIRECTORY,
+    DOCS_DIRECTORY,
     VERSION,
     BACKUP_PATH,
     backup_config,
@@ -68,7 +70,6 @@ from app.config import (
     CLOCK_OVERLAY,
     CLOCK_DIGITAL,
     CLOCK_NAVBAR,
-    ENFORCE_DOMAIN_IN_HOST,
 )
 from app.models import User, Summary
 from app.utils import (
@@ -80,7 +81,6 @@ from app.utils import (
     prompt_optimizer,
     camera_fix,
 )
-from app.utils.template_manager import LLM_COST_PER_TOKEN
 
 from app.utils.llm import ask_question
 from app.utils.settings_tooltips import (
@@ -94,7 +94,7 @@ from app.utils.settings_tooltips import (
 from app.utils.db import SessionLocal, engine
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 import sqlite3
-from typing import Any, Callable, Generator, Iterable, Optional, List, Dict
+from typing import Any, Callable, Generator, Optional, List, Dict
 
 try:
     COMMIT_HASH = (
@@ -117,14 +117,12 @@ from app.utils.validators import (
 )
 from app.utils.profiling import profile_route, get_latency_stats
 from scripts.update_chrome_shortcut import (
-    update_chrome_shortcuts,
     update_chrome_shortcuts_info,
     shortcuts_need_patch,
 )
 from app.utils.screenshots import (
     is_chrome_debug_port_open,
     check_user_activity,
-    capture_frame_from_stream,
     get_chrome_path,
     load_font,
 )
@@ -1532,6 +1530,32 @@ def init_routes(app: Flask) -> None:
     @login_required
     def help_page():
         return render_template("help.html", page_title="Help")
+
+    @app.route("/docs/<string:filename>")
+    @login_required
+    def docs_file(filename: str):
+        """Serve Markdown documentation files from the repository."""
+        if not allowed_filename(filename):
+            abort(404)
+
+        docs_path = os.path.join(
+            os.path.dirname(os.path.join(__file__)),
+            "..",
+            DOCS_DIRECTORY,
+        )
+        full_path = os.path.join(docs_path, filename)
+        if not os.path.exists(full_path):
+            abort(404)
+
+        return send_from_directory(docs_path, filename)
+
+    @app.route("/cli_help")
+    @login_required
+    def cli_help():
+        """Return CLI help text."""
+        from app.utils.cli import cli_help_text
+
+        return Response(cli_help_text(), mimetype="text/plain")
 
     @app.route("/settings_help")
     @login_required
@@ -3248,6 +3272,25 @@ def init_routes(app: Flask) -> None:
         }
         template_manager.save_template(name, template)
         return jsonify({"status": "success"})
+
+    @app.route("/templates/test_url")
+    @login_required
+    def test_template_url() -> Response:
+        """Return JSON indicating whether the given URL is reachable."""
+
+        url = request.args.get("url") or ""
+        url = validators.validate_url(url)
+        if not url:
+            return jsonify({"ok": False, "error": "invalid"}), 400
+
+        try:
+            resp = requests.head(url, timeout=5)
+            ok = resp.status_code < 400
+        except Exception as exc:  # pragma: no cover - network
+            logging.warning("url check failed: %s", exc)
+            return jsonify({"ok": False, "error": "unreachable"}), 400
+
+        return jsonify({"ok": ok, "status": resp.status_code})
 
     @app.route("/discover/export", methods=["POST"])
     @login_required

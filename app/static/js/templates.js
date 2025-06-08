@@ -22,8 +22,7 @@ export function applyCaptionVisibility(width) {
   templateList
     ?.querySelectorAll(".caption-overlay")
     .forEach((o) => (o.style.display = show ? "block" : "none"));
-  if (captionToggle)
-    captionToggle.textContent = show ? "Hide Captions" : "Show Captions";
+  if (captionToggle) captionToggle.checked = captionsVisible;
 }
 
 export function initTemplates() {
@@ -114,8 +113,8 @@ export function initTemplates() {
     }
 
     if (captionToggle) {
-      captionToggle.addEventListener("click", () => {
-        captionsVisible = !captionsVisible;
+      captionToggle.addEventListener("change", () => {
+        captionsVisible = captionToggle.checked;
         localStorage.setItem("showCaptions", captionsVisible.toString());
         applyCaptionVisibility(parseFloat(slider?.value || "0"));
       });

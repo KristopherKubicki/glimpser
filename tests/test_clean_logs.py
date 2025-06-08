@@ -6,10 +6,9 @@ from scripts.clean_logs import _read_lines, clean_lines
 def test_read_lines_ignores_empty_lines():
     data = """line1
 
-line2
+ line2
 
-  
-line3  
+line3
 """
     fh = io.StringIO(data)
     assert _read_lines(fh) == ["line1", "line2", "line3"]

@@ -2,7 +2,6 @@
 
 import os
 import shutil
-import random
 import logging
 import json
 from datetime import datetime

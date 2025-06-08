@@ -19,6 +19,7 @@ import { initControlsDropdown } from "./controls.js";
 import { initAutocomplete } from "./autocomplete.js";
 import { initCosts } from "./costs.js";
 import { initAdvanced } from "./advanced.js";
+import { initCliHelp } from "./cli_help.js";
 
 initTemplates();
 initVideoControls();
@@ -42,3 +43,4 @@ initControlsDropdown();
 initAutocomplete();
 initCosts();
 initAdvanced();
+initCliHelp();

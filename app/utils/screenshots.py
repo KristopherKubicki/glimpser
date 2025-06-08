@@ -14,7 +14,6 @@ import subprocess
 import time
 import tempfile
 from urllib.parse import urlparse
-import glob
 import base64
 import nodriver
 import psutil
@@ -38,10 +37,7 @@ from PIL import (
     ImageDraw,
     ImageFont,
     ImageOps,
-    ImageStat,
 )
-import textwrap
-from pyvirtualdisplay import Display
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -61,7 +57,6 @@ except Exception as e:  # pragma: no cover - optional dependency
 
 from app.config import (
     DEBUG,
-    LANG,
     SCREENSHOT_DIRECTORY,
     UA,
     FFMPEG_PATH,
@@ -2102,7 +2097,6 @@ def capture_screenshot_phantom(
     import logging
     import shutil
     import subprocess
-    from PIL import Image
 
     if shutil.which("phantomjs") is None:
         logging.warning("PhantomJS not found; cannot capture screenshot.")
