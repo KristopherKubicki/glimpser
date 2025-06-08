@@ -1,6 +1,8 @@
 site_name: Glimpser Documentation
 docs_dir: docs
 site_dir: site
+extra_css:
+  - styles/extra.css
 exclude_docs: |
   README.md
 nav:

@@ -4,7 +4,6 @@ import unittest
 import os
 import sys
 import tempfile
-import numpy as np
 from PIL import Image
 from unittest.mock import patch, MagicMock
 import datetime

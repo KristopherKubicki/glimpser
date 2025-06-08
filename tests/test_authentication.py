@@ -12,8 +12,8 @@ import datetime
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
-from app.config import USER_NAME, API_KEY
-from app.routes import login_required, login_attempts
+from app.config import USER_NAME
+from app.routes import login_required
 from app import create_app
 
 
