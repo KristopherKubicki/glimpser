@@ -636,13 +636,13 @@ function playLoop() {
     let groupCameras;
     if (currentCamera === "All") {
       // If the "All" group is selected, get all camera names
-      groupCameras = getCameraNames();
+      groupCameras = getCameraNames().filter(Boolean);
     } else {
       // If a specific group is selected, get the cameras in that group
       const groupName = currentCamera.split("group-")[1];
       const groupDetails = templateDetails["group-" + groupName];
       if (groupDetails) {
-        groupCameras = groupDetails.groupCameras;
+        groupCameras = (groupDetails.groupCameras || []).filter(Boolean);
       } else {
         // Fallback: collect cameras belonging to the group on the fly
         groupCameras = Object.entries(templateDetails)
@@ -654,7 +654,8 @@ function playLoop() {
                 .map((s) => s.trim())
                 .includes(groupName),
           )
-          .map(([camera]) => camera);
+          .map(([camera]) => camera)
+          .filter(Boolean);
       }
     }
 
@@ -770,7 +771,8 @@ function playMP4() {
 function handleVideoEnded() {
   if (currentCamera === "All" || currentCamera.startsWith("group-")) {
     // For "All" or group options, move to the next camera
-    const groupCameras = templateDetails[currentCamera].groupCameras;
+    const groupCameras =
+      (templateDetails[currentCamera].groupCameras || []).filter(Boolean);
     const currentIndex = groupCameras.indexOf(video.dataset.currentCamera);
     const nextIndex = (currentIndex + 1) % groupCameras.length;
     const nextCamera = groupCameras[nextIndex];
@@ -902,7 +904,7 @@ function playPNG() {
   } else if (currentCamera === "All") {
     // Special handling for the "All" option
     let cameraIndex = 0;
-    const allCameras = getCameraNames();
+    const allCameras = getCameraNames().filter(Boolean);
     const refreshAllPNG = () => {
       if (cameraIndex >= allCameras.length) {
         cameraIndex = 0;
