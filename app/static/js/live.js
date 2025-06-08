@@ -673,7 +673,7 @@ function playLoop() {
         cameraIndex = 0; // Reset the index to loop through the cameras again
       }
       const cameraName = groupCameras[cameraIndex];
-      video.src = `/last_video/${cameraName}`; // Update the video source with the current camera
+      video.src = `/clip/${cameraName}`; // Update the video source with the current camera
       video.load();
       safePlay(video);
       cameraIndex++; // Move to the next camera
@@ -683,7 +683,7 @@ function playLoop() {
     video.addEventListener("ended", loopHandler); // Continue the loop when the video ends
   } else {
     // Handling for individual cameras
-    video.src = `/last_video/${currentCamera}`;
+    video.src = `/clip/${currentCamera}`;
     video.load();
     safePlay(video);
   }
@@ -777,7 +777,7 @@ function handleVideoEnded() {
     const currentIndex = groupCameras.indexOf(video.dataset.currentCamera);
     const nextIndex = (currentIndex + 1) % groupCameras.length;
     const nextCamera = groupCameras[nextIndex];
-    video.src = "/last_video/" + nextCamera;
+    video.src = "/clip/" + nextCamera;
     video.dataset.currentCamera = nextCamera;
   }
   video.load();
