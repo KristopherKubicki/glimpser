@@ -236,6 +236,7 @@ h2 {
     auto-fit,
   minmax(50px, var(--tile-size))
   ); /* Use CSS variable */
+
   gap: 3px;
   padding: 5px;
   justify-content: center;
