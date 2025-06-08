@@ -168,6 +168,9 @@ class TestMain(unittest.TestCase):
             "machine_hwaccel": False,
             "ffmpeg_hwaccel": False,
             "hwaccel_enabled": False,
+            "gpu_support": False,
+            "ffmpeg_gpu_enabled": False,
+            "danger_mode": False,
         }
         args = MagicMock()
         args.no_scheduler = False

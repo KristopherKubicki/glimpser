@@ -18,14 +18,15 @@ from app import scheduler
 from app.utils.cli import build_argument_parser, cli_help_text
 from app.utils.scheduling import get_system_metrics, stop_background_tasks
 
-banner = """
-          ____  _  _
-         / ___|| |(_)_ __ ___  _ __  ___  ___ _ __
-        | |  _ | || | '_ ` _ `| '_ `/ __|/ _ ` '__|
-        | |_| || || | | | | | | |_) `__ '  __/ |
-         `____||_||_|_| |_| |_| .__/|___/`___|_|
-                              |_|
-"""
+# Retro-styled banner printed at startup. ANSI color codes give the
+# text a light cyan glow reminiscent of early 2000s terminal apps.
+banner = rf"""\033[96m
+   ____ _ _                 ____
+  / ___| (_) ___ ___  _ __  / ___|  ___ _ ____   _____ _ __
+ | |  _| | |/ __/ _ \| '_ \ \___ \ / _ \ '__\ \ / / _ \ '__|
+ | |_| | | | (_| (_) | | | | ___) |  __/ |   \ V /  __/ |
+  \____|_|_|\___\___/|_| |_|____/ \___|_|    \_/ \___|_| v{config.VERSION}
+\033[0m"""
 
 
 def parse_arguments(arg_list=None):
@@ -291,11 +292,20 @@ def display_startup_info(args=None):
     logging.info(border)
     logging.info("Startup Configuration")
     logging.info(border)
+    # Assemble a detailed table of configuration values. Showing paths and
+    # flags together makes it easier to confirm everything is wired up
+    # correctly when Glimpser launches.
     config_table = [
         ["Version", config.VERSION],
         ["Host", config.HOST],
         ["Port", config.PORT],
         ["Debug Mode", config.DEBUG_MODE],
+        ["Log Level", config.LOG_LEVEL],
+        ["Database", config.DATABASE_PATH],
+        ["Log File", config.LOGGING_PATH],
+        ["Screenshots", config.SCREENSHOT_DIRECTORY],
+        ["Videos", config.VIDEO_DIRECTORY],
+        ["Summaries", config.SUMMARIES_DIRECTORY],
         [
             "Scheduler Enabled",
             "No" if getattr(args, "no_scheduler", False) else "Yes",
@@ -304,6 +314,10 @@ def display_startup_info(args=None):
             "Watchdog Enabled",
             "No" if getattr(args, "no_watchdog", False) else "Yes",
         ],
+        [
+            "Crawlers Enabled",
+            "No" if getattr(args, "no_crawlers", False) else "Yes",
+        ],
     ]
     logging.info("\n" + _format_table(config_table, ["Option", "Value"]))
 
@@ -311,12 +325,19 @@ def display_startup_info(args=None):
     logging.info(border)
     logging.info("System Metrics")
     logging.info(border)
+    # Capture richer runtime details so administrators have a snapshot of the
+    # environment before connecting to the web UI.
     metrics_table = [
         ["CPU Usage", f"{metrics['cpu_usage']}%"],
         ["Memory Usage", f"{metrics['memory_usage']}%"],
         ["Disk Usage", f"{metrics['disk_usage']}%"],
+        ["Open Files", metrics["open_files"]],
         ["Thread Count", metrics["thread_count"]],
-        ["FFmpeg Version", metrics["ffmpeg_version"]],
+        ["Uptime", metrics["uptime"]],
+        ["FFmpeg", metrics["ffmpeg_version"]],
+        ["HW Accel", "Yes" if metrics["hwaccel_enabled"] else "No"],
+        ["GPU Support", "Yes" if metrics["gpu_support"] else "No"],
+        ["Danger Mode", "Yes" if metrics["danger_mode"] else "No"],
     ]
     logging.info("\n" + _format_table(metrics_table, ["Metric", "Value"]))
     logging.info(border)
