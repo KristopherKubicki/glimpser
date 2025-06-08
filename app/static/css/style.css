@@ -206,27 +206,9 @@ h2 {
 #template-controls {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 5px;
   margin-bottom: 10px;
-}
-
-#controls-wrapper.closed #template-controls {
-  display: none;
-}
-
-#controls-toggle {
-  cursor: pointer;
-  font-weight: 600;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.5s;
-}
-
-#controls-wrapper.show-toggle #controls-toggle,
-#controls-wrapper:not(.closed) #controls-toggle {
-  opacity: 1;
-  pointer-events: auto;
 }
 
 #controls-wrapper {
