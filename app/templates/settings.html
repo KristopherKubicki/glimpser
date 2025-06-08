@@ -52,19 +52,8 @@
       id="{{ group|replace(' ', '-') }}-tab"
       class="tab-content{% if loop.first %} active{% endif %}"
     >
-      <details
-        class="setting-section"
-        {%
-        if
-        group
-        not
-        in
-        collapsed_groups
-        %}open{%
-        endif
-        %}
-      >
-        <summary>{{ group }} Settings</summary>
+      <section class="setting-section">
+        <h2>{{ group }} Settings</h2>
         <table class="settings-table">
           <thead>
             <tr>
@@ -147,7 +136,7 @@
             {% endfor %}
           </tbody>
         </table>
-      </details>
+      </section>
       {% if group == 'Credentials & Management' %}
       <h3>Configuration Management</h3>
       <div class="checkbox-row">
