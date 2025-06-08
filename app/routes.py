@@ -2996,6 +2996,15 @@ def init_routes(app: Flask) -> None:
 
         # Remove empty groups to avoid blank headings in the UI
         grouped_settings = {g: items for g, items in grouped_settings.items() if items}
+
+        collapsed_groups = {
+            "File Locations",
+            "Capture",
+            "Credentials",
+            "Integrations",
+            "Other",
+            "Management",
+        }
         file_location_items = [
             s
             for s in settings
@@ -3020,6 +3029,7 @@ def init_routes(app: Flask) -> None:
         return render_template(
             "settings.html",
             grouped_settings=grouped_settings,
+            collapsed_groups=collapsed_groups,
             tooltips=SETTINGS_TOOLTIPS,
             metrics=metrics,
             feeds=feeds,
