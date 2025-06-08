@@ -1,4 +1,4 @@
-# tests/retention_policy.py
+# Integration tests for retention_policy cleanup logic
 
 import unittest
 import tempfile

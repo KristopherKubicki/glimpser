@@ -1,4 +1,4 @@
-# tests/test_image_processing.py
+# Integration tests for image processing utilities and ChatGPT comparison
 
 import unittest
 import os
