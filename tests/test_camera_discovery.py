@@ -629,7 +629,6 @@ class TestCameraDiscovery(unittest.TestCase):
                 "334455": "VendorB",
                 "667788": "VendorC",
             }
-            self.assertEqual(vendors, expected)
 
         expected = {"001122": "VendorA", "334455": "VendorB", "667788": "VendorC"}
         self.assertEqual(vendors, expected)
@@ -637,4 +636,3 @@ class TestCameraDiscovery(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
