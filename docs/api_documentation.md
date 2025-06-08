@@ -4,7 +4,7 @@ This document outlines the API endpoints available in Glimpser for programmatic 
 
 ## Authentication
 
-All API requests require an API key. Include your API key in the header of each request:
+Most API requests require a valid session or API key. A few informational endpoints such as `/api/discover` and `/login` are accessible without authentication. When an API key is needed, include it in the request header:
 
 ```
 Authorization: Bearer YOUR_API_KEY
