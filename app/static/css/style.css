@@ -1073,6 +1073,22 @@ input:checked + .slider:before {
   border-radius: 50%;
 }
 
+/* Visually disable locked settings */
+.settings-table input[data-locked] + .slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-table input[data-locked]:not([type="checkbox"]) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+body.advanced-enabled .settings-table input[data-locked] {
+  opacity: 1;
+  cursor: auto;
+}
+
 .xpath-input-container input {
   width: 70%;
 }
