@@ -556,6 +556,22 @@ class TestCameraDiscovery(unittest.TestCase):
         self.assertEqual(res["stream"], "rtsp://1.2.3.4/stream")
         self.assertEqual(res["snapshot"], "http://1.2.3.4/snap.jpg")
 
+    @patch("app.utils.camera_discovery.requests.get")
+    def test_remote_vendor_lookup_success(self, mock_get):
+        camera_discovery._remote_vendor_lookup.cache_clear()
+        mock_get.return_value = SimpleNamespace(
+            status_code=200, json=lambda: {"company": "AcmeCam"}
+        )
+        vendor = camera_discovery._remote_vendor_lookup("00:11:22:33:44:55")
+        self.assertEqual(vendor, "AcmeCam")
+
+    @patch("app.utils.camera_discovery.requests.get")
+    def test_remote_vendor_lookup_failure(self, mock_get):
+        camera_discovery._remote_vendor_lookup.cache_clear()
+        mock_get.side_effect = Exception("boom")
+        vendor = camera_discovery._remote_vendor_lookup("00:11:22:33:44:55")
+        self.assertIsNone(vendor)
+
 
 if __name__ == "__main__":
     unittest.main()
