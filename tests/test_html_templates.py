@@ -76,6 +76,11 @@ class TestHtmlTemplates(unittest.TestCase):
         required = {"name", "url", "frequency", "timeout"}
         self.assertTrue(required.issubset(inputs))
 
+    def test_discover_has_existing_map_variable(self):
+        with open("app/templates/_discover_tab.html", encoding="utf-8") as f:
+            html = f.read()
+        self.assertIn("existingMap", html)
+
     def test_header_preloads_sprite(self):
         parser = parse_template(Path("app/templates/header.html"))
         expected_href = "{{ url_for('static', filename='icons/sprite.svg') }}"

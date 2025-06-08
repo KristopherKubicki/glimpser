@@ -3124,6 +3124,9 @@ def init_routes(app: Flask) -> None:
             "running": is_chrome_debug_port_open("127.0.0.1", 9222),
         }
 
+        templates = template_manager.get_templates()
+        existing_urls = {t.get("url"): n for n, t in templates.items() if t.get("url")}
+
         return render_template(
             "settings.html",
             grouped_settings=grouped_settings,
@@ -3142,6 +3145,7 @@ def init_routes(app: Flask) -> None:
             email_fields=EMAIL_FIELDS,
             locked_settings=LOCKED_SETTINGS,
             file_info=file_info,
+            existing_urls=existing_urls,
             page_title="Settings",
         )
 
@@ -3246,8 +3250,17 @@ def init_routes(app: Flask) -> None:
     @app.route("/discover", methods=["GET"])
     @login_required
     def discover_cameras_route():
+        templates = template_manager.get_templates()
+        existing_urls = {}
+        for name, t in templates.items():
+            url = t.get("url")
+            if url:
+                existing_urls[url] = name
         return render_template(
-            "discover.html", cameras=[], page_title="Discover Cameras"
+            "discover.html",
+            cameras=[],
+            existing_urls=existing_urls,
+            page_title="Discover Cameras",
         )
 
     @app.route("/discover/scan", methods=["POST"])
