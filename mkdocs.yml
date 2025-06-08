@@ -30,6 +30,8 @@ nav:
       - Docker Build Verification: docker_build.md
       - Docs Build Workflow: docs_build.md
       - CodeQL Security Scanning: codeql.md
+      - Dependency Review: dependency_review.md
+      - EthicalCheck Workflow: ethicalcheck.md
       - FAQ: faq.md
       - Getting Started: getting_started.md
       - Guided Setup: guided_setup.md

@@ -65,8 +65,12 @@ export function initNav() {
       }
     };
 
+    // Track the most recent camera list request to avoid race conditions
+    let cameraRequestId = 0;
+
     const loadNavCameras = async (group) => {
       if (!cameraDropdown) return;
+      const requestId = ++cameraRequestId;
       if (!group || group === "all") {
         cameraDropdown.style.display = "none";
         return;
@@ -78,6 +82,8 @@ export function initNav() {
         const cams = await fetchJson(
           `/templates?group=${encodeURIComponent(group)}`,
         );
+        // Ignore this response if a newer request was triggered
+        if (requestId !== cameraRequestId) return;
         if (cams) {
           Object.keys(cams)
             .sort()
@@ -91,7 +97,9 @@ export function initNav() {
       } catch (error) {
         console.error("Error loading cameras:", error);
       } finally {
-        cameraDropdown.disabled = false;
+        if (requestId === cameraRequestId) {
+          cameraDropdown.disabled = false;
+        }
       }
     };
 

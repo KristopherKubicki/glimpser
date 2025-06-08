@@ -1318,6 +1318,13 @@ footer.fade-out {
   opacity: 0.7;
 }
 
+/* Hide build info on narrow screens */
+@media (max-width: 767px) {
+  .footer-build {
+    display: none;
+  }
+}
+
 .tsv-buttons {
   display: flex;
   gap: 15px;
@@ -1483,6 +1490,18 @@ body.advanced-enabled .advanced-only {
 .error-indicator {
   text-align: center;
   color: red;
+}
+
+.network-banner {
+  background: #b80000;
+  color: #fff;
+  text-align: center;
+  padding: 4px 8px;
+  display: none;
+}
+
+.network-banner.show {
+  display: block;
 }
 
 .no-templates {

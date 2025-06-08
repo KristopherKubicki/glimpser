@@ -5,3 +5,9 @@ A simple Service Worker allows Glimpser to keep showing recent images when the n
 Requests now time out after five seconds so the UI quickly falls back to the cached pages when the server is slow or restarting.
 
 MJPEG endpoints now fall back to the oldest frame stored on disk if no recent frame is available. This means `/stream.mjpg` and related routes always yield at least one image even when the camera is offline.
+
+The interface polls `/network_status` every 10 seconds. When the request fails
+or reports the system is offline, a banner appears below the navigation bar to
+indicate Glimpser is running in offline mode. The banner has the
+`network-banner` class and is hidden until the `show` class is added. It
+disappears automatically once connectivity is restored.

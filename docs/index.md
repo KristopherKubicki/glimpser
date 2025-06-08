@@ -18,6 +18,8 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [CodeQL Security Scanning](codeql.md)
 - [Pylint Checks](pylint_checks.md)
 - [Docs Build Workflow](docs_build.md)
+- [Dependency Review](dependency_review.md)
+- [Continuous Integration Checks](ci_checks.md)
 - [System Monitoring and Logs](system_monitoring.md)
 - [Danger Mode](danger_mode.md)
 - [FAQ](faq.md)
@@ -50,6 +52,7 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [Nginx HTTP/2 Push](nginx_http2_push.md)
 - [API Resilience](api_resilience.md)
 - [OpenSSF Scorecard](scorecard.md)
+- [EthicalCheck Workflow](ethicalcheck.md)
 
 ## Dashboard Time
 
