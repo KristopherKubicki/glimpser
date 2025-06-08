@@ -74,6 +74,37 @@ class TestRetentionPolicy(unittest.TestCase):
         )
         self.assertEqual(mock_delete.call_count, 2)
 
+    def test_retention_cleanup_temp_dirs(self):
+        with tempfile.TemporaryDirectory() as video_dir, tempfile.TemporaryDirectory() as shot_dir:
+            os.makedirs(os.path.join(video_dir, "cam1"))
+            os.makedirs(os.path.join(shot_dir, "cam1"))
+            for root in (video_dir, shot_dir):
+                cam = os.path.join(root, "cam1")
+                for i in range(12):
+                    with open(os.path.join(cam, f"file{i}.txt"), "w") as f:
+                        f.write("data")
+                    time.sleep(0.01)
+
+            with patch.object(
+                retention_policy, "VIDEO_DIRECTORY", video_dir
+            ), patch.object(
+                retention_policy, "SCREENSHOT_DIRECTORY", shot_dir
+            ), patch.object(
+                retention_policy, "MAX_COMPRESSED_VIDEO_AGE", 0
+            ), patch.object(
+                retention_policy, "MAX_RAW_DATA_SIZE", 0
+            ):
+                retention_cleanup()
+
+            self.assertEqual(
+                len(os.listdir(os.path.join(video_dir, "cam1"))),
+                10,
+            )
+            self.assertEqual(
+                len(os.listdir(os.path.join(shot_dir, "cam1"))),
+                10,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
