@@ -1499,6 +1499,12 @@ details > summary {
   overflow-y: auto;
   white-space: pre-wrap;
 }
+.chat-history {
+  margin-bottom: 1rem;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
 
 .form-error {
   color: red;

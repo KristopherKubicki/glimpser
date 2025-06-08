@@ -222,9 +222,11 @@
         {% endif %} {% endfor %} {% endfor %} {% endif %}
       </tbody>
     </table>
-    <div id="chat-modal" class="modal">
+    <div id="chat-modal" class="modal" role="dialog" aria-modal="true">
       <div class="modal-content">
-        <span id="chat-close" class="close-icon">&times;</span>
+        <span id="chat-close" class="close-icon" title="Close dialog">&times;</span>
+        <h3 id="chat-title">Captions Chat</h3>
+        <div id="chat-history" class="chat-history"></div>
         <textarea
           id="chat-question"
           class="prompt-textarea"

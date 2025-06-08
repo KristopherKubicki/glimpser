@@ -27,37 +27,80 @@ export function initCaptions() {
     const chatSubmit = document.getElementById("chat-submit");
     const chatQuestion = document.getElementById("chat-question");
     const chatAnswer = document.getElementById("chat-answer");
+    const chatHistory = document.getElementById("chat-history");
+
+    const closeChat = () => {
+      if (chatModal) chatModal.style.display = "none";
+    };
 
     chatOpen?.addEventListener("click", () => {
-      if (chatModal) chatModal.style.display = "block";
+      if (chatModal) {
+        chatModal.style.display = "block";
+        if (chatQuestion) {
+          chatQuestion.value = "";
+          chatQuestion.focus();
+        }
+      }
     });
-    chatClose?.addEventListener("click", () => {
-      if (chatModal) chatModal.style.display = "none";
+    chatClose?.addEventListener("click", closeChat);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && chatModal?.style.display === "block") {
+        closeChat();
+      }
     });
-    chatSubmit?.addEventListener("click", async () => {
-      if (!chatQuestion || !chatQuestion.value) return;
+
+    const sendQuestion = async () => {
+      if (!chatQuestion || !chatQuestion.value.trim()) return;
       const start = document.getElementById("caption-start")?.value;
       const end = document.getElementById("caption-end")?.value;
-      const resp = await fetch("/captions_chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: chatQuestion.value, start, end }),
-      });
-      const data = await resp.json();
-      if (chatAnswer) {
-        chatAnswer.textContent = data.truncated
-          ? `${data.answer}\n(Input truncated)`
-          : data.answer;
+      if (chatAnswer) chatAnswer.textContent = "Thinking...";
+      try {
+        const resp = await fetch("/captions_chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: chatQuestion.value, start, end }),
+        });
+        const data = await resp.json();
+        if (chatAnswer) {
+          chatAnswer.textContent = data.truncated
+            ? `${data.answer}\n(Input truncated)`
+            : data.answer;
+        }
+        if (chatHistory) {
+          const q = document.createElement("div");
+          q.textContent = `Q: ${chatQuestion.value}`;
+          const a = document.createElement("div");
+          a.textContent = `A: ${data.answer}`;
+          chatHistory.append(q, a);
+        }
+        const table = document.querySelector("#captions-table tbody");
+        if (table && data.answer) {
+          const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+          const rowQ = document.createElement("tr");
+          const qTime = document.createElement("td");
+          qTime.textContent = now;
+          const qText = document.createElement("td");
+          qText.textContent = `Q: ${chatQuestion.value}`;
+          rowQ.append(qTime, qText);
+          const rowA = document.createElement("tr");
+          const aTime = document.createElement("td");
+          aTime.textContent = now;
+          const aText = document.createElement("td");
+          aText.textContent = `A: ${data.answer}`;
+          rowA.append(aTime, aText);
+          table.prepend(rowA);
+          table.prepend(rowQ);
+        }
+      } catch (err) {
+        if (chatAnswer) chatAnswer.textContent = "Unable to reach server";
       }
-      const table = document.querySelector("#captions-table tbody");
-      if (table && data.answer) {
-        const now = new Date().toISOString().replace("T", " ").slice(0, 19);
-        const rowQ = document.createElement("tr");
-        rowQ.innerHTML = `<td>${now}</td><td>Q: ${chatQuestion.value}</td>`;
-        const rowA = document.createElement("tr");
-        rowA.innerHTML = `<td>${now}</td><td>A: ${data.answer}</td>`;
-        table.prepend(rowA);
-        table.prepend(rowQ);
+    };
+
+    chatSubmit?.addEventListener("click", sendQuestion);
+    chatQuestion?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendQuestion();
       }
     });
 
