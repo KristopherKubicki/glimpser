@@ -217,6 +217,7 @@ SCHEDULER_API_ENABLED = True
 SCREENSHOT_DIRECTORY = "data/screenshots/"
 VIDEO_DIRECTORY = "data/video/"
 SUMMARIES_DIRECTORY = "data/summaries/"
+DOCS_DIRECTORY = "docs"
 
 # Load settings from the database
 UA = get_setting(

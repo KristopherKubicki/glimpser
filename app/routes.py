@@ -57,6 +57,7 @@ from app.config import (
     API_KEY,
     SCREENSHOT_DIRECTORY,
     VIDEO_DIRECTORY,
+    DOCS_DIRECTORY,
     VERSION,
     BACKUP_PATH,
     backup_config,
@@ -1528,6 +1529,24 @@ def init_routes(app: Flask) -> None:
     @login_required
     def help_page():
         return render_template("help.html", page_title="Help")
+
+    @app.route("/docs/<string:filename>")
+    @login_required
+    def docs_file(filename: str):
+        """Serve Markdown documentation files from the repository."""
+        if not allowed_filename(filename):
+            abort(404)
+
+        docs_path = os.path.join(
+            os.path.dirname(os.path.join(__file__)),
+            "..",
+            DOCS_DIRECTORY,
+        )
+        full_path = os.path.join(docs_path, filename)
+        if not os.path.exists(full_path):
+            abort(404)
+
+        return send_from_directory(docs_path, filename)
 
     @app.route("/cli_help")
     @login_required
