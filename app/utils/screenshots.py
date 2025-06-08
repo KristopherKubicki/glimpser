@@ -1919,7 +1919,7 @@ def get_chrome_version(chrome_path):
         chrome_version[chrome_path] = (version, time.time())
     except Exception as e:
         logging.error(f"Chrome version exception error: {e}")
-        return chrome_version.get(chrome_path, extract_version())
+        return chrome_version.get(chrome_path, extract_version(chrome_path))
 
     return int(version)
 
