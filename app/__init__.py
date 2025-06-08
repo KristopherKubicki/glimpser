@@ -251,8 +251,10 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
         """Initialize scheduler and monitoring in a low priority thread."""
         backup_config()
 
-        if schedule and (
-            os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug
+        if (
+            schedule
+            and (os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug)
+            and not scheduler.running
         ):
             scheduler.start()
             logging.info("Initializing scheduler...")
