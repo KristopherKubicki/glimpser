@@ -7,7 +7,7 @@ both themes.
 
 You can force the interface into light or dark mode using the toggle on the
 settings page. The switch stores your choice in `localStorage` so your
-preference persists across visits.
+preference persists across visits and is applied to every page you load.
 
 A new `--table-border-color` variable controls table outlines. Dark mode
 defaults to a subtle `#444` while the light theme overrides it to `#ddd`.

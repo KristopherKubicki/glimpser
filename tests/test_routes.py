@@ -298,7 +298,10 @@ class TestRoutes(unittest.TestCase):
             "captions.html",
             template_details=mock_get_templates.return_value,
             lcaptions=[],
+            latest_caption="",
             page_title="Captions",
+            cost_start=None,
+            cost_end=None,
         )
 
     @patch("app.routes.SessionLocal")
