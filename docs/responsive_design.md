@@ -3,6 +3,7 @@
 Glimpser now adapts to phones and tablets. The navigation menu collapses into a hamburger button on narrow screens and tables reflow vertically to avoid horizontal scrolling. Video grids automatically switch to a single column when viewed on devices without hover capability or small viewports.
 
 The main template view scales thumbnails with the width slider and the page now uses smooth scrolling for longer lists. Previews resize by adjusting their width and height, ensuring the full image remains visible without shifting or cropping. When a group is opened, the slider defaults to the smallest width that keeps all cameras visible without scrolling.
+The width calculation assumes a roughly square layout so four cameras appear in a 2×2 grid at minimum slider width. Thumbnails never shrink below 5% of the viewport or about 200 px to prevent unusably small previews.
 
 The header navigation also uses smaller padding so it stays out of the way on both mobile and desktop.
 

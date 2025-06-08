@@ -35,10 +35,11 @@ export function initTemplates() {
         const templateCount =
           templateList?.querySelectorAll(".templateDiv").length || 1;
 
-        // Minimum width needed to fit all tiles across the page
-        const widthForColumns = Math.ceil(window.innerWidth / templateCount);
+        // Estimate square layout so four cameras become a 2x2 grid
+        const columns = Math.ceil(Math.sqrt(templateCount));
+        const widthForColumns = Math.ceil(window.innerWidth / columns);
 
-        // Minimum width needed so combined rows fill the screen vertically
+        // Minimum width so rows also fit vertically within the viewport
         const aspectRatio = 9 / 16;
         const widthForHeight = Math.sqrt(
           (window.innerHeight * window.innerWidth) /
@@ -47,11 +48,15 @@ export function initTemplates() {
         const widthForMaxHeight = MAX_THUMBNAIL_HEIGHT / aspectRatio;
         slider.max = Math.min(slider.max, widthForMaxHeight);
 
+        // Never shrink thumbnails below 5% of the viewport or ~200px
+        const sizeFloor = Math.max(200, window.innerWidth * 0.05);
+        // Choose the larger of our safety floor or the size needed to keep
+        // all rows and columns visible without scrolling
         const computedMin = Math.max(
-          50,
+          sizeFloor,
           Math.min(
             slider.max,
-            Math.ceil(Math.max(widthForColumns, widthForHeight)),
+            Math.ceil(Math.min(widthForColumns, widthForHeight)),
           ),
         );
 
