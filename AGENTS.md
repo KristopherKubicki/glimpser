@@ -1,10 +1,13 @@
-1. Keep commits small and focused.
-2. Use conventional commit messages.
-3. Format code with `black` and/or `prettier`
-4. Run `flake8` for lint checks.
-5. Run tests with `pytest`.
-6. Document major changes in `docs/`.
-7. Summaries must cite changed files.
-8. PR description must mention test results.
-9. Explain complex logic in comments.
-10. Each PR should have a single purpose.
+Keep commits small and focused.
+Use conventional commit messages.
+Format code with `black` and/or `prettier`
+Run `flake8` for lint checks.
+Run `pre-commit run --all-files`.
+Run tests with `pytest`.
+Use `npm test` for JavaScript changes.
+Document major changes in `docs/`.
+Summaries must cite changed files.
+PR description must mention test results.
+Explain complex logic in comments.
+Each PR should have a single purpose.
+Subdirectory `AGENTS.md` files must be no more than 10 lines.

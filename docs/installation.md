@@ -7,7 +7,7 @@ This guide provides detailed instructions for installing and setting up Glimpser
 - **Architecture**: Glimpser is primarily designed for x86 architecture.
   - ARM support may require additional work and is not guaranteed.
 - **Operating System**: Linux (Ubuntu 20.04 LTS or later recommended)
-- **Python**: Version 3.8 to 3.12
+- **Python**: Version 3.8 to 3.13
 
 ## Installation Steps
 

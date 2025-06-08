@@ -17,7 +17,7 @@ class TestStatusDashboard(unittest.TestCase):
         self.session_patch = patch("app.routes.session", {"user_id": 1})
         self.login_patch.start()
         self.session_patch.start()
-        self.app = app.create_app(enable_watchdog=False, schedule=False)
+        self.app = app.create_app(enable_watchdog=False, schedule=False, log_cache=False)
         self.client = self.app.test_client()
 
     def tearDown(self):

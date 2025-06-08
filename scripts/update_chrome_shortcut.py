@@ -97,5 +97,35 @@ def shortcuts_need_patch() -> bool:
     return False
 
 
+def first_shortcut_path() -> Path | None:
+    """Return the first Chrome shortcut found in standard locations."""
+    if os.name != "nt" or win32com is None:
+        return None
+
+    shell = win32com.client.Dispatch("WScript.Shell")
+    locations = [
+        Path(os.environ.get("USERPROFILE", "")) / "Desktop",
+        Path(os.environ.get("APPDATA", ""))
+        / "Microsoft"
+        / "Windows"
+        / "Start Menu"
+        / "Programs",
+        Path(os.environ.get("ProgramData", ""))
+        / "Microsoft"
+        / "Windows"
+        / "Start Menu"
+        / "Programs",
+    ]
+
+    for loc in locations:
+        if loc.exists():
+            for shortcut in loc.rglob("*.lnk"):
+                if "chrome" in shortcut.name.lower():
+                    # Touching the shortcut ensures it resolves correctly
+                    shell.CreateShortcut(str(shortcut))
+                    return shortcut
+    return None
+
+
 if __name__ == "__main__":  # pragma: no cover - manual usage
     sys.exit(0 if update_chrome_shortcuts() else 1)

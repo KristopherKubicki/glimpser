@@ -1,19 +1,36 @@
 let cpuData = [];
 const maxDataPoints = 60;
 
+function setProgress(el, value) {
+  if (!el) return;
+  if (el.tagName === "PROGRESS") {
+    el.value = value;
+  } else {
+    el.style.width = `${value}%`;
+  }
+}
+
 export function updatePerformanceMetrics() {
   return fetch("/health")
     .then((response) => response.json())
     .then((data) => {
       const cpuVal = document.getElementById("cpu-value");
       if (cpuVal) cpuVal.textContent = `${data.cpu_usage}%`;
-      const cpuBar = document.getElementById("cpu-bar");
-      if (cpuBar) cpuBar.style.width = `${data.cpu_usage}%`;
+      setProgress(document.getElementById("cpu-bar"), data.cpu_usage);
 
       const memoryVal = document.getElementById("memory-value");
       if (memoryVal) memoryVal.textContent = `${data.memory_usage}%`;
-      const memoryBar = document.getElementById("memory-bar");
-      if (memoryBar) memoryBar.style.width = `${data.memory_usage}%`;
+      setProgress(document.getElementById("memory-bar"), data.memory_usage);
+
+      const diskVal = document.getElementById("disk-value");
+      if (diskVal) diskVal.textContent = `${data.disk_usage}%`;
+      setProgress(document.getElementById("disk-bar"), data.disk_usage);
+
+      const openFiles = document.getElementById("open-files");
+      if (openFiles) openFiles.textContent = data.open_files;
+
+      const threadCount = document.getElementById("thread-count");
+      if (threadCount) threadCount.textContent = data.thread_count;
 
       const uptimeVal = document.getElementById("uptime-value");
       if (uptimeVal) uptimeVal.textContent = data.uptime;
