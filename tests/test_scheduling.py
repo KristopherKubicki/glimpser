@@ -4,7 +4,6 @@ import unittest
 from unittest.mock import patch, MagicMock
 import sys
 import os
-import logging
 import tempfile
 from datetime import datetime, timedelta
 from PIL import Image
@@ -13,7 +12,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from app.utils.scheduling import (
     scheduler,
-    schedule_crawlers,
     start_log_caching,
     find_closest_image,
 )
