@@ -3404,8 +3404,12 @@ def init_routes(app: Flask) -> None:
         costs = {
             name: template_manager.get_llm_cost_estimate(name) for name in templates
         }
+        start_time = int(scheduling.system_metrics.get("start_time", time.time()))
         return render_template(
-            "cost_summary.html", costs=costs, page_title="LLM Cost Summary"
+            "cost_summary.html",
+            costs=costs,
+            start_time=start_time,
+            page_title="LLM Cost Summary",
         )
 
     @app.route("/api/llm_cost_summary")
@@ -3415,7 +3419,10 @@ def init_routes(app: Flask) -> None:
         end = request.args.get("end")
         templates = template_manager.get_templates()
         costs = {
-            name: template_manager.get_llm_cost_estimate(name) for name in templates
+            name: template_manager.get_llm_cost_estimate(
+                name, start_date=start, end_date=end
+            )
+            for name in templates
         }
         return jsonify(costs)
 

@@ -7,8 +7,9 @@ Use the captions page to view each template's estimated cost.
 An overall cost summary now appears under **Settings → Costs**.
 
 An additional **LLM Cost Summary** page now provides a date range picker to
-review costs for a specific period. Open the page from the navigation bar and
-select your desired start and end dates.
+review costs for a specific period. Use the **Since Last Restart** shortcut to
+fill the start date with the server start time. A pie chart shows how costs are
+distributed across templates.
 
 ## LLM Response Cache
 

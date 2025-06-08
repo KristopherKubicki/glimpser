@@ -1,38 +1,36 @@
-{% extends 'base.html' %}
-{% block content %}
+{% extends 'base.html' %} {% from 'components.html' import card %} {% block
+content %}
 <h1>LLM Cost Summary</h1>
+{% call card('Select Range') %}
 <form id="cost-form" class="cost-form">
   <label for="start-date">From:</label>
   <input type="date" id="start-date" name="start" />
   <label for="end-date">To:</label>
   <input type="date" id="end-date" name="end" />
+  <button type="button" id="since-restart">Since Last Restart</button>
   <button type="button" id="load-cost">Load</button>
 </form>
+{% endcall %}
+<canvas id="costChart" width="400" height="300"></canvas>
 <table id="cost-table" class="cost-table">
   <thead>
-    <tr><th>Template</th><th>LLM Cost</th></tr>
+    <tr>
+      <th>Template</th>
+      <th>LLM Cost</th>
+    </tr>
   </thead>
   <tbody>
     {% for name, cost in costs.items() %}
-    <tr><td>{{ name }}</td><td>{{ cost }}</td></tr>
+    <tr>
+      <td>{{ name }}</td>
+      <td>{{ cost }}</td>
+    </tr>
     {% endfor %}
   </tbody>
 </table>
-<script>
-  document.getElementById('load-cost').addEventListener('click', function () {
-    const start = document.getElementById('start-date').value;
-    const end = document.getElementById('end-date').value;
-    fetch(`/api/llm_cost_summary?start=${start}&end=${end}`)
-      .then(resp => resp.json())
-      .then(data => {
-        const tbody = document.querySelector('#cost-table tbody');
-        tbody.innerHTML = '';
-        for (const name in data) {
-          const row = document.createElement('tr');
-          row.innerHTML = `<td>${name}</td><td>${data[name]}</td>`;
-          tbody.appendChild(row);
-        }
-      });
-  });
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module">
+  import { initCostSummary } from '{{ url_for('static', filename='js/costs.js') }}';
+  initCostSummary({{ start_time }});
 </script>
 {% endblock %}
