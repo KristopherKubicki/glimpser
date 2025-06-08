@@ -132,6 +132,8 @@ Settings controlling how frames are captured from video sources:
 - `WATCHDOG_FAILURE_THRESHOLD` – number of failed health checks before a restart (default `3`)
 - `WATCHDOG_RESTART_COOLDOWN` – cooldown period between restarts in seconds (default `900`)
 - `WATCHDOG_MAX_FILE_HANDLES` – open file handle limit before triggering a restart (default `1000`)
+- `WATCHDOG_CPU_THRESHOLD` – CPU usage percentage that triggers open-file checks (default `80`)
+- `WATCHDOG_MEMORY_THRESHOLD` – memory usage percentage that triggers open-file checks (default `80`)
 - `DISCOVERY_AUTOSTART` – run hourly background discovery automatically (default `False`)
 
 ### Stealth Browser Defaults
@@ -158,5 +160,6 @@ Additional variables control AI behaviour and external tools:
 - `FFMPEG_THREADS` – number of threads ffmpeg uses when encoding (default `5`)
 - `CLIP_MODEL_NAME` – CLIP model used for object filtering (default `openai/clip-vit-base-patch32`)
   Example: `openai/clip-vit-large-patch14`
+  This setting is read-only until Advanced Options are enabled.
 
 Refer to the code comments in `app/config.py` for full details on each setting.

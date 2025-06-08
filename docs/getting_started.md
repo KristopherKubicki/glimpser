@@ -4,7 +4,7 @@ This guide will walk you through the process of setting up Glimpser and running 
 
 ## Prerequisites
 
-- Python 3.8 to 3.12
+- Python 3.8 to 3.13
 - Git (for cloning the repository)
 
 ## Installation

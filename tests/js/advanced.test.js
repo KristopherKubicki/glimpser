@@ -2,6 +2,7 @@ import { jest } from "@jest/globals";
 
 document.body.innerHTML = `
   <input id="advanced-toggle" type="checkbox" />
+  <input id="locked" data-locked />
 `;
 
 let initAdvanced;
@@ -32,4 +33,15 @@ test("initial state reads from sessionStorage", () => {
   document.dispatchEvent(new Event("DOMContentLoaded"));
   expect(document.body.classList.contains("advanced-enabled")).toBe(true);
   expect(document.getElementById("advanced-toggle").checked).toBe(true);
+});
+
+test("locked inputs toggle disabled state", () => {
+  initAdvanced();
+  document.dispatchEvent(new Event("DOMContentLoaded"));
+  const toggle = document.getElementById("advanced-toggle");
+  const locked = document.getElementById("locked");
+  expect(locked.disabled).toBe(true);
+  toggle.checked = true;
+  toggle.dispatchEvent(new Event("change"));
+  expect(locked.disabled).toBe(false);
 });

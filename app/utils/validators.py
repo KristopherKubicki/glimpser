@@ -3,6 +3,7 @@
 from werkzeug.utils import secure_filename
 import re
 from urllib.parse import urlparse
+from ipaddress import ip_address
 
 
 def is_bool_string(value: object) -> bool:
@@ -67,6 +68,30 @@ def validate_url(url: str | None) -> str | None:
         return None
 
     return url
+
+
+def _is_private_host(host: str) -> bool:
+    """Return ``True`` when *host* is a private or local address."""
+
+    if host in {"localhost", "127.0.0.1", "::1"}:
+        return True
+    try:
+        ip = ip_address(host)
+    except ValueError:  # not an IP address
+        return host.endswith(".local")
+    return ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_link_local
+
+
+def is_public_url(url: str) -> bool:
+    """Return ``True`` when *url* points to a non-local address."""
+
+    try:
+        host = urlparse(url).hostname
+    except Exception:
+        return False
+    if not host:
+        return False
+    return not _is_private_host(host)
 
 
 def validate_template_name(template_name: str):

@@ -736,20 +736,27 @@ block content %}
   }
 
   function openModal(id) {
+    const target = document.getElementById(id);
+    if (!target) return;
+    const currentlyVisible = target.style.display === "block";
     document.querySelectorAll(".modal").forEach((m) => {
       m.style.display = "none";
     });
-    document.getElementById(id).style.display = "block";
+    if (!currentlyVisible) {
+      target.style.display = "block";
+      document.querySelector(".template-actions")?.classList.remove("fade-out");
+    } else {
+      document.querySelector(".template-actions")?.classList.remove("fade-out");
+    }
   }
 
   function closeGenericModal(id) {
     document.getElementById(id).style.display = "none";
+    document.querySelector(".template-actions")?.classList.remove("fade-out");
   }
 </script>
 
 <div class="template-actions fade-out">
-  <p><strong>Last Caption:</strong> {{ template_details.last_caption }}</p>
-  <p><strong>Caption Time:</strong> {{ template_details.last_caption_time }}</p>
   <button onclick="openModal('videos-modal')" title="Show recent videos">
     Recent Videos
   </button>
@@ -759,6 +766,8 @@ block content %}
   <button onclick="openModal('edit-template-modal')" title="Edit this template">
     Edit Template
   </button>
+  <p><strong>Last Caption:</strong> {{ template_details.last_caption }}</p>
+  <p><strong>Caption Time:</strong> {{ template_details.last_caption_time }}</p>
 </div>
 
 <script>
@@ -766,16 +775,24 @@ block content %}
     const actions = document.querySelector(".template-actions");
     if (!actions) return;
     let fadeTimeout;
+    const modalVisible = () =>
+      Array.from(document.querySelectorAll(".modal")).some(
+        (m) => m.style.display === "block",
+      );
     const show = () => {
       actions.classList.remove("fade-out");
       clearTimeout(fadeTimeout);
-      fadeTimeout = setTimeout(() => actions.classList.add("fade-out"), 3000);
+      if (!modalVisible()) {
+        fadeTimeout = setTimeout(() => actions.classList.add("fade-out"), 3000);
+      }
     };
     ["mouseenter", "mousemove"].forEach((evt) => {
       actions.addEventListener(evt, show);
     });
     actions.addEventListener("mouseleave", () => {
-      fadeTimeout = setTimeout(() => actions.classList.add("fade-out"), 3000);
+      if (!modalVisible()) {
+        fadeTimeout = setTimeout(() => actions.classList.add("fade-out"), 3000);
+      }
     });
     show();
   });

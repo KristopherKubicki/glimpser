@@ -45,7 +45,7 @@ class ServerThread(Thread):
 
 @pytest.fixture(scope="module")
 def live_server(tmp_path_factory):
-    application = app.create_app(enable_watchdog=False, schedule=False)
+    application = app.create_app(enable_watchdog=False, schedule=False, log_cache=False)
     data_dir = tmp_path_factory.mktemp("data")
     prev_cwd = os.getcwd()
     os.chdir(data_dir)
@@ -134,7 +134,7 @@ def live_server_with_user(tmp_path_factory):
     )
     generate_credentials.generate_credentials(args)
 
-    application = app.create_app(enable_watchdog=False, schedule=False)
+    application = app.create_app(enable_watchdog=False, schedule=False, log_cache=False)
     prev_cwd = os.getcwd()
     os.chdir(data_dir)
     server = ServerThread(application)

@@ -9,6 +9,7 @@ import re
 import psutil
 import threading
 import time
+import select
 import multiprocessing
 from collections import deque
 import subprocess
@@ -33,8 +34,9 @@ from app.config import (
     get_setting,
 )
 from app.utils.db import SessionLocal
-from app.models import Summary
+from app.models import Summary, OfflineJob
 from .network import is_system_online
+import importlib
 
 from .detect import calculate_difference_fast
 from .image_processing import chatgpt_compare
@@ -125,6 +127,22 @@ def run_with_timeout(func, args=(), timeout=300):
                 mark_offline(args[0])
             except Exception:
                 pass
+        session = SessionLocal()
+        try:
+            session.add(
+                OfflineJob(
+                    function=f"{func.__module__}.{func.__name__}",
+                    args=json.dumps(list(args)),
+                    timeout=timeout,
+                    timestamp=int(time.time()),
+                )
+            )
+            session.commit()
+        except Exception as exc:
+            session.rollback()
+            logging.error("Failed to queue offline job: %s", exc)
+        finally:
+            session.close()
         return
 
     try:
@@ -1033,8 +1051,12 @@ def ffmpeg_supports_hwaccel() -> bool:
 
 
 def collect_system_metrics():
+    """Continuously update CPU and memory metrics."""
+    # Prime psutil's CPU measurement to avoid blocking on the first call
+    psutil.cpu_percent(interval=None)
     while not stop_event.is_set():
-        system_metrics["cpu_usage"] = psutil.cpu_percent(interval=1)
+        # Non-blocking call since we primed above
+        system_metrics["cpu_usage"] = psutil.cpu_percent(interval=None)
         system_metrics["memory_usage"] = psutil.virtual_memory().percent
         system_metrics["thread_count"] = threading.active_count()
         time.sleep(5)  # Collect metrics every 5 seconds
@@ -1085,32 +1107,34 @@ def cache_logs():
             file.seek(0, os.SEEK_END)  # Start at end of file
             while not stop_event.is_set():
                 new_log = file.readline()
-                if new_log:
-                    with log_cache_lock:
-                        truncated_log = (
-                            new_log[:500] + "..." if len(new_log) > 500 else new_log
-                        )
-                        log_parts = truncated_log.strip().split(" - ", 3)
-                        if len(log_parts) >= 4:
-                            timestamp_str, log_level, log_source, log_message = (
-                                log_parts
+                if not new_log:
+                    # Avoid busy looping when no new log lines are written.
+                    time.sleep(1)
+                    # The file may have been truncated. Seek to end and retry.
+                    file.seek(0, os.SEEK_END)
+                    continue
+
+                with log_cache_lock:
+                    truncated_log = (
+                        new_log[:500] + "..." if len(new_log) > 500 else new_log
+                    )
+                    log_parts = truncated_log.strip().split(" - ", 3)
+                    if len(log_parts) >= 4:
+                        timestamp_str, log_level, log_source, log_message = log_parts
+                        try:
+                            timestamp = datetime.datetime.strptime(
+                                timestamp_str, "%Y-%m-%d %H:%M:%S,%f"
                             )
-                            try:
-                                timestamp = datetime.datetime.strptime(
-                                    timestamp_str, "%Y-%m-%d %H:%M:%S,%f"
-                                )
-                                log_cache.append(
-                                    {
-                                        "timestamp": timestamp,
-                                        "level": log_level,
-                                        "source": log_source,
-                                        "message": log_message,
-                                    }
-                                )
-                            except ValueError:
-                                continue  # Skip incorrect timestamp format
-                else:
-                    time.sleep(1)  # Sleep briefly to avoid high CPU usage
+                            log_cache.append(
+                                {
+                                    "timestamp": timestamp,
+                                    "level": log_level,
+                                    "source": log_source,
+                                    "message": log_message,
+                                }
+                            )
+                        except ValueError:
+                            continue  # Skip incorrect timestamp format
     except Exception as e:
         logging.error(f"Error in cache_logs: {e}")
 
@@ -1372,3 +1396,44 @@ def stop_discovery() -> None:
         scheduler.remove_job("background_discovery")
     except Exception:
         pass
+
+
+def process_offline_jobs() -> None:
+    """Run any jobs queued while the system was offline."""
+
+    if not is_system_online():
+        return
+
+    session = SessionLocal()
+    try:
+        jobs = session.query(OfflineJob).order_by(OfflineJob.id).all()
+        for job in jobs:
+            try:
+                module_name, func_name = job.function.rsplit(".", 1)
+                mod = importlib.import_module(module_name)
+                func = getattr(mod, func_name)
+                run_with_timeout(
+                    func, args=tuple(json.loads(job.args)), timeout=job.timeout
+                )
+                session.delete(job)
+                session.commit()
+            except Exception as exc:
+                session.rollback()
+                logging.error("Failed to run offline job %s: %s", job.id, exc)
+    finally:
+        session.close()
+
+
+def schedule_offline_job_processor() -> None:
+    """Schedule periodic processing of queued offline jobs."""
+
+    try:
+        scheduler.add_job(
+            func=process_offline_jobs,
+            trigger="interval",
+            seconds=30,
+            id="process_offline_jobs",
+            replace_existing=True,
+        )
+    except Exception as e:
+        logging.error("job schedule error: %s", e)

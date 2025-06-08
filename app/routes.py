@@ -89,6 +89,7 @@ from app.utils.settings_tooltips import (
     SETTINGS_CHOICES,
     NUMERIC_FIELDS,
     EMAIL_FIELDS,
+    LOCKED_SETTINGS,
 )
 
 from app.utils.screenshots import (
@@ -97,6 +98,17 @@ from app.utils.screenshots import (
     capture_frame_from_stream,
 )
 from app.utils.network import is_system_online
+
+# Names of settings that store file paths.
+FILE_LOCATION_NAMES = [
+    "DATABASE_PATH",
+    "LOGGING_PATH",
+    "BACKUP_PATH",
+    "SCREENSHOT_DIRECTORY",
+    "VIDEO_DIRECTORY",
+    "SUMMARIES_DIRECTORY",
+]
+
 from app.utils.db import SessionLocal, engine
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 import sqlite3
@@ -125,11 +137,13 @@ from app.utils.profiling import profile_route, get_latency_stats
 from scripts.update_chrome_shortcut import (
     update_chrome_shortcuts_info,
     shortcuts_need_patch,
+    first_shortcut_path,
 )
 from app.utils.screenshots import (
     is_chrome_debug_port_open,
     check_user_activity,
     get_chrome_path,
+    get_chrome_version,
     load_font,
 )
 from app.utils.email_alerts import send_email_alert
@@ -145,12 +159,18 @@ def restart_server() -> None:
         time.sleep(1)  # 1-second delay
         os.execv(sys.executable, [sys.executable] + sys.argv)
 
-    # Start the delayed restart in a separate thread
-    restart_thread = Thread(target=delayed_restart)
+    # Start the delayed restart in a daemon thread so the response returns
+    restart_thread = Thread(target=delayed_restart, daemon=True)
     restart_thread.start()
 
 
 class TemplateName:
+    """Validated wrapper for template names.
+
+    Ensures that only names passing ``validate_template_name`` are
+    accepted when referencing templates in routes.
+    """
+
     def __init__(self, name: str):
         if not self.validate(name):
             raise ValueError(f"Invalid template name: {name}")
@@ -411,8 +431,18 @@ def file_location_metrics(
     return metrics
 
 
-def update_setting(name: str, value: str) -> bool:
-    """Persist a configuration ``name`` and ``value`` to the database."""
+def update_setting(name: str, value: str, restart: bool = True) -> bool:
+    """Persist a configuration ``name`` and ``value`` to the database.
+
+    Parameters
+    ----------
+    name : str
+        Setting name.
+    value : str
+        New setting value.
+    restart : bool, optional
+        Restart the server after updating the setting. Defaults to ``True``.
+    """
 
     name = name.replace("'", "")[:32]
     value = value.replace("'", "")[:1024]
@@ -454,7 +484,7 @@ def update_setting(name: str, value: str) -> bool:
     finally:
         session.close()
 
-    if delta is True:
+    if delta is True and restart:
         # Trigger server restart
         # is there a way to do this on a delay?
         restart_server()
@@ -462,8 +492,20 @@ def update_setting(name: str, value: str) -> bool:
     return True
 
 
-def generate_video_stream(video_path: str) -> Generator[bytes, None, None]:
-    """Yield video data from ``video_path`` in chunks indefinitely."""
+def generate_video_stream(
+    video_path: str, *, reopen_delay: float = 0.1
+) -> Generator[bytes, None, None]:
+    """Yield video data from ``video_path`` in chunks indefinitely.
+
+    Parameters
+    ----------
+    video_path : str
+        Path to the video file to stream.
+    reopen_delay : float, optional
+        Time to wait after reaching the end of the file before reopening it.
+        This prevents tight loops from consuming CPU when the file ends.
+        Defaults to ``0.1`` seconds.
+    """
 
     # The video preview on the UI expects an infinite generator. Read the
     # file in 1MB increments and loop back to the beginning once no more
@@ -484,6 +526,7 @@ def generate_video_stream(video_path: str) -> Generator[bytes, None, None]:
 
         # Immediately loop back and stream again so the client sees a
         # seamless loop without gaps.
+        time.sleep(reopen_delay)
         logging.debug("Restarting video stream")
 
 
@@ -1216,6 +1259,8 @@ def init_routes(app: Flask) -> None:
                 "ready": port_open and idle and enabled,
                 "browser": os.path.basename(browser_path) if browser_path else None,
                 "path": browser_path,
+                "version": get_chrome_version(browser_path) if browser_path else None,
+                "shortcut": str(first_shortcut_path() or ""),
                 "patched": patched,
             }
         )
@@ -1301,10 +1346,10 @@ def init_routes(app: Flask) -> None:
             job = scheduling.scheduler.get_job("background_discovery")
             if job:
                 scheduling.stop_discovery()
-                update_setting("DISCOVERY_AUTOSTART", "False")
+                update_setting("DISCOVERY_AUTOSTART", "False", restart=False)
                 return jsonify({"status": "stopped"})
             scheduling.schedule_discovery()
-            update_setting("DISCOVERY_AUTOSTART", "True")
+            update_setting("DISCOVERY_AUTOSTART", "True", restart=False)
             return jsonify({"status": "running"})
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
@@ -1364,25 +1409,25 @@ def init_routes(app: Flask) -> None:
                     "path": "/health",
                     "method": "GET",
                     "description": "Check the health status of the API",
-                    "authentication_required": False,
+                    "authentication_required": True,
                 },
                 {
                     "path": "/danger_status",
                     "method": "GET",
                     "description": "Check if Danger mode is ready",
-                    "authentication_required": False,
+                    "authentication_required": True,
                 },
                 {
                     "path": "/captions_status",
                     "method": "GET",
                     "description": "Get the most recent caption and timestamp",
-                    "authentication_required": False,
+                    "authentication_required": True,
                 },
                 {
                     "path": "/discovery_status",
                     "method": "GET",
                     "description": "Check background discovery status",
-                    "authentication_required": False,
+                    "authentication_required": True,
                 },
                 {
                     "path": "/api/discover",
@@ -1813,6 +1858,7 @@ def init_routes(app: Flask) -> None:
             "TEARDOWN",
         ],
     )
+    @login_required
     def handle_rtsp():
 
         session_id = request.headers.get("Session", str(uuid.uuid4()))
@@ -1913,6 +1959,7 @@ def init_routes(app: Flask) -> None:
         return "Method Not Allowed", 405
 
     @app.route("/stream.mjpg", methods=["GET"])
+    @login_required
     def stream_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
@@ -1926,6 +1973,7 @@ def init_routes(app: Flask) -> None:
         )
 
     @app.route("/motion.mjpg", methods=["GET"])
+    @login_required
     def motion_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
@@ -1939,6 +1987,7 @@ def init_routes(app: Flask) -> None:
         )
 
     @app.route("/caption.mjpg", methods=["GET"])
+    @login_required
     def caption_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
@@ -1953,6 +2002,7 @@ def init_routes(app: Flask) -> None:
         )
 
     @app.route("/internal_caption.mjpg", methods=["GET"])
+    @login_required
     def internal_caption_mjpg():
         return Response(
             generate_caption_loop(),
@@ -1960,6 +2010,7 @@ def init_routes(app: Flask) -> None:
         )
 
     @app.route("/motion_caption.mjpg", methods=["GET"])
+    @login_required
     def motion_caption_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
@@ -3030,22 +3081,23 @@ def init_routes(app: Flask) -> None:
             if not placed:
                 grouped_settings["Other"].append(setting)
 
+        if "Integrations & Other" in grouped_settings:
+            grouped_settings["Integrations & Other"].extend(
+                grouped_settings.get("Other", [])
+            )
+        else:
+            grouped_settings["Integrations & Other"] = grouped_settings.get("Other", [])
+        grouped_settings.pop("Other", None)
+
         # Remove empty groups to avoid blank headings in the UI
         grouped_settings = {g: items for g, items in grouped_settings.items() if items}
 
         collapsed_groups = {
-            "File Locations",
             "Capture",
-            "Credentials",
-            "Integrations",
-            "Other",
-            "Management",
+            "Credentials & Management",
+            "Integrations & Other",
         }
-        file_location_items = [
-            s
-            for s in settings
-            if s["name"] in SETTINGS_GROUPS.get("File Locations", [])
-        ]
+        file_location_items = [s for s in settings if s["name"] in FILE_LOCATION_NAMES]
         file_info = file_location_metrics(file_location_items)
 
         metrics = scheduling.get_system_metrics()
@@ -3058,6 +3110,8 @@ def init_routes(app: Flask) -> None:
         danger_info = {
             "browser": os.path.basename(chrome_path) if chrome_path else "N/A",
             "path": chrome_path or "N/A",
+            "version": get_chrome_version(chrome_path) if chrome_path else "N/A",
+            "shortcut": str(first_shortcut_path() or "N/A"),
             "patched": not shortcuts_need_patch(),
             "running": is_chrome_debug_port_open("127.0.0.1", 9222),
         }
@@ -3078,6 +3132,7 @@ def init_routes(app: Flask) -> None:
             danger_enabled=danger_enabled,
             numeric_fields=NUMERIC_FIELDS,
             email_fields=EMAIL_FIELDS,
+            locked_settings=LOCKED_SETTINGS,
             file_info=file_info,
             page_title="Settings",
         )
@@ -3359,8 +3414,12 @@ def init_routes(app: Flask) -> None:
         costs = {
             name: template_manager.get_llm_cost_estimate(name) for name in templates
         }
+        start_time = int(scheduling.system_metrics.get("start_time", time.time()))
         return render_template(
-            "cost_summary.html", costs=costs, page_title="LLM Cost Summary"
+            "cost_summary.html",
+            costs=costs,
+            start_time=start_time,
+            page_title="LLM Cost Summary",
         )
 
     @app.route("/api/llm_cost_summary")
@@ -3370,7 +3429,10 @@ def init_routes(app: Flask) -> None:
         end = request.args.get("end")
         templates = template_manager.get_templates()
         costs = {
-            name: template_manager.get_llm_cost_estimate(name) for name in templates
+            name: template_manager.get_llm_cost_estimate(
+                name, start_date=start, end_date=end
+            )
+            for name in templates
         }
         return jsonify(costs)
 

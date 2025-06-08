@@ -206,27 +206,9 @@ h2 {
 #template-controls {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 5px;
   margin-bottom: 10px;
-}
-
-#controls-wrapper:not([open]) #template-controls {
-  display: none;
-}
-
-#controls-wrapper summary {
-  cursor: pointer;
-  font-weight: 600;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.5s;
-}
-
-#controls-wrapper.show-summary summary,
-#controls-wrapper[open] summary {
-  opacity: 1;
-  pointer-events: auto;
 }
 
 #controls-wrapper {
@@ -442,6 +424,18 @@ body.light-mode {
   --table-row-alt-bg-color: #fafafa;
   --table-hover-bg-color: #e0e0e0;
   --table-border-color: #ddd;
+}
+
+body.dark-mode {
+  --bg-color: rgb(16, 16, 16);
+  --secondary-bg-color: #222;
+  --text-color: rgb(191, 191, 191);
+  --form-bg-color: var(--secondary-bg-color);
+  --form-text-color: var(--text-color);
+  --table-header-bg-color: #2a2a2a;
+  --table-row-alt-bg-color: #1a1a1a;
+  --table-hover-bg-color: #333;
+  --table-border-color: #444;
 }
 
 .camera-name,
@@ -1073,6 +1067,22 @@ input:checked + .slider:before {
   border-radius: 50%;
 }
 
+/* Visually disable locked settings */
+.settings-table input[data-locked] + .slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-table input[data-locked]:not([type="checkbox"]) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+body.advanced-enabled .settings-table input[data-locked] {
+  opacity: 1;
+  cursor: auto;
+}
+
 .xpath-input-container input {
   width: 70%;
 }
@@ -1109,6 +1119,7 @@ input:checked + .slider:before {
   flex-direction: row;
   align-items: center;
   gap: 0.5rem;
+  max-width: 80vw;
   background-color: rgba(0, 0, 0, 0.7);
   color: #fff;
   padding: 0.25rem 0.5rem;
@@ -1877,16 +1888,10 @@ details > summary {
   margin: 0 auto;
 }
 
-.settings-help-table details {
-  border: 1px solid var(--table-border-color);
-  padding: 4px;
-  border-radius: 4px;
-  margin: 4px 0;
-}
-
-.settings-help-table summary {
+.settings-help-table strong {
   color: var(--accent-color);
-  cursor: pointer;
+  display: block;
+  margin-bottom: 4px;
 }
 
 .settings-page input[type="text"] {

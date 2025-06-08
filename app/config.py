@@ -363,6 +363,8 @@ HEALTH_STATUS_ALWAYS_VISIBLE = (
 WATCHDOG_FAILURE_THRESHOLD = int(get_setting("WATCHDOG_FAILURE_THRESHOLD", 3))
 WATCHDOG_RESTART_COOLDOWN = int(get_setting("WATCHDOG_RESTART_COOLDOWN", 900))
 WATCHDOG_MAX_FILE_HANDLES = int(get_setting("WATCHDOG_MAX_FILE_HANDLES", 1000))
+WATCHDOG_CPU_THRESHOLD = int(get_setting("WATCHDOG_CPU_THRESHOLD", 80))
+WATCHDOG_MEMORY_THRESHOLD = int(get_setting("WATCHDOG_MEMORY_THRESHOLD", 80))
 
 # Background discovery runs on a schedule when enabled.  Set this
 # to ``True`` to run an hourly scan automatically.

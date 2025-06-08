@@ -1,48 +1,25 @@
 export function initControlsDropdown() {
   document.addEventListener("DOMContentLoaded", () => {
-    const details = document.getElementById("controls-wrapper");
-    if (!details) return;
+    const wrapper = document.getElementById("controls-wrapper");
+    if (!wrapper) return;
 
-    let hideTimeout;
-    let buttonTimeout;
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    if (isMobile) {
+      return;
+    }
 
-    const showButton = () => {
-      details.classList.add("show-summary");
-      clearTimeout(buttonTimeout);
-      if (!details.open) {
-        buttonTimeout = setTimeout(
-          () => details.classList.remove("show-summary"),
-          3000,
-        );
-      }
-    };
-
-    const scheduleHide = () => {
-      clearTimeout(hideTimeout);
-      hideTimeout = setTimeout(() => {
-        details.classList.add("fade-out");
-        setTimeout(() => {
-          details.removeAttribute("open");
-          details.classList.remove("fade-out");
-          showButton();
-        }, 500);
-      }, 5000);
-    };
-
+    let fadeTimeout;
     const showControls = () => {
-      if (!details.open) return;
-      details.classList.remove("fade-out");
-      showButton();
-      scheduleHide();
+      wrapper.classList.remove("fade-out");
+      clearTimeout(fadeTimeout);
+      fadeTimeout = setTimeout(() => wrapper.classList.add("fade-out"), 3000);
     };
-
-    details.addEventListener("toggle", showControls);
-
-    if (details.open) showControls();
-    else showButton();
 
     ["mousemove", "scroll"].forEach((evt) => {
-      document.addEventListener(evt, showButton);
+      document.addEventListener(evt, showControls);
     });
+    wrapper.addEventListener("mouseover", showControls);
+
+    showControls();
   });
 }

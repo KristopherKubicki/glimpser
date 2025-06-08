@@ -6,6 +6,7 @@ export function initThemeToggle() {
 
     const applyTheme = (theme) => {
       document.body.classList.toggle("light-mode", theme === "light");
+      document.body.classList.toggle("dark-mode", theme === "dark");
       if (useEl) {
         useEl.setAttribute(
           "href",
@@ -14,19 +15,21 @@ export function initThemeToggle() {
       }
     };
 
-    let current =
-      localStorage.getItem("theme") ||
-      (window.matchMedia("(prefers-color-scheme: light)").matches
-        ? "light"
-        : "dark");
+    let current = localStorage.getItem("theme");
+    if (!current) {
+      current = "dark";
+      localStorage.setItem("theme", current);
+    }
     applyTheme(current);
 
     if (toggle) {
       toggle.addEventListener("click", (e) => {
         e.preventDefault();
+        e.stopPropagation();
         current = current === "light" ? "dark" : "light";
         localStorage.setItem("theme", current);
         applyTheme(current);
+        document.querySelector('.tab-link[data-tab="General-tab"]')?.click();
       });
     }
   });

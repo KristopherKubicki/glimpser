@@ -8,12 +8,14 @@ This guide provides a high-level look at Glimpser's core components and how they
 - Loads configuration values and sets up logging.
 - Initializes routes from `app/routes.py`.
 - Starts the background scheduler and optional watchdog thread.
-  The watchdog performs health checks and only triggers a restart after a
-  configurable number of failures. Tune `WATCHDOG_FAILURE_THRESHOLD`,
-  `WATCHDOG_RESTART_COOLDOWN`, and `WATCHDOG_MAX_FILE_HANDLES` to adjust
-  this behaviour. When repeated failures occur the watchdog calls
-  `sys.exit(1)`, so run Glimpser under a supervisor that automatically
-  restarts the process. Requests to `/health` include the configured API
+  The watchdog performs health checks every 30 seconds and only triggers
+  a restart after a configurable number of failures. Tune
+  `WATCHDOG_FAILURE_THRESHOLD`, `WATCHDOG_RESTART_COOLDOWN`,
+  `WATCHDOG_MAX_FILE_HANDLES`, `WATCHDOG_CPU_THRESHOLD` and
+  `WATCHDOG_MEMORY_THRESHOLD` to adjust this behaviour. When repeated
+  failures occur the watchdog calls `sys.exit(1)`, so run Glimpser under a
+  supervisor that automatically restarts the process. Requests to `/health`
+  include the configured API
   key so the check succeeds even when login is required. See the
   `glimpser.service` snippet in `build_packages.sh` or the `restart`
   option in `docker-compose.yaml` for examples of how to enable
@@ -40,6 +42,7 @@ This guide provides a high-level look at Glimpser's core components and how they
 - Uses APScheduler to run periodic tasks.
 - Jobs include crawler scheduling, video archiving, discovery and summarization.
 - Tasks run asynchronously so functions like `schedule_discovery` and `schedule_summarization` never block the caller.
+- Background components start in a low-priority thread so Flask can serve requests immediately.
 - Exposes a `GracefulAPScheduler` instance used by the Flask app.
 - Stale crawler jobs are removed when templates are updated.
 

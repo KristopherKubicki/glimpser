@@ -18,6 +18,7 @@ The primary application script accepts the following options:
 | `--no-scheduler` | Disable the background scheduler. |
 | `--no-watchdog` | Disable the watchdog thread. |
 | `--no-crawlers` | Skip scheduling crawler jobs. |
+| `--no-log-cache` | Disable the log caching thread. |
 | `--screenshot-dir` | Directory for storing screenshots. |
 | `--video-dir` | Directory for storing video files. |
 | `--summaries-dir` | **Deprecated:** summaries are now stored in the database. |

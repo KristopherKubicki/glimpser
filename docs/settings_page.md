@@ -7,18 +7,19 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Add New Setting** – quickly create additional key/value pairs.
 - **Current Settings** – edit existing values. Delete actions appear when advanced options are enabled using the toggle under the **Management** tab. Tabs switch between setting groups and the Management tab holds backup and offline options.
 - **Configuration Management** – backup, download, and upload the JSON configuration file.
-- **Danger Mode** – shows the detected browser path, whether shortcuts are patched, and if the debugging port is open. You can also update Chrome shortcuts from here.
+- **Danger Mode** – shows the detected browser path, Chrome version, and the first shortcut found. Green and red dots indicate if shortcuts are patched and if the debugging port is open. A link beside the heading opens the [Danger Mode documentation](danger_mode.md). You can also update Chrome shortcuts from here.
 - **Offline Preview** – cached snapshots are automatically enabled.
 - **Settings Reference** – expand the table to read explanations for each setting.
 - **Column Search** – click a header to filter rows by that column.
+- **Tab headers removed** – the active tab is highlighted, freeing space.
 - **System Status** – view CPU, memory, disk usage, and live logs.
-- **Certain tabs start collapsed** – File Locations, Capture, Credentials,
-  Integrations, Management, and Other appear collapsed until expanded.
+- **Certain tabs start collapsed** – Capture, Credentials & Management, and
+  Integrations & Other appear collapsed until expanded.
 
 All form elements now use unique IDs across tabs to avoid browser warnings.
 
-- **File Location Checks** – paths in the _File Locations_ tab are validated and show
-  a small progress bar indicating remaining disk space.
+- **File Location Checks** – paths in the Capture tab are validated and show a
+  small progress bar indicating remaining disk space.
 - **Interface** – UI-related options like the navigation logo now live on their own tab.
 
 Hover over a setting name to see a tooltip with its explanation.

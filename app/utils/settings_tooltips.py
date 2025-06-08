@@ -79,7 +79,7 @@ SETTINGS_GROUPS = {
         "CLOCK_DIGITAL",
         "CLOCK_NAVBAR",
     ],
-    "Credentials": [
+    "Credentials & Management": [
         "USER_NAME",
         "USER_PASSWORD_HASH",
         "SECRET_KEY",
@@ -91,15 +91,13 @@ SETTINGS_GROUPS = {
         "SESSION_COOKIE_HTTPONLY",
         "SESSION_TIMEOUT_MINUTES",
     ],
-    "File Locations": [
+    "Capture": [
         "DATABASE_PATH",
         "LOGGING_PATH",
         "BACKUP_PATH",
         "SCREENSHOT_DIRECTORY",
         "VIDEO_DIRECTORY",
         "SUMMARIES_DIRECTORY",
-    ],
-    "Capture": [
         "NUM_FRAMES",
         "CAPTURE_TIMEOUT",
         "PROBE_SIZE_DEFAULT",
@@ -121,7 +119,7 @@ SETTINGS_GROUPS = {
         "FFMPEG_HWACCEL",
         "FFMPEG_THREADS",
     ],
-    "Integrations": [
+    "Integrations & Other": [
         "EMAIL_ENABLED",
         "EMAIL_SENDER",
         "EMAIL_RECIPIENTS",
@@ -157,3 +155,7 @@ NUMERIC_FIELDS = {
 
 # Fields that expect email addresses.
 EMAIL_FIELDS = {"EMAIL_SENDER", "EMAIL_RECIPIENTS"}
+
+# Settings that are hidden behind the advanced toggle on the UI. Their
+# corresponding form inputs are disabled unless advanced mode is enabled.
+LOCKED_SETTINGS = {"CLIP_MODEL_NAME"}

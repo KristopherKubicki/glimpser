@@ -28,6 +28,7 @@ nav:
       - UI Design Guidelines: design_guidelines.md
       - Developer Guide: developer_guide.md
       - Docker Build Verification: docker_build.md
+      - Docs Build Workflow: docs_build.md
       - CodeQL Security Scanning: codeql.md
       - Dependency Review: dependency_review.md
       - EthicalCheck Workflow: ethicalcheck.md
@@ -41,6 +42,7 @@ nav:
       - Nginx HTTP/2 Push: nginx_http2_push.md
       - Offline Fonts: offline_fonts.md
       - Offline Preview: offline_preview.md
+      - Pylint Checks: pylint_checks.md
       - Web Notifications: web_notifications.md
       - Search Autocomplete: search_autocomplete.md
       - Recommendations: recommendations.md
@@ -72,6 +74,7 @@ nav:
       - Caption Overlay Toggle: caption_overlay_toggle.md
       - Chatbot: chatbot.md
       - CI Checks: ci_checks.md
+      - Bundle Size Audit: size_audit.md
       - Jog Shuttle: jog_shuttle.md
       - Live All: live_all.md
       - Live Scrub: live_scrub.md
