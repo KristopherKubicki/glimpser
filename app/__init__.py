@@ -324,8 +324,9 @@ def create_app(
 
         app.scheduler = scheduler
 
-    threading.Thread(
-        target=_start_background_components, name="init-bg", daemon=True
-    ).start()
+    if schedule or enable_watchdog or log_cache:
+        threading.Thread(
+            target=_start_background_components, name="init-bg", daemon=True
+        ).start()
 
     return app

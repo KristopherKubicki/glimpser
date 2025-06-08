@@ -431,8 +431,18 @@ def file_location_metrics(
     return metrics
 
 
-def update_setting(name: str, value: str) -> bool:
-    """Persist a configuration ``name`` and ``value`` to the database."""
+def update_setting(name: str, value: str, restart: bool = True) -> bool:
+    """Persist a configuration ``name`` and ``value`` to the database.
+
+    Parameters
+    ----------
+    name : str
+        Setting name.
+    value : str
+        New setting value.
+    restart : bool, optional
+        Restart the server after updating the setting. Defaults to ``True``.
+    """
 
     name = name.replace("'", "")[:32]
     value = value.replace("'", "")[:1024]
@@ -474,7 +484,7 @@ def update_setting(name: str, value: str) -> bool:
     finally:
         session.close()
 
-    if delta is True:
+    if delta is True and restart:
         # Trigger server restart
         # is there a way to do this on a delay?
         restart_server()
@@ -1336,10 +1346,10 @@ def init_routes(app: Flask) -> None:
             job = scheduling.scheduler.get_job("background_discovery")
             if job:
                 scheduling.stop_discovery()
-                update_setting("DISCOVERY_AUTOSTART", "False")
+                update_setting("DISCOVERY_AUTOSTART", "False", restart=False)
                 return jsonify({"status": "stopped"})
             scheduling.schedule_discovery()
-            update_setting("DISCOVERY_AUTOSTART", "True")
+            update_setting("DISCOVERY_AUTOSTART", "True", restart=False)
             return jsonify({"status": "running"})
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
