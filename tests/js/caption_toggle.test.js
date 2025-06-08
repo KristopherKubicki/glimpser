@@ -10,11 +10,13 @@ document.body.innerHTML = `
 
 let initTemplates;
 let applyCaptionVisibility;
+let setCaptionsVisibility;
 
 beforeAll(async () => {
   const mod = await import("../../app/static/js/templates.js");
   initTemplates = mod.initTemplates;
   applyCaptionVisibility = mod.applyCaptionVisibility;
+  setCaptionsVisibility = mod.setCaptionsVisibility;
 });
 
 describe("caption toggle", () => {
@@ -28,6 +30,7 @@ describe("caption toggle", () => {
     applyCaptionVisibility(100);
     const btn = document.getElementById("caption-toggle");
     expect(btn.classList.contains("disabled")).toBe(true);
+    expect(btn.title).toMatch(/increase tile size/i);
   });
 
   test("click toggles visibility", () => {
@@ -45,5 +48,12 @@ describe("caption toggle", () => {
       false,
     );
     expect(btn.classList.contains("active")).toBe(true);
+  });
+
+  test("setCaptionsVisibility hides captions", () => {
+    setCaptionsVisibility(false);
+    expect(document.documentElement.classList.contains("hide-captions")).toBe(
+      true,
+    );
   });
 });

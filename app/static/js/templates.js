@@ -14,6 +14,13 @@ function safePlay(el) {
 
 let captionsVisible = localStorage.getItem("showCaptions") !== "false";
 
+export function setCaptionsVisibility(value) {
+  const slider = document.getElementById("grid-width-slider");
+  captionsVisible = value;
+  localStorage.setItem("showCaptions", value.toString());
+  applyCaptionVisibility(parseFloat(slider?.value || "0"));
+}
+
 export function applyCaptionVisibility(width) {
   const templateList = document.getElementById("template-list");
   const captionToggle = document.getElementById("caption-toggle");
@@ -27,6 +34,11 @@ export function applyCaptionVisibility(width) {
     captionToggle.classList.toggle("disabled", !enabled);
     captionToggle.classList.toggle("active", captionsVisible && enabled);
     captionToggle.classList.toggle("off", !captionsVisible && enabled);
+    captionToggle.title = enabled
+      ? captionsVisible
+        ? "Hide caption overlays"
+        : "Show caption overlays"
+      : "Increase tile size to enable captions";
   }
 }
 
@@ -133,6 +145,10 @@ export function initTemplates() {
         localStorage.setItem("showCaptions", captionsVisible.toString());
         applyCaptionVisibility(parseFloat(slider?.value || "0"));
       });
+      setTimeout(() => {
+        captionToggle.classList.add("flash-caption");
+        setTimeout(() => captionToggle.classList.remove("flash-caption"), 4000);
+      }, 500);
     }
 
     function autofillGroup() {
