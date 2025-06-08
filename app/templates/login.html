@@ -7,29 +7,32 @@ content %}
       <use href="{{ url_for('static', filename='icons/sprite.svg') }}#lock" />
     </svg>
   </div>
-  <p class="security-note">Your credentials are encrypted in transit.</p>
+  <p id="security-note" class="security-note"></p>
   <form
     id="login-form"
     method="post"
     class="login-form"
+    autocomplete="off"
     title="Enter your credentials"
   >
     <div class="form-field">
-      <label for="username">Username</label>
+      <label for="username" class="sr-only">Username</label>
       <input
         id="username"
         type="text"
         name="username"
+        placeholder="Username"
         required
         title="Enter your username"
       />
     </div>
     <div class="form-field">
-      <label for="password">Password</label>
+      <label for="password" class="sr-only">Password</label>
       <input
         id="password"
         type="password"
         name="password"
+        placeholder="Password"
         required
         title="Enter your password"
       />
