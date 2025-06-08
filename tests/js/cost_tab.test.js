@@ -9,9 +9,12 @@ document.body.innerHTML = `
 `;
 
 let initCosts;
+let groupSmallValues;
 
 beforeAll(async () => {
-  ({ initCosts } = await import("../../app/static/js/costs.js"));
+  ({ initCosts, groupSmallValues } = await import(
+    "../../app/static/js/costs.js"
+  ));
 });
 
 global.fetch = jest.fn(() =>
@@ -35,4 +38,17 @@ test("slider triggers fetch", async () => {
   slider.dispatchEvent(new Event("change"));
   await Promise.resolve();
   expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+test("groups bottom rows", () => {
+  const rows = Array.from({ length: 20 }, (_, i) => ({
+    name: `cam${i}`,
+    tokens: 1,
+    cost: i,
+  }));
+  const grouped = groupSmallValues(rows, 15);
+  expect(grouped.length).toBe(6); // 5 top + Other
+  const other = grouped[grouped.length - 1];
+  expect(other.name).toBe("Other");
+  expect(other.cost).toBeGreaterThan(0);
 });
