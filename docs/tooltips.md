@@ -36,7 +36,7 @@ These tooltips aim to make the interface self‑explanatory and easier to naviga
 
 Interactive forms now include additional tooltips:
 
-- **Add Camera** – explains each field on the Discover tab and the "Structured" XPath buttons.
+- **Add Camera** – explains each field on the Discover tab, the "Structured" XPath buttons, and the new **Test** feature that confirms your URL works.
 - **Template Details** – buttons like "Suggest Prompt" and "Suggest Fix" describe their actions.
 - **Captions** – upload and filter controls have descriptive titles.
 - **Danger Mode** – the checkbox, save button and modal controls all include tooltips.

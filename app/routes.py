@@ -109,7 +109,11 @@ NODE_ENV = os.getenv("NODE_ENV", "development")
 
 # from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock
-from app.utils.validators import validate_template_name, validate_update_data
+from app.utils.validators import (
+    validate_template_name,
+    validate_update_data,
+    validate_url,
+)
 from app.utils.profiling import profile_route, get_latency_stats
 from scripts.update_chrome_shortcut import (
     update_chrome_shortcuts,
@@ -2534,6 +2538,19 @@ def init_routes(app: Flask) -> None:
         xpaths = [details.get("popup_xpath", ""), details.get("dedicated_xpath", "")]
         info = camera_fix.check_camera_template(url, xpaths)
         return jsonify(info)
+
+    @app.route("/validate_url")
+    @login_required
+    def validate_url_route():
+        """Check whether the provided URL is reachable."""
+
+        raw = request.args.get("url", "")
+        url = validate_url(raw)
+        if not url:
+            return jsonify({"valid": False, "error": "invalid"})
+
+        info = camera_fix.check_camera_template(url, [], timeout=5)
+        return jsonify({"valid": info.get("valid_url"), "error": info.get("url_error")})
 
     @app.route("/screenshots/<string:name>/<string:filename>")
     @login_required

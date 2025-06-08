@@ -61,6 +61,43 @@ export function initFormValidation() {
     return true;
   };
 
+  document.addEventListener("DOMContentLoaded", () => {
+    const urlInput = document.getElementById("url");
+    const testBtn = document.getElementById("test-url");
+    const status = document.getElementById("url-status");
+
+    async function checkUrl() {
+      if (!urlInput || !status) return;
+      const value = urlInput.value.trim();
+      status.classList.remove("ok", "error", "hidden");
+      status.title = "";
+      if (!/^https?:\/\//i.test(value)) {
+        status.classList.add("error");
+        status.title = "Invalid URL";
+        return;
+      }
+      try {
+        const res = await fetch(
+          `/validate_url?url=${encodeURIComponent(value)}`,
+        );
+        const data = await res.json();
+        if (data.valid) {
+          status.classList.add("ok");
+          status.title = "URL reachable";
+        } else {
+          status.classList.add("error");
+          status.title = data.error || "Unreachable";
+        }
+      } catch {
+        status.classList.add("error");
+        status.title = "Check failed";
+      }
+    }
+
+    testBtn?.addEventListener("click", checkUrl);
+    urlInput?.addEventListener("blur", checkUrl);
+  });
+
   window.initAddSettingValidation = initAddSettingValidation;
 }
 

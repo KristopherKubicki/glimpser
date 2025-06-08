@@ -69,6 +69,9 @@ class TestHtmlTemplates(unittest.TestCase):
         inputs = {i.get("id") or i.get("name") for i in add_form["inputs"]}
         required = {"name", "url", "frequency", "timeout"}
         self.assertTrue(required.issubset(inputs))
+        html = Path("app/templates/_discover_tab.html").read_text()
+        self.assertIn('id="test-url"', html)
+        self.assertIn('id="url-status"', html)
 
     def test_header_preloads_sprite(self):
         parser = parse_template(Path("app/templates/header.html"))

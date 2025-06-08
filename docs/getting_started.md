@@ -40,7 +40,7 @@ This guide will walk you through the process of setting up Glimpser and running 
 1. Log in to the Glimpser web interface.
 
 2. When no templates exist, the **Add Camera** form automatically opens on the **Settings → Discover** tab.
-   Otherwise, navigate to that tab to add a new source.
+   Otherwise, navigate to that tab to add a new source. Use the **Test** button next to the URL field to confirm the address works.
 
 3. Choose a data source type (e.g., camera, dashboard, or video stream).
 
