@@ -169,6 +169,18 @@ main {
 .dynamic-tooltip.hidden {
   opacity: 0;
 }
+.url-status {
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+  margin-left: 4px;
+}
+.url-status.ok {
+  color: #5cb85c;
+}
+.url-status.bad {
+  color: #d9534f;
+}
 .link {
   color: rgb(192, 192, 192);
 }

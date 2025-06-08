@@ -12,6 +12,7 @@ import sys
 import tempfile
 import time
 import uuid
+import requests
 from datetime import datetime, timedelta
 from dateutil import tz
 
@@ -3244,6 +3245,25 @@ def init_routes(app: Flask) -> None:
         }
         template_manager.save_template(name, template)
         return jsonify({"status": "success"})
+
+    @app.route("/templates/test_url")
+    @login_required
+    def test_template_url() -> Response:
+        """Return JSON indicating whether the given URL is reachable."""
+
+        url = request.args.get("url") or ""
+        url = validators.validate_url(url)
+        if not url:
+            return jsonify({"ok": False, "error": "invalid"}), 400
+
+        try:
+            resp = requests.head(url, timeout=5)
+            ok = resp.status_code < 400
+        except Exception as exc:  # pragma: no cover - network
+            logging.warning("url check failed: %s", exc)
+            return jsonify({"ok": False, "error": "unreachable"}), 400
+
+        return jsonify({"ok": ok, "status": resp.status_code})
 
     @app.route("/discover/export", methods=["POST"])
     @login_required

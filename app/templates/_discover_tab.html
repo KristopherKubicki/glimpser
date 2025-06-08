@@ -75,6 +75,7 @@
 
                         <label for="url" title="URL to monitor">URL:</label>
                         <input type="url" id="url" name="url" required title="Enter the URL to monitor">
+                        <span id="url-status" class="url-status" title="URL test result"></span>
 
                         <label for="frequency" title="How often to check the URL">Frequency (minutes):</label>
                         <input type="number" id="frequency" name="frequency" value="30" min="1" required title="Enter how often to check the URL (in minutes)">
@@ -292,3 +293,4 @@ const exportData = (fmt) => {
   if (exportCsv) exportCsv.addEventListener('click', () => exportData('csv'));
 });
 </script>
+<script type="module" src="{{ url_for('static', filename='js/url_test.js') }}"></script>
