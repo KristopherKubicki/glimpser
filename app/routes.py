@@ -1529,6 +1529,14 @@ def init_routes(app: Flask) -> None:
     def help_page():
         return render_template("help.html", page_title="Help")
 
+    @app.route("/cli_help")
+    @login_required
+    def cli_help():
+        """Return CLI help text."""
+        from app.utils.cli import cli_help_text
+
+        return Response(cli_help_text(), mimetype="text/plain")
+
     @app.route("/settings_help")
     @login_required
     def settings_help():
