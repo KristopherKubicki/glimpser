@@ -247,28 +247,72 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
                     # Reset failure count on successful check
                     failure_count = 0
 
-    # Start the watchdog thread
-    if enable_watchdog:
-        watchdog_thread = threading.Thread(target=_watchdog_thread)
-        watchdog_thread.daemon = True
-        watchdog_thread.start()
-        app.watchdog_thread = watchdog_thread
+    def _start_background_components() -> None:
+        """Initialize scheduler and monitoring in a low priority thread."""
+        backup_config()
 
-    # Start collecting metrics only when background scheduling is enabled.
-    if schedule:
-        start_metrics_collection()
+        if schedule and (
+            os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug
+        ):
+            scheduler.start()
+            logging.info("Initializing scheduler...")
 
-    start_log_caching()
+            with app.app_context():
+                scheduler.remove_all_jobs()
 
-    # Send alerts when the application starts
-    email_alert(
-        "Application Start", "The Glimpser application has been started successfully."
-    )
-    sms_alert(
-        "Application Start", "The Glimpser application has been started successfully."
-    )
+                if crawlers:
+                    schedule_crawlers()
+                scheduler.add_job(
+                    id="compile_to_teaser",
+                    func=compile_to_teaser,
+                    trigger="interval",
+                    minutes=3,
+                )
+                scheduler.add_job(
+                    id="archive_screenshots",
+                    func=archive_screenshots,
+                    trigger="interval",
+                    minutes=1,
+                )
+                scheduler.add_job(
+                    id="retention_cleanup",
+                    func=retention_cleanup,
+                    trigger="cron",
+                    day="*",
+                )
+                schedule_summarization()
+                schedule_offline_job_processor()
+                if DISCOVERY_AUTOSTART:
+                    schedule_discovery()
 
-    # Make scheduler accessible globally
-    app.scheduler = scheduler
+            retention_cleanup()
+            logging.info("Initialization complete")
+
+        if enable_watchdog:
+            watchdog_thread = threading.Thread(
+                target=_watchdog_thread, name="watchdog", daemon=True
+            )
+            watchdog_thread.start()
+            app.watchdog_thread = watchdog_thread
+
+        if schedule:
+            start_metrics_collection()
+
+        start_log_caching()
+
+        email_alert(
+            "Application Start",
+            "The Glimpser application has been started successfully.",
+        )
+        sms_alert(
+            "Application Start",
+            "The Glimpser application has been started successfully.",
+        )
+
+        app.scheduler = scheduler
+
+    threading.Thread(
+        target=_start_background_components, name="init-bg", daemon=True
+    ).start()
 
     return app
