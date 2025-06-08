@@ -32,13 +32,13 @@ can modify them in the application interface or directly in the database.
 - `VERSION` – application version (defaults to the installed package version and
   is updated automatically when it changes)
 - `LANG` – default language (default `en-US`). The settings page lists common language codes such as `en-US`, `es-ES`, `fr-FR`, `de-DE`, `zh-CN`, `ja-JP`, `pt-BR`, `hi-IN`, `ar-SA`, and `ru-RU`.
-- `TZ` – timezone used for logs (default `UTC`)
-- `HOST` – address to bind the server (default `0.0.0.0`)
+- `TZ` – timezone used for logs (default `UTC`). Values must exist in the system time zone database.
+- `HOST` – address to bind the server (default `0.0.0.0`). The settings page lists common local addresses first.
 - `ENFORCE_DOMAIN_IN_HOST` – require a domain in the `Host` header (default `False`)
-- `PORT` – port for the web interface (default `8082`)
+- `PORT` – port for the web interface (default `8082`). Must be a free, non‑privileged port.
 - `DEBUG` – enable debug mode (default `False`)
 - `DEBUG_MODE` – runtime alias of `DEBUG` used by the command-line interface
-- `MAX_WORKERS` – number of worker threads (default `8`)
+- `MAX_WORKERS` – number of worker threads (default `8`). Limited to twice the CPU count.
 - `LOG_LEVEL` – logging level (`INFO`, `WARN`, `DEBUG`, etc.)
 - `FLASK_LOG_LEVEL` – logging level used by the Flask app logger (defaults to `LOG_LEVEL`)
 

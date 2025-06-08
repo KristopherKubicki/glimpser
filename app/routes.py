@@ -3129,6 +3129,7 @@ def init_routes(app: Flask) -> None:
             total_cost=total_cost,
             danger_info=danger_info,
             choices=SETTINGS_CHOICES,
+            boolean_fields=validators.BOOLEAN_SETTINGS,
             danger_enabled=danger_enabled,
             numeric_fields=NUMERIC_FIELDS,
             email_fields=EMAIL_FIELDS,

@@ -48,6 +48,13 @@
   </div>
 
   <form method="POST" action="{{ url_for('settings') }}" id="settings-form">
+    {% for name, opts in choices.items() %}
+    <datalist id="{{ name }}-list">
+      {% for opt in opts %}
+      <option value="{{ opt }}"></option>
+      {% endfor %}
+    </datalist>
+    {% endfor %}
     {% for group, items in grouped_settings.items() %}
     <div
       id="{{ group|replace(' ', '-') }}-tab"
@@ -69,7 +76,7 @@
               {{ setting.name }}
             </td>
             <td>
-              {% if setting.value in ['True', 'False'] %}
+              {% if setting.name in boolean_fields %}
               <label class="switch">
                 <!-- prettier-ignore -->
                 <input
@@ -100,10 +107,11 @@
               />
               {% else %}
               <input
-                type="text"
+                type="{{ 'number' if setting.name in numeric_fields else 'text' }}"
                 name="{{ setting.name }}"
                 value="{{ setting.value }}"
                 title="Edit value for {{ setting.name }}"
+                {% if setting.name in choices %}list="{{ setting.name }}-list"{% endif %}
                 {%
                 if
                 setting.name

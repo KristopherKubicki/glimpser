@@ -31,8 +31,8 @@ Focusing any input field shows a tooltip on screen with a description pulled fro
 
 ### Selectable Options
 
-Common settings like `HOST`, `LANG`, `LOG_LEVEL`, and `TZ` now use a single autocomplete field. Typing shows suggestions for common values, but any text can be entered. The `PORT` field enforces non‑privileged ports (1024–65535) to avoid permission errors.
-Numeric settings such as `MAX_WORKERS` or `EMAIL_SMTP_PORT` use number inputs so invalid characters cannot be entered. Email fields validate that addresses are well formed before submission.
+Common settings like `HOST`, `LANG`, `LOG_LEVEL`, and `TZ` now use searchable dropdowns populated with sensible defaults. Custom values may still be entered but `TZ` choices are validated against the system time zone database. The `PORT` field only accepts ports the current user can bind to, preventing permission errors.
+Numeric settings such as `MAX_WORKERS` or `EMAIL_SMTP_PORT` use number inputs so invalid characters cannot be entered. `MAX_WORKERS` is capped at twice the available CPU count. Email fields validate that addresses are well formed before submission.
 
 ### Validation
 
