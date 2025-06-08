@@ -71,7 +71,8 @@
         </tr>
       </thead>
       <tbody id="discover-body">
-        {% for cam in cameras %}
+        {% for cam in cameras %} {% set url = cam.url or (cam.protocol ~ '://' ~
+        cam.ip ~ ':' ~ cam.port) %}
         <tr>
           <td>{{ cam.ip }}</td>
           <td>{{ cam.protocol }}</td>
@@ -80,6 +81,14 @@
           <td>{{ cam.info.manufacturer }}</td>
           <td>{{ show_info(cam.info) }}</td>
           <td>
+            {% if url in existing_urls %}
+            <a
+              href="{{ url_for('template_details', template_name=existing_urls[url]) }}"
+              class="btn btn-primary"
+              title="View this camera"
+              >View</a
+            >
+            {% else %}
             <form action="/discover/add" method="post">
               <input type="hidden" name="ip" value="{{ cam.ip }}" />
               <input type="hidden" name="protocol" value="{{ cam.protocol }}" />
@@ -90,6 +99,7 @@
               <input type="hidden" name="name" value="{{ cam.ip }}" />
               <button type="submit" title="Add this camera">Add</button>
             </form>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
@@ -337,6 +347,7 @@
 </div>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
+    const existingMap = {{ existing_urls | tojson | safe }};
     const button = document.getElementById("discover-btn");
     const msg = document.getElementById("discover-message");
     const progress = document.getElementById("discover-progress");
@@ -391,6 +402,18 @@
           known.add(key);
           results.push(cam);
           const tr = document.createElement("tr");
+          const url = cam.url || `${cam.protocol}://${cam.ip}:${cam.port}`;
+          const existing = existingMap[url];
+          const action = existing
+            ? `<a href="/templates/${existing}" class="btn btn-primary" title="View this camera">View</a>`
+            : `<form action="/discover/add" method="post">
+                            <input type="hidden" name="ip" value="${cam.ip}">
+                            <input type="hidden" name="protocol" value="${cam.protocol}">
+                            <input type="hidden" name="port" value="${cam.port}">
+                            ${cam.url ? `<input type="hidden" name="url" value="${cam.url}">` : ""}
+                            <input type="hidden" name="name" value="${cam.ip}">
+                            <button type="submit" title="Add this camera">Add</button>
+                        </form>`;
           tr.innerHTML = `
                     <td>${cam.ip}</td>
                     <td>${cam.protocol}</td>
@@ -398,16 +421,7 @@
                     <td>${cam.info.mac || ""}</td>
                     <td>${cam.info.manufacturer || ""}</td>
                     <td>${renderInfo(cam.info)}</td>
-                    <td>
-                        <form action="/discover/add" method="post">
-                            <input type="hidden" name="ip" value="${cam.ip}">
-                            <input type="hidden" name="protocol" value="${cam.protocol}">
-                            <input type="hidden" name="port" value="${cam.port}">
-                            ${cam.url ? `<input type="hidden" name="url" value="${cam.url}">` : ""}
-                            <input type="hidden" name="name" value="${cam.ip}">
-                            <button type="submit" title="Add this camera">Add</button>
-                        </form>
-                    </td>`;
+                    <td>${action}</td>`;
           body.appendChild(tr);
         };
         let plan = [];
