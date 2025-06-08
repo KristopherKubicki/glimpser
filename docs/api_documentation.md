@@ -230,6 +230,10 @@ Returns the latest caption text and timestamp.
 
 Reports the status of background camera discovery.
 
+**GET /network_status**
+
+Indicates whether the server is online.
+
 ## Error Handling
 
 All endpoints may return the following error responses:
