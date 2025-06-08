@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 import tempfile
+from pathlib import Path
 from flask import Flask
 from unittest.mock import patch
 
@@ -23,49 +24,43 @@ class TestClipRoute(unittest.TestCase):
     def tearDown(self):
         self.login_patch.stop()
 
-    @patch("app.routes.video_archiver.compile_videos")
-    @patch("app.routes.video_archiver.get_video_duration", return_value=60)
-    @patch("glob.glob", return_value=["v1.mp4", "v2.mp4"])
-    @patch("os.path.getmtime", side_effect=[2, 1])
-    @patch("os.path.exists", return_value=True)
-    @patch("app.routes.send_file")
-    def test_clip_default(
-        self,
-        mock_send,
-        mock_exists,
-        mock_getmtime,
-        mock_glob,
-        mock_duration,
-        mock_compile,
-    ):
-        resp = self.client.get("/clip/cam1")
-        self.assertEqual(resp.status_code, 200)
-        expected = os.path.join(
-            os.path.dirname(routes.__file__),
-            "..",
-            config.VIDEO_DIRECTORY,
-            "cam1",
-            "clip.mp4",
-        )
-        mock_compile.assert_called_once()
-        mock_send.assert_called_with(expected)
+    @patch("app.routes._concat_copy")
+    def test_clip_default(self, mock_concat):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            camera_path = os.path.join(tmpdir, "cam1")
+            os.makedirs(camera_path)
+            f1 = os.path.join(camera_path, "final_1.mp4")
+            f2 = os.path.join(camera_path, "final_2.mp4")
+            open(f1, "w").close()
+            open(f2, "w").close()
+            os.utime(f1, (1, 1))
+            os.utime(f2, (2, 2))
+            with (
+                patch("app.routes.VIDEO_DIRECTORY", tmpdir),
+                patch("app.routes.send_file") as mock_send,
+            ):
 
+                def fake_concat(out, parts, clip_len):
+                    with open(out, "w"):
+                        pass
+                    return True
+
+                mock_concat.side_effect = fake_concat
+                resp = self.client.get("/clip/cam1")
+
+        self.assertEqual(resp.status_code, 200)
+        expected = Path(tmpdir, "cam1", "clip.mp4")
+        mock_send.assert_called_with(expected, conditional=True)
+        mock_concat.assert_called_once()
+
+    @patch("app.routes._concat_copy", return_value=False)
     @patch("app.routes.video_archiver.create_blank_video")
-    @patch("app.routes.video_archiver.compile_videos", return_value=None)
-    @patch("app.routes.video_archiver.get_video_duration", return_value=60)
-    def test_clip_blank_fallback(
-        self,
-        mock_duration,
-        mock_compile,
-        mock_blank,
-    ):
+    def test_clip_blank_fallback(self, mock_blank, mock_concat):
         with tempfile.TemporaryDirectory() as tmpdir:
             camera_path = os.path.join(tmpdir, "cam1")
             os.makedirs(camera_path)
             with (
                 patch("app.routes.VIDEO_DIRECTORY", tmpdir),
-                patch("glob.glob", return_value=[]),
-                patch("os.path.getmtime", return_value=1),
                 patch("app.routes.send_file") as mock_send,
             ):
 
@@ -78,8 +73,8 @@ class TestClipRoute(unittest.TestCase):
                 resp = self.client.get("/clip/cam1")
 
         self.assertEqual(resp.status_code, 200)
-        expected = os.path.join(tmpdir, "cam1", "clip.mp4")
-        mock_send.assert_called_with(expected)
+        expected = Path(tmpdir, "cam1", "clip.mp4")
+        mock_send.assert_called_with(expected, conditional=True)
         mock_blank.assert_called_once()
 
 

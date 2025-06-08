@@ -14,6 +14,9 @@ import tempfile
 import time
 import uuid
 import requests
+import fcntl
+import math
+from pathlib import Path
 from datetime import datetime, timedelta
 from dateutil import tz
 
@@ -115,6 +118,50 @@ from app.utils.db import SessionLocal, engine
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 import sqlite3
 from typing import Any, Callable, Generator, Optional, List, Dict
+
+# Clip caching constants
+CACHE_TTL_SEC = 5
+SEGMENT_SEC = 10
+
+
+def _concat_copy(out: Path, parts: list[Path], clip_len: int) -> bool:
+    """Concatenate ``parts`` into ``out`` using ffmpeg copy mode."""
+
+    out_tmp = out.with_suffix(".tmp")
+    concat_payload = "\n".join(f"file '{p.as_posix()}'" for p in parts).encode()
+
+    cmd = [
+        config.FFMPEG_PATH,
+        "-nostdin",
+        "-loglevel",
+        "error",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-protocol_whitelist",
+        "file,pipe",
+        "-i",
+        "-",
+        "-t",
+        str(clip_len),
+        "-c",
+        "copy",
+        "-movflags",
+        "+faststart",
+        "-y",
+        out_tmp.as_posix(),
+    ]
+
+    try:
+        subprocess.run(cmd, input=concat_payload, timeout=20, check=True)
+        out_tmp.rename(out)
+        return True
+    except Exception as exc:  # pragma: no cover - ffmpeg failures logged
+        logging.error("FFmpeg concat failed: %s", exc)
+        out_tmp.unlink(missing_ok=True)
+        return False
+
 
 try:
     COMMIT_HASH = (
@@ -2587,7 +2634,7 @@ def init_routes(app: Flask) -> None:
     @app.route("/clip/<string:template_name>")
     @login_required
     def serve_clip(template_name: TemplateName):
-        """Compile and return a short clip from archived footage."""
+        """Return a short clip built from recent finalized segments."""
 
         template_name = validate_template_name(template_name)
         if template_name is None:
@@ -2599,44 +2646,54 @@ def init_routes(app: Flask) -> None:
         if duration <= 0:
             abort(400, "Invalid duration")
 
-        path = os.path.join(
-            os.path.dirname(os.path.join(__file__)),
-            "..",
-            VIDEO_DIRECTORY,
-            template_name,
-        )
-        if not os.path.exists(path):
+        root = (
+            Path(__file__).resolve().parent / ".." / VIDEO_DIRECTORY / template_name
+        ).resolve()
+        if not root.is_dir():
             abort(404)
 
-        video_files = sorted(
-            glob.glob(os.path.join(path, "final_*.mp4")),
-            key=os.path.getmtime,
-            reverse=True,
+        clip_path = root / "clip.mp4"
+
+        newest_src = max(
+            root.glob("final_*.mp4"),
+            key=lambda p: p.stat().st_mtime,
+            default=None,
         )
 
-        accumulated = 0.0
-        with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_list:
-            for vf in video_files:
-                dur = video_archiver.get_video_duration(vf)
-                if dur:
-                    temp_list.write(f"file '{os.path.abspath(vf)}'\n")
-                    accumulated += dur
-                    if accumulated >= duration:
-                        break
-            temp_list_path = temp_list.name
+        if (
+            clip_path.exists()
+            and newest_src
+            and clip_path.stat().st_mtime > newest_src.stat().st_mtime
+            and (time.time() - clip_path.stat().st_mtime) < CACHE_TTL_SEC
+        ):
+            return send_file(clip_path, conditional=True)
 
-        output_tmp = os.path.join(path, "clip.mp4.tmp")
-        output_final = os.path.join(path, "clip.mp4")
-        video_archiver.compile_videos(temp_list_path, output_tmp)
-        os.unlink(temp_list_path)
+        needed = math.ceil(duration / SEGMENT_SEC)
+        parts = sorted(
+            root.glob("final_*.mp4"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )[:needed]
 
-        if not os.path.exists(output_final):
-            video_archiver.create_blank_video(duration, output_final)
+        lock_path = root / ".clip.lock"
+        with lock_path.open("w") as lock_fd:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            if (
+                clip_path.exists()
+                and newest_src
+                and clip_path.stat().st_mtime > newest_src.stat().st_mtime
+            ):
+                return send_file(clip_path, conditional=True)
 
-        if os.path.exists(output_final):
-            return send_file(output_final)
+            if parts and _concat_copy(clip_path, parts, duration):
+                pass
+            else:
+                video_archiver.create_blank_video(duration, clip_path.as_posix())
 
-        abort(404)
+        if clip_path.exists():
+            return send_file(clip_path, conditional=True)
+
+        abort(500, "Could not create clip")
 
     @app.route("/last_screenshot/<string:template_name>")
     @login_required
