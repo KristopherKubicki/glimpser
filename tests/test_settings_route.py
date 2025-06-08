@@ -45,7 +45,9 @@ class TestSettingsRoute(unittest.TestCase):
         conn.commit()
         conn.close()
 
-        self.app = app.create_app(enable_watchdog=False, schedule=False, log_cache=False)
+        self.app = app.create_app(
+            enable_watchdog=False, schedule=False, log_cache=False
+        )
         self.client = self.app.test_client()
         self.app_context = self.app.app_context()
         self.app_context.push()
@@ -192,6 +194,22 @@ class TestSettingsRoute(unittest.TestCase):
             response = self.client.post("/settings", data={"action": "test_email"})
             self.assertEqual(response.status_code, 302)
             mock_email.assert_called_once()
+
+    def test_default_save_flashes_success(self):
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("INSERT INTO settings (name, value) VALUES (?, ?)", ("FOO", "A"))
+        conn.commit()
+        conn.close()
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
+        ):
+            response = self.client.post("/settings", data={"FOO": "B"})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self._get_value("FOO"), "B")
+        with self.client.session_transaction() as sess:
+            flashes = sess.get("_flashes", [])
+        self.assertIn(("success", "Settings updated successfully"), flashes)
 
 
 if __name__ == "__main__":
