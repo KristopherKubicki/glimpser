@@ -444,6 +444,18 @@ body.light-mode {
   --table-border-color: #ddd;
 }
 
+body.dark-mode {
+  --bg-color: rgb(16, 16, 16);
+  --secondary-bg-color: #222;
+  --text-color: rgb(191, 191, 191);
+  --form-bg-color: var(--secondary-bg-color);
+  --form-text-color: var(--text-color);
+  --table-header-bg-color: #2a2a2a;
+  --table-row-alt-bg-color: #1a1a1a;
+  --table-hover-bg-color: #333;
+  --table-border-color: #444;
+}
+
 .camera-name,
 .timestamp {
   position: absolute;
