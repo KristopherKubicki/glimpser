@@ -40,12 +40,7 @@ export function initVideoControls() {
         if (playAllActive) {
           if (playAllObserver) playAllObserver.disconnect();
           videos.forEach((video) => {
-            const name = video.getAttribute("data-name");
             video.pause();
-            //video.src = "";
-            video.removeAttribute("src");
-            video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
-            video.load();
           });
           playAllButton.textContent = "Play All";
           if (liveAllButton) liveAllButton.style.display = "none";
