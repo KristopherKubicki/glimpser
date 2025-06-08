@@ -1056,6 +1056,7 @@ a {
 #template-form label,
 #edit-template label {
   color: var(--form-text-color);
+  font-weight: 600;
 }
 
 #template-form input[type="text"],
@@ -1067,6 +1068,10 @@ a {
 #edit-template input[type="number"],
 #edit-template textarea {
   padding: 5px;
+  background-color: var(--secondary-bg-color);
+  border: 1px solid var(--accent-color);
+  border-radius: 4px;
+  color: var(--text-color);
 }
 
 .form-row {
@@ -1836,14 +1841,18 @@ details > summary {
 
 .edit-template-modal-content {
   position: relative;
+  margin-top: 5vh;
+}
+
+.edit-template-container {
+  display: flow-root;
 }
 
 .edit-template-preview {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
+  float: right;
   width: 240px;
   height: 180px;
+  margin-left: 1rem;
 }
 
 .edit-template-preview img {
@@ -1851,6 +1860,7 @@ details > summary {
   height: 100%;
   object-fit: contain;
   border-radius: 4px;
+  border: 1px solid var(--accent-color);
 }
 #chat-modal .modal-content {
   width: 90%;
