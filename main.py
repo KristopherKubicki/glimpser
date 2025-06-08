@@ -27,6 +27,7 @@ banner = """\033[96m
                               |_|
 \033[0m"""
 
+
 def parse_arguments(arg_list=None):
     """Return parsed command-line arguments."""
     parser = build_argument_parser()
