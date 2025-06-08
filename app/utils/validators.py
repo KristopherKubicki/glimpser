@@ -332,4 +332,24 @@ def validate_setting(name: str, value: str) -> str | None:
                 sock.close()
         return str(ivalue)
 
+    email_re = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+
+    if key in {"EMAIL_SENDER", "CAP_SENDER"}:
+        if not val:
+            return ""
+        return val if re.fullmatch(email_re, val) else None
+
+    if key == "EMAIL_RECIPIENTS":
+        if not val:
+            return ""
+        addrs = [a.strip() for a in val.split(";") if a.strip()]
+        if not addrs:
+            addrs = [a.strip() for a in val.split(",") if a.strip()]
+        if all(re.fullmatch(email_re, a) for a in addrs):
+            return ",".join(addrs)
+        return None
+
+    if key == "CAP_ENDPOINT":
+        return validate_url(val) or ""
+
     return val

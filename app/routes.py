@@ -91,6 +91,7 @@ from app.utils.settings_tooltips import (
     NUMERIC_FIELDS,
     EMAIL_FIELDS,
     LOCKED_SETTINGS,
+    SETTINGS_PLACEHOLDERS,
 )
 
 from app.utils.screenshots import (
@@ -3267,6 +3268,7 @@ def init_routes(app: Flask) -> None:
             locked_settings=LOCKED_SETTINGS,
             file_info=file_info,
             existing_urls=existing_urls,
+            placeholders=SETTINGS_PLACEHOLDERS,
             page_title="Settings",
         )
 

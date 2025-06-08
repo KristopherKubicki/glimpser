@@ -87,9 +87,9 @@ Email, SMS, and CAP alerts now appear under the **Notifications** tab.
 To enable email notifications, configure the following:
 
 - `EMAIL_ENABLED` – set to `True` to enable sending emails (default `False`)
-- `EMAIL_SENDER` – the "from" address (default `your-email@example.com`)
-- `EMAIL_RECIPIENTS` – comma-separated list of recipients (default `recipient1@example.com,recipient2@example.com`)
-- `EMAIL_SMTP_SERVER` – SMTP server address (default `smtp.example.com`)
+- `EMAIL_SENDER` – the "from" address (empty by default; the field shows `your-email@example.com` as a hint)
+- `EMAIL_RECIPIENTS` – comma-separated list of recipients (empty by default)
+- `EMAIL_SMTP_SERVER` – SMTP server address (empty by default)
 - `EMAIL_SMTP_PORT` – server port (default `587`)
 - `EMAIL_SMTP_TIMEOUT` – connection timeout in seconds (default `5`)
 - `EMAIL_USE_TLS` – whether to use TLS (default `True`)
@@ -109,8 +109,8 @@ Configure these values to enable Twilio SMS alerts:
 
 Set these variables to enable Common Alerting Protocol alerts:
 
-- `CAP_ENDPOINT` – URL that accepts CAP XML alerts
-- `CAP_SENDER` – identifier used in the CAP `sender` field
+- `CAP_ENDPOINT` – URL that accepts CAP XML alerts (empty by default)
+- `CAP_SENDER` – identifier used in the CAP `sender` field (empty by default)
 
 ## Capture Parameters
 
@@ -162,5 +162,6 @@ Additional variables control AI behaviour and external tools:
 - `CLIP_MODEL_NAME` – CLIP model used for object filtering (default `openai/clip-vit-base-patch32`)
   Example: `openai/clip-vit-large-patch14`
   This setting is read-only until Advanced Options are enabled.
+- `SCHEDULER_API_ENABLED` – toggle the APScheduler REST API (default `True`)
 
 Refer to the code comments in `app/config.py` for full details on each setting.

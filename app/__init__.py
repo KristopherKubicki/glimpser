@@ -110,6 +110,7 @@ def create_app(
         SESSION_COOKIE_HTTPONLY,
         SESSION_TIMEOUT_MINUTES,
         API_KEY,
+        SCHEDULER_API_ENABLED,
     )
 
     app = Flask(__name__)
@@ -137,6 +138,7 @@ def create_app(
         app.config["SCHEDULER_EXECUTORS"] = {
             "default": {"type": "processpool", "max_workers": MAX_WORKERS}
         }
+        app.config["SCHEDULER_API_ENABLED"] = SCHEDULER_API_ENABLED
         logging.info("Starting with %s workers" % str(MAX_WORKERS))
         scheduler.init_app(app)
 
