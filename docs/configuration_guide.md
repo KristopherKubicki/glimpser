@@ -15,6 +15,8 @@ are used.
 | `GLIMPSER_DATABASE_PATH` | `data/glimpser.db`        | Location of the SQLite database file    |
 | `GLIMPSER_LOGGING_PATH`  | `logs/glimpser.log`       | Path to the main log file               |
 | `GLIMPSER_BACKUP_PATH`   | `data/config_backup.json` | File used when backing up configuration |
+| `GLIMPSER_LOG_MAX_BYTES` | `10485760`                | Rotate the log file after it reaches this size |
+| `GLIMPSER_LOG_BACKUP_COUNT` | `5` | Number of rotated log files to keep |
 
 Relative paths are resolved from the application's root directory. Use an
 absolute path if the backup file should reside elsewhere.
@@ -40,6 +42,8 @@ can modify them in the application interface or directly in the database.
 - `MAX_WORKERS` – number of worker threads (default `8`)
 - `LOG_LEVEL` – logging level (`INFO`, `WARN`, `DEBUG`, etc.)
 - `FLASK_LOG_LEVEL` – logging level used by the Flask app logger (defaults to `LOG_LEVEL`)
+- `LOG_MAX_BYTES` – rotate the main log when it reaches this size in bytes
+- `LOG_BACKUP_COUNT` – number of rotated log files kept
 
 ## User Credentials
 

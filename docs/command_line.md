@@ -13,6 +13,8 @@ The primary application script accepts the following options:
 | `--port` | Port for the web server. |
 | `--log-path` | Path to the log file. |
 | `--log-level` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). |
+| `--log-max-bytes` | Rotate the log after it grows past this size in bytes. |
+| `--log-backup-count` | Number of rotated log files to keep. |
 | `--console-log` | Enable logging to the console. |
 | `--debug` | Enable debug mode. |
 | `--no-scheduler` | Disable the background scheduler. |

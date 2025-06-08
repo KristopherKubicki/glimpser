@@ -2,6 +2,7 @@
 #  main.py
 
 import logging
+from logging.handlers import RotatingFileHandler
 import os
 import subprocess
 import argparse
@@ -63,6 +64,18 @@ def parse_arguments(arg_list=None):
         default=config.LOG_LEVEL,
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Logging level",
+    )
+    parser.add_argument(
+        "--log-max-bytes",
+        type=int,
+        default=config.LOG_MAX_BYTES,
+        help="Rotate log file after it reaches this size in bytes",
+    )
+    parser.add_argument(
+        "--log-backup-count",
+        type=int,
+        default=config.LOG_BACKUP_COUNT,
+        help="Number of rotated log files to keep",
     )
     parser.add_argument(
         "--console-log",
@@ -127,6 +140,10 @@ def setup_config(args=None):
     config.HOST = args.host
     config.PORT = args.port
     config.LOGGING_PATH = args.log_path
+    if "log_max_bytes" in getattr(args, "__dict__", {}):
+        config.LOG_MAX_BYTES = args.log_max_bytes
+    if "log_backup_count" in getattr(args, "__dict__", {}):
+        config.LOG_BACKUP_COUNT = args.log_backup_count
     config.DEBUG_MODE = args.debug
     config.SCREENSHOT_DIRECTORY = args.screenshot_dir
     config.VIDEO_DIRECTORY = args.video_dir
@@ -149,8 +166,12 @@ def setup_logging(args=None):
     # Ensure log directory exists
     os.makedirs(os.path.dirname(config.LOGGING_PATH), exist_ok=True)
 
-    # Set up file logging
-    file_handler = logging.FileHandler(config.LOGGING_PATH)
+    # Set up file logging with rotation
+    file_handler = RotatingFileHandler(
+        config.LOGGING_PATH,
+        maxBytes=config.LOG_MAX_BYTES,
+        backupCount=config.LOG_BACKUP_COUNT,
+    )
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
