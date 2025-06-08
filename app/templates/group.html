@@ -20,6 +20,18 @@ block content %}
       title="Adjust the width of the template grid"
     />
     {{ status_legend() }}
+    <button
+      id="caption-toggle"
+      class="settings-icon"
+      aria-label="Toggle caption overlays"
+      title="Toggle caption overlays"
+    >
+      <svg width="20" height="20">
+        <use
+          href="{{ url_for('static', filename='icons/sprite.svg') }}#closed-caption"
+        />
+      </svg>
+    </button>
     <button id="play-all-button" title="Play/Stop all videos">Play All</button>
     <button
       id="live-all-button"
@@ -28,18 +40,6 @@ block content %}
     >
       Live
     </button>
-    <div class="checkbox-row">
-      <span>Captions</span>
-      <label class="switch" title="Toggle caption overlays">
-        <input
-          id="toggle-captions"
-          type="checkbox"
-          checked
-          aria-label="Toggle caption overlays"
-        />
-        <span class="slider round"></span>
-      </label>
-    </div>
   </div>
 </div>
 <div
