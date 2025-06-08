@@ -251,10 +251,10 @@ function showError(message) {
   }, 5000);
 }
 
-function showOfflineIndicator(cameraName) {
+function showOfflineIndicator(message) {
   videoOverlay.style.display = "block";
   offlineIndicator.style.display = "block";
-  offlineMessage.textContent = `Camera ${cameraName} is currently offline`;
+  offlineMessage.textContent = message;
   loadingIndicator.style.display = "none";
   playPauseIndicator.style.display = "none";
 }
@@ -439,7 +439,7 @@ function changeCamera() {
   localStorage.setItem("liveCamera", currentCamera);
 
   if (!isConnected) {
-    showOfflineIndicator(currentCamera);
+    showOfflineIndicator(`Camera ${currentCamera} is currently offline`);
     hideLoadingIndicator();
     video.pause();
     video.src = "";
@@ -488,7 +488,7 @@ function updateFeed() {
   hideStreamErrorIndicator();
 
   if (!isConnected) {
-    showOfflineIndicator(currentCamera);
+    showOfflineIndicator(`Camera ${currentCamera} is currently offline`);
     hideCaptureErrorIndicator();
     hideLoadingIndicator();
     video.pause();
@@ -1357,6 +1357,46 @@ if (playButton) {
   playButton.addEventListener("click", togglePlayback);
 }
 
+// --- Offline handling ---
+let reconnectTimer = null;
+let resumeTime = 0;
+let wasPlaying = false;
+
+async function attemptReconnect() {
+  try {
+    const res = await fetch("/network_status");
+    const data = await res.json();
+    if (data.online) {
+      clearInterval(reconnectTimer);
+      reconnectTimer = null;
+      hideOfflineIndicator();
+      video.currentTime = resumeTime;
+      if (wasPlaying) {
+        safePlay(video);
+      }
+    }
+  } catch {
+    // still offline
+  }
+}
+
+function handleNetworkOffline() {
+  wasPlaying = !video.paused;
+  resumeTime = video.currentTime;
+  video.pause();
+  showOfflineIndicator("Offline. Reconnecting...");
+  if (!reconnectTimer) {
+    reconnectTimer = setInterval(attemptReconnect, 5000);
+  }
+}
+
+async function handleNetworkOnline() {
+  await attemptReconnect();
+}
+
+window.addEventListener("offline", handleNetworkOffline);
+window.addEventListener("online", handleNetworkOnline);
+
 // Allow pausing/resuming the video by clicking anywhere on the player
 video.addEventListener("click", togglePlayback);
 
@@ -1402,4 +1442,9 @@ function handleTouchEnd(event) {
 document.addEventListener("touchstart", handleTouchStart, { passive: true });
 document.addEventListener("touchend", handleTouchEnd, { passive: true });
 
-export { updateFrameTimestamp, getCameraNames };
+export {
+  updateFrameTimestamp,
+  getCameraNames,
+  handleNetworkOffline,
+  handleNetworkOnline,
+};
