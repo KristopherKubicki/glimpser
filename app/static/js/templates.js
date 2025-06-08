@@ -1007,3 +1007,38 @@ export function setupStatusFilter() {
     window.addEventListener("templatesLoaded", updateStatusCounts);
   });
 }
+
+export function updateBrowserOptions() {
+  const browser = document.getElementById("browser");
+  const headless = document.getElementById("headless");
+  const stealth = document.getElementById("stealth");
+  const popup = document.getElementById("popup_xpath");
+  const dedicated = document.getElementById("dedicated_xpath");
+  const enabled = browser && browser.checked;
+  if (headless) {
+    headless.disabled = !enabled;
+    if (!enabled) headless.checked = false;
+  }
+  if (stealth) {
+    stealth.disabled = !enabled;
+    if (!enabled) stealth.checked = false;
+  }
+  if (popup) popup.disabled = !enabled;
+  if (dedicated) dedicated.disabled = !enabled;
+}
+
+export function setupBrowserOptions() {
+  document.addEventListener("DOMContentLoaded", () => {
+    const browser = document.getElementById("browser");
+    const popup = document.getElementById("popup_xpath");
+    const dedicated = document.getElementById("dedicated_xpath");
+    browser?.addEventListener("change", updateBrowserOptions);
+    const ensureBrowser = () => {
+      if (browser && !browser.checked) browser.checked = true;
+      updateBrowserOptions();
+    };
+    popup?.addEventListener("input", ensureBrowser);
+    dedicated?.addEventListener("input", ensureBrowser);
+    updateBrowserOptions();
+  });
+}
