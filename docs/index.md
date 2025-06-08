@@ -47,6 +47,7 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [Nginx HTTP/2 Push](nginx_http2_push.md)
 - [API Resilience](api_resilience.md)
 - [OpenSSF Scorecard](scorecard.md)
+- [EthicalCheck Workflow](ethicalcheck.md)
 
 ## Dashboard Time
 

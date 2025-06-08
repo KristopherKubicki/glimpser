@@ -21,6 +21,7 @@ nav:
       - Developer Guide: developer_guide.md
       - Docker Build Verification: docker_build.md
       - CodeQL Security Scanning: codeql.md
+      - EthicalCheck Workflow: ethicalcheck.md
       - FAQ: faq.md
       - Getting Started: getting_started.md
       - Guided Setup: guided_setup.md
