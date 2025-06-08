@@ -128,11 +128,10 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int) -> bool:
     """Concatenate ``parts`` into ``out`` using ffmpeg copy mode."""
 
     out_tmp = out.with_suffix(".tmp")
-    concat_payload = "\n".join(f"file '{p.as_posix()}'" for p in parts).encode()
+    concat_payload = "\n".join(f"file '{p.as_posix()}'" for p in parts).encode() + b"\n"
 
     cmd = [
         config.FFMPEG_PATH,
-        "-nostdin",
         "-loglevel",
         "error",
         "-f",
