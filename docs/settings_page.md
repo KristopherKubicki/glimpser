@@ -5,7 +5,7 @@ The **Settings** interface lets you manage configuration values stored in the da
 ## Sections
 
 - **Add New Setting** – quickly create additional key/value pairs.
-- **Current Settings** – edit existing values. Delete actions appear when advanced options are enabled using the button under the **Management** tab. Tabs switch between setting groups and the Management tab holds backup and offline options.
+- **Current Settings** – edit existing values. Delete actions appear when advanced options are enabled using the toggle under the **Management** tab. Tabs switch between setting groups and the Management tab holds backup and offline options.
 - **Configuration Management** – backup, download, and upload the JSON configuration file.
 - **Danger Mode** – shows the detected browser path, whether shortcuts are patched, and if the debugging port is open. You can also update Chrome shortcuts from here.
 - **Offline Preview** – cached snapshots are automatically enabled.
