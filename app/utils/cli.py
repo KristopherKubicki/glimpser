@@ -65,6 +65,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default=False,
     )
     parser.add_argument(
+        "--no-log-cache",
+        action="store_true",
+        help="Disable the log caching thread",
+        default=False,
+    )
+    parser.add_argument(
         "--screenshot-dir",
         default=config.SCREENSHOT_DIRECTORY,
         help="Directory for storing screenshots",

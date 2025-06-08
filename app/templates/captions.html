@@ -39,8 +39,8 @@ block content %}
   </div>
 
   <div id="prompts-tab" class="tab-content active">
-    <details id="controls-wrapper" class="filter-controls">
-      <summary>Search &amp; Filters</summary>
+    <div id="controls-wrapper" class="filter-controls closed">
+      <button id="controls-toggle" type="button">Search &amp; Filters</button>
       <div class="controls-inner">
         <label for="search-input" title="Search by name or group"
           >Search:</label
@@ -102,7 +102,7 @@ block content %}
           <option value="next_desc">Next &darr;</option>
         </select>
       </div>
-    </details>
+    </div>
 
     <h2>Camera Notes</h2>
     <div id="template-list">

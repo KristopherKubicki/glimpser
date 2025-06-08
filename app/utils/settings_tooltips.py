@@ -155,3 +155,7 @@ NUMERIC_FIELDS = {
 
 # Fields that expect email addresses.
 EMAIL_FIELDS = {"EMAIL_SENDER", "EMAIL_RECIPIENTS"}
+
+# Settings that are hidden behind the advanced toggle on the UI. Their
+# corresponding form inputs are disabled unless advanced mode is enabled.
+LOCKED_SETTINGS = {"CLIP_MODEL_NAME"}

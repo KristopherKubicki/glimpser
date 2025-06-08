@@ -90,6 +90,7 @@
                     value="True"
                     {% if setting.value == 'True' %}checked{% endif %}
                     data-boolean
+                    {% if setting.name in locked_settings %}disabled data-locked{% endif %}
                   />
                   <span class="slider round"></span>
                 </label>
@@ -99,6 +100,15 @@
                   name="{{ setting.name }}"
                   value="{{ setting.value }}"
                   title="Edit value for {{ setting.name }}"
+                  {%
+                  if
+                  setting.name
+                  in
+                  locked_settings
+                  %}disabled
+                  data-locked{%
+                  endif
+                  %}
                 />
                 {% else %}
                 <input
@@ -106,6 +116,15 @@
                   name="{{ setting.name }}"
                   value="{{ setting.value }}"
                   title="Edit value for {{ setting.name }}"
+                  {%
+                  if
+                  setting.name
+                  in
+                  locked_settings
+                  %}disabled
+                  data-locked{%
+                  endif
+                  %}
                 />
                 {% endif %}
               </td>

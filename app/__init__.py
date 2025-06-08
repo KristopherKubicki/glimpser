@@ -59,7 +59,12 @@ class SQLAlchemyHandler(logging.Handler):
 """
 
 
-def create_app(enable_watchdog=True, schedule=True, crawlers=True):
+def create_app(
+    enable_watchdog: bool = True,
+    schedule: bool = True,
+    crawlers: bool = True,
+    log_cache: bool = True,
+):
     """Create and configure the Flask application.
 
     This function sets up the entire Flask application, including:
@@ -84,6 +89,11 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
         When ``True`` (the default) crawler jobs are scheduled.  Pass
         ``False`` to skip scheduling crawlers, which is useful during
         testing or when using the application purely for playback.
+
+    log_cache : bool, optional
+        When ``True`` (the default) a background thread tails the log file
+        so recent entries can be served via the web UI.  Pass ``False`` to
+        disable this thread during debugging or unit tests.
 
     Returns
     -------
@@ -247,6 +257,7 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
                     # Reset failure count on successful check
                     failure_count = 0
 
+    # Send alerts when the application starts  
     def _start_background_components() -> None:
         """Initialize scheduler and monitoring in a low priority thread."""
         backup_config()

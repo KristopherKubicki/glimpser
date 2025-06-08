@@ -1,9 +1,9 @@
 import { jest } from "@jest/globals";
 
 document.body.innerHTML = `
-  <details id="controls-wrapper">
-    <summary>Controls</summary>
-  </details>
+  <div id="controls-wrapper" class="closed">
+    <button id="controls-toggle" type="button">Controls</button>
+  </div>
 `;
 
 jest.useFakeTimers();
@@ -16,23 +16,23 @@ beforeAll(async () => {
 
 describe("controls dropdown", () => {
   test("auto collapses after inactivity", () => {
-    const details = document.getElementById("controls-wrapper");
-    details.setAttribute("open", "");
+    const wrapper = document.getElementById("controls-wrapper");
+    wrapper.classList.remove("closed");
     initControlsDropdown();
     document.dispatchEvent(new Event("DOMContentLoaded"));
     jest.advanceTimersByTime(5000);
-    expect(details.classList.contains("fade-out")).toBe(true);
+    expect(wrapper.classList.contains("fade-out")).toBe(true);
     jest.advanceTimersByTime(500);
-    expect(details.hasAttribute("open")).toBe(false);
-    expect(details.classList.contains("fade-out")).toBe(false);
+    expect(wrapper.classList.contains("closed")).toBe(true);
+    expect(wrapper.classList.contains("fade-out")).toBe(false);
   });
 
   test("button shows and hides on activity", () => {
-    const details = document.getElementById("controls-wrapper");
+    const wrapper = document.getElementById("controls-wrapper");
     initControlsDropdown();
     document.dispatchEvent(new Event("DOMContentLoaded"));
-    expect(details.classList.contains("show-summary")).toBe(true);
+    expect(wrapper.classList.contains("show-toggle")).toBe(true);
     jest.advanceTimersByTime(3000);
-    expect(details.classList.contains("show-summary")).toBe(false);
+    expect(wrapper.classList.contains("show-toggle")).toBe(false);
   });
 });

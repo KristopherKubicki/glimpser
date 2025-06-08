@@ -6,6 +6,7 @@ export function initThemeToggle() {
 
     const applyTheme = (theme) => {
       document.body.classList.toggle("light-mode", theme === "light");
+      document.body.classList.toggle("dark-mode", theme === "dark");
       if (useEl) {
         useEl.setAttribute(
           "href",

@@ -89,6 +89,7 @@ from app.utils.settings_tooltips import (
     SETTINGS_CHOICES,
     NUMERIC_FIELDS,
     EMAIL_FIELDS,
+    LOCKED_SETTINGS,
 )
 
 from app.utils.screenshots import (
@@ -3115,6 +3116,7 @@ def init_routes(app: Flask) -> None:
             danger_enabled=danger_enabled,
             numeric_fields=NUMERIC_FIELDS,
             email_fields=EMAIL_FIELDS,
+            locked_settings=LOCKED_SETTINGS,
             file_info=file_info,
             page_title="Settings",
         )

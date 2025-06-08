@@ -21,7 +21,7 @@ describe("url_test", () => {
     const input = document.getElementById("url");
     input.value = "http://example.com";
     input.dispatchEvent(new Event("change"));
-    await new Promise(process.nextTick);
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(fetch).toHaveBeenCalled();
     const status = document.getElementById("url-status");
     expect(status.textContent).toBe("✓");

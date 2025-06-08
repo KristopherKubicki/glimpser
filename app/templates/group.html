@@ -1,7 +1,7 @@
 {% extends 'base.html' %} {% from 'components.html' import status_legend %} {%
 block content %}
-<details id="controls-wrapper">
-  <summary>Controls</summary>
+<div id="controls-wrapper" class="closed">
+  <button id="controls-toggle" type="button">Controls</button>
   <div id="template-controls">
     <div id="search-container">
       <input
@@ -41,7 +41,7 @@ block content %}
       </label>
     </div>
   </div>
-</details>
+</div>
 <div
   id="template-list"
   title="List of all templates"

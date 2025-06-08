@@ -1,960 +1,189 @@
-{% extends 'base.html' %}
-{% block content %}
-    <script>
-        // Track the last time the health endpoint failed
-        window.lastHealthFailed = false;
-    </script>
+{% extends 'base.html' %} {% block content %}
+<script>
+  // Track the last time the health endpoint failed
+  window.lastHealthFailed = false;
+</script>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/player.css') }}"
+/>
 
-    <div class="video-container full-height" role="region" aria-label="Live video feed">
-        <img id="live-image" loading="lazy" alt="Live feed frame" title="Current frame from the live feed">
-        <video id="live-video" class="hidden" autoplay muted tabindex="0">
-            <source src="" type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
-        <video id="preload-video" class="hidden" muted preload="auto"></video>
-        <div class="video-controls">
-            <input type="range" id="seek-bar" value="0">
+<div
+  class="video-container full-height"
+  role="region"
+  aria-label="Live video feed"
+>
+  <img
+    id="live-image"
+    loading="lazy"
+    alt="Live feed frame"
+    title="Current frame from the live feed"
+  />
+  <video id="live-video" class="hidden" autoplay muted tabindex="0">
+    <source src="" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+  <video id="preload-video" class="hidden" muted preload="auto"></video>
+  <div class="video-controls">
+    <input type="range" id="seek-bar" value="0" />
 
-            <div class="control-row">
-                <button id="play-pause" title="play/pause" aria-label="Play or pause video"><i class="fa-play-pause"></i></button>
-                <div id="speed-container">
-                    <input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()">
-                    <label for="speed-slider">Speed: <span id="speed-value">1x</span></label>
-                </div>
-                <div id="jog-shuttle" title="Jog shuttle control"></div>
+    <div class="control-row">
+      <button
+        id="play-pause"
+        title="play/pause"
+        aria-label="Play or pause video"
+      >
+        <i class="fa-play-pause"></i>
+      </button>
+      <div id="speed-container">
+        <input
+          type="range"
+          id="speed-slider"
+          min="-3"
+          max="4"
+          value="0"
+          step="0.1"
+          oninput="updatePlaybackSpeed()"
+        />
+        <label for="speed-slider"
+          >Speed: <span id="speed-value">1x</span></label
+        >
+      </div>
+      <div id="jog-shuttle" title="Jog shuttle control"></div>
 
-        <!-- <button id="cast-button">Cast</button> -->
-                <button id="full-screen" title='fullscreen' aria-label="Toggle fullscreen"><i class="fas fa-expand"></i></button>
-                <button id="toggle-details" title="Show details" aria-label="Toggle details"><i class="fas fa-info-circle"></i></button>
-                <button id="rotate-video" title="Rotate 90°" aria-label="Rotate video"><i class="fas fa-sync-alt"></i></button>
+      <!-- <button id="cast-button">Cast</button> -->
+      <button
+        id="full-screen"
+        title="fullscreen"
+        aria-label="Toggle fullscreen"
+      >
+        <i class="fas fa-expand"></i>
+      </button>
+      <button
+        id="toggle-details"
+        title="Show details"
+        aria-label="Toggle details"
+      >
+        <i class="fas fa-info-circle"></i>
+      </button>
+      <button id="rotate-video" title="Rotate 90°" aria-label="Rotate video">
+        <i class="fas fa-sync-alt"></i>
+      </button>
 
-    <select id="video-source" onchange="changeVideoSource()">
-        <option value="png" title="View a series of PNG images">PNG Stream</option>
-	<!-- <option value="m3u8" title="View an HLS (HTTP Live Streaming) video stream">M3U8 Stream</option> -->
-        <option value="loop" title="Loop through available video clips">Loop Videos</option>
+      <select id="video-source" onchange="changeVideoSource()">
+        <option value="png" title="View a series of PNG images">
+          PNG Stream
+        </option>
+        <!-- <option value="m3u8" title="View an HLS (HTTP Live Streaming) video stream">M3U8 Stream</option> -->
+        <option value="loop" title="Loop through available video clips">
+          Loop Videos
+        </option>
         <option value="mp4" title="View an MP4 video stream">MP4 Stream</option>
-        <option value="live" title="View the direct live stream">Live Video</option>
-        <option value="motion" title="View motion-detected frames">Motion</option>
-        <option value="mjpg" selected title="View an MJPEG (Motion JPEG) stream">MJPG</option>
-    </select>
+        <option value="live" title="View the direct live stream">
+          Live Video
+        </option>
+        <option value="motion" title="View motion-detected frames">
+          Motion
+        </option>
+        <option
+          value="mjpg"
+          selected
+          title="View an MJPEG (Motion JPEG) stream"
+        >
+          MJPG
+        </option>
+      </select>
 
-    <select id="group-selector" onchange="changeGroup()">
+      <select id="group-selector" onchange="changeGroup()">
         <option value="all" title="View all groups">All</option>
-        {% set all_groups = [] %}
-        {% for camera, details in template_details.items() %}
-            {% if details.groups %}
-                {% for group in details.groups.split(',') %}
-                    {% if group %}
-                        {% set _ = all_groups.append(group|trim) %}
-                    {% endif %}
-                {% endfor %}
-            {% endif %}
+        {% set all_groups = [] %} {% for camera, details in
+        template_details.items() %} {% if details.groups %} {% for group in
+        details.groups.split(',') %} {% if group %} {% set _ =
+        all_groups.append(group|trim) %} {% endif %} {% endfor %} {% endif %} {%
+        endfor %} {% for group in all_groups|unique|sort %}
+        <option value="{{ group }}" title="View group {{ group }}">
+          {{ group }}
+        </option>
         {% endfor %}
-        {% for group in all_groups|unique|sort %}
-            <option value="{{ group }}" title="View group {{ group }}">{{ group }}</option>
-        {% endfor %}
-    </select>
+      </select>
 
-    <select id="camera-selector" onchange="changeCamera()" style="display:none">
+      <select
+        id="camera-selector"
+        onchange="changeCamera()"
+        style="display: none"
+      >
         {% for camera in template_details.keys()|sort %}
-            <option value="{{ camera }}" title="View camera {{ camera }}">Camera: {{ camera }}</option>
+        <option value="{{ camera }}" title="View camera {{ camera }}">
+          Camera: {{ camera }}
+        </option>
         {% endfor %}
-    </select>
-
-
-
-            </div>
-
-
-        </div>
-        <div id="video-overlay" class="video-overlay" role="region" aria-live="polite">
-            <div id="loading-indicator" class="hidden" role="status">Loading...</div>
-            <div id="play-pause-indicator" class="video-icon hidden" aria-hidden="true">▶</div>
-            <div id="offline-indicator" class="offline-indicator hidden" role="alert" title="Camera offline">
-                <i class="fas fa-video-slash video-icon" aria-hidden="true"></i>
-                <p id="offline-message"></p>
-            </div>
-            <div id="capture-error-indicator" class="error-indicator hidden" role="alert" title="Capture error">
-                <i class="fas fa-exclamation-triangle video-icon" aria-hidden="true"></i>
-                <p id="capture-error-message"></p>
-            </div>
-            <div id="stream-error-indicator" class="error-indicator hidden" role="alert" title="Streaming error">
-                <i class="fas fa-times-circle video-icon" aria-hidden="true"></i>
-                <p id="stream-error-message"></p>
-            </div>
-            {% if CLOCK_OVERLAY %}
-            <div id="overlayClock" class="cool-clock clock-overlay" data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}">
-                <div class="clock-face">
-                    <div class="clock-hands">
-                        <div class="hand hour-hand"></div>
-                        <div class="hand minute-hand"></div>
-                        <div class="hand second-hand"></div>
-                    </div>
-                    <div class="digital-clock"></div>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-        <div id="error-message" role="alert"></div>
+      </select>
     </div>
-
-
-
-    <div id="template-details" role="region" aria-live="polite"></div>
-
-    <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
-    <script>
-
-        const video = document.getElementById('live-video');
-        const preloadVideo = document.getElementById('preload-video');
-        const image = document.getElementById('live-image');
-        const templateDetailsContainer = document.getElementById('template-details');
-        const templateDetails = {{ template_details|tojson }};
-        let currentCamera = 'All'; // Set the default camera to "All"
-        let pngInterval;
-        let liveSwitchInterval;
-        let liveSwitchFunction;
-        let preloadedCamera = null;
-        let hlsInstance = null;
-        let loopHandler = null;
-        const speedContainer = document.getElementById('speed-container');
-        const videoOverlay = document.getElementById('video-overlay');
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const playPauseIndicator = document.getElementById('play-pause-indicator');
-        const playButton = document.getElementById('play-pause');
-        const toggleDetailsButton = document.getElementById('toggle-details');
-        const offlineIndicator = document.getElementById('offline-indicator');
-        const offlineMessage = document.getElementById('offline-message');
-        const errorIndicator = document.getElementById('capture-error-indicator');
-        const errorIndicatorMessage = document.getElementById('capture-error-message');
-        const streamErrorIndicator = document.getElementById('stream-error-indicator');
-        const streamErrorMessage = document.getElementById('stream-error-message');
-        window.detailsVisible = false;
-
-        function resetVideo() {
-            if (hlsInstance) {
-                hlsInstance.destroy();
-                hlsInstance = null;
-            }
-            if (loopHandler) {
-                video.removeEventListener('ended', loopHandler);
-                loopHandler = null;
-            }
-            video.removeEventListener('ended', handleVideoEnded);
-        }
-
-        function showLoadingIndicator() {
-            videoOverlay.style.display = 'block';
-            loadingIndicator.style.display = 'block';
-            playPauseIndicator.style.display = 'none';
-        }
-
-        function hideLoadingIndicator() {
-            loadingIndicator.style.display = 'none';
-            if (videoOverlay.style.display === 'block') {
-                setTimeout(() => {
-                    videoOverlay.style.display = 'none';
-                }, 500);
-            }
-        }
-
-        function showPlayPauseIndicator(isPaused) {
-            videoOverlay.style.display = 'block';
-            playPauseIndicator.style.display = 'block';
-            playPauseIndicator.textContent = isPaused ? ' ▶ ' : '▷';
-            playButton.textContent = isPaused ? ' ▶ ' : '▷';
-            loadingIndicator.style.display = 'none';
-            setTimeout(() => {
-                playPauseIndicator.style.display = 'none';
-                if (loadingIndicator.style.display === 'none') {
-                    videoOverlay.style.display = 'none';
-                }
-            }, 500);
-        }
-
-        function showError(e) {
-            let message = 'Error loading stream';
-            if (e && e.target && e.target.error) {
-                switch (e.target.error.code) {
-                    case 2:
-                        message = 'Network error while loading stream';
-                        break;
-                    case 4:
-                        message = 'Video format not supported';
-                        break;
-                    default:
-                        message = 'Error loading stream';
-                }
-            } else if (typeof e === 'string') {
-                message = e;
-            }
-            showStreamErrorIndicator(message);
-        }
-
-        function showOfflineIndicator(cameraName) {
-            videoOverlay.style.display = 'block';
-            offlineIndicator.style.display = 'block';
-            offlineMessage.textContent = `Camera ${cameraName} is currently offline`;
-            loadingIndicator.style.display = 'none';
-            playPauseIndicator.style.display = 'none';
-        }
-
-        function hideOfflineIndicator() {
-            offlineIndicator.style.display = 'none';
-            offlineMessage.textContent = '';
-            if (loadingIndicator.style.display === 'none' && playPauseIndicator.style.display === 'none') {
-                videoOverlay.style.display = 'none';
-            }
-        }
-
-        function showCaptureErrorIndicator(cameraName) {
-            videoOverlay.style.display = 'block';
-            errorIndicator.style.display = 'block';
-            errorIndicatorMessage.textContent = `Capture failed for ${cameraName}`;
-            loadingIndicator.style.display = 'none';
-            playPauseIndicator.style.display = 'none';
-        }
-
-        function hideCaptureErrorIndicator() {
-            errorIndicator.style.display = 'none';
-            errorIndicatorMessage.textContent = '';
-            if (
-                loadingIndicator.style.display === 'none' &&
-                playPauseIndicator.style.display === 'none' &&
-                offlineIndicator.style.display === 'none' &&
-                streamErrorIndicator.style.display === 'none'
-
-            ) {
-                videoOverlay.style.display = 'none';
-            }
-        }
-
-        function showStreamErrorIndicator(message) {
-            videoOverlay.style.display = 'block';
-            streamErrorIndicator.style.display = 'block';
-            streamErrorMessage.textContent = message;
-            loadingIndicator.style.display = 'none';
-            playPauseIndicator.style.display = 'none';
-        }
-
-        function hideStreamErrorIndicator() {
-            streamErrorIndicator.style.display = 'none';
-            streamErrorMessage.textContent = '';
-            if (
-                loadingIndicator.style.display === 'none' &&
-                playPauseIndicator.style.display === 'none' &&
-                offlineIndicator.style.display === 'none' &&
-                errorIndicator.style.display === 'none'
-
-            ) {
-                videoOverlay.style.display = 'none';
-            }
-        }
-
-
-        function showStreamErrorIndicator(message) {
-            videoOverlay.style.display = 'block';
-            streamErrorIndicator.style.display = 'block';
-            streamErrorMessage.textContent = message;
-            loadingIndicator.style.display = 'none';
-            playPauseIndicator.style.display = 'none';
-        }
-
-        function hideStreamErrorIndicator() {
-            streamErrorIndicator.style.display = 'none';
-            streamErrorMessage.textContent = '';
-            if (
-                loadingIndicator.style.display === 'none' &&
-                playPauseIndicator.style.display === 'none' &&
-                offlineIndicator.style.display === 'none' &&
-                errorIndicator.style.display === 'none'
-            ) {
-                videoOverlay.style.display = 'none';
-            }
-        }
-
-
-        function computeVideoUrl(cameraName, source) {
-            if (source === 'mp4' || source === 'loop') {
-                if (cameraName.startsWith('group-')) {
-                    const groupName = cameraName.split('group-')[1];
-                    return `/stream.mp4?group=${encodeURIComponent(groupName)}`;
-                } else if (cameraName === 'All') {
-                    return '/stream.mp4';
-                }
-                return '/last_video/' + cameraName;
-            }
-
-            if (source === 'live') {
-                if (cameraName.startsWith('group-') || cameraName === 'All') {
-                    const groupCams = cameraName === 'All'
-                        ? Object.keys(templateDetails).filter(key => key !== 'All')
-                        : (templateDetails[cameraName]?.groupCameras || []);
-                    if (groupCams.length > 0) {
-                        return '/live_video?camera=' + encodeURIComponent(groupCams[0]);
-                    }
-                    return null;
-                }
-                return '/live_video?camera=' + encodeURIComponent(cameraName);
-            }
-
-            return null;
-        }
-
-        function preloadCameraStream(cameraName) {
-            const source = document.getElementById('video-source').value;
-            const url = computeVideoUrl(cameraName, source);
-            if (url) {
-                preloadVideo.dataset.camera = cameraName;
-                preloadVideo.src = url;
-                preloadVideo.load();
-                preloadedCamera = cameraName;
-            }
-        }
-
-        function preloadNextCamera() {
-            const selector = document.getElementById('camera-selector');
-            const options = Array.from(selector.options);
-            const idx = options.findIndex(o => o.value === currentCamera);
-            if (idx === -1) return;
-            const nextValue = options[(idx + 1) % options.length].value;
-            preloadCameraStream(nextValue);
-        }
-
-        function swapPreloadedStream() {
-            video.src = preloadVideo.src;
-            video.load();
-            video.play();
-        }
-
-        video.addEventListener('waiting', showLoadingIndicator);
-        video.addEventListener('canplay', hideLoadingIndicator);
-        video.addEventListener('canplay', () => { image.style.display = 'none'; });
-        // Hide the loading indicator once the PNG image has loaded so the
-        // viewer isn't stuck with a static "Loading" overlay.
-        image.addEventListener('load', hideLoadingIndicator);
-        video.addEventListener('play', () => showPlayPauseIndicator(false));
-        video.addEventListener('pause', () => showPlayPauseIndicator(true));
-        video.addEventListener('error', (e) => {
-            const msg = e.target && e.target.error ? e.target.error.message : '';
-            const src = video.getAttribute('src');
-            if (!src || src.trim() === '' || (msg && msg.includes('Empty src attribute'))) {
-                // Ignore errors from blank or cleared sources when switching cameras
-                return;
-            }
-            showError(e);
-            setTimeout(() => {
-                if (typeof updateFeed === 'function') {
-                    updateFeed();
-                }
-            }, 2000);
-        });
-        image.addEventListener('error', () => {
-            const src = image.getAttribute('src');
-            if (!src || src.trim() === '') {
-                // Ignore errors triggered from clearing the image source
-                return;
-            }
-            setTimeout(() => {
-                if (typeof updateFeed === 'function') {
-                    updateFeed();
-                }
-            }, 2000);
-        });
-
-function changeCamera() {
-    showLoadingIndicator();
-    const cameraSelector = document.getElementById('camera-selector');
-    const selectedValue = cameraSelector.value;
-    // Check if the camera is connected
-    let isConnected = checkCameraConnection(currentCamera);
-
-    if (selectedValue === 'All') {
-        // Handle the "All" option separately
-        currentCamera = 'All';
-        templateDetails['All'] = {
-            url: '/stream.mp4', // Set the URL for the MP4 stream without a group
-            groupCameras: Object.keys(templateDetails).filter(key => key !== 'All'), // Add all cameras to groupCameras
-            // Add other necessary properties for the "All" group, if needed
-        };
-	isConnected = true;
-    } else if (selectedValue.startsWith('group-')) {
-        // Group is selected
-        const groupName = selectedValue.split('group-')[1];
-        currentCamera = 'group-' + groupName; // Use a unique identifier for the group
-        const groupCameras = Object.entries(templateDetails)
-            .filter(([camera, details]) => details.groups && details.groups.split(',').map(s => s.trim()).includes(groupName))
-            .map(([camera, _]) => camera);
-        // Update the special URL for the group with the group query parameter
-        templateDetails[currentCamera] = {
-            url: `/stream.mp4?group=${groupName}`,
-            groupCameras: groupCameras,
-            groupName: groupName, // Add the groupName property
-            // Add other necessary properties for the group
-        };
-	isConnected = true;
-    } else {
-        // Individual camera is selected
-        currentCamera = selectedValue;
-        isConnected = checkCameraConnection(currentCamera);
-    }
-
-    if (!isConnected) {
-        showOfflineIndicator(currentCamera);
-        hideLoadingIndicator();
-        video.pause();
-        video.src = '';
-        image.src = '';
-    } else {
-        hideOfflineIndicator();
-        showLastScreenshot();
-        updateTemplateDetails();
-        if (preloadedCamera === currentCamera && preloadVideo.src) {
-            swapPreloadedStream();
-        } else {
-            updateFeed(); // Load normally if not preloaded
-        }
-        updateSpeedContainer();
-        preloadNextCamera();
-    }
-}
-
-        function updateTemplateDetails() {
-            const details = templateDetails[currentCamera];
-            const isGroupView = currentCamera === 'All' || currentCamera.startsWith('group-');
-
-            if (!details || isGroupView) {
-                templateDetailsContainer.style.display = 'none';
-                templateDetailsContainer.innerHTML = '';
-                return;
-            }
-
-            video.title = details.last_caption;
-            templateDetailsContainer.style.display = 'block';
-            templateDetailsContainer.innerHTML = `
-                <div>
-                    <strong>Last Caption:</strong> ${details.last_caption || 'N/A'}<br/>
-                    ${details.offline_since ? `<strong>Offline Since:</strong> ${details.offline_since}<br/>` : ''}
-                    ${details.capture_failed ? '<strong>Capture Failed</strong><br/>' : ''}
-                </div>`;
-        }
-
-        function updateFeed() {
-            resetVideo();
-            const source = document.getElementById('video-source').value;
-            const isConnected = checkCameraConnection(currentCamera);
-            updateSpeedContainer();
-            hideStreamErrorIndicator();
-
-            if (!isConnected) {
-                showOfflineIndicator(currentCamera);
-                hideCaptureErrorIndicator();
-                hideLoadingIndicator();
-                video.pause();
-                video.src = '';
-                image.src = '';
-                return;
-            } else if (templateDetails[currentCamera] && templateDetails[currentCamera].capture_failed) {
-                hideOfflineIndicator();
-                showCaptureErrorIndicator(currentCamera);
-                hideLoadingIndicator();
-                video.pause();
-                video.src = '';
-                image.src = '';
-                return;
-            } else {
-                hideOfflineIndicator();
-                hideCaptureErrorIndicator();
-                if (!['png', 'mjpg', 'motion'].includes(source)) {
-                    showLastScreenshot();
-                }
-            }
-
-            if (
-                preloadedCamera === currentCamera &&
-                ['mp4', 'live', 'loop'].includes(source) &&
-                preloadVideo.src
-            ) {
-                video.style.display = 'block';
-                image.style.display = 'none';
-                stopLiveSwitch();
-                stopPNG();
-                video.src = preloadVideo.src;
-                video.load();
-                video.play();
-                preloadNextCamera();
-                return;
-            }
-
-            switch (source) {
-                case 'm3u8':
-                    playM3U8();
-                    break;
-                case 'loop':
-                    playLoop();
-                    break;
-                case 'png':
-                    playPNG();
-                    break;
-                case 'mp4':
-                    playMP4();
-                    break;
-                case 'live':
-                    playLive();
-                    break;
-                case 'mjpg':
-                    playMJPG();
-                    break;
-                case 'motion':
-                    playMotion();
-                    break;
-                default:
-                    console.error('Invalid video source');
-            }
-        }
-
-function playM3U8() {
-    resetVideo();
-    video.style.display = 'block';
-        // HLS streams cannot be scrubbed
-        const seekBar = document.getElementById("seek-bar");
-        if (seekBar) {
-            seekBar.style.visibility = "hidden";
-            seekBar.style.pointerEvents = "none";
-            seekBar.disabled = true;
-        }
-
-    image.style.display = 'none';
-    stopLiveSwitch();
-
-    stopPNG();
-
-            let m3u8Url;
-            if (currentCamera.startsWith('group-')) {
-                const groupName = currentCamera.split('group-')[1];
-                m3u8Url = `/stream.m3u8?group=${encodeURIComponent(groupName)}`;
-            } else if (currentCamera === 'All') {
-                m3u8Url = '/stream.m3u8';
-            } else {
-                m3u8Url = `/stream.m3u8?camera=${encodeURIComponent(currentCamera)}`;
-            }
-
-            if (Hls.isSupported()) {
-                hlsInstance = new Hls();
-                hlsInstance.loadSource(m3u8Url);
-                hlsInstance.attachMedia(video);
-                hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.play().catch(e => console.error("Error playing video:", e));
-                });
-                hlsInstance.on(Hls.Events.ERROR, function(event, data) {
-                    console.error("HLS error:", data);
-                    if (data.fatal) {
-                        switch(data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR:
-                                console.error("Fatal network error encountered, trying to recover...");
-                                hlsInstance.startLoad();
-                                break;
-                            case Hls.ErrorTypes.MEDIA_ERROR:
-                                console.error("Fatal media error encountered, trying to recover...");
-                                hlsInstance.recoverMediaError();
-                                break;
-                            default:
-                                console.error("Fatal error, cannot recover");
-                                hlsInstance.destroy();
-                                hlsInstance = null;
-                                break;
-                        }
-                    }
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = m3u8Url;
-                video.addEventListener('canplay', function() {
-                    video.play().catch(e => console.error("Error playing video:", e));
-                });
-                video.addEventListener('error', function(e) {
-                    console.error("Video error:", video.error);
-                });
-            } else {
-                console.error("HLS is not supported on this browser");
-            }
-        }
-
-
-function playLoop() {
-    resetVideo();
-    video.style.display = 'block';
-
-    image.style.display = 'none';
-    stopLiveSwitch();
-
-    stopPNG();
-
-    if (currentCamera.startsWith('group-') || currentCamera === 'All') {
-        // Handle both groups and the special "All" group
-        let groupCameras;
-        if (currentCamera === 'All') {
-            // If the "All" group is selected, get all camera names
-            groupCameras = Object.keys(templateDetails).filter(key => key !== 'All');
-        } else {
-            // If a specific group is selected, get the cameras in that group
-            const groupName = currentCamera.split('group-')[1];
-            groupCameras = templateDetails['group-' + groupName].groupCameras;
-        }
-
-        let cameraIndex = 0;
-
-        loopHandler = () => {
-            if (cameraIndex >= groupCameras.length) {
-                cameraIndex = 0; // Reset the index to loop through the cameras again
-            }
-            const cameraName = groupCameras[cameraIndex];
-            video.dataset.currentCamera = cameraName; // track which camera is playing
-            video.src = `/last_video/${cameraName}`; // Update the video source with the current camera
-            video.load();
-            video.play();
-            cameraIndex++; // Move to the next camera
-        };
-
-        loopHandler(); // Start the loop
-        video.addEventListener('ended', loopHandler); // Continue the loop when the video ends
-    } else {
-        // Handling for individual cameras
-        video.src = `/last_video/${currentCamera}`;
-        video.load();
-        video.play();
-    }
-}
-
-
-
-
-function refreshPNG() {
-    image.src = '/last_screenshot/' + currentCamera + '?time=' + new Date().getTime();
-}
-
-function showLastScreenshot() {
-    if (currentCamera.startsWith('group-') || currentCamera === 'All') {
-        image.src = '/stream.png';
-    } else {
-        image.src = '/last_screenshot/' + currentCamera;
-    }
-    image.style.display = 'block';
-}
-
-
-function playMP4() {
-    resetVideo();
-    video.style.display = 'block';
-        const seekBar = document.getElementById("seek-bar");
-        if (seekBar) {
-            seekBar.style.visibility = "visible";
-            seekBar.style.pointerEvents = "auto";
-            seekBar.disabled = false;
-        }
-    stopLiveSwitch();
-    stopPNG();
-    if (currentCamera.startsWith('group-')) {
-        // Special handling for groups
-        const groupName = currentCamera.split('group-')[1];
-        video.dataset.currentCamera = templateDetails[currentCamera].groupCameras[0];
-        video.src = `/stream.mp4?group=${encodeURIComponent(groupName)}`;
-    } else if (currentCamera === 'All') {
-        // Special handling for the "All" option
-        video.dataset.currentCamera = Object.keys(templateDetails).filter(k => k !== 'All')[0];
-        video.src = '/stream.mp4';
-    } else {
-        // URL for individual cameras
-        video.src = '/last_video/' + currentCamera;
-    }
-    video.load();
-    video.play();
-
-    // Remove any existing 'ended' event listeners
-    video.removeEventListener('ended', handleVideoEnded);
-
-    // Add an event listener for the 'ended' event
-    video.addEventListener('ended', handleVideoEnded);
-    preloadNextCamera();
-}
-
-function handleVideoEnded() {
-    if (currentCamera === 'All' || currentCamera.startsWith('group-')) {
-        // For "All" or group options, move to the next camera
-        const groupCameras = templateDetails[currentCamera].groupCameras;
-        const currentIndex = groupCameras.indexOf(video.dataset.currentCamera);
-        const nextIndex = (currentIndex + 1) % groupCameras.length;
-        const nextCamera = groupCameras[nextIndex];
-        video.src = '/last_video/' + nextCamera;
-        video.dataset.currentCamera = nextCamera;
-        const upcomingCamera = groupCameras[(nextIndex + 1) % groupCameras.length];
-        preloadCameraStream(upcomingCamera);
-    }
-    video.load();
-    video.play();
-}
-
-function playLive() {
-    resetVideo();
-    video.style.display = 'block';
-        // Disable scrubbing on live streams
-        const seekBar = document.getElementById("seek-bar");
-        if (seekBar) {
-            seekBar.style.visibility = "hidden";
-            seekBar.style.pointerEvents = "none";
-            seekBar.disabled = true;
-        }
-    stopPNG();
-    stopLiveSwitch();
-
-    if (currentCamera.startsWith('group-') || currentCamera === 'All') {
-        let groupCameras;
-        if (currentCamera === 'All') {
-            groupCameras = Object.keys(templateDetails).filter(key => key !== 'All');
-        } else {
-            const groupName = currentCamera.split('group-')[1];
-            groupCameras = templateDetails['group-' + groupName].groupCameras;
-        }
-
-        let cameraIndex = 0;
-        liveSwitchFunction = () => {
-            if (cameraIndex >= groupCameras.length) {
-                cameraIndex = 0;
-            }
-            const cameraName = groupCameras[cameraIndex];
-            video.dataset.currentCamera = cameraName; // remember active camera
-            video.src = '/live_video?camera=' + encodeURIComponent(cameraName);
-            video.load();
-            video.play();
-            cameraIndex++;
-            const nextCamera = groupCameras[cameraIndex % groupCameras.length];
-            preloadCameraStream(nextCamera);
-        };
-
-        const slider = document.getElementById('speed-slider');
-        const speed = Math.pow(2, slider.value);
-        liveSwitchFunction();
-        liveSwitchInterval = setInterval(liveSwitchFunction, 10000 / speed);
-    } else {
-        video.src = '/live_video?camera=' + encodeURIComponent(currentCamera);
-        video.load();
-        video.play();
-    }
-    preloadNextCamera();
-}
-
-function playPNG() {
-    resetVideo();
-    video.style.display = 'none';
-    image.style.display = 'block';
-    stopLiveSwitch();
-        const slider = document.getElementById('speed-slider');
-        const speed = Math.pow(2, slider.value);
-        const seekBar = document.getElementById("seek-bar");
-        if (seekBar) {
-            seekBar.style.visibility = "hidden";
-            seekBar.style.pointerEvents = "none";
-            seekBar.disabled = true;
-        }
-    stopPNG();
-    if (currentCamera.startsWith('group-')) {
-        // Special handling for groups
-        let cameraIndex = 0;
-        const groupCameras = templateDetails[currentCamera].groupCameras;
-        const refreshGroupPNG = () => {
-            if (cameraIndex >= groupCameras.length) {
-                cameraIndex = 0;
-            }
-            const cameraName = groupCameras[cameraIndex];
-            image.src = '/last_screenshot/' + cameraName + '?time=' + new Date().getTime();
-            cameraIndex++;
-        };
-        refreshGroupPNG();
-        clearInterval(pngInterval);
-        pngInterval = setInterval(refreshGroupPNG, 10000 / speed);
-    } else if (currentCamera === 'All') {
-        // Special handling for the "All" option
-        const refreshAllPNG = () => {
-            image.src = '/stream.png?time=' + new Date().getTime();
-        };
-        refreshAllPNG();
-        clearInterval(pngInterval);
-        pngInterval = setInterval(refreshAllPNG, 10000 / speed);
-    } else {
-        // Original behavior for individual cameras
-        refreshPNG();
-        clearInterval(pngInterval);
-        pngInterval = setInterval(refreshPNG, 10000 / speed);
-    }
-}
-
-function playMJPG() {
-    resetVideo();
-    video.style.display = 'none';
-    image.style.display = 'block';
-        // MJPEG streams show images only, hide the scrub bar
-        const seekBar = document.getElementById("seek-bar");
-        if (seekBar) {
-            seekBar.style.visibility = "hidden";
-            seekBar.style.pointerEvents = "none";
-            seekBar.disabled = true;
-        }
-    stopLiveSwitch();
-    stopPNG();
-    const ts = Date.now();
-    if (currentCamera.startsWith('group-')) {
-        // Special handling for groups
-        const groupName = currentCamera.split('group-')[1];
-        image.src = `/stream.mjpg?group=${encodeURIComponent(groupName)}&time=${ts}`;
-    } else if (currentCamera === 'All') {
-        // Special handling for the "All" option
-        image.src = `/stream.mjpg?group=all&time=${ts}`;
-    } else {
-        // URL for individual cameras
-        image.src = `/stream.mjpg?camera=${currentCamera}&time=${ts}`;
-    }
-}
-
-function playMotion() {
-    resetVideo();
-    video.style.display = 'none';
-    image.style.display = 'block';
-        const seekBar = document.getElementById("seek-bar");
-        if (seekBar) {
-            seekBar.style.visibility = "hidden";
-            seekBar.style.pointerEvents = "none";
-            seekBar.disabled = true;
-        }
-    stopLiveSwitch();
-    stopPNG();
-    const ts = Date.now();
-    if (currentCamera.startsWith('group-')) {
-        // Special handling for groups
-        const groupName = currentCamera.split('group-')[1];
-        image.src = `/motion.mjpg?group=${encodeURIComponent(groupName)}&time=${ts}`;
-    } else if (currentCamera === 'All') {
-        // Special handling for the "All" option
-        image.src = `/motion.mjpg?group=all&time=${ts}`;
-    } else {
-        // URL for individual cameras
-        image.src = `/motion.mjpg?camera=${currentCamera}&time=${ts}`;
-    }
-}
-
-
-        function changeVideoSource() {
-            updateFeed();
-        }
-
-    function updatePlaybackSpeed() {
-        const slider = document.getElementById('speed-slider');
-        const speedDisplay = document.getElementById('speed-value');
-        const speed = Math.pow(2, slider.value);
-        video.playbackRate = parseFloat(speed.toFixed(2)); // Ensure the speed is a float with two decimal places
-        speedDisplay.textContent = speed.toFixed(2) + 'x'; // Update the text to show two decimal places
-
-        // Adjust the refresh rate for the PNG stream based on the playback speed
-        if (pngInterval) {
-            clearInterval(pngInterval);
-            pngInterval = setInterval(refreshPNG, 10000 / speed);
-        }
-
-        // Adjust the live group switch interval if active
-        if (liveSwitchInterval && liveSwitchFunction) {
-            clearInterval(liveSwitchInterval);
-            liveSwitchInterval = setInterval(liveSwitchFunction, 10000 / speed);
-        }
-
-        speedDisplay.classList.add('highlight-speed');
-    setTimeout(() => speedDisplay.classList.remove('highlight-speed'), 500);
-    }
-
-    function stopPNG() {
-        if (pngInterval) {
-            clearInterval(pngInterval);
-            pngInterval = null;
-        }
-        image.src = '';
-    }
-
-    function stopLiveSwitch() {
-        if (liveSwitchInterval) {
-            clearInterval(liveSwitchInterval);
-            liveSwitchInterval = null;
-            liveSwitchFunction = null;
-        }
-    }
-
-    function updateSpeedContainer() {
-        if (!speedContainer) return;
-        const source = document.getElementById('video-source').value;
-        const isGroupView = currentCamera === 'All' || currentCamera.startsWith('group-');
-        const show = isGroupView && source !== 'mjpg';
-        speedContainer.style.visibility = show ? 'visible' : 'hidden';
-        speedContainer.style.pointerEvents = show ? 'auto' : 'none';
-        const sliderEl = document.getElementById('speed-slider');
-        if (sliderEl) sliderEl.disabled = !show;
-    }
-
-    function checkCameraConnection(cameraName) {
-        if (cameraName === 'All' || cameraName.startsWith('group-')) {
-            return true;
-        }
-        const camera = templateDetails[cameraName];
-        if (!camera) {
-            return false;
-        }
-
-        if (camera.offline_since && camera.offline_since !== "") {
-            return false;
-        }
-
-        if (camera.capture_failed) {
-            return false;
-        }
-
-        if (!camera.last_screenshot_time) {
-            return false;
-        }
-
-        const lastScreenshotTime = new Date(camera.last_screenshot_time);
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-        return lastScreenshotTime > oneHourAgo;
-    }
-
-        let captionInterval;
-        async function fetchLatestCaptions() {
-            try {
-                const resp = await fetch('/templates');
-                if (!resp.ok) return;
-                const data = await resp.json();
-                for (const name in templateDetails) {
-                    if (data[name]) {
-                        templateDetails[name].last_caption = data[name].last_caption;
-                        templateDetails[name].last_caption_time = data[name].last_caption_time;
-                    }
-                }
-                updateTemplateDetails();
-            } catch (e) {
-                console.error('Failed to fetch captions', e);
-            }
-        }
-
-        function startCaptionPolling() {
-            fetchLatestCaptions();
-            captionInterval = setInterval(fetchLatestCaptions, 15000);
-        }
-
-        // Initially show the latest screenshot and start the MJPG stream
-        showLastScreenshot();
-        updateTemplateDetails();
-        updateSpeedContainer();
-        playMJPG();
-        preloadNextCamera();
-        startCaptionPolling();
-    </script>
-    <script type="module" src="{{ url_for('static', filename='js/live.js') }}"></script>
+  </div>
+  <div
+    id="video-overlay"
+    class="video-overlay"
+    role="region"
+    aria-live="polite"
+  >
+    <div id="loading-indicator" class="hidden" role="status">Loading...</div>
+    <div id="play-pause-indicator" class="video-icon hidden" aria-hidden="true">
+      ▶
+    </div>
+    <div
+      id="offline-indicator"
+      class="offline-indicator hidden"
+      role="alert"
+      title="Camera offline"
+    >
+      <i class="fas fa-video-slash video-icon" aria-hidden="true"></i>
+      <p id="offline-message"></p>
+    </div>
+    <div
+      id="capture-error-indicator"
+      class="error-indicator hidden"
+      role="alert"
+      title="Capture error"
+    >
+      <i class="fas fa-exclamation-triangle video-icon" aria-hidden="true"></i>
+      <p id="capture-error-message"></p>
+    </div>
+    <div
+      id="stream-error-indicator"
+      class="error-indicator hidden"
+      role="alert"
+      title="Streaming error"
+    >
+      <i class="fas fa-times-circle video-icon" aria-hidden="true"></i>
+      <p id="stream-error-message"></p>
+    </div>
+    {% if CLOCK_OVERLAY %}
+    <div
+      id="overlayClock"
+      class="cool-clock clock-overlay"
+      data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}"
+    >
+      <div class="clock-face">
+        <div class="clock-hands">
+          <div class="hand hour-hand"></div>
+          <div class="hand minute-hand"></div>
+          <div class="hand second-hand"></div>
+        </div>
+        <div class="digital-clock"></div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  <div id="error-message" role="alert"></div>
+</div>
+
+<div id="template-details" role="region" aria-live="polite"></div>
+
+<script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/live.js') }}"
+></script>
 
 {% endblock %}
-
