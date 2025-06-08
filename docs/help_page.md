@@ -42,3 +42,4 @@ The help page is only a starting point. For more details, explore these key docu
 - [Offline Preview](offline_preview.md) for tips on viewing captures without an internet connection
 
 All documentation lives under the `docs/` directory so you can read it offline after cloning the repository.
+You can open any of these Markdown files locally by visiting `/docs/<filename>` in your browser.
