@@ -37,6 +37,12 @@ if (!templateDetails["All"]) {
   };
 }
 
+function getCameraNames() {
+  return Object.keys(templateDetails).filter(
+    (key) => key !== "All" && !key.startsWith("group-"),
+  );
+}
+
 // Allow embedding the live view for a specific camera by reading the
 // ``camera`` query parameter. When provided and valid, restrict the camera
 // selector to that camera and start playback for it immediately.
@@ -379,7 +385,7 @@ function changeCamera() {
     currentCamera = "All";
     templateDetails["All"] = {
       url: "/stream.mp4", // Set the URL for the MP4 stream without a group
-      groupCameras: Object.keys(templateDetails).filter((key) => key !== "All"), // Add all cameras
+      groupCameras: getCameraNames(), // Add all cameras but skip groups
       // Add other necessary properties for the "All" group, if needed
     };
     isConnected = true;
@@ -630,15 +636,13 @@ function playLoop() {
     let groupCameras;
     if (currentCamera === "All") {
       // If the "All" group is selected, get all camera names
-      groupCameras = Object.keys(templateDetails).filter(
-        (key) => key !== "All",
-      );
+      groupCameras = getCameraNames().filter(Boolean);
     } else {
       // If a specific group is selected, get the cameras in that group
       const groupName = currentCamera.split("group-")[1];
       const groupDetails = templateDetails["group-" + groupName];
       if (groupDetails) {
-        groupCameras = groupDetails.groupCameras;
+        groupCameras = (groupDetails.groupCameras || []).filter(Boolean);
       } else {
         // Fallback: collect cameras belonging to the group on the fly
         groupCameras = Object.entries(templateDetails)
@@ -650,7 +654,8 @@ function playLoop() {
                 .map((s) => s.trim())
                 .includes(groupName),
           )
-          .map(([camera]) => camera);
+          .map(([camera]) => camera)
+          .filter(Boolean);
       }
     }
 
@@ -766,7 +771,8 @@ function playMP4() {
 function handleVideoEnded() {
   if (currentCamera === "All" || currentCamera.startsWith("group-")) {
     // For "All" or group options, move to the next camera
-    const groupCameras = templateDetails[currentCamera].groupCameras;
+    const groupCameras =
+      (templateDetails[currentCamera].groupCameras || []).filter(Boolean);
     const currentIndex = groupCameras.indexOf(video.dataset.currentCamera);
     const nextIndex = (currentIndex + 1) % groupCameras.length;
     const nextCamera = groupCameras[nextIndex];
@@ -801,9 +807,7 @@ function playLive() {
   if (currentCamera.startsWith("group-") || currentCamera === "All") {
     let groupCameras;
     if (currentCamera === "All") {
-      groupCameras = Object.keys(templateDetails).filter(
-        (key) => key !== "All",
-      );
+      groupCameras = getCameraNames();
     } else {
       const groupName = currentCamera.split("group-")[1];
       const groupDetails = templateDetails["group-" + groupName];
@@ -900,9 +904,7 @@ function playPNG() {
   } else if (currentCamera === "All") {
     // Special handling for the "All" option
     let cameraIndex = 0;
-    const allCameras = Object.keys(templateDetails).filter(
-      (key) => key !== "All",
-    );
+    const allCameras = getCameraNames().filter(Boolean);
     const refreshAllPNG = () => {
       if (cameraIndex >= allCameras.length) {
         cameraIndex = 0;
@@ -1108,9 +1110,7 @@ function updateSpeedContainer() {
   let cameraCount = 0;
   if (isGroupView) {
     if (currentCamera === "All") {
-      cameraCount = Object.keys(templateDetails).filter(
-        (k) => k !== "All",
-      ).length;
+      cameraCount = getCameraNames().length;
     } else {
       const details = templateDetails[currentCamera];
       cameraCount =
@@ -1401,4 +1401,4 @@ function handleTouchEnd(event) {
 document.addEventListener("touchstart", handleTouchStart, { passive: true });
 document.addEventListener("touchend", handleTouchEnd, { passive: true });
 
-export { updateFrameTimestamp };
+export { updateFrameTimestamp, getCameraNames };
