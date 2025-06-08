@@ -5,7 +5,7 @@ import sys
 import tempfile
 from pathlib import Path
 from ipaddress import ip_network
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
 from types import SimpleNamespace
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -581,6 +581,39 @@ class TestCameraDiscovery(unittest.TestCase):
         self.assertEqual(res["stream"], "rtsp://1.2.3.4/stream")
         self.assertEqual(res["snapshot"], "http://1.2.3.4/snap.jpg")
 
+    def test_mac_for_ip_parses_arp(self):
+        arp = (
+            "IP address       HW type     Flags       HW address            Mask     Device\n"
+            "192.168.1.5      0x1         0x2         00:0C:29:AA:BB:CC     *        eth0\n"
+            "10.0.0.5         0x1         0x2         00:11:22:33:44:55     *        wlan0\n"
+        )
+        with patch("builtins.open", mock_open(read_data=arp)):
+            self.assertEqual(
+                camera_discovery._mac_for_ip("192.168.1.5"), "00:0c:29:aa:bb:cc"
+            )
+            self.assertIsNone(camera_discovery._mac_for_ip("10.0.0.8"))
+
+    @patch("app.utils.camera_discovery.requests.get")
+    def test_mac_manufacturer_cached(self, mock_get):
+        with patch.object(camera_discovery, "OUI_MAP", {"001122": "TestCo"}):
+            camera_discovery._remote_vendor_lookup.cache_clear()
+            vendor = camera_discovery._mac_manufacturer("00:11:22:33:44:55")
+            self.assertEqual(vendor, "TestCo")
+            mock_get.assert_not_called()
+
+    @patch("app.utils.camera_discovery.requests.get")
+    def test_mac_manufacturer_remote_and_cache(self, mock_get):
+        resp = SimpleNamespace(status_code=200, json=lambda: {"company": "RemoteCo"})
+        mock_get.return_value = resp
+        with patch.object(camera_discovery, "OUI_MAP", {}):
+            camera_discovery._remote_vendor_lookup.cache_clear()
+            vendor = camera_discovery._mac_manufacturer("00:11:22:33:44:55")
+            self.assertEqual(vendor, "RemoteCo")
+            self.assertEqual(camera_discovery.OUI_MAP["001122"], "RemoteCo")
+            vendor2 = camera_discovery._mac_manufacturer("00:11:22:33:44:55")
+            self.assertEqual(vendor2, "RemoteCo")
+            self.assertEqual(mock_get.call_count, 1)
+
     @patch("app.utils.camera_discovery.requests.get")
     def test_remote_vendor_lookup_success(self, mock_get):
         camera_discovery._remote_vendor_lookup.cache_clear()
@@ -632,7 +665,6 @@ class TestCameraDiscovery(unittest.TestCase):
 
         expected = {"001122": "VendorA", "334455": "VendorB", "667788": "VendorC"}
         self.assertEqual(vendors, expected)
-
 
 if __name__ == "__main__":
     unittest.main()
