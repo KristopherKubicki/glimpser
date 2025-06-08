@@ -43,13 +43,14 @@ jobs:
         run: |
           python scripts/generate_release_badges.py
       - name: Publish to PyPI
-        if: env.PYPI_API_TOKEN != ''
+        if: startsWith(github.ref, 'refs/tags/v') && env.PYPI_API_TOKEN != ''
         env:
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ env.PYPI_API_TOKEN }}
       - name: Upload Debian package
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
@@ -72,6 +73,7 @@ jobs:
       - name: Build Windows executable
         run: python build_windows.py
       - name: Upload Windows executable
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}

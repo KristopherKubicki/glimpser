@@ -389,6 +389,29 @@ class TestCameraDiscovery(unittest.TestCase):
         latency = camera_discovery._ping_latency("1.2.3.4")
         self.assertAlmostEqual(latency, 2.3, places=1)
 
+    @patch("app.utils.camera_discovery._mac_manufacturer")
+    @patch("app.utils.camera_discovery._mac_for_ip")
+    def test_add_mac_info_sets_fields(self, mock_mac_for_ip, mock_manufacturer):
+        mock_mac_for_ip.return_value = "00:11:22:33:44:55"
+        mock_manufacturer.return_value = "VendorX"
+        cam = {"ip": "1.2.3.4", "protocol": "rtsp", "info": {}}
+        camera_discovery._add_mac_info(cam)
+        self.assertEqual(cam["info"].get("mac"), "00:11:22:33:44:55")
+        self.assertEqual(cam["info"].get("manufacturer"), "VendorX")
+
+    @patch("app.utils.camera_discovery._mac_for_ip", return_value=None)
+    def test_add_mac_info_missing_mac(self, mock_mac_for_ip):
+        cam = {"ip": "1.2.3.4", "protocol": "rtsp", "info": {}}
+        camera_discovery._add_mac_info(cam)
+        self.assertEqual(cam["info"], {})
+
+    @patch("app.utils.camera_discovery._mac_for_ip")
+    def test_add_mac_info_local_protocol(self, mock_mac_for_ip):
+        cam = {"ip": "1.2.3.4", "protocol": "local", "info": {}}
+        camera_discovery._add_mac_info(cam)
+        mock_mac_for_ip.assert_not_called()
+        self.assertEqual(cam["info"], {})
+
     @patch("app.utils.camera_discovery._ping_latency", return_value=5.0)
     @patch("app.utils.camera_discovery._detect_open_ports", return_value=[])
     @patch("app.utils.camera_discovery._probe_onvif", return_value=[])

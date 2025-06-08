@@ -47,6 +47,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
+import threading
 
 try:
     from pynput import mouse, keyboard
@@ -182,15 +183,16 @@ def load_font(size):
 # Global flag to track user activity
 user_active = False
 
-_DRIVER = None
+_driver_local = threading.local()
 
 
 def get_driver(opts):
-    global _DRIVER
-    if _DRIVER is None:
+    driver = getattr(_driver_local, "driver", None)
+    if driver is None:
         service = Service(ChromeDriverManager().install())
-        _DRIVER = webdriver.Chrome(service=service, options=opts)
-    return _DRIVER
+        driver = webdriver.Chrome(service=service, options=opts)
+        _driver_local.driver = driver
+    return driver
 
 
 _session = None
@@ -939,9 +941,14 @@ def download_pdf(
 
 
 def is_enhanced(url):
-    extractors = youtube_dl.extractor.gen_extractors()
-    for e in extractors:
-        if e.suitable(url) and e.IE_NAME != "generic":
+    """Return True if ``yt_dlp`` has a specialized extractor for the URL."""
+    try:
+        extractors = youtube_dl.extractor.list_extractors()
+    except Exception as e:  # pragma: no cover - defensive
+        logging.warning("yt_dlp extractor check failed: %s", e)
+        return False
+    for extractor in extractors:
+        if extractor.suitable(url) and extractor.IE_NAME != "generic":
             return True
     return False
 
@@ -1984,8 +1991,8 @@ def kill_driver_process(driver):
         logging.error(f"Error killing Chrome process: {e}")
     finally:
         # Ensure future calls create a new driver
-        global _DRIVER
-        _DRIVER = None
+        if hasattr(_driver_local, "driver"):
+            _driver_local.driver = None
 
 
 def launch_headless_chrome(driver_options, version=None):
