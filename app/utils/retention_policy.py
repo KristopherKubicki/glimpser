@@ -12,7 +12,8 @@ from app.config import (
 )
 
 
-def get_files_sorted_by_creation_time(directory):
+def get_files_sorted_by_creation_time(directory: str) -> list[str]:
+    """Return files in ``directory`` sorted by creation time."""
     if not os.path.isdir(directory):
         return []
 
@@ -30,7 +31,11 @@ def get_files_sorted_by_creation_time(directory):
     return files
 
 
-def delete_old_files(file_list, max_age, max_size, minimum=10):
+def delete_old_files(
+    file_list: list[str], max_age: int, max_size: int, minimum: int = 10
+) -> None:
+    """Remove old files once age or size limits are exceeded."""
+
     current_time = time.time()
     total_size = 0
 
@@ -67,7 +72,9 @@ def delete_old_files(file_list, max_age, max_size, minimum=10):
             logging.error("Error processing %s: %s", file_path, e)
 
 
-def retention_cleanup():
+def retention_cleanup() -> None:
+    """Clean up old videos and screenshots for all cameras."""
+
     # For each camera, delete old or excess videos
     for camera_name in os.listdir(VIDEO_DIRECTORY):
         camera_dir = os.path.join(VIDEO_DIRECTORY, camera_name)

@@ -16,14 +16,22 @@ last_429_error_time = None
 
 
 class ChatGPTImageComparison:
-    def __init__(self):
+    """Wrapper for calling the ChatGPT image comparison API."""
+
+    def __init__(self) -> None:
         self.api_key = CHATGPT_KEY
         self.headers = {"Authorization": f"Bearer {self.api_key}"}
         self.url = "https://api.openai.com/v1/chat/completions"
 
     def compare_images(
-        self, prompt, image_paths, max_size=512, low_res=False, tokens=48
-    ):
+        self,
+        prompt: str,
+        image_paths: list[str],
+        max_size: int = 512,
+        low_res: bool = False,
+        tokens: int = 48,
+    ) -> tuple[str | None, int]:
+        """Return ChatGPT response comparing ``image_paths`` using ``prompt``."""
 
         global last_429_error_time
         # Check if a 429 error occurred in the last 30 minutes
@@ -115,7 +123,10 @@ class ChatGPTImageComparison:
             return None, 0
 
 
-def chatgpt_compare(prompt, image_paths, template_name=None):
+def chatgpt_compare(
+    prompt: str, image_paths: list[str], template_name: str | None = None
+) -> str | None:
+    """Return ChatGPT comparison for images, caching the result."""
 
     # Check if all images exist
     for image in image_paths:
