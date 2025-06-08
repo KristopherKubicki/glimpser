@@ -2,6 +2,7 @@
 
 This page lists quick reminders that appear when Glimpser starts.
 
+- A retro ASCII banner highlights the version number at launch.
 - **Running without HTTPS?** Set `SESSION_COOKIE_SECURE=False` in your environment so the login cookie works over plain HTTP:
 
   ```bash
@@ -15,8 +16,9 @@ Refer to this file any time you hit a startup issue.
 
 ## Startup Information Tables
 
-The startup log now prints two tables. The first lists key configuration values
-such as the host, port and whether the scheduler is enabled. The second table
-shows current system metrics like CPU and memory usage. These summaries make it
-easy to confirm everything is set up correctly before connecting to the web
-interface.
+The startup log now prints two rich tables. The first lists important
+configuration options including file paths and whether the scheduler,
+watchdog and background crawlers are active. The second displays detailed
+system metrics like open file count, uptime and whether GPU acceleration is
+active. These summaries make it easy to confirm everything is set up correctly
+before connecting to the web interface.
