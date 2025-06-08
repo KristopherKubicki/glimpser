@@ -93,23 +93,23 @@ block content %}
       <i class="fas fa-times-circle video-icon"></i>
       <p id="stream-error-message"></p>
     </div>
-    {% if CLOCK_OVERLAY %}
-    <div
-      id="overlayClock"
-      class="cool-clock clock-overlay"
-      data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}"
-    >
-      <div class="clock-face">
-        <div class="clock-hands">
-          <div class="hand hour-hand"></div>
-          <div class="hand minute-hand"></div>
-          <div class="hand second-hand"></div>
-        </div>
-        <div class="digital-clock"></div>
-      </div>
-    </div>
-    {% endif %}
   </div>
+  {% if CLOCK_OVERLAY %}
+  <div
+    id="overlayClock"
+    class="cool-clock clock-overlay"
+    data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}"
+  >
+    <div class="clock-face">
+      <div class="clock-hands">
+        <div class="hand hour-hand"></div>
+        <div class="hand minute-hand"></div>
+        <div class="hand second-hand"></div>
+      </div>
+      <div class="digital-clock"></div>
+    </div>
+  </div>
+  {% endif %}
   <div id="error-message"></div>
 </div>
 
