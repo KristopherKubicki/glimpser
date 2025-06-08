@@ -1033,8 +1033,12 @@ def ffmpeg_supports_hwaccel() -> bool:
 
 
 def collect_system_metrics():
+    """Continuously update CPU and memory metrics."""
+    # Prime psutil's CPU measurement to avoid blocking on the first call
+    psutil.cpu_percent(interval=None)
     while not stop_event.is_set():
-        system_metrics["cpu_usage"] = psutil.cpu_percent(interval=1)
+        # Non-blocking call since we primed above
+        system_metrics["cpu_usage"] = psutil.cpu_percent(interval=None)
         system_metrics["memory_usage"] = psutil.virtual_memory().percent
         system_metrics["thread_count"] = threading.active_count()
         time.sleep(5)  # Collect metrics every 5 seconds
