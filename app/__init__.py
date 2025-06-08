@@ -257,7 +257,7 @@ def create_app(
                     # Reset failure count on successful check
                     failure_count = 0
 
-    # Send alerts when the application starts  
+    # Send alerts when the application starts
     def _start_background_components() -> None:
         """Initialize scheduler and monitoring in a low priority thread."""
         backup_config()
@@ -322,8 +322,9 @@ def create_app(
 
         app.scheduler = scheduler
 
-    threading.Thread(
-        target=_start_background_components, name="init-bg", daemon=True
-    ).start()
+    if schedule or enable_watchdog or log_cache:
+        threading.Thread(
+            target=_start_background_components, name="init-bg", daemon=True
+        ).start()
 
     return app
