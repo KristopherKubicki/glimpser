@@ -219,9 +219,8 @@ h2 {
     auto-fit,
     minmax(50px, var(--tile-size))
   ); /* Use CSS variable */
-
-  gap: 5px;
-  padding: 10px;
+  gap: 3px;
+  padding: 5px;
   justify-content: center;
   max-width: 100%;
 }
@@ -247,7 +246,7 @@ h2 {
   }
   #template-list {
     grid-template-columns: 1fr; /* Single column layout on mobile */
-    padding: 10px; /* Reduce padding on mobile */
+    padding: 5px; /* Reduce padding on mobile */
   }
   #grid-width-slider {
     display: none;
@@ -827,7 +826,7 @@ nav a.active {
   .templateDiv {
     min-width: 48px; /* Increased minimum touch target size */
     min-height: 48px; /* Increased minimum touch target size */
-    padding: 12px; /* More padding for larger touch area */
+    padding: 8px; /* Reduced padding for tighter tiles */
   }
 
   /* Adjust form elements for better mobile interaction */
@@ -842,7 +841,7 @@ nav a.active {
 
   /* Improve spacing for mobile */
   .video-container {
-    padding: 5px; /* Slightly reduce padding for smaller screens */
+    padding: 2px; /* Slightly reduce padding for smaller screens */
   }
 
   /* Adjust slider for mobile */
@@ -888,8 +887,7 @@ a {
 
 /* Adjust padding and margin for better spacing */
 .video-container {
-  position: relative;
-  padding: 5px; /* Space around the preview */
+  padding: 2px; /* Space around the preview */
   height: 100%;
   box-sizing: border-box;
   display: flex;
