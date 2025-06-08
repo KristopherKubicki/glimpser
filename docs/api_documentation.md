@@ -133,6 +133,7 @@ Several other routes provide streaming functionality:
 - **GET /last_video/<template_name>** – Download the most recent MP4 for the given template. Returns a 404 response if no video is available.
 - **GET /last_screenshot/<template_name>** – Retrieve the latest screenshot for a template.
 - **GET /last_teaser** – Returns the teaser video compiled from recent footage. Accepts an optional `group` query parameter to retrieve a group-specific teaser, e.g. `/last_teaser?group=frontdoor`.
+- **GET /clip/<template_name>** – Stitch together recent MP4 segments into a clip. Use the optional `duration` query parameter to set the length in seconds (defaults to `DEFAULT_CLIP_DURATION`).
 - **GET /test.rtsp** – Basic RTSP endpoint that serves MJPEG frames when used with `/rtsp_stream`. Send periodic `GET_PARAMETER` requests to keep the session alive.
 
 ### 6. Trigger Screenshot Capture

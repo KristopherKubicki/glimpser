@@ -2568,6 +2568,57 @@ def init_routes(app: Flask) -> None:
 
         abort(404)
 
+    @app.route("/clip/<string:template_name>")
+    @login_required
+    def serve_clip(template_name: TemplateName):
+        """Compile and return a short clip from archived footage."""
+
+        template_name = validate_template_name(template_name)
+        if template_name is None:
+            abort(404)
+
+        duration = (
+            request.args.get("duration", type=int) or config.DEFAULT_CLIP_DURATION
+        )
+        if duration <= 0:
+            abort(400, "Invalid duration")
+
+        path = os.path.join(
+            os.path.dirname(os.path.join(__file__)),
+            "..",
+            VIDEO_DIRECTORY,
+            template_name,
+        )
+        if not os.path.exists(path):
+            abort(404)
+
+        video_files = sorted(
+            glob.glob(os.path.join(path, "final_*.mp4")),
+            key=os.path.getmtime,
+            reverse=True,
+        )
+
+        accumulated = 0.0
+        with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_list:
+            for vf in video_files:
+                dur = video_archiver.get_video_duration(vf)
+                if dur:
+                    temp_list.write(f"file '{os.path.abspath(vf)}'\n")
+                    accumulated += dur
+                    if accumulated >= duration:
+                        break
+            temp_list_path = temp_list.name
+
+        output_tmp = os.path.join(path, "clip.mp4.tmp")
+        output_final = os.path.join(path, "clip.mp4")
+        video_archiver.compile_videos(temp_list_path, output_tmp)
+        os.unlink(temp_list_path)
+
+        if os.path.exists(output_final):
+            return send_file(output_final)
+
+        abort(404)
+
     @app.route("/last_screenshot/<string:template_name>")
     @login_required
     def serve_screenshot(template_name: TemplateName):
