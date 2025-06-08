@@ -1,55 +1,7 @@
 <!-- app/templates/index.html -->
 
-{% extends 'base.html' %} {% from 'components.html' import status_legend %} {%
-block content %}
-
-<div id="controls-wrapper">
-  <section id="template-controls">
-    <input
-      type="text"
-      id="search-input"
-      placeholder="Search cameras"
-      title="Enter search terms"
-    />
-    <input
-      type="range"
-      id="grid-width-slider"
-      min="50"
-      max="3840"
-      value="360"
-      title="Adjust the width of the template grid"
-    />
-    {{ status_legend() }}
-    <button
-      id="caption-toggle"
-      class="settings-icon"
-      aria-label="Toggle caption overlays"
-      title="Toggle caption overlays"
-    >
-      <svg
-        class="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.5"
-        aria-hidden="true"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="M21 4H3a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Zm-11 8.5h-2v3h2a1.5 1.5 0 1 0 0-3Zm7 0h-2v3h2a1.5 1.5 0 1 0 0-3Z"
-        />
-      </svg>
-    </button>
-    <button id="play-all-button" title="Play/Stop all videos">Play All</button>
-    <button
-      id="live-all-button"
-      style="display: none"
-      title="Return to latest screenshot"
-    >
-      Live
-    </button>
-  </section>
-</div>
+{% extends 'base.html' %} {% from 'components.html' import template_controls %}
+{% block content %} {% call template_controls() %}{% endcall %}
 
 <section id="template-list-section">
   <div
