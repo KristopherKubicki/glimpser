@@ -9,6 +9,7 @@ import re
 import psutil
 import threading
 import time
+import select
 import multiprocessing
 from collections import deque
 import subprocess
@@ -1088,33 +1089,39 @@ def cache_logs():
         with open(log_file_path, "r") as file:
             file.seek(0, os.SEEK_END)  # Start at end of file
             while not stop_event.is_set():
+                # Wait for the log file to become readable instead of polling.
+                # Timeout every second so we can check stop_event periodically.
+                ready, _, _ = select.select([file], [], [], 1)
+                if not ready:
+                    continue
+
                 new_log = file.readline()
-                if new_log:
-                    with log_cache_lock:
-                        truncated_log = (
-                            new_log[:500] + "..." if len(new_log) > 500 else new_log
-                        )
-                        log_parts = truncated_log.strip().split(" - ", 3)
-                        if len(log_parts) >= 4:
-                            timestamp_str, log_level, log_source, log_message = (
-                                log_parts
+                if not new_log:
+                    # The file may have been truncated. Seek to end and retry.
+                    file.seek(0, os.SEEK_END)
+                    continue
+
+                with log_cache_lock:
+                    truncated_log = (
+                        new_log[:500] + "..." if len(new_log) > 500 else new_log
+                    )
+                    log_parts = truncated_log.strip().split(" - ", 3)
+                    if len(log_parts) >= 4:
+                        timestamp_str, log_level, log_source, log_message = log_parts
+                        try:
+                            timestamp = datetime.datetime.strptime(
+                                timestamp_str, "%Y-%m-%d %H:%M:%S,%f"
                             )
-                            try:
-                                timestamp = datetime.datetime.strptime(
-                                    timestamp_str, "%Y-%m-%d %H:%M:%S,%f"
-                                )
-                                log_cache.append(
-                                    {
-                                        "timestamp": timestamp,
-                                        "level": log_level,
-                                        "source": log_source,
-                                        "message": log_message,
-                                    }
-                                )
-                            except ValueError:
-                                continue  # Skip incorrect timestamp format
-                else:
-                    time.sleep(1)  # Sleep briefly to avoid high CPU usage
+                            log_cache.append(
+                                {
+                                    "timestamp": timestamp,
+                                    "level": log_level,
+                                    "source": log_source,
+                                    "message": log_message,
+                                }
+                            )
+                        except ValueError:
+                            continue  # Skip incorrect timestamp format
     except Exception as e:
         logging.error(f"Error in cache_logs: {e}")
 
