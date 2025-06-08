@@ -155,6 +155,12 @@ def restart_server() -> None:
 
 
 class TemplateName:
+    """Validated wrapper for template names.
+
+    Ensures that only names passing ``validate_template_name`` are
+    accepted when referencing templates in routes.
+    """
+
     def __init__(self, name: str):
         if not self.validate(name):
             raise ValueError(f"Invalid template name: {name}")
