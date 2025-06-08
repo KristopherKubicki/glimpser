@@ -3,8 +3,8 @@
 {% extends 'base.html' %} {% from 'components.html' import status_legend %} {%
 block content %}
 
-<details id="controls-wrapper">
-  <summary>Controls</summary>
+<div id="controls-wrapper" class="closed">
+  <button id="controls-toggle" type="button">Controls</button>
   <section id="template-controls">
     <input
       type="text"
@@ -42,7 +42,7 @@ block content %}
       </label>
     </div>
   </section>
-</details>
+</div>
 
 <section id="template-list-section">
   <div
