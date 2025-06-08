@@ -28,13 +28,18 @@ block content %}
     >
       Live
     </button>
-    <button
-      id="toggle-captions"
-      title="Toggle caption overlays"
-      aria-label="Toggle caption overlays"
-    >
-      Hide Captions
-    </button>
+    <div class="checkbox-row">
+      <span>Captions</span>
+      <label class="switch" title="Toggle caption overlays">
+        <input
+          id="toggle-captions"
+          type="checkbox"
+          checked
+          aria-label="Toggle caption overlays"
+        />
+        <span class="slider round"></span>
+      </label>
+    </div>
   </div>
 </details>
 <div
