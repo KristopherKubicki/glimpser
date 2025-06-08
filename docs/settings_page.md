@@ -12,6 +12,8 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Settings Reference** – expand the table to read explanations for each setting.
 - **Column Search** – click a header to filter rows by that column.
 - **System Status** – view CPU, memory, disk usage, and live logs.
+- **Certain tabs start collapsed** – File Locations, Capture, Credentials,
+  Integrations, Management, and Other appear collapsed until expanded.
 
 All form elements now use unique IDs across tabs to avoid browser warnings.
 

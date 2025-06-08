@@ -54,7 +54,8 @@ content %}
     <form method="POST" action="{{ url_for('settings') }}" id="settings-form">
         {% for group, items in grouped_settings.items() %}
         <div id="{{ group|replace(' ', '-') }}-tab" class="tab-content{% if loop.first %} active{% endif %}">
-            <h3>{{ group }} Settings</h3>
+            <details class="setting-section" {% if group not in collapsed_groups %}open{% endif %}>
+                <summary>{{ group }} Settings</summary>
             <table class="settings-table">
                 <thead>
                     <tr>
@@ -88,6 +89,7 @@ content %}
                     {% endfor %}
                 </tbody>
             </table>
+            </details>
         </div>
         {% if loop.first %}
         <div id="discover-tab" class="tab-content">
@@ -103,7 +105,8 @@ content %}
         {% endfor %}
 
       <div id="management-tab" class="tab-content">
-        <h3>Configuration Management</h3>
+        <details class="setting-section" {% if 'Management' not in collapsed_groups %}open{% endif %}>
+        <summary>Configuration Management</summary>
         <label class="switch" title="Toggle advanced options">
           <input id="advanced-toggle" type="checkbox" />
           <span class="slider round"></span>
@@ -142,6 +145,8 @@ content %}
 
       <input type="hidden" id="name_to_delete" name="name_to_delete" value="" title="Name of setting to delete" />
       <button type="submit" title="Save all changes">Save Changes</button>
+        </details>
+      </div>
     </form>
   {{ confirm_modal('delete-setting', 'Delete this setting?', 'Delete', 'Cancel') }}
 </main>
