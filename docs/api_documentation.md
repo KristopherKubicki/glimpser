@@ -238,6 +238,10 @@ Returns the latest caption text and timestamp.
 
 Reports the status of background camera discovery.
 
+**GET /network_status**
+
+Indicates whether the server is online.
+
 ### 14. Search Suggestions
 
 **GET /search_suggestions?q=term**

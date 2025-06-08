@@ -91,6 +91,13 @@ from app.utils.settings_tooltips import (
     EMAIL_FIELDS,
 )
 
+from app.utils.screenshots import (
+    is_chrome_debug_port_open,
+    check_user_activity,
+    capture_frame_from_stream,
+)
+from app.utils.network import is_system_online
+
 # Names of settings that store file paths.
 FILE_LOCATION_NAMES = [
     "DATABASE_PATH",
@@ -1295,6 +1302,12 @@ def init_routes(app: Flask) -> None:
     def discovery_status():
         """Return cached background discovery status."""
         return jsonify(scheduling.get_discovery_status())
+
+    @app.route("/network_status")
+    @login_required
+    def network_status():
+        """Return current network connectivity status."""
+        return jsonify({"online": is_system_online()})
 
     @app.route("/toggle_discovery", methods=["POST"])
     @login_required
