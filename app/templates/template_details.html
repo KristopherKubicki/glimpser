@@ -193,7 +193,8 @@ block content %}
           id="frequency"
           name="frequency"
           value="{{ template_details.frequency }}"
-          min="1"
+          min="0.1"
+          step="0.1"
           required
           title="Enter how often to check the URL (in minutes)"
         />
@@ -224,20 +225,6 @@ block content %}
 {{ template_details.notes }}</textarea
         >
       </div>
-      <button
-        type="button"
-        onclick="suggestPrompt('{{ template_name }}')"
-        title="Generate a prompt"
-      >
-        Suggest Prompt
-      </button>
-      <button
-        type="button"
-        onclick="suggestFix('{{ template_name }}')"
-        title="Suggest troubleshooting tips"
-      >
-        Suggest Fix
-      </button>
 
       <div class="form-row">
         <label for="object_filter" title="Filter for specific objects"
@@ -508,6 +495,22 @@ block content %}
       </div>
       <br />
       <div class="form-actions">
+        <button
+          type="button"
+          onclick="suggestPrompt('{{ template_name }}')"
+          title="Generate a prompt"
+        >
+          Suggest Prompt
+        </button>
+        <button
+          type="button"
+          onclick="suggestFix('{{ template_name }}')"
+          title="Suggest troubleshooting tips"
+        >
+          Suggest Fix
+        </button>
+      </div>
+      <div class="form-actions">
         <input
           type="submit"
           value="Update Template"
@@ -544,8 +547,8 @@ block content %}
       .getElementById("dedicated_xpath")
       .value.trim();
 
-    if (frequency < 1 || frequency > 525600) {
-      alert("Frequency must be between 1 and 525600 minutes (1 year).");
+    if (frequency < 0.1 || frequency > 525600) {
+      alert("Frequency must be between 0.1 and 525600 minutes (1 year).");
       return false;
     }
 
@@ -735,6 +738,49 @@ block content %}
     document.getElementById("prompt-modal").style.display = "none";
   }
 
+  function updateBrowserRelated() {
+    const browser = document.getElementById("browser");
+    const headless = document.getElementById("headless");
+    const stealth = document.getElementById("stealth");
+    const popup = document.getElementById("popup_xpath");
+    const dedicated = document.getElementById("dedicated_xpath");
+    const enabled = browser && browser.checked;
+    if (headless) {
+      headless.disabled = !enabled;
+      if (!enabled) headless.checked = false;
+    }
+    if (stealth) {
+      stealth.disabled = !enabled;
+      if (!enabled) stealth.checked = false;
+    }
+    if (popup) {
+      popup.disabled = !enabled;
+    }
+    if (dedicated) {
+      dedicated.disabled = !enabled;
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const browser = document.getElementById("browser");
+    const popup = document.getElementById("popup_xpath");
+    const dedicated = document.getElementById("dedicated_xpath");
+    browser?.addEventListener("change", updateBrowserRelated);
+    popup?.addEventListener("input", () => {
+      if (browser && !browser.checked) {
+        browser.checked = true;
+      }
+      updateBrowserRelated();
+    });
+    dedicated?.addEventListener("input", () => {
+      if (browser && !browser.checked) {
+        browser.checked = true;
+      }
+      updateBrowserRelated();
+    });
+    updateBrowserRelated();
+  });
+
   function openModal(id) {
     const target = document.getElementById(id);
     if (!target) return;
@@ -914,7 +960,8 @@ block content %}
             id="frequency"
             name="frequency"
             value="{{ template_details.frequency }}"
-            min="1"
+            min="0.1"
+            step="0.1"
             required
             title="Enter how often to check the URL (in minutes)"
           />
@@ -945,20 +992,6 @@ block content %}
 {{ template_details.notes }}</textarea
           >
         </div>
-        <button
-          type="button"
-          onclick="suggestPrompt('{{ template_name }}')"
-          title="Generate a prompt"
-        >
-          Suggest Prompt
-        </button>
-        <button
-          type="button"
-          onclick="suggestFix('{{ template_name }}')"
-          title="Suggest troubleshooting tips"
-        >
-          Suggest Fix
-        </button>
 
         <div class="form-row">
           <label for="object_filter" title="Filter for specific objects"
@@ -1060,6 +1093,22 @@ block content %}
           />
         </div>
 
+        <div class="form-actions">
+          <button
+            type="button"
+            onclick="suggestPrompt('{{ template_name }}')"
+            title="Generate a prompt"
+          >
+            Suggest Prompt
+          </button>
+          <button
+            type="button"
+            onclick="suggestFix('{{ template_name }}')"
+            title="Suggest troubleshooting tips"
+          >
+            Suggest Fix
+          </button>
+        </div>
         <button type="submit" title="Save template changes">Save</button>
       </form>
     </div>

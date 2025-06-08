@@ -103,6 +103,19 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIsNotNone(advanced, "advanced-toggle missing")
         self.assertEqual(advanced.get("type"), "checkbox")
 
+    def test_edit_template_frequency_min(self):
+        parser = parse_template(Path("app/templates/template_details.html"))
+        edit_form = next(
+            (f for f in parser.forms if f["attrs"].get("id") == "edit-template-form"),
+            None,
+        )
+        self.assertIsNotNone(edit_form, "edit-template-form missing")
+        freq = next(
+            (i for i in edit_form["inputs"] if i.get("id") == "frequency"), None
+        )
+        self.assertIsNotNone(freq, "frequency input missing")
+        self.assertEqual(freq.get("min"), "0.1")
+
 
 if __name__ == "__main__":
     unittest.main()
