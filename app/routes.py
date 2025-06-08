@@ -156,8 +156,8 @@ def restart_server() -> None:
         time.sleep(1)  # 1-second delay
         os.execv(sys.executable, [sys.executable] + sys.argv)
 
-    # Start the delayed restart in a separate thread
-    restart_thread = Thread(target=delayed_restart)
+    # Start the delayed restart in a daemon thread so the response returns
+    restart_thread = Thread(target=delayed_restart, daemon=True)
     restart_thread.start()
 
 
