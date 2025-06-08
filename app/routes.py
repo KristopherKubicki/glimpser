@@ -3045,6 +3045,11 @@ def init_routes(app: Flask) -> None:
                 else:
                     flash("Failed to backup configuration", "error")
             elif action == "download":
+                # Always create a fresh backup before serving the file so the
+                # user gets the most up‐to‐date configuration. If the file did
+                # not exist previously ``backup_config`` will create it.
+                backup_config()
+
                 if os.path.exists(BACKUP_PATH):
                     return send_file(
                         BACKUP_PATH,
