@@ -12,6 +12,17 @@ function safePlay(el) {
   }
 }
 
+function createMobileCard(name) {
+  const div = document.createElement("div");
+  div.classList.add("templateDiv", "mobile-card");
+  const link = document.createElement("a");
+  link.href = `/templates/${name}`;
+  link.textContent = name;
+  link.className = "mobile-link";
+  div.appendChild(link);
+  return div;
+}
+
 let captionsVisible = localStorage.getItem("showCaptions") !== "false";
 
 export function setCaptionsVisibility(value) {
@@ -63,17 +74,24 @@ export function initTemplates() {
     if (slider) {
       const updateSliderLimits = () => {
         slider.max = Math.min(window.innerWidth, MAX_THUMBNAIL_WIDTH);
+        if (isMobile) {
+          slider.min = slider.max;
+          slider.value = slider.max;
+          document.documentElement.style.setProperty(
+            "--tile-size",
+            `${slider.value}px`,
+          );
+          slider.dispatchEvent(new Event("input"));
+          return;
+        }
+
         const templateCount =
           templateList?.querySelectorAll(".templateDiv").length || 1;
 
         const gap = parseFloat(getComputedStyle(templateList).gap || "0") || 0;
 
-        // Maximum width to fit all tiles across the page
-        //const widthForColumns = Math.floor(
-        //  (window.innerWidth - gap * (templateCount - 1)) / templateCount,
-        //);
-        // Iterate over possible column counts to find the largest
-        // tile width that fits the viewport both horizontally and vertically.
+        // Iterate over possible column counts to find the largest tile width
+        // that fits the viewport horizontally and vertically.
         let bestWidth = 50;
         const headerHeight =
           document.querySelector("header")?.offsetHeight || 0;
@@ -100,31 +118,16 @@ export function initTemplates() {
           }
         }
 
-        // Maximum width so combined rows fill the screen vertically
-        //const aspectRatio = 9 / 16;
-        //const widthForHeight = Math.sqrt(
-        //  (window.innerHeight * window.innerWidth) /
-        //    (templateCount * aspectRatio),
-        //);
-        //const widthForMaxHeight = MAX_THUMBNAIL_HEIGHT / aspectRatio;
         const widthForMaxHeight = MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO;
         slider.max = Math.min(slider.max, widthForMaxHeight);
 
         const computedMin = Math.max(
           50,
-          //  Math.min(
-          //    slider.max,
-          //    Math.floor(Math.min(widthForColumns, widthForHeight)),
-          //  ),
           Math.min(slider.max, Math.floor(bestWidth)),
         );
 
         slider.min = computedMin;
-        if (isMobile) {
-          slider.value = Math.min(window.innerWidth, slider.max);
-        } else {
-          slider.value = computedMin;
-        }
+        slider.value = computedMin;
         document.documentElement.style.setProperty(
           "--tile-size",
           `${slider.value}px`,
@@ -662,80 +665,86 @@ export async function loadTemplates() {
         );
 
         if (isIndexPage) {
-          const templateDiv = document.createElement("div");
-          templateDiv.classList.add("templateDiv");
-          templateDiv.style.opacity = "0";
-          templateDiv.style.transform = "translateY(20px)";
-          templateDiv.style.transition =
-            "opacity 0.5s ease, transform 0.5s ease";
+          let templateDiv;
+          if (isMobile()) {
+            templateDiv = createMobileCard(name);
+            templateList.appendChild(templateDiv);
+          } else {
+            templateDiv = document.createElement("div");
+            templateDiv.classList.add("templateDiv");
+            templateDiv.style.opacity = "0";
+            templateDiv.style.transform = "translateY(20px)";
+            templateDiv.style.transition =
+              "opacity 0.5s ease, transform 0.5s ease";
 
-          templateDiv.innerHTML = `
-            <a href='/templates/${name}'>
-              <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
-                <div class="camera-name">${name}</div>
-                <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback>
-                  <source src="/last_video/${name}" type="video/mp4">
-                  Your browser does not support the video tag.
-                </video>
-                <div class="caption-overlay">${template.last_caption || ""}</div>
-              </div>
-            </a>
-            <a href='${template.url}' target='_blank' class='open-url-link' title='Open monitored page' aria-label='Open monitored page'>↗</a>
-          `;
-          templateList.appendChild(templateDiv);
+            templateDiv.innerHTML = `
+              <a href='/templates/${name}'>
+                <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
+                  <div class="camera-name">${name}</div>
+                  <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback>
+                    <source src="/last_video/${name}" type="video/mp4">
+                    Your browser does not support the video tag.
+                  </video>
+                  <div class="caption-overlay">${template.last_caption || ""}</div>
+                </div>
+              </a>
+              <a href='${template.url}' target='_blank' class='open-url-link' title='Open monitored page' aria-label='Open monitored page'>↗</a>
+            `;
+            templateList.appendChild(templateDiv);
 
-          void templateDiv.offsetWidth;
-          setTimeout(() => {
-            templateDiv.style.opacity = "1";
-            templateDiv.style.transform = "translateY(0)";
-          }, index * 100);
+            void templateDiv.offsetWidth;
+            setTimeout(() => {
+              templateDiv.style.opacity = "1";
+              templateDiv.style.transform = "translateY(0)";
+            }, index * 100);
 
-          const video = templateDiv.querySelector("video");
-          observer.observe(video);
+            const video = templateDiv.querySelector("video");
+            observer.observe(video);
 
-          // Update frame based on cursor position over the tile.
-          const scrub = (e) => {
-            const rect = video.getBoundingClientRect();
-            const ratio = (e.clientX - rect.left) / rect.width;
-            const clamped = Math.max(0, Math.min(1, ratio));
-            if (!Number.isNaN(video.duration)) {
-              video.currentTime = video.duration * clamped;
-            }
-          };
+            // Update frame based on cursor position over the tile.
+            const scrub = (e) => {
+              const rect = video.getBoundingClientRect();
+              const ratio = (e.clientX - rect.left) / rect.width;
+              const clamped = Math.max(0, Math.min(1, ratio));
+              if (!Number.isNaN(video.duration)) {
+                video.currentTime = video.duration * clamped;
+              }
+            };
 
-          let resetTimeout;
+            let resetTimeout;
 
-          video.addEventListener("mouseenter", (e) => {
-            clearTimeout(resetTimeout);
-            video.style.display = "block";
-            // Load metadata on first hover so currentTime can be set
-            if (video.readyState === 0) {
-              video.load();
-            }
-            video.pause();
-            if (video.readyState >= 1) {
-              scrub(e);
-            } else {
-              const onLoad = () => {
-                scrub(e);
-                video.removeEventListener("loadedmetadata", onLoad);
-              };
-              video.addEventListener("loadedmetadata", onLoad);
-            }
-          });
-
-          video.addEventListener("mousemove", scrub);
-
-          video.addEventListener("mouseleave", () => {
-            resetTimeout = setTimeout(() => {
+            video.addEventListener("mouseenter", (e) => {
+              clearTimeout(resetTimeout);
+              video.style.display = "block";
+              // Load metadata on first hover so currentTime can be set
+              if (video.readyState === 0) {
+                video.load();
+              }
               video.pause();
-              video.currentTime = 0;
-              //video.style.display = "none";
-              // Reset to the poster image on hover exit
-              video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
-              video.load();
-            }, 1000); // restore screenshot a bit after leaving
-          });
+              if (video.readyState >= 1) {
+                scrub(e);
+              } else {
+                const onLoad = () => {
+                  scrub(e);
+                  video.removeEventListener("loadedmetadata", onLoad);
+                };
+                video.addEventListener("loadedmetadata", onLoad);
+              }
+            });
+
+            video.addEventListener("mousemove", scrub);
+
+            video.addEventListener("mouseleave", () => {
+              resetTimeout = setTimeout(() => {
+                video.pause();
+                video.currentTime = 0;
+                //video.style.display = "none";
+                // Reset to the poster image on hover exit
+                video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
+                video.load();
+              }, 1000); // restore screenshot a bit after leaving
+            });
+          }
         } else if (isCaptionsPage) {
           const templateDiv = document.createElement("div");
           templateDiv.classList.add("templateDiv");
