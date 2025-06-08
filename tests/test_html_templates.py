@@ -70,6 +70,12 @@ class TestHtmlTemplates(unittest.TestCase):
         required = {"name", "url", "frequency", "timeout"}
         self.assertTrue(required.issubset(inputs))
 
+    def test_discover_template_has_existing_variable(self):
+        path = Path("app/templates/_discover_tab.html")
+        with open(path, encoding="utf-8") as f:
+            content = f.read()
+        self.assertIn("existingTemplates", content)
+
     def test_header_preloads_sprite(self):
         parser = parse_template(Path("app/templates/header.html"))
         expected_href = "{{ url_for('static', filename='icons/sprite.svg') }}"

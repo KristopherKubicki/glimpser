@@ -429,15 +429,21 @@ class TestRoutes(unittest.TestCase):
             self.assertIn("authentication_required", endpoint)
 
     @patch("app.routes.SessionLocal")
+    @patch("app.routes.template_manager.get_templates")
     @patch("app.routes.camera_discovery.discover_cameras")
     @patch("app.routes.render_template")
     def test_discover_route(
-        self, mock_render_template, mock_discover, mock_session_local
+        self,
+        mock_render_template,
+        mock_discover,
+        mock_get_templates,
+        mock_session_local,
     ):
         mock_discover.return_value = [
             {"ip": "1.2.3.4", "protocol": "rtsp", "port": 554, "info": {}}
         ]
         dummy_user = SimpleNamespace(id=1)
+        mock_get_templates.return_value = {"cam1": {"url": "rtsp://1.2.3.4:554"}}
 
         class DummyQuery:
             def filter_by(self, **kwargs):
@@ -461,7 +467,10 @@ class TestRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mock_discover.assert_not_called()
         mock_render_template.assert_called_with(
-            "discover.html", cameras=[], page_title="Discover Cameras"
+            "discover.html",
+            cameras=[],
+            page_title="Discover Cameras",
+            existing={"1.2.3.4-rtsp-554": "cam1"},
         )
 
     @patch("app.routes.SessionLocal")

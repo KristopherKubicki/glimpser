@@ -3238,8 +3238,32 @@ def init_routes(app: Flask) -> None:
     @app.route("/discover", methods=["GET"])
     @login_required
     def discover_cameras_route():
+        templates = template_manager.get_templates()
+        existing = {}
+        for name, details in templates.items():
+            url = details.get("url")
+            if not url:
+                continue
+            parsed = urlparse(url if "://" in url else f"//{url}")
+            host = parsed.hostname
+            if not host:
+                continue
+            port = parsed.port
+            if port is None:
+                if parsed.scheme == "http":
+                    port = 80
+                elif parsed.scheme == "https":
+                    port = 443
+                else:
+                    port = 554
+            proto = parsed.scheme or "rtsp"
+            key = f"{host}-{proto}-{port}"
+            existing[key] = name
         return render_template(
-            "discover.html", cameras=[], page_title="Discover Cameras"
+            "discover.html",
+            cameras=[],
+            page_title="Discover Cameras",
+            existing=existing,
         )
 
     @app.route("/discover/scan", methods=["POST"])
