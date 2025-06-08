@@ -1523,6 +1523,23 @@ input[type="submit"]:hover {
     width: 100%;
     display: none; /* Hide slider on small screens */
   }
+
+  .mobile-card {
+    width: 100%;
+    padding: 0.5rem;
+  }
+
+  .mobile-link {
+    display: block;
+    width: 100%;
+    text-align: center;
+  }
+
+  .mobile-card video,
+  .mobile-card img,
+  .mobile-card .caption-overlay {
+    display: none;
+  }
 }
 
 /* Utility classes extracted from inline styles */
