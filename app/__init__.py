@@ -18,7 +18,6 @@ from app.utils.scheduling import (
     scheduler,
     start_log_caching,
     start_metrics_collection,
-    stop_background_tasks,
     stop_event,
 )
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
@@ -97,7 +96,6 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
         SESSION_COOKIE_SECURE,
         SESSION_COOKIE_HTTPONLY,
         SESSION_TIMEOUT_MINUTES,
-        FLASK_LOG_LEVEL,
         API_KEY,
     )
 
@@ -244,8 +242,9 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
         watchdog_thread.start()
         app.watchdog_thread = watchdog_thread
 
-    # Start collecting metrics
-    start_metrics_collection()
+    # Start collecting metrics only when background scheduling is enabled.
+    if schedule:
+        start_metrics_collection()
 
     start_log_caching()
 

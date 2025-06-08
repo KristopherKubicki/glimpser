@@ -8,26 +8,19 @@
 # Glimpser
 
 [![Python application](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml)
-[![Tests](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml)
-[![Pylint 3.8](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.8)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
-[![Pylint 3.9](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.9)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
-[![Pylint 3.10](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.10)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
-[![Pylint 3.11](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.11)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
-[![Pylint 3.12](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.12)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
-[![GitHub release](https://img.shields.io/github/v/release/KristopherKubicki/glimpser)](https://github.com/KristopherKubicki/glimpser/releases/latest)
-[![PyPI version](https://img.shields.io/pypi/v/glimpser)](https://pypi.org/project/glimpser/)
-[![Coverage](https://codecov.io/gh/KristopherKubicki/glimpser/branch/main/graph/badge.svg)](https://codecov.io/gh/KristopherKubicki/glimpser)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/KristopherKubicki/glimpser/badge)](https://securityscorecards.dev/viewer/?uri=github.com/KristopherKubicki/glimpser)
+[![Pylint 3.8 - 3.12](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.8)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
 [![CodeQL](https://github.com/KristopherKubicki/glimpser/actions/workflows/codeql.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/codeql.yml)
 [![Docs Build](https://github.com/KristopherKubicki/glimpser/actions/workflows/docs-build.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/docs-build.yml)
+[![GitHub release](https://img.shields.io/github/v/release/KristopherKubicki/glimpser)](https://github.com/KristopherKubicki/glimpser/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+[![Coverage](https://codecov.io/gh/KristopherKubicki/glimpser/branch/main/graph/badge.svg)](https://codecov.io/gh/KristopherKubicki/glimpser)
 
 ## Introduction
 
 Glimpser is a straightforward yet powerful real-time monitoring application designed to capture, analyze, and summarize live data from various sources such as cameras, dashboards, and video streams. Utilizing advanced image processing techniques and AI models, Glimpser provides insightful summaries and alerts. It’s highly configurable, allowing users to tailor it to their specific monitoring needs through an easy-to-use interface.
 
 For more documentation, see the [documentation index](docs/index.md).
-You can find an overview of the docs folder in [docs/README.md](docs/README.md).
+You can find a summary of the documentation structure in [docs/README.md](docs/README.md).
 Read a high-level [Architecture Overview](docs/architecture_overview.md) to understand how the pieces fit together.
 See [OpenSSF Scorecard](docs/scorecard.md) for details on the security badge.
 
@@ -206,6 +199,15 @@ To set up the project for development:
    ```sh
    pytest
    ```
+5. Install Node packages for linting and JS tests:
+   ```sh
+   npm install
+   ```
+6. Run JavaScript tests with coverage:
+   ```sh
+   npm test -- --coverage
+   ```
+   See [Developer Guide](docs/developer_guide.md) for details.
 
 ## Releases
 

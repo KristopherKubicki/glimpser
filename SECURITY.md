@@ -12,7 +12,7 @@ We only support the latest version of our software. Please make sure you're usin
 
 If you discover a security vulnerability, please report it to us by following these steps:
 
-1. **Contact Us**: Send an email to our security team at `security@example.com`. Please include the details of the vulnerability, including steps to reproduce it.
+1. **Contact Us**: Send an email to our security team at `kristopher@glimpser.net`. Please include the details of the vulnerability, including steps to reproduce it.
 
 2. **Response Time**: We will respond to your email within 5 business days. If the issue is confirmed, we will work on a patch and release it as soon as possible.
 

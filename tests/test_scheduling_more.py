@@ -42,6 +42,21 @@ class TestRunWithTimeout(unittest.TestCase):
         run_with_timeout(slow, args=(d,), timeout=0.2)
         self.assertIsNone(d.get("done"))
 
+    @patch("app.utils.scheduling.is_system_online", return_value=True)
+    @patch("app.utils.scheduling.cas_error")
+    @patch("app.utils.scheduling.mark_offline")
+    def test_timeout_marks_offline(self, mock_offline, mock_cas_error, _online):
+        def slow(name, template):
+            time.sleep(1)
+
+        run_with_timeout(
+            slow,
+            args=("cam1", {"url": "http://ex"}),
+            timeout=0.2,
+        )
+        mock_offline.assert_called_once_with("cam1")
+        mock_cas_error.assert_called_once_with("http://ex")
+
 
 class TestAddMotionAndCaption(unittest.TestCase):
     def test_image_updated_with_caption_and_motion(self):
@@ -61,10 +76,12 @@ class TestGetSystemMetrics(unittest.TestCase):
     @patch("app.utils.scheduling.ffmpeg_version", return_value="6.0")
     @patch("app.utils.scheduling.machine_supports_hwaccel", return_value=True)
     @patch("app.utils.scheduling.ffmpeg_supports_hwaccel", return_value=True)
+    @patch("app.utils.scheduling.shutil.which", return_value="/usr/bin/ffmpeg")
     @patch.object(scheduling, "FFMPEG_HWACCEL", "cuda")
     def test_metrics_fields(
         self,
-        mock_ffmpeg_hwaccel,
+        mock_which,
+        mock_ffmpeg_supports,
         mock_machine,
         mock_version,
         mock_psutil,
@@ -87,9 +104,13 @@ class TestGetSystemMetrics(unittest.TestCase):
         self.assertEqual(metrics["thread_count"], 5)
         self.assertTrue(metrics["uptime"].startswith("1h 1m"))
         self.assertEqual(metrics["ffmpeg_version"], "6.0")
+        self.assertEqual(metrics["ffmpeg_path"], "/usr/bin/ffmpeg")
         self.assertTrue(metrics["machine_hwaccel"])
         self.assertTrue(metrics["ffmpeg_hwaccel"])
         self.assertTrue(metrics["hwaccel_enabled"])
+        self.assertTrue(metrics["gpu_support"])
+        self.assertTrue(metrics["ffmpeg_gpu_enabled"])
+        self.assertTrue(metrics["danger_mode"])
 
 
 if __name__ == "__main__":
