@@ -14,11 +14,11 @@ export function initThemeToggle() {
       }
     };
 
-    let current =
-      localStorage.getItem("theme") ||
-      (window.matchMedia("(prefers-color-scheme: light)").matches
-        ? "light"
-        : "dark");
+    let current = localStorage.getItem("theme");
+    if (!current) {
+      current = "dark";
+      localStorage.setItem("theme", current);
+    }
     applyTheme(current);
 
     if (toggle) {
