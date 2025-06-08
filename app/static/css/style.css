@@ -1403,6 +1403,17 @@ footer.fade-out {
   display: block;
   margin-bottom: 0.25rem;
 }
+.login-icon {
+  text-align: center;
+  color: var(--primary-color);
+  margin-bottom: 0.5rem;
+}
+.security-note {
+  text-align: center;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+  color: var(--text-color);
+}
 
 input[type="text"],
 input[type="password"] {
