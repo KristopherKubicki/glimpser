@@ -206,6 +206,15 @@ h2 {
 #controls-wrapper summary {
   cursor: pointer;
   font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s;
+}
+
+#controls-wrapper.show-summary summary,
+#controls-wrapper[open] summary {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 #controls-wrapper {
