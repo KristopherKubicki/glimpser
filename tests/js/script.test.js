@@ -62,7 +62,7 @@ describe("script.js", () => {
 
     // Mock mobile device
     window.matchMedia = jest.fn().mockImplementation((query) => ({
-      matches: query === "(hover: none)",
+      matches: query === "(hover: none) and (max-width: 767px)",
       addListener: jest.fn(),
       removeListener: jest.fn(),
     }));
@@ -72,7 +72,7 @@ describe("script.js", () => {
 
     // Mock desktop device
     window.matchMedia = jest.fn().mockImplementation((query) => ({
-      matches: query !== "(hover: none)",
+      matches: query !== "(hover: none) and (max-width: 767px)",
       addListener: jest.fn(),
       removeListener: jest.fn(),
     }));

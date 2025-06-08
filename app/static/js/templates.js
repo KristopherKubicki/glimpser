@@ -35,7 +35,9 @@ export function initTemplates() {
       .getElementById("template-form")
       ?.closest("details");
     const slider = document.getElementById("grid-width-slider");
-    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    const isMobile = window.matchMedia(
+      "(hover: none) and (max-width: 767px)",
+    ).matches;
     const templateList = document.getElementById("template-list");
     const captionToggle = document.getElementById("toggle-captions");
     const MAX_THUMBNAIL_HEIGHT = 1080;
@@ -320,7 +322,7 @@ export function formatExactTime(dateString) {
 }
 
 export function isMobile() {
-  return window.matchMedia("(hover: none)").matches;
+  return window.matchMedia("(hover: none) and (max-width: 767px)").matches;
 }
 
 export function computeBorderColor(ageMinutes, isError) {
