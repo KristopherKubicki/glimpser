@@ -479,8 +479,20 @@ def update_setting(name: str, value: str) -> bool:
     return True
 
 
-def generate_video_stream(video_path: str) -> Generator[bytes, None, None]:
-    """Yield video data from ``video_path`` in chunks indefinitely."""
+def generate_video_stream(
+    video_path: str, *, reopen_delay: float = 0.1
+) -> Generator[bytes, None, None]:
+    """Yield video data from ``video_path`` in chunks indefinitely.
+
+    Parameters
+    ----------
+    video_path : str
+        Path to the video file to stream.
+    reopen_delay : float, optional
+        Time to wait after reaching the end of the file before reopening it.
+        This prevents tight loops from consuming CPU when the file ends.
+        Defaults to ``0.1`` seconds.
+    """
 
     # The video preview on the UI expects an infinite generator. Read the
     # file in 1MB increments and loop back to the beginning once no more
@@ -501,6 +513,7 @@ def generate_video_stream(video_path: str) -> Generator[bytes, None, None]:
 
         # Immediately loop back and stream again so the client sees a
         # seamless loop without gaps.
+        time.sleep(reopen_delay)
         logging.debug("Restarting video stream")
 
 
