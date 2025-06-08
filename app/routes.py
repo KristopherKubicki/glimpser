@@ -1558,6 +1558,7 @@ def init_routes(app: Flask) -> None:
             "TEARDOWN",
         ],
     )
+    @login_required
     def handle_rtsp():
 
         session_id = request.headers.get("Session", str(uuid.uuid4()))
@@ -1658,6 +1659,7 @@ def init_routes(app: Flask) -> None:
         return "Method Not Allowed", 405
 
     @app.route("/stream.mjpg", methods=["GET"])
+    @login_required
     def stream_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
@@ -1671,6 +1673,7 @@ def init_routes(app: Flask) -> None:
         )
 
     @app.route("/motion.mjpg", methods=["GET"])
+    @login_required
     def motion_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
@@ -1684,6 +1687,7 @@ def init_routes(app: Flask) -> None:
         )
 
     @app.route("/caption.mjpg", methods=["GET"])
+    @login_required
     def caption_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
@@ -1698,6 +1702,7 @@ def init_routes(app: Flask) -> None:
         )
 
     @app.route("/internal_caption.mjpg", methods=["GET"])
+    @login_required
     def internal_caption_mjpg():
         return Response(
             generate_caption_loop(),
@@ -1705,6 +1710,7 @@ def init_routes(app: Flask) -> None:
         )
 
     @app.route("/motion_caption.mjpg", methods=["GET"])
+    @login_required
     def motion_caption_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
