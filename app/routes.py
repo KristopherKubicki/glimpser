@@ -136,11 +136,13 @@ from app.utils.profiling import profile_route, get_latency_stats
 from scripts.update_chrome_shortcut import (
     update_chrome_shortcuts_info,
     shortcuts_need_patch,
+    first_shortcut_path,
 )
 from app.utils.screenshots import (
     is_chrome_debug_port_open,
     check_user_activity,
     get_chrome_path,
+    get_chrome_version,
     load_font,
 )
 from app.utils.email_alerts import send_email_alert
@@ -1246,6 +1248,8 @@ def init_routes(app: Flask) -> None:
                 "ready": port_open and idle and enabled,
                 "browser": os.path.basename(browser_path) if browser_path else None,
                 "path": browser_path,
+                "version": get_chrome_version(browser_path) if browser_path else None,
+                "shortcut": str(first_shortcut_path() or ""),
                 "patched": patched,
             }
         )
@@ -3095,6 +3099,8 @@ def init_routes(app: Flask) -> None:
         danger_info = {
             "browser": os.path.basename(chrome_path) if chrome_path else "N/A",
             "path": chrome_path or "N/A",
+            "version": get_chrome_version(chrome_path) if chrome_path else "N/A",
+            "shortcut": str(first_shortcut_path() or "N/A"),
             "patched": not shortcuts_need_patch(),
             "running": is_chrome_debug_port_open("127.0.0.1", 9222),
         }
