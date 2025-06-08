@@ -673,7 +673,7 @@ export async function loadTemplates() {
               <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
                 <div class="camera-name">${name}</div>
                 <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback>
-                  <source src="/last_video/${name}" type="video/mp4">
+                  <source src="/recent_clip/${name}" type="video/mp4">
                   Your browser does not support the video tag.
                 </video>
                 <div class="caption-overlay">${template.last_caption || ""}</div>

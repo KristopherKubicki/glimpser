@@ -279,6 +279,57 @@ def get_video_duration(video_path):
     return duration
 
 
+def assemble_recent_clip(template_name: str, duration: int) -> str | None:
+    """Return a concatenated clip of recent footage.
+
+    Parameters
+    ----------
+    template_name : str
+        Name of the camera template to process.
+    duration : int
+        Length of the clip in seconds.
+
+    Returns
+    -------
+    str | None
+        Path to the assembled clip or ``None`` if unavailable.
+    """
+
+    name = validate_template_name(template_name)
+    if name is None:
+        return None
+    base_path = os.path.join(VIDEO_DIRECTORY, name)
+    if not os.path.isdir(base_path):
+        return None
+
+    files = sorted(
+        glob.glob(os.path.join(base_path, "*.mp4")), key=os.path.getmtime, reverse=True
+    )
+    selected: list[str] = []
+    total = 0.0
+    for f in files:
+        if total >= duration:
+            break
+        d = get_video_duration(f)
+        if d:
+            selected.append(f)
+            total += d
+
+    if not selected:
+        return None
+
+    with tempfile.NamedTemporaryFile(mode="w+", suffix=".txt", delete=False) as fh:
+        for f in reversed(selected):
+            fh.write(f"file '{os.path.abspath(f)}'\n")
+        fh.flush()
+        output_file = os.path.join(base_path, "recent_clip.mp4")
+        compile_videos(fh.name, output_file + ".tmp")
+
+    if os.path.exists(output_file):
+        return output_file
+    return None
+
+
 def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> bool:
     """Concatenate the temporary video with the existing in-process video."""
     file_updated = False

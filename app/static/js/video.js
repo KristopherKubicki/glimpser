@@ -56,7 +56,7 @@ export function initVideoControls() {
           videos.forEach((video) => {
             const name = video.getAttribute("data-name");
             const src = video.querySelector("source");
-            src.src = `/last_video/${name}`;
+            src.src = `/recent_clip/${name}`;
             video.removeAttribute("src");
             video.poster = `/last_screenshot/${name}`;
             playAllObserver.observe(video);
@@ -101,7 +101,7 @@ export function updateVideoSources() {
   videos.forEach((video) => {
     const name = video.getAttribute("data-name");
     const timestamp = new Date().getTime();
-    video.querySelector("source").src = `/last_video/${name}?t=${timestamp}`;
+    video.querySelector("source").src = `/recent_clip/${name}?t=${timestamp}`;
     video.poster = `/last_screenshot/${name}?t=${timestamp}`;
   });
 }

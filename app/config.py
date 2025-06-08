@@ -350,6 +350,9 @@ LIVE_MAX_RETRY_DELAY = int(get_setting("LIVE_MAX_RETRY_DELAY", 30))
 # the banner remains visible after a caption arrives.
 CHYRON_SPEED = int(get_setting("CHYRON_SPEED", 0))
 
+# Length in seconds for clips returned by the /recent_clip endpoint.
+RECENT_CLIP_DURATION = int(get_setting("RECENT_CLIP_DURATION", 120))
+
 # Whether the System Performance icon in the navigation bar should remain
 # visible even when the application reports healthy status. When set to
 # ``False`` the icon hides itself if all metrics look nominal to reduce

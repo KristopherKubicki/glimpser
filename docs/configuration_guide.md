@@ -128,6 +128,7 @@ Settings controlling how frames are captured from video sources:
 - `LIVE_MAX_FAILURES` – maximum consecutive ffmpeg failures before live view stops (default `10`)
 - `LIVE_BACKOFF_MAX` – maximum seconds between live stream restart attempts (default `30`)
 - `CHYRON_SPEED` – seconds the caption chyron scrolls; set to `0` to disable (default `0`)
+- `RECENT_CLIP_DURATION` – seconds of footage stitched together for `/recent_clip` (default `120`)
 - `HEALTH_STATUS_ALWAYS_VISIBLE` – keep the System Performance icon visible even when the system is healthy (default `False`)
 - `WATCHDOG_FAILURE_THRESHOLD` – number of failed health checks before a restart (default `3`)
 - `WATCHDOG_RESTART_COOLDOWN` – cooldown period between restarts in seconds (default `900`)

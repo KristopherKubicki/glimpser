@@ -2568,6 +2568,23 @@ def init_routes(app: Flask) -> None:
 
         abort(404)
 
+    @app.route("/recent_clip/<string:template_name>")
+    @login_required
+    def recent_clip(template_name: TemplateName):
+        """Return a concatenated clip from the last few minutes."""
+
+        template_name = validate_template_name(template_name)
+        if template_name is None:
+            abort(404)
+
+        clip = video_archiver.assemble_recent_clip(
+            template_name, config.RECENT_CLIP_DURATION
+        )
+        if clip and os.path.exists(clip):
+            return send_file(clip)
+
+        abort(404)
+
     @app.route("/last_screenshot/<string:template_name>")
     @login_required
     def serve_screenshot(template_name: TemplateName):
