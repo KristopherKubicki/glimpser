@@ -60,7 +60,7 @@
     </datalist>
     {% endfor %} {% for group, items in grouped_settings.items() %}
     <div
-      id="{{ 'management-tab' if group == 'Credentials & Management' else group|replace(' ', '-') ~ '-tab' }}"
+      id="{{ group|replace(' ', '-') }}-tab"
       class="tab-content{% if loop.first %} active{% endif %}"
     >
       {% call card(group) %}
@@ -151,8 +151,8 @@
           {% endfor %}
         </tbody>
       </table>
-      {% endcall %} {% if group == 'Credentials & Management' %} {% call
-      card('Configuration Management') %}
+      {% endcall %} {% if group == 'Credentials & Management' %}
+      <h3>Configuration Management</h3>
       <div class="checkbox-row">
         <span>Advanced Options</span>
         <label class="switch" title="Toggle advanced options">
@@ -191,14 +191,16 @@
       >
         Upload Configuration
       </button>
-      {% endcall %} {% call card('Danger Mode') %}
-      <a
-        href="../docs/danger_mode.md"
-        target="_blank"
-        title="Open Danger Mode documentation"
-        class="doc-link"
-        >docs</a
-      >
+
+      <h3>
+        Danger Mode
+        <a
+          href="../docs/danger_mode.md"
+          target="_blank"
+          title="Open Danger Mode documentation"
+          >docs</a
+        >
+      </h3>
       <ul class="danger-info">
         <li>Browser: {{ danger_info.browser }}</li>
         <li>Path: {{ danger_info.path }}</li>
@@ -227,7 +229,8 @@
       >
         Update Chrome Shortcut
       </button>
-      {% endcall %} {% call card('Navigation Logo') %}
+
+      {% call card('Navigation Logo') %}
       <form
         action="{{ url_for('upload_nav_icon') }}"
         method="post"
@@ -268,9 +271,7 @@
         aria-label="Unsaved changes"
         title="Unsaved changes"
       >
-        <use
-          href="{{ url_for('static', filename='icons/sprite.svg') }}#alert"
-        />
+        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#alert" />
       </svg>
     </div>
     {% if loop.first %}
