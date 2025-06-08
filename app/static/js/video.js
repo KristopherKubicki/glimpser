@@ -1,3 +1,5 @@
+import { setCaptionsVisibility } from "./templates.js";
+
 function safePlay(el) {
   const promise = el.play();
   if (promise && typeof promise.catch === "function") {
@@ -61,6 +63,7 @@ export function initVideoControls() {
             video.load();
             safePlay(video);
           });
+          setCaptionsVisibility(false);
           playAllButton.textContent = "Pause All";
           if (liveAllButton) liveAllButton.style.display = "inline-block";
         }
