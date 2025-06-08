@@ -700,7 +700,9 @@ function updateFrameTimestamp() {
   );
   container.setAttribute(
     "title",
-    formatExactTime(details.last_screenshot_time),
+    details.last_caption
+      ? `${formatExactTime(details.last_screenshot_time)} - ${details.last_caption}`
+      : formatExactTime(details.last_screenshot_time),
   );
 }
 
@@ -1402,3 +1404,5 @@ function handleTouchEnd(event) {
 
 document.addEventListener("touchstart", handleTouchStart, { passive: true });
 document.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+export { updateFrameTimestamp };
