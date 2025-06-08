@@ -63,6 +63,18 @@ export function initTemplates() {
         // Iterate over possible column counts to find the largest
         // tile width that fits the viewport both horizontally and vertically.
         let bestWidth = 50;
+        const headerHeight =
+          document.querySelector("header")?.offsetHeight || 0;
+        const bannerHeight =
+          document.getElementById("network-banner")?.offsetHeight || 0;
+        const footerSpace = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue(
+            "--footer-space",
+          ) || "0",
+        );
+        const availableHeight =
+          window.innerHeight - headerHeight - bannerHeight - footerSpace;
+
         for (let cols = 1; cols <= templateCount; cols++) {
           const maxWidthForCols = Math.floor(
             (window.innerWidth - gap * (cols - 1)) / cols,
@@ -71,10 +83,7 @@ export function initTemplates() {
           const rows = Math.ceil(templateCount / cols);
           const tileHeight = maxWidthForCols * ASPECT_RATIO;
           const totalHeight = rows * tileHeight + gap * (rows - 1);
-          if (
-            totalHeight <= window.innerHeight &&
-            maxWidthForCols > bestWidth
-          ) {
+          if (totalHeight <= availableHeight && maxWidthForCols > bestWidth) {
             bestWidth = maxWidthForCols;
           }
         }
