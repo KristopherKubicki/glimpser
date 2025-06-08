@@ -58,6 +58,12 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn("username", inputs)
         self.assertIn("password", inputs)
 
+    def test_login_placeholders(self):
+        parser = parse_template(Path("app/templates/login.html"))
+        placeholders = {i.get("placeholder") for i in parser.forms[0]["inputs"]}
+        self.assertIn("Username", placeholders)
+        self.assertIn("Password", placeholders)
+
     def test_discover_add_camera_form_inputs(self):
         parser = parse_template(Path("app/templates/_discover_tab.html"))
         add_form = None

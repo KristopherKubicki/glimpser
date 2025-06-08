@@ -1431,6 +1431,10 @@ footer.fade-out {
   color: var(--text-color);
 }
 
+.warning {
+  color: #b80000;
+}
+
 input[type="text"],
 input[type="password"] {
   width: 100%;
@@ -1470,6 +1474,17 @@ input[type="submit"]:hover {
 /* Utility classes extracted from inline styles */
 .hidden {
   display: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
 }
 
 .advanced-only {
