@@ -2630,6 +2630,9 @@ def init_routes(app: Flask) -> None:
         video_archiver.compile_videos(temp_list_path, output_tmp)
         os.unlink(temp_list_path)
 
+        if not os.path.exists(output_final):
+            video_archiver.create_blank_video(duration, output_final)
+
         if os.path.exists(output_final):
             return send_file(output_final)
 

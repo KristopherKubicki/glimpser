@@ -252,6 +252,34 @@ def compile_videos(input_file, output_file):
             os.unlink(output_file)
 
 
+def create_blank_video(duration: int, output_file: str) -> bool:
+    """Create a blank MP4 video of ``duration`` seconds."""
+
+    command = [
+        FFMPEG_PATH,
+        "-f",
+        "lavfi",
+        "-i",
+        f"color=c=black:s=640x360:d={duration}",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-movflags",
+        "+faststart",
+        "-y",
+        os.path.abspath(output_file),
+    ]
+    try:
+        run_ffmpeg(command)
+        return os.path.exists(output_file) and os.path.getsize(output_file) > 0
+    except Exception as e:  # pragma: no cover - ffmpeg errors logged
+        logging.error("Failed to create blank video: %s", e)
+        if os.path.exists(output_file):
+            os.unlink(output_file)
+    return False
+
+
 def get_video_duration(video_path):
 
     if not os.path.exists(video_path):  # raise?
