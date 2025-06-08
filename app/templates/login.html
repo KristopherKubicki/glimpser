@@ -1,7 +1,13 @@
 {% extends 'base.html' %} {% from 'components.html' import card %} {% block
 content %}
 <div class="login-wrapper">
-  {% call card('Sign In') %}
+  {% call card('Secure Sign In') %}
+  <div class="login-icon" aria-hidden="true">
+    <svg width="40" height="40">
+      <use href="{{ url_for('static', filename='icons/sprite.svg') }}#lock" />
+    </svg>
+  </div>
+  <p class="security-note">Your credentials are encrypted in transit.</p>
   <form
     id="login-form"
     method="post"

@@ -3,10 +3,11 @@
 The user interface now includes additional tooltips and descriptive alt text to improve accessibility:
 
 - Navigation and login logos include descriptive `alt` attributes.
+- The login page now displays a lock icon with a brief security note.
 - The live feed image has both `alt` text and a tooltip.
 - The footer Help link displays a tooltip describing its purpose.
- - The navigation Settings link has a single descriptive `title` attribute.
- - The Discover icon also uses a descriptive `title` attribute and opens the Discover tab.
+- The navigation Settings link has a single descriptive `title` attribute.
+- The Discover icon also uses a descriptive `title` attribute and opens the Discover tab.
 - Navigation icons now include matching `aria-label` attributes for screen reader support.
 - When a camera is offline, the player shows an overlay with a clear icon instead of replacing the controls.
 - Deprecated `<center>` tags were removed from templates and replaced with CSS-based centering.
