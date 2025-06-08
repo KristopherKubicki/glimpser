@@ -271,6 +271,13 @@ def display_startup_tips():
     for tip in STARTUP_TIPS:
         logging.info("* %s", tip)
     logging.info(border)
+    # Warn when the server binds to a loopback address. Remote
+    # clients cannot reach 127.x or localhost hosts.
+    if config.HOST.startswith("127.") or config.HOST in {"localhost", "::1"}:
+        logging.warning(
+            "HOST %s is only reachable locally; remote clients may not connect.",
+            config.HOST,
+        )
     if config.SESSION_COOKIE_SECURE:
         logging.warning(
             "SESSION_COOKIE_SECURE is enabled; browsers only send the login cookie over HTTPS."
