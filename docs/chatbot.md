@@ -16,5 +16,10 @@ the captions stream for reference.
 * A "Thinking…" placeholder appears while the backend processes the request
   and a friendly error message is shown on network failure.
 * The conversation history is displayed inside the modal and also added to the
-  captions table.
-* The dialog is accessible via the Escape key and uses `role="dialog"`.
+  captions table. The list automatically scrolls to the newest entry.
+* The input clears and regains focus after each submission for faster
+  follow‑ups.
+* The answer container uses `aria-live="polite"` so screen readers announce
+  responses.
+* The dialog is accessible via the Escape key and uses `role="dialog"` with
+  `aria-labelledby` pointing to the modal title.

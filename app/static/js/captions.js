@@ -91,6 +91,13 @@ export function initCaptions() {
           table.prepend(rowA);
           table.prepend(rowQ);
         }
+        if (chatHistory) {
+          chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+        if (chatQuestion) {
+          chatQuestion.value = "";
+          chatQuestion.focus();
+        }
       } catch (err) {
         if (chatAnswer) chatAnswer.textContent = "Unable to reach server";
       }
