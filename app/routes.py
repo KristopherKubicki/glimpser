@@ -1966,6 +1966,20 @@ def init_routes(app: Flask) -> None:
 
         return "Method Not Allowed", 405
 
+    @app.route("/test.mjpg", methods=["GET"])
+    @login_required
+    def test_mjpg():
+        group = request.args.get("group")
+        camera = request.args.get("camera")
+        if group == "all":
+            group = None
+        if camera == "all":
+            camera = None
+        return Response(
+            generate(group=group, camera=camera, filename="latest_camera.png"),
+            mimetype="multipart/x-mixed-replace; boundary=frame",
+        )
+
     @app.route("/stream.mjpg", methods=["GET"])
     @login_required
     def stream_mjpg():

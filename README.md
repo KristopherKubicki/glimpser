@@ -40,6 +40,7 @@ See [OpenSSF Scorecard](docs/scorecard.md) for details on the security badge.
 
 - **Auto-summarization**: Summarizes data from multiple sources into a coherent and concise format, highlighting the most important information.
 - **RTSP Streaming**: Exposes a basic RTSP endpoint (`/test.rtsp`) so external NVRs can ingest the MJPEG stream. Supported verbs are `OPTIONS`, `DESCRIBE`, `SETUP`, `PLAY`, `PAUSE`, `GET_PARAMETER`, and `TEARDOWN`.
+- **MJPG Test Stream**: Provides `/test.mjpg` for clients that lack RTSP support.
 
 - **Customizable Configuration**: Easily configure different data sources and processing rules through the user-friendly interface. Glimpser’s configuration is fully database-driven, ensuring flexibility and ease of use.
 
@@ -158,6 +159,7 @@ Glimpser can summarize data from multiple sources into a coherent and concise fo
 ### RTSP Streaming
 
 Glimpser exposes a simple RTSP endpoint at `/test.rtsp`. When a client issues the standard RTSP verbs, the `/rtsp_stream` route serves MJPEG frames packetized with RTP headers.
+An equivalent MJPEG feed is available at `/test.mjpg` for quick testing or clients without RTSP support.
 
 Typical sequence:
 

@@ -995,6 +995,16 @@ def discover_cameras(progress_callback=None, subnets=None):
         }
     )
 
+    cameras.append(
+        {
+            "ip": "127.0.0.1",
+            "protocol": "rtsp",
+            "port": PORT,
+            "info": {"name": "Test Frame"},
+            "url": f"rtsp://127.0.0.1:{PORT}/test.rtsp",
+        }
+    )
+
     # remove duplicates but keep distinct URLs
     unique = {}
     for cam in cameras:

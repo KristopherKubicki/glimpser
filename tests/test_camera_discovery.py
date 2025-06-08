@@ -282,6 +282,12 @@ class TestCameraDiscovery(unittest.TestCase):
                 "port": 8082,
                 "info": {"name": "System Status"},
             },
+            {
+                "ip": "127.0.0.1",
+                "protocol": "rtsp",
+                "port": 8082,
+                "info": {"name": "Test Frame"},
+            },
         ]
         # convert to set of tuples for comparison ignoring order
         self.assertEqual(
