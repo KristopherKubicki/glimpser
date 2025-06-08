@@ -10,6 +10,7 @@ from app.config import (
     EMAIL_RECIPIENTS,
     EMAIL_SMTP_SERVER,
     EMAIL_SMTP_PORT,
+    EMAIL_SMTP_TIMEOUT,
     EMAIL_USE_TLS,
     EMAIL_USERNAME,
     EMAIL_PASSWORD,
@@ -44,7 +45,9 @@ def send_email_alert(subject, body):
     message.attach(MIMEText(body, "plain"))
 
     try:
-        with smtplib.SMTP(EMAIL_SMTP_SERVER, int(EMAIL_SMTP_PORT)) as server:
+        with smtplib.SMTP(
+            EMAIL_SMTP_SERVER, int(EMAIL_SMTP_PORT), timeout=EMAIL_SMTP_TIMEOUT
+        ) as server:
             if EMAIL_USE_TLS.lower() == "true":
                 server.starttls()
             server.login(EMAIL_USERNAME, EMAIL_PASSWORD)

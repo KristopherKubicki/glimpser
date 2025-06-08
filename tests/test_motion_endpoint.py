@@ -10,12 +10,15 @@ from app import create_app
 
 class TestMotionMjpg(unittest.TestCase):
     def setUp(self):
+        self.login_patch = patch("app.routes.login_required", lambda x: x)
+        self.login_patch.start()
         self.app = create_app(enable_watchdog=False, schedule=False)
         self.client = self.app.test_client()
         self.app_context = self.app.app_context()
         self.app_context.push()
 
     def tearDown(self):
+        self.login_patch.stop()
         self.app_context.pop()
 
     def _check_call(self, url, expected_camera, expected_group):

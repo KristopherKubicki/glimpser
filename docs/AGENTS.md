@@ -1,0 +1,2 @@
+- Avoid custom mkdocs options like `exclude_docs`.
+- Keep navigation entries updated directly in `mkdocs.yml`.
