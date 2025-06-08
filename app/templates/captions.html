@@ -1,4 +1,5 @@
-{% extends 'base.html' %} {% from 'components.html' import status_legend %} {% block content %}
+{% extends 'base.html' %} {% from 'components.html' import status_legend %} {%
+block content %}
 <div class="captions-page" data-latest-caption="{{ latest_caption }}">
   <script>
     function updateTemplate(templateName) {
@@ -38,7 +39,7 @@
   </div>
 
   <div id="prompts-tab" class="tab-content active">
-    <details class="filter-controls" open>
+    <details id="controls-wrapper" class="filter-controls">
       <summary>Search &amp; Filters</summary>
       <div class="controls-inner">
         <label for="search-input" title="Search by name or group"

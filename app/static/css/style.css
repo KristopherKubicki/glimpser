@@ -206,6 +206,23 @@ h2 {
 #controls-wrapper summary {
   cursor: pointer;
   font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s;
+}
+
+#controls-wrapper.show-summary summary,
+#controls-wrapper[open] summary {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#controls-wrapper {
+  transition: opacity 0.5s;
+}
+
+#controls-wrapper.fade-out {
+  opacity: 0;
 }
 
 #template-controls input[type="text"],
@@ -217,8 +234,9 @@ h2 {
   display: grid;
   grid-template-columns: repeat(
     auto-fit,
-    minmax(50px, var(--tile-size))
+  minmax(50px, var(--tile-size))
   ); /* Use CSS variable */
+
   gap: 3px;
   padding: 5px;
   justify-content: center;
@@ -543,14 +561,6 @@ nav {
   margin-left: auto; /* Keep navigation on the right */
 }
 
-.menu-toggle {
-  display: none;
-  background: none;
-  border: none;
-  color: var(--text-color);
-  font-size: 1.5rem;
-}
-
 .nav-left,
 .nav-right {
   display: flex;
@@ -751,29 +761,6 @@ nav a.active {
     font-size: 1.5rem; /* Larger font size for easier tapping */
   }
 
-  .menu-toggle {
-    display: block;
-    font-size: 2rem; /* Larger toggle for mobile */
-  }
-
-  nav:not(.active) .nav-left,
-  nav:not(.active) .nav-right {
-    display: none;
-  }
-
-  nav.active .nav-left,
-  nav.active .nav-right {
-    display: flex;
-    flex-direction: column;
-    background-color: #000;
-    position: absolute;
-    top: 56px; /* Align with larger mobile header */
-    left: 0;
-    right: 0;
-    padding: 10px;
-    z-index: 100;
-  }
-
   nav {
     flex-direction: column; /* Stack navigation items on mobile */
     align-items: flex-start;
@@ -785,14 +772,12 @@ nav a.active {
     padding: 8px;
   }
 
-  .menu-toggle {
-    font-size: 2rem; /* Bigger hamburger icon */
-  }
-
   /* Hide elements that waste space on mobile */
   #nav-clock,
   #caption-chyron,
-  .flash-messages {
+  .flash-messages,
+  #captions,
+  #health-status {
     display: none;
   }
 
@@ -1101,6 +1086,45 @@ input:checked + .slider:before {
   margin-top: 20px;
 }
 
+.template-actions {
+  position: fixed;
+  bottom: 0.5rem;
+  left: 0.5rem;
+  right: initial;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: opacity 0.5s;
+  z-index: 1000;
+}
+
+.template-actions.fade-out {
+  opacity: 0;
+}
+
+.template-actions button {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+}
+
+.template-actions p {
+  margin: 0;
+  font-size: 0.75rem;
+}
+
+.videos-grid,
+.screenshots-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
 @media (max-width: 600px) {
   .form-row {
     grid-template-columns: 1fr;
@@ -1286,18 +1310,23 @@ footer.fade-out {
 
 @media (max-width: 600px) {
   footer {
-    padding: 5px 10px 0;
+    padding: 0 10px;
+    height: 20px;
+    line-height: 20px;
   }
   .footer-nav {
     gap: 5px;
-    font-size: 0.85em;
+    font-size: 0.75em;
+  }
+  .footer-nav a {
+    padding: 0 4px;
   }
   .footer-copy,
   .footer-build {
     display: none;
   }
   main {
-    padding-bottom: 45px;
+    padding-bottom: 20px;
   }
 }
 .alert-success {
@@ -1334,6 +1363,13 @@ footer.fade-out {
   max-width: 400px;
   width: 100%;
   margin: 20px auto;
+}
+.login-form .form-field {
+  margin-bottom: 1rem;
+}
+.login-form label {
+  display: block;
+  margin-bottom: 0.25rem;
 }
 
 input[type="text"],
@@ -1375,6 +1411,14 @@ input[type="submit"]:hover {
 /* Utility classes extracted from inline styles */
 .hidden {
   display: none;
+}
+
+.advanced-only {
+  display: none;
+}
+
+body.advanced-enabled .advanced-only {
+  display: inline-block;
 }
 
 .video-overlay {
@@ -1624,11 +1668,20 @@ details > summary {
 }
 
 .modal-content {
-  background-color: #fefefe;
+  background-color: #222;
+  color: #eee;
   margin: 15% auto;
   padding: 20px;
   border: 1px solid #888;
   width: 80%;
+  border-radius: 8px;
+}
+#chat-modal .modal-content {
+  width: 90%;
+  max-width: 600px;
+}
+#chat-submit {
+  margin-top: 0.5rem;
 }
 
 .close-icon {
@@ -1710,6 +1763,21 @@ details > summary {
 }
 .status-dot.error {
   background-color: red;
+}
+
+.danger-icon {
+  vertical-align: middle;
+  margin-right: 0.25rem;
+}
+.danger-icon.disabled {
+  color: red;
+}
+.danger-icon.user {
+  color: orange;
+}
+
+.feed-status tr.danger-disabled {
+  opacity: 0.5;
 }
 
 .metrics-list li {
@@ -1896,4 +1964,11 @@ details > summary {
 
 .danger-mode-box.on {
   border-color: var(--danger-on-color);
+}
+
+/* Spacing for management actions */
+#management-tab button,
+#management-tab input[type="file"] {
+  margin: 0.5rem 0;
+  display: block;
 }

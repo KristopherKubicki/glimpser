@@ -48,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bulk tools menu is expanded by default on the captions page
 - Enumerated settings use a single autocomplete field instead of a dropdown and separate text box
 - Live video retries now use exponential backoff to reduce repeated ffmpeg errors
+- Template toolbar now anchors to the lower left of detail pages
+- Image thumbnails show captions in their tooltips
 
 ### Fixed
 

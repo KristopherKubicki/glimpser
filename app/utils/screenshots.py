@@ -12,6 +12,7 @@ import shutil
 import socket
 import subprocess
 import time
+import tempfile
 from urllib.parse import urlparse
 import glob
 import base64
@@ -48,6 +49,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
 import threading
+from typing import Dict
 
 try:
     from pynput import mouse, keyboard
@@ -87,6 +89,7 @@ lurl_cache = {}
 lurl_cache_time = {}
 throttle_cache = {}
 chrome_version = {}
+_browser_gl_cache: Dict[str, bool] = {}
 last_modified_cache = {}
 etag_cache = {}
 
@@ -348,7 +351,9 @@ def idle_seconds_x11() -> int:
 def idle_seconds_loginctl() -> int:
     """Return seconds of user idleness according to systemd-logind.
     0  → actively using keyboard/mouse right now."""
-    import os, subprocess, time
+    import os
+    import subprocess
+    import time
 
     uid = os.getuid()
     try:
@@ -1475,10 +1480,9 @@ def should_use_phantom_browser(
     """Determine if a lightweight browser should be used for capture."""
     return (
         re.findall(r"^https?://", url, flags=re.I)
-        and
         # dedicated_selector in [None, ""] and
         # popup_xpath in [None, ""] and
-        not stealth
+        and not stealth
         and not browser
         and not is_enhanced(url)
         and not danger
@@ -1943,6 +1947,39 @@ def extract_version(driver_path):
         return 135
 
 
+def _machine_supports_hwaccel() -> bool:
+    """Return True if GPU devices appear available."""
+    return os.path.exists("/dev/dri") or shutil.which("nvidia-smi") is not None
+
+
+def _hwaccel_enabled() -> bool:
+    return bool(FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false")
+
+
+def browser_supports_gl(chrome_path: str) -> bool:
+    cached = _browser_gl_cache.get(chrome_path)
+    if cached is not None:
+        return cached
+    try:
+        subprocess.check_call(
+            [
+                chrome_path,
+                "--headless=new",
+                "--use-gl=egl",
+                "--disable-gpu",
+                "about:blank",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
+        result = True
+    except Exception:
+        result = False
+    _browser_gl_cache[chrome_path] = result
+    return result
+
+
 def is_port_open(host, port, timeout=5):
     """Check if a network port is open on the specified host."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -2271,19 +2308,26 @@ def capture_screenshot_and_har_nodriver(
     # For efficiency, consider reusing one launch() if you do multiple captures.
 
     try:
-        with nodriver.launch(
-            headless=headless,
-            extra_args=[
-                "--no-sandbox",
-                "--disable-gpu",
-                f"--window-size={width},{height}",
-                "--disable-dev-shm-usage",
-                "--disable-background-networking",
-                "--disable-translate",
-                "--disable-extensions",
-                "--disable-sync",
-            ],
-        ) as browser:
+        extra = [
+            "--no-sandbox",
+            "--disable-gpu",
+            f"--window-size={width},{height}",
+            "--disable-dev-shm-usage",
+            "--disable-background-networking",
+            "--disable-translate",
+            "--disable-extensions",
+            "--disable-sync",
+        ]
+        chrome_path = get_chrome_path()
+        if (
+            chrome_path
+            and _hwaccel_enabled()
+            and _machine_supports_hwaccel()
+            and browser_supports_gl(chrome_path)
+        ):
+            extra.append("--use-gl=egl")
+
+        with nodriver.launch(headless=headless, extra_args=extra) as browser:
             cdp = browser.connect()
 
             # Apply user agent override if desired
@@ -2420,7 +2464,7 @@ def capture_screenshot_and_har(
         # let's confirm it's actually open.
         if not is_chrome_debug_port_open("127.0.0.1", 9222):
             logging.warning(
-                f"[capture_screenshot_and_har] Danger mode requested, but no Chrome on port 9222."
+                "[capture_screenshot_and_har] Danger mode requested, but no Chrome on port 9222."
             )
             return False
 
@@ -2451,9 +2495,8 @@ def capture_screenshot_and_har(
     user_data_dir = None
     driver = None
     try:
-        # Create ephemeral profile dir in /tmp
-        tmp_profile = f"/tmp/glimpser_{name}"
-        os.makedirs(tmp_profile, exist_ok=True)
+        # Create unique ephemeral profile dir in /tmp
+        tmp_profile = tempfile.mkdtemp(prefix="glimpser_")
         user_data_dir = tmp_profile  # just to keep track
 
         # Using undetected_chromedriver for stealth:
@@ -2468,6 +2511,12 @@ def capture_screenshot_and_har(
         driver_options.add_argument("--no-sandbox")
         driver_options.add_argument("--disable-dev-shm-usage")
         driver_options.add_argument("--disable-gpu")
+        if (
+            _hwaccel_enabled()
+            and _machine_supports_hwaccel()
+            and browser_supports_gl(chrome_path)
+        ):
+            driver_options.add_argument("--use-gl=egl")
         if stealth:
             apply_stealth_options(driver_options)
         else:

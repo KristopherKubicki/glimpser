@@ -17,21 +17,13 @@
   data-speed="{{ CHYRON_SPEED }}"
 ></div>
 <nav>
-
   {% if session.get('user_id') %}
-  <button id="menu-toggle" class="menu-toggle" aria-label="Toggle navigation">☰</button>
-  {% endif %}
-
   <div class="nav-left">
-    {% if template_details is defined %}
-      {% if template_details.get('groups') %}
-        {% set __back_url = '/group/' ~ template_details.get('groups').split(',')[0].strip() %}
-        {% set __back_title = 'Back to Group' %}
-      {% else %}
-        {% set __back_url = url_for('index') %}
-        {% set __back_title = 'Back to Dashboard' %}
-      {% endif %}
-    {% endif %}
+    {% if template_details is defined %} {% if template_details.get('groups') %}
+    {% set __back_url = '/group/' ~
+    template_details.get('groups').split(',')[0].strip() %} {% set __back_title
+    = 'Back to Group' %} {% else %} {% set __back_url = url_for('index') %} {%
+    set __back_title = 'Back to Dashboard' %} {% endif %} {% endif %}
     <select id="nav-group-dropdown" title="Jump to group"></select>
     <select
       id="nav-camera-dropdown"
@@ -40,6 +32,7 @@
     ></select>
     <!-- Discover icon moved to nav-right for consistency -->
   </div>
+  {% endif %}
 
   <div class="nav-center">
     {% if template_name %}
@@ -113,7 +106,14 @@
       </a>
     </div>
     <a href="/live" id="live" aria-label="Open Live page">
-      <div id="nav-clock" class="cool-clock" data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}" style="{% if not CLOCK_NAVBAR %}display:none;{% endif %}" title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming." aria-label="Open Live page for realtime streaming">
+      <div
+        id="nav-clock"
+        class="cool-clock"
+        data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}"
+        style="{% if not CLOCK_NAVBAR %}display:none;{% endif %}"
+        title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming."
+        aria-label="Open Live page for realtime streaming"
+      >
         <div class="clock-face">
           <div class="clock-hands">
             <div class="hand hour-hand"></div>
@@ -134,19 +134,7 @@
         <use href="{{ url_for('static', filename='icons/sprite.svg') }}#gear" />
       </svg>
     </a>
-    {% else %}
-    <a
-      href="{{ url_for('login') }}"
-      class="settings-icon"
-      title="Login"
-      aria-label="Login"
-    >
-      <svg width="20" height="20">
-        <use
-          href="{{ url_for('static', filename='icons/sprite.svg') }}#login"
-        />
-      </svg>
-    </a>
+    {# login link removed from nav bar #}
   </div>
 </nav>
 {% endif %}

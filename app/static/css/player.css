@@ -133,3 +133,13 @@
     overflow: auto;
   }
 }
+
+#rotate-video {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  #rotate-video {
+    display: inline-block;
+  }
+}

@@ -14,3 +14,5 @@ also appears on the **Captions** and **Group** pages.
 
 Search, width slider and legend controls now start collapsed in a dropdown to keep the dashboard uncluttered.
 The dropdown closes automatically after a few seconds without mouse or scroll activity.
+On desktop screens the **Controls** button itself stays hidden until you move the
+mouse, fading out again when idle just like the toolbar on template pages.

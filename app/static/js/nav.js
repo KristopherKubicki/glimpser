@@ -15,23 +15,10 @@ export function initNav() {
       discoveryStatus.style.display = onSettingsPage ? "flex" : "none";
     }
     const nav = document.querySelector("nav");
-    const menuToggle = document.getElementById("menu-toggle");
     const groupDropdown = document.getElementById("nav-group-dropdown");
     const cameraDropdown = document.getElementById("nav-camera-dropdown");
     const currentGroup = window.currentGroup || null;
     const currentCamera = window.currentCamera || null;
-
-    // Keep navigation expanded outside the Settings page so mobile users
-    // always see the full menu without a toggle button.
-    if (nav && !onSettingsPage) {
-      nav.classList.add("active");
-    }
-
-    if (nav && menuToggle) {
-      menuToggle.addEventListener("click", () => {
-        nav.classList.toggle("active");
-      });
-    }
 
     const fetchJson = async (url) => {
       const res = await fetch(url);
@@ -110,27 +97,25 @@ export function initNav() {
 
     if (groupDropdown) {
       groupDropdown.addEventListener("change", () => {
-        if (!groupDropdown.value) return;
+        const selected = groupDropdown.value || "all";
         if (
           window.location.pathname.startsWith("/live") &&
           typeof window.changeGroup === "function"
         ) {
           const grpSelector = document.getElementById("group-selector");
           if (grpSelector) {
-            grpSelector.value = groupDropdown.value || "all";
+            grpSelector.value = selected;
             window.changeGroup();
-            loadNavCameras(groupDropdown.value);
+            loadNavCameras(selected);
             return;
           }
         }
-        if (groupDropdown.value === "all") {
+        if (selected === "all") {
           window.location.href = "/live";
         } else {
-          window.location.href = `/group/${encodeURIComponent(
-            groupDropdown.value,
-          )}`;
+          window.location.href = `/group/${encodeURIComponent(selected)}`;
         }
-        loadNavCameras(groupDropdown.value);
+        loadNavCameras(selected);
       });
       if (currentGroup) loadNavCameras(currentGroup);
     }
@@ -378,6 +363,7 @@ export function initNav() {
         if (
           e.target.tagName === "INPUT" ||
           e.target.tagName === "SELECT" ||
+          e.target.tagName === "TEXTAREA" ||
           e.target.isContentEditable
         )
           return;

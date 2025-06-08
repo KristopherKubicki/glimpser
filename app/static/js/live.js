@@ -463,6 +463,7 @@ function updateTemplateDetails() {
   }
 
   video.title = details.last_caption;
+  image.title = details.last_caption;
   templateDetailsContainer.style.display = "block";
   templateDetailsContainer.innerHTML = `
         <div>
@@ -699,7 +700,9 @@ function updateFrameTimestamp() {
   );
   container.setAttribute(
     "title",
-    formatExactTime(details.last_screenshot_time),
+    details.last_caption
+      ? `${formatExactTime(details.last_screenshot_time)} - ${details.last_caption}`
+      : formatExactTime(details.last_screenshot_time),
   );
 }
 
@@ -1306,6 +1309,7 @@ document.addEventListener("keydown", (event) => {
   if (
     event.target.tagName === "INPUT" ||
     event.target.tagName === "SELECT" ||
+    event.target.tagName === "TEXTAREA" ||
     event.target.isContentEditable
   ) {
     return;
@@ -1396,3 +1400,5 @@ function handleTouchEnd(event) {
 
 document.addEventListener("touchstart", handleTouchStart, { passive: true });
 document.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+export { updateFrameTimestamp };
