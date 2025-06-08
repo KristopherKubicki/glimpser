@@ -29,6 +29,8 @@ from app.config import (
     WATCHDOG_FAILURE_THRESHOLD,
     WATCHDOG_RESTART_COOLDOWN,
     WATCHDOG_MAX_FILE_HANDLES,
+    WATCHDOG_CPU_THRESHOLD,
+    WATCHDOG_MEMORY_THRESHOLD,
 )
 from app.utils.email_alerts import email_alert
 from app.utils.sms_alerts import sms_alert
@@ -172,10 +174,11 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
     def _watchdog_thread():
         """Background health monitor.
 
-        The thread issues requests to ``/health`` and inspects the number of
-        open file handles every 10 seconds.  When either check fails it first
-        restores the backed-up configuration and then exits the process so that
-        an external supervisor can restart it.  A 15 minute cooldown prevents
+        The thread issues requests to ``/health`` and performs additional
+        checks every 30 seconds. When CPU or memory usage exceeds configured
+        thresholds the number of open file handles is inspected. If any check
+        fails the previous configuration is restored and the process exits so
+        an external supervisor can restart it. A 15 minute cooldown prevents
         rapid restart loops.
         """
         last_restart_time = 0
@@ -185,7 +188,7 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
         failure_threshold = WATCHDOG_FAILURE_THRESHOLD
 
         while not stop_event.is_set():
-            time.sleep(10)  # Check every 10 seconds
+            time.sleep(30)  # Check every 30 seconds
             if not app.debug:
                 try:
                     # Check app responsiveness
@@ -194,13 +197,20 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
                         if response.status_code != 200:
                             raise Exception("Application is not responding correctly")
 
-                    # Check file handle usage
                     current_process = psutil.Process()
-                    open_files = current_process.open_files()
-                    if len(open_files) > max_file_handles:
-                        raise Exception(
-                            f"Too many open file handles: {len(open_files)}"
-                        )
+                    cpu_usage = psutil.cpu_percent(interval=0.1)
+                    mem_usage = psutil.virtual_memory().percent
+
+                    # Only check open files when system usage is high
+                    if (
+                        cpu_usage > WATCHDOG_CPU_THRESHOLD
+                        or mem_usage > WATCHDOG_MEMORY_THRESHOLD
+                    ):
+                        open_files = current_process.open_files()
+                        if len(open_files) > max_file_handles:
+                            raise Exception(
+                                f"Too many open file handles: {len(open_files)}"
+                            )
 
                 except Exception as e:
                     logging.error("Application error detected: %s", e)
