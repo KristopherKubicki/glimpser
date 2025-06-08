@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+import tempfile
 from flask import Flask
 from unittest.mock import patch
 
@@ -48,6 +49,38 @@ class TestClipRoute(unittest.TestCase):
         )
         mock_compile.assert_called_once()
         mock_send.assert_called_with(expected)
+
+    @patch("app.routes.video_archiver.create_blank_video")
+    @patch("app.routes.video_archiver.compile_videos", return_value=None)
+    @patch("app.routes.video_archiver.get_video_duration", return_value=60)
+    def test_clip_blank_fallback(
+        self,
+        mock_duration,
+        mock_compile,
+        mock_blank,
+    ):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            camera_path = os.path.join(tmpdir, "cam1")
+            os.makedirs(camera_path)
+            with (
+                patch("app.routes.VIDEO_DIRECTORY", tmpdir),
+                patch("glob.glob", return_value=[]),
+                patch("os.path.getmtime", return_value=1),
+                patch("app.routes.send_file") as mock_send,
+            ):
+
+                def fake_blank(duration, output):
+                    with open(output, "w"):
+                        pass
+                    return True
+
+                mock_blank.side_effect = fake_blank
+                resp = self.client.get("/clip/cam1")
+
+        self.assertEqual(resp.status_code, 200)
+        expected = os.path.join(tmpdir, "cam1", "clip.mp4")
+        mock_send.assert_called_with(expected)
+        mock_blank.assert_called_once()
 
 
 if __name__ == "__main__":
