@@ -40,4 +40,9 @@
   <symbol id="moon" viewBox="0 0 24 24">
     <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" stroke="currentColor" stroke-width="2" fill="none" />
   </symbol>
-  </svg>
+  <symbol id="closed-caption" viewBox="0 0 24 24">
+    <rect x="2" y="6" width="20" height="12" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none" />
+    <path d="M9.5 15a2.5 2.5 0 110-6" fill="none" stroke="currentColor" stroke-width="2" />
+    <path d="M14.5 15a2.5 2.5 0 110-6" fill="none" stroke="currentColor" stroke-width="2" />
+  </symbol>
+</svg>
