@@ -7,7 +7,10 @@ import subprocess
 import argparse
 import random
 import time
-import signal, sys, threading, atexit
+import signal
+import sys
+import threading
+import atexit
 import socket
 
 import app.config as config

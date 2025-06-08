@@ -351,7 +351,9 @@ def idle_seconds_x11() -> int:
 def idle_seconds_loginctl() -> int:
     """Return seconds of user idleness according to systemd-logind.
     0  → actively using keyboard/mouse right now."""
-    import os, subprocess, time
+    import os
+    import subprocess
+    import time
 
     uid = os.getuid()
     try:
@@ -1478,10 +1480,9 @@ def should_use_phantom_browser(
     """Determine if a lightweight browser should be used for capture."""
     return (
         re.findall(r"^https?://", url, flags=re.I)
-        and
         # dedicated_selector in [None, ""] and
         # popup_xpath in [None, ""] and
-        not stealth
+        and not stealth
         and not browser
         and not is_enhanced(url)
         and not danger
@@ -2463,7 +2464,7 @@ def capture_screenshot_and_har(
         # let's confirm it's actually open.
         if not is_chrome_debug_port_open("127.0.0.1", 9222):
             logging.warning(
-                f"[capture_screenshot_and_har] Danger mode requested, but no Chrome on port 9222."
+                "[capture_screenshot_and_har] Danger mode requested, but no Chrome on port 9222."
             )
             return False
 
