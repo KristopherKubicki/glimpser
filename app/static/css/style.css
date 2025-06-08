@@ -1782,7 +1782,7 @@ details > summary {
 }
 
 .caption-filters input[type="search"],
-.caption-filters input[type="date"] {
+.caption-filters input[type="range"] {
   margin-right: 0.5rem;
   padding: 4px;
 }
