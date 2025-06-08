@@ -310,3 +310,18 @@ If shutdown is interrupted it can leave background threads running.
 - Calling `main.shutdown_manager.cleanup()` manually will join any remaining threads.
 - If threads still refuse to exit, call `app.utils.scheduling.stop_background_tasks()` to signal the
   metrics and logging loops to terminate.
+
+## 15. Display Connection Errors
+
+### Problem: "pynput not available" or "failed to acquire X connection"
+
+This happens when Glimpser cannot open an X display. The logs may show
+`Maximum number of clients reached` or `Can't connect to display`.
+
+**Solution:**
+
+- Ensure an X server is running and `$DISPLAY` points to it.
+- Close stray X applications or restart the display if the client limit is hit.
+- On headless systems run Glimpser with `xvfb-run` to start a temporary virtual display, e.g.
+  `xvfb-run --server-args="-screen 0 1280x720x24" python main.py`.
+- If the connection still fails, Glimpser will log the error and skip activity detection so the server stays online.
