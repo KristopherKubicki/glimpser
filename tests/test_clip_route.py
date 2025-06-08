@@ -24,8 +24,9 @@ class TestClipRoute(unittest.TestCase):
     def tearDown(self):
         self.login_patch.stop()
 
+    @patch("app.routes.video_archiver.create_blank_video")
     @patch("app.routes._concat_copy")
-    def test_clip_default(self, mock_concat):
+    def test_clip_default(self, mock_concat, mock_blank):
         with tempfile.TemporaryDirectory() as tmpdir:
             camera_path = os.path.join(tmpdir, "cam1")
             os.makedirs(camera_path)
@@ -40,6 +41,13 @@ class TestClipRoute(unittest.TestCase):
                 patch("app.routes.send_file") as mock_send,
             ):
 
+                def fake_blank(duration, output):
+                    with open(output, "w"):
+                        pass
+                    return True
+
+                mock_blank.side_effect = fake_blank
+
                 def fake_concat(out, parts, clip_len):
                     with open(out, "w"):
                         pass
@@ -52,6 +60,7 @@ class TestClipRoute(unittest.TestCase):
         expected = Path(tmpdir, "cam1", "clip.mp4")
         mock_send.assert_called_with(expected, conditional=True)
         mock_concat.assert_called_once()
+        mock_blank.assert_called_once()
 
     @patch("app.routes._concat_copy", return_value=False)
     @patch("app.routes.video_archiver.create_blank_video")
@@ -75,7 +84,7 @@ class TestClipRoute(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         expected = Path(tmpdir, "cam1", "clip.mp4")
         mock_send.assert_called_with(expected, conditional=True)
-        mock_blank.assert_called_once()
+        self.assertEqual(mock_blank.call_count, 2)
 
 
 if __name__ == "__main__":

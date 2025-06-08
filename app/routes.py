@@ -2673,6 +2673,13 @@ def init_routes(app: Flask) -> None:
             key=lambda p: p.stat().st_mtime,
             reverse=True,
         )[:needed]
+        parts = sorted(parts, key=lambda p: p.stat().st_mtime)
+
+        blank_duration = duration - len(parts) * SEGMENT_SEC
+        blank_path = root / "blank_tmp.mp4"
+        if blank_duration > 0:
+            video_archiver.create_blank_video(blank_duration, blank_path.as_posix())
+            parts = [blank_path] + parts
 
         lock_path = root / ".clip.lock"
         with lock_path.open("w") as lock_fd:
@@ -2688,6 +2695,9 @@ def init_routes(app: Flask) -> None:
                 pass
             else:
                 video_archiver.create_blank_video(duration, clip_path.as_posix())
+
+        if blank_path.exists():
+            blank_path.unlink(missing_ok=True)
 
         if clip_path.exists():
             return send_file(clip_path, conditional=True)
