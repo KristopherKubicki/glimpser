@@ -771,8 +771,9 @@ function playMP4() {
 function handleVideoEnded() {
   if (currentCamera === "All" || currentCamera.startsWith("group-")) {
     // For "All" or group options, move to the next camera
-    const groupCameras =
-      (templateDetails[currentCamera].groupCameras || []).filter(Boolean);
+    const groupCameras = (
+      templateDetails[currentCamera].groupCameras || []
+    ).filter(Boolean);
     const currentIndex = groupCameras.indexOf(video.dataset.currentCamera);
     const nextIndex = (currentIndex + 1) % groupCameras.length;
     const nextCamera = groupCameras[nextIndex];
