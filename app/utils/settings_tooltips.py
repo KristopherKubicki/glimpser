@@ -61,7 +61,7 @@ SETTINGS_GROUPS = {
         "LOG_LEVEL",
         "FLASK_LOG_LEVEL",
     ],
-    "Credentials": [
+    "Credentials & Management": [
         "USER_NAME",
         "USER_PASSWORD_HASH",
         "SECRET_KEY",
@@ -73,15 +73,13 @@ SETTINGS_GROUPS = {
         "SESSION_COOKIE_HTTPONLY",
         "SESSION_TIMEOUT_MINUTES",
     ],
-    "File Locations": [
+    "Capture": [
         "DATABASE_PATH",
         "LOGGING_PATH",
         "BACKUP_PATH",
         "SCREENSHOT_DIRECTORY",
         "VIDEO_DIRECTORY",
         "SUMMARIES_DIRECTORY",
-    ],
-    "Capture": [
         "NUM_FRAMES",
         "CAPTURE_TIMEOUT",
         "PROBE_SIZE_DEFAULT",
@@ -103,7 +101,7 @@ SETTINGS_GROUPS = {
         "FFMPEG_HWACCEL",
         "FFMPEG_THREADS",
     ],
-    "Email": [
+    "Integrations": [
         "EMAIL_ENABLED",
         "EMAIL_SENDER",
         "EMAIL_RECIPIENTS",
@@ -112,9 +110,13 @@ SETTINGS_GROUPS = {
         "EMAIL_USE_TLS",
         "EMAIL_USERNAME",
         "EMAIL_PASSWORD",
+        "TWILIO_SID",
+        "TWILIO_TOKEN",
+        "TWILIO_NUMBER",
+        "CAP_ENDPOINT",
+        "CAP_SENDER",
+        "MCP_SERVER_COMMAND",
+        "MCP_SERVER_URL",
     ],
-    "SMS": ["TWILIO_SID", "TWILIO_TOKEN", "TWILIO_NUMBER"],
-    "CAP": ["CAP_ENDPOINT", "CAP_SENDER"],
-    "MCP": ["MCP_SERVER_COMMAND", "MCP_SERVER_URL"],
     "Clock": ["CLOCK_OVERLAY", "CLOCK_DIGITAL", "CLOCK_NAVBAR"],
 }

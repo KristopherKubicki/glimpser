@@ -5,9 +5,9 @@ The **Settings** interface lets you manage configuration values stored in the da
 ## Sections
 
 - **Add New Setting** – quickly create additional key/value pairs.
-- **Current Settings** – edit existing values or delete them. Tabs switch between setting groups and the **Management** tab holds backup and offline options.
-- **Configuration Management** – backup, download, and upload the JSON configuration file.
-- **Danger Mode** – update Chrome shortcuts with the required flags.
+- **Current Settings** – edit existing values or delete them. Tabs include **General**, **Capture**, **Credentials & Management**, **Integrations**, and **Clock**.
+- **Configuration Management** – backup, download, and upload the JSON configuration file. These tools now live under the **Credentials & Management** tab.
+- **Danger Mode** – update Chrome shortcuts with the required flags. Also part of **Credentials & Management**.
 - **Offline Preview** – cached snapshots are automatically enabled.
 - **Settings Reference** – expand the table to read explanations for each setting.
 - **Column Search** – click a header to filter rows by that column.

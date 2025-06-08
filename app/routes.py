@@ -2714,7 +2714,8 @@ def init_routes(app: Flask) -> None:
 
         settings = get_all_settings()
         grouped_settings = {group: [] for group in SETTINGS_GROUPS}
-        grouped_settings["Other"] = []
+        default_group = "Integrations"
+        grouped_settings.setdefault(default_group, [])
         for setting in settings:
             placed = False
             for group, names in SETTINGS_GROUPS.items():
@@ -2723,7 +2724,7 @@ def init_routes(app: Flask) -> None:
                     placed = True
                     break
             if not placed:
-                grouped_settings["Other"].append(setting)
+                grouped_settings[default_group].append(setting)
 
         metrics = scheduling.get_system_metrics()
         feeds = scheduling.get_feed_status()
