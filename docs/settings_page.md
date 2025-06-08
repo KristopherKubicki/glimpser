@@ -12,6 +12,8 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Settings Reference** – expand the table to read explanations for each setting.
 - **Column Search** – click a header to filter rows by that column.
 - **Tab headers removed** – the active tab is highlighted, freeing space.
+- **Unsaved Changes Indicator** – a small alert icon appears next to the Save
+  Changes button when edits haven't been saved.
 - **System Status** – view CPU, memory, disk usage, and live logs.
 - **Certain tabs start collapsed** – Capture, Credentials & Management, and
   Integrations & Other appear collapsed until expanded.

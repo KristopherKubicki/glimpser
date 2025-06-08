@@ -21,6 +21,7 @@ import { initCosts } from "./costs.js";
 import { initAdvanced } from "./advanced.js";
 import { initCliHelp } from "./cli_help.js";
 import { initNetworkBanner } from "./network_banner.js";
+import { initUnsavedIndicator } from "./unsaved.js";
 
 initTemplates();
 initVideoControls();
@@ -46,4 +47,5 @@ initControlsDropdown();
 initAutocomplete();
 initCosts();
 initAdvanced();
+initUnsavedIndicator();
 initCliHelp();
