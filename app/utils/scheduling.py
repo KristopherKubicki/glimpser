@@ -1106,14 +1106,10 @@ def cache_logs():
         with open(log_file_path, "r") as file:
             file.seek(0, os.SEEK_END)  # Start at end of file
             while not stop_event.is_set():
-                # Wait for the log file to become readable instead of polling.
-                # Timeout every second so we can check stop_event periodically.
-                ready, _, _ = select.select([file], [], [], 1)
-                if not ready:
-                    continue
-
                 new_log = file.readline()
                 if not new_log:
+                    # Avoid busy looping when no new log lines are written.
+                    time.sleep(1)
                     # The file may have been truncated. Seek to end and retry.
                     file.seek(0, os.SEEK_END)
                     continue
