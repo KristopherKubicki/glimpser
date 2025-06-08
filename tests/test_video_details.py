@@ -1,7 +1,6 @@
 import unittest
 import tempfile
 import os
-import sys
 import importlib.util
 from datetime import datetime, timedelta
 

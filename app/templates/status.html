@@ -1,14 +1,6 @@
-
-
-{% extends 'base.html' %}
-{% from 'components.html' import card %}
-{% block content %}
-{% include '_status_tab.html' %}
-{% endblock %}
-
-                                             
 {% extends 'base.html' %} {% from 'components.html' import card %} {% block
-content %}
+content %} {% include '_status_tab.html' %} {% endblock %} {% extends
+'base.html' %} {% from 'components.html' import card %} {% block content %}
 
 <div class="scheduler-controls">
   <button
@@ -30,46 +22,64 @@ content %}
   <li title="Current CPU utilization">
     CPU Usage:
     <progress
+      id="cpu-bar"
       class="metric-bar"
       value="{{ metrics.cpu_usage }}"
       max="100"
     ></progress>
-    {{ metrics.cpu_usage }}%
+    <span id="cpu-value">{{ metrics.cpu_usage }}%</span>
+    <canvas id="cpu-sparkline" width="100" height="20"></canvas>
   </li>
   <li title="Current memory utilization">
     Memory Usage:
     <progress
+      id="memory-bar"
       class="metric-bar"
       value="{{ metrics.memory_usage }}"
       max="100"
     ></progress>
-    {{ metrics.memory_usage }}%
+    <span id="memory-value">{{ metrics.memory_usage }}%</span>
   </li>
   <li title="Disk space used">
     Disk Usage:
     <progress
+      id="disk-bar"
       class="metric-bar"
       value="{{ metrics.disk_usage }}"
       max="100"
     ></progress>
-    {{ metrics.disk_usage }}%
+    <span id="disk-value">{{ metrics.disk_usage }}%</span>
   </li>
-  <li title="Open file handles">Open Files: {{ metrics.open_files }}</li>
+  <li title="Open file handles">
+    Open Files: <span id="open-files">{{ metrics.open_files }}</span>
+  </li>
   <li title="Number of active threads">
-    Thread Count: {{ metrics.thread_count }}
+    Thread Count: <span id="thread-count">{{ metrics.thread_count }}</span>
   </li>
-  <li title="System uptime">Uptime: {{ metrics.uptime }}</li>
+  <li title="System uptime">Uptime: <span id="uptime-value">{{ metrics.uptime }}</span></li>
   <li title="Installed ffmpeg version">
-    FFmpeg Version: {{ metrics.ffmpeg_version }}
+    FFmpeg: {{ metrics.ffmpeg_version }} ({{ metrics.ffmpeg_path }})
   </li>
   <li title="Hardware acceleration devices present">
-    Machine HW Accel: {{ metrics.machine_hwaccel }}
+    Machine HW Accel:
+    <span
+      class="status-dot {{ 'ok' if metrics.machine_hwaccel else 'error' }}"
+    ></span>
   </li>
   <li title="ffmpeg has hardware acceleration support">
-    FFmpeg HW Accel: {{ metrics.ffmpeg_hwaccel }}
+    FFmpeg HW Accel:
+    <span
+      class="status-dot {{ 'ok' if metrics.ffmpeg_hwaccel else 'error' }}"
+    ></span>
   </li>
   <li title="Hardware acceleration enabled via config">
-    HW Accel Enabled: {{ metrics.hwaccel_enabled }}
+    HW Accel Enabled:
+    <span
+      class="status-dot {{ 'ok' if metrics.hwaccel_enabled else 'error' }}"
+    ></span>
+  </li>
+  <li title="Danger mode enabled setting">
+    Danger Mode: {{ metrics.danger_mode }}
   </li>
 </ul>
 {% endcall %} {% call card('Feed Status') %}
@@ -89,7 +99,9 @@ content %}
   </thead>
   <tbody>
     {% for feed in feeds %}
-    <tr class="{{ feed.status }}">
+    <tr
+      class="{{ feed.status }}{% if feed.danger_reason %} danger-{{ feed.danger_reason }}{% endif %}"
+    >
       <td data-label="Feed" data-value="{{ feed.name }}">
         <a href="{{ url_for('template_details', template_name=feed.name) }}"
           >{{ feed.name }}</a
@@ -139,6 +151,19 @@ content %}
         {{ feed.llm_cost_estimate }}
       </td>
       <td data-label="Status" data-value="{{ feed.status }}">
+        {% if feed.danger_reason %}
+        <svg
+          width="12"
+          height="12"
+          class="danger-icon {{ feed.danger_reason }}"
+          aria-label="Danger mode required"
+          title="{{ 'Danger mode disabled' if feed.danger_reason == 'disabled' else 'User active' }}"
+        >
+          <use
+            href="{{ url_for('static', filename='icons/sprite.svg') }}#alert"
+          />
+        </svg>
+        {% endif %}
         <span
           class="status-dot {{ feed.status }}"
           title="{{ feed.tooltip }}"
@@ -151,4 +176,3 @@ content %}
 
 <p>Last summary generated: {{ last_summary or 'N/A' }}</p>
 {% endcall %} {% include 'logs.html' %} {% endblock %}
-

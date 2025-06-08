@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import unittest
@@ -10,13 +11,16 @@ import app.routes as routes
 
 class TestRTSP(unittest.TestCase):
     def setUp(self):
-        self.app = create_app(enable_watchdog=False, schedule=False)
+        self.login_patch = patch("app.routes.login_required", lambda x: x)
+        self.login_patch.start()
+        self.app = create_app(enable_watchdog=False, schedule=False, log_cache=False)
         self.app.testing = True
         self.client = self.app.test_client()
         self.app_context = self.app.app_context()
         self.app_context.push()
 
     def tearDown(self):
+        self.login_patch.stop()
         self.app_context.pop()
         routes.rtsp_sessions.clear()
 

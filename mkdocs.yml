@@ -1,16 +1,24 @@
 site_name: Glimpser Documentation
 docs_dir: docs
 site_dir: site
+extra_css:
+  - styles/extra.css
+exclude_docs: |
+  README.md
 nav:
   - Home: index.md
   - Guides:
       - Accessibility Improvements: accessibility.md
+      - Agentic Instructions: AGENTS.md
       - API Documentation: api_documentation.md
       - API Resilience: api_resilience.md
       - Architecture Overview: architecture_overview.md
       - Camera Discovery: camera_discovery.md
       - Camera Fix: camera_fix.md
       - Capture Process: capture_process.md
+      - Browser Driver Management: driver_pool.md
+      - Captions Live Update: captions_live_update.md
+      - Floating Navigation Bar: floating_nav.md
       - Command Line Reference: command_line.md
       - Configuration Guide: configuration_guide.md
       - Cost Tracking: cost_tracking.md
@@ -20,7 +28,10 @@ nav:
       - UI Design Guidelines: design_guidelines.md
       - Developer Guide: developer_guide.md
       - Docker Build Verification: docker_build.md
+      - Docs Build Workflow: docs_build.md
       - CodeQL Security Scanning: codeql.md
+      - Dependency Review: dependency_review.md
+      - EthicalCheck Workflow: ethicalcheck.md
       - FAQ: faq.md
       - Getting Started: getting_started.md
       - Guided Setup: guided_setup.md
@@ -31,6 +42,9 @@ nav:
       - Nginx HTTP/2 Push: nginx_http2_push.md
       - Offline Fonts: offline_fonts.md
       - Offline Preview: offline_preview.md
+      - Pylint Checks: pylint_checks.md
+      - Web Notifications: web_notifications.md
+      - Search Autocomplete: search_autocomplete.md
       - Recommendations: recommendations.md
       - Release Workflow: release_workflow.md
       - Settings Page: settings_page.md
@@ -43,4 +57,30 @@ nav:
       - Troubleshooting: troubleshooting.md
       - Log Cleaner: log_cleaner.md
       - Video Archiver: video_archiver.md
+      - Dashboard Border Legend: border_legend.md
+      - Caption Overlay Toggle: caption_overlay_toggle.md
+      - Captions Chatbot: chatbot.md
+      - Continuous Integration Checks: ci_checks.md
+      - Jog-Shuttle Control: jog_shuttle.md
+      - Live All Playback: live_all.md
+      - Live View Scrubbing: live_scrub.md
+      - MCP Integration: mcp_integration.md
+      - In-App Onboarding: onboarding.md
+      - OpenSSF Scorecard: scorecard.md
+      - Startup Tips and Gotchas: startup_tips.md
+      - UI Component Guide: style_guide.md
       - Governance: governance.md
+      - Border Legend: border_legend.md
+      - Caption Overlay Toggle: caption_overlay_toggle.md
+      - Chatbot: chatbot.md
+      - CI Checks: ci_checks.md
+      - Bundle Size Audit: size_audit.md
+      - Jog Shuttle: jog_shuttle.md
+      - Live All: live_all.md
+      - Live Scrub: live_scrub.md
+      - Rotate Button: rotate_button.md
+      - MCP Integration: mcp_integration.md
+      - Onboarding Guide: onboarding.md
+      - Scorecard: scorecard.md
+      - Startup Tips: startup_tips.md
+      - Style Guide: style_guide.md

@@ -8,6 +8,7 @@ export function initTabs() {
     tabs.forEach((tab) => {
       tab.addEventListener("click", () => {
         const target = tab.dataset.tab;
+        if (!target) return;
         tabs.forEach((t) => t.classList.remove("active"));
         contents.forEach((c) => c.classList.remove("active"));
         tab.classList.add("active");

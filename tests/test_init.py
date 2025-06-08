@@ -7,13 +7,12 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from flask import Flask
-from flask_apscheduler import APScheduler
 from app import create_app
 
 
 class TestCreateApp(unittest.TestCase):
     def setUp(self):
-        self.app = create_app(enable_watchdog=False, schedule=False)  # maybe?
+        self.app = create_app(enable_watchdog=False, schedule=False, log_cache=False)  # maybe?
         self.client = self.app.test_client()
 
     def test_app_creation(self):

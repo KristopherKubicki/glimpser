@@ -1,40 +1,47 @@
 <!-- app/templates/index.html -->
 
-{% extends 'base.html' %} {% block content %}
+{% extends 'base.html' %} {% from 'components.html' import status_legend %} {%
+block content %}
 
-<section id="template-controls">
-  <input
-    type="text"
-    id="search-input"
-    placeholder="Search cameras"
-    title="Enter search terms"
-  />
-  <input
-    type="range"
-    id="grid-width-slider"
-    min="50"
-    max="3840"
-    value="360"
-    title="Adjust the width of the template grid"
-  />
-  <span id="status-legend">
-    <span class="status-item"
-      ><span class="status-box recent" aria-hidden="true"></span> Recent</span
+<div id="controls-wrapper">
+  <section id="template-controls">
+    <input
+      type="text"
+      id="search-input"
+      placeholder="Search cameras"
+      title="Enter search terms"
+    />
+    <input
+      type="range"
+      id="grid-width-slider"
+      min="50"
+      max="3840"
+      value="360"
+      title="Adjust the width of the template grid"
+    />
+    {{ status_legend() }}
+    <button id="play-all-button" title="Play/Stop all videos">Play All</button>
+    <button
+      id="live-all-button"
+      style="display: none"
+      title="Return to latest screenshot"
     >
-    <span class="status-item"
-      ><span class="status-box error" aria-hidden="true"></span> Error</span
-    >
-  </span>
-  <button id="play-all-button" title="Play/Stop all videos">Play All</button>
-  <button id="live-all-button" title="Live stream all cameras">Live All</button>
-  <button
-    id="toggle-captions"
-    title="Toggle caption overlays"
-    aria-label="Toggle caption overlays"
-  >
-    Hide Captions
-  </button>
-</section>
+      Live
+    </button>
+    <div class="checkbox-row">
+      <span>Captions</span>
+      <label class="switch" title="Toggle caption overlays">
+        <input
+          id="toggle-captions"
+          type="checkbox"
+          checked
+          aria-label="Toggle caption overlays"
+        />
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </section>
+</div>
 
 <section id="template-list-section">
   <div
