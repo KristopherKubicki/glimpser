@@ -780,8 +780,10 @@ def get_llm_cost_estimate(
     return f"${cost:.2f}"
 
 
-def get_llm_cost_summary() -> tuple[list[dict[str, object]], int, str]:
-    """Return LLM usage totals and overall cost."""
+def get_llm_cost_summary(
+    start_date: str | None = None, end_date: str | None = None
+) -> tuple[list[dict[str, object]], int, str]:
+    """Return LLM usage totals and overall cost within an optional date range."""
 
     try:
         with open(LLM_USAGE_PATH, "r") as f:
@@ -791,12 +793,35 @@ def get_llm_cost_summary() -> tuple[list[dict[str, object]], int, str]:
 
     summary = []
     total_tokens = 0
+    sd = datetime.fromisoformat(start_date).date() if start_date else None
+    ed = datetime.fromisoformat(end_date).date() if end_date else None
     for name in sorted(data):
-        tokens = data.get(name, 0)
-        if isinstance(tokens, list):
-            tokens = sum(int(t) for t in tokens)
-        if isinstance(tokens, dict):  # risky but worth it for backwards compat
-            tokens = int(tokens.get("total", 0))
+        entry = data.get(name, 0)
+        tokens = 0
+        if isinstance(entry, dict) and "entries" in entry:
+            entries = entry.get("entries", [])
+            for e in entries:
+                try:
+                    dt = datetime.fromisoformat(e.get("time", "")).date()
+                except Exception:
+                    continue
+                if sd and dt < sd:
+                    continue
+                if ed and dt > ed:
+                    continue
+                try:
+                    tokens += int(e.get("tokens", 0))
+                except Exception:
+                    continue
+            if not start_date and not end_date:
+                tokens = entry.get("total", tokens)
+        else:
+            if isinstance(entry, list):
+                tokens = sum(int(t) for t in entry)
+            elif isinstance(entry, dict):
+                tokens = int(entry.get("total", 0))
+            elif isinstance(entry, int):
+                tokens = entry
         total_tokens += tokens
         cost = tokens * LLM_COST_PER_TOKEN
         summary.append({"name": name, "tokens": tokens, "cost": f"${cost:.2f}"})
