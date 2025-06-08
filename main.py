@@ -15,6 +15,7 @@ import socket
 import app.config as config
 from app import create_app
 from app import scheduler
+from app.utils.cli import build_argument_parser, cli_help_text
 from app.utils.scheduling import get_system_metrics, stop_background_tasks
 
 banner = """
@@ -28,87 +29,14 @@ banner = """
 
 
 def parse_arguments(arg_list=None):
-    """
-    Parse command-line arguments for the Glimpser application.
-
-    This function sets up the argument parser and defines various command-line options
-    for configuring the application, including paths for database, logs, and media files,
-    as well as server and logging settings.
-
-    Returns:
-        argparse.Namespace: An object containing the parsed arguments.
-    """
-    parser = argparse.ArgumentParser(description="Glimpser %s" % config.VERSION)
-    parser.add_argument(
-        "--db-path",
-        default=config.DATABASE_PATH,
-        help="Path to the database file (default: %s)" % config.DATABASE_PATH,
-    )
-    parser.add_argument(
-        "--host",
-        default=config.HOST,
-        help="Host for the web server (default: %s)" % config.HOST,
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=config.PORT,
-        help="Port for the web server (default: %s)" % config.PORT,
-    )
-    parser.add_argument(
-        "--log-path",
-        default=config.LOGGING_PATH,
-        help="Path to the log file (default: %s)" % config.LOGGING_PATH,
-    )
-    parser.add_argument(
-        "--log-level",
-        default=config.LOG_LEVEL,
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Logging level",
-    )
-    parser.add_argument(
-        "--console-log",
-        action="store_true",
-        help="Enable logging to the console",
-        default=False,
-    )
-    parser.add_argument(
-        "--debug", action="store_true", default=config.DEBUG, help="Enable debug mode"
-    )
-    parser.add_argument(
-        "--no-scheduler",
-        action="store_true",
-        help="Disable the background scheduler",
-        default=False,
-    )
-    parser.add_argument(
-        "--no-watchdog",
-        action="store_true",
-        help="Disable the watchdog thread",
-        default=False,
-    )
-    parser.add_argument(
-        "--no-crawlers",
-        action="store_true",
-        help="Skip scheduling crawler jobs",
-        default=False,
-    )
-    parser.add_argument(
-        "--screenshot-dir",
-        default=config.SCREENSHOT_DIRECTORY,
-        help="Directory for storing screenshots",
-    )
-    parser.add_argument(
-        "--video-dir",
-        default=config.VIDEO_DIRECTORY,
-        help="Directory for storing video files",
-    )
-    parser.add_argument(
-        "--summaries-dir",
-        default=config.SUMMARIES_DIRECTORY,
-        help="Directory for storing summaries",
-    )
+    """Return parsed command-line arguments."""
+    parser = build_argument_parser()
     return parser.parse_args(arg_list)
+
+
+def get_cli_help() -> str:
+    """Return the formatted ``--help`` text."""
+    return cli_help_text()
 
 
 def setup_config(args=None):
