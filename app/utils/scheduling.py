@@ -18,7 +18,7 @@ import textwrap
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
 from flask_apscheduler import APScheduler
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 from transformers import CLIPProcessor, CLIPModel
 
 from app.config import (
@@ -71,7 +71,6 @@ from .http_callbacks import send_http_callback
 from . import camera_discovery
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from concurrent.futures import ProcessPoolExecutor, TimeoutError
 
 logging.getLogger("apscheduler").setLevel(logging.WARNING)
 
@@ -577,7 +576,6 @@ def update_camera(name, template, image_file=None, motion=False):
                         image_paths.append(closest_image_path)
                 except Exception as e:
                     logging.warning("caption parsing error %s", e)
-                    pass
 
             image_paths.append(os.path.join(directory, png_files[-1]))
 
@@ -786,7 +784,6 @@ def update_summary():
                     logging.error("error %s %s", e, template)
                     logging.debug("NOTES: %s", fnotes)
                     logging.debug("GNTES: %s", fnotes)
-                    pass
 
             lstring += (
                 "name: "
