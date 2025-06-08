@@ -21,6 +21,33 @@ import { initCosts } from "./costs.js";
 import { initAdvanced } from "./advanced.js";
 import { initCliHelp } from "./cli_help.js";
 
+function initNetworkBanner() {
+  document.addEventListener("DOMContentLoaded", () => {
+    const banner = document.getElementById("network-banner");
+    if (!banner) return;
+
+    const checkStatus = async () => {
+      try {
+        const res = await fetch("/network_status");
+        const data = await res.json();
+        if (data.online) {
+          banner.classList.remove("show");
+          banner.textContent = "";
+        } else {
+          banner.textContent = "Offline mode";
+          banner.classList.add("show");
+        }
+      } catch {
+        banner.textContent = "Offline mode";
+        banner.classList.add("show");
+      }
+    };
+
+    checkStatus();
+    setInterval(checkStatus, 10000);
+  });
+}
+
 initTemplates();
 initVideoControls();
 initSchedulerToggle();
@@ -39,6 +66,7 @@ initCaptions();
 initSettingsSearch();
 initTabs();
 initThemeToggle();
+initNetworkBanner();
 initControlsDropdown();
 initAutocomplete();
 initCosts();

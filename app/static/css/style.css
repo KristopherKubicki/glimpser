@@ -1464,6 +1464,18 @@ body.advanced-enabled .advanced-only {
   color: red;
 }
 
+.network-banner {
+  background: #b80000;
+  color: #fff;
+  text-align: center;
+  padding: 4px 8px;
+  display: none;
+}
+
+.network-banner.show {
+  display: block;
+}
+
 .no-templates {
   text-align: center;
   padding: 2rem;
