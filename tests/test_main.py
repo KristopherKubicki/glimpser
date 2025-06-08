@@ -193,6 +193,10 @@ class TestMain(unittest.TestCase):
             main.setup_config(args)
         config.ENFORCE_DOMAIN_IN_HOST = old_enforce
 
+    def test_cli_help_text(self):
+        text = main.get_cli_help()
+        self.assertIn("--db-path", text)
+
     @patch("main.create_app")
     @patch("main.ensure_directories")
     @patch("main.generate_credentials_if_needed")

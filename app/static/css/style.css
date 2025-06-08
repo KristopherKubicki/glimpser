@@ -234,7 +234,7 @@ h2 {
   display: grid;
   grid-template-columns: repeat(
     auto-fit,
-  minmax(50px, var(--tile-size))
+    minmax(50px, var(--tile-size))
   ); /* Use CSS variable */
 
   gap: 3px;
@@ -408,7 +408,7 @@ select:hover {
 
 @media (prefers-color-scheme: light) {
   :root {
-    --bg-color: #ffffff;
+    --bg-color: #f5f5f5;
     --secondary-bg-color: #f2f2f2;
     --text-color: #222;
     --form-bg-color: #ffffff;
@@ -421,7 +421,7 @@ select:hover {
 }
 
 body.light-mode {
-  --bg-color: #ffffff;
+  --bg-color: #f5f5f5;
   --secondary-bg-color: #f2f2f2;
   --text-color: #222;
   --form-bg-color: #ffffff;
@@ -676,8 +676,8 @@ nav a.active {
 }
 
 .settings-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   fill: none;
   stroke: currentcolor;
   stroke-width: 2;
@@ -693,6 +693,8 @@ nav a.active {
 
 .caption-container {
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .caption-chyron {

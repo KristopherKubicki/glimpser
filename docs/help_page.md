@@ -19,6 +19,7 @@ Key topics covered include:
 - Offline preview of recent snapshots and locally hosted fonts.
 - Links to the rest of the documentation under `docs/`.
 - Tooltips across the interface for quick explanations.
+- Inline viewing of command-line help via the **Show CLI Help** button.
 - A link to the project on [GitHub](https://github.com/KristopherKubicki/glimpser) where you can report issues or contribute.
 
 ## Viewing Captures

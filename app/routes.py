@@ -69,7 +69,6 @@ from app.config import (
     CLOCK_OVERLAY,
     CLOCK_DIGITAL,
     CLOCK_NAVBAR,
-    ENFORCE_DOMAIN_IN_HOST,
 )
 from app.models import User, Summary
 from app.utils import (
@@ -81,7 +80,6 @@ from app.utils import (
     prompt_optimizer,
     camera_fix,
 )
-from app.utils.template_manager import LLM_COST_PER_TOKEN
 
 from app.utils.llm import ask_question
 from app.utils.settings_tooltips import (
@@ -95,7 +93,7 @@ from app.utils.settings_tooltips import (
 from app.utils.db import SessionLocal, engine
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 import sqlite3
-from typing import Any, Callable, Generator, Iterable, Optional, List, Dict
+from typing import Any, Callable, Generator, Optional, List, Dict
 
 try:
     COMMIT_HASH = (
@@ -118,14 +116,12 @@ from app.utils.validators import (
 )
 from app.utils.profiling import profile_route, get_latency_stats
 from scripts.update_chrome_shortcut import (
-    update_chrome_shortcuts,
     update_chrome_shortcuts_info,
     shortcuts_need_patch,
 )
 from app.utils.screenshots import (
     is_chrome_debug_port_open,
     check_user_activity,
-    capture_frame_from_stream,
     get_chrome_path,
     load_font,
 )
@@ -1551,6 +1547,14 @@ def init_routes(app: Flask) -> None:
             abort(404)
 
         return send_from_directory(docs_path, filename)
+
+    @app.route("/cli_help")
+    @login_required
+    def cli_help():
+        """Return CLI help text."""
+        from app.utils.cli import cli_help_text
+
+        return Response(cli_help_text(), mimetype="text/plain")
 
     @app.route("/settings_help")
     @login_required

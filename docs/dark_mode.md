@@ -13,3 +13,6 @@ A new `--table-border-color` variable controls table outlines. Dark mode
 defaults to a subtle `#444` while the light theme overrides it to `#ddd`.
 The settings page now uses this variable for its forms and tables so fields
 look consistent regardless of color scheme.
+
+Hyperlinks also switch to a lighter blue in dark mode so links remain legible on
+the dark background.
