@@ -1,2 +1,2 @@
-- Avoid custom mkdocs options like `exclude_docs`.
+- The project uses `exclude_docs`; keep it in sync with `mkdocs.yml`.
 - Keep navigation entries updated directly in `mkdocs.yml`.
