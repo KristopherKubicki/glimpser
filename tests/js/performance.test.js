@@ -7,6 +7,10 @@ document.body.innerHTML = `
   <div id="cpu-bar"></div>
   <div id="memory-value"></div>
   <div id="memory-bar"></div>
+  <div id="disk-value"></div>
+  <div id="disk-bar"></div>
+  <div id="open-files"></div>
+  <div id="thread-count"></div>
   <div id="uptime-value"></div>
   <canvas id="cpu-sparkline" width="100" height="20"></canvas>
 `;
@@ -40,7 +44,14 @@ describe('performance.js', () => {
   });
 
   test('updatePerformanceMetrics fetches metrics and updates DOM', async () => {
-    const mockData = { cpu_usage: 50, memory_usage: 40, uptime: '1h' };
+    const mockData = {
+      cpu_usage: 50,
+      memory_usage: 40,
+      disk_usage: 70,
+      open_files: 5,
+      thread_count: 8,
+      uptime: '1h',
+    };
     global.fetch = jest.fn(() => Promise.resolve({ json: () => Promise.resolve(mockData) }));
 
     await updatePerformanceMetrics();
@@ -48,6 +59,9 @@ describe('performance.js', () => {
     expect(fetch).toHaveBeenCalledWith('/health');
     expect(document.getElementById('cpu-value').textContent).toBe('50%');
     expect(document.getElementById('memory-value').textContent).toBe('40%');
+    expect(document.getElementById('disk-value').textContent).toBe('70%');
+    expect(document.getElementById('open-files').textContent).toBe('5');
+    expect(document.getElementById('thread-count').textContent).toBe('8');
     expect(document.getElementById('uptime-value').textContent).toBe('1h');
 
     const ctxCalled = canvas.getContext();
