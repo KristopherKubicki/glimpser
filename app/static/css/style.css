@@ -1290,6 +1290,13 @@ footer.fade-out {
   opacity: 0.7;
 }
 
+/* Hide build info on narrow screens */
+@media (max-width: 767px) {
+  .footer-build {
+    display: none;
+  }
+}
+
 .tsv-buttons {
   display: flex;
   gap: 15px;
