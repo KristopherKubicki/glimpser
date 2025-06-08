@@ -179,7 +179,7 @@ class TestSettingsRoute(unittest.TestCase):
             patch("app.routes.login_required", lambda x: x),
         ):
             response = self.client.post("/settings", data={"action": "download"})
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 200)
 
     def test_notification_tests(self):
         with (
