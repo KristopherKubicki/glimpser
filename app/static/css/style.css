@@ -776,7 +776,8 @@ nav a.active {
   #nav-clock,
   #caption-chyron,
   .flash-messages,
-  #captions {
+  #captions,
+  #health-status {
     display: none;
   }
 
