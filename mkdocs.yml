@@ -70,6 +70,7 @@ nav:
       - Caption Overlay Toggle: caption_overlay_toggle.md
       - Chatbot: chatbot.md
       - CI Checks: ci_checks.md
+      - Bundle Size Audit: size_audit.md
       - Jog Shuttle: jog_shuttle.md
       - Live All: live_all.md
       - Live Scrub: live_scrub.md
