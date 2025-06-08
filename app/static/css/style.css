@@ -766,7 +766,8 @@ nav a.active {
   /* Hide elements that waste space on mobile */
   #nav-clock,
   #caption-chyron,
-  .flash-messages {
+  .flash-messages,
+  #captions {
     display: none;
   }
 

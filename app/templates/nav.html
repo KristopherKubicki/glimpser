@@ -17,7 +17,7 @@
   data-speed="{{ CHYRON_SPEED }}"
 ></div>
 <nav>
-
+  {% if session.get('user_id') %}
   <div class="nav-left">
     {% if template_details is defined %} {% if template_details.get('groups') %}
     {% set __back_url = '/group/' ~
@@ -32,6 +32,7 @@
     ></select>
     <!-- Discover icon moved to nav-right for consistency -->
   </div>
+  {% endif %}
 
   <div class="nav-center">
     {% if template_name %}

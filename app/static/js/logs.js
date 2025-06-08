@@ -36,6 +36,12 @@ function debounce(fn, delay) {
   };
 }
 
+function logEventSourceError(src, err) {
+  const states = ["CONNECTING", "OPEN", "CLOSED"];
+  const state = states[src.readyState] || `unknown (${src.readyState})`;
+  console.error(`EventSource failed (state: ${state}):`, err);
+}
+
 export function initLogs() {
   document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("log-filter-form");
@@ -67,7 +73,7 @@ export function initLogs() {
       };
 
       eventSource.onerror = (error) => {
-        console.error("EventSource failed:", error);
+        logEventSourceError(eventSource, error);
         if (status) {
           status.textContent = "Connection lost. Reconnecting...";
           status.classList.remove("hidden");
