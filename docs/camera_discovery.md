@@ -189,6 +189,8 @@ item like any other camera to have Glimpser periodically capture screenshots of
 its own metrics tab.
 It now also includes an **Internal Caption** entry streaming `/internal_caption.mjpg`,
 which loops recent caption text for convenient review.
+A **Test Frame** entry is also available, streaming `/test.mjpg` so you can quickly
+verify connectivity without adding a real camera.
 
 ## Common cameras to try
 
