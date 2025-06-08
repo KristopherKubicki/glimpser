@@ -25,9 +25,11 @@ export function initThemeToggle() {
     if (toggle) {
       toggle.addEventListener("click", (e) => {
         e.preventDefault();
+        e.stopPropagation();
         current = current === "light" ? "dark" : "light";
         localStorage.setItem("theme", current);
         applyTheme(current);
+        document.querySelector('.tab-link[data-tab="General-tab"]')?.click();
       });
     }
   });

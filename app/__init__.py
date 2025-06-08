@@ -257,7 +257,7 @@ def create_app(
                     # Reset failure count on successful check
                     failure_count = 0
 
-    # Send alerts when the application starts  
+    # Send alerts when the application starts
     def _start_background_components() -> None:
         """Initialize scheduler and monitoring in a low priority thread."""
         backup_config()
