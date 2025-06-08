@@ -232,7 +232,13 @@ h2 {
 }
 
 #search-input {
-  width: clamp(120px, 15vw, 180px);
+  width: clamp(80px, 10vw, 140px);
+  transition: width 0.2s;
+}
+
+#search-input:focus,
+#search-input:not(:placeholder-shown) {
+  width: clamp(120px, 15vw, 200px);
 }
 
 #play-all-button,
@@ -549,6 +555,16 @@ body.dark-mode {
   display: flex;
   align-items: center;
   gap: 5px;
+  cursor: pointer;
+}
+
+.status-item.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.status-item.active .status-box {
+  box-shadow: 0 0 0 2px currentcolor;
 }
 
 .status-box {
