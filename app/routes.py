@@ -1316,7 +1316,7 @@ def init_routes(app: Flask) -> None:
                 except Exception:
                     caption = rec.content
                 timestamp = datetime.utcfromtimestamp(rec.timestamp).strftime(
-                    "%Y-%m-%d %H:%M:%S"
+                    "%Y-%m-%dT%H:%M:%SZ"
                 )
         except Exception as e:  # pragma: no cover - unexpected DB errors
             logging.error("error retrieving captions status: %s", e)
@@ -2244,7 +2244,7 @@ def init_routes(app: Flask) -> None:
                         for ts, text in data.items():
                             try:
                                 dt = datetime.utcfromtimestamp(int(ts))
-                                iso_ts = dt.strftime("%Y-%m-%d %H:%M:%S")
+                                iso_ts = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
                             except Exception:
                                 iso_ts = ts
                             entries.append({iso_ts: text})
