@@ -1858,16 +1858,10 @@ details > summary {
   margin: 0 auto;
 }
 
-.settings-help-table details {
-  border: 1px solid var(--table-border-color);
-  padding: 4px;
-  border-radius: 4px;
-  margin: 4px 0;
-}
-
-.settings-help-table summary {
+.settings-help-table strong {
   color: var(--accent-color);
-  cursor: pointer;
+  display: block;
+  margin-bottom: 4px;
 }
 
 .settings-page input[type="text"] {
