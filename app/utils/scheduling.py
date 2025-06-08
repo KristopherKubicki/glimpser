@@ -34,8 +34,9 @@ from app.config import (
     get_setting,
 )
 from app.utils.db import SessionLocal
-from app.models import Summary
+from app.models import Summary, OfflineJob
 from .network import is_system_online
+import importlib
 
 from .detect import calculate_difference_fast
 from .image_processing import chatgpt_compare
@@ -126,6 +127,22 @@ def run_with_timeout(func, args=(), timeout=300):
                 mark_offline(args[0])
             except Exception:
                 pass
+        session = SessionLocal()
+        try:
+            session.add(
+                OfflineJob(
+                    function=f"{func.__module__}.{func.__name__}",
+                    args=json.dumps(list(args)),
+                    timeout=timeout,
+                    timestamp=int(time.time()),
+                )
+            )
+            session.commit()
+        except Exception as exc:
+            session.rollback()
+            logging.error("Failed to queue offline job: %s", exc)
+        finally:
+            session.close()
         return
 
     try:
@@ -1383,3 +1400,44 @@ def stop_discovery() -> None:
         scheduler.remove_job("background_discovery")
     except Exception:
         pass
+
+
+def process_offline_jobs() -> None:
+    """Run any jobs queued while the system was offline."""
+
+    if not is_system_online():
+        return
+
+    session = SessionLocal()
+    try:
+        jobs = session.query(OfflineJob).order_by(OfflineJob.id).all()
+        for job in jobs:
+            try:
+                module_name, func_name = job.function.rsplit(".", 1)
+                mod = importlib.import_module(module_name)
+                func = getattr(mod, func_name)
+                run_with_timeout(
+                    func, args=tuple(json.loads(job.args)), timeout=job.timeout
+                )
+                session.delete(job)
+                session.commit()
+            except Exception as exc:
+                session.rollback()
+                logging.error("Failed to run offline job %s: %s", job.id, exc)
+    finally:
+        session.close()
+
+
+def schedule_offline_job_processor() -> None:
+    """Schedule periodic processing of queued offline jobs."""
+
+    try:
+        scheduler.add_job(
+            func=process_offline_jobs,
+            trigger="interval",
+            seconds=30,
+            id="process_offline_jobs",
+            replace_existing=True,
+        )
+    except Exception as e:
+        logging.error("job schedule error: %s", e)
