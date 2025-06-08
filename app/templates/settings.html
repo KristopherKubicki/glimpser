@@ -3,6 +3,7 @@
 <main class="container settings-page">
   {# Help content now appears directly in the table, so the collapsible menu was
   removed #}
+  <h2 class="page-title">Settings</h2>
 
   <div id="settings-search" class="hidden">
     <label for="search-input" title="Filter the selected column">Search:</label>
@@ -52,26 +53,26 @@
       id="{{ group|replace(' ', '-') }}-tab"
       class="tab-content{% if loop.first %} active{% endif %}"
     >
-      <section class="setting-section">
-        <table class="settings-table">
-          <thead>
-            <tr>
-              <th class="searchable">Setting</th>
-              <th class="searchable">Value</th>
-              <th class="advanced-only">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for setting in items %}
-            <tr>
-              <td title="{{ tooltips.get(setting.name, '') }}">
-                {{ setting.name }}
-              </td>
-              <td>
-                {% if setting.value in ['True', 'False'] %}
-                <label class="switch">
-                  <!-- prettier-ignore -->
-                  <input
+      {% call card(group) %}
+      <table class="settings-table">
+        <thead>
+          <tr>
+            <th class="searchable">Setting</th>
+            <th class="searchable">Value</th>
+            <th class="advanced-only">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for setting in items %}
+          <tr>
+            <td title="{{ tooltips.get(setting.name, '') }}">
+              {{ setting.name }}
+            </td>
+            <td>
+              {% if setting.value in ['True', 'False'] %}
+              <label class="switch">
+                <!-- prettier-ignore -->
+                <input
                     type="checkbox"
                     name="{{ setting.name }}"
                     value="True"
@@ -79,60 +80,59 @@
                     data-boolean
                     {% if setting.name in locked_settings %}disabled data-locked{% endif %}
                   />
-                  <span class="slider round"></span>
-                </label>
-                {% elif 'KEY' in setting.name %}
-                <input
-                  type="password"
-                  name="{{ setting.name }}"
-                  value="{{ setting.value }}"
-                  title="Edit value for {{ setting.name }}"
-                  {%
-                  if
-                  setting.name
-                  in
-                  locked_settings
-                  %}disabled
-                  data-locked{%
-                  endif
-                  %}
-                />
-                {% else %}
-                <input
-                  type="text"
-                  name="{{ setting.name }}"
-                  value="{{ setting.value }}"
-                  title="Edit value for {{ setting.name }}"
-                  {%
-                  if
-                  setting.name
-                  in
-                  locked_settings
-                  %}disabled
-                  data-locked{%
-                  endif
-                  %}
-                />
-                {% endif %}
-              </td>
-              <td class="advanced-only">
-                <button
-                  type="submit"
-                  name="action"
-                  value="delete"
-                  title="Delete {{ setting.name }}"
-                  onclick="return confirmDeleteSetting('{{ setting.name }}')"
-                  class="advanced-only"
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </section>
-      {% if group == 'Credentials & Management' %}
+                <span class="slider round"></span>
+              </label>
+              {% elif 'KEY' in setting.name %}
+              <input
+                type="password"
+                name="{{ setting.name }}"
+                value="{{ setting.value }}"
+                title="Edit value for {{ setting.name }}"
+                {%
+                if
+                setting.name
+                in
+                locked_settings
+                %}disabled
+                data-locked{%
+                endif
+                %}
+              />
+              {% else %}
+              <input
+                type="text"
+                name="{{ setting.name }}"
+                value="{{ setting.value }}"
+                title="Edit value for {{ setting.name }}"
+                {%
+                if
+                setting.name
+                in
+                locked_settings
+                %}disabled
+                data-locked{%
+                endif
+                %}
+              />
+              {% endif %}
+            </td>
+            <td class="advanced-only">
+              <button
+                type="submit"
+                name="action"
+                value="delete"
+                title="Delete {{ setting.name }}"
+                onclick="return confirmDeleteSetting('{{ setting.name }}')"
+                class="advanced-only"
+              >
+                Delete
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endcall %} {% if group == 'Credentials & Management' %}
       <h3>Configuration Management</h3>
       <div class="checkbox-row">
         <span>Advanced Options</span>
