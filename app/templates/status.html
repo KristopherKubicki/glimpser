@@ -56,7 +56,9 @@ content %} {% include '_status_tab.html' %} {% endblock %} {% extends
   <li title="Number of active threads">
     Thread Count: <span id="thread-count">{{ metrics.thread_count }}</span>
   </li>
-  <li title="System uptime">Uptime: <span id="uptime-value">{{ metrics.uptime }}</span></li>
+  <li title="System uptime">
+    Uptime: <span id="uptime-value">{{ metrics.uptime }}</span>
+  </li>
   <li title="Installed ffmpeg version">
     FFmpeg: {{ metrics.ffmpeg_version }} ({{ metrics.ffmpeg_path }})
   </li>
@@ -76,6 +78,13 @@ content %} {% include '_status_tab.html' %} {% endblock %} {% extends
     HW Accel Enabled:
     <span
       class="status-dot {{ 'ok' if metrics.hwaccel_enabled else 'error' }}"
+    ></span>
+  </li>
+  <li title="GPU acceleration status">
+    GPU:
+    <span
+      id="gpu-status"
+      class="status-dot {{ 'ok' if metrics.ffmpeg_gpu_enabled else ('slow' if metrics.gpu_support else 'error') }}"
     ></span>
   </li>
   <li title="Danger mode enabled setting">
@@ -175,4 +184,9 @@ content %} {% include '_status_tab.html' %} {% endblock %} {% extends
 </table>
 
 <p>Last summary generated: {{ last_summary or 'N/A' }}</p>
-{% endcall %} {% include 'logs.html' %} {% endblock %}
+{% endcall %} {% include 'logs.html' %}
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/performance.js') }}"
+></script>
+{% endblock %}

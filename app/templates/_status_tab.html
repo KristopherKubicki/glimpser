@@ -53,6 +53,13 @@
   <li title="System uptime">
     Uptime: <span id="uptime-value">{{ metrics.uptime }}</span>
   </li>
+  <li title="GPU acceleration status">
+    GPU:
+    <span
+      id="gpu-status"
+      class="status-dot {{ 'ok' if metrics.ffmpeg_gpu_enabled else ('slow' if metrics.gpu_support else 'error') }}"
+    ></span>
+  </li>
 </ul>
 {% endcall %} {% call card('Feed Status') %}
 <table id="feed-status" class="feed-status">
