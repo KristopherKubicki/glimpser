@@ -46,7 +46,7 @@ SETTINGS_CHOICES = {
 
 # Settings categories used to group configuration values on the settings page.
 # Keys are tab labels while the lists contain setting names assigned to each
-# category. Any values not present here fall under the "Other" tab.
+# category. Any values not present here fall under the "Integrations" tab.
 SETTINGS_GROUPS = {
     "General": [
         "NAME",
