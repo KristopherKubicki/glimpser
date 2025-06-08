@@ -20,6 +20,7 @@ nav:
       - UI Design Guidelines: design_guidelines.md
       - Developer Guide: developer_guide.md
       - Docker Build Verification: docker_build.md
+      - Docs Build Workflow: docs_build.md
       - CodeQL Security Scanning: codeql.md
       - FAQ: faq.md
       - Getting Started: getting_started.md
