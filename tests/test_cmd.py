@@ -6,14 +6,9 @@ import json
 import subprocess
 import sys
 import os
-from datetime import datetime, timezone, timedelta
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from app.utils.video_details import get_latest_date
-from app.utils.screenshots import parse_url
-from app.utils.retention_policy import get_files_sorted_by_creation_time
 
 
 class TestJSONParsing(unittest.TestCase):

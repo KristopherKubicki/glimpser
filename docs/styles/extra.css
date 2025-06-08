@@ -1,0 +1,9 @@
+@media (prefers-color-scheme: dark) {
+  /* Brighter link color for dark backgrounds */
+  a {
+    color: #66b7ff;
+  }
+  a:visited {
+    color: #a586ff;
+  }
+}

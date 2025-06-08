@@ -15,17 +15,10 @@ export function initNav() {
       discoveryStatus.style.display = onSettingsPage ? "flex" : "none";
     }
     const nav = document.querySelector("nav");
-    const menuToggle = document.getElementById("menu-toggle");
     const groupDropdown = document.getElementById("nav-group-dropdown");
     const cameraDropdown = document.getElementById("nav-camera-dropdown");
     const currentGroup = window.currentGroup || null;
     const currentCamera = window.currentCamera || null;
-
-    if (nav && menuToggle) {
-      menuToggle.addEventListener("click", () => {
-        nav.classList.toggle("active");
-      });
-    }
 
     const fetchJson = async (url) => {
       const res = await fetch(url);
@@ -56,6 +49,13 @@ export function initNav() {
           await loadNavCameras(currentGroup);
           if (cameraDropdown && currentCamera) {
             cameraDropdown.value = currentCamera;
+          }
+          const grpSelector = document.getElementById("group-selector");
+          if (grpSelector) {
+            grpSelector.value = currentGroup;
+            if (typeof window.updateCameraOptions === "function") {
+              window.updateCameraOptions(currentGroup);
+            }
           }
         }
       } catch (error) {
@@ -97,30 +97,25 @@ export function initNav() {
 
     if (groupDropdown) {
       groupDropdown.addEventListener("change", () => {
-        if (!groupDropdown.value) return;
+        const selected = groupDropdown.value || "all";
         if (
           window.location.pathname.startsWith("/live") &&
-          typeof window.changeCamera === "function"
+          typeof window.changeGroup === "function"
         ) {
-          const camSelector = document.getElementById("camera-selector");
-          if (camSelector) {
-            camSelector.value =
-              groupDropdown.value === "all"
-                ? "All"
-                : `group-${groupDropdown.value}`;
-            window.changeCamera();
-            loadNavCameras(groupDropdown.value);
+          const grpSelector = document.getElementById("group-selector");
+          if (grpSelector) {
+            grpSelector.value = selected;
+            window.changeGroup();
+            loadNavCameras(selected);
             return;
           }
         }
-        if (groupDropdown.value === "all") {
-          window.location.href = "/";
+        if (selected === "all") {
+          window.location.href = "/live";
         } else {
-          window.location.href = `/group/${encodeURIComponent(
-            groupDropdown.value,
-          )}`;
+          window.location.href = `/group/${encodeURIComponent(selected)}`;
         }
-        loadNavCameras(groupDropdown.value);
+        loadNavCameras(selected);
       });
       if (currentGroup) loadNavCameras(currentGroup);
     }
@@ -194,14 +189,27 @@ export function initNav() {
 
     const captionsIcon = document.getElementById("captions");
     const captionChyron = document.getElementById("caption-chyron");
-    const chyronSpeed = captionChyron
+    let chyronSpeed = captionChyron
       ? parseFloat(captionChyron.dataset.speed || "0")
       : 0;
     if (captionChyron && chyronSpeed > 0) {
       captionChyron.style.setProperty("--chyron-speed", `${chyronSpeed}s`);
     }
+    window.updateChyron = async (speed) => {
+      if (!captionChyron) return;
+      chyronSpeed = speed;
+      captionChyron.dataset.speed = speed;
+      captionChyron.style.setProperty("--chyron-speed", `${speed}s`);
+      if (speed > 0) {
+        const data = await fetchJson("/captions_status");
+        if (data && data.caption) {
+          showCaption(data.caption);
+        }
+      } else {
+        captionChyron.classList.remove("show");
+      }
+    };
     let lastCaptionTime = null;
-    let popupTimer;
 
     let idle = false;
     let idleTimer;
@@ -234,21 +242,26 @@ export function initNav() {
       });
     }
 
+    window.addEventListener("showChyron", (e) => {
+      if (e.detail) showCaption(e.detail);
+    });
+
     const showCaption = (text) => {
       if (!captionChyron || chyronSpeed <= 0) return;
       captionChyron.innerHTML = `<span>${text}</span>`;
       captionChyron.classList.add("show");
-      clearTimeout(popupTimer);
-      popupTimer = setTimeout(
-        () => captionChyron.classList.remove("show"),
-        chyronSpeed * 1000,
-      );
+      // Keep the caption visible until a new one arrives
     };
 
     const checkCaptions = async () => {
       if (!captionsIcon) return;
       try {
-        const data = await fetchJson("/captions_status");
+        const group = window.currentGroup;
+        const url =
+          group && group !== "all"
+            ? `/captions_status?group=${encodeURIComponent(group)}`
+            : "/captions_status";
+        const data = await fetchJson(url);
         if (!data) return;
         captionsIcon.title = data.caption || "";
         if (data.timestamp) {
@@ -329,7 +342,69 @@ export function initNav() {
       showNav();
     };
 
-    loadNavGroups();
+    const setupCameraNavigation = () => {
+      const cameraDropdown = document.getElementById("nav-camera-dropdown");
+      if (!cameraDropdown) return;
+
+      const getOptions = () =>
+        Array.from(cameraDropdown.options).filter((o) => o.value);
+
+      const gotoCamera = (delta) => {
+        const opts = getOptions();
+        if (!opts.length) return;
+        const idx = opts.findIndex((o) => o.value === cameraDropdown.value);
+        const next = (idx + delta + opts.length) % opts.length;
+        const cam = opts[next].value;
+        cameraDropdown.value = cam;
+        window.location.href = `/templates/${encodeURIComponent(cam)}`;
+      };
+
+      document.addEventListener("keydown", (e) => {
+        if (
+          e.target.tagName === "INPUT" ||
+          e.target.tagName === "SELECT" ||
+          e.target.tagName === "TEXTAREA" ||
+          e.target.isContentEditable
+        )
+          return;
+        if (e.key === "ArrowRight" || e.key === "l") {
+          gotoCamera(1);
+          e.preventDefault();
+        } else if (e.key === "ArrowLeft" || e.key === "j") {
+          gotoCamera(-1);
+          e.preventDefault();
+        }
+      });
+
+      let touchStartX = null;
+      let touchStartY = null;
+      document.addEventListener(
+        "touchstart",
+        (evt) => {
+          const t = evt.touches[0];
+          touchStartX = t.clientX;
+          touchStartY = t.clientY;
+        },
+        { passive: true },
+      );
+      document.addEventListener(
+        "touchend",
+        (evt) => {
+          if (touchStartX === null || touchStartY === null) return;
+          const diffX = evt.changedTouches[0].clientX - touchStartX;
+          const diffY = evt.changedTouches[0].clientY - touchStartY;
+          if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
+            if (diffX > 0) gotoCamera(-1);
+            else gotoCamera(1);
+          }
+          touchStartX = null;
+          touchStartY = null;
+        },
+        { passive: true },
+      );
+    };
+
+    loadNavGroups().then(setupCameraNavigation);
     checkHealth();
     setInterval(checkHealth, 5000);
     checkDanger();

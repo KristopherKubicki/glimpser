@@ -12,8 +12,8 @@ import datetime
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
-from app.config import USER_NAME, API_KEY
-from app.routes import login_required, login_attempts
+from app.config import USER_NAME
+from app.routes import login_required
 from app import create_app
 
 
@@ -34,9 +34,11 @@ class TestAuthentication(unittest.TestCase):
         self.app_context.pop()
 
     def test_login_success(self):
-        with patch("app.routes.SessionLocal") as mock_session_local, patch(
-            "app.routes.login_attempts", {}
-        ), patch("app.routes.check_password_hash", return_value=True):
+        with (
+            patch("app.routes.SessionLocal") as mock_session_local,
+            patch("app.routes.login_attempts", {}),
+            patch("app.routes.check_password_hash", return_value=True),
+        ):
             dummy_user = SimpleNamespace(id=1, username=USER_NAME, password_hash="hash")
 
             class DummyQuery:
@@ -66,8 +68,9 @@ class TestAuthentication(unittest.TestCase):
             self.assertIn("/", response.headers["Location"])
 
     def test_login_failure(self):
-        with patch("app.routes.SessionLocal") as mock_session_local, patch(
-            "app.routes.check_password_hash", return_value=False
+        with (
+            patch("app.routes.SessionLocal") as mock_session_local,
+            patch("app.routes.check_password_hash", return_value=False),
         ):
             dummy_user = SimpleNamespace(id=1, username=USER_NAME, password_hash="hash")
 
@@ -96,8 +99,9 @@ class TestAuthentication(unittest.TestCase):
         # Simulate multiple failed login attempts to trigger lockout
         login_attempts = {}  # reset
         for _ in range(5):  # Assuming lockout occurs after 5 attempts
-            with patch("app.routes.SessionLocal") as mock_session_local, patch(
-                "app.routes.check_password_hash", return_value=False
+            with (
+                patch("app.routes.SessionLocal") as mock_session_local,
+                patch("app.routes.check_password_hash", return_value=False),
             ):
                 dummy_user = SimpleNamespace(
                     id=1, username=USER_NAME, password_hash="hash"
@@ -122,8 +126,9 @@ class TestAuthentication(unittest.TestCase):
                     "/login", data={"username": USER_NAME, "password": "wrong_password"}
                 )
 
-        with patch("app.routes.SessionLocal") as mock_session_local, patch(
-            "app.routes.check_password_hash", return_value=False
+        with (
+            patch("app.routes.SessionLocal") as mock_session_local,
+            patch("app.routes.check_password_hash", return_value=False),
         ):
             dummy_user = SimpleNamespace(id=1, username=USER_NAME, password_hash="hash")
 
@@ -150,8 +155,9 @@ class TestAuthentication(unittest.TestCase):
 
     def test_logout(self):
         login_attempts = {}  # reset
-        with patch("app.routes.SessionLocal") as mock_session_local, patch(
-            "app.routes.check_password_hash", return_value=True
+        with (
+            patch("app.routes.SessionLocal") as mock_session_local,
+            patch("app.routes.check_password_hash", return_value=True),
         ):
             dummy_user = SimpleNamespace(id=1, username=USER_NAME, password_hash="hash")
 
@@ -201,8 +207,9 @@ class TestAuthentication(unittest.TestCase):
             def close(self):
                 pass
 
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.SessionLocal", return_value=DummySession()
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.SessionLocal", return_value=DummySession()),
         ):
             response = self.client.get("/protected")
             self.assertEqual(response.status_code, 200)
@@ -230,8 +237,9 @@ class TestAuthentication(unittest.TestCase):
             def close(self):
                 pass
 
-        with patch("app.routes.session", {"user_id": 1, "expiry": expired_time}), patch(
-            "app.routes.SessionLocal", return_value=DummySession()
+        with (
+            patch("app.routes.session", {"user_id": 1, "expiry": expired_time}),
+            patch("app.routes.SessionLocal", return_value=DummySession()),
         ):
             response = self.client.get("/protected")
             self.assertEqual(response.status_code, 302)
@@ -259,8 +267,9 @@ class TestAuthentication(unittest.TestCase):
             def close(self):
                 pass
 
-        with patch("app.routes.session", session_data), patch(
-            "app.routes.SessionLocal", return_value=DummySession()
+        with (
+            patch("app.routes.session", session_data),
+            patch("app.routes.SessionLocal", return_value=DummySession()),
         ):
             response = self.client.get("/protected")
             self.assertEqual(response.status_code, 200)
@@ -329,8 +338,9 @@ class TestAuthentication(unittest.TestCase):
                 def close(self):
                     pass
 
-            with patch("app.routes.session", {"user_id": 1}), patch(
-                "app.routes.SessionLocal", return_value=DummySession()
+            with (
+                patch("app.routes.session", {"user_id": 1}),
+                patch("app.routes.SessionLocal", return_value=DummySession()),
             ):
                 response = self.client.get(
                     "/protected", headers={"X-API-Key": mock_api_key}
@@ -367,10 +377,14 @@ class TestAuthentication(unittest.TestCase):
 
     def test_sso_login_success(self):
         login_attempts = {}  # reset
-        with patch("app.routes.config.SSO_TOKEN", "secret"), patch(
-            "app.routes.config.SSO_USERNAME",
-            USER_NAME,
-        ), patch("app.routes.SessionLocal") as mock_session_local:
+        with (
+            patch("app.routes.config.SSO_TOKEN", "secret"),
+            patch(
+                "app.routes.config.SSO_USERNAME",
+                USER_NAME,
+            ),
+            patch("app.routes.SessionLocal") as mock_session_local,
+        ):
             dummy_user = SimpleNamespace(id=1, username=USER_NAME, password_hash="hash")
 
             class DummyQuery:
