@@ -3066,6 +3066,7 @@ def init_routes(app: Flask) -> None:
                         continue
 
                     update_setting(name, sanitized)
+            flash("Settings updated successfully", "success")
             return redirect(url_for("settings"))
 
         settings = get_all_settings()
