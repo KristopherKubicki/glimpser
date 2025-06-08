@@ -943,7 +943,18 @@ function playMJPG() {
   stopLiveSwitch();
   stopPNG();
   const ts = Date.now();
-  if (currentCamera.startsWith("group-")) {
+  const details = templateDetails[currentCamera];
+  if (
+    !currentCamera.startsWith("group-") &&
+    currentCamera !== "All" &&
+    details &&
+    details.snapshot_only
+  ) {
+    // Snapshot-only cameras use the faster capture route
+    image.src = `/fast_stream.mjpg?camera=${encodeURIComponent(
+      currentCamera,
+    )}&time=${ts}`;
+  } else if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     const groupName = currentCamera.split("group-")[1];
     image.src = `/stream.mjpg?group=${encodeURIComponent(groupName)}&time=${ts}`;
