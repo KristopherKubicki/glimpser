@@ -32,7 +32,7 @@ class TestInstallationAndFirstUse(unittest.TestCase):
         config.SUMMARIES_DIRECTORY = os.path.join(self.temp_dir, "summaries")
 
         # Create the Flask test client
-        self.app = create_app(enable_watchdog=False, schedule=False)
+        self.app = create_app(enable_watchdog=False, schedule=False, log_cache=False)
         self.client = self.app.test_client()
 
     def tearDown(self):
