@@ -240,6 +240,39 @@ h2 {
   min-width: 80px;
 }
 
+#caption-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: none;
+  border: none;
+  color: var(--text-color);
+  padding: 0;
+}
+
+#caption-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+}
+
+#caption-toggle.active {
+  color: var(--accent-color);
+}
+
+#caption-toggle.off {
+  opacity: 0.7;
+}
+
+#caption-toggle.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 #template-list {
   display: grid;
   grid-template-columns: repeat(

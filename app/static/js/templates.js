@@ -16,13 +16,18 @@ let captionsVisible = localStorage.getItem("showCaptions") !== "false";
 
 export function applyCaptionVisibility(width) {
   const templateList = document.getElementById("template-list");
-  const captionToggle = document.getElementById("toggle-captions");
-  const show = captionsVisible && (!width || width >= 150);
+  const captionToggle = document.getElementById("caption-toggle");
+  const enabled = !width || width >= 150;
+  const show = captionsVisible && enabled;
   document.documentElement.classList.toggle("hide-captions", !show);
   templateList
     ?.querySelectorAll(".caption-overlay")
     .forEach((o) => (o.style.display = show ? "block" : "none"));
-  if (captionToggle) captionToggle.checked = captionsVisible;
+  if (captionToggle) {
+    captionToggle.classList.toggle("disabled", !enabled);
+    captionToggle.classList.toggle("active", captionsVisible && enabled);
+    captionToggle.classList.toggle("off", !captionsVisible && enabled);
+  }
 }
 
 export function initTemplates() {
@@ -38,7 +43,7 @@ export function initTemplates() {
       "(hover: none) and (max-width: 767px)",
     ).matches;
     const templateList = document.getElementById("template-list");
-    const captionToggle = document.getElementById("toggle-captions");
+    const captionToggle = document.getElementById("caption-toggle");
     const MAX_THUMBNAIL_HEIGHT = 1080;
     const ASPECT_RATIO = 9 / 16;
     const MAX_THUMBNAIL_WIDTH = Math.round(MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO);
@@ -113,8 +118,9 @@ export function initTemplates() {
     }
 
     if (captionToggle) {
-      captionToggle.addEventListener("change", () => {
-        captionsVisible = captionToggle.checked;
+      captionToggle.addEventListener("click", () => {
+        if (captionToggle.classList.contains("disabled")) return;
+        captionsVisible = !captionsVisible;
         localStorage.setItem("showCaptions", captionsVisible.toString());
         applyCaptionVisibility(parseFloat(slider?.value || "0"));
       });
