@@ -39,9 +39,8 @@
         <option value="mjpg" selected title="View an MJPEG (Motion JPEG) stream">MJPG</option>
     </select>
 
-
-    <select id="camera-selector" onchange="changeCamera()">
-        <option value="All" title="View all cameras">All</option>
+    <select id="group-selector" onchange="changeGroup()">
+        <option value="all" title="View all groups">All</option>
         {% set all_groups = [] %}
         {% for camera, details in template_details.items() %}
             {% if details.groups %}
@@ -53,8 +52,11 @@
             {% endif %}
         {% endfor %}
         {% for group in all_groups|unique|sort %}
-            <option value="group-{{ group }}" title="View cameras in group {{ group }}">Group: {{ group }}</option>
+            <option value="{{ group }}" title="View group {{ group }}">{{ group }}</option>
         {% endfor %}
+    </select>
+
+    <select id="camera-selector" onchange="changeCamera()" style="display:none">
         {% for camera in template_details.keys()|sort %}
             <option value="{{ camera }}" title="View camera {{ camera }}">Camera: {{ camera }}</option>
         {% endfor %}
@@ -432,8 +434,6 @@ function changeCamera() {
             templateDetailsContainer.style.display = 'block';
             templateDetailsContainer.innerHTML = `
                 <div>
-                    <strong>Last Screenshot:</strong> ${details.last_screenshot_time || 'N/A'}<br/>
-                    <strong>Last Video:</strong> ${details.last_video_time || 'N/A'}<br/>
                     <strong>Last Caption:</strong> ${details.last_caption || 'N/A'}<br/>
                     ${details.offline_since ? `<strong>Offline Since:</strong> ${details.offline_since}<br/>` : ''}
                     ${details.capture_failed ? '<strong>Capture Failed</strong><br/>' : ''}
@@ -801,16 +801,17 @@ function playMJPG() {
         }
     stopLiveSwitch();
     stopPNG();
+    const ts = Date.now();
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
         const groupName = currentCamera.split('group-')[1];
-        image.src = `/stream.mjpg?group=${encodeURIComponent(groupName)}`;
+        image.src = `/stream.mjpg?group=${encodeURIComponent(groupName)}&time=${ts}`;
     } else if (currentCamera === 'All') {
         // Special handling for the "All" option
-        image.src = '/stream.mjpg?group=all';
+        image.src = `/stream.mjpg?group=all&time=${ts}`;
     } else {
         // URL for individual cameras
-        image.src = '/stream.mjpg?camera=' + currentCamera + '&time=' + new Date().getTime();
+        image.src = `/stream.mjpg?camera=${currentCamera}&time=${ts}`;
     }
 }
 
@@ -826,16 +827,17 @@ function playMotion() {
         }
     stopLiveSwitch();
     stopPNG();
+    const ts = Date.now();
     if (currentCamera.startsWith('group-')) {
         // Special handling for groups
         const groupName = currentCamera.split('group-')[1];
-        image.src = `/motion.mjpg?group=${encodeURIComponent(groupName)}`;
+        image.src = `/motion.mjpg?group=${encodeURIComponent(groupName)}&time=${ts}`;
     } else if (currentCamera === 'All') {
         // Special handling for the "All" option
-        image.src = '/motion.mjpg?group=all';
+        image.src = `/motion.mjpg?group=all&time=${ts}`;
     } else {
         // URL for individual cameras
-        image.src = '/motion.mjpg?camera=' + currentCamera + '&time=' + new Date().getTime();
+        image.src = `/motion.mjpg?camera=${currentCamera}&time=${ts}`;
     }
 }
 
