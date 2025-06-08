@@ -261,6 +261,16 @@ export function initNav() {
       // Keep the caption visible until a new one arrives
     };
 
+    if (captionsIcon && captionChyron) {
+      captionsIcon.addEventListener("mouseenter", () => {
+        const text = captionsIcon.dataset.caption;
+        if (text) showCaption(text);
+      });
+      captionsIcon.addEventListener("mouseleave", () => {
+        captionChyron.classList.remove("show");
+      });
+    }
+
     const checkCaptions = async () => {
       if (!captionsIcon) return;
       try {
@@ -271,7 +281,8 @@ export function initNav() {
             : "/captions_status";
         const data = await fetchJson(url);
         if (!data) return;
-        captionsIcon.title = data.caption || "";
+        captionsIcon.dataset.caption = data.caption || "";
+        captionsIcon.removeAttribute("title");
         if (data.timestamp) {
           const ts = new Date(data.timestamp.replace(" ", "T") + "Z");
           if (!lastCaptionTime || ts > lastCaptionTime) {
