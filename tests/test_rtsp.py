@@ -13,7 +13,7 @@ class TestRTSP(unittest.TestCase):
     def setUp(self):
         self.login_patch = patch("app.routes.login_required", lambda x: x)
         self.login_patch.start()
-        self.app = create_app(enable_watchdog=False, schedule=False)
+        self.app = create_app(enable_watchdog=False, schedule=False, log_cache=False)
         self.app.testing = True
         self.client = self.app.test_client()
         self.app_context = self.app.app_context()

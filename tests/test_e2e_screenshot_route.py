@@ -81,7 +81,7 @@ def screenshot_server(tmp_path):
     for p in patches:
         p.start()
 
-    app = create_app(enable_watchdog=False, schedule=False)
+    app = create_app(enable_watchdog=False, schedule=False, log_cache=False)
     server = ServerThread(app)
     server.start()
     url = f"http://127.0.0.1:{server.port}"

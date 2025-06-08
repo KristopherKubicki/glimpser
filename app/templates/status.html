@@ -22,35 +22,41 @@ content %} {% include '_status_tab.html' %} {% endblock %} {% extends
   <li title="Current CPU utilization">
     CPU Usage:
     <progress
+      id="cpu-bar"
       class="metric-bar"
       value="{{ metrics.cpu_usage }}"
       max="100"
     ></progress>
-    {{ metrics.cpu_usage }}%
+    <span id="cpu-value">{{ metrics.cpu_usage }}%</span>
+    <canvas id="cpu-sparkline" width="100" height="20"></canvas>
   </li>
   <li title="Current memory utilization">
     Memory Usage:
     <progress
+      id="memory-bar"
       class="metric-bar"
       value="{{ metrics.memory_usage }}"
       max="100"
     ></progress>
-    {{ metrics.memory_usage }}%
+    <span id="memory-value">{{ metrics.memory_usage }}%</span>
   </li>
   <li title="Disk space used">
     Disk Usage:
     <progress
+      id="disk-bar"
       class="metric-bar"
       value="{{ metrics.disk_usage }}"
       max="100"
     ></progress>
-    {{ metrics.disk_usage }}%
+    <span id="disk-value">{{ metrics.disk_usage }}%</span>
   </li>
-  <li title="Open file handles">Open Files: {{ metrics.open_files }}</li>
+  <li title="Open file handles">
+    Open Files: <span id="open-files">{{ metrics.open_files }}</span>
+  </li>
   <li title="Number of active threads">
-    Thread Count: {{ metrics.thread_count }}
+    Thread Count: <span id="thread-count">{{ metrics.thread_count }}</span>
   </li>
-  <li title="System uptime">Uptime: {{ metrics.uptime }}</li>
+  <li title="System uptime">Uptime: <span id="uptime-value">{{ metrics.uptime }}</span></li>
   <li title="Installed ffmpeg version">
     FFmpeg: {{ metrics.ffmpeg_version }} ({{ metrics.ffmpeg_path }})
   </li>

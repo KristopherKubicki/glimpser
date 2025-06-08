@@ -1,17 +1,18 @@
 export function initControlsDropdown() {
   document.addEventListener("DOMContentLoaded", () => {
-    const details = document.getElementById("controls-wrapper");
-    if (!details) return;
+    const wrapper = document.getElementById("controls-wrapper");
+    const toggle = document.getElementById("controls-toggle");
+    if (!wrapper || !toggle) return;
 
     let hideTimeout;
     let buttonTimeout;
 
     const showButton = () => {
-      details.classList.add("show-summary");
+      wrapper.classList.add("show-toggle");
       clearTimeout(buttonTimeout);
-      if (!details.open) {
+      if (wrapper.classList.contains("closed")) {
         buttonTimeout = setTimeout(
-          () => details.classList.remove("show-summary"),
+          () => wrapper.classList.remove("show-toggle"),
           3000,
         );
       }
@@ -20,25 +21,29 @@ export function initControlsDropdown() {
     const scheduleHide = () => {
       clearTimeout(hideTimeout);
       hideTimeout = setTimeout(() => {
-        details.classList.add("fade-out");
+        wrapper.classList.add("fade-out");
         setTimeout(() => {
-          details.removeAttribute("open");
-          details.classList.remove("fade-out");
+          wrapper.classList.add("closed");
+          wrapper.classList.remove("fade-out");
           showButton();
         }, 500);
       }, 5000);
     };
 
     const showControls = () => {
-      if (!details.open) return;
-      details.classList.remove("fade-out");
+      if (wrapper.classList.contains("closed")) return;
+      wrapper.classList.remove("fade-out");
       showButton();
       scheduleHide();
     };
 
-    details.addEventListener("toggle", showControls);
+    toggle.addEventListener("click", () => {
+      wrapper.classList.toggle("closed");
+      if (!wrapper.classList.contains("closed")) showControls();
+      else showButton();
+    });
 
-    if (details.open) showControls();
+    if (!wrapper.classList.contains("closed")) showControls();
     else showButton();
 
     ["mousemove", "scroll"].forEach((evt) => {

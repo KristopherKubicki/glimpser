@@ -160,5 +160,6 @@ Additional variables control AI behaviour and external tools:
 - `FFMPEG_THREADS` – number of threads ffmpeg uses when encoding (default `5`)
 - `CLIP_MODEL_NAME` – CLIP model used for object filtering (default `openai/clip-vit-base-patch32`)
   Example: `openai/clip-vit-large-patch14`
+  This setting is read-only until Advanced Options are enabled.
 
 Refer to the code comments in `app/config.py` for full details on each setting.
