@@ -208,8 +208,8 @@ h2 {
     auto-fit,
     minmax(50px, var(--tile-size))
   ); /* Use CSS variable */
-  gap: 5px;
-  padding: 10px;
+  gap: 3px;
+  padding: 5px;
   justify-content: center;
   max-width: 100%;
 }
@@ -235,7 +235,7 @@ h2 {
   }
   #template-list {
     grid-template-columns: 1fr; /* Single column layout on mobile */
-    padding: 10px; /* Reduce padding on mobile */
+    padding: 5px; /* Reduce padding on mobile */
   }
 
   /* Improve form layout on mobile */
@@ -442,7 +442,7 @@ body.light-mode {
 }
 
 .hide-captions .caption-overlay {
-    display: none;
+  display: none;
 }
 
 #status-legend {
@@ -734,7 +734,7 @@ nav a.active {
   .templateDiv {
     min-width: 48px; /* Increased minimum touch target size */
     min-height: 48px; /* Increased minimum touch target size */
-    padding: 12px; /* More padding for larger touch area */
+    padding: 8px; /* Reduced padding for tighter tiles */
   }
 
   /* Adjust form elements for better mobile interaction */
@@ -749,7 +749,7 @@ nav a.active {
 
   /* Improve spacing for mobile */
   .video-container {
-    padding: 5px; /* Slightly reduce padding for smaller screens */
+    padding: 2px; /* Slightly reduce padding for smaller screens */
   }
 
   /* Adjust slider for mobile */
@@ -795,7 +795,7 @@ a {
 
 /* Adjust padding and margin for better spacing */
 .video-container {
-  padding: 5px; /* Space around the preview */
+  padding: 2px; /* Space around the preview */
   height: 100%;
   box-sizing: border-box;
 }
@@ -825,17 +825,17 @@ a {
 }
 
 .clock-overlay {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    z-index: 10;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 10;
 }
 
 .digital-clock {
-    font-size: 14px;
-    line-height: 25px;
-    text-align: center;
-    color: var(--text-color);
+  font-size: 14px;
+  line-height: 25px;
+  text-align: center;
+  color: var(--text-color);
 }
 
 .clock-face {
