@@ -59,7 +59,12 @@ class SQLAlchemyHandler(logging.Handler):
 """
 
 
-def create_app(enable_watchdog=True, schedule=True, crawlers=True):
+def create_app(
+    enable_watchdog: bool = True,
+    schedule: bool = True,
+    crawlers: bool = True,
+    log_cache: bool = True,
+):
     """Create and configure the Flask application.
 
     This function sets up the entire Flask application, including:
@@ -84,6 +89,11 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
         When ``True`` (the default) crawler jobs are scheduled.  Pass
         ``False`` to skip scheduling crawlers, which is useful during
         testing or when using the application purely for playback.
+
+    log_cache : bool, optional
+        When ``True`` (the default) a background thread tails the log file
+        so recent entries can be served via the web UI.  Pass ``False`` to
+        disable this thread during debugging or unit tests.
 
     Returns
     -------
@@ -258,7 +268,8 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
     if schedule:
         start_metrics_collection()
 
-    start_log_caching()
+    if log_cache:
+        start_log_caching()
 
     # Send alerts when the application starts
     email_alert(

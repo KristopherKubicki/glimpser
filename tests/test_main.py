@@ -144,9 +144,39 @@ class TestMain(unittest.TestCase):
 
         args.no_crawlers = True
 
+        args.no_log_cache = False
         main.create_application(args)
         mock_create_app.assert_called_with(
-            enable_watchdog=False, schedule=False, crawlers=False
+            enable_watchdog=False,
+            schedule=False,
+            crawlers=False,
+            log_cache=True,
+        )
+
+    @patch("main.create_app")
+    def test_create_application_no_log_cache_flag(self, mock_create_app):
+        args = MagicMock()
+        args.db_path = config.DATABASE_PATH
+        args.host = config.HOST
+        args.port = config.PORT
+        args.log_path = config.LOGGING_PATH
+        args.log_level = config.LOG_LEVEL
+        args.console_log = False
+        args.debug = False
+        args.screenshot_dir = config.SCREENSHOT_DIRECTORY
+        args.video_dir = config.VIDEO_DIRECTORY
+        args.summaries_dir = config.SUMMARIES_DIRECTORY
+        args.no_scheduler = False
+        args.no_watchdog = False
+        args.no_crawlers = False
+        args.no_log_cache = True
+
+        main.create_application(args)
+        mock_create_app.assert_called_with(
+            enable_watchdog=True,
+            schedule=True,
+            crawlers=True,
+            log_cache=False,
         )
 
     @patch("logging.info")

@@ -156,9 +156,13 @@ def create_application(args=None):
     schedule = not getattr(args, "no_scheduler", False)
     enable_watchdog = not getattr(args, "no_watchdog", False)
     crawlers = not getattr(args, "no_crawlers", False)
+    log_cache = not getattr(args, "no_log_cache", False)
 
     return create_app(
-        enable_watchdog=enable_watchdog, schedule=schedule, crawlers=crawlers
+        enable_watchdog=enable_watchdog,
+        schedule=schedule,
+        crawlers=crawlers,
+        log_cache=log_cache,
     )
 
 
