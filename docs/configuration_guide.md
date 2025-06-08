@@ -132,6 +132,8 @@ Settings controlling how frames are captured from video sources:
 - `WATCHDOG_FAILURE_THRESHOLD` – number of failed health checks before a restart (default `3`)
 - `WATCHDOG_RESTART_COOLDOWN` – cooldown period between restarts in seconds (default `900`)
 - `WATCHDOG_MAX_FILE_HANDLES` – open file handle limit before triggering a restart (default `1000`)
+- `WATCHDOG_CPU_THRESHOLD` – CPU usage percentage that triggers open-file checks (default `80`)
+- `WATCHDOG_MEMORY_THRESHOLD` – memory usage percentage that triggers open-file checks (default `80`)
 - `DISCOVERY_AUTOSTART` – run hourly background discovery automatically (default `False`)
 
 ### Stealth Browser Defaults
