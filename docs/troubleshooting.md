@@ -68,6 +68,7 @@ This guide addresses common issues that users might encounter while using Glimps
 
 - Check the `LLM_CAPTION_PROMPT` setting and adjust if necessary
 - Ensure your CHATGPT_KEY is valid and has sufficient credits
+- Leave `CHATGPT_KEY` empty to disable ChatGPT features gracefully
 - Verify that the image data is being correctly captured and processed
 
 ### Problem: Summaries not generating

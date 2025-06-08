@@ -16,7 +16,9 @@ last_429_error_time = None
 
 
 class ChatGPTImageComparison:
-    def __init__(self):
+    """Helper for caption prompts using the ChatGPT vision API."""
+
+    def __init__(self) -> None:
         self.api_key = CHATGPT_KEY
         self.headers = {"Authorization": f"Bearer {self.api_key}"}
         self.url = "https://api.openai.com/v1/chat/completions"
@@ -26,6 +28,9 @@ class ChatGPTImageComparison:
     ):
 
         global last_429_error_time
+
+        if not self.api_key:
+            return None, 0
         # Check if a 429 error occurred in the last 30 minutes
         if last_429_error_time and (
             datetime.datetime.now() - last_429_error_time
