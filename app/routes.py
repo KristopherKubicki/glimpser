@@ -3569,12 +3569,15 @@ def init_routes(app: Flask) -> None:
     def api_llm_cost_summary():
         start = request.args.get("start")
         end = request.args.get("end")
-        templates = template_manager.get_templates()
+        summary, _, _ = template_manager.get_llm_cost_summary(
+            start_date=start, end_date=end
+        )
         costs = {
-            name: template_manager.get_llm_cost_estimate(
-                name, start_date=start, end_date=end
-            )
-            for name in templates
+            entry["name"]: {
+                "tokens": entry["tokens"],
+                "cost": entry["cost"],
+            }
+            for entry in summary
         }
         return jsonify(costs)
 
