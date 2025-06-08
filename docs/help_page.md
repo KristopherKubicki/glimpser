@@ -30,3 +30,15 @@ Click **Live All** to switch every tile to a real-time feed and **Play All** to 
 Keyboard shortcuts help you navigate quickly: `Space` or `k` toggles play or pause, `m` mutes audio, `f` enters fullscreen, `[` and `]` change playback speed, and the arrow keys cycle cameras or media types. On phones and tablets, swipe left or right on the video to switch cameras or swipe up or down to change the media type.
 
 Navigate back to the main interface using the **Back to Glimpser** link at the bottom of the help page.
+
+## Additional Resources
+
+The help page is only a starting point. For more details, explore these key documentation sections:
+
+- [Getting Started](getting_started.md) for installation and initial setup
+- [Configuration Guide](configuration_guide.md) to tailor Glimpser to your environment
+- [Troubleshooting](troubleshooting.md) if something goes wrong
+- [FAQ](faq.md) for quick answers to common questions
+- [Offline Preview](offline_preview.md) for tips on viewing captures without an internet connection
+
+All documentation lives under the `docs/` directory so you can read it offline after cloning the repository.
