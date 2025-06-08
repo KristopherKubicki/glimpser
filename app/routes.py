@@ -89,6 +89,16 @@ from app.utils.settings_tooltips import (
     EMAIL_FIELDS,
 )
 
+# Names of settings that store file paths.
+FILE_LOCATION_NAMES = [
+    "DATABASE_PATH",
+    "LOGGING_PATH",
+    "BACKUP_PATH",
+    "SCREENSHOT_DIRECTORY",
+    "VIDEO_DIRECTORY",
+    "SUMMARIES_DIRECTORY",
+]
+
 from app.utils.db import SessionLocal, engine
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 import sqlite3
@@ -2998,22 +3008,23 @@ def init_routes(app: Flask) -> None:
             if not placed:
                 grouped_settings["Other"].append(setting)
 
+        if "Integrations & Other" in grouped_settings:
+            grouped_settings["Integrations & Other"].extend(
+                grouped_settings.get("Other", [])
+            )
+        else:
+            grouped_settings["Integrations & Other"] = grouped_settings.get("Other", [])
+        grouped_settings.pop("Other", None)
+
         # Remove empty groups to avoid blank headings in the UI
         grouped_settings = {g: items for g, items in grouped_settings.items() if items}
 
         collapsed_groups = {
-            "File Locations",
             "Capture",
-            "Credentials",
-            "Integrations",
-            "Other",
-            "Management",
+            "Credentials & Management",
+            "Integrations & Other",
         }
-        file_location_items = [
-            s
-            for s in settings
-            if s["name"] in SETTINGS_GROUPS.get("File Locations", [])
-        ]
+        file_location_items = [s for s in settings if s["name"] in FILE_LOCATION_NAMES]
         file_info = file_location_metrics(file_location_items)
 
         metrics = scheduling.get_system_metrics()

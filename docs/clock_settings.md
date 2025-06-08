@@ -1,6 +1,6 @@
 # Clock Settings
 
-The application includes a configurable clock that can appear in multiple places. Open the **Settings** page and switch to the **Integrations** tab to adjust its behaviour.
+The application includes a configurable clock that can appear in multiple places. Open the **Settings** page and switch to the **Integrations & Other** tab to adjust its behaviour.
 
 - **CLOCK_OVERLAY** – display the clock on video overlays.
 - **CLOCK_DIGITAL** – show the clock as digital text rather than an analogue face.
