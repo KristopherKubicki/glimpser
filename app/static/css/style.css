@@ -1917,6 +1917,12 @@ details > summary {
   color: orange;
 }
 
+.unsaved-icon {
+  vertical-align: middle;
+  margin-left: 0.25rem;
+  color: orange;
+}
+
 .feed-status tr.danger-disabled {
   opacity: 0.5;
 }

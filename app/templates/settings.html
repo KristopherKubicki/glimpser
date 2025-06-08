@@ -3,7 +3,6 @@
 <main class="container settings-page">
   {# Help content now appears directly in the table, so the collapsible menu was
   removed #}
-  <h2 class="page-title">Settings</h2>
 
   <div id="settings-search" class="hidden">
     <label for="search-input" title="Filter the selected column">Search:</label>
@@ -227,6 +226,16 @@
       />
       {% endif %}
       <button type="submit" title="Save all changes">Save Changes</button>
+      <svg
+        id="unsaved-icon"
+        width="16"
+        height="16"
+        class="unsaved-icon hidden"
+        aria-label="Unsaved changes"
+        title="Unsaved changes"
+      >
+        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#alert" />
+      </svg>
     </div>
     {% if loop.first %}
     <div id="discover-tab" class="tab-content">
