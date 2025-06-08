@@ -46,6 +46,7 @@ from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
 import threading
 from typing import Dict
+from .network import is_system_online
 
 try:
     from pynput import mouse, keyboard
@@ -187,9 +188,16 @@ _driver_local = threading.local()
 def get_driver(opts):
     driver = getattr(_driver_local, "driver", None)
     if driver is None:
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=opts)
-        _driver_local.driver = driver
+        if not is_system_online():
+            logging.warning("System offline; skipping driver setup")
+            return None
+        try:
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=opts)
+            _driver_local.driver = driver
+        except Exception as exc:
+            logging.error("Failed to launch driver: %s", exc)
+            return None
     return driver
 
 
@@ -2435,6 +2443,10 @@ def capture_screenshot_and_har(
     # Quick sanity check
     if not re.match(r"^https?://", url, flags=re.IGNORECASE):
         logging.error(f"[capture_screenshot_and_har] Not a valid http/https URL: {url}")
+        return False
+
+    if not is_system_online():
+        logging.warning("System offline; skipping capture for %s", url)
         return False
 
     if timeout < 30:
