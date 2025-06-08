@@ -17,8 +17,9 @@ export function initVideoControls() {
     const playAllButton = document.getElementById("play-all-button");
     const liveAllButton = document.getElementById("live-all-button");
     let playAllActive = false;
-    let liveAllActive = false;
     let playAllObserver;
+
+    if (liveAllButton) liveAllButton.style.display = "none";
 
     function handlePlayAll(entries) {
       entries.forEach((entry) => {
@@ -39,11 +40,13 @@ export function initVideoControls() {
           videos.forEach((video) => {
             const name = video.getAttribute("data-name");
             video.pause();
-            video.src = "";
+            //video.src = "";
+            video.removeAttribute("src");
             video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
             video.load();
           });
           playAllButton.textContent = "Play All";
+          if (liveAllButton) liveAllButton.style.display = "none";
         } else {
           playAllObserver = new IntersectionObserver(handlePlayAll, {
             threshold: 0.25,
@@ -52,11 +55,14 @@ export function initVideoControls() {
             const name = video.getAttribute("data-name");
             const src = video.querySelector("source");
             src.src = `/last_video/${name}`;
+            video.removeAttribute("src");
             video.poster = `/last_screenshot/${name}`;
             playAllObserver.observe(video);
+            video.load();
             safePlay(video);
           });
           playAllButton.textContent = "Pause All";
+          if (liveAllButton) liveAllButton.style.display = "inline-block";
         }
         playAllActive = !playAllActive;
       });
@@ -65,24 +71,17 @@ export function initVideoControls() {
     if (liveAllButton) {
       liveAllButton.addEventListener("click", () => {
         const videos = document.querySelectorAll(".templateDiv video");
+        if (playAllObserver) playAllObserver.disconnect();
         videos.forEach((video) => {
           const name = video.getAttribute("data-name");
-          const source = video.querySelector("source");
-          if (liveAllActive) {
-            source.src = `/last_video/${name}`;
-            video.poster = `/last_screenshot/${name}`;
-            video.load();
-            video.pause();
-            video.currentTime = 0;
-          } else {
-            source.src = `/live_video?camera=${encodeURIComponent(name)}`;
-            video.poster = "";
-            video.load();
-            safePlay(video);
-          }
+          video.pause();
+          video.src = "";
+          video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
+          video.load();
         });
-        liveAllButton.textContent = liveAllActive ? "Live All" : "Stop Live";
-        liveAllActive = !liveAllActive;
+        playAllActive = false;
+        playAllButton.textContent = "Play All";
+        liveAllButton.style.display = "none";
       });
     }
 
@@ -114,6 +113,8 @@ export function setupVideoControls() {
   const seekBar = document.getElementById("seek-bar");
   const volumeBar = document.getElementById("volume-bar");
   const castButton = document.getElementById("cast-button");
+  const rotateButton = document.getElementById("rotate-video");
+  let rotateAngle = 0;
 
   if (playPauseButton) {
     playPauseButton.addEventListener("click", () => {
@@ -135,6 +136,13 @@ export function setupVideoControls() {
       else if (video.mozRequestFullScreen) video.mozRequestFullScreen();
       else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
       else if (video.msRequestFullscreen) video.msRequestFullscreen();
+    });
+  }
+  if (rotateButton) {
+    rotateButton.addEventListener("click", () => {
+      rotateAngle = (rotateAngle + 90) % 360;
+      const container = document.querySelector(".video-container");
+      if (container) container.style.transform = `rotate(${rotateAngle}deg)`;
     });
   }
   if (seekBar) {
@@ -214,16 +222,53 @@ export function setupStatusPageVideoHover() {
     const img = cell.querySelector("img.thumbnail");
     const video = cell.querySelector("video.hover-video");
     if (img && video) {
-      cell.addEventListener("mouseenter", () => {
+      // Update frame based on cursor position over the tile.
+      const scrub = (e) => {
+        const rect = cell.getBoundingClientRect();
+        const ratio = (e.clientX - rect.left) / rect.width;
+        const clamped = Math.max(0, Math.min(1, ratio));
+        if (!Number.isNaN(video.duration)) {
+          video.currentTime = video.duration * clamped;
+        }
+      };
+
+      let resetTimeout;
+
+      cell.addEventListener("mouseenter", (e) => {
+        console.log("pos");
+        clearTimeout(resetTimeout);
         img.style.display = "none";
         video.style.display = "block";
-        safePlay(video);
-      });
-      cell.addEventListener("mouseleave", () => {
+        //safePlay(video);
+        // Load metadata on first hover so currentTime can be set
+        if (video.readyState === 0) {
+          video.load();
+        }
         video.pause();
-        video.currentTime = 0;
-        video.style.display = "none";
-        img.style.display = "block";
+        if (video.readyState >= 1) {
+          scrub(e);
+        } else {
+          const onLoad = () => {
+            scrub(e);
+            video.removeEventListener("loadedmetadata", onLoad);
+          };
+          video.addEventListener("loadedmetadata", onLoad);
+        }
+      });
+
+      cell.addEventListener("mousemove", scrub);
+
+      cell.addEventListener("mouseleave", () => {
+        //video.pause();
+        //video.currentTime = 0;
+        //video.style.display = "none";
+        //img.style.display = "block";
+        resetTimeout = setTimeout(() => {
+          video.pause();
+          video.currentTime = 0;
+          video.style.display = "none";
+          img.style.display = "block";
+        }, 1000); // restore screenshot a bit after leaving
       });
     }
   });

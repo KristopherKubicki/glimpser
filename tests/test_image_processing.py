@@ -1,10 +1,9 @@
-# tests/test_image_processing.py
+# Integration tests for image processing utilities and ChatGPT comparison
 
 import unittest
 import os
 import sys
 import tempfile
-import numpy as np
 from PIL import Image
 from unittest.mock import patch, MagicMock
 import datetime
@@ -18,7 +17,7 @@ from app.utils.screenshots import (
     adjust_bbox_to_aspect_ratio,
     is_mostly_blank,
 )
-from app.utils.image_processing import ChatGPTImageComparison
+from app.utils.image_processing import ChatGPTImageComparison, chatgpt_compare
 
 
 class TestImageProcessing(unittest.TestCase):
@@ -112,11 +111,10 @@ class TestChatGPTImageComparison(unittest.TestCase):
         comparison = ChatGPTImageComparison()
 
         # Create temporary image files
-        with tempfile.NamedTemporaryFile(
-            suffix=".png", delete=False
-        ) as temp_file1, tempfile.NamedTemporaryFile(
-            suffix=".png", delete=False
-        ) as temp_file2:
+        with (
+            tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file1,
+            tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file2,
+        ):
             image1_path = temp_file1.name
             image2_path = temp_file2.name
 
@@ -182,6 +180,40 @@ class TestChatGPTImageComparison(unittest.TestCase):
             # Clean up temporary files
             os.remove(image1_path)
             os.remove(image2_path)
+
+
+class TestChatGPTCompareIntegration(unittest.TestCase):
+    @patch("app.utils.image_processing.os.path.exists", return_value=True)
+    @patch("app.utils.image_processing.CHATGPT_KEY", "k")
+    @patch("app.utils.template_manager.record_llm_usage")
+    @patch("app.utils.llm_cache.store")
+    @patch("app.utils.llm_cache.get")
+    @patch.object(ChatGPTImageComparison, "compare_images")
+    def test_chatgpt_compare_uses_cache(
+        self, mock_compare, mock_get, mock_store, mock_record, mock_exists
+    ):
+        mock_get.return_value = {"response": "cached", "tokens": 3}
+        result = chatgpt_compare("Prompt", ["img.png"], template_name="cam1")
+        self.assertEqual(result, "cached")
+        mock_compare.assert_not_called()
+        mock_store.assert_not_called()
+        mock_record.assert_called_once_with("cam1", 3)
+
+    @patch("app.utils.image_processing.os.path.exists", return_value=True)
+    @patch("app.utils.image_processing.CHATGPT_KEY", "k")
+    @patch("app.utils.template_manager.record_llm_usage")
+    @patch("app.utils.llm_cache.store")
+    @patch("app.utils.llm_cache.get", return_value=None)
+    @patch.object(ChatGPTImageComparison, "compare_images")
+    def test_chatgpt_compare_calls_api(
+        self, mock_compare, mock_get, mock_store, mock_record, mock_exists
+    ):
+        mock_compare.return_value = ("result", 5)
+        result = chatgpt_compare("Prompt", ["img.png"], template_name="cam1")
+        self.assertEqual(result, "result")
+        mock_compare.assert_called_once()
+        mock_store.assert_called_once_with("Prompt", "result", 5, ["img.png"])
+        mock_record.assert_called_once_with("cam1", 5)
 
 
 if __name__ == "__main__":

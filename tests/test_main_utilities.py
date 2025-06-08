@@ -21,9 +21,13 @@ class TestMainUtilities(unittest.TestCase):
             "thread_count": 5,
             "uptime": "1h",
             "ffmpeg_version": "6.0",
+            "ffmpeg_path": "/usr/bin/ffmpeg",
             "machine_hwaccel": True,
             "ffmpeg_hwaccel": True,
             "hwaccel_enabled": True,
+            "gpu_support": True,
+            "ffmpeg_gpu_enabled": True,
+            "danger_mode": True,
         }
         mock_metrics.return_value = metrics
 
@@ -37,10 +41,17 @@ class TestMainUtilities(unittest.TestCase):
             ("Open Files: %s", metrics["open_files"]),
             ("Thread Count: %s", metrics["thread_count"]),
             ("Uptime: %s", metrics["uptime"]),
-            ("FFmpeg Version: %s", metrics["ffmpeg_version"]),
+            (
+                "FFmpeg Version: %s (%s)",
+                metrics["ffmpeg_version"],
+                metrics["ffmpeg_path"],
+            ),
             ("Machine HW Accel: %s", metrics["machine_hwaccel"]),
             ("FFmpeg HW Accel: %s", metrics["ffmpeg_hwaccel"]),
             ("HW Accel Enabled: %s", metrics["hwaccel_enabled"]),
+            ("GPU Support: %s", metrics["gpu_support"]),
+            ("FFmpeg GPU Enabled: %s", metrics["ffmpeg_gpu_enabled"]),
+            ("Danger Mode: %s", metrics["danger_mode"]),
             ("Thank you for running Glimpser. Goodbye!",),
         ]
         self.assertEqual([c.args for c in mock_log.call_args_list], expected)

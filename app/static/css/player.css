@@ -35,11 +35,17 @@
   flex-direction: column;
   align-items: center;
   opacity: 0;
-  transition: opacity 0.3s;
+  transform: translateY(20px);
+  pointer-events: none;
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
   max-width: 100vw;
 }
 .video-container:hover .video-controls {
   opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 .video-controls button {
   background-color: transparent;
@@ -120,4 +126,20 @@
   padding: 5px;
   border-radius: 5px;
   font-size: 0.9rem;
+}
+
+@media (max-height: 480px) {
+  .video-container {
+    overflow: auto;
+  }
+}
+
+#rotate-video {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  #rotate-video {
+    display: inline-block;
+  }
 }

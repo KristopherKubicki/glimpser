@@ -85,6 +85,13 @@ class TestHtmlTemplates(unittest.TestCase):
         else:
             self.fail("sprite.svg preload link missing")
 
+    def test_settings_has_advanced_toggle(self):
+        parser = parse_template(Path("app/templates/settings.html"))
+        inputs = [i for form in parser.forms for i in form["inputs"]]
+        advanced = next((i for i in inputs if i.get("id") == "advanced-toggle"), None)
+        self.assertIsNotNone(advanced, "advanced-toggle missing")
+        self.assertEqual(advanced.get("type"), "checkbox")
+
 
 if __name__ == "__main__":
     unittest.main()
