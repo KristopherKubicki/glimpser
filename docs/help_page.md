@@ -30,3 +30,22 @@ Click **Live All** to switch every tile to a real-time feed and **Play All** to 
 Keyboard shortcuts help you navigate quickly: `Space` or `k` toggles play or pause, `m` mutes audio, `f` enters fullscreen, `[` and `]` change playback speed, and the arrow keys cycle cameras or media types. On phones and tablets, swipe left or right on the video to switch cameras or swipe up or down to change the media type.
 
 Navigate back to the main interface using the **Back to Glimpser** link at the bottom of the help page.
+
+## GitHub Resources
+
+If you run into a bug or have an idea for improvement, head over to the
+[issue tracker](https://github.com/KristopherKubicki/glimpser/issues). You can
+review open bug reports, ask for features, or create a new ticket.
+
+The project changelog and
+[release notes](https://github.com/KristopherKubicki/glimpser/releases) live on
+GitHub so you can see what's new in each version.
+
+Follow development by checking the list of
+[open pull requests](https://github.com/KristopherKubicki/glimpser/pulls) and
+additional tutorials in the
+[project wiki](https://github.com/KristopherKubicki/glimpser/wiki).
+
+We welcome pull requests! Review the
+[CONTRIBUTING](../CONTRIBUTING.md) guide and search existing issues before
+starting work on a patch.

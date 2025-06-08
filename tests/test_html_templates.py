@@ -92,6 +92,12 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIsNotNone(advanced, "advanced-toggle missing")
         self.assertEqual(advanced.get("type"), "checkbox")
 
+    def test_help_links_to_github(self):
+        path = Path("app/templates/help.html")
+        with open(path, encoding="utf-8") as f:
+            content = f.read()
+        self.assertIn("github.com/KristopherKubicki/glimpser", content)
+
 
 if __name__ == "__main__":
     unittest.main()
