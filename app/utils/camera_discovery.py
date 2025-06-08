@@ -4,7 +4,7 @@ import psutil
 import logging
 import xml.etree.ElementTree as ET
 from urllib.parse import urlparse
-from ipaddress import ip_network
+from ipaddress import ip_network, ip_address
 import os
 import glob
 import time
@@ -885,6 +885,25 @@ def _local_video_devices(base_path="/dev"):
     return devices
 
 
+def _filter_by_subnets(
+    cameras: list[dict], subnets: list[ip_network] | None
+) -> list[dict]:
+    """Return only entries whose IP falls within ``subnets``."""
+
+    if not subnets:
+        return cameras
+
+    filtered = []
+    for cam in cameras:
+        try:
+            addr = ip_address(cam.get("ip"))
+        except Exception:
+            continue
+        if any(addr in net for net in subnets):
+            filtered.append(cam)
+    return filtered
+
+
 def discover_cameras(progress_callback=None, subnets=None):
     """Discover cameras on the local network or provided ``subnets``.
 
@@ -898,6 +917,7 @@ def discover_cameras(progress_callback=None, subnets=None):
     """
     cameras: list[dict] = []
 
+    user_subnets = subnets
     if subnets is None:
         try:
             subnets = _local_subnets()
@@ -942,6 +962,8 @@ def discover_cameras(progress_callback=None, subnets=None):
             stage_cameras = []
             try:
                 stage_cameras = fut.result()
+                if user_subnets:
+                    stage_cameras = _filter_by_subnets(stage_cameras, user_subnets)
                 for cam in stage_cameras:
                     _add_mac_info(cam)
                 cameras.extend(stage_cameras)
