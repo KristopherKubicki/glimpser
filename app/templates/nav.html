@@ -110,7 +110,7 @@
         id="nav-clock"
         class="cool-clock"
         data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}"
-        style="{% if not CLOCK_NAVBAR %}display:none;{% endif %}"
+        style="{% if not CLOCK_NAVBAR %}display:none; {% endif %}--clock-size: {{ CLOCK_SIZE }}px; --clock-font-size: {{ (CLOCK_SIZE * 0.56)|int }}px;"
         title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming."
         aria-label="Open Live page for realtime streaming"
       >

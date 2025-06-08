@@ -70,6 +70,7 @@ from app.config import (
     CLOCK_OVERLAY,
     CLOCK_DIGITAL,
     CLOCK_NAVBAR,
+    CLOCK_SIZE,
 )
 from app.models import User, Summary
 from app.utils import (
@@ -1135,6 +1136,7 @@ def init_routes(app: Flask) -> None:
             CLOCK_OVERLAY=CLOCK_OVERLAY,
             CLOCK_DIGITAL=CLOCK_DIGITAL,
             CLOCK_NAVBAR=CLOCK_NAVBAR,
+            CLOCK_SIZE=CLOCK_SIZE,
         )
 
     # Add a new route for the extended health check

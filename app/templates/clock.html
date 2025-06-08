@@ -1,7 +1,11 @@
-{% extends 'base.html' %}
-{% block content %}
+{% extends 'base.html' %} {% block content %}
 <div class="clock-page">
-  <div class="cool-clock" id="pageClock" data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}">
+  <div
+    class="cool-clock"
+    id="pageClock"
+    data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}"
+    style="--clock-size: {{ CLOCK_SIZE }}px; --clock-font-size: {{ (CLOCK_SIZE * 0.56)|int }}px;"
+  >
     <div class="clock-face">
       <div class="clock-hands">
         <div class="hand hour-hand"></div>
@@ -12,5 +16,8 @@
     </div>
   </div>
 </div>
-<script type="module" src="{{ url_for('static', filename='js/clock.js') }}"></script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/clock.js') }}"
+></script>
 {% endblock %}

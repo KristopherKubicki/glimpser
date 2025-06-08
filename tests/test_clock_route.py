@@ -61,6 +61,7 @@ class TestClockRoute(unittest.TestCase):
             response = self.client.get("/clock")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Clock", response.data)
+        self.assertIn(b"--clock-size", response.data)
 
 
 if __name__ == "__main__":

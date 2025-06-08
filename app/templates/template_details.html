@@ -98,6 +98,7 @@ block content %}
       id="overlayClock"
       class="cool-clock clock-overlay"
       data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}"
+      style="--clock-size: {{ CLOCK_SIZE }}px; --clock-font-size: {{ (CLOCK_SIZE * 0.56)|int }}px;"
     >
       <div class="clock-face">
         <div class="clock-hands">

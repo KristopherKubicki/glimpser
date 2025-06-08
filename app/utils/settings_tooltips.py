@@ -26,6 +26,7 @@ SETTINGS_TOOLTIPS = {
     "CLOCK_OVERLAY": "Show clock on video overlay",
     "CLOCK_DIGITAL": "Display clock as digital text",
     "CLOCK_NAVBAR": "Show clock in the navigation bar",
+    "CLOCK_SIZE": "Clock size in pixels",
     "HEALTH_STATUS_ALWAYS_VISIBLE": "Keep the system performance icon visible",
     "MAX_COMPRESSED_VIDEO_AGE": "Days to keep archived videos",
     "NAV_ICON": "Path to the logo used in navigation",
@@ -78,6 +79,7 @@ SETTINGS_GROUPS = {
         "CLOCK_OVERLAY",
         "CLOCK_DIGITAL",
         "CLOCK_NAVBAR",
+        "CLOCK_SIZE",
     ],
     "Credentials & Management": [
         "USER_NAME",
@@ -136,6 +138,7 @@ SETTINGS_GROUPS = {
         "CLOCK_OVERLAY",
         "CLOCK_DIGITAL",
         "CLOCK_NAVBAR",
+        "CLOCK_SIZE",
         "CAP_ENDPOINT",
         "CAP_SENDER",
     ],
@@ -151,6 +154,7 @@ NUMERIC_FIELDS = {
     "WATCHDOG_FAILURE_THRESHOLD",
     "WATCHDOG_RESTART_COOLDOWN",
     "WATCHDOG_MAX_FILE_HANDLES",
+    "CLOCK_SIZE",
 }
 
 # Fields that expect email addresses.

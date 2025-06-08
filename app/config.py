@@ -264,6 +264,7 @@ SESSION_TIMEOUT_MINUTES = int(get_setting("SESSION_TIMEOUT_MINUTES", 30))
 CLOCK_OVERLAY = get_setting("CLOCK_OVERLAY", "False") == "True"
 CLOCK_DIGITAL = get_setting("CLOCK_DIGITAL", "False") == "True"
 CLOCK_NAVBAR = get_setting("CLOCK_NAVBAR", "True") == "True"
+CLOCK_SIZE = int(get_setting("CLOCK_SIZE", 25))
 
 # Load settings from the database
 SECRET_KEY = get_setting("SECRET_KEY", "default_secret_key")
