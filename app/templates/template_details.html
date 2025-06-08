@@ -766,8 +766,9 @@ block content %}
   <button onclick="openModal('edit-template-modal')" title="Edit this template">
     Edit Template
   </button>
-  <p><strong>Last Caption:</strong> {{ template_details.last_caption }}</p>
-  <p><strong>Caption Time:</strong> {{ template_details.last_caption_time }}</p>
+  <p title="{{ template_details.last_caption_time }}">
+    <strong>Last Caption:</strong> {{ template_details.last_caption }}
+  </p>
 </div>
 
 <script>
