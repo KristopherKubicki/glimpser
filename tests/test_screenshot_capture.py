@@ -5,7 +5,6 @@ from unittest.mock import patch, MagicMock
 import tempfile
 import os
 import sys
-import logging
 import io
 from PIL import Image
 

@@ -5,14 +5,12 @@ import json
 import re
 import time
 
-import requests
 import logging
 from typing import Optional
 
 from .api_utils import request_with_retry
 
 from app.config import CHATGPT_KEY, LLM_MODEL_VERSION, LLM_SUMMARY_PROMPT
-from app.utils.email_alerts import email_alert
 from app.utils import llm_cache
 
 last_429_error_time = None
