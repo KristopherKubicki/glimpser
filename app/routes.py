@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import sys
 import tempfile
 import time
@@ -2692,6 +2693,55 @@ def init_routes(app: Flask) -> None:
                 "message": f"Screenshot for {template_name} uploaded",
             }
         )
+
+    @app.route("/upload_nav_icon", methods=["POST"])
+    @login_required
+    def upload_nav_icon():
+        """Upload or choose a navigation logo."""
+
+        choice = request.form.get("logo_choice")
+        if choice in {"img/glimpser_small.png", "img/glimpser.png"}:
+            update_setting("NAV_ICON", choice)
+            flash("Navigation logo updated", "success")
+            return redirect(url_for("settings"))
+
+        if "logo_file" not in request.files:
+            flash("No logo file provided", "error")
+            return redirect(url_for("settings")), 400
+
+        logo_file = request.files["logo_file"]
+        if logo_file.filename == "":
+            flash("No logo file provided", "error")
+            return redirect(url_for("settings")), 400
+
+        if not allowed_filename(
+            logo_file.filename
+        ) or not logo_file.filename.lower().endswith(".png"):
+            flash("Invalid file name", "error")
+            return redirect(url_for("settings")), 400
+
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            logo_file.save(temp_file.name)
+            try:
+                img = Image.open(temp_file.name)
+                w, h = img.size
+                if h == 0 or not 2 <= w / h <= 10:
+                    os.unlink(temp_file.name)
+                    flash("Invalid aspect ratio", "error")
+                    return redirect(url_for("settings")), 400
+            except Exception:
+                os.unlink(temp_file.name)
+                flash("Invalid image file", "error")
+                return redirect(url_for("settings")), 400
+
+            dest_dir = os.path.join(app.static_folder, "img")
+            os.makedirs(dest_dir, exist_ok=True)
+            dest_name = secure_filename(logo_file.filename)
+            dest_path = os.path.join(dest_dir, dest_name)
+            shutil.move(temp_file.name, dest_path)
+            update_setting("NAV_ICON", f"img/{dest_name}")
+        flash("Navigation logo uploaded", "success")
+        return redirect(url_for("settings"))
 
     @app.route("/take_screenshot/<string:template_name>", methods=["POST", "GET"])
     @login_required
