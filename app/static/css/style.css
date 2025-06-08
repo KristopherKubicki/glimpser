@@ -1817,6 +1817,25 @@ details > summary {
   width: 80%;
   border-radius: 8px;
 }
+
+.edit-template-modal-content {
+  position: relative;
+}
+
+.edit-template-preview {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 240px;
+  height: 180px;
+}
+
+.edit-template-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
 #chat-modal .modal-content {
   width: 90%;
   max-width: 600px;

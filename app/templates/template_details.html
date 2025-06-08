@@ -869,7 +869,7 @@ block content %}
 </div>
 
 <div id="edit-template-modal" class="modal">
-  <div class="modal-content">
+  <div class="modal-content edit-template-modal-content">
     <span
       onclick="closeGenericModal('edit-template-modal')"
       class="close-icon"
@@ -877,6 +877,13 @@ block content %}
       >&times;</span
     >
     <div class="edit-template-container">
+      <div class="edit-template-preview">
+        <img
+          id="mini-live-preview"
+          src="/stream.mjpg?camera={{ template_name }}"
+          alt="Live preview"
+        />
+      </div>
       <h3>Edit Template Details</h3>
       <form
         id="edit-template-form"
