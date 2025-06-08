@@ -98,8 +98,10 @@ class GracefulAPScheduler(APScheduler):
                 # Shutdown the scheduler
                 super().shutdown(wait)
 
-                # Additional cleanup if needed
-                self._scheduler = None
+                # Reinitialize scheduler for future use without requiring a
+                # full application restart. This allows tests or other
+                # components to continue scheduling jobs after shutdown.
+                self.set_scheduler(BackgroundScheduler())
             else:
                 logging.info("Scheduler is not running.")
         except Exception as e:
