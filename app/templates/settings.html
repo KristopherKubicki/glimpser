@@ -46,15 +46,19 @@
     </a>
   </div>
 
-  <form method="POST" action="{{ url_for('settings') }}" id="settings-form">
+  <form
+    method="POST"
+    action="{{ url_for('settings') }}"
+    id="settings-form"
+    enctype="multipart/form-data"
+  >
     {% for name, opts in choices.items() %}
     <datalist id="{{ name }}-list">
       {% for opt in opts %}
       <option value="{{ opt }}"></option>
       {% endfor %}
     </datalist>
-    {% endfor %}
-    {% for group, items in grouped_settings.items() %}
+    {% endfor %} {% for group, items in grouped_settings.items() %}
     <div
       id="{{ group|replace(' ', '-') }}-tab"
       class="tab-content{% if loop.first %} active{% endif %}"
@@ -110,7 +114,15 @@
                 name="{{ setting.name }}"
                 value="{{ setting.value }}"
                 title="Edit value for {{ setting.name }}"
-                {% if setting.name in choices %}list="{{ setting.name }}-list"{% endif %}
+                {%
+                if
+                setting.name
+                in
+                choices
+                %}list="{{ setting.name }}-list"
+                {%
+                endif
+                %}
                 {%
                 if
                 setting.name
@@ -217,6 +229,31 @@
       >
         Update Chrome Shortcut
       </button>
+
+      {% call card('Navigation Logo') %}
+      <form
+        action="{{ url_for('upload_nav_icon') }}"
+        method="post"
+        enctype="multipart/form-data"
+      >
+        <label for="logo-choice" class="sr-only">Built-in logo</label>
+        <select
+          name="logo_choice"
+          id="logo-choice"
+          title="Select built-in logo"
+        >
+          <option value="img/glimpser_small.png">Default Small</option>
+          <option value="img/glimpser.png">Large</option>
+        </select>
+        <input
+          type="file"
+          name="logo_file"
+          accept="image/png"
+          title="Upload custom logo"
+        />
+        <button type="submit" title="Update navigation logo">Save Logo</button>
+      </form>
+      {% endcall %}
       <input
         type="hidden"
         id="name_to_delete"

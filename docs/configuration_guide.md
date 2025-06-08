@@ -28,7 +28,7 @@ Below are key settings loaded from the database with their default values. You
 can modify them in the application interface or directly in the database.
 
 - `NAME` – application name (default `glimpser`)
-- `NAV_ICON` – navigation logo path relative to the `static` directory. Set to an empty string to hide the logo (default `img/glimpser_small.png`)
+- `NAV_ICON` – navigation logo path relative to the `static` directory. Set to an empty string to hide the logo (default `img/glimpser_small.png`). The settings page now includes a form to upload a custom PNG logo or choose from the bundled options.
 - `VERSION` – application version (defaults to the installed package version and
   is updated automatically when it changes)
 - `LANG` – default language (default `en-US`). The settings page lists common language codes such as `en-US`, `es-ES`, `fr-FR`, `de-DE`, `zh-CN`, `ja-JP`, `pt-BR`, `hi-IN`, `ar-SA`, and `ru-RU`.
