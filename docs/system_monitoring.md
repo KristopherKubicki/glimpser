@@ -15,6 +15,10 @@ Below the system metrics the page lists each configured feed with a color-coded 
 - **Green** – the feed is updating on schedule.
 - **Yellow** – the last capture is behind its configured frequency.
 - **Red** – capturing failed or the feed is offline.
+- Cameras marked as **Danger** show a hazard icon when the feature is required.
+  The icon is orange if Danger mode is available but suppressed due to recent
+  user activity and red when Danger mode is disabled or Chrome's debugging port
+  is closed. Rows for disabled feeds are slightly greyed out.
 
 The dashboard also shows when the most recent system summary was generated. The
 same table appears on the _System Status_ tab under Settings so you can review
@@ -63,6 +67,7 @@ To filter logs by level and message text, you could request:
 3. Hover over each field for a tooltip explaining the filter.
 4. Results update automatically via `/stream_logs`.
 5. If the connection drops, the viewer automatically reconnects after a few seconds and shows a short notice while retrying. Duplicate requests with the same level and search text are ignored server-side to avoid unnecessary generators.
+6. When the connection cannot be established, the browser console now logs the EventSource state to aid troubleshooting.
 
 The log viewer reads log lines from memory, ensuring minimal disk overhead.
 

@@ -2,6 +2,8 @@
 
 The built-in help page is available at the `/help` route once you log in. It explains how to add templates, manage captures and settings, and use the command line interface. The page is cached after your first visit so you can read it even when you're offline.
 
+The help content is organized into **Basics**, **Usage**, **Advanced** and **Support** tabs so you can quickly jump to a topic. Each tab contains cards summarizing important actions.
+
 Key topics covered include:
 
 - Guided setup when you first launch the app.

@@ -113,6 +113,8 @@ export function setupVideoControls() {
   const seekBar = document.getElementById("seek-bar");
   const volumeBar = document.getElementById("volume-bar");
   const castButton = document.getElementById("cast-button");
+  const rotateButton = document.getElementById("rotate-video");
+  let rotateAngle = 0;
 
   if (playPauseButton) {
     playPauseButton.addEventListener("click", () => {
@@ -134,6 +136,13 @@ export function setupVideoControls() {
       else if (video.mozRequestFullScreen) video.mozRequestFullScreen();
       else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
       else if (video.msRequestFullscreen) video.msRequestFullscreen();
+    });
+  }
+  if (rotateButton) {
+    rotateButton.addEventListener("click", () => {
+      rotateAngle = (rotateAngle + 90) % 360;
+      const container = document.querySelector(".video-container");
+      if (container) container.style.transform = `rotate(${rotateAngle}deg)`;
     });
   }
   if (seekBar) {

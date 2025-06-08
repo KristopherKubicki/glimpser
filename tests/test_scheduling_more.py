@@ -42,6 +42,21 @@ class TestRunWithTimeout(unittest.TestCase):
         run_with_timeout(slow, args=(d,), timeout=0.2)
         self.assertIsNone(d.get("done"))
 
+    @patch("app.utils.scheduling.is_system_online", return_value=True)
+    @patch("app.utils.scheduling.cas_error")
+    @patch("app.utils.scheduling.mark_offline")
+    def test_timeout_marks_offline(self, mock_offline, mock_cas_error, _online):
+        def slow(name, template):
+            time.sleep(1)
+
+        run_with_timeout(
+            slow,
+            args=("cam1", {"url": "http://ex"}),
+            timeout=0.2,
+        )
+        mock_offline.assert_called_once_with("cam1")
+        mock_cas_error.assert_called_once_with("http://ex")
+
 
 class TestAddMotionAndCaption(unittest.TestCase):
     def test_image_updated_with_caption_and_motion(self):

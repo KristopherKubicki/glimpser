@@ -32,12 +32,15 @@ export function initCaptions() {
 
     chatOpen?.addEventListener("click", () => {
       if (chatModal) chatModal.style.display = "block";
+      if (chatAnswer) chatAnswer.textContent = "";
+      chatQuestion?.focus();
     });
     chatClose?.addEventListener("click", () => {
       if (chatModal) chatModal.style.display = "none";
     });
     chatSubmit?.addEventListener("click", async () => {
-      if (!chatQuestion || !chatQuestion.value) return;
+      if (!chatQuestion || !chatQuestion.value.trim()) return;
+      if (chatAnswer) chatAnswer.textContent = "Thinking...";
       const start = document.getElementById("caption-start")?.value;
       const end = document.getElementById("caption-end")?.value;
       const resp = await fetch("/captions_chat", {

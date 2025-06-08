@@ -35,7 +35,9 @@ export function initTemplates() {
       .getElementById("template-form")
       ?.closest("details");
     const slider = document.getElementById("grid-width-slider");
-    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    const isMobile = window.matchMedia(
+      "(hover: none) and (max-width: 767px)",
+    ).matches;
     const templateList = document.getElementById("template-list");
     const captionToggle = document.getElementById("toggle-captions");
     const MAX_THUMBNAIL_HEIGHT = 1080;
@@ -93,10 +95,14 @@ export function initTemplates() {
         );
 
         slider.min = computedMin;
-        slider.value = computedMin;
+        if (isMobile) {
+          slider.value = Math.min(window.innerWidth, slider.max);
+        } else {
+          slider.value = computedMin;
+        }
         document.documentElement.style.setProperty(
           "--tile-size",
-          `${computedMin}px`,
+          `${slider.value}px`,
         );
         slider.dispatchEvent(new Event("input"));
       };
@@ -316,7 +322,7 @@ export function formatExactTime(dateString) {
 }
 
 export function isMobile() {
-  return window.matchMedia("(hover: none)").matches;
+  return window.matchMedia("(hover: none) and (max-width: 767px)").matches;
 }
 
 export function computeBorderColor(ageMinutes, isError) {
@@ -703,7 +709,7 @@ export async function loadTemplates() {
           const templateDiv = document.createElement("div");
           templateDiv.classList.add("templateDiv");
           templateDiv.innerHTML = `
-            <img src="/last_screenshot/${name}" alt="${name}" style="width:100%">
+            <img src="/last_screenshot/${name}" alt="${name}" style="width:100%" title="${template.last_caption} (${humanizedTimestamp})">
             <div class="camera-name">${name}</div>
             <div class="timestamp" title="${
               lastScreenshotTime === NO_TIMESTAMP_PLACEHOLDER
