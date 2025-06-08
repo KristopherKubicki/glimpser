@@ -1310,18 +1310,23 @@ footer.fade-out {
 
 @media (max-width: 600px) {
   footer {
-    padding: 5px 10px 0;
+    padding: 0 10px;
+    height: 20px;
+    line-height: 20px;
   }
   .footer-nav {
     gap: 5px;
-    font-size: 0.85em;
+    font-size: 0.75em;
+  }
+  .footer-nav a {
+    padding: 0 4px;
   }
   .footer-copy,
   .footer-build {
     display: none;
   }
   main {
-    padding-bottom: 45px;
+    padding-bottom: 20px;
   }
 }
 .alert-success {
