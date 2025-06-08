@@ -17,7 +17,7 @@ beforeAll(async () => {
 
 global.fetch = jest.fn(() =>
   Promise.resolve({
-    json: () => Promise.resolve({ cam1: "$1.00" }),
+    json: () => Promise.resolve({ cam1: { cost: "$1.00", tokens: 1 } }),
   }),
 );
 
