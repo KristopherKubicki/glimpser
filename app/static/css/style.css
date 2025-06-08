@@ -211,11 +211,11 @@ h2 {
   margin-bottom: 10px;
 }
 
-#controls-wrapper:not([open]) #template-controls {
+#controls-wrapper.closed #template-controls {
   display: none;
 }
 
-#controls-wrapper summary {
+#controls-toggle {
   cursor: pointer;
   font-weight: 600;
   opacity: 0;
@@ -223,8 +223,8 @@ h2 {
   transition: opacity 0.5s;
 }
 
-#controls-wrapper.show-summary summary,
-#controls-wrapper[open] summary {
+#controls-wrapper.show-toggle #controls-toggle,
+#controls-wrapper:not(.closed) #controls-toggle {
   opacity: 1;
   pointer-events: auto;
 }
