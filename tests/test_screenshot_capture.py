@@ -30,8 +30,9 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
     @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
     def test_capture_screenshot_success(
-        self, mock_path, mock_version, mock_launch, mock_finalize
+        self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
     ):
         mock_driver = MagicMock()
         mock_launch.return_value = mock_driver
@@ -49,8 +50,9 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
     @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
     def test_capture_screenshot_with_popup(
-        self, mock_path, mock_version, mock_launch, mock_finalize
+        self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
     ):
         mock_driver = MagicMock()
         mock_launch.return_value = mock_driver
@@ -69,7 +71,8 @@ class TestScreenshotCapture(unittest.TestCase):
         mock_finalize.assert_called_once()
 
     @patch("app.utils.screenshots.webdriver.Chrome")
-    def test_capture_screenshot_failure(self, mock_chrome):
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
+    def test_capture_screenshot_failure(self, mock_online, mock_chrome):
         # Mock the Chrome driver to raise an exception
         mock_chrome.side_effect = Exception("Browser error")
 
@@ -85,8 +88,15 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
     @patch("app.utils.screenshots.create_placeholder")
     @patch("app.utils.screenshots.is_mostly_blank", return_value=True)
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
     def test_capture_screenshot_blank_image(
-        self, mock_blank, mock_placeholder, mock_get_path, mock_get_version, mock_launch
+        self,
+        mock_online,
+        mock_blank,
+        mock_placeholder,
+        mock_get_path,
+        mock_get_version,
+        mock_launch,
     ):
         mock_driver = MagicMock()
         mock_launch.return_value = mock_driver
@@ -116,8 +126,9 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
     @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
     def test_capture_screenshot_with_dark_mode(
-        self, mock_path, mock_version, mock_launch, mock_finalize
+        self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
     ):
         mock_driver = MagicMock()
         mock_launch.return_value = mock_driver
