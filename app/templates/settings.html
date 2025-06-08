@@ -114,6 +114,9 @@
                 name="{{ setting.name }}"
                 value="{{ setting.value }}"
                 title="Edit value for {{ setting.name }}"
+                {% if setting.name in placeholders %}
+                placeholder="{{ placeholders[setting.name] }}"
+                {% endif %}
                 {%
                 if
                 setting.name

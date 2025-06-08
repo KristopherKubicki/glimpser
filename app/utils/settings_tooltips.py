@@ -174,3 +174,12 @@ EMAIL_FIELDS = {"EMAIL_SENDER", "EMAIL_RECIPIENTS"}
 # Settings that are hidden behind the advanced toggle on the UI. Their
 # corresponding form inputs are disabled unless advanced mode is enabled.
 LOCKED_SETTINGS = {"CLIP_MODEL_NAME"}
+
+# Example placeholders displayed in the settings form.
+SETTINGS_PLACEHOLDERS = {
+    "EMAIL_SENDER": "your-email@example.com",
+    "EMAIL_RECIPIENTS": "recipient1@example.com,recipient2@example.com",
+    "EMAIL_SMTP_SERVER": "smtp.example.com",
+    "CAP_ENDPOINT": "https://alert.example.com",
+    "CAP_SENDER": "glimpser@example.com",
+}
