@@ -15,6 +15,7 @@ from app.utils.scheduling import (
     schedule_crawlers,
     schedule_summarization,
     schedule_discovery,
+    schedule_offline_job_processor,
     scheduler,
     start_log_caching,
     start_metrics_collection,
@@ -160,6 +161,7 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
                 id="retention_cleanup", func=retention_cleanup, trigger="cron", day="*"
             )
             schedule_summarization()
+            schedule_offline_job_processor()
             if DISCOVERY_AUTOSTART:
                 schedule_discovery()
 
