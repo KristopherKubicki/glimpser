@@ -711,6 +711,16 @@ function updateFrameTimestamp() {
   );
 }
 
+function setTimestampVisibility(show) {
+  const container = document.querySelector(".video-container");
+  if (!container) return;
+  if (show) {
+    updateFrameTimestamp();
+  } else {
+    container.removeAttribute("data-timestamp");
+  }
+}
+
 function refreshPNG() {
   image.src =
     "/last_screenshot/" +
@@ -1140,6 +1150,7 @@ function updateSeekBar() {
     seekBar.max = video.duration || 0;
     seekBar.value = video.currentTime || 0;
   }
+  setTimestampVisibility(show);
 }
 
 function updateJogShuttle() {
