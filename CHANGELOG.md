@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Footer warns when a newer release is available
 - Stream error overlay distinguishes network and unsupported format errors
 - Sortable KPI table on captions page with filtering
+- Captions chat modal adds keyboard shortcuts, server error feedback and a
+  conversation history panel
 
 ### Changed
 
