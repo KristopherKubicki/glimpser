@@ -835,14 +835,14 @@ nav a.active {
   }
 
   nav {
-    flex-direction: column; /* Stack navigation items on mobile */
-    align-items: flex-start;
+    flex-flow: row nowrap; /* Keep items on a single line */
+    align-items: center;
   }
 
   nav a {
-    margin-bottom: 5px; /* Add margin for stacked items */
-    font-size: 1.2rem; /* Bigger text for touch targets */
-    padding: 8px;
+    margin-bottom: 0;
+    font-size: inherit;
+    padding: 4px 6px;
   }
 
   /* Hide elements that waste space on mobile */
@@ -872,8 +872,8 @@ nav a.active {
 
   #nav-group-dropdown,
   #nav-camera-dropdown {
-    width: 100%;
-    margin-bottom: 5px;
+    width: auto;
+    margin-bottom: 0;
   }
 
   /* Enhance touch target sizes for mobile */
