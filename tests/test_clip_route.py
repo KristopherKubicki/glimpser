@@ -17,12 +17,15 @@ class TestClipRoute(unittest.TestCase):
     def setUp(self):
         self.app = Flask(__name__)
         self.login_patch = patch("app.routes.login_required", lambda x: x)
+        self.throttle_patch = patch("app.utils.throttle._last_calls", {})
         self.login_patch.start()
+        self.throttle_patch.start()
         init_routes(self.app)
         self.client = self.app.test_client()
 
     def tearDown(self):
         self.login_patch.stop()
+        self.throttle_patch.stop()
 
     @patch("app.routes.video_archiver.create_blank_video")
     @patch("app.routes._concat_copy")
