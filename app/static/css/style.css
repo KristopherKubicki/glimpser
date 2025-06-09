@@ -1934,13 +1934,6 @@ details > summary {
   margin-bottom: 0.5rem;
 }
 
-.scheduler-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
 /* Status dashboard */
 .feed-status {
   width: 100%;
@@ -2001,6 +1994,17 @@ details > summary {
   display: flex;
   align-items: center;
   margin-bottom: 0.25rem;
+}
+
+.metrics-list .metric-label {
+  display: inline-block;
+  width: 7rem;
+}
+
+.metrics-list .sparkline {
+  width: 6rem;
+  height: 1.25rem;
+  margin-left: 0.25rem;
 }
 
 .metric-bar {

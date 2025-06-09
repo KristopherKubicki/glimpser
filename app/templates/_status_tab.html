@@ -1,20 +1,23 @@
-<div class="scheduler-controls">
-  <button
-    id="toggle-scheduler"
-    class="btn btn-primary"
-    title="Start or stop the scheduler"
-  >
-    Loading...
-  </button>
-  <span id="scheduler-status" title="Current scheduler status"
-    >Checking status...</span
-  >
-</div>
-
 {% call card('System Metrics') %}
 <ul class="metrics-list">
+  <li title="Start or stop the scheduler">
+    <span class="metric-label">Scheduler:</span>
+    <button
+      id="toggle-scheduler"
+      class="btn btn-primary"
+      title="Start or stop the scheduler"
+    >
+      Loading...
+    </button>
+    <span
+      id="scheduler-status"
+      class="status-dot"
+      title="Green = running, red = stopped or error"
+      >Checking status...</span
+    >
+  </li>
   <li title="Current CPU utilization">
-    CPU Usage:
+    <span class="metric-label">CPU Usage:</span>
     <progress
       id="cpu-bar"
       class="metric-bar"
@@ -22,10 +25,15 @@
       max="100"
     ></progress>
     <span id="cpu-value">{{ metrics.cpu_usage }}%</span>
-    <canvas id="cpu-sparkline" width="100" height="20"></canvas>
+    <canvas
+      id="cpu-sparkline"
+      class="sparkline"
+      width="100"
+      height="20"
+    ></canvas>
   </li>
   <li title="Current memory utilization">
-    Memory Usage:
+    <span class="metric-label">Memory Usage:</span>
     <progress
       id="memory-bar"
       class="metric-bar"
@@ -33,9 +41,10 @@
       max="100"
     ></progress>
     <span id="memory-value">{{ metrics.memory_usage }}%</span>
+    <canvas class="sparkline" width="100" height="20"></canvas>
   </li>
   <li title="Disk space used">
-    Disk Usage:
+    <span class="metric-label">Disk Usage:</span>
     <progress
       id="disk-bar"
       class="metric-bar"
@@ -43,18 +52,22 @@
       max="100"
     ></progress>
     <span id="disk-value">{{ metrics.disk_usage }}%</span>
+    <canvas class="sparkline" width="100" height="20"></canvas>
   </li>
   <li title="Open file handles">
-    Open Files: <span id="open-files">{{ metrics.open_files }}</span>
+    <span class="metric-label">Open Files:</span>
+    <span id="open-files">{{ metrics.open_files }}</span>
   </li>
   <li title="Number of active threads">
-    Thread Count: <span id="thread-count">{{ metrics.thread_count }}</span>
+    <span class="metric-label">Thread Count:</span>
+    <span id="thread-count">{{ metrics.thread_count }}</span>
   </li>
   <li title="System uptime">
-    Uptime: <span id="uptime-value">{{ metrics.uptime }}</span>
+    <span class="metric-label">Uptime:</span>
+    <span id="uptime-value">{{ metrics.uptime }}</span>
   </li>
   <li title="GPU acceleration status">
-    GPU:
+    <span class="metric-label">GPU:</span>
     <span
       id="gpu-status"
       class="status-dot {{ 'ok' if metrics.ffmpeg_gpu_enabled else ('slow' if metrics.gpu_support else 'error') }}"
