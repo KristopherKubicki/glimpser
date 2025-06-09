@@ -1834,7 +1834,8 @@ def init_routes(app: Flask) -> None:
     def logout():
         session.pop("user_id", None)
         flash("You have been logged out successfully.", "success")
-        return redirect(url_for("login"))
+        # add query flag so client can clear persistent credentials
+        return redirect(url_for("login", logout="1"))
 
     @app.route("/")
     @login_required
