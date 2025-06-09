@@ -5,6 +5,7 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
+import json
 from PIL import Image
 import sys
 
@@ -15,7 +16,16 @@ from app.utils.scheduling import (
     run_with_timeout,
     add_motion_and_caption,
     get_system_metrics,
+    process_offline_jobs,
 )
+
+
+dummy_log = []
+
+
+def dummy_job(arg):
+    """Helper function for offline job tests."""
+    dummy_log.append(arg)
 
 
 class TestRunWithTimeout(unittest.TestCase):
@@ -42,6 +52,21 @@ class TestRunWithTimeout(unittest.TestCase):
         run_with_timeout(slow, args=(d,), timeout=0.2)
         self.assertIsNone(d.get("done"))
 
+    @patch("app.utils.scheduling.is_system_online", return_value=True)
+    @patch("app.utils.scheduling.cas_error")
+    @patch("app.utils.scheduling.mark_offline")
+    def test_timeout_marks_offline(self, mock_offline, mock_cas_error, _online):
+        def slow(name, template):
+            time.sleep(1)
+
+        run_with_timeout(
+            slow,
+            args=("cam1", {"url": "http://ex"}),
+            timeout=0.2,
+        )
+        mock_offline.assert_called_once_with("cam1")
+        mock_cas_error.assert_called_once_with("http://ex")
+
 
 class TestAddMotionAndCaption(unittest.TestCase):
     def test_image_updated_with_caption_and_motion(self):
@@ -61,10 +86,12 @@ class TestGetSystemMetrics(unittest.TestCase):
     @patch("app.utils.scheduling.ffmpeg_version", return_value="6.0")
     @patch("app.utils.scheduling.machine_supports_hwaccel", return_value=True)
     @patch("app.utils.scheduling.ffmpeg_supports_hwaccel", return_value=True)
+    @patch("app.utils.scheduling.shutil.which", return_value="/usr/bin/ffmpeg")
     @patch.object(scheduling, "FFMPEG_HWACCEL", "cuda")
     def test_metrics_fields(
         self,
-        mock_ffmpeg_hwaccel,
+        mock_which,
+        mock_ffmpeg_supports,
         mock_machine,
         mock_version,
         mock_psutil,
@@ -87,9 +114,96 @@ class TestGetSystemMetrics(unittest.TestCase):
         self.assertEqual(metrics["thread_count"], 5)
         self.assertTrue(metrics["uptime"].startswith("1h 1m"))
         self.assertEqual(metrics["ffmpeg_version"], "6.0")
+        self.assertEqual(metrics["ffmpeg_path"], "/usr/bin/ffmpeg")
         self.assertTrue(metrics["machine_hwaccel"])
         self.assertTrue(metrics["ffmpeg_hwaccel"])
         self.assertTrue(metrics["hwaccel_enabled"])
+        self.assertTrue(metrics["gpu_support"])
+        self.assertTrue(metrics["ffmpeg_gpu_enabled"])
+        self.assertTrue(metrics["danger_mode"])
+
+
+class TestOfflineJobQueue(unittest.TestCase):
+    @patch("app.utils.scheduling.multiprocessing.Process")
+    @patch("app.utils.scheduling.SessionLocal")
+    @patch("app.utils.scheduling.is_system_online", return_value=False)
+    def test_queue_created_when_offline(
+        self, _online, mock_session_local, mock_process
+    ):
+        class DummySession:
+            def __init__(self):
+                self.added = []
+                self.committed = False
+
+            def add(self, obj):
+                self.added.append(obj)
+
+            def commit(self):
+                self.committed = True
+
+            def rollback(self):
+                pass
+
+            def close(self):
+                pass
+
+        session = DummySession()
+        mock_session_local.return_value = session
+
+        run_with_timeout(lambda: None, timeout=1)
+
+        self.assertEqual(len(session.added), 1)
+        self.assertTrue(session.committed)
+        mock_process.assert_not_called()
+
+    @patch("app.utils.scheduling.is_system_online", return_value=True)
+    @patch("app.utils.scheduling.SessionLocal")
+    def test_process_runs_and_clears_jobs(self, mock_session_local, _online):
+        class DummyQuery:
+            def __init__(self, session):
+                self.session = session
+
+            def order_by(self, *args, **kwargs):
+                return self
+
+            def all(self):
+                return list(self.session.jobs)
+
+        class DummySession:
+            def __init__(self, jobs):
+                self.jobs = jobs
+                self.deleted = []
+
+            def query(self, model):
+                return DummyQuery(self)
+
+            def delete(self, obj):
+                self.deleted.append(obj)
+                self.jobs.remove(obj)
+
+            def commit(self):
+                pass
+
+            def rollback(self):
+                pass
+
+            def close(self):
+                pass
+
+        job = scheduling.OfflineJob(
+            function="tests.test_scheduling_more.dummy_job",
+            args=json.dumps(["ok"]),
+            timeout=1,
+            timestamp=0,
+        )
+        session = DummySession([job])
+        mock_session_local.return_value = session
+
+        with patch("app.utils.scheduling.run_with_timeout") as mock_run:
+            process_offline_jobs()
+
+        mock_run.assert_called_once()
+        self.assertIn(job, session.deleted)
 
 
 if __name__ == "__main__":

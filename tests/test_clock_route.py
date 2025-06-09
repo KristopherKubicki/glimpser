@@ -6,9 +6,7 @@ import tempfile
 import sys
 from unittest.mock import patch
 
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import app
 import app.config as config
@@ -41,7 +39,7 @@ class TestClockRoute(unittest.TestCase):
         )
         conn.commit()
         conn.close()
-        self.app = app.create_app(enable_watchdog=False, schedule=False)
+        self.app = app.create_app(enable_watchdog=False, schedule=False, log_cache=False)
         self.client = self.app.test_client()
         self.app_context = self.app.app_context()
         self.app_context.push()
