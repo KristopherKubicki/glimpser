@@ -1,9 +1,28 @@
 repos:
-  - repo: https://github.com/psf/black
-    rev: 24.4.2
+  - repo: local
     hooks:
       - id: black
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.2.0
-    hooks:
+        name: black
+        entry: black
+        language: system
+        types: [python]
       - id: flake8
+        name: flake8
+        entry: flake8
+        language: system
+        types: [python]
+      - id: lint-js
+        name: lint js
+        entry: npm run lint:js
+        language: system
+        pass_filenames: false
+      - id: format-js
+        name: format js write
+        entry: npm run format:js:write
+        language: system
+        pass_filenames: false
+      - id: lint-css
+        name: lint css
+        entry: npm run lint:css
+        language: system
+        pass_filenames: false
