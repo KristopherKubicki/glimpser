@@ -55,7 +55,7 @@ pip install -r requirements.txt
 ```
 
 The `requirements.txt` file now includes the CPU builds of **JAX 0.6.1** and
-**Flax 0.2.0**, along with updated `scikit-image` (0.25.0) and
+**Flax 0.8.5**, along with updated `scikit-image` (0.25.0) and
 `numpy` (1.25.0).
 
 ### 6. (Optional) Configure Environment Variables
