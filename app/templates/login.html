@@ -1,28 +1,58 @@
-{% extends 'base.html' %}
-{% block content %}
-    <div class="login-wrapper">
-    <div class="login-container" title="Login form">
-        <h2>Login Required</h2>
-        <form id="login-form" method="post" title="Enter your credentials to log in">
-            Username:<br>
-            <input type="text" name="username" required title="Enter your username"><br>
-            Password:<br>
-            <input type="password" name="password" required title="Enter your password"><br><br>
-            <div id="login-error" class="form-error hidden"></div>
+{% extends 'base.html' %} {% from 'components.html' import card %} {% block
+content %}
+<div class="login-wrapper">
+  {% call card('Secure Sign In') %}
+  <div class="login-icon" aria-hidden="true">
+    <svg width="40" height="40">
+      <use href="{{ url_for('static', filename='icons/sprite.svg') }}#lock" />
+    </svg>
+  </div>
+  <p id="security-note" class="security-note"></p>
+  <form
+    id="login-form"
+    method="post"
+    class="login-form"
+    autocomplete="off"
+    title="Enter your credentials"
+  >
+    <div class="form-field">
+      <label for="username" class="sr-only">Username</label>
+      <input
+        id="username"
+        type="text"
+        name="username"
+        placeholder="Username"
+        required
+        title="Enter your username"
+      />
+    </div>
+    <div class="form-field">
+      <label for="password" class="sr-only">Password</label>
+      <input
+        id="password"
+        type="password"
+        name="password"
+        placeholder="Password"
+        required
+        title="Enter your password"
+      />
+    </div>
+    <div id="login-error" class="form-error hidden"></div>
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            <div class="flash-messages">
-                {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            </div>
-            {% endif %}
-            {% endwith %}
-            <input type="submit" value="Login" title="Click to log in">
-        </form>
+    {% with messages = get_flashed_messages(with_categories=true) %} {% if
+    messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
     </div>
-    </div>
-    <script type="module" src="{{ url_for('static', filename='js/login.js') }}"></script>
+    {% endif %} {% endwith %}
+    <input type="submit" value="Login" title="Click to log in" />
+  </form>
+  {% endcall %}
+</div>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/login.js') }}"
+></script>
 {% endblock %}
-

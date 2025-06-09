@@ -9,6 +9,7 @@ import re
 import psutil
 import threading
 import time
+import select
 import multiprocessing
 from collections import deque
 import subprocess
@@ -18,7 +19,7 @@ import textwrap
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
 from flask_apscheduler import APScheduler
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 from transformers import CLIPProcessor, CLIPModel
 
 from app.config import (
@@ -30,10 +31,12 @@ from app.config import (
     LOGGING_PATH,
     FFMPEG_PATH,
     FFMPEG_HWACCEL,
+    get_setting,
 )
 from app.utils.db import SessionLocal
-from app.models import Summary
+from app.models import Summary, OfflineJob
 from .network import is_system_online
+import importlib
 
 from .detect import calculate_difference_fast
 from .image_processing import chatgpt_compare
@@ -45,6 +48,9 @@ from .screenshots import (
     is_mostly_blank,
     throttle_cache,
     load_font,
+    cas_error,
+    check_user_activity,
+    is_chrome_debug_port_open,
 )
 from .template_manager import (
     get_template,
@@ -67,7 +73,6 @@ from .http_callbacks import send_http_callback
 from . import camera_discovery
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from concurrent.futures import ProcessPoolExecutor, TimeoutError
 
 logging.getLogger("apscheduler").setLevel(logging.WARNING)
 
@@ -93,8 +98,10 @@ class GracefulAPScheduler(APScheduler):
                 # Shutdown the scheduler
                 super().shutdown(wait)
 
-                # Additional cleanup if needed
-                self._scheduler = None
+                # Reinitialize scheduler for future use without requiring a
+                # full application restart. This allows tests or other
+                # components to continue scheduling jobs after shutdown.
+                self.set_scheduler(BackgroundScheduler())
             else:
                 logging.info("Scheduler is not running.")
         except Exception as e:
@@ -122,6 +129,22 @@ def run_with_timeout(func, args=(), timeout=300):
                 mark_offline(args[0])
             except Exception:
                 pass
+        session = SessionLocal()
+        try:
+            session.add(
+                OfflineJob(
+                    function=f"{func.__module__}.{func.__name__}",
+                    args=json.dumps(list(args)),
+                    timeout=timeout,
+                    timestamp=int(time.time()),
+                )
+            )
+            session.commit()
+        except Exception as exc:
+            session.rollback()
+            logging.error("Failed to queue offline job: %s", exc)
+        finally:
+            session.close()
         return
 
     try:
@@ -145,6 +168,18 @@ def run_with_timeout(func, args=(), timeout=300):
         process.terminate()
         process.join()
         logging.warning("Process terminated due to timeout")
+        if args and isinstance(args[0], str):
+            try:
+                mark_offline(args[0])
+            except Exception:
+                pass
+            try:
+                if len(args) > 1 and isinstance(args[1], dict):
+                    url = args[1].get("url")
+                    if url:
+                        cas_error(url)
+            except Exception:
+                pass
 
 
 MAX_IMAGE_TIME_DIFF = datetime.timedelta(minutes=5)
@@ -561,7 +596,6 @@ def update_camera(name, template, image_file=None, motion=False):
                         image_paths.append(closest_image_path)
                 except Exception as e:
                     logging.warning("caption parsing error %s", e)
-                    pass
 
             image_paths.append(os.path.join(directory, png_files[-1]))
 
@@ -769,8 +803,7 @@ def update_summary():
                 except Exception as e:
                     logging.error("error %s %s", e, template)
                     logging.debug("NOTES: %s", fnotes)
-                    logging.debug("GNTES: %s", fnotes)
-                    pass
+                    logging.debug("GNOTES: %s", gnotes)
 
             lstring += (
                 "name: "
@@ -939,18 +972,6 @@ def schedule_crawlers():
                 replace_existing=True,
             )
 
-            """
-            scheduler.add_job(
-                func=update_camera,
-                trigger="interval",
-                seconds=seconds,
-                start_date=datetime.datetime.now()
-                + datetime.timedelta(seconds=offset_delay_seconds),
-                args=[name, template],
-                id=name,
-                replace_existing=True,
-            )
-            """
         except Exception as e:
             logging.error("job schedule error: %s", e)
             logging.error(f"Error scheduling job for {name}: {e}")
@@ -964,14 +985,6 @@ def schedule_crawlers():
             args=(init_crawl, (), 300),
             id="init_crawl",
         )
-        """
-        scheduler.add_job(
-            func=init_crawl,
-            trigger="date",
-            run_date=datetime.datetime.now() + datetime.timedelta(minutes=3),
-            id="init_crawl",
-        )
-        """
     except Exception as e:
         logging.error(f"Error scheduling initial crawl: {e}")
 
@@ -1020,8 +1033,12 @@ def ffmpeg_supports_hwaccel() -> bool:
 
 
 def collect_system_metrics():
+    """Continuously update CPU and memory metrics."""
+    # Prime psutil's CPU measurement to avoid blocking on the first call
+    psutil.cpu_percent(interval=None)
     while not stop_event.is_set():
-        system_metrics["cpu_usage"] = psutil.cpu_percent(interval=1)
+        # Non-blocking call since we primed above
+        system_metrics["cpu_usage"] = psutil.cpu_percent(interval=None)
         system_metrics["memory_usage"] = psutil.virtual_memory().percent
         system_metrics["thread_count"] = threading.active_count()
         time.sleep(5)  # Collect metrics every 5 seconds
@@ -1037,6 +1054,7 @@ def get_system_metrics():
     uptime = time.time() - system_metrics["start_time"]
     disk_usage = psutil.disk_usage("/").percent
     open_files = len(psutil.Process().open_files())
+    ffmpeg_path = shutil.which(FFMPEG_PATH) or FFMPEG_PATH
     return {
         "cpu_usage": round(system_metrics["cpu_usage"], 1),
         "memory_usage": round(system_metrics["memory_usage"], 1),
@@ -1045,9 +1063,15 @@ def get_system_metrics():
         "thread_count": system_metrics["thread_count"],
         "uptime": f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s",
         "ffmpeg_version": ffmpeg_version(),
+        "ffmpeg_path": ffmpeg_path,
         "machine_hwaccel": machine_supports_hwaccel(),
         "ffmpeg_hwaccel": ffmpeg_supports_hwaccel(),
         "hwaccel_enabled": bool(FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false"),
+        "gpu_support": machine_supports_hwaccel(),
+        "ffmpeg_gpu_enabled": bool(
+            FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false"
+        ),
+        "danger_mode": get_setting("DANGER_MODE", "True") == "True",
     }
 
 
@@ -1065,32 +1089,34 @@ def cache_logs():
             file.seek(0, os.SEEK_END)  # Start at end of file
             while not stop_event.is_set():
                 new_log = file.readline()
-                if new_log:
-                    with log_cache_lock:
-                        truncated_log = (
-                            new_log[:500] + "..." if len(new_log) > 500 else new_log
-                        )
-                        log_parts = truncated_log.strip().split(" - ", 3)
-                        if len(log_parts) >= 4:
-                            timestamp_str, log_level, log_source, log_message = (
-                                log_parts
+                if not new_log:
+                    # Avoid busy looping when no new log lines are written.
+                    time.sleep(1)
+                    # The file may have been truncated. Seek to end and retry.
+                    file.seek(0, os.SEEK_END)
+                    continue
+
+                with log_cache_lock:
+                    truncated_log = (
+                        new_log[:500] + "..." if len(new_log) > 500 else new_log
+                    )
+                    log_parts = truncated_log.strip().split(" - ", 3)
+                    if len(log_parts) >= 4:
+                        timestamp_str, log_level, log_source, log_message = log_parts
+                        try:
+                            timestamp = datetime.datetime.strptime(
+                                timestamp_str, "%Y-%m-%d %H:%M:%S,%f"
                             )
-                            try:
-                                timestamp = datetime.datetime.strptime(
-                                    timestamp_str, "%Y-%m-%d %H:%M:%S,%f"
-                                )
-                                log_cache.append(
-                                    {
-                                        "timestamp": timestamp,
-                                        "level": log_level,
-                                        "source": log_source,
-                                        "message": log_message,
-                                    }
-                                )
-                            except ValueError:
-                                continue  # Skip incorrect timestamp format
-                else:
-                    time.sleep(1)  # Sleep briefly to avoid high CPU usage
+                            log_cache.append(
+                                {
+                                    "timestamp": timestamp,
+                                    "level": log_level,
+                                    "source": log_source,
+                                    "message": log_message,
+                                }
+                            )
+                        except ValueError:
+                            continue  # Skip incorrect timestamp format
     except Exception as e:
         logging.error(f"Error in cache_logs: {e}")
 
@@ -1119,6 +1145,10 @@ def get_feed_status():
     templates = get_templates()
     now = datetime.datetime.utcnow()
     feeds = []
+
+    danger_enabled = get_setting("DANGER_MODE", "True") == "True"
+    port_open = is_chrome_debug_port_open("127.0.0.1", 9222)
+    user_idle = not check_user_activity(timeout=1)
 
     def _humanize(ts: str | None) -> str | None:
         """Return a simple "time ago" string for the given timestamp."""
@@ -1151,7 +1181,7 @@ def get_feed_status():
             return None
         try:
             dt = datetime.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-            return dt.isoformat() + "Z"
+            return dt.isoformat()
         except Exception:
             return ts
 
@@ -1167,6 +1197,28 @@ def get_feed_status():
         storage_bytes = get_storage_usage_bytes(name)
         llm_responses = get_llm_response_count(name)
         llm_cost = get_llm_cost_estimate(name)
+        headless = bool(template.get("headless", True))
+        stealth = bool(template.get("stealth", False))
+        browser = bool(template.get("browser", False))
+
+        if browser:
+            camera_type = "browser"
+        elif headless and stealth:
+            camera_type = "headless-stealth"
+        elif headless:
+            camera_type = "headless"
+        elif stealth:
+            camera_type = "stealth"
+        else:
+            camera_type = "standard"
+
+        camera_tooltip = {
+            "browser": "Full browser",
+            "headless-stealth": "Headless with stealth",
+            "headless": "Headless",
+            "stealth": "Stealth",
+            "standard": "Standard",
+        }[camera_type]
 
         status = "ok"
         tooltip_parts: list[str] = []
@@ -1209,6 +1261,14 @@ def get_feed_status():
 
         tooltip = " | ".join(tooltip_parts) if tooltip_parts else "OK"
 
+        danger = bool(template.get("danger", False))
+        danger_reason = None
+        if danger:
+            if not (danger_enabled and port_open):
+                danger_reason = "disabled"
+            elif not user_idle:
+                danger_reason = "user"
+
         feeds.append(
             {
                 "name": name,
@@ -1218,12 +1278,16 @@ def get_feed_status():
                 "last_caption_display": _humanize(last_caption),
                 "status": status,
                 "tooltip": tooltip,
+                "camera_type": camera_type,
+                "camera_tooltip": camera_tooltip,
                 "screenshot_count": shot_count,
                 "video_count": video_count,
                 "storage_usage": storage,
                 "storage_usage_bytes": storage_bytes,
                 "llm_response_count": llm_responses,
                 "llm_cost_estimate": llm_cost,
+                "danger": danger,
+                "danger_reason": danger_reason,
             }
         )
 
@@ -1338,3 +1402,44 @@ def stop_discovery() -> None:
         scheduler.remove_job("background_discovery")
     except Exception:
         pass
+
+
+def process_offline_jobs() -> None:
+    """Run any jobs queued while the system was offline."""
+
+    if not is_system_online():
+        return
+
+    session = SessionLocal()
+    try:
+        jobs = session.query(OfflineJob).order_by(OfflineJob.id).all()
+        for job in jobs:
+            try:
+                module_name, func_name = job.function.rsplit(".", 1)
+                mod = importlib.import_module(module_name)
+                func = getattr(mod, func_name)
+                run_with_timeout(
+                    func, args=tuple(json.loads(job.args)), timeout=job.timeout
+                )
+                session.delete(job)
+                session.commit()
+            except Exception as exc:
+                session.rollback()
+                logging.error("Failed to run offline job %s: %s", job.id, exc)
+    finally:
+        session.close()
+
+
+def schedule_offline_job_processor() -> None:
+    """Schedule periodic processing of queued offline jobs."""
+
+    try:
+        scheduler.add_job(
+            func=process_offline_jobs,
+            trigger="interval",
+            seconds=30,
+            id="process_offline_jobs",
+            replace_existing=True,
+        )
+    except Exception as e:
+        logging.error("job schedule error: %s", e)

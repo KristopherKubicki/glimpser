@@ -1,51 +1,118 @@
 {% if NAV_ICON %}
 <h1>
   <a href="/" title="Home">
-    <img src="{{ url_for('static', filename=NAV_ICON) }}" loading="lazy" alt="Glimpser logo" title="Glimpser" />
+    <img
+      src="{{ url_for('static', filename=NAV_ICON) }}"
+      loading="lazy"
+      alt="Glimpser logo"
+      title="Glimpser"
+    />
   </a>
 </h1>
 {% endif %}
-<div id="caption-chyron" class="caption-chyron" aria-live="polite" data-speed="{{ CHYRON_SPEED }}"></div>
+<div
+  id="caption-chyron"
+  class="caption-chyron"
+  aria-live="polite"
+  data-speed="{{ CHYRON_SPEED }}"
+></div>
 <nav>
-  <button id="menu-toggle" class="menu-toggle" aria-label="Toggle navigation">☰</button>
+  {% if session.get('user_id') %}
   <div class="nav-left">
+    {% if template_details is defined %} {% if template_details.get('groups') %}
+    {% set __back_url = '/group/' ~
+    template_details.get('groups').split(',')[0].strip() %} {% set __back_title
+    = 'Back to Group' %} {% else %} {% set __back_url = url_for('index') %} {%
+    set __back_title = 'Back to Dashboard' %} {% endif %} {% endif %}
     <select id="nav-group-dropdown" title="Jump to group"></select>
-    <select id="nav-camera-dropdown" title="Jump to camera" style="display:none"></select>
+    <select
+      id="nav-camera-dropdown"
+      title="Jump to camera"
+      style="display: none"
+    ></select>
     <!-- Discover icon moved to nav-right for consistency -->
   </div>
+  {% endif %}
 
   <div class="nav-center">
     {% if template_name %}
-    <h1><a href="/templates/{{ template_name }}" title="View template {{ template_name }}">{{ template_name }}</a></h1>
+    <h1>
+      <a
+        href="/templates/{{ template_name }}"
+        title="View template {{ template_name }}"
+        >{{ template_name }}</a
+      >
+    </h1>
     {% endif %}
   </div>
 
   <div class="nav-right">
     {% if session.get('user_id') %}
-    <a id="health-status" href="/settings?tab=status-tab" class="status-indicator" title="System Performance" aria-label="System Performance" data-always-visible="{{ 'true' if HEALTH_STATUS_ALWAYS_VISIBLE else 'false' }}">
+    <a
+      id="health-status"
+      href="/settings?tab=status-tab"
+      class="status-indicator"
+      title="System Performance"
+      aria-label="System Performance"
+      data-always-visible="{{ 'true' if HEALTH_STATUS_ALWAYS_VISIBLE else 'false' }}"
+    >
       <svg width="18" height="18">
-        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#check" />
+        <use
+          href="{{ url_for('static', filename='icons/sprite.svg') }}#check"
+        />
       </svg>
     </a>
-    <a id="danger-status" href="/danger" class="status-indicator" title="Danger Mode" aria-label="Danger Mode" style="display:none;">
+    <a
+      id="danger-status"
+      href="/danger"
+      class="status-indicator"
+      title="Danger Mode"
+      aria-label="Danger Mode"
+      style="display: none"
+    >
       <svg width="18" height="18">
-        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#alert" />
+        <use
+          href="{{ url_for('static', filename='icons/sprite.svg') }}#alert"
+        />
       </svg>
     </a>
-    <a id="discover-status" href="/settings?tab=discover-tab" class="status-indicator" title="Discover Cameras" aria-label="Discover Cameras" style="display:none;">
+    <a
+      id="discover-status"
+      href="/settings?tab=discover-tab"
+      class="status-indicator"
+      title="Discover Cameras"
+      aria-label="Discover Cameras"
+      style="display: none"
+    >
       <svg width="20" height="20">
-        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#search" />
+        <use
+          href="{{ url_for('static', filename='icons/sprite.svg') }}#search"
+        />
       </svg>
     </a>
     <div class="caption-container">
-      <a href="/captions" id="captions" class="settings-icon" title="Read and update camera LLMs" aria-label="Read and update camera LLMs">
+      <a
+        href="/captions"
+        id="captions"
+        class="settings-icon"
+        aria-label="Read and update camera LLMs"
+      >
         <svg width="20" height="20">
-          <use href="{{ url_for('static', filename='icons/sprite.svg') }}#comment" />
+          <use
+            href="{{ url_for('static', filename='icons/sprite.svg') }}#closed-caption"
+          />
         </svg>
       </a>
     </div>
     <a href="/live" id="live" aria-label="Open Live page">
-      <div id="navClock" class="cool-clock" data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}" style="{% if not CLOCK_NAVBAR %}display:none;{% endif %}" title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming." aria-label="Open Live page for realtime streaming">
+      <div
+        id="nav-clock"
+        class="cool-clock"
+        data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}"
+        style="{% if not CLOCK_NAVBAR %}display:none;{% endif %}"
+        title="Open the Live page. Select a camera and choose 'Live Video' for realtime streaming."
+        aria-label="Open Live page for realtime streaming"
+      >
         <div class="clock-face">
           <div class="clock-hands">
             <div class="hand hour-hand"></div>
@@ -56,17 +123,17 @@
         </div>
       </div>
     </a>
-      <a href="/settings" class="settings-icon" title="Update settings" aria-label="Update settings">
-        <svg width="20" height="20">
-          <use href="{{ url_for('static', filename='icons/sprite.svg') }}#gear" />
-        </svg>
-      </a>
-      {% else %}
-    <a href="{{ url_for('login') }}" class="settings-icon" title="Login" aria-label="Login">
+    <a
+      href="/settings"
+      class="settings-icon"
+      title="Update settings"
+      aria-label="Update settings"
+    >
       <svg width="20" height="20">
-        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#login" />
+        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#gear" />
       </svg>
     </a>
-    {% endif %}
+    {# login link removed from nav bar #}
   </div>
 </nav>
+{% endif %}

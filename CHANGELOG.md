@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Live video streaming endpoint `/live_video`
 - Python 3.11 compatibility
 - Python 3.12 compatibility
+- Python 3.13 compatibility
 - mDNS/Zeroconf camera discovery
 - MAC vendor lookup now consults local databases and an online API
 - Footer warns when a newer release is available
@@ -44,8 +45,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped scikit-image to 0.25.0
 - Bumped numpy to 1.26.0
 - Updated default VERSION to 0.2.7 for footer display
+- The footer name now links to https://glimpser.net
 - Bulk tools menu is expanded by default on the captions page
 - Enumerated settings use a single autocomplete field instead of a dropdown and separate text box
+- Live video retries now use exponential backoff to reduce repeated ffmpeg errors
+- Template toolbar now anchors to the lower left of detail pages
+- Image thumbnails show captions in their tooltips
+- Dashboard tiles now use the `/clip` endpoint to loop the last two minutes of footage
 
 ### Fixed
 
@@ -61,8 +67,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Loop playback no longer logs "NotAllowedError" when the browser blocks
   auto-play.
 - Fixed a crash on the login page caused by missing clock elements in `nav.js`.
+- Removed a duplicate form on the settings page that caused repeated element IDs
 - Prevented undefined camera requests from returning 404 errors when switching
   live sources.
+- Build details are hidden on small screens to avoid clutter.
+- Sanitized log messages in the UI to prevent XSS vulnerabilities
 
 ## [0.2.7] - 2025-06-02
 

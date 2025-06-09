@@ -1,20 +1,392 @@
-{# Shared UI components #}
-{% macro confirm_modal(name, message='Are you sure?', confirm='Confirm', cancel='Cancel') -%}
+{# Shared UI components #} {% macro confirm_modal(name, message='Are you sure?',
+confirm='Confirm', cancel='Cancel') -%}
 <div id="{{ name }}-modal" class="modal">
   <div class="modal-content">
-    <span id="{{ name }}-close" class="close-icon" title="Close dialog">&times;</span>
+    <span id="{{ name }}-close" class="close-icon" title="Close dialog"
+      >&times;</span
+    >
     <p id="{{ name }}-modal-message">{{ message }}</p>
-    <button id="{{ name }}-confirm" title="Confirm this action">{{ confirm }}</button>
-    <button id="{{ name }}-cancel" title="Cancel and close">{{ cancel }}</button>
+    <button id="{{ name }}-confirm" title="Confirm this action">
+      {{ confirm }}
+    </button>
+    <button id="{{ name }}-cancel" title="Cancel and close">
+      {{ cancel }}
+    </button>
   </div>
 </div>
-{%- endmacro %}
-
-{% macro card(title) -%}
+{%- endmacro %} {% macro status_legend() -%}
+<span id="status-legend">
+  <span class="status-item">
+    <span class="status-box recent" aria-hidden="true"></span>
+    Recent
+  </span>
+  <span class="status-item">
+    <span class="status-box error" aria-hidden="true"></span>
+    Error
+  </span>
+</span>
+{%- endmacro %} {% macro card(title) -%}
 <div class="card">
   <div class="card-header">{{ title }}</div>
-  <div class="card-body">
+  <div class="card-body">{{ caller() }}</div>
+</div>
+{%- endmacro %} {%- macro template_controls() -%}
+<div id="controls-wrapper">
+  <section id="template-controls">
     {{ caller() }}
+    <input
+      type="text"
+      id="search-input"
+      placeholder="Search cameras"
+      title="Enter search terms or docs keywords"
+    />
+    <input
+      type="range"
+      id="grid-width-slider"
+      min="50"
+      max="3840"
+      value="360"
+      title="Adjust the width of the template grid"
+    />
+    {{ status_legend() }}
+    <button
+      id="caption-toggle"
+      class="settings-icon"
+      aria-label="Toggle caption overlays"
+      title="Toggle caption overlays"
+    >
+      <svg
+        class="w-5 h-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        aria-hidden="true"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M21 4H3a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Zm-11 8.5h-2v3h2a1.5 1.5 0 1 0 0-3Zm7 0h-2v3h2a1.5 1.5 0 1 0 0-3Z"
+        />
+      </svg>
+    </button>
+    <button id="play-all-button" title="Play/Stop all videos">Play All</button>
+    <button
+      id="live-all-button"
+      class="hidden"
+      title="Return to latest screenshot"
+    >
+      Live
+    </button>
+  </section>
+</div>
+{%- endmacro %} {%- macro template_form(form_id, action, template=None,
+preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
+<div class="edit-template-container">
+  {% if preview_src or preview_id %}
+  <div class="edit-template-preview">
+    <img
+      src="{{ preview_src }}"
+      {%
+      if
+      preview_id
+      %}id="{{ preview_id }}"
+      {%
+      endif
+      %}
+      alt="Live preview"
+    />
   </div>
+  {% endif %}
+  <form
+    id="{{ form_id }}"
+    action="{{ action }}"
+    method="post"
+    onsubmit="window.sendTelemetry && sendTelemetry('template_submit'); return validateForm()"
+    title="Enter template details"
+  >
+    <div>
+      {% if include_name %}
+      <label for="name" title="Name of the template">Template Name:</label>
+      <input
+        type="text"
+        id="name"
+        name="name"
+        value="{{ template.name if template else '' }}"
+        required
+        placeholder="My Camera"
+        title="Enter a unique name for this template"
+      />
+      {% endif %}
+
+      <label for="url" title="URL to monitor">URL:</label>
+      <input
+        type="url"
+        id="url"
+        name="url"
+        value="{{ template.url if template else '' }}"
+        required
+        pattern="https?://.+"
+        placeholder="https://example.com/video"
+        title="Enter the URL to monitor"
+      />
+      <span id="url-status" class="url-status" title="URL test result"></span>
+
+      <label for="frequency" title="How often to check the URL"
+        >Frequency (minutes):</label
+      >
+      <input
+        type="number"
+        id="frequency"
+        name="frequency"
+        value="{{ template.frequency if template else 30 }}"
+        min="0.1"
+        step="0.1"
+        required
+        placeholder="30"
+        title="Enter how often to check the URL (in minutes)"
+      />
+
+      <label for="timeout" title="Maximum time to wait for a response"
+        >Timeout (seconds):</label
+      >
+      <input
+        type="number"
+        id="timeout"
+        name="timeout"
+        value="{{ template.timeout if template else 10 }}"
+        min="1"
+        required
+        placeholder="10"
+        title="Enter the maximum time to wait for a response (in seconds)"
+      />
+
+      <label for="notes" title="Additional notes">Notes:</label>
+      <textarea
+        id="notes"
+        name="notes"
+        placeholder="Optional notes"
+        title="Enter any additional notes or comments"
+      >
+{{ template.notes if template else '' }}</textarea
+      >
+
+      <label for="object_filter" title="Filter for specific objects"
+        >Object Filter:</label
+      >
+      <input
+        type="text"
+        id="object_filter"
+        name="object_filter"
+        value="{{ template.object_filter if template else '' }}"
+        placeholder="person,car"
+        title="Enter object types to filter (e.g., 'person,car')"
+      />
+
+      <label
+        for="object_confidence"
+        title="Minimum confidence for object detection"
+        >Object Confidence:</label
+      >
+      <input
+        type="number"
+        id="object_confidence"
+        name="object_confidence"
+        value="{{ template.object_confidence if template else '' }}"
+        min="0"
+        max="1"
+        step="0.01"
+        placeholder="0.5"
+        title="Enter the minimum confidence level for object detection (0-1)"
+      />
+
+      <label for="popup_xpath">Popup XPath:</label>
+      <div class="xpath-input-container">
+        <input
+          type="text"
+          id="popup_xpath"
+          name="popup_xpath"
+          value="{{ template.popup_xpath if template else '' }}"
+        />
+        <button
+          type="button"
+          onclick="showStructuredInput('popup_xpath')"
+          title="Open structured XPath editor"
+        >
+          Structured
+        </button>
+      </div>
+
+      <label for="dedicated_xpath">Dedicated XPath:</label>
+      <div class="xpath-input-container">
+        <input
+          type="text"
+          id="dedicated_xpath"
+          name="dedicated_xpath"
+          value="{{ template.dedicated_xpath if template else '' }}"
+        />
+        <button
+          type="button"
+          onclick="showStructuredInput('dedicated_xpath')"
+          title="Open structured XPath editor"
+        >
+          Structured
+        </button>
+      </div>
+
+      <label for="callback_url" title="URL for notifications"
+        >Callback URL:</label
+      >
+      <input
+        type="url"
+        id="callback_url"
+        name="callback_url"
+        value="{{ template.callback_url if template else '' }}"
+        placeholder="https://example.com/callback"
+        title="Enter URL to receive notifications"
+      />
+
+      <label for="proxy" title="Proxy server address">Proxy:</label>
+      <input
+        type="text"
+        id="proxy"
+        name="proxy"
+        value="{{ template.proxy if template else '' }}"
+        placeholder="proxy.example.com:8080"
+        title="Enter proxy server address (optional)"
+      />
+
+      <label for="auth_username" title="Username for camera authentication"
+        >Username:</label
+      >
+      <input
+        type="text"
+        id="auth_username"
+        name="auth_username"
+        value="{{ template.auth_username if template else '' }}"
+        placeholder="user"
+        title="Camera username"
+      />
+
+      <label for="auth_password" title="Password for camera authentication"
+        >Password:</label
+      >
+      <input
+        type="password"
+        id="auth_password"
+        name="auth_password"
+        value="{{ template.auth_password if template else '' }}"
+        placeholder="pass"
+        title="Camera password"
+      />
+
+      <label for="groups" title="Groups for the template, comma separated "
+        >Groups:</label
+      >
+      <input
+        type="text"
+        id="groups"
+        name="groups"
+        value="{{ template.groups if template else '' }}"
+        pattern="[\w,\- ]*"
+        placeholder="group1,group2"
+        title="Enter comma-separated group names"
+      />
+
+      <label for="rollback_frames" title="Number of frames to rollback"
+        >Rollback Frames:</label
+      >
+      <input
+        type="number"
+        id="rollback_frames"
+        name="rollback_frames"
+        value="{{ template.rollback_frames if template else 0 }}"
+        min="0"
+        title="Enter number of frames to rollback"
+      />
+    </div>
+    <br />
+
+    <div class="checkbox-row">
+      <label for="invert" title="Invert image colors">
+        <input
+          type="checkbox"
+          id="invert"
+          name="invert"
+          {%
+          if
+          template
+          and
+          template.invert
+          %}checked{%
+          endif
+          %}
+          title="Invert colors of the captured image"
+        />
+        Invert
+      </label>
+      <label for="dark" title="Use dark mode">
+        <input
+          type="checkbox"
+          id="dark"
+          name="dark"
+          {%
+          if
+          not
+          template
+          or
+          template.dark
+          %}checked{%
+          endif
+          %}
+          title="Enable dark mode for the captured page"
+        />
+        Dark Mode
+      </label>
+      <label for="headless" title="Run in headless mode">
+        <input
+          type="checkbox"
+          id="headless"
+          name="headless"
+          {%
+          if
+          not
+          template
+          or
+          template.headless
+          %}checked{%
+          endif
+          %}
+          title="Run browser in headless mode"
+        />
+        Headless
+      </label>
+      <label for="stealth" title="Use stealth mode">
+        <input
+          type="checkbox"
+          id="stealth"
+          name="stealth"
+          {%
+          if
+          template
+          and
+          template.stealth
+          %}checked{%
+          endif
+          %}
+          title="Use stealth mode to avoid detection"
+        />
+        Stealth
+      </label>
+    </div>
+    <br />
+
+    <div class="form-actions">
+      <input
+        type="submit"
+        value="{{ submit_label }}"
+        title="{{ submit_label }} the template"
+      />
+    </div>
+  </form>
 </div>
 {%- endmacro %}

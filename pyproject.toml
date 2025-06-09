@@ -1,3 +1,13 @@
 [build-system]
 requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+required-version = "25.1.0"
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+check_untyped_defs = true

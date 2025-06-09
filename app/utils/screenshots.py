@@ -12,8 +12,8 @@ import shutil
 import socket
 import subprocess
 import time
+import tempfile
 from urllib.parse import urlparse
-import glob
 import base64
 import nodriver
 import psutil
@@ -37,16 +37,16 @@ from PIL import (
     ImageDraw,
     ImageFont,
     ImageOps,
-    ImageStat,
 )
-import textwrap
-from pyvirtualdisplay import Display
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
+import threading
+from typing import Dict
+from .network import is_system_online
 
 try:
     from pynput import mouse, keyboard
@@ -58,7 +58,6 @@ except Exception as e:  # pragma: no cover - optional dependency
 
 from app.config import (
     DEBUG,
-    LANG,
     SCREENSHOT_DIRECTORY,
     UA,
     FFMPEG_PATH,
@@ -86,6 +85,7 @@ lurl_cache = {}
 lurl_cache_time = {}
 throttle_cache = {}
 chrome_version = {}
+_browser_gl_cache: Dict[str, bool] = {}
 last_modified_cache = {}
 etag_cache = {}
 
@@ -182,15 +182,23 @@ def load_font(size):
 # Global flag to track user activity
 user_active = False
 
-_DRIVER = None
+_driver_local = threading.local()
 
 
 def get_driver(opts):
-    global _DRIVER
-    if _DRIVER is None:
-        service = Service(ChromeDriverManager().install())
-        _DRIVER = webdriver.Chrome(service=service, options=opts)
-    return _DRIVER
+    driver = getattr(_driver_local, "driver", None)
+    if driver is None:
+        if not is_system_online():
+            logging.warning("System offline; skipping driver setup")
+            return None
+        try:
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=opts)
+            _driver_local.driver = driver
+        except Exception as exc:
+            logging.error("Failed to launch driver: %s", exc)
+            return None
+    return driver
 
 
 _session = None
@@ -346,7 +354,9 @@ def idle_seconds_x11() -> int:
 def idle_seconds_loginctl() -> int:
     """Return seconds of user idleness according to systemd-logind.
     0  → actively using keyboard/mouse right now."""
-    import os, subprocess, time
+    import os
+    import subprocess
+    import time
 
     uid = os.getuid()
     try:
@@ -402,14 +412,32 @@ def check_user_activity(timeout=10):
         return user_active
 
     # Create listeners for keyboard and mouse
-    mouse_listener = mouse.Listener(
-        on_move=on_move, on_click=on_click, on_scroll=on_scroll
-    )
-    keyboard_listener = keyboard.Listener(on_press=on_press)
+    mouse_listener = None
+    keyboard_listener = None
+    try:
+        mouse_listener = mouse.Listener(
+            on_move=on_move, on_click=on_click, on_scroll=on_scroll
+        )
+        keyboard_listener = keyboard.Listener(on_press=on_press)
 
-    # Start listeners
-    mouse_listener.start()
-    keyboard_listener.start()
+        # Start listeners
+        mouse_listener.start()
+        keyboard_listener.start()
+    except Exception as e:  # pragma: no cover - best effort
+        logging.debug(f"pynput listener failed: {e}")
+        if mouse_listener:
+            try:
+                mouse_listener.stop()
+                mouse_listener.join()
+            except Exception:
+                pass
+        if keyboard_listener:
+            try:
+                keyboard_listener.stop()
+                keyboard_listener.join()
+            except Exception:
+                pass
+        return user_active
 
     # Monitor for a defined timeout
     start_time = time.time()
@@ -419,12 +447,16 @@ def check_user_activity(timeout=10):
         time.sleep(0.1)
 
     # Stop listeners
-    mouse_listener.stop()
-    keyboard_listener.stop()
+    if mouse_listener:
+        mouse_listener.stop()
+    if keyboard_listener:
+        keyboard_listener.stop()
 
     # Ensure threads close their X connections before returning
-    mouse_listener.join()
-    keyboard_listener.join()
+    if mouse_listener:
+        mouse_listener.join()
+    if keyboard_listener:
+        keyboard_listener.join()
 
     return user_active
 
@@ -939,9 +971,14 @@ def download_pdf(
 
 
 def is_enhanced(url):
-    extractors = youtube_dl.extractor.gen_extractors()
-    for e in extractors:
-        if e.suitable(url) and e.IE_NAME != "generic":
+    """Return True if ``yt_dlp`` has a specialized extractor for the URL."""
+    try:
+        extractors = youtube_dl.extractor.list_extractors()
+    except Exception as e:  # pragma: no cover - defensive
+        logging.warning("yt_dlp extractor check failed: %s", e)
+        return False
+    for extractor in extractors:
+        if extractor.suitable(url) and extractor.IE_NAME != "generic":
             return True
     return False
 
@@ -1468,10 +1505,9 @@ def should_use_phantom_browser(
     """Determine if a lightweight browser should be used for capture."""
     return (
         re.findall(r"^https?://", url, flags=re.I)
-        and
         # dedicated_selector in [None, ""] and
         # popup_xpath in [None, ""] and
-        not stealth
+        and not stealth
         and not browser
         and not is_enhanced(url)
         and not danger
@@ -1649,7 +1685,7 @@ def capture_frame_from_stream(
             command.extend(["-rtsp_transport", "tcp"])
             probe_size = PROBE_SIZE_RTSP
             analyze_duration = ANALYZE_DURATION_RTSP
-            if "/streaming/" in url.lower():  # alittle bit of a hack
+            if "/streaming/" in url.lower():  # a little bit of a hack
                 command.extend(["-c:v", "h264"])
                 command.extend(["-r", "1"])
                 probe_size = PROBE_SIZE_OTHER
@@ -1913,7 +1949,7 @@ def get_chrome_version(chrome_path):
         chrome_version[chrome_path] = (version, time.time())
     except Exception as e:
         logging.error(f"Chrome version exception error: {e}")
-        return chrome_version.get(chrome_path, extract_version())
+        return chrome_version.get(chrome_path, extract_version(chrome_path))
 
     return int(version)
 
@@ -1934,6 +1970,39 @@ def extract_version(driver_path):
         )
         # Default to a known working version if extraction fails
         return 135
+
+
+def _machine_supports_hwaccel() -> bool:
+    """Return True if GPU devices appear available."""
+    return os.path.exists("/dev/dri") or shutil.which("nvidia-smi") is not None
+
+
+def _hwaccel_enabled() -> bool:
+    return bool(FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false")
+
+
+def browser_supports_gl(chrome_path: str) -> bool:
+    cached = _browser_gl_cache.get(chrome_path)
+    if cached is not None:
+        return cached
+    try:
+        subprocess.check_call(
+            [
+                chrome_path,
+                "--headless=new",
+                "--use-gl=egl",
+                "--disable-gpu",
+                "about:blank",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
+        result = True
+    except Exception:
+        result = False
+    _browser_gl_cache[chrome_path] = result
+    return result
 
 
 def is_port_open(host, port, timeout=5):
@@ -1984,8 +2053,8 @@ def kill_driver_process(driver):
         logging.error(f"Error killing Chrome process: {e}")
     finally:
         # Ensure future calls create a new driver
-        global _DRIVER
-        _DRIVER = None
+        if hasattr(_driver_local, "driver"):
+            _driver_local.driver = None
 
 
 def launch_headless_chrome(driver_options, version=None):
@@ -2058,7 +2127,6 @@ def capture_screenshot_phantom(
     import logging
     import shutil
     import subprocess
-    from PIL import Image
 
     if shutil.which("phantomjs") is None:
         logging.warning("PhantomJS not found; cannot capture screenshot.")
@@ -2264,19 +2332,26 @@ def capture_screenshot_and_har_nodriver(
     # For efficiency, consider reusing one launch() if you do multiple captures.
 
     try:
-        with nodriver.launch(
-            headless=headless,
-            extra_args=[
-                "--no-sandbox",
-                "--disable-gpu",
-                f"--window-size={width},{height}",
-                "--disable-dev-shm-usage",
-                "--disable-background-networking",
-                "--disable-translate",
-                "--disable-extensions",
-                "--disable-sync",
-            ],
-        ) as browser:
+        extra = [
+            "--no-sandbox",
+            "--disable-gpu",
+            f"--window-size={width},{height}",
+            "--disable-dev-shm-usage",
+            "--disable-background-networking",
+            "--disable-translate",
+            "--disable-extensions",
+            "--disable-sync",
+        ]
+        chrome_path = get_chrome_path()
+        if (
+            chrome_path
+            and _hwaccel_enabled()
+            and _machine_supports_hwaccel()
+            and browser_supports_gl(chrome_path)
+        ):
+            extra.append("--use-gl=egl")
+
+        with nodriver.launch(headless=headless, extra_args=extra) as browser:
             cdp = browser.connect()
 
             # Apply user agent override if desired
@@ -2392,6 +2467,10 @@ def capture_screenshot_and_har(
         logging.error(f"[capture_screenshot_and_har] Not a valid http/https URL: {url}")
         return False
 
+    if not is_system_online():
+        logging.warning("System offline; skipping capture for %s", url)
+        return False
+
     if timeout < 30:
         timeout = 30
 
@@ -2413,7 +2492,7 @@ def capture_screenshot_and_har(
         # let's confirm it's actually open.
         if not is_chrome_debug_port_open("127.0.0.1", 9222):
             logging.warning(
-                f"[capture_screenshot_and_har] Danger mode requested, but no Chrome on port 9222."
+                "[capture_screenshot_and_har] Danger mode requested, but no Chrome on port 9222."
             )
             return False
 
@@ -2444,9 +2523,8 @@ def capture_screenshot_and_har(
     user_data_dir = None
     driver = None
     try:
-        # Create ephemeral profile dir in /tmp
-        tmp_profile = f"/tmp/glimpser_{name}"
-        os.makedirs(tmp_profile, exist_ok=True)
+        # Create unique ephemeral profile dir in /tmp
+        tmp_profile = tempfile.mkdtemp(prefix="glimpser_")
         user_data_dir = tmp_profile  # just to keep track
 
         # Using undetected_chromedriver for stealth:
@@ -2461,6 +2539,12 @@ def capture_screenshot_and_har(
         driver_options.add_argument("--no-sandbox")
         driver_options.add_argument("--disable-dev-shm-usage")
         driver_options.add_argument("--disable-gpu")
+        if (
+            _hwaccel_enabled()
+            and _machine_supports_hwaccel()
+            and browser_supports_gl(chrome_path)
+        ):
+            driver_options.add_argument("--use-gl=egl")
         if stealth:
             apply_stealth_options(driver_options)
         else:

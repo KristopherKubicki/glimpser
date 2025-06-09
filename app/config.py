@@ -211,12 +211,13 @@ def sync_version(pkg_version: str) -> None:
         session.close()
 
 
-SCHEDULER_API_ENABLED = True
+SCHEDULER_API_ENABLED = get_setting("SCHEDULER_API_ENABLED", "True") == "True"
 
 # be careful when mounting network devices
 SCREENSHOT_DIRECTORY = "data/screenshots/"
 VIDEO_DIRECTORY = "data/video/"
 SUMMARIES_DIRECTORY = "data/summaries/"
+DOCS_DIRECTORY = "docs"
 
 # Load settings from the database
 UA = get_setting(
@@ -236,6 +237,7 @@ NAME = get_setting("NAME", "glimpser")
 NAV_ICON = get_setting("NAV_ICON", "img/glimpser_small.png")
 HOST = get_setting("HOST", "0.0.0.0")
 PORT = int(get_setting("PORT", 8082))
+ENFORCE_DOMAIN_IN_HOST = get_setting("ENFORCE_DOMAIN_IN_HOST", "False") == "True"
 DEBUG = get_setting("DEBUG", "False") == "True"
 # Provide a separate attribute for runtime checks
 DEBUG_MODE = DEBUG
@@ -338,10 +340,18 @@ LIVE_FALLBACK_FPS = int(get_setting("LIVE_FALLBACK_FPS", 1))
 # not wasted.
 LIVE_MAX_FAILURES = int(get_setting("LIVE_MAX_FAILURES", 10))
 
+# Maximum seconds to wait between live stream restarts when ffmpeg exits
+# without producing any output. The delay increases exponentially on each
+# consecutive failure up to this limit.
+LIVE_MAX_RETRY_DELAY = int(get_setting("LIVE_MAX_RETRY_DELAY", 30))
+
 # Duration of the caption chyron scroll in seconds. Set to 0 to disable
 # the chyron entirely. When enabled, the same value controls how long
 # the banner remains visible after a caption arrives.
 CHYRON_SPEED = int(get_setting("CHYRON_SPEED", 0))
+
+# Length in seconds returned by the `/clip/<template>` endpoint.
+DEFAULT_CLIP_DURATION = int(get_setting("DEFAULT_CLIP_DURATION", 120))
 
 # Whether the System Performance icon in the navigation bar should remain
 # visible even when the application reports healthy status. When set to
@@ -356,6 +366,8 @@ HEALTH_STATUS_ALWAYS_VISIBLE = (
 WATCHDOG_FAILURE_THRESHOLD = int(get_setting("WATCHDOG_FAILURE_THRESHOLD", 3))
 WATCHDOG_RESTART_COOLDOWN = int(get_setting("WATCHDOG_RESTART_COOLDOWN", 900))
 WATCHDOG_MAX_FILE_HANDLES = int(get_setting("WATCHDOG_MAX_FILE_HANDLES", 1000))
+WATCHDOG_CPU_THRESHOLD = int(get_setting("WATCHDOG_CPU_THRESHOLD", 80))
+WATCHDOG_MEMORY_THRESHOLD = int(get_setting("WATCHDOG_MEMORY_THRESHOLD", 80))
 
 # Background discovery runs on a schedule when enabled.  Set this
 # to ``True`` to run an hourly scan automatically.
@@ -363,25 +375,26 @@ DISCOVERY_AUTOSTART = get_setting("DISCOVERY_AUTOSTART", "False") == "True"
 
 # Email settings
 EMAIL_ENABLED = get_setting("EMAIL_ENABLED", "False")
-EMAIL_SENDER = get_setting("EMAIL_SENDER", "your-email@example.com")
-EMAIL_RECIPIENTS = get_setting(
-    "EMAIL_RECIPIENTS", "recipient1@example.com,recipient2@example.com"
-)
-EMAIL_SMTP_SERVER = get_setting("EMAIL_SMTP_SERVER", "smtp.example.com")
+EMAIL_SENDER = get_setting("EMAIL_SENDER", "")
+EMAIL_RECIPIENTS = get_setting("EMAIL_RECIPIENTS", "")
+EMAIL_SMTP_SERVER = get_setting("EMAIL_SMTP_SERVER", "")
 EMAIL_SMTP_PORT = get_setting("EMAIL_SMTP_PORT", "587")
+EMAIL_SMTP_TIMEOUT = int(get_setting("EMAIL_SMTP_TIMEOUT", 10))
 EMAIL_USE_TLS = get_setting("EMAIL_USE_TLS", "True")
-EMAIL_USERNAME = get_setting("EMAIL_USERNAME", "your-username")
+EMAIL_USERNAME = get_setting("EMAIL_USERNAME", "")
 EMAIL_PASSWORD = get_setting("EMAIL_PASSWORD", "")
+EMAIL_SMTP_TIMEOUT = int(get_setting("EMAIL_SMTP_TIMEOUT", "5"))
 
 
 # SMS/Twilio settings
 TWILIO_SID = get_setting("TWILIO_SID", "")
 TWILIO_TOKEN = get_setting("TWILIO_TOKEN", "")
 TWILIO_NUMBER = get_setting("TWILIO_NUMBER", "")
+TWILIO_FROM_NUMBER = get_setting("TWILIO_FROM_NUMBER", "")
 
 # Common Alerting Protocol settings
 CAP_ENDPOINT = get_setting("CAP_ENDPOINT", "")
-CAP_SENDER = get_setting("CAP_SENDER", "glimpser@example.com")
+CAP_SENDER = get_setting("CAP_SENDER", "")
 
 # MCP settings
 MCP_SERVER_COMMAND = get_setting("MCP_SERVER_COMMAND", "")

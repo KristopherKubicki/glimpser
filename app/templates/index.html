@@ -1,40 +1,7 @@
 <!-- app/templates/index.html -->
 
-{% extends 'base.html' %} {% block content %}
-
-<section id="template-controls">
-  <input
-    type="text"
-    id="search-input"
-    placeholder="Search cameras"
-    title="Enter search terms"
-  />
-  <input
-    type="range"
-    id="grid-width-slider"
-    min="50"
-    max="3840"
-    value="360"
-    title="Adjust the width of the template grid"
-  />
-  <span id="status-legend">
-    <span class="status-item"
-      ><span class="status-box recent" aria-hidden="true"></span> Recent</span
-    >
-    <span class="status-item"
-      ><span class="status-box error" aria-hidden="true"></span> Error</span
-    >
-  </span>
-  <button id="play-all-button" title="Play/Stop all videos">Play All</button>
-  <button id="live-all-button" title="Live stream all cameras">Live All</button>
-  <button
-    id="toggle-captions"
-    title="Toggle caption overlays"
-    aria-label="Toggle caption overlays"
-  >
-    Hide Captions
-  </button>
-</section>
+{% extends 'base.html' %} {% from 'components.html' import template_controls %}
+{% block content %} {% call template_controls() %}{% endcall %}
 
 <section id="template-list-section">
   <div

@@ -3,12 +3,12 @@
 Glimpser includes a simple discovery feature to help find network cameras on your local LAN. The **Discover** tab on the **Settings** page now loads immediately and only scans when you click the **Discover** button. Starting a scan automatically enables hourly background discovery if it isn't already running. Use the **Stop Discovery** button to halt it. A progress bar displays the number of completed stages so you know the scan is making progress. The page also shows which discovery stage is currently executing. The logic in `app/utils/camera_discovery.py` runs in parallel threads so results return faster. To keep the scan quick, each interface is limited to a `/24` subnet even if the reported mask is larger. Interfaces that are down or using loopback or link-local addresses are ignored so the default scan only targets routable LAN networks.
 The subnet list is now deduplicated so machines with multiple addresses per interface are scanned only once. Unreachable ports fail fast so discovery always completes even when some networks are inaccessible.
 The page layout now uses card sections and wider progress indicators for a more professional feel while keeping controls grouped logically.
-Background discovery can run automatically every hour when the `DISCOVERY_AUTOSTART` setting is enabled. When disabled (the default), the search icon appears white until you start the scan from the Discover tab. The icon turns green when a scan completed recently, yellow while scanning, and red if the last run failed. Hovering over the icon now shows when the last scan finished and when the next one will run.
+Background discovery can run automatically every hour when the `DISCOVERY_AUTOSTART` setting is enabled. When disabled (the default), the search icon appears white until you start the scan from the Discover tab. The icon turns green when a scan completed recently, yellow while scanning, and red if the last run failed. Hovering over the icon now shows when the last scan finished and when the next one will run. The Discover tab also displays a colored status dot beside the background discovery text so you can quickly see if scanning is active or disabled.
 The scheduling call now triggers discovery in a background thread so the UI never hangs when you enable it.
 The page now polls `/discovery_status` every 30 seconds so the background state
 is always visible, including the remaining time until the next run.
 After all scanning steps finish, Glimpser performs a two-hop traceroute to each
-discovered camera. The previous hop is stored in the ``upstream`` field so you
+discovered camera. The previous hop is stored in the `upstream` field so you
 can see which router or switch connects the device. Each progress message now
 includes a completion percentage and an estimated time remaining so you know how
 long the scan will take.
@@ -31,11 +31,16 @@ def discover_cameras_scan_stream():
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 ```
 
-When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button opens an EventSource to `/discover/scan_stream`. The first message now includes the list of subnets that will be scanned and the full plan of discovery stages. The progress bar is initialized with the total number of stages. Each subsequent message indicates which stage has finished, how many cameras have been found so far, and includes any new cameras discovered during that stage. These cameras appear in the table immediately. A final event with ``{"done": true}`` simply signals completion. Discovery results now display firmware details along with the reported manufacturer and model when available. These fields are pulled from the camera's ONVIF device service. The page also offers buttons to export the table as CSV or JSON.
+When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button opens an EventSource to `/discover/scan_stream`. The first message now includes the list of subnets that will be scanned and the full plan of discovery stages. The progress bar is initialized with the total number of stages. Each subsequent message indicates which stage has finished, how many cameras have been found so far, and includes any new cameras discovered during that stage. These cameras appear in the table immediately. A final event with `{"done": true}` simply signals completion. Discovery results now display firmware details along with the reported manufacturer and model when available. These fields are pulled from the camera's ONVIF device service. The page also offers buttons to export the table as CSV or JSON.
 
-An optional CIDR can be supplied via the new input field to restrict discovery to a specific Class C network. The value is sent as the ``cidr`` query parameter and parsed by ``discover_cameras()``.
+The network field offers a dropdown of detected local subnets. You can pick one of these values or type your own CIDR range. Whatever you enter is sent as the `cidr` query parameter and parsed by `discover_cameras()`.
 
 During the scan you will see messages like `Scanning onvif (3 found)...`. The stage name shows which discovery method just finished, while the number in parentheses reflects how many cameras have been detected so far.
+
+If a discovery step raises an exception, the stream now includes an `error` field
+containing the message. The Discover page displays this text after the generic
+"Error discovering cameras" notice so you can quickly identify what failed
+without digging through log files.
 
 ## Camera scanning logic
 
@@ -157,11 +162,11 @@ details such as a camera's name, ONVIF address, or HTTP path instead of showing
 the raw JSON dictionary.
 
 Each camera is now also checked for commonly used service ports. Any detected
-ports are listed in the ``open_ports`` field so you can quickly see which
+ports are listed in the `open_ports` field so you can quickly see which
 services are reachable (for example, 80 for HTTP or 554 for RTSP). This scan
 is lightweight and runs after the main discovery steps finish.
 If a camera responds to ICMP echo requests, Glimpser measures the round-trip
-latency and reports the value in the ``ping_ms`` field. This extra check runs in
+latency and reports the value in the `ping_ms` field. This extra check runs in
 parallel with other metadata gathering so it does not slow down discovery.
 If an HTTP port responds, Glimpser also fetches the web page banner to capture
 the `Server` header, authentication realm, and page title when present. These
@@ -170,9 +175,9 @@ values populate the **Info** column so you can quickly identify each device.
 Each result now tries to classify the kind of hardware discovered. Devices with
 RTSP ports or ONVIF data are labeled as **camera** while models referencing DVR
 or NVR become **nvr**. Routers and switches are recognized when their metadata
-contains those keywords. The detected type appears in the ``device_type`` field.
+contains those keywords. The detected type appears in the `device_type` field.
 
-Discovered entries also include a suggested ``url`` built from the protocol and
+Discovered entries also include a suggested `url` built from the protocol and
 port. This makes the "Add" action work immediately without manual edits.
 
 You can then add a discovered camera to your configuration directly from the Discover tab.
@@ -184,6 +189,8 @@ item like any other camera to have Glimpser periodically capture screenshots of
 its own metrics tab.
 It now also includes an **Internal Caption** entry streaming `/internal_caption.mjpg`,
 which loops recent caption text for convenient review.
+A **Test Frame** entry is also available, streaming `/test.mjpg` so you can quickly
+verify connectivity without adding a real camera.
 
 ## Common cameras to try
 
