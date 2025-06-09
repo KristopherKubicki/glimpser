@@ -1,5 +1,9 @@
 export function initLogin() {
   document.addEventListener("DOMContentLoaded", () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("logout")) {
+      localStorage.removeItem("autoLogin");
+    }
     const form = document.getElementById("login-form");
     const noteEl = document.getElementById("security-note");
     attemptAutoLogin();
