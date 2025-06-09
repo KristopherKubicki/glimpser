@@ -143,12 +143,17 @@ Settings controlling how frames are captured from video sources:
 - `CHYRON_SPEED` – seconds the caption chyron scrolls; set to `0` to disable (default `0`)
 - `DEFAULT_CLIP_DURATION` – seconds returned by the `/clip` endpoint when no `duration` query is provided (default `120`)
 - `HEALTH_STATUS_ALWAYS_VISIBLE` – keep the System Performance icon visible even when the system is healthy (default `False`)
-- `WATCHDOG_FAILURE_THRESHOLD` – number of failed health checks before a restart (default `3`)
-- `WATCHDOG_RESTART_COOLDOWN` – cooldown period between restarts in seconds (default `900`)
-- `WATCHDOG_MAX_FILE_HANDLES` – open file handle limit before triggering a restart (default `1000`)
-- `WATCHDOG_CPU_THRESHOLD` – CPU usage percentage that triggers open-file checks (default `80`)
-- `WATCHDOG_MEMORY_THRESHOLD` – memory usage percentage that triggers open-file checks (default `80`)
 - `DISCOVERY_AUTOSTART` – run hourly background discovery automatically (default `False`)
+
+## Watchdog Settings
+
+The watchdog monitors process health and restarts Glimpser when repeated failures occur or resource limits are exceeded. Adjust these values if you encounter unnecessary restarts or need stricter checks.
+
+- `WATCHDOG_FAILURE_THRESHOLD` – number of failed health checks before a restart is triggered (default `3`). Increase on flaky networks to avoid premature restarts.
+- `WATCHDOG_RESTART_COOLDOWN` – cooldown period between restarts in seconds (default `900`). Increase this if restarts take significant time or if an external supervisor handles recovery.
+- `WATCHDOG_MAX_FILE_HANDLES` – open file handle limit before triggering a restart (default `1000`). Lower when descriptor limits are tight or raise for high-load environments.
+- `WATCHDOG_CPU_THRESHOLD` – CPU usage percentage that triggers open-file checks (default `80`). Adjust based on typical CPU load.
+- `WATCHDOG_MEMORY_THRESHOLD` – memory usage percentage that triggers open-file checks (default `80`). Decrease on memory-constrained systems or increase when ample memory is available.
 
 ### Stealth Browser Defaults
 
