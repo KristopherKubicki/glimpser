@@ -46,6 +46,7 @@ Interactive forms now include additional tooltips:
 - **Group selector** – choose a group on the live page. Selecting one reveals a second dropdown for cameras and syncs with the navigation bar.
 - **Info icon** – toggles camera metadata on the live page.
 - **Feed status indicators** – on the System Status page, red or yellow dots display a tooltip with offline time and the latest log message.
+- **Camera type icons** – small symbols next to each feed name show whether the capture runs in a full browser, headless mode, or uses stealth.
 
 ## Dynamic Tooltips
 

@@ -25,7 +25,9 @@ same table appears on the _System Status_ tab under Settings so you can review
 usage metrics without leaving the configuration interface.
 
 Additional KPI columns track the number of screenshots, videos, total storage
-used, LLM responses, and estimated LLM cost for each feed.
+used, LLM responses, and estimated LLM cost for each feed. Costs now display three decimal places.
+
+The header row stays visible while scrolling so column names are always accessible.
 
 The table headers are sortable. Click a column name to reorder feeds by feed
 name, last image time, last caption time, any KPI column, or status.

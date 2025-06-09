@@ -78,15 +78,15 @@
 <table id="feed-status" class="feed-status">
   <thead>
     <tr>
-      <th class="sortable" data-type="string">Feed</th>
-      <th class="sortable" data-type="date">Last Image</th>
-      <th class="sortable" data-type="date">Last Caption</th>
-      <th class="sortable" data-type="number">Shots</th>
-      <th class="sortable" data-type="number">Videos</th>
-      <th class="sortable" data-type="number">Storage</th>
-      <th class="sortable" data-type="number">LLM Resp</th>
-      <th class="sortable" data-type="number">LLM Cost</th>
-      <th class="sortable" data-type="string">Status</th>
+      <th class="sortable" data-type="string" title="Camera name">Feed</th>
+      <th class="sortable" data-type="date" title="Most recent screenshot time">Last Image</th>
+      <th class="sortable" data-type="date" title="Most recent caption time">Last Caption</th>
+      <th class="sortable" data-type="number" title="Total screenshots">Shots</th>
+      <th class="sortable" data-type="number" title="Total videos">Videos</th>
+      <th class="sortable" data-type="number" title="Disk usage">Storage</th>
+      <th class="sortable" data-type="number" title="LLM responses">LLM Resp</th>
+      <th class="sortable" data-type="number" title="Estimated LLM cost">LLM Cost</th>
+      <th class="sortable status-col" data-type="string" title="Current feed status">Status</th>
     </tr>
   </thead>
   <tbody>
@@ -95,9 +95,27 @@
       class="{{ feed.status }}{% if feed.danger_reason %} danger-{{ feed.danger_reason }}{% endif %}"
     >
       <td data-label="Feed" data-value="{{ feed.name }}">
-        <a href="{{ url_for('template_details', template_name=feed.name) }}"
-          >{{ feed.name }}</a
+        <svg
+          width="12"
+          height="12"
+          class="camera-icon {{ feed.camera_type }}"
+          aria-label="{{ feed.camera_tooltip }}"
+          title="{{ feed.camera_tooltip }}"
         >
+          <use href="{{ url_for('static', filename='icons/sprite.svg') }}#{% if feed.camera_type == 'browser' %}browser{% elif 'stealth' in feed.camera_type %}mask{% else %}camera{% endif %}" />
+        </svg>
+        {% if feed.danger %}
+        <svg
+          width="12"
+          height="12"
+          class="danger-icon-inline {{ feed.danger_reason or '' }}"
+          aria-label="Danger mode"
+          title="{{ 'Danger mode disabled' if feed.danger_reason == 'disabled' else 'Danger mode user active' if feed.danger_reason == 'user' else 'Danger mode' }}"
+        >
+          <use href="{{ url_for('static', filename='icons/sprite.svg') }}#alert" />
+        </svg>
+        {% endif %}
+        <a href="{{ url_for('template_details', template_name=feed.name) }}" title="View template details">{{ feed.name }}</a>
       </td>
       <td
         data-label="Last Image"
@@ -142,7 +160,7 @@
       <td data-label="LLM Cost" data-value="{{ feed.llm_cost_estimate }}">
         {{ feed.llm_cost_estimate }}
       </td>
-      <td data-label="Status" data-value="{{ feed.status }}">
+      <td class="status-col" data-label="Status" data-value="{{ feed.status }}">
         {% if feed.danger_reason %}
         <svg
           width="12"

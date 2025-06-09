@@ -1763,6 +1763,7 @@ body.advanced-enabled .advanced-only {
   content: " \2195";
   font-size: 0.8em;
   opacity: 0.6;
+  padding-left: 2px;
 }
 
 details > summary {
@@ -1945,6 +1946,13 @@ details > summary {
 .feed-status td {
   padding: 6px 8px;
   border: 1px solid var(--table-border-color);
+  white-space: nowrap;
+}
+.feed-status thead th {
+  position: sticky;
+  top: 0;
+  background-color: var(--table-header-bg-color);
+  z-index: 1;
 }
 .feed-status a {
   color: var(--text-color);
@@ -1979,6 +1987,28 @@ details > summary {
 }
 .danger-icon.user {
   color: orange;
+}
+
+.danger-icon-inline,
+.camera-icon {
+  vertical-align: middle;
+  margin-right: 0.25rem;
+}
+
+.camera-icon.browser {
+  color: dodgerblue;
+}
+.camera-icon.headless-stealth,
+.camera-icon.stealth {
+  color: orange;
+}
+.camera-icon.headless {
+  color: gray;
+}
+
+.status-col {
+  width: 4rem;
+  text-align: center;
 }
 
 .unsaved-icon {

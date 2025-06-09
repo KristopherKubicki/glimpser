@@ -22,8 +22,8 @@ class TestLLMCostSummary(unittest.TestCase):
             json.dump({"cam1": 500, "cam2": 1500}, f)
         summary, tokens, cost = get_llm_cost_summary()
         self.assertEqual(tokens, 2000)
-        expected_cost = 2000 * LLM_COST_PER_TOKEN
-        self.assertEqual(cost, f"${expected_cost:.2f}")
+        expected_cost = round(2000 * LLM_COST_PER_TOKEN, 3)
+        self.assertEqual(cost, f"${expected_cost:.3f}")
         self.assertEqual(len(summary), 2)
 
 

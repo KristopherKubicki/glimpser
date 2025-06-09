@@ -21,8 +21,8 @@ class TestLLMCostTracking(unittest.TestCase):
     def test_record_and_get_cost(self):
         record_llm_usage("cam1", 2000)
         cost = get_llm_cost_estimate("cam1")
-        expected = 2000 * LLM_COST_PER_TOKEN
-        self.assertAlmostEqual(float(cost.strip("$")), expected, places=2)
+        expected = round(2000 * LLM_COST_PER_TOKEN, 3)
+        self.assertEqual(float(cost.strip("$")), expected)
 
     def test_cost_date_range(self):
         record_llm_usage("cam1", 1000)
@@ -35,8 +35,8 @@ class TestLLMCostTracking(unittest.TestCase):
 
         record_llm_usage("cam1", 500)
         cost = get_llm_cost_estimate("cam1", start_date="2020-01-01")
-        expected = 500 * LLM_COST_PER_TOKEN
-        self.assertAlmostEqual(float(cost.strip("$")), expected, places=2)
+        expected = round(500 * LLM_COST_PER_TOKEN, 3)
+        self.assertEqual(float(cost.strip("$")), expected)
 
 
 if __name__ == "__main__":
