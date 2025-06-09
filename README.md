@@ -54,6 +54,7 @@ See [OpenSSF Scorecard](docs/scorecard.md) for details on the security badge.
 - **Camera Discovery**: Open **Settings** and switch to the **Discover** tab to automatically scan the local network for ONVIF, RTSP, RTMP, HTTP/MJPEG, HLS, and SSDP devices. The table now displays each camera's MAC address plus manufacturer and model information when available. Glimpser checks common system OUI databases, an online lookup service, and the ONVIF device service to gather these details.
 - **Camera Fix Suggestions**: Validate a template and discover alternative URLs with `/suggest_fix/<template>`. See [Camera Fix Suggestions](docs/camera_fix.md).
 - **Local Cameras**: The Discover tab also lists any available `/dev/video*` devices for easy webcam integration.
+- **MCP Integration**: Delegate actions to an external control plane. See the [MCP Integration Guide](docs/mcp_integration.md).
 
 - **Web Interface**: A user-friendly web interface allows for easy monitoring and configuration. Users can view live feeds, summaries, and configure settings without delving into the code.
 
