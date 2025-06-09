@@ -47,6 +47,10 @@ Interactive forms now include additional tooltips:
 - **Info icon** – toggles camera metadata on the live page.
 - **Feed status indicators** – on the System Status page, red or yellow dots display a tooltip with offline time and the latest log message.
 - **Camera type icons** – small symbols next to each feed name show whether the capture runs in a full browser, headless mode, or uses stealth.
+- **Chat modal controls** – the close icon and submit button now describe their actions.
+- **Help page tabs** – each tab button explains what information the section contains.
+- **Settings tabs** – hovering shows which category will open.
+- **Cost dashboards** – date selectors, the Load buttons and range slider include titles.
 
 ## Dynamic Tooltips
 

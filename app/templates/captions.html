@@ -209,13 +209,17 @@ template_controls %} {% block content %}
     </table>
     <div id="chat-modal" class="modal">
       <div class="modal-content">
-        <span id="chat-close" class="close-icon">&times;</span>
+        <span id="chat-close" class="close-icon" title="Close chat"
+          >&times;</span
+        >
         <textarea
           id="chat-question"
           class="prompt-textarea"
           placeholder="Ask a question..."
         ></textarea>
-        <button id="chat-submit" type="button">Ask</button>
+        <button id="chat-submit" type="button" title="Submit question">
+          Ask
+        </button>
         <div id="chat-answer" class="chat-answer"></div>
       </div>
     </div>
