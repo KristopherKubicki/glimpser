@@ -3725,8 +3725,13 @@ def init_routes(app: Flask) -> None:
         names = [t.get("name", "") for t in templates.values()]
         groups = get_active_groups()
 
+        docs_path = Path(__file__).resolve().parent.parent / "docs"
+        doc_names = [
+            f.stem for f in docs_path.glob("*.md") if f.name.lower() != "readme.md"
+        ]
+
         suggestions: list[str] = []
-        for item in names + groups:
+        for item in names + groups + doc_names:
             if query and query not in item.lower():
                 continue
             if item not in suggestions:
