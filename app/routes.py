@@ -2702,7 +2702,7 @@ def init_routes(app: Flask) -> None:
     @login_required
     @limit_rate(30)
     def serve_clip(template_name: TemplateName):
-        """Return a short clip built from recent finalized segments."""
+        """Return a short clip built from recent footage."""
 
         template_name = validate_template_name(template_name)
         if template_name is None:
@@ -2722,8 +2722,13 @@ def init_routes(app: Flask) -> None:
 
         clip_path = root / "clip.mp4"
 
+        in_process = root / "in_process.mp4"
+        sources = list(root.glob("final_*.mp4"))
+        if in_process.exists():
+            sources.append(in_process)
+
         newest_src = max(
-            root.glob("final_*.mp4"),
+            sources,
             key=lambda p: p.stat().st_mtime,
             default=None,
         )
@@ -2736,29 +2741,33 @@ def init_routes(app: Flask) -> None:
         ):
             return send_file(clip_path, conditional=True)
 
-        needed = math.ceil(duration / SEGMENT_SEC)
-        parts = sorted(
-            root.glob("final_*.mp4"),
-            key=lambda p: p.stat().st_mtime,
-            reverse=True,
-        )[:needed]
-        parts = sorted(parts, key=lambda p: p.stat().st_mtime)
-
-        blank_duration = duration - len(parts) * SEGMENT_SEC
-        blank_path = root / "blank_tmp.mp4"
-        blank_width, blank_height = (
-            video_archiver.get_video_resolution(newest_src)
-            if newest_src
-            else (None, None)
-        )
-        if blank_duration > 0:
-            video_archiver.create_blank_video(
-                blank_duration,
-                blank_path.as_posix(),
-                width=blank_width,
-                height=blank_height,
+        parts: list[Path] = []
+        in_process_len = 0
+        if in_process.exists():
+            in_process_len = int(
+                video_archiver.get_video_duration(in_process.as_posix()) or 0
             )
-            parts = [blank_path] + parts
+
+        remaining = duration - in_process_len
+        if remaining > 0:
+            final_parts = [
+                p
+                for p in sorted(
+                    root.glob("final_*.mp4"),
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
+                )
+                if p.stat().st_size > 0
+            ]
+            total = 0
+            for part in final_parts:
+                parts.insert(0, part)
+                total += SEGMENT_SEC
+                if total >= remaining:
+                    break
+
+        if in_process.exists():
+            parts.append(in_process)
 
         lock_path = root / ".clip.lock"
         with lock_path.open("w") as lock_fd:
@@ -2770,18 +2779,10 @@ def init_routes(app: Flask) -> None:
             ):
                 return send_file(clip_path, conditional=True)
 
-            if parts and _concat_copy(clip_path, parts, duration):
-                pass
-            else:
-                video_archiver.create_blank_video(
-                    duration,
-                    clip_path.as_posix(),
-                    width=blank_width,
-                    height=blank_height,
-                )
-
-        if blank_path.exists():
-            blank_path.unlink(missing_ok=True)
+            if not parts:
+                video_archiver.create_blank_video(duration, clip_path.as_posix())
+            elif not _concat_copy(clip_path, parts, duration):
+                video_archiver.create_blank_video(duration, clip_path.as_posix())
 
         if clip_path.exists():
             return send_file(clip_path, conditional=True)
