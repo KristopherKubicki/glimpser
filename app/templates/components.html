@@ -1,20 +1,24 @@
-{# Shared UI components #}
-{% macro confirm_modal(name, message='Are you sure?', confirm='Confirm', cancel='Cancel') -%}
+{# Shared UI components #} {% macro confirm_modal(name, message='Are you sure?',
+confirm='Confirm', cancel='Cancel') -%}
 <div id="{{ name }}-modal" class="modal">
   <div class="modal-content">
-    <span id="{{ name }}-close" class="close-icon" title="Close dialog">&times;</span>
+    <span id="{{ name }}-close" class="close-icon" title="Close dialog"
+      >&times;</span
+    >
     <p id="{{ name }}-modal-message">{{ message }}</p>
-    <button id="{{ name }}-confirm" title="Confirm this action">{{ confirm }}</button>
-    <button id="{{ name }}-cancel" title="Cancel and close">{{ cancel }}</button>
+    <button id="{{ name }}-confirm" title="Confirm this action">
+      {{ confirm }}
+    </button>
+    <button id="{{ name }}-cancel" title="Cancel and close">
+      {{ cancel }}
+    </button>
   </div>
 </div>
-{%- endmacro %}
-
-{% macro card(title) -%}
+{%- endmacro %} {% macro card(title, tooltip='') -%}
 <div class="card">
-  <div class="card-header">{{ title }}</div>
-  <div class="card-body">
-    {{ caller() }}
+  <div class="card-header" {% if tooltip %} title="{{ tooltip }}" {% endif %}>
+    {{ title }}
   </div>
+  <div class="card-body">{{ caller() }}</div>
 </div>
 {%- endmacro %}

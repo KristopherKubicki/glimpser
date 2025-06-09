@@ -10,7 +10,7 @@ This document lists the main tooltips available in the Glimpser interface. Hover
 - **System Performance icon** – shows CPU, memory and other metrics. It hides
   when the system is healthy unless `HEALTH_STATUS_ALWAYS_VISIBLE` is set.
 - **Danger Mode icon** – appears only when Danger mode is available. Hovering over it explains why the feature may be disabled.
- - **Discover Cameras icon** – opens the Settings page to the Discover tab.
+- **Discover Cameras icon** – opens the Settings page to the Discover tab.
 - **Captions icon** – reads and updates camera language models. The icon flashes
   with the latest caption when group messages arrive. After a short period of
   inactivity the newest global summary slowly scrolls across the top in gray text.
@@ -43,6 +43,7 @@ Interactive forms now include additional tooltips:
 - **Live video player** – tooltip now refreshes with the full caption as it updates.
 - **Info icon** – toggles camera metadata on the live page.
 - **Feed status indicators** – on the System Status page, red or yellow dots display a tooltip with offline time and the latest log message.
+- **Background Discovery icon** – on the Discover tab, a colored search icon shows whether automatic scanning is running, idle or failed.
 
 ## Dynamic Tooltips
 
