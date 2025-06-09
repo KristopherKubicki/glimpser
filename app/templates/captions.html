@@ -156,12 +156,24 @@ block content %}
               <form id="form-{{ camera }}" class="notes-form caption-box">
                 <div class="chat-box">
                   <div class="chat-prompt">
-                    <textarea id="notes-{{ camera }}" class="notes-textarea">
+                    <label for="notes-{{ camera }}">Prompt</label>
+                    <textarea
+                      id="notes-{{ camera }}"
+                      class="notes-textarea"
+                      placeholder="Edit caption prompt"
+                    >
 {{ template_details[camera]['notes'] }}</textarea
                     >
                   </div>
                   <div class="chat-response">
-                    <div class="last-caption">
+                    <label id="last-caption-label-{{ camera }}"
+                      >Last caption</label
+                    >
+                    <div
+                      id="last-caption-{{ camera }}"
+                      class="last-caption"
+                      aria-labelledby="last-caption-label-{{ camera }}"
+                    >
                       {{ template_details[camera]['last_caption'] }}
                     </div>
                   </div>

@@ -19,4 +19,6 @@ the dark background.
 
 The captions page uses the same theme variables. Prompt and response fields now
 inherit `--form-bg-color` and `--form-text-color` so text remains legible when
-switching themes.
+switching themes. Each caption row labels the prompt and last caption so the
+conversation thread is obvious, and the prompt textarea shows a placeholder to
+encourage editing.
