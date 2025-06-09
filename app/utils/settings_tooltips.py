@@ -32,7 +32,10 @@ SETTINGS_TOOLTIPS = {
     "CLOCK_NAVBAR": "Show clock in the navigation bar",
     "HEALTH_STATUS_ALWAYS_VISIBLE": "Keep the system performance icon visible",
     "MAX_COMPRESSED_VIDEO_AGE": "Days to keep archived videos",
-    "NAV_ICON": "Path to the logo used in navigation",
+    "NAV_ICON": (
+        "PNG file used for the navigation logo. Upload a custom image from the "
+        "Interface tab or choose the default option to restore it."
+    ),
     "UA": "User-Agent string for website requests",
 }
 
