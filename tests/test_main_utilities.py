@@ -2,7 +2,7 @@ import sys
 import os
 import unittest
 import signal
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, call
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -120,6 +120,58 @@ class TestMainUtilities(unittest.TestCase):
             mock_socket.assert_not_called()
         finally:
             os.environ.pop("IN_DOCKER")
+
+    @patch("main.subprocess.run")
+    def test_get_port_usage_lsof(self, mock_run):
+        result = MagicMock(stdout="lsof output", stderr="")
+        mock_run.return_value = result
+
+        output = main.get_port_usage(8082)
+
+        mock_run.assert_called_once_with(
+            [
+                "lsof",
+                "-i",
+                ":8082",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(output, "lsof output")
+
+    @patch("main.subprocess.run")
+    def test_get_port_usage_fuser_fallback(self, mock_run):
+        result = MagicMock(stdout="fuser output", stderr="")
+        mock_run.side_effect = [FileNotFoundError, result]
+
+        output = main.get_port_usage(8082)
+
+        expected_calls = [
+            call(
+                [
+                    "lsof",
+                    "-i",
+                    ":8082",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            ),
+            call(
+                [
+                    "fuser",
+                    "-n",
+                    "tcp",
+                    "8082",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            ),
+        ]
+        self.assertEqual(mock_run.call_args_list, expected_calls)
+        self.assertEqual(output, "fuser output")
 
 
 if __name__ == "__main__":
