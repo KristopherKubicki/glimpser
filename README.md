@@ -119,6 +119,17 @@ The web interface will be available at [http://localhost:8082](http://localhost:
 
 If you cannot log in or see video feeds, double-check that your `.env` file matches the configuration values in the database. Missing `SECRET_KEY` or API credentials often cause startup failures. Refer to [Troubleshooting](docs/troubleshooting.md) for more solutions.
 
+### Developer Dependencies
+
+To install Python packages required for development, run:
+
+```sh
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+```
+
+Then install linters and JavaScript tools with `make setup` (or `scripts/setup_env.sh`).
+
 ## Usage
 
 ### Configuration
@@ -192,19 +203,22 @@ To set up the project for development:
    source env/bin/activate  # On Windows, use `env\Scripts\activate`
    ```
 
-3. Install the package in editable mode with development dependencies:
+3. Install Python dependencies:
 
    ```sh
-   pip install -e ".[dev]"
+   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    ```
 
-4. Run tests:
+4. Install developer tooling:
+
+   ```sh
+   make setup  # runs scripts/setup_env.sh
+   ```
+
+5. Run tests:
    ```sh
    pytest
-   ```
-5. Install Node packages for linting and JS tests:
-   ```sh
-   npm install
    ```
 6. Run JavaScript tests with coverage:
    ```sh
@@ -224,7 +238,7 @@ To set up the project for development:
 
 From [Developer Guide](docs/developer_guide.md):
 
-1. Install the tooling and Git hooks:
+1. Install the tooling and Git hooks (or run `make setup`):
    ```sh
    pip install pre-commit black flake8
    npm install
