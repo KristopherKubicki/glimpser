@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block content %}
+<main class="container doc-view">
+    {{ content|safe }}
+    <p><a href="{{ url_for('help_page') }}">Back to Help</a></p>
+</main>
+{% endblock %}

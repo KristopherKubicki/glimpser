@@ -4,6 +4,8 @@ The built-in help page is accessible at the `/help` route once you log in.
 It provides step-by-step instructions for adding templates, managing
 captures, and using the command line interface. The help page is cached
 locally after you view it online so you can reference it offline.
+You can also view any guide from the `docs/` directory directly in the
+application by visiting `/docs/<filename>`.
 
 Key topics covered include:
 

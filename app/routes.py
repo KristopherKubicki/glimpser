@@ -17,6 +17,8 @@ from datetime import datetime, timedelta
 from functools import wraps
 from threading import Lock, Thread
 import queue
+from markupsafe import Markup
+from markdown import markdown
 
 from flask import (
     abort,
@@ -1346,6 +1348,21 @@ def init_routes(app: Flask) -> None:
     @login_required
     def help_page():
         return render_template("help.html", page_title="Help")
+
+    @app.route("/docs/<path:filename>")
+    @login_required
+    def doc_viewer(filename: str):
+        """Render a documentation file from the docs directory."""
+        docs_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "docs")
+        )
+        doc_path = os.path.abspath(os.path.join(docs_dir, filename))
+        if not doc_path.startswith(docs_dir) or not os.path.isfile(doc_path):
+            abort(404)
+        with open(doc_path, "r", encoding="utf-8") as fh:
+            md_text = fh.read()
+        html = Markup(markdown(md_text, extensions=["extra", "toc"]))
+        return render_template("doc_view.html", content=html, page_title=filename)
 
     @app.route("/settings_help")
     @login_required
