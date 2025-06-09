@@ -1,5 +1,37 @@
 import { setCaptionsVisibility } from "./templates.js";
 
+// Prefetch queue to avoid loading many clips at once
+let prefetchQueue = [];
+let processing = false;
+let queueDelay = 1000;
+
+export function setQueueDelay(ms) {
+  queueDelay = ms;
+}
+
+export function enqueueClip(video) {
+  if (!video.dataset.hdSrc || video.dataset.hdLoaded === "true") return;
+  if (prefetchQueue.includes(video)) return;
+  prefetchQueue.push(video);
+  if (!processing) processQueue();
+}
+
+function processQueue() {
+  const vid = prefetchQueue.shift();
+  if (!vid) {
+    processing = false;
+    return;
+  }
+  processing = true;
+  const src = vid.querySelector("source");
+  if (src) {
+    src.src = vid.dataset.hdSrc;
+    vid.dataset.hdLoaded = "true";
+    vid.load();
+  }
+  setTimeout(processQueue, queueDelay);
+}
+
 function safePlay(el) {
   const promise = el.play();
   if (promise && typeof promise.catch === "function") {
@@ -40,7 +72,10 @@ export function initVideoControls() {
         if (playAllActive) {
           if (playAllObserver) playAllObserver.disconnect();
           videos.forEach((video) => {
+            const name = video.getAttribute("data-name");
             video.pause();
+            video.querySelector("source").src = `/last_video/${name}`;
+            video.dataset.hdLoaded = "false";
           });
           playAllButton.textContent = "Play All";
           if (liveAllButton) liveAllButton.style.display = "none";
@@ -52,6 +87,7 @@ export function initVideoControls() {
             const name = video.getAttribute("data-name");
             const src = video.querySelector("source");
             src.src = `/clip/${name}`;
+            video.dataset.hdLoaded = "true";
             video.removeAttribute("src");
             video.poster = `/last_screenshot/${name}`;
             playAllObserver.observe(video);
@@ -220,12 +256,8 @@ export function setupStatusPageVideoHover() {
     (entries) => {
       entries.forEach((entry) => {
         const vid = entry.target;
-        if (entry.isIntersecting && vid.dataset.hdSrc && !vid.dataset.hdLoaded) {
-          const src = vid.querySelector("source");
-          if (src) {
-            src.src = vid.dataset.hdSrc;
-            vid.dataset.hdLoaded = "true";
-          }
+        if (entry.isIntersecting) {
+          enqueueClip(vid);
         }
       });
     },
@@ -248,13 +280,13 @@ export function setupStatusPageVideoHover() {
       };
 
       let resetTimeout;
+      let hoverTimer;
 
       cell.addEventListener("mouseenter", (e) => {
-        console.log("pos");
         clearTimeout(resetTimeout);
+        hoverTimer = setTimeout(() => enqueueClip(video), 500);
         img.style.display = "none";
         video.style.display = "block";
-        //safePlay(video);
         // Load metadata on first hover so currentTime can be set
         if (video.readyState === 0) {
           video.load();
@@ -274,10 +306,7 @@ export function setupStatusPageVideoHover() {
       cell.addEventListener("mousemove", scrub);
 
       cell.addEventListener("mouseleave", () => {
-        //video.pause();
-        //video.currentTime = 0;
-        //video.style.display = "none";
-        //img.style.display = "block";
+        clearTimeout(hoverTimer);
         resetTimeout = setTimeout(() => {
           video.pause();
           video.currentTime = 0;
@@ -328,3 +357,7 @@ export function startCasting() {
     );
   }
 }
+
+// expose queue functions for other modules
+window.enqueueClip = enqueueClip;
+window.setQueueDelay = setQueueDelay;
