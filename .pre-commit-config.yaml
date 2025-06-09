@@ -1,8 +1,8 @@
-minimum_pre_commit_version: "3.6.0"
-
-repos:
-  - repo: local
-    hooks:
+        entry: python -m black
+        entry: python -m flake8
+        entry: node node_modules/.bin/eslint app/static/js/**/*.js
+        entry: node node_modules/.bin/prettier --write app/static/js/**/*.js
+        entry: node node_modules/.bin/stylelint app/static/css/**/*.css
       - id: black
         name: black
         entry: black
