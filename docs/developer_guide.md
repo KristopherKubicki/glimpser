@@ -11,15 +11,14 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    python -m venv env
    source env/bin/activate
    ```
-2. Install the package in editable mode with development dependencies:
+2. Install Python dependencies:
    ```sh
-   pip install -e ".[dev]"
+   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    ```
-3. Install tooling before network access is disabled:
+3. Set up tooling:
    ```sh
-   pip install pre-commit black flake8
-   npm install
-   pre-commit install
+   make setup  # installs flake8, pre-commit and JS packages
    ```
    After installation, verify hooks:
    ```sh
@@ -38,6 +37,7 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    ```
 
 ## Understanding the Architecture
+
 Before diving into new features, read
 [Architecture Overview](architecture_overview.md). It describes how Flask routes,
 background jobs and utility modules cooperate. The "Data Flow from Camera to UI"
@@ -47,10 +47,12 @@ to the web interface.
 ## Running Tests
 
 The project uses `pytest` for testing and `flake8` for linting. After activating your environment, run:
+
 ```sh
 flake8
 pytest
 ```
+
 Running the full test suite helps ensure that your changes do not introduce regressions.
 
 ## Contribution Workflow
@@ -71,6 +73,7 @@ For more details, see [CONTRIBUTING.md](https://github.com/KristopherKubicki/gli
 - Configuration defaults are defined in `app/config.py`.
 
 When adding new features, include corresponding tests under the `tests/` directory.
+
 - Utilities for network testing now have dedicated tests in `tests/test_network_testing_utils.py`.
 - Configuration lookup logic is verified by `tests/test_config_get_setting.py`.
 - Scheduler helpers are tested in `tests/test_scheduling_more.py`.
