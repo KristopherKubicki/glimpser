@@ -184,6 +184,18 @@ class TestMain(unittest.TestCase):
         main.display_startup_tips()
         mock_info.assert_any_call("Startup Tips")
 
+    @patch("logging.warning")
+    def test_display_startup_tips_warns_on_local_host(self, mock_warn):
+        with (
+            patch.object(config, "HOST", "127.0.0.1"),
+            patch.object(config, "SESSION_COOKIE_SECURE", False),
+        ):
+            main.display_startup_tips()
+        mock_warn.assert_any_call(
+            "HOST %s is only reachable locally; remote clients may not connect.",
+            "127.0.0.1",
+        )
+
     @patch("main.get_system_metrics")
     @patch("logging.info")
     def test_display_startup_info(self, mock_info, mock_metrics):

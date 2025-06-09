@@ -1,5 +1,5 @@
-{% extends 'base.html' %} {% from 'components.html' import status_legend %} {%
-block content %}
+{% extends 'base.html' %} {% from 'components.html' import status_legend,
+template_controls %} {% block content %}
 <div class="captions-page" data-latest-caption="{{ latest_caption }}">
   <script>
     function updateTemplate(templateName) {
@@ -39,70 +39,16 @@ block content %}
   </div>
 
   <div id="prompts-tab" class="tab-content active">
-    <div id="controls-wrapper" class="filter-controls closed">
-      <button id="controls-toggle" type="button">Search &amp; Filters</button>
-      <div class="controls-inner">
-        <label for="search-input" title="Search by name or group"
-          >Search:</label
-        >
-        <input
-          type="search"
-          id="search-input"
-          placeholder="Search cameras or groups"
-          title="Enter search terms"
-        />
-
-        <label for="filter-column" title="Metric to filter by">Metric:</label>
-        <select id="filter-column" title="Select metric">
-          <option value="">All</option>
-          <option value="screenshot_count">Shots</option>
-          <option value="video_count">Videos</option>
-          <option value="storage_usage">Storage</option>
-          <option value="llm_response_count">LLM Resp</option>
-          <option value="llm_cost_estimate">LLM Cost</option>
-        </select>
-        <input
-          type="text"
-          id="filter-value"
-          placeholder="Minimum"
-          title="Minimum value or text"
-        />
-        <label for="cost-start" title="Start date for cost">From:</label>
-        <input
-          type="date"
-          id="cost-start"
-          title="Cost start"
-          value="{{ cost_start or '' }}"
-        />
-        <label for="cost-end" title="End date for cost">To:</label>
-        <input
-          type="date"
-          id="cost-end"
-          title="Cost end"
-          value="{{ cost_end or '' }}"
-        />
-        <button id="apply-filter" type="button" title="Filter table rows">
-          Filter
-        </button>
-        <input
-          type="range"
-          id="grid-width-slider"
-          min="50"
-          max="3840"
-          value="360"
-          title="Adjust thumbnail width"
-        />
-        {{ status_legend() }}
-        <label for="sort-date" title="Sort camera table">Sort:</label>
-        <select id="sort-date" title="Sort camera table">
-          <option value="">Default</option>
-          <option value="last_desc">Last &darr;</option>
-          <option value="last_asc">Last &uarr;</option>
-          <option value="next_asc">Next &uarr;</option>
-          <option value="next_desc">Next &darr;</option>
-        </select>
-      </div>
-    </div>
+    {% call template_controls() %}
+    <label for="sort-date" title="Sort camera table">Sort:</label>
+    <select id="sort-date" title="Sort camera table">
+      <option value="">Default</option>
+      <option value="last_desc">Last &darr;</option>
+      <option value="last_asc">Last &uarr;</option>
+      <option value="next_asc">Next &uarr;</option>
+      <option value="next_desc">Next &darr;</option>
+    </select>
+    {% endcall %}
 
     <h2>Camera Notes</h2>
     <div id="template-list">
@@ -146,7 +92,7 @@ block content %}
                     muted
                     poster="/last_screenshot/{{ camera }}"
                   >
-                    <source src="/last_video/{{ camera }}" type="video/mp4" />
+                    <source src="/clip/{{ camera }}" type="video/mp4" />
                     Your browser does not support the video tag.
                   </video>
                 </div>
@@ -156,12 +102,24 @@ block content %}
               <form id="form-{{ camera }}" class="notes-form caption-box">
                 <div class="chat-box">
                   <div class="chat-prompt">
-                    <textarea id="notes-{{ camera }}" class="notes-textarea">
+                    <label for="notes-{{ camera }}">Prompt</label>
+                    <textarea
+                      id="notes-{{ camera }}"
+                      class="notes-textarea"
+                      placeholder="Edit caption prompt"
+                    >
 {{ template_details[camera]['notes'] }}</textarea
                     >
                   </div>
                   <div class="chat-response">
-                    <div class="last-caption">
+                    <label id="last-caption-label-{{ camera }}"
+                      >Last caption</label
+                    >
+                    <div
+                      id="last-caption-{{ camera }}"
+                      class="last-caption"
+                      aria-labelledby="last-caption-label-{{ camera }}"
+                    >
                       {{ template_details[camera]['last_caption'] }}
                     </div>
                   </div>
@@ -196,10 +154,9 @@ block content %}
         placeholder="Search captions or time"
         title="Filter captions"
       />
-      <label for="caption-start">From:</label>
-      <input type="date" id="caption-start" title="Start date" />
-      <label for="caption-end">To:</label>
-      <input type="date" id="caption-end" title="End date" />
+      <label for="caption-range">Range:</label>
+      <input type="range" id="caption-range" min="1" max="30" value="7" />
+      <span id="caption-range-label">Last 7 days</span>
       <button id="caption-clear" type="button" title="Clear filters">
         Clear
       </button>
@@ -221,13 +178,12 @@ block content %}
         <tr>
           <th class="sortable" data-type="date">Timestamp</th>
           <th class="sortable" data-type="string">Caption</th>
-          <th>Play</th>
         </tr>
       </thead>
       <tbody>
         {% if not lcaptions %}
         <tr class="no-data">
-          <td colspan="3">No captions available</td>
+          <td colspan="2">No captions available</td>
         </tr>
         {% else %} {% for caption in lcaptions %} {% for lc in caption %} {% if
         caption[lc] != "" %}
@@ -253,13 +209,17 @@ block content %}
     </table>
     <div id="chat-modal" class="modal">
       <div class="modal-content">
-        <span id="chat-close" class="close-icon">&times;</span>
+        <span id="chat-close" class="close-icon" title="Close chat"
+          >&times;</span
+        >
         <textarea
           id="chat-question"
           class="prompt-textarea"
           placeholder="Ask a question..."
         ></textarea>
-        <button id="chat-submit" type="button">Ask</button>
+        <button id="chat-submit" type="button" title="Submit question">
+          Ask
+        </button>
         <div id="chat-answer" class="chat-answer"></div>
       </div>
     </div>

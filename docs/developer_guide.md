@@ -15,12 +15,13 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    ```sh
    pip install -e ".[dev]"
    ```
-3. Install the `pre-commit` tool and set up the Git hooks:
+3. Install tooling before network access is disabled:
    ```sh
-   pip install pre-commit
+   pip install pre-commit black flake8
+   npm install
    pre-commit install
    ```
-   Before pushing changes, run:
+   After installation, verify hooks:
    ```sh
    pre-commit run --all-files
    ```

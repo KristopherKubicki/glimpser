@@ -12,17 +12,45 @@ function safePlay(el) {
   }
 }
 
+function createMobileCard(name) {
+  const div = document.createElement("div");
+  div.classList.add("templateDiv", "mobile-card");
+  const link = document.createElement("a");
+  link.href = `/templates/${name}`;
+  link.textContent = name;
+  link.className = "mobile-link";
+  div.appendChild(link);
+  return div;
+}
+
 let captionsVisible = localStorage.getItem("showCaptions") !== "false";
+
+export function setCaptionsVisibility(value) {
+  const slider = document.getElementById("grid-width-slider");
+  captionsVisible = value;
+  localStorage.setItem("showCaptions", value.toString());
+  applyCaptionVisibility(parseFloat(slider?.value || "0"));
+}
 
 export function applyCaptionVisibility(width) {
   const templateList = document.getElementById("template-list");
-  const captionToggle = document.getElementById("toggle-captions");
-  const show = captionsVisible && (!width || width >= 150);
+  const captionToggle = document.getElementById("caption-toggle");
+  const enabled = !width || width >= 150;
+  const show = captionsVisible && enabled;
   document.documentElement.classList.toggle("hide-captions", !show);
   templateList
     ?.querySelectorAll(".caption-overlay")
     .forEach((o) => (o.style.display = show ? "block" : "none"));
-  if (captionToggle) captionToggle.checked = captionsVisible;
+  if (captionToggle) {
+    captionToggle.classList.toggle("disabled", !enabled);
+    captionToggle.classList.toggle("active", captionsVisible && enabled);
+    captionToggle.classList.toggle("off", !captionsVisible && enabled);
+    captionToggle.title = enabled
+      ? captionsVisible
+        ? "Hide caption overlays"
+        : "Show caption overlays"
+      : "Increase tile size to enable captions";
+  }
 }
 
 export function initTemplates() {
@@ -38,7 +66,7 @@ export function initTemplates() {
       "(hover: none) and (max-width: 767px)",
     ).matches;
     const templateList = document.getElementById("template-list");
-    const captionToggle = document.getElementById("toggle-captions");
+    const captionToggle = document.getElementById("caption-toggle");
     const MAX_THUMBNAIL_HEIGHT = 1080;
     const ASPECT_RATIO = 9 / 16;
     const MAX_THUMBNAIL_WIDTH = Math.round(MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO);
@@ -46,18 +74,37 @@ export function initTemplates() {
     if (slider) {
       const updateSliderLimits = () => {
         slider.max = Math.min(window.innerWidth, MAX_THUMBNAIL_WIDTH);
+        if (isMobile) {
+          slider.min = slider.max;
+          slider.value = slider.max;
+          document.documentElement.style.setProperty(
+            "--tile-size",
+            `${slider.value}px`,
+          );
+          slider.dispatchEvent(new Event("input"));
+          return;
+        }
+
         const templateCount =
           templateList?.querySelectorAll(".templateDiv").length || 1;
 
         const gap = parseFloat(getComputedStyle(templateList).gap || "0") || 0;
 
-        // Maximum width to fit all tiles across the page
-        //const widthForColumns = Math.floor(
-        //  (window.innerWidth - gap * (templateCount - 1)) / templateCount,
-        //);
-        // Iterate over possible column counts to find the largest
-        // tile width that fits the viewport both horizontally and vertically.
+        // Iterate over possible column counts to find the largest tile width
+        // that fits the viewport horizontally and vertically.
         let bestWidth = 50;
+        const headerHeight =
+          document.querySelector("header")?.offsetHeight || 0;
+        const bannerHeight =
+          document.getElementById("network-banner")?.offsetHeight || 0;
+        const footerSpace = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue(
+            "--footer-space",
+          ) || "0",
+        );
+        const availableHeight =
+          window.innerHeight - headerHeight - bannerHeight - footerSpace;
+
         for (let cols = 1; cols <= templateCount; cols++) {
           const maxWidthForCols = Math.floor(
             (window.innerWidth - gap * (cols - 1)) / cols,
@@ -66,39 +113,21 @@ export function initTemplates() {
           const rows = Math.ceil(templateCount / cols);
           const tileHeight = maxWidthForCols * ASPECT_RATIO;
           const totalHeight = rows * tileHeight + gap * (rows - 1);
-          if (
-            totalHeight <= window.innerHeight &&
-            maxWidthForCols > bestWidth
-          ) {
+          if (totalHeight <= availableHeight && maxWidthForCols > bestWidth) {
             bestWidth = maxWidthForCols;
           }
         }
 
-        // Maximum width so combined rows fill the screen vertically
-        //const aspectRatio = 9 / 16;
-        //const widthForHeight = Math.sqrt(
-        //  (window.innerHeight * window.innerWidth) /
-        //    (templateCount * aspectRatio),
-        //);
-        //const widthForMaxHeight = MAX_THUMBNAIL_HEIGHT / aspectRatio;
         const widthForMaxHeight = MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO;
         slider.max = Math.min(slider.max, widthForMaxHeight);
 
         const computedMin = Math.max(
           50,
-          //  Math.min(
-          //    slider.max,
-          //    Math.floor(Math.min(widthForColumns, widthForHeight)),
-          //  ),
           Math.min(slider.max, Math.floor(bestWidth)),
         );
 
         slider.min = computedMin;
-        if (isMobile) {
-          slider.value = Math.min(window.innerWidth, slider.max);
-        } else {
-          slider.value = computedMin;
-        }
+        slider.value = computedMin;
         document.documentElement.style.setProperty(
           "--tile-size",
           `${slider.value}px`,
@@ -113,11 +142,16 @@ export function initTemplates() {
     }
 
     if (captionToggle) {
-      captionToggle.addEventListener("change", () => {
-        captionsVisible = captionToggle.checked;
+      captionToggle.addEventListener("click", () => {
+        if (captionToggle.classList.contains("disabled")) return;
+        captionsVisible = !captionsVisible;
         localStorage.setItem("showCaptions", captionsVisible.toString());
         applyCaptionVisibility(parseFloat(slider?.value || "0"));
       });
+      setTimeout(() => {
+        captionToggle.classList.add("flash-caption");
+        setTimeout(() => captionToggle.classList.remove("flash-caption"), 4000);
+      }, 500);
     }
 
     function autofillGroup() {
@@ -236,6 +270,7 @@ export function initTemplates() {
     setupSorting();
     setupSortMenu();
     setupCaptionsFilter();
+    setupStatusFilter();
     updateHumanizedTimes();
     setInterval(updateHumanizedTimes, 60000);
     applyCaptionVisibility(parseFloat(slider?.value || "0"));
@@ -630,80 +665,86 @@ export async function loadTemplates() {
         );
 
         if (isIndexPage) {
-          const templateDiv = document.createElement("div");
-          templateDiv.classList.add("templateDiv");
-          templateDiv.style.opacity = "0";
-          templateDiv.style.transform = "translateY(20px)";
-          templateDiv.style.transition =
-            "opacity 0.5s ease, transform 0.5s ease";
+          let templateDiv;
+          if (isMobile()) {
+            templateDiv = createMobileCard(name);
+            templateList.appendChild(templateDiv);
+          } else {
+            templateDiv = document.createElement("div");
+            templateDiv.classList.add("templateDiv");
+            templateDiv.style.opacity = "0";
+            templateDiv.style.transform = "translateY(20px)";
+            templateDiv.style.transition =
+              "opacity 0.5s ease, transform 0.5s ease";
 
-          templateDiv.innerHTML = `
-            <a href='/templates/${name}'>
-              <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
-                <div class="camera-name">${name}</div>
-                <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback>
-                  <source src="/last_video/${name}" type="video/mp4">
-                  Your browser does not support the video tag.
-                </video>
-                <div class="caption-overlay">${template.last_caption || ""}</div>
-              </div>
-            </a>
-            <a href='${template.url}' target='_blank' class='open-url-link' title='Open monitored page' aria-label='Open monitored page'>↗</a>
-          `;
-          templateList.appendChild(templateDiv);
+            templateDiv.innerHTML = `
+              <a href='/templates/${name}'>
+                <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
+                  <div class="camera-name">${name}</div>
+                  <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback>
+                    <source src="/last_video/${name}" type="video/mp4">
+                    Your browser does not support the video tag.
+                  </video>
+                  <div class="caption-overlay">${template.last_caption || ""}</div>
+                </div>
+              </a>
+              <a href='${template.url}' target='_blank' class='open-url-link' title='Open monitored page' aria-label='Open monitored page'>↗</a>
+            `;
+            templateList.appendChild(templateDiv);
 
-          void templateDiv.offsetWidth;
-          setTimeout(() => {
-            templateDiv.style.opacity = "1";
-            templateDiv.style.transform = "translateY(0)";
-          }, index * 100);
+            void templateDiv.offsetWidth;
+            setTimeout(() => {
+              templateDiv.style.opacity = "1";
+              templateDiv.style.transform = "translateY(0)";
+            }, index * 100);
 
-          const video = templateDiv.querySelector("video");
-          observer.observe(video);
+            const video = templateDiv.querySelector("video");
+            observer.observe(video);
 
-          // Update frame based on cursor position over the tile.
-          const scrub = (e) => {
-            const rect = video.getBoundingClientRect();
-            const ratio = (e.clientX - rect.left) / rect.width;
-            const clamped = Math.max(0, Math.min(1, ratio));
-            if (!Number.isNaN(video.duration)) {
-              video.currentTime = video.duration * clamped;
-            }
-          };
+            // Update frame based on cursor position over the tile.
+            const scrub = (e) => {
+              const rect = video.getBoundingClientRect();
+              const ratio = (e.clientX - rect.left) / rect.width;
+              const clamped = Math.max(0, Math.min(1, ratio));
+              if (!Number.isNaN(video.duration)) {
+                video.currentTime = video.duration * clamped;
+              }
+            };
 
-          let resetTimeout;
+            let resetTimeout;
 
-          video.addEventListener("mouseenter", (e) => {
-            clearTimeout(resetTimeout);
-            video.style.display = "block";
-            // Load metadata on first hover so currentTime can be set
-            if (video.readyState === 0) {
-              video.load();
-            }
-            video.pause();
-            if (video.readyState >= 1) {
-              scrub(e);
-            } else {
-              const onLoad = () => {
-                scrub(e);
-                video.removeEventListener("loadedmetadata", onLoad);
-              };
-              video.addEventListener("loadedmetadata", onLoad);
-            }
-          });
-
-          video.addEventListener("mousemove", scrub);
-
-          video.addEventListener("mouseleave", () => {
-            resetTimeout = setTimeout(() => {
+            video.addEventListener("mouseenter", (e) => {
+              clearTimeout(resetTimeout);
+              video.style.display = "block";
+              // Load metadata on first hover so currentTime can be set
+              if (video.readyState === 0) {
+                video.load();
+              }
               video.pause();
-              video.currentTime = 0;
-              //video.style.display = "none";
-              // Reset to the poster image on hover exit
-              video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
-              video.load();
-            }, 1000); // restore screenshot a bit after leaving
-          });
+              if (video.readyState >= 1) {
+                scrub(e);
+              } else {
+                const onLoad = () => {
+                  scrub(e);
+                  video.removeEventListener("loadedmetadata", onLoad);
+                };
+                video.addEventListener("loadedmetadata", onLoad);
+              }
+            });
+
+            video.addEventListener("mousemove", scrub);
+
+            video.addEventListener("mouseleave", () => {
+              resetTimeout = setTimeout(() => {
+                video.pause();
+                video.currentTime = 0;
+                //video.style.display = "none";
+                // Reset to the poster image on hover exit
+                video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
+                video.load();
+              }, 1000); // restore screenshot a bit after leaving
+            });
+          }
         } else if (isCaptionsPage) {
           const templateDiv = document.createElement("div");
           templateDiv.classList.add("templateDiv");
@@ -765,6 +806,8 @@ export async function loadTemplates() {
     window.dispatchEvent(
       new CustomEvent("templatesLoaded", { detail: { count: templateCount } }),
     );
+    updateStatusCounts();
+    applyStatusFilter();
     applyCaptionVisibility(parseFloat(sliderElement?.value || "0"));
   } catch (error) {
     console.error("Error loading templates:", error);
@@ -839,8 +882,8 @@ export function sortCameraTable(option) {
 
 export function setupCaptionsFilter() {
   const searchInput = document.getElementById("captions-search");
-  const startInput = document.getElementById("caption-start");
-  const endInput = document.getElementById("caption-end");
+  const rangeInput = document.getElementById("caption-range");
+  const rangeLabel = document.getElementById("caption-range-label");
   const clearBtn = document.getElementById("caption-clear");
   const rows = document.querySelectorAll("#captions-table tbody tr");
 
@@ -871,9 +914,10 @@ export function setupCaptionsFilter() {
 
   const filter = () => {
     const term = searchInput.value.toLowerCase().trim();
-    const start =
-      startInput && startInput.value ? new Date(startInput.value) : null;
-    const end = endInput && endInput.value ? new Date(endInput.value) : null;
+    const days = rangeInput ? parseInt(rangeInput.value, 10) : NaN;
+    const start = Number.isFinite(days)
+      ? new Date(Date.now() - days * 86400000)
+      : null;
 
     rows.forEach((row) => {
       const timeElem = row.querySelector("td:first-child span");
@@ -882,8 +926,6 @@ export function setupCaptionsFilter() {
       let show = true;
       if (term && !text.includes(term)) show = false;
       if (start && rowDate && rowDate < start) show = false;
-      if (end && rowDate && rowDate > new Date(end.getTime() + 86400000 - 1))
-        show = false;
       row.style.display = show ? "" : "none";
       const captionCell = row.querySelector("td:nth-child(2)");
       if (show) highlight(captionCell, term);
@@ -894,13 +936,111 @@ export function setupCaptionsFilter() {
   };
 
   searchInput.addEventListener("input", filter);
-  if (startInput) startInput.addEventListener("change", filter);
-  if (endInput) endInput.addEventListener("change", filter);
+  if (rangeInput) {
+    rangeInput.addEventListener("input", () => {
+      if (rangeLabel) rangeLabel.textContent = `Last ${rangeInput.value} days`;
+    });
+    rangeInput.addEventListener("change", filter);
+  }
   if (clearBtn)
     clearBtn.addEventListener("click", () => {
       searchInput.value = "";
-      if (startInput) startInput.value = "";
-      if (endInput) endInput.value = "";
+      if (rangeInput) rangeInput.value = "7";
       filter();
     });
+}
+
+let activeStatus = null;
+
+export function applyStatusFilter() {
+  document
+    .querySelectorAll("#template-list .video-container")
+    .forEach((box) => {
+      const wrapper = box.closest(".templateDiv");
+      if (!wrapper) return;
+      const isRecent = box.classList.contains("recent-screenshot");
+      const isError = box.classList.contains("template-error");
+      let show = true;
+      if (activeStatus === "recent") show = isRecent;
+      else if (activeStatus === "error") show = isError;
+      wrapper.style.display = show ? "" : "none";
+    });
+}
+
+export function updateStatusCounts() {
+  const legend = document.getElementById("status-legend");
+  if (!legend) return;
+  const recent = document.querySelectorAll(
+    "#template-list .video-container.recent-screenshot",
+  ).length;
+  const error = document.querySelectorAll(
+    "#template-list .video-container.template-error",
+  ).length;
+  legend
+    .querySelector('[data-status="recent"]')
+    ?.classList.toggle("disabled", recent === 0);
+  legend
+    .querySelector('[data-status="error"]')
+    ?.classList.toggle("disabled", error === 0);
+}
+
+export function setupStatusFilter() {
+  document.addEventListener("DOMContentLoaded", () => {
+    const legend = document.getElementById("status-legend");
+    if (!legend) return;
+    legend.querySelectorAll(".status-item").forEach((item) => {
+      item.dataset.status ||= item.textContent.trim().toLowerCase();
+      item.addEventListener("click", () => {
+        if (item.classList.contains("disabled")) return;
+        const status = item.dataset.status;
+        if (activeStatus === status) {
+          activeStatus = null;
+          item.classList.remove("active");
+        } else {
+          activeStatus = status;
+          legend
+            .querySelectorAll(".status-item")
+            .forEach((i) => i.classList.toggle("active", i === item));
+        }
+        applyStatusFilter();
+      });
+    });
+    updateStatusCounts();
+    window.addEventListener("templatesLoaded", updateStatusCounts);
+  });
+}
+
+export function updateBrowserOptions() {
+  const browser = document.getElementById("browser");
+  const headless = document.getElementById("headless");
+  const stealth = document.getElementById("stealth");
+  const popup = document.getElementById("popup_xpath");
+  const dedicated = document.getElementById("dedicated_xpath");
+  const enabled = browser && browser.checked;
+  if (headless) {
+    headless.disabled = !enabled;
+    if (!enabled) headless.checked = false;
+  }
+  if (stealth) {
+    stealth.disabled = !enabled;
+    if (!enabled) stealth.checked = false;
+  }
+  if (popup) popup.disabled = !enabled;
+  if (dedicated) dedicated.disabled = !enabled;
+}
+
+export function setupBrowserOptions() {
+  document.addEventListener("DOMContentLoaded", () => {
+    const browser = document.getElementById("browser");
+    const popup = document.getElementById("popup_xpath");
+    const dedicated = document.getElementById("dedicated_xpath");
+    browser?.addEventListener("change", updateBrowserOptions);
+    const ensureBrowser = () => {
+      if (browser && !browser.checked) browser.checked = true;
+      updateBrowserOptions();
+    };
+    popup?.addEventListener("input", ensureBrowser);
+    dedicated?.addEventListener("input", ensureBrowser);
+    updateBrowserOptions();
+  });
 }

@@ -10,32 +10,49 @@ function setProgress(el, value) {
   }
 }
 
+function setStatus(el, status) {
+  if (!el) return;
+  el.classList.remove("ok", "slow", "error");
+  el.classList.add(status);
+}
+
 export function updatePerformanceMetrics() {
   return fetch("/health")
     .then((response) => response.json())
     .then((data) => {
+      const metrics = data.metrics || data;
+
       const cpuVal = document.getElementById("cpu-value");
-      if (cpuVal) cpuVal.textContent = `${data.cpu_usage}%`;
-      setProgress(document.getElementById("cpu-bar"), data.cpu_usage);
+      if (cpuVal) cpuVal.textContent = `${metrics.cpu_usage}%`;
+      setProgress(document.getElementById("cpu-bar"), metrics.cpu_usage);
 
       const memoryVal = document.getElementById("memory-value");
-      if (memoryVal) memoryVal.textContent = `${data.memory_usage}%`;
-      setProgress(document.getElementById("memory-bar"), data.memory_usage);
+      if (memoryVal) memoryVal.textContent = `${metrics.memory_usage}%`;
+      setProgress(document.getElementById("memory-bar"), metrics.memory_usage);
 
       const diskVal = document.getElementById("disk-value");
-      if (diskVal) diskVal.textContent = `${data.disk_usage}%`;
-      setProgress(document.getElementById("disk-bar"), data.disk_usage);
+      if (diskVal) diskVal.textContent = `${metrics.disk_usage}%`;
+      setProgress(document.getElementById("disk-bar"), metrics.disk_usage);
 
       const openFiles = document.getElementById("open-files");
-      if (openFiles) openFiles.textContent = data.open_files;
+      if (openFiles) openFiles.textContent = metrics.open_files;
 
       const threadCount = document.getElementById("thread-count");
-      if (threadCount) threadCount.textContent = data.thread_count;
+      if (threadCount) threadCount.textContent = metrics.thread_count;
 
       const uptimeVal = document.getElementById("uptime-value");
-      if (uptimeVal) uptimeVal.textContent = data.uptime;
+      if (uptimeVal) uptimeVal.textContent = metrics.uptime;
 
-      updateCPUSparkline(data.cpu_usage);
+      const gpuStatus = document.getElementById("gpu-status");
+      if (metrics.ffmpeg_gpu_enabled) {
+        setStatus(gpuStatus, "ok");
+      } else if (metrics.gpu_support) {
+        setStatus(gpuStatus, "slow");
+      } else {
+        setStatus(gpuStatus, "error");
+      }
+
+      updateCPUSparkline(metrics.cpu_usage);
     });
 }
 

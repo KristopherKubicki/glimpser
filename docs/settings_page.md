@@ -7,11 +7,14 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Add New Setting** – quickly create additional key/value pairs.
 - **Current Settings** – edit existing values. Delete actions appear when advanced options are enabled using the toggle under the **Management** tab. Tabs switch between setting groups and the Management tab holds backup and offline options.
 - **Configuration Management** – backup, download, and upload the JSON configuration file.
+- **Credentials & Management** – buttons are organized into cards for a cleaner layout.
 - **Danger Mode** – shows the detected browser path, Chrome version, and the first shortcut found. Green and red dots indicate if shortcuts are patched and if the debugging port is open. A link beside the heading opens the [Danger Mode documentation](danger_mode.md). You can also update Chrome shortcuts from here.
 - **Offline Preview** – cached snapshots are automatically enabled.
 - **Settings Reference** – expand the table to read explanations for each setting.
 - **Column Search** – click a header to filter rows by that column.
 - **Tab headers removed** – the active tab is highlighted, freeing space.
+- **Unsaved Changes Indicator** – a small alert icon appears next to the Save
+  Changes button when edits haven't been saved.
 - **System Status** – view CPU, memory, disk usage, and live logs.
 - **Certain tabs start collapsed** – Capture, Credentials & Management, and
   Integrations & Other appear collapsed until expanded.
@@ -31,8 +34,8 @@ Focusing any input field shows a tooltip on screen with a description pulled fro
 
 ### Selectable Options
 
-Common settings like `HOST`, `LANG`, `LOG_LEVEL`, and `TZ` now use a single autocomplete field. Typing shows suggestions for common values, but any text can be entered. The `PORT` field enforces non‑privileged ports (1024–65535) to avoid permission errors.
-Numeric settings such as `MAX_WORKERS` or `EMAIL_SMTP_PORT` use number inputs so invalid characters cannot be entered. Email fields validate that addresses are well formed before submission.
+Common settings like `HOST`, `LANG`, `LOG_LEVEL`, and `TZ` now use searchable dropdowns populated with sensible defaults. Custom values may still be entered but `TZ` choices are validated against the system time zone database. The `PORT` field only accepts ports the current user can bind to, preventing permission errors.
+Numeric settings such as `MAX_WORKERS` or `EMAIL_SMTP_PORT` use number inputs so invalid characters cannot be entered. `MAX_WORKERS` is capped at twice the available CPU count. Email fields validate that addresses are well formed before submission.
 
 ### Validation
 

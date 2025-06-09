@@ -15,10 +15,16 @@ export function initControlsDropdown() {
       fadeTimeout = setTimeout(() => wrapper.classList.add("fade-out"), 3000);
     };
 
+    const pauseFade = () => {
+      wrapper.classList.remove("fade-out");
+      clearTimeout(fadeTimeout);
+    };
+
     ["mousemove", "scroll"].forEach((evt) => {
       document.addEventListener(evt, showControls);
     });
-    wrapper.addEventListener("mouseover", showControls);
+    wrapper.addEventListener("mouseenter", pauseFade);
+    wrapper.addEventListener("mouseleave", showControls);
 
     showControls();
   });

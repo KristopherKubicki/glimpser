@@ -1,6 +1,9 @@
 # app/utils/validators.py
 
 from werkzeug.utils import secure_filename
+import os
+import socket
+from zoneinfo import ZoneInfo
 import re
 from urllib.parse import urlparse
 from ipaddress import ip_address
@@ -243,10 +246,12 @@ def validate_update_data(data: dict) -> dict:
     return sanitized
 
 
+MAX_WORKERS_MAX = max(1, (os.cpu_count() or 1) * 2)
+
 INTEGER_RANGES = {
     "PORT": (1024, 65535),
     "EMAIL_SMTP_PORT": (1, 65535),
-    "MAX_WORKERS": (1, None),
+    "MAX_WORKERS": (1, MAX_WORKERS_MAX),
     "FFMPEG_THREADS": (1, None),
     "NUM_FRAMES": (1, None),
     "CAPTURE_TIMEOUT": (1, None),
@@ -271,6 +276,8 @@ BOOLEAN_SETTINGS = {
     "DISCOVERY_AUTOSTART",
     "EMAIL_ENABLED",
     "EMAIL_USE_TLS",
+    "ENFORCE_DOMAIN_IN_HOST",
+    "FFMPEG_HWACCEL",
 }
 
 
@@ -289,6 +296,26 @@ def validate_setting(name: str, value: str) -> str | None:
     key = str(name or "").upper()
     val = str(value).strip()
 
+    if key == "TZ":
+        try:
+            ZoneInfo(val)
+            return val
+        except Exception:
+            return None
+
+    if key in {"LOG_LEVEL", "FLASK_LOG_LEVEL"}:
+        level = val.upper()
+        if level in {"DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"}:
+            return level
+        return None
+
+    if key == "FFMPEG_HWACCEL":
+        return (
+            "auto"
+            if val.lower() in {"true", "1", "t", "y", "yes", "on", "auto"}
+            else "False"
+        )
+
     if key in BOOLEAN_SETTINGS:
         return (
             "True" if val.lower() in {"true", "1", "t", "y", "yes", "on"} else "False"
@@ -304,6 +331,34 @@ def validate_setting(name: str, value: str) -> str | None:
             return None
         if max_val is not None and ivalue > max_val:
             return None
+        if key == "PORT":
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                sock.bind(("0.0.0.0", ivalue))
+            except OSError:
+                return None
+            finally:
+                sock.close()
         return str(ivalue)
+
+    email_re = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+
+    if key in {"EMAIL_SENDER", "CAP_SENDER"}:
+        if not val:
+            return ""
+        return val if re.fullmatch(email_re, val) else None
+
+    if key == "EMAIL_RECIPIENTS":
+        if not val:
+            return ""
+        addrs = [a.strip() for a in val.split(";") if a.strip()]
+        if not addrs:
+            addrs = [a.strip() for a in val.split(",") if a.strip()]
+        if all(re.fullmatch(email_re, a) for a in addrs):
+            return ",".join(addrs)
+        return None
+
+    if key == "CAP_ENDPOINT":
+        return validate_url(val) or ""
 
     return val

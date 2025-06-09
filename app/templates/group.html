@@ -1,47 +1,5 @@
-{% extends 'base.html' %} {% from 'components.html' import status_legend %} {%
-block content %}
-<div id="controls-wrapper" class="closed">
-  <button id="controls-toggle" type="button">Controls</button>
-  <div id="template-controls">
-    <div id="search-container">
-      <input
-        type="text"
-        id="search-input"
-        placeholder="Search cameras"
-        title="Enter search terms"
-      />
-    </div>
-    <input
-      type="range"
-      id="grid-width-slider"
-      min="50"
-      max="3840"
-      value="360"
-      title="Adjust the width of the template grid"
-    />
-    {{ status_legend() }}
-    <button id="play-all-button" title="Play/Stop all videos">Play All</button>
-    <button
-      id="live-all-button"
-      style="display: none"
-      title="Return to latest screenshot"
-    >
-      Live
-    </button>
-    <div class="checkbox-row">
-      <span>Captions</span>
-      <label class="switch" title="Toggle caption overlays">
-        <input
-          id="toggle-captions"
-          type="checkbox"
-          checked
-          aria-label="Toggle caption overlays"
-        />
-        <span class="slider round"></span>
-      </label>
-    </div>
-  </div>
-</div>
+{% extends 'base.html' %} {% from 'components.html' import template_controls %}
+{% block content %} {% call template_controls() %}{% endcall %}
 <div
   id="template-list"
   title="List of all templates"

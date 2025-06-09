@@ -1,3 +1,5 @@
+import { setCaptionsVisibility } from "./templates.js";
+
 function safePlay(el) {
   const promise = el.play();
   if (promise && typeof promise.catch === "function") {
@@ -38,12 +40,7 @@ export function initVideoControls() {
         if (playAllActive) {
           if (playAllObserver) playAllObserver.disconnect();
           videos.forEach((video) => {
-            const name = video.getAttribute("data-name");
             video.pause();
-            //video.src = "";
-            video.removeAttribute("src");
-            video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
-            video.load();
           });
           playAllButton.textContent = "Play All";
           if (liveAllButton) liveAllButton.style.display = "none";
@@ -54,13 +51,14 @@ export function initVideoControls() {
           videos.forEach((video) => {
             const name = video.getAttribute("data-name");
             const src = video.querySelector("source");
-            src.src = `/last_video/${name}`;
+            src.src = `/clip/${name}`;
             video.removeAttribute("src");
             video.poster = `/last_screenshot/${name}`;
             playAllObserver.observe(video);
             video.load();
             safePlay(video);
           });
+          setCaptionsVisibility(false);
           playAllButton.textContent = "Pause All";
           if (liveAllButton) liveAllButton.style.display = "inline-block";
         }
@@ -98,7 +96,7 @@ export function updateVideoSources() {
   videos.forEach((video) => {
     const name = video.getAttribute("data-name");
     const timestamp = new Date().getTime();
-    video.querySelector("source").src = `/last_video/${name}?t=${timestamp}`;
+    video.querySelector("source").src = `/clip/${name}?t=${timestamp}`;
     video.poster = `/last_screenshot/${name}?t=${timestamp}`;
   });
 }

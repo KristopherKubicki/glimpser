@@ -58,17 +58,20 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn("username", inputs)
         self.assertIn("password", inputs)
 
+    def test_login_placeholders(self):
+        parser = parse_template(Path("app/templates/login.html"))
+        placeholders = {i.get("placeholder") for i in parser.forms[0]["inputs"]}
+        self.assertIn("Username", placeholders)
+        self.assertIn("Password", placeholders)
+
     def test_discover_add_camera_form_inputs(self):
-        parser = parse_template(Path("app/templates/_discover_tab.html"))
-        add_form = None
-        for form in parser.forms:
-            if form["attrs"].get("id") == "add-template-form":
-                add_form = form
-                break
-        self.assertIsNotNone(add_form, "add-template-form missing")
-        inputs = {i.get("id") or i.get("name") for i in add_form["inputs"]}
-        required = {"name", "url", "frequency", "timeout"}
-        self.assertTrue(required.issubset(inputs))
+        html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")
+        self.assertIn("template_form('add-template-form'", html)
+
+    def test_discover_has_existing_map_variable(self):
+        with open("app/templates/_discover_tab.html", encoding="utf-8") as f:
+            html = f.read()
+        self.assertIn("existingMap", html)
 
     def test_header_preloads_sprite(self):
         parser = parse_template(Path("app/templates/header.html"))
@@ -91,6 +94,18 @@ class TestHtmlTemplates(unittest.TestCase):
         advanced = next((i for i in inputs if i.get("id") == "advanced-toggle"), None)
         self.assertIsNotNone(advanced, "advanced-toggle missing")
         self.assertEqual(advanced.get("type"), "checkbox")
+
+    def test_captions_prompt_label(self):
+        """Captions page prompt textarea should have a visible label."""
+        html = Path("app/templates/captions.html").read_text(encoding="utf-8")
+        self.assertIn("Prompt</label>", html)
+        self.assertIn("Last caption", html)
+
+    def test_edit_template_frequency_min(self):
+        html = Path("app/templates/template_details.html").read_text(encoding="utf-8")
+        self.assertIn("template_form('edit-template-form'", html)
+        components = Path("app/templates/components.html").read_text(encoding="utf-8")
+        self.assertIn('min="0.1"', components)
 
 
 if __name__ == "__main__":

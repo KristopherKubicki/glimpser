@@ -1,43 +1,46 @@
+import { setupTableSorting } from "./templates.js";
+
+export function groupSmallValues(rows, limit = 15) {
+  if (rows.length <= limit) return rows;
+  const sorted = [...rows].sort((a, b) => a.cost - b.cost);
+  const bottom = sorted.slice(0, limit);
+  const other = bottom.reduce(
+    (acc, r) => {
+      acc.tokens += r.tokens;
+      acc.cost += r.cost;
+      return acc;
+    },
+    { name: "Other", tokens: 0, cost: 0 },
+  );
+  const remaining = sorted.slice(limit).sort((a, b) => b.cost - a.cost);
+  return [...remaining, other];
+}
+
 export function initCosts() {
   document.addEventListener("DOMContentLoaded", () => {
     const dataEl = document.getElementById("cost-data");
     if (!dataEl) return;
-    const data = JSON.parse(dataEl.textContent);
-    const groupSel = document.getElementById("cost-group");
-    const camSel = document.getElementById("cost-camera");
+    const range = document.getElementById("cost-range");
+    const label = document.getElementById("cost-range-label");
     const tbody = document.querySelector("#cost-table tbody");
     const ctx = document.getElementById("costChart");
     let chart;
 
-    const filterData = () => {
-      const g = groupSel.value;
-      const c = camSel.value;
-      return data.filter((d) => (!g || d.group === g) && (!c || d.name === c));
-    };
-
-    const renderTable = () => {
+    const render = (rows) => {
       tbody.innerHTML = "";
-      for (const row of filterData()) {
+      for (const row of rows) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${row.name}</td><td>${row.tokens}</td><td>$${row.cost.toFixed(2)}</td>`;
+        tr.innerHTML = `<td>${row.name}</td><td data-value="${row.tokens}">${row.tokens}</td><td data-value="${row.cost}">$${row.cost.toFixed(2)}</td>`;
         tbody.appendChild(tr);
       }
-    };
-
-    const renderChart = () => {
       if (!ctx) return;
-      const rows = filterData();
-      const labels = rows.map((r) => r.name);
-      const values = rows.map((r) => r.cost);
-      const bg = labels.map((_, i) => `hsl(${(i * 60) % 360}, 70%, 60%)`);
+      const grouped = groupSmallValues(rows);
+      const labels = grouped.map((r) => r.name);
+      const values = grouped.map((r) => r.cost);
+      const bg = labels.map((_, i) => `hsl(${(i * 60) % 360},70%,60%)`);
       const chartData = {
         labels,
-        datasets: [
-          {
-            data: values,
-            backgroundColor: bg,
-          },
-        ],
+        datasets: [{ data: values, backgroundColor: bg }],
       };
       if (chart) {
         chart.data = chartData;
@@ -47,17 +50,35 @@ export function initCosts() {
       }
     };
 
-    groupSel.addEventListener("change", () => {
-      renderTable();
-      renderChart();
-    });
-    camSel.addEventListener("change", () => {
-      renderTable();
-      renderChart();
-    });
+    const fetchData = async () => {
+      if (!range) {
+        render(JSON.parse(dataEl.textContent));
+        return;
+      }
+      const days = parseInt(range.value, 10);
+      const end = new Date().toISOString().slice(0, 10);
+      const start = new Date(Date.now() - days * 86400000)
+        .toISOString()
+        .slice(0, 10);
+      const resp = await fetch(
+        `/api/llm_cost_summary?start=${start}&end=${end}`,
+      );
+      const data = await resp.json();
+      const rows = Object.entries(data).map(([name, info]) => ({
+        name,
+        tokens: info.tokens,
+        cost: parseFloat(info.cost.replace("$", "")),
+      }));
+      render(rows);
+    };
 
-    renderTable();
-    renderChart();
+    range?.addEventListener("input", () => {
+      if (label) label.textContent = `Last ${range.value} days`;
+    });
+    range?.addEventListener("change", fetchData);
+
+    setupTableSorting("cost-table");
+    fetchData();
   });
 }
 
@@ -74,16 +95,23 @@ export function initCostSummary(startTime) {
 
     const render = (data) => {
       tbody.innerHTML = "";
-      const labels = [];
-      const values = [];
+      const rows = [];
       for (const name in data) {
-        const row = document.createElement("tr");
-        row.innerHTML = `<td>${name}</td><td>${data[name]}</td>`;
-        tbody.appendChild(row);
-        labels.push(name);
-        values.push(parseFloat(data[name].replace("$", "")));
+        const info = data[name];
+        const row = {
+          name,
+          tokens: info.tokens ?? 0,
+          cost: parseFloat(info.cost.replace("$", "")),
+        };
+        rows.push(row);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${name}</td><td>${info.cost}</td>`;
+        tbody.appendChild(tr);
       }
       if (!ctx) return;
+      const grouped = groupSmallValues(rows);
+      const labels = grouped.map((r) => r.name);
+      const values = grouped.map((r) => r.cost);
       const bg = labels.map((_, i) => `hsl(${(i * 60) % 360},70%,60%)`);
       const chartData = {
         labels,

@@ -13,6 +13,7 @@
 [![Docs Build](https://github.com/KristopherKubicki/glimpser/actions/workflows/docs-build.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/docs-build.yml)
 [![GitHub release](https://img.shields.io/github/v/release/KristopherKubicki/glimpser)](https://github.com/KristopherKubicki/glimpser/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+[![Python versions](https://img.shields.io/pypi/pyversions/glimpser.svg)](https://pypi.org/project/glimpser/)
 [![Coverage](https://codecov.io/gh/KristopherKubicki/glimpser/branch/main/graph/badge.svg)](https://codecov.io/gh/KristopherKubicki/glimpser)
 
 ## Introduction
@@ -40,6 +41,7 @@ See [OpenSSF Scorecard](docs/scorecard.md) for details on the security badge.
 
 - **Auto-summarization**: Summarizes data from multiple sources into a coherent and concise format, highlighting the most important information.
 - **RTSP Streaming**: Exposes a basic RTSP endpoint (`/test.rtsp`) so external NVRs can ingest the MJPEG stream. Supported verbs are `OPTIONS`, `DESCRIBE`, `SETUP`, `PLAY`, `PAUSE`, `GET_PARAMETER`, and `TEARDOWN`.
+- **MJPG Test Stream**: Provides `/test.mjpg` for clients that lack RTSP support.
 
 - **Customizable Configuration**: Easily configure different data sources and processing rules through the user-friendly interface. Glimpser’s configuration is fully database-driven, ensuring flexibility and ease of use.
 
@@ -158,6 +160,7 @@ Glimpser can summarize data from multiple sources into a coherent and concise fo
 ### RTSP Streaming
 
 Glimpser exposes a simple RTSP endpoint at `/test.rtsp`. When a client issues the standard RTSP verbs, the `/rtsp_stream` route serves MJPEG frames packetized with RTP headers.
+An equivalent MJPEG feed is available at `/test.mjpg` for quick testing or clients without RTSP support.
 
 Typical sequence:
 

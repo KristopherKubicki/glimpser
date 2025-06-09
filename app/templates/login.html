@@ -1,29 +1,38 @@
 {% extends 'base.html' %} {% from 'components.html' import card %} {% block
 content %}
 <div class="login-wrapper">
-  {% call card('Sign In') %}
+  {% call card('Secure Sign In') %}
+  <div class="login-icon" aria-hidden="true">
+    <svg width="40" height="40">
+      <use href="{{ url_for('static', filename='icons/sprite.svg') }}#lock" />
+    </svg>
+  </div>
+  <p id="security-note" class="security-note"></p>
   <form
     id="login-form"
     method="post"
     class="login-form"
+    autocomplete="off"
     title="Enter your credentials"
   >
     <div class="form-field">
-      <label for="username">Username</label>
+      <label for="username" class="sr-only">Username</label>
       <input
         id="username"
         type="text"
         name="username"
+        placeholder="Username"
         required
         title="Enter your username"
       />
     </div>
     <div class="form-field">
-      <label for="password">Password</label>
+      <label for="password" class="sr-only">Password</label>
       <input
         id="password"
         type="password"
         name="password"
+        placeholder="Password"
         required
         title="Enter your password"
       />

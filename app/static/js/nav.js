@@ -272,6 +272,16 @@ export function initNav() {
       // Keep the caption visible until a new one arrives
     };
 
+    if (captionsIcon && captionChyron) {
+      captionsIcon.addEventListener("mouseenter", () => {
+        const text = captionsIcon.dataset.caption;
+        if (text) showCaption(text);
+      });
+      captionsIcon.addEventListener("mouseleave", () => {
+        captionChyron.classList.remove("show");
+      });
+    }
+
     const checkCaptions = async () => {
       if (!captionsIcon) return;
       try {
@@ -282,7 +292,8 @@ export function initNav() {
             : "/captions_status";
         const data = await fetchJson(url);
         if (!data) return;
-        captionsIcon.title = data.caption || "";
+        captionsIcon.dataset.caption = data.caption || "";
+        captionsIcon.removeAttribute("title");
         if (data.timestamp) {
           const ts = new Date(data.timestamp.replace(" ", "T") + "Z");
           if (!lastCaptionTime || ts > lastCaptionTime) {
@@ -315,6 +326,7 @@ export function initNav() {
       try {
         const data = await fetchJson("/discovery_status");
         const fmt = (s) => `${Math.round(s / 60)}m`;
+        const text = data.status === "none" ? "disabled" : data.status;
         if (data.status === "none") {
           discoveryStatus.style.color = "white";
         } else if (data.status === "running") {
@@ -326,7 +338,7 @@ export function initNav() {
         } else {
           discoveryStatus.style.color = "grey";
         }
-        let title = `Background discovery: ${data.status}`;
+        let title = `Background discovery: ${text}`;
         if (data.running_for) {
           title += `\nRunning for ${fmt(data.running_for)}`;
         } else if (Number.isFinite(data.age) && data.status !== "none") {

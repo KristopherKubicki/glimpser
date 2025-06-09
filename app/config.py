@@ -211,7 +211,7 @@ def sync_version(pkg_version: str) -> None:
         session.close()
 
 
-SCHEDULER_API_ENABLED = True
+SCHEDULER_API_ENABLED = get_setting("SCHEDULER_API_ENABLED", "True") == "True"
 
 # be careful when mounting network devices
 SCREENSHOT_DIRECTORY = "data/screenshots/"
@@ -350,6 +350,9 @@ LIVE_MAX_RETRY_DELAY = int(get_setting("LIVE_MAX_RETRY_DELAY", 30))
 # the banner remains visible after a caption arrives.
 CHYRON_SPEED = int(get_setting("CHYRON_SPEED", 0))
 
+# Length in seconds returned by the `/clip/<template>` endpoint.
+DEFAULT_CLIP_DURATION = int(get_setting("DEFAULT_CLIP_DURATION", 120))
+
 # Whether the System Performance icon in the navigation bar should remain
 # visible even when the application reports healthy status. When set to
 # ``False`` the icon hides itself if all metrics look nominal to reduce
@@ -372,15 +375,13 @@ DISCOVERY_AUTOSTART = get_setting("DISCOVERY_AUTOSTART", "False") == "True"
 
 # Email settings
 EMAIL_ENABLED = get_setting("EMAIL_ENABLED", "False")
-EMAIL_SENDER = get_setting("EMAIL_SENDER", "your-email@example.com")
-EMAIL_RECIPIENTS = get_setting(
-    "EMAIL_RECIPIENTS", "recipient1@example.com,recipient2@example.com"
-)
-EMAIL_SMTP_SERVER = get_setting("EMAIL_SMTP_SERVER", "smtp.example.com")
+EMAIL_SENDER = get_setting("EMAIL_SENDER", "")
+EMAIL_RECIPIENTS = get_setting("EMAIL_RECIPIENTS", "")
+EMAIL_SMTP_SERVER = get_setting("EMAIL_SMTP_SERVER", "")
 EMAIL_SMTP_PORT = get_setting("EMAIL_SMTP_PORT", "587")
 EMAIL_SMTP_TIMEOUT = int(get_setting("EMAIL_SMTP_TIMEOUT", 10))
 EMAIL_USE_TLS = get_setting("EMAIL_USE_TLS", "True")
-EMAIL_USERNAME = get_setting("EMAIL_USERNAME", "your-username")
+EMAIL_USERNAME = get_setting("EMAIL_USERNAME", "")
 EMAIL_PASSWORD = get_setting("EMAIL_PASSWORD", "")
 EMAIL_SMTP_TIMEOUT = int(get_setting("EMAIL_SMTP_TIMEOUT", "5"))
 
@@ -393,7 +394,7 @@ TWILIO_FROM_NUMBER = get_setting("TWILIO_FROM_NUMBER", "")
 
 # Common Alerting Protocol settings
 CAP_ENDPOINT = get_setting("CAP_ENDPOINT", "")
-CAP_SENDER = get_setting("CAP_SENDER", "glimpser@example.com")
+CAP_SENDER = get_setting("CAP_SENDER", "")
 
 # MCP settings
 MCP_SERVER_COMMAND = get_setting("MCP_SERVER_COMMAND", "")

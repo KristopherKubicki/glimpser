@@ -41,4 +41,13 @@ describe("controls dropdown", () => {
     jest.advanceTimersByTime(5000);
     expect(wrapper.classList.contains("fade-out")).toBe(false);
   });
+
+  test("stays visible when hovered", () => {
+    const wrapper = document.getElementById("controls-wrapper");
+    initControlsDropdown();
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+    wrapper.dispatchEvent(new Event("mouseenter"));
+    jest.advanceTimersByTime(5000);
+    expect(wrapper.classList.contains("fade-out")).toBe(false);
+  });
 });

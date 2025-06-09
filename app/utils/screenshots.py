@@ -46,6 +46,7 @@ from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
 import threading
 from typing import Dict
+from .network import is_system_online
 
 try:
     from pynput import mouse, keyboard
@@ -187,9 +188,16 @@ _driver_local = threading.local()
 def get_driver(opts):
     driver = getattr(_driver_local, "driver", None)
     if driver is None:
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=opts)
-        _driver_local.driver = driver
+        if not is_system_online():
+            logging.warning("System offline; skipping driver setup")
+            return None
+        try:
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=opts)
+            _driver_local.driver = driver
+        except Exception as exc:
+            logging.error("Failed to launch driver: %s", exc)
+            return None
     return driver
 
 
@@ -404,14 +412,32 @@ def check_user_activity(timeout=10):
         return user_active
 
     # Create listeners for keyboard and mouse
-    mouse_listener = mouse.Listener(
-        on_move=on_move, on_click=on_click, on_scroll=on_scroll
-    )
-    keyboard_listener = keyboard.Listener(on_press=on_press)
+    mouse_listener = None
+    keyboard_listener = None
+    try:
+        mouse_listener = mouse.Listener(
+            on_move=on_move, on_click=on_click, on_scroll=on_scroll
+        )
+        keyboard_listener = keyboard.Listener(on_press=on_press)
 
-    # Start listeners
-    mouse_listener.start()
-    keyboard_listener.start()
+        # Start listeners
+        mouse_listener.start()
+        keyboard_listener.start()
+    except Exception as e:  # pragma: no cover - best effort
+        logging.debug(f"pynput listener failed: {e}")
+        if mouse_listener:
+            try:
+                mouse_listener.stop()
+                mouse_listener.join()
+            except Exception:
+                pass
+        if keyboard_listener:
+            try:
+                keyboard_listener.stop()
+                keyboard_listener.join()
+            except Exception:
+                pass
+        return user_active
 
     # Monitor for a defined timeout
     start_time = time.time()
@@ -421,12 +447,16 @@ def check_user_activity(timeout=10):
         time.sleep(0.1)
 
     # Stop listeners
-    mouse_listener.stop()
-    keyboard_listener.stop()
+    if mouse_listener:
+        mouse_listener.stop()
+    if keyboard_listener:
+        keyboard_listener.stop()
 
     # Ensure threads close their X connections before returning
-    mouse_listener.join()
-    keyboard_listener.join()
+    if mouse_listener:
+        mouse_listener.join()
+    if keyboard_listener:
+        keyboard_listener.join()
 
     return user_active
 
@@ -1919,7 +1949,7 @@ def get_chrome_version(chrome_path):
         chrome_version[chrome_path] = (version, time.time())
     except Exception as e:
         logging.error(f"Chrome version exception error: {e}")
-        return chrome_version.get(chrome_path, extract_version())
+        return chrome_version.get(chrome_path, extract_version(chrome_path))
 
     return int(version)
 
@@ -2435,6 +2465,10 @@ def capture_screenshot_and_har(
     # Quick sanity check
     if not re.match(r"^https?://", url, flags=re.IGNORECASE):
         logging.error(f"[capture_screenshot_and_har] Not a valid http/https URL: {url}")
+        return False
+
+    if not is_system_online():
+        logging.warning("System offline; skipping capture for %s", url)
         return False
 
     if timeout < 30:

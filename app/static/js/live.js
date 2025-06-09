@@ -251,10 +251,10 @@ function showError(message) {
   }, 5000);
 }
 
-function showOfflineIndicator(cameraName) {
+function showOfflineIndicator(message) {
   videoOverlay.style.display = "block";
   offlineIndicator.style.display = "block";
-  offlineMessage.textContent = `Camera ${cameraName} is currently offline`;
+  offlineMessage.textContent = message;
   loadingIndicator.style.display = "none";
   playPauseIndicator.style.display = "none";
 }
@@ -439,7 +439,7 @@ function changeCamera() {
   localStorage.setItem("liveCamera", currentCamera);
 
   if (!isConnected) {
-    showOfflineIndicator(currentCamera);
+    showOfflineIndicator(`Camera ${currentCamera} is currently offline`);
     hideLoadingIndicator();
     video.pause();
     video.src = "";
@@ -488,7 +488,7 @@ function updateFeed() {
   hideStreamErrorIndicator();
 
   if (!isConnected) {
-    showOfflineIndicator(currentCamera);
+    showOfflineIndicator(`Camera ${currentCamera} is currently offline`);
     hideCaptureErrorIndicator();
     hideLoadingIndicator();
     video.pause();
@@ -673,7 +673,7 @@ function playLoop() {
         cameraIndex = 0; // Reset the index to loop through the cameras again
       }
       const cameraName = groupCameras[cameraIndex];
-      video.src = `/last_video/${cameraName}`; // Update the video source with the current camera
+      video.src = `/clip/${cameraName}`; // Update the video source with the current camera
       video.load();
       safePlay(video);
       cameraIndex++; // Move to the next camera
@@ -683,7 +683,7 @@ function playLoop() {
     video.addEventListener("ended", loopHandler); // Continue the loop when the video ends
   } else {
     // Handling for individual cameras
-    video.src = `/last_video/${currentCamera}`;
+    video.src = `/clip/${currentCamera}`;
     video.load();
     safePlay(video);
   }
@@ -709,6 +709,16 @@ function updateFrameTimestamp() {
       ? `${formatExactTime(details.last_screenshot_time)} - ${details.last_caption}`
       : formatExactTime(details.last_screenshot_time),
   );
+}
+
+function setTimestampVisibility(show) {
+  const container = document.querySelector(".video-container");
+  if (!container) return;
+  if (show) {
+    updateFrameTimestamp();
+  } else {
+    container.removeAttribute("data-timestamp");
+  }
 }
 
 function refreshPNG() {
@@ -771,12 +781,13 @@ function playMP4() {
 function handleVideoEnded() {
   if (currentCamera === "All" || currentCamera.startsWith("group-")) {
     // For "All" or group options, move to the next camera
-    const groupCameras =
-      (templateDetails[currentCamera].groupCameras || []).filter(Boolean);
+    const groupCameras = (
+      templateDetails[currentCamera].groupCameras || []
+    ).filter(Boolean);
     const currentIndex = groupCameras.indexOf(video.dataset.currentCamera);
     const nextIndex = (currentIndex + 1) % groupCameras.length;
     const nextCamera = groupCameras[nextIndex];
-    video.src = "/last_video/" + nextCamera;
+    video.src = `/clip/${nextCamera}`;
     video.dataset.currentCamera = nextCamera;
   }
   video.load();
@@ -1139,6 +1150,7 @@ function updateSeekBar() {
     seekBar.max = video.duration || 0;
     seekBar.value = video.currentTime || 0;
   }
+  setTimestampVisibility(show);
 }
 
 function updateJogShuttle() {
@@ -1356,6 +1368,46 @@ if (playButton) {
   playButton.addEventListener("click", togglePlayback);
 }
 
+// --- Offline handling ---
+let reconnectTimer = null;
+let resumeTime = 0;
+let wasPlaying = false;
+
+async function attemptReconnect() {
+  try {
+    const res = await fetch("/network_status");
+    const data = await res.json();
+    if (data.online) {
+      clearInterval(reconnectTimer);
+      reconnectTimer = null;
+      hideOfflineIndicator();
+      video.currentTime = resumeTime;
+      if (wasPlaying) {
+        safePlay(video);
+      }
+    }
+  } catch {
+    // still offline
+  }
+}
+
+function handleNetworkOffline() {
+  wasPlaying = !video.paused;
+  resumeTime = video.currentTime;
+  video.pause();
+  showOfflineIndicator("Offline. Reconnecting...");
+  if (!reconnectTimer) {
+    reconnectTimer = setInterval(attemptReconnect, 5000);
+  }
+}
+
+async function handleNetworkOnline() {
+  await attemptReconnect();
+}
+
+window.addEventListener("offline", handleNetworkOffline);
+window.addEventListener("online", handleNetworkOnline);
+
 // Allow pausing/resuming the video by clicking anywhere on the player
 video.addEventListener("click", togglePlayback);
 
@@ -1401,4 +1453,9 @@ function handleTouchEnd(event) {
 document.addEventListener("touchstart", handleTouchStart, { passive: true });
 document.addEventListener("touchend", handleTouchEnd, { passive: true });
 
-export { updateFrameTimestamp, getCameraNames };
+export {
+  updateFrameTimestamp,
+  getCameraNames,
+  handleNetworkOffline,
+  handleNetworkOnline,
+};

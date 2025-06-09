@@ -1,20 +1,23 @@
-<div class="scheduler-controls">
-  <button
-    id="toggle-scheduler"
-    class="btn btn-primary"
-    title="Start or stop the scheduler"
-  >
-    Loading...
-  </button>
-  <span id="scheduler-status" title="Current scheduler status"
-    >Checking status...</span
-  >
-</div>
-
 {% call card('System Metrics') %}
 <ul class="metrics-list">
+  <li title="Start or stop the scheduler">
+    <span class="metric-label">Scheduler:</span>
+    <button
+      id="toggle-scheduler"
+      class="btn btn-primary"
+      title="Start or stop the scheduler"
+    >
+      Loading...
+    </button>
+    <span
+      id="scheduler-status"
+      class="status-dot"
+      title="Green = running, red = stopped or error"
+      >Checking status...</span
+    >
+  </li>
   <li title="Current CPU utilization">
-    CPU Usage:
+    <span class="metric-label">CPU Usage:</span>
     <progress
       id="cpu-bar"
       class="metric-bar"
@@ -22,10 +25,15 @@
       max="100"
     ></progress>
     <span id="cpu-value">{{ metrics.cpu_usage }}%</span>
-    <canvas id="cpu-sparkline" width="100" height="20"></canvas>
+    <canvas
+      id="cpu-sparkline"
+      class="sparkline"
+      width="100"
+      height="20"
+    ></canvas>
   </li>
   <li title="Current memory utilization">
-    Memory Usage:
+    <span class="metric-label">Memory Usage:</span>
     <progress
       id="memory-bar"
       class="metric-bar"
@@ -33,9 +41,10 @@
       max="100"
     ></progress>
     <span id="memory-value">{{ metrics.memory_usage }}%</span>
+    <canvas class="sparkline" width="100" height="20"></canvas>
   </li>
   <li title="Disk space used">
-    Disk Usage:
+    <span class="metric-label">Disk Usage:</span>
     <progress
       id="disk-bar"
       class="metric-bar"
@@ -43,30 +52,41 @@
       max="100"
     ></progress>
     <span id="disk-value">{{ metrics.disk_usage }}%</span>
+    <canvas class="sparkline" width="100" height="20"></canvas>
   </li>
   <li title="Open file handles">
-    Open Files: <span id="open-files">{{ metrics.open_files }}</span>
+    <span class="metric-label">Open Files:</span>
+    <span id="open-files">{{ metrics.open_files }}</span>
   </li>
   <li title="Number of active threads">
-    Thread Count: <span id="thread-count">{{ metrics.thread_count }}</span>
+    <span class="metric-label">Thread Count:</span>
+    <span id="thread-count">{{ metrics.thread_count }}</span>
   </li>
   <li title="System uptime">
-    Uptime: <span id="uptime-value">{{ metrics.uptime }}</span>
+    <span class="metric-label">Uptime:</span>
+    <span id="uptime-value">{{ metrics.uptime }}</span>
+  </li>
+  <li title="GPU acceleration status">
+    <span class="metric-label">GPU:</span>
+    <span
+      id="gpu-status"
+      class="status-dot {{ 'ok' if metrics.ffmpeg_gpu_enabled else ('slow' if metrics.gpu_support else 'error') }}"
+    ></span>
   </li>
 </ul>
 {% endcall %} {% call card('Feed Status') %}
 <table id="feed-status" class="feed-status">
   <thead>
     <tr>
-      <th class="sortable" data-type="string">Feed</th>
-      <th class="sortable" data-type="date">Last Image</th>
-      <th class="sortable" data-type="date">Last Caption</th>
-      <th class="sortable" data-type="number">Shots</th>
-      <th class="sortable" data-type="number">Videos</th>
-      <th class="sortable" data-type="number">Storage</th>
-      <th class="sortable" data-type="number">LLM Resp</th>
-      <th class="sortable" data-type="number">LLM Cost</th>
-      <th class="sortable" data-type="string">Status</th>
+      <th class="sortable" data-type="string" title="Camera name">Feed</th>
+      <th class="sortable" data-type="date" title="Most recent screenshot time">Last Image</th>
+      <th class="sortable" data-type="date" title="Most recent caption time">Last Caption</th>
+      <th class="sortable" data-type="number" title="Total screenshots">Shots</th>
+      <th class="sortable" data-type="number" title="Total videos">Videos</th>
+      <th class="sortable" data-type="number" title="Disk usage">Storage</th>
+      <th class="sortable" data-type="number" title="LLM responses">LLM Resp</th>
+      <th class="sortable" data-type="number" title="Estimated LLM cost">LLM Cost</th>
+      <th class="sortable status-col" data-type="string" title="Current feed status">Status</th>
     </tr>
   </thead>
   <tbody>
@@ -75,9 +95,27 @@
       class="{{ feed.status }}{% if feed.danger_reason %} danger-{{ feed.danger_reason }}{% endif %}"
     >
       <td data-label="Feed" data-value="{{ feed.name }}">
-        <a href="{{ url_for('template_details', template_name=feed.name) }}"
-          >{{ feed.name }}</a
+        <svg
+          width="12"
+          height="12"
+          class="camera-icon {{ feed.camera_type }}"
+          aria-label="{{ feed.camera_tooltip }}"
+          title="{{ feed.camera_tooltip }}"
         >
+          <use href="{{ url_for('static', filename='icons/sprite.svg') }}#{% if feed.camera_type == 'browser' %}browser{% elif 'stealth' in feed.camera_type %}mask{% else %}camera{% endif %}" />
+        </svg>
+        {% if feed.danger %}
+        <svg
+          width="12"
+          height="12"
+          class="danger-icon-inline {{ feed.danger_reason or '' }}"
+          aria-label="Danger mode"
+          title="{{ 'Danger mode disabled' if feed.danger_reason == 'disabled' else 'Danger mode user active' if feed.danger_reason == 'user' else 'Danger mode' }}"
+        >
+          <use href="{{ url_for('static', filename='icons/sprite.svg') }}#alert" />
+        </svg>
+        {% endif %}
+        <a href="{{ url_for('template_details', template_name=feed.name) }}" title="View template details">{{ feed.name }}</a>
       </td>
       <td
         data-label="Last Image"
@@ -122,7 +160,7 @@
       <td data-label="LLM Cost" data-value="{{ feed.llm_cost_estimate }}">
         {{ feed.llm_cost_estimate }}
       </td>
-      <td data-label="Status" data-value="{{ feed.status }}">
+      <td class="status-col" data-label="Status" data-value="{{ feed.status }}">
         {% if feed.danger_reason %}
         <svg
           width="12"

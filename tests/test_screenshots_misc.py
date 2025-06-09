@@ -47,6 +47,7 @@ class TestGetDriver(unittest.TestCase):
                 "app.utils.screenshots.webdriver.Chrome",
                 return_value=sentinel.driver,
             ) as mock_chrome,
+            patch("app.utils.screenshots.is_system_online", return_value=True),
         ):
             driver1 = ss.get_driver(sentinel.options)
             driver2 = ss.get_driver(sentinel.options)
