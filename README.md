@@ -216,9 +216,10 @@ To set up the project for development:
 
 Release packages are built automatically when a version tag is pushed.
 The workflow runs tests and creates the Debian package on an Ubuntu runner.
-The Windows executable is built separately on a Windows runner using
-`build_windows.py`. When both steps finish, the resulting Debian package and
-Windows binary are uploaded to the GitHub release for that tag.
+The Windows executable is built on a Windows runner with `build_windows.py`, and
+a macOS archive is produced with `build_macos.py`. When all steps finish, the
+resulting Debian package and platform binaries are uploaded to the GitHub
+release for that tag.
 If the repository contains a `PYPI_API_TOKEN` secret, the workflow also
 builds Python distributions and publishes them to PyPI. These files can be
 downloaded from the Releases page or installed with `pip`.
