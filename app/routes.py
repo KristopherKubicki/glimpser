@@ -1829,6 +1829,12 @@ def init_routes(app: Flask) -> None:
         """Redirect old help route to the main settings page."""
         return redirect(url_for("settings"))
 
+    @app.route("/offline")
+    @login_required
+    def offline_page():
+        """Render a fallback page when offline."""
+        return render_template("offline.html", page_title="Offline")
+
     @app.route("/logout")
     @login_required
     def logout():
