@@ -248,6 +248,11 @@
         Update Chrome Shortcut
       </button>
       {% endcall %} {% call card('Navigation Logo') %}
+      <img
+        src="{{ url_for('static', filename=NAV_ICON) }}"
+        alt="Current navigation logo"
+        class="logo-preview"
+      />
       <form
         action="{{ url_for('upload_nav_icon') }}"
         method="post"
@@ -257,10 +262,9 @@
         <select
           name="logo_choice"
           id="logo-choice"
-          title="Select built-in logo"
+          title="Upload your own PNG image. Select the default option to restore the original logo."
         >
-          <option value="img/glimpser_small.png">Default Small</option>
-          <option value="img/glimpser.png">Large</option>
+          <option value="img/glimpser_small.png">Default</option>
         </select>
         <input
           type="file"

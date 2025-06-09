@@ -1935,6 +1935,12 @@ details > summary {
   margin-bottom: 0.5rem;
 }
 
+.logo-preview {
+  display: block;
+  max-height: 30px;
+  margin-bottom: 0.5rem;
+}
+
 .scheduler-controls {
   display: flex;
   align-items: center;
