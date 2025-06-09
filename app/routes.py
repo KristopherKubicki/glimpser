@@ -31,10 +31,23 @@ from urllib.parse import urlparse
 import psutil
 import requests
 from dateutil import tz
-from flask import (Flask, Response, abort, current_app, flash, jsonify,
-                   make_response, redirect, render_template, request,
-                   send_file, send_from_directory, session,
-                   stream_with_context, url_for)
+from flask import (
+    Flask,
+    Response,
+    abort,
+    current_app,
+    flash,
+    jsonify,
+    make_response,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    send_from_directory,
+    session,
+    stream_with_context,
+    url_for,
+)
 from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import text
@@ -45,25 +58,50 @@ from werkzeug.utils import secure_filename
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
 import app.config as config
-from app.config import (API_KEY, BACKUP_PATH, CHYRON_SPEED, CLOCK_DIGITAL,
-                        CLOCK_NAVBAR, CLOCK_OVERLAY, DOCS_DIRECTORY,
-                        HEALTH_STATUS_ALWAYS_VISIBLE, NAV_ICON,
-                        SCREENSHOT_DIRECTORY, SENSITIVE_SETTINGS, VERSION,
-                        VIDEO_DIRECTORY, backup_config, restore_config)
+from app.config import (
+    API_KEY,
+    BACKUP_PATH,
+    CHYRON_SPEED,
+    CLOCK_DIGITAL,
+    CLOCK_NAVBAR,
+    CLOCK_OVERLAY,
+    DOCS_DIRECTORY,
+    HEALTH_STATUS_ALWAYS_VISIBLE,
+    NAV_ICON,
+    SCREENSHOT_DIRECTORY,
+    SENSITIVE_SETTINGS,
+    VERSION,
+    VIDEO_DIRECTORY,
+    backup_config,
+    restore_config,
+)
 from app.models import PushSubscription, Summary, User
-from app.utils import (camera_discovery, camera_fix, limit_rate,
-                       prompt_optimizer, scheduling, screenshots,
-                       template_manager, video_archiver)
+from app.utils import (
+    camera_discovery,
+    camera_fix,
+    limit_rate,
+    prompt_optimizer,
+    scheduling,
+    screenshots,
+    template_manager,
+    video_archiver,
+)
 from app.utils.llm import ask_question
 from app.utils.network import is_system_online
-from app.utils.screenshots import (capture_frame_from_stream,
-                                   check_user_activity,
-                                   is_chrome_debug_port_open)
-from app.utils.settings_tooltips import (EMAIL_FIELDS, LOCKED_SETTINGS,
-                                         NUMERIC_FIELDS, SETTINGS_CHOICES,
-                                         SETTINGS_GROUPS,
-                                         SETTINGS_PLACEHOLDERS,
-                                         SETTINGS_TOOLTIPS)
+from app.utils.screenshots import (
+    capture_frame_from_stream,
+    check_user_activity,
+    is_chrome_debug_port_open,
+)
+from app.utils.settings_tooltips import (
+    EMAIL_FIELDS,
+    LOCKED_SETTINGS,
+    NUMERIC_FIELDS,
+    SETTINGS_CHOICES,
+    SETTINGS_GROUPS,
+    SETTINGS_PLACEHOLDERS,
+    SETTINGS_TOOLTIPS,
+)
 
 # Names of settings that store file paths.
 FILE_LOCATION_NAMES = [
@@ -179,56 +217,74 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
 
         # extract first frame from earliest clip for overlay
         first_frame = ramroot / "first_frame.jpg"
-        subprocess.run(
-            [
-                FFMPEG,
-                "-loglevel",
-                "quiet",
-                "-i",
-                first_clip,
-                "-vframes",
-                "1",
-                "-q:v",
-                "2",
-                "-y",
-                first_frame,
-            ],
-            check=True,
-            timeout=10,
-        )
+        try:
+            subprocess.run(
+                [
+                    FFMPEG,
+                    "-loglevel",
+                    "quiet",
+                    "-i",
+                    first_clip,
+                    "-vframes",
+                    "1",
+                    "-q:v",
+                    "2",
+                    "-y",
+                    first_frame,
+                ],
+                check=True,
+                timeout=20,
+            )
+        except subprocess.TimeoutExpired:
+            logging.error("FFmpeg frame extraction timed out after 20s")
+            return False
+        except (
+            subprocess.SubprocessError
+        ) as exc:  # pragma: no cover - ffmpeg errors logged
+            logging.error("FFmpeg frame extraction failed: %s", exc, exc_info=True)
+            return False
 
         # create pad using the frame with a fading black overlay
-        subprocess.run(
-            [
-                FFMPEG,
-                "-loglevel",
-                "quiet",
-                "-loop",
-                "1",
-                "-i",
-                first_frame,
-                "-f",
-                "lavfi",
-                "-i",
-                f"color=c=black@0.9:s={w}x{h}:r={fps}",
-                "-filter_complex",
-                f"[1:v]format=rgba,fade=t=out:st=0:d={miss}:alpha=1[ov];[0:v][ov]overlay",
-                "-t",
-                f"{miss:.3f}",
-                "-c:v",
-                "libx264",
-                "-pix_fmt",
-                "yuv420p",
-                "-preset",
-                "ultrafast",
-                "-movflags",
-                "+faststart",
-                "-y",
-                pad,
-            ],
-            check=True,
-            timeout=10,
-        )
+        try:
+            subprocess.run(
+                [
+                    FFMPEG,
+                    "-loglevel",
+                    "quiet",
+                    "-loop",
+                    "1",
+                    "-i",
+                    first_frame,
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    f"color=c=black@0.9:s={w}x{h}:r={fps}",
+                    "-filter_complex",
+                    f"[1:v]format=rgba,fade=t=out:st=0:d={miss}:alpha=1[ov];[0:v][ov]overlay",
+                    "-t",
+                    f"{miss:.3f}",
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-preset",
+                    "ultrafast",
+                    "-movflags",
+                    "+faststart",
+                    "-y",
+                    pad,
+                ],
+                check=True,
+                timeout=30,
+            )
+        except subprocess.TimeoutExpired:
+            logging.error("FFmpeg pad generation timed out after 30s")
+            return False
+        except (
+            subprocess.SubprocessError
+        ) as exc:  # pragma: no cover - ffmpeg errors logged
+            logging.error("FFmpeg pad generation failed: %s", exc, exc_info=True)
+            return False
         concat_parts = [pad] + fixed  # pad FIRST
     else:
         concat_parts = fixed
@@ -287,17 +343,27 @@ NODE_ENV = os.getenv("NODE_ENV", "development")
 from app.utils import validators
 from app.utils.email_alerts import send_email_alert
 from app.utils.profiling import get_latency_stats, profile_route
+
 # from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock
-from app.utils.screenshots import (check_user_activity, get_chrome_path,
-                                   get_chrome_version,
-                                   is_chrome_debug_port_open, load_font)
+from app.utils.screenshots import (
+    check_user_activity,
+    get_chrome_path,
+    get_chrome_version,
+    is_chrome_debug_port_open,
+    load_font,
+)
 from app.utils.sms_alerts import send_sms_alert
-from app.utils.validators import (validate_setting, validate_template_name,
-                                  validate_update_data)
-from scripts.update_chrome_shortcut import (first_shortcut_path,
-                                            shortcuts_need_patch,
-                                            update_chrome_shortcuts_info)
+from app.utils.validators import (
+    validate_setting,
+    validate_template_name,
+    validate_update_data,
+)
+from scripts.update_chrome_shortcut import (
+    first_shortcut_path,
+    shortcuts_need_patch,
+    update_chrome_shortcuts_info,
+)
 
 
 def restart_server() -> None:
