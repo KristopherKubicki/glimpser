@@ -3,6 +3,7 @@ import sys
 import unittest
 from flask import Flask
 from unittest.mock import patch
+from pathlib import Path
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -20,9 +21,10 @@ class TestSearchSuggestionsEndpoint(unittest.TestCase):
     def tearDown(self):
         self.login_patch.stop()
 
+    @patch("app.routes.Path.glob", return_value=[])
     @patch("app.routes.get_active_groups")
     @patch("app.routes.template_manager.get_templates")
-    def test_search_suggestions(self, mock_get_templates, mock_get_groups):
+    def test_search_suggestions(self, mock_get_templates, mock_get_groups, mock_glob):
         mock_get_templates.return_value = {
             "Cam1": {"name": "Cam1"},
             "Cam2": {"name": "Cam2"},
@@ -32,6 +34,23 @@ class TestSearchSuggestionsEndpoint(unittest.TestCase):
         resp = self.client.get("/search_suggestions?q=cam")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.get_json(), ["Cam1", "Cam2"])
+
+    @patch("app.routes.Path.glob")
+    @patch("app.routes.get_active_groups")
+    @patch("app.routes.template_manager.get_templates")
+    def test_search_suggestions_docs(
+        self, mock_get_templates, mock_get_groups, mock_glob
+    ):
+        mock_get_templates.return_value = {}
+        mock_get_groups.return_value = []
+        mock_glob.return_value = [
+            Path("docs/usage.md"),
+            Path("docs/faq.md"),
+        ]
+
+        resp = self.client.get("/search_suggestions?q=faq")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.get_json(), ["faq"])
 
 
 if __name__ == "__main__":

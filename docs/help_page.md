@@ -6,7 +6,7 @@ The help content is organized into **Basics**, **Usage**, **Advanced** and **Sup
 
 Key topics covered include:
 
-- Guided setup when you first launch the app.
+- [Guided setup](guided_setup.md) when you first launch the app.
 - Adding templates with field descriptions and sample prompts.
 - Viewing screenshots, archived video, and real-time streams.
 - Managing templates and groups, including editing and deletion.

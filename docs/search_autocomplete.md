@@ -9,3 +9,6 @@ input field queries a new `/search_suggestions` endpoint and displays up to ten
 matching results. This makes locating specific cameras much faster on large
 installations.
 
+Documentation titles are now included in these suggestions as well. Typing a
+topic like "offline" will show the matching docs page in addition to any camera
+or group names. Selecting the doc entry takes you straight to `/docs/<page>.md`.
