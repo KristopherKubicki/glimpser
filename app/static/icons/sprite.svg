@@ -208,4 +208,18 @@
     <path d="M9.5 15a2.5 2.5 0 110-6" fill="none" stroke="currentColor" stroke-width="2" />
     <path d="M14.5 15a2.5 2.5 0 110-6" fill="none" stroke="currentColor" stroke-width="2" />
   </symbol>
+  <symbol id="camera" viewBox="0 0 24 24">
+    <rect x="3" y="7" width="18" height="14" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none" />
+    <circle cx="12" cy="14" r="3" stroke="currentColor" stroke-width="2" fill="none" />
+    <rect x="7" y="3" width="10" height="4" stroke="currentColor" stroke-width="2" fill="none" />
+  </symbol>
+  <symbol id="browser" viewBox="0 0 24 24">
+    <rect x="2" y="4" width="20" height="16" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none" />
+    <line x1="2" y1="8" x2="22" y2="8" stroke="currentColor" stroke-width="2" />
+  </symbol>
+  <symbol id="mask" viewBox="0 0 24 24">
+    <path d="M2 7s5 5 10 5 10-5 10-5v6c0 5-5 9-10 9S2 18 2 13V7z" stroke="currentColor" stroke-width="2" fill="none" />
+    <circle cx="9" cy="12" r="1" fill="currentColor" />
+    <circle cx="15" cy="12" r="1" fill="currentColor" />
+  </symbol>
 </svg>

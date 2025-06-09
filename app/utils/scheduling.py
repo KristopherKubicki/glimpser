@@ -1217,6 +1217,28 @@ def get_feed_status():
         storage_bytes = get_storage_usage_bytes(name)
         llm_responses = get_llm_response_count(name)
         llm_cost = get_llm_cost_estimate(name)
+        headless = bool(template.get("headless", True))
+        stealth = bool(template.get("stealth", False))
+        browser = bool(template.get("browser", False))
+
+        if browser:
+            camera_type = "browser"
+        elif headless and stealth:
+            camera_type = "headless-stealth"
+        elif headless:
+            camera_type = "headless"
+        elif stealth:
+            camera_type = "stealth"
+        else:
+            camera_type = "standard"
+
+        camera_tooltip = {
+            "browser": "Full browser",
+            "headless-stealth": "Headless with stealth",
+            "headless": "Headless",
+            "stealth": "Stealth",
+            "standard": "Standard",
+        }[camera_type]
 
         status = "ok"
         tooltip_parts: list[str] = []
@@ -1276,6 +1298,8 @@ def get_feed_status():
                 "last_caption_display": _humanize(last_caption),
                 "status": status,
                 "tooltip": tooltip,
+                "camera_type": camera_type,
+                "camera_tooltip": camera_tooltip,
                 "screenshot_count": shot_count,
                 "video_count": video_count,
                 "storage_usage": storage,

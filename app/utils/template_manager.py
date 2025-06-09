@@ -777,7 +777,7 @@ def get_llm_cost_estimate(
         tokens = entry if isinstance(entry, int) else 0
 
     cost = tokens * LLM_COST_PER_TOKEN
-    return f"${cost:.2f}"
+    return f"${cost:.3f}"
 
 
 def get_llm_cost_summary(
@@ -824,10 +824,10 @@ def get_llm_cost_summary(
                 tokens = entry
         total_tokens += tokens
         cost = tokens * LLM_COST_PER_TOKEN
-        summary.append({"name": name, "tokens": tokens, "cost": f"${cost:.2f}"})
+        summary.append({"name": name, "tokens": tokens, "cost": f"${cost:.3f}"})
 
     total_cost = total_tokens * LLM_COST_PER_TOKEN
-    return summary, total_tokens, f"${total_cost:.2f}"
+    return summary, total_tokens, f"${total_cost:.3f}"
 
 
 def update_last_screenshot_time(name: str) -> None:
