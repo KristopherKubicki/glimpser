@@ -47,7 +47,7 @@ class TestHeavyRouteThrottle(unittest.TestCase):
                 patch("app.routes.send_file") as mock_send,
             ):
 
-                def fake_blank(duration, output):
+                def fake_blank(duration, output, **_):
                     with open(output, "w"):
                         pass
                     return True
