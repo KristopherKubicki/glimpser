@@ -44,6 +44,7 @@ nav:
       - Offline Preview: offline_preview.md
       - Pylint Checks: pylint_checks.md
       - Web Notifications: web_notifications.md
+      - Notifications Page: notifications_page.md
       - Search Autocomplete: search_autocomplete.md
       - Recommendations: recommendations.md
       - Release Workflow: release_workflow.md

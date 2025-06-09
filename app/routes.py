@@ -76,7 +76,7 @@ from app.config import (
     CLOCK_DIGITAL,
     CLOCK_NAVBAR,
 )
-from app.models import User, Summary
+from app.models import User, Summary, Notification
 from app.utils import (
     scheduling,
     template_manager,
@@ -3848,9 +3848,16 @@ def init_routes(app: Flask) -> None:
     @login_required
     def send_notification():
         data = request.get_json(force=True)
-        notifications.append(
-            {"title": data.get("title", "Notification"), "body": data.get("body", "")}
-        )
+        title = data.get("title", "Notification")
+        body = data.get("body", "")
+        ts = int(time.time())
+        session_db = SessionLocal()
+        try:
+            session_db.add(Notification(timestamp=ts, title=title, body=body))
+            session_db.commit()
+        finally:
+            session_db.close()
+        notifications.append({"title": title, "body": body})
         if len(notifications) > MAX_NOTIFICATIONS:
             notifications.pop(0)
         return jsonify({"status": "queued"})
@@ -3867,3 +3874,63 @@ def init_routes(app: Flask) -> None:
                 time.sleep(1)
 
         return Response(stream_with_context(generate()), mimetype="text/event-stream")
+
+    @app.route("/notifications")
+    @login_required
+    def notifications_page():
+        page = max(int(request.args.get("page", 1)), 1)
+        per_page = 20
+        session_db = SessionLocal()
+        try:
+            query = session_db.query(Notification).order_by(
+                Notification.timestamp.desc()
+            )
+            total = query.count()
+            notes = query.offset((page - 1) * per_page).limit(per_page).all()
+        finally:
+            session_db.close()
+        display = [
+            {
+                "id": n.id,
+                "title": n.title,
+                "body": n.body,
+                "viewed": n.viewed,
+                "timestamp": datetime.utcfromtimestamp(n.timestamp).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
+            }
+            for n in notes
+        ]
+        return render_template(
+            "notifications.html",
+            notifications=display,
+            page=page,
+            total=total,
+            per_page=per_page,
+        )
+
+    @app.route("/notifications/read/<int:note_id>", methods=["POST"])
+    @login_required
+    def mark_notification_read(note_id: int):
+        session_db = SessionLocal()
+        try:
+            note = session_db.query(Notification).get(note_id)
+            if note:
+                note.viewed = True
+                session_db.commit()
+        finally:
+            session_db.close()
+        return redirect(url_for("notifications_page", page=request.args.get("page", 1)))
+
+    @app.route("/notifications/delete/<int:note_id>", methods=["POST"])
+    @login_required
+    def delete_notification(note_id: int):
+        session_db = SessionLocal()
+        try:
+            note = session_db.query(Notification).get(note_id)
+            if note:
+                session_db.delete(note)
+                session_db.commit()
+        finally:
+            session_db.close()
+        return redirect(url_for("notifications_page", page=request.args.get("page", 1)))

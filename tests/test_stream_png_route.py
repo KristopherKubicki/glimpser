@@ -102,7 +102,7 @@ class TestStreamPngRoute(unittest.TestCase):
         resp = self.client.get("/stream.png?group=g1")
         with open(img1, "rb") as f:
             self.assertEqual(resp.data, f.read())
-            
+
     def test_skips_invalid_png(self):
         self.mock_tpl.return_value = {"cam1": {"name": "cam1"}}
         img_dir = os.path.join(self.repo_root, self.sshot_dir, "cam1")

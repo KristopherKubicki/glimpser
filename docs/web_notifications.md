@@ -8,6 +8,9 @@ Send a POST request to `/send_notification` with a JSON body containing
 `title` and `body` fields. Connected browsers display the message using the
 standard Notification API.
 
+All notifications are stored in the database and can be reviewed on the
+`/notifications` page.
+
 ```bash
 curl -X POST -H "Content-Type: application/json" \
      -d '{"title": "Update", "body": "Motion detected"}' \
