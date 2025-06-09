@@ -801,7 +801,7 @@ def update_summary():
                 except Exception as e:
                     logging.error("error %s %s", e, template)
                     logging.debug("NOTES: %s", fnotes)
-                    logging.debug("GNTES: %s", fnotes)
+                    logging.debug("GNOTES: %s", gnotes)
 
             lstring += (
                 "name: "
@@ -970,18 +970,6 @@ def schedule_crawlers():
                 replace_existing=True,
             )
 
-            """
-            scheduler.add_job(
-                func=update_camera,
-                trigger="interval",
-                seconds=seconds,
-                start_date=datetime.datetime.now()
-                + datetime.timedelta(seconds=offset_delay_seconds),
-                args=[name, template],
-                id=name,
-                replace_existing=True,
-            )
-            """
         except Exception as e:
             logging.error("job schedule error: %s", e)
             logging.error(f"Error scheduling job for {name}: {e}")
@@ -995,14 +983,6 @@ def schedule_crawlers():
             args=(init_crawl, (), 300),
             id="init_crawl",
         )
-        """
-        scheduler.add_job(
-            func=init_crawl,
-            trigger="date",
-            run_date=datetime.datetime.now() + datetime.timedelta(minutes=3),
-            id="init_crawl",
-        )
-        """
     except Exception as e:
         logging.error(f"Error scheduling initial crawl: {e}")
 
