@@ -212,6 +212,28 @@ To set up the project for development:
    ```
    See [Developer Guide](docs/developer_guide.md) for details.
 
+### Linting & Testing
+
+From [Developer Guide](docs/developer_guide.md):
+
+1. Install the tooling and Git hooks:
+   ```sh
+   pip install pre-commit black flake8
+   npm install
+   pre-commit install
+   ```
+2. Verify hooks and run linters:
+   ```sh
+   pre-commit run --all-files
+   flake8
+   ```
+3. Execute the test suites:
+   ```sh
+   pytest
+   npm test
+   ```
+   Coverage instructions live in [docs/testing.md](docs/testing.md).
+
 ## Releases
 
 Release packages are built automatically when a version tag is pushed.
