@@ -99,6 +99,8 @@ To enable email notifications, configure the following:
 
 Configure these values to enable Twilio SMS alerts:
 
+- `SMS_ENABLED` – set to `True` to send SMS notifications
+
 - `TWILIO_SID` – your Twilio account SID
 - `TWILIO_TOKEN` – your Twilio auth token
 - `TWILIO_FROM_NUMBER` – number that sends the messages
@@ -108,6 +110,8 @@ Configure these values to enable Twilio SMS alerts:
 ### CAP
 
 Set these variables to enable Common Alerting Protocol alerts:
+
+- `CAP_ENABLED` – set to `True` to send CAP notifications
 
 - `CAP_ENDPOINT` – URL that accepts CAP XML alerts (empty by default)
 - `CAP_SENDER` – identifier used in the CAP `sender` field (empty by default)

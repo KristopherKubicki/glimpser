@@ -387,12 +387,14 @@ EMAIL_SMTP_TIMEOUT = int(get_setting("EMAIL_SMTP_TIMEOUT", "5"))
 
 
 # SMS/Twilio settings
+SMS_ENABLED = get_setting("SMS_ENABLED", "False")
 TWILIO_SID = get_setting("TWILIO_SID", "")
 TWILIO_TOKEN = get_setting("TWILIO_TOKEN", "")
 TWILIO_NUMBER = get_setting("TWILIO_NUMBER", "")
 TWILIO_FROM_NUMBER = get_setting("TWILIO_FROM_NUMBER", "")
 
 # Common Alerting Protocol settings
+CAP_ENABLED = get_setting("CAP_ENABLED", "False")
 CAP_ENDPOINT = get_setting("CAP_ENDPOINT", "")
 CAP_SENDER = get_setting("CAP_SENDER", "")
 

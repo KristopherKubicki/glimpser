@@ -3212,6 +3212,7 @@ def init_routes(app: Flask) -> None:
                 "EMAIL_USERNAME",
                 "EMAIL_PASSWORD",
             ]
+            notification_settings = ["SMS_ENABLED", "CAP_ENABLED"]
             action = request.form.get("action")
             if action == "add":
                 new_name = (request.form.get("new_name") or "").strip()

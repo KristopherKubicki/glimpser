@@ -22,6 +22,8 @@ SETTINGS_TOOLTIPS = {
     "LIVE_MAX_FAILURES": "Max retries for live streams",
     "CHYRON_SPEED": "Duration of caption banner in seconds",
     "EMAIL_ENABLED": "Toggle email notifications",
+    "SMS_ENABLED": "Toggle SMS notifications",
+    "CAP_ENABLED": "Toggle CAP notifications",
     "EMAIL_SMTP_SERVER": "SMTP server address",
     "EMAIL_RECIPIENTS": "Notification recipients",
     "TWILIO_SID": "Twilio account SID",
@@ -139,6 +141,8 @@ SETTINGS_GROUPS = {
     ],
     "Integrations & Other": [
         "EMAIL_ENABLED",
+        "SMS_ENABLED",
+        "CAP_ENABLED",
         "EMAIL_SENDER",
         "EMAIL_RECIPIENTS",
         "EMAIL_SMTP_SERVER",

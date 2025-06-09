@@ -2,7 +2,13 @@
 
 import logging
 
-from app.config import TWILIO_SID, TWILIO_TOKEN, TWILIO_NUMBER, TWILIO_FROM_NUMBER
+from app.config import (
+    SMS_ENABLED,
+    TWILIO_SID,
+    TWILIO_TOKEN,
+    TWILIO_NUMBER,
+    TWILIO_FROM_NUMBER,
+)
 
 
 def send_sms_alert(message):
@@ -13,11 +19,14 @@ def send_sms_alert(message):
     message : str
         Body text for the SMS message.
 
-    The alert is only attempted if ``TWILIO_SID``, ``TWILIO_TOKEN`` and
-    ``TWILIO_NUMBER`` are all configured. Any failure is logged. The SMS is
-    sent from ``TWILIO_FROM_NUMBER`` to ``TWILIO_NUMBER``.
+    The alert is only attempted when ``SMS_ENABLED`` is ``True`` and
+    ``TWILIO_SID``, ``TWILIO_TOKEN`` and ``TWILIO_NUMBER`` are configured.
+    Any failure is logged. The SMS is sent from ``TWILIO_FROM_NUMBER`` to
+    ``TWILIO_NUMBER``.
     """
-    if not all([TWILIO_SID, TWILIO_TOKEN, TWILIO_NUMBER]):
+    if SMS_ENABLED.lower() != "true" or not all(
+        [TWILIO_SID, TWILIO_TOKEN, TWILIO_NUMBER]
+    ):
         logging.info("SMS alerts are disabled.")
         return
 
