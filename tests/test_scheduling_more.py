@@ -31,26 +31,26 @@ def dummy_job(arg):
 class TestRunWithTimeout(unittest.TestCase):
     @patch("app.utils.scheduling.is_system_online", return_value=True)
     def test_run_completes_before_timeout(self, _online):
-        manager = multiprocessing.Manager()
-        d = manager.dict()
+        with multiprocessing.Manager() as manager:
+            d = manager.dict()
 
-        def quick(val):
-            val["done"] = True
+            def quick(val):
+                val["done"] = True
 
-        run_with_timeout(quick, args=(d,), timeout=2)
-        self.assertTrue(d.get("done"))
+            run_with_timeout(quick, args=(d,), timeout=2)
+            self.assertTrue(d.get("done"))
 
     @patch("app.utils.scheduling.is_system_online", return_value=True)
     def test_run_terminated_on_timeout(self, _online):
-        manager = multiprocessing.Manager()
-        d = manager.dict()
+        with multiprocessing.Manager() as manager:
+            d = manager.dict()
 
-        def slow(val):
-            time.sleep(1)
-            val["done"] = True
+            def slow(val):
+                time.sleep(1)
+                val["done"] = True
 
-        run_with_timeout(slow, args=(d,), timeout=0.2)
-        self.assertIsNone(d.get("done"))
+            run_with_timeout(slow, args=(d,), timeout=0.2)
+            self.assertIsNone(d.get("done"))
 
     @patch("app.utils.scheduling.is_system_online", return_value=True)
     @patch("app.utils.scheduling.cas_error")
