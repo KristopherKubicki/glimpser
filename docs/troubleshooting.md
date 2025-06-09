@@ -157,6 +157,8 @@ Remember to always include relevant log files, error messages, and your Glimpser
 **Solution:**
 
 - Make sure no other service is using port 8082.
+- Glimpser now prints which process is using the port when startup fails.
+- You can still run `lsof -i :8082` or `fuser -n tcp 8082` manually.
 - Change the `ports` mapping in `docker-compose.yaml` if needed.
 
 ### Problem: Permission denied on volumes

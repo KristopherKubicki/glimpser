@@ -362,6 +362,20 @@ def is_port_in_use(port):
         return s.connect_ex(("localhost", port)) == 0
 
 
+def get_port_usage(port: int) -> str:
+    """Return any process details using ``port`` or an empty string."""
+    commands = [["lsof", "-i", f":{port}"], ["fuser", "-n", "tcp", str(port)]]
+    for cmd in commands:
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+            output = result.stdout.strip() or result.stderr.strip()
+            if output:
+                return output
+        except FileNotFoundError:
+            continue
+    return ""
+
+
 def main(argv=None):
     """Entry point for the ``glimpser`` command."""
     # Clear the console before starting
@@ -384,6 +398,14 @@ def main(argv=None):
             "Error: Port %s is already in use. Please choose a different port.",
             config.PORT,
         )
+        usage = get_port_usage(config.PORT)
+        if usage:
+            logging.error("Processes using port %s:\n%s", config.PORT, usage)
+        else:
+            logging.error(
+                "Could not determine which process is using port %s.",
+                config.PORT,
+            )
         sys.exit(1)
 
     try:
