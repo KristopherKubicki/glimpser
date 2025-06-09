@@ -55,7 +55,7 @@ jobs:
     - name: Install Node dependencies
       run: npm install
     - name: Audit npm packages
-      run: npm audit --audit-level=high || true # todo remove this extra true
+      run: npm audit --audit-level=high
     - name: Lint JavaScript
       run: npm run lint:js
     - name: Check JavaScript formatting
@@ -63,7 +63,7 @@ jobs:
     - name: Run JavaScript tests with coverage
       run: npm test -- --coverage
     - name: Safety check
-      run: safety check || true # todo remove this extra true
+      run: safety check
     - name: Lint CSS
       run: npm run lint:css
     - name: Lint with flake8
