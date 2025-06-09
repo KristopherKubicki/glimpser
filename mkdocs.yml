@@ -51,6 +51,7 @@ nav:
       - Clock Settings: clock_settings.md
       - Configuration Management: config_management.md
       - System Monitoring: system_monitoring.md
+      - Telemetry: telemetry.md
       - Testing: testing.md
       - Tooltips: tooltips.md
       - SEO Metadata: seo_metadata.md

@@ -10,19 +10,24 @@ beforeAll(async () => {
 
 describe("url_test", () => {
   test("shows status after fetch", async () => {
-    global.fetch = jest.fn(() =>
+    const responses = [
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ ok: true }),
       }),
-    );
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ status: "ok" }),
+      }),
+    ];
+    global.fetch = jest.fn(() => responses.shift());
     initUrlTester();
     document.dispatchEvent(new Event("DOMContentLoaded"));
     const input = document.getElementById("url");
     input.value = "http://example.com";
     input.dispatchEvent(new Event("change"));
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(fetch).toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledTimes(2);
     const status = document.getElementById("url-status");
     expect(status.textContent).toBe("✓");
     expect(status.classList.contains("ok")).toBe(true);

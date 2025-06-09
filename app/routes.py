@@ -40,6 +40,7 @@ from flask import (
     stream_with_context,
     Flask,
 )
+from collections import deque
 
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
@@ -3554,6 +3555,15 @@ def init_routes(app: Flask) -> None:
 
         return Response(stream_with_context(generate()), mimetype="text/event-stream")
 
+    @app.route("/telemetry", methods=["POST"])
+    @login_required
+    def collect_telemetry():
+        """Collect lightweight UI events for diagnostics."""
+        data = request.get_json(force=True)
+        telemetry_events.append({"ts": int(time.time()), "data": data})
+        logging.info("telemetry: %s", data)
+        return jsonify({"status": "ok"})
+
     @app.route("/discover/add", methods=["POST"])
     @login_required
     def add_discovered_camera():
@@ -3780,6 +3790,8 @@ def init_routes(app: Flask) -> None:
 
     notifications = []
     MAX_NOTIFICATIONS = 100
+
+    telemetry_events = deque(maxlen=1000)
 
     @app.route("/send_notification", methods=["POST"])
     @login_required

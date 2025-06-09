@@ -101,7 +101,7 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
     id="{{ form_id }}"
     action="{{ action }}"
     method="post"
-    onsubmit="return validateForm()"
+    onsubmit="window.sendTelemetry && sendTelemetry('template_submit'); return validateForm()"
     title="Enter template details"
   >
     <div>
@@ -113,6 +113,7 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         name="name"
         value="{{ template.name if template else '' }}"
         required
+        placeholder="My Camera"
         title="Enter a unique name for this template"
       />
       {% endif %}
@@ -124,6 +125,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         name="url"
         value="{{ template.url if template else '' }}"
         required
+        pattern="https?://.+"
+        placeholder="https://example.com/video"
         title="Enter the URL to monitor"
       />
       <span id="url-status" class="url-status" title="URL test result"></span>
@@ -139,6 +142,7 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         min="0.1"
         step="0.1"
         required
+        placeholder="30"
         title="Enter how often to check the URL (in minutes)"
       />
 
@@ -152,6 +156,7 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         value="{{ template.timeout if template else 10 }}"
         min="1"
         required
+        placeholder="10"
         title="Enter the maximum time to wait for a response (in seconds)"
       />
 
@@ -159,6 +164,7 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
       <textarea
         id="notes"
         name="notes"
+        placeholder="Optional notes"
         title="Enter any additional notes or comments"
       >
 {{ template.notes if template else '' }}</textarea
@@ -172,6 +178,7 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         id="object_filter"
         name="object_filter"
         value="{{ template.object_filter if template else '' }}"
+        placeholder="person,car"
         title="Enter object types to filter (e.g., 'person,car')"
       />
 
@@ -188,6 +195,7 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         min="0"
         max="1"
         step="0.01"
+        placeholder="0.5"
         title="Enter the minimum confidence level for object detection (0-1)"
       />
 
@@ -233,6 +241,7 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         id="callback_url"
         name="callback_url"
         value="{{ template.callback_url if template else '' }}"
+        placeholder="https://example.com/callback"
         title="Enter URL to receive notifications"
       />
 
@@ -242,6 +251,7 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         id="proxy"
         name="proxy"
         value="{{ template.proxy if template else '' }}"
+        placeholder="proxy.example.com:8080"
         title="Enter proxy server address (optional)"
       />
 
@@ -253,6 +263,7 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         id="auth_username"
         name="auth_username"
         value="{{ template.auth_username if template else '' }}"
+        placeholder="user"
         title="Camera username"
       />
 
@@ -264,6 +275,7 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         id="auth_password"
         name="auth_password"
         value="{{ template.auth_password if template else '' }}"
+        placeholder="pass"
         title="Camera password"
       />
 
@@ -275,6 +287,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         id="groups"
         name="groups"
         value="{{ template.groups if template else '' }}"
+        pattern="[\w,\- ]*"
+        placeholder="group1,group2"
         title="Enter comma-separated group names"
       />
 
