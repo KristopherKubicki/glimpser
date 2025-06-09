@@ -131,6 +131,23 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
       />
       <span id="url-status" class="url-status" title="URL test result"></span>
 
+      <label for="thumbnail" title="Thumbnail image URL">Thumbnail URL:</label>
+      <input
+        type="url"
+        id="thumbnail"
+        name="thumbnail"
+        value="{{ template.thumbnail if template else '' }}"
+        placeholder="https://example.com/thumb.jpg"
+        title="Optional thumbnail image URL"
+      />
+      <div class="thumbnail-preview">
+        <img
+          id="thumbnail-img"
+          src="{{ template.thumbnail or url_for('static', filename='img/glimpser_small.png') }}"
+          alt="Thumbnail preview"
+        />
+      </div>
+
       <label for="frequency" title="How often to check the URL"
         >Frequency (minutes):</label
       >
