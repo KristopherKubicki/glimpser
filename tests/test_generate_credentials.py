@@ -1,15 +1,15 @@
-import sys
-import os
-import unittest
-from unittest.mock import patch
-import tempfile
-import sqlite3
 import argparse
+import os
+import sqlite3
+import sys
+import tempfile
+import unittest
+from unittest.mock import call, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import generate_credentials  # noqa: E402
 import app.config as config  # noqa: E402
+import generate_credentials  # noqa: E402
 
 
 class TestGenerateCredentials(unittest.TestCase):
@@ -121,8 +121,15 @@ class TestGenerateCredentials(unittest.TestCase):
         )
         self.assertEqual(cur.fetchone(), ("testuser", "hashed_password"))
 
-        mock_log.assert_called_once_with(
-            "Credentials and settings updated in the database."
+        mock_log.assert_has_calls(
+            [
+                call("Credentials and settings updated in the database."),
+                call(
+                    "Open http://%s:%s in your browser after starting Glimpser to finish setup.",
+                    config.HOST,
+                    config.PORT,
+                ),
+            ]
         )
 
     @patch("generate_credentials.generate_password_hash", return_value="h")
