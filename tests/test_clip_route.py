@@ -41,7 +41,7 @@ class TestClipRoute(unittest.TestCase):
                 patch("app.routes.send_file") as mock_send,
             ):
 
-                def fake_blank(duration, output):
+                def fake_blank(duration, output, width=None, height=None):
                     with open(output, "w"):
                         pass
                     return True
@@ -73,7 +73,7 @@ class TestClipRoute(unittest.TestCase):
                 patch("app.routes.send_file") as mock_send,
             ):
 
-                def fake_blank(duration, output):
+                def fake_blank(duration, output, width=None, height=None):
                     with open(output, "w"):
                         pass
                     return True

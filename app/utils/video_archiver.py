@@ -252,15 +252,24 @@ def compile_videos(input_file, output_file):
             os.unlink(output_file)
 
 
-def create_blank_video(duration: int, output_file: str) -> bool:
+def create_blank_video(
+    duration: int,
+    output_file: str,
+    width: int | None = None,
+    height: int | None = None,
+) -> bool:
     """Create a blank MP4 video of ``duration`` seconds."""
+
+    if width is None or height is None:
+        width = 640
+        height = 360
 
     command = [
         FFMPEG_PATH,
         "-f",
         "lavfi",
         "-i",
-        f"color=c=black:s=640x360:d={duration}",
+        f"color=c=black:s={width}x{height}:d={duration}",
         "-c:v",
         "libx264",
         "-pix_fmt",
@@ -305,6 +314,37 @@ def get_video_duration(video_path):
     except Exception:
         pass
     return duration
+
+
+def get_video_resolution(video_path):
+    """Return ``(width, height)`` for the video or ``(None, None)`` on failure."""
+
+    if not os.path.exists(video_path):
+        return None, None
+
+    command = [
+        FFPROBE_PATH,
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "stream=width,height",
+        "-of",
+        "csv=p=0:s=x",
+        os.path.abspath(video_path),
+    ]
+    try:
+        result = subprocess.run(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+        if result.stdout.strip():
+            w_h = result.stdout.strip().split("x")
+            if len(w_h) == 2:
+                return int(w_h[0]), int(w_h[1])
+    except Exception:
+        pass
+    return None, None
 
 
 def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> bool:

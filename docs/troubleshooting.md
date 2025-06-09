@@ -252,7 +252,9 @@ source. That could cause extra network requests and confusing behavior.
 This typically happens when Glimpser cannot locate a recent MP4 clip for a
 camera. The player attempts to load the file and the browser reports a
 _Format error_ because the response is missing or invalid. The server now
-falls back to a two‑minute blank clip so playback never fails entirely.
+falls back to a blank clip so playback never fails entirely. The filler
+video matches the resolution of the latest footage, ensuring subsequent
+concatenation succeeds.
 
 **Solution:**
 
