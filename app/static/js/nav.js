@@ -20,6 +20,17 @@ export function initNav() {
     const currentGroup = window.currentGroup || null;
     const currentCamera = window.currentCamera || null;
 
+    if (nav && menuToggle) {
+      menuToggle.addEventListener("click", () => {
+        nav.classList.toggle("active");
+      });
+      nav.querySelectorAll("a").forEach((link) => {
+        link.addEventListener("click", () => {
+          nav.classList.remove("active");
+        });
+      });
+    }
+
     const fetchJson = async (url) => {
       const res = await fetch(url);
       const type = res.headers.get("content-type") || "";

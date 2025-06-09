@@ -1096,24 +1096,39 @@ def generate_fast_mjpg(camera: str) -> Generator[bytes, None, None]:
             time.sleep(delay - elapsed)
 
 
-def generate_caption_loop() -> Generator[bytes, None, None]:
-    """Yield MJPEG frames showing the most recent caption."""
+def generate_caption_loop(
+    *, group: Optional[str] = None, camera: Optional[str] = None
+) -> Generator[bytes, None, None]:
+    """Yield MJPEG frames showing the most recent caption.
+
+    When ``camera`` or ``group`` is provided, the generator filters templates
+    to those sources before selecting the newest caption. This mirrors the
+    behavior of ``/stream.png`` and other endpoints.
+    """
 
     boundary = b"frame"
+    if group == "all":
+        group = None
+    if camera == "all":
+        camera = None
     while True:
-        session_db = SessionLocal()
         caption = "No captions available"
-        try:
-            rec = session_db.query(Summary).order_by(Summary.timestamp.desc()).first()
-            if rec:
-                try:
-                    data = json.loads(rec.content)
-                    if data:
-                        caption = next(iter(data.values()))
-                except Exception:
-                    caption = rec.content
-        finally:
-            session_db.close()
+        templates = template_manager.get_templates()
+        newest_time = None
+        for name, tpl in templates.items():
+            if camera and name != camera:
+                continue
+            if group:
+                if group not in [g.strip() for g in tpl.get("groups", "").split(",")]:
+                    continue
+            ts_str = tpl.get("last_caption_time")
+            try:
+                ts = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S") if ts_str else None
+            except Exception:
+                ts = None
+            if ts and (newest_time is None or ts > newest_time):
+                newest_time = ts
+                caption = tpl.get("last_caption", "") or "No captions available"
 
         img = Image.new("RGB", (1280, 720), "black")
         draw = ImageDraw.Draw(img)
@@ -1810,6 +1825,40 @@ def init_routes(app: Flask) -> None:
     @login_required
     def stream_png():
 
+        group = request.args.get("group")
+        camera = request.args.get("camera")
+        if group == "all":
+            group = None
+        if camera == "all":
+            camera = None
+
+        if camera:
+            camera = validate_template_name(camera)
+            if camera is None:
+                abort(400, "Invalid camera name")
+            cam_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "..",
+                SCREENSHOT_DIRECTORY,
+                camera,
+                "latest_camera.png",
+            )
+            if os.path.exists(cam_path) and screenshots._is_valid_png(cam_path):
+                return send_file(cam_path)
+            abort(404)
+
+        if group:
+            group = secure_filename(group)
+            group_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "..",
+                SCREENSHOT_DIRECTORY,
+                f"{group}_latest_camera.png",
+            )
+            if os.path.exists(group_path) and screenshots._is_valid_png(group_path):
+                return send_file(group_path)
+            abort(404)
+
         latest_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "..",
@@ -2075,8 +2124,10 @@ def init_routes(app: Flask) -> None:
     @app.route("/internal_caption.mjpg", methods=["GET"])
     @login_required
     def internal_caption_mjpg():
+        group = request.args.get("group")
+        camera = request.args.get("camera")
         return Response(
-            generate_caption_loop(),
+            generate_caption_loop(group=group, camera=camera),
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
 

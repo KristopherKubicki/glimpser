@@ -502,8 +502,7 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
             final_video_name = f"final_{int(os.path.getmtime(in_process_video))}.mp4"
             final_video_path = os.path.join(video_path, final_video_name)
             os.rename(in_process_video, final_video_path)
-            # print(f'Video finalized: {final_video_path}')
-            # this is going to generate overlapping segments, which is OK for now .
+            # this is going to generate overlapping segments, which is OK for now.
 
     # Get the modification time of the in-process video
     video_mod_time = 0
@@ -514,7 +513,6 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
         if (
             ldur < 10 and time.time() - video_mod_time > 60 * 60
         ):  # could be a waste of 300 frames...
-            # print("  skipping ", in_process_video, ldur, time.time() - video_mod_time)
             video_mod_time = 0
             # go bigger...
 
@@ -527,10 +525,7 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
         final_video_path = os.path.join(video_path, final_video_name)
         os.rename(in_process_video, final_video_path)
         # we should finalize at the END of the encode , right?
-        # print(f'Video finalized: {final_video_path}')  #log instead
-        # this is going to generate overlapping segments, which is OK for now .
-
-    # print("OK", glob.glob(camera_path + "/*.png"))
+        # this is going to generate overlapping segments, which is OK for now.
 
     # Filter the list of image files to include only those that are newer than the video
     # Files may disappear between the glob and metadata lookup so catch
@@ -559,8 +554,6 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
             continue
 
     new_files = sorted(filtered_files)
-
-    # print("compile", time.time(), video_mod_time, len(new_files))
 
     if len(new_files) > 0:
         # Create a temporary file with the list of new frames
@@ -641,23 +634,17 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
 
             # Concatenate the temporary video with the existing in-process video
             if os.path.getsize(temp_video) > 0 and video_mod_time == 0:
-                # print("concatenate skip...", temp_video, lcount) # warning
                 os.rename(temp_video, in_process_video)
             else:
                 ldur2 = get_video_duration(temp_video)
                 if os.path.getsize(temp_video) > 0 and ldur2 == 300 / 25:
-                    # print("concatenate skip2...", temp_video, lcount) # warning
                     os.rename(temp_video, in_process_video)
                 elif round(ldur2, 1) == round(
                     (len(new_files) / 25), 1
                 ):  # this is a perfect encode...
-                    # print(" detected perfect encode... concatenating...", ldur, ldur2, len(new_files) / 25, video_mod_time, camera_path, os.path.getsize(temp_video), os.path.getsize(in_process_video))
                     concatenate_videos(in_process_video, temp_video, video_path)
                 else:
                     # this means a lot of frame drops
-                    # print("warning encoding miss!", lcount, video_mod_time, temp_video, os.path.getsize(temp_video) , ldur, ldur2, len(new_files) / 25, os.path.getsize(temp_video), os.path.getsize(in_process_video))
-                    # subprocess.run(create_command, check=True)
-                    # yeah concatenate anyway
                     ltest = concatenate_videos(in_process_video, temp_video, video_path)
 
     # Add new screenshots to the "in-process" video
