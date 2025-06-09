@@ -835,14 +835,14 @@ nav a.active {
   }
 
   nav {
-    flex-direction: column; /* Stack navigation items on mobile */
-    align-items: flex-start;
+    flex-flow: row nowrap; /* Keep items on a single line */
+    align-items: center;
   }
 
   nav a {
-    margin-bottom: 5px; /* Add margin for stacked items */
-    font-size: 1.2rem; /* Bigger text for touch targets */
-    padding: 8px;
+    margin-bottom: 0;
+    font-size: inherit;
+    padding: 4px 6px;
   }
 
   /* Hide elements that waste space on mobile */
@@ -872,8 +872,8 @@ nav a.active {
 
   #nav-group-dropdown,
   #nav-camera-dropdown {
-    width: 100%;
-    margin-bottom: 5px;
+    width: auto;
+    margin-bottom: 0;
   }
 
   /* Enhance touch target sizes for mobile */
@@ -1182,9 +1182,10 @@ body.advanced-enabled .settings-table input[data-locked] {
 
 .template-actions {
   position: fixed;
-  bottom: 0.5rem;
+  top: 3rem;
   left: 0.5rem;
   right: initial;
+  bottom: auto;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -1721,7 +1722,8 @@ body.advanced-enabled .advanced-only {
 
 .captions-table,
 .camera-table,
-.settings-table {
+.settings-table,
+.cost-table {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 20px;
@@ -1732,27 +1734,32 @@ body.advanced-enabled .advanced-only {
 .camera-table th,
 .camera-table td,
 .settings-table th,
-.settings-table td {
+.settings-table td,
+.cost-table th,
+.cost-table td {
   padding: 8px;
   border: 1px solid var(--table-border-color);
 }
 
 .captions-table th,
 .camera-table th,
-.settings-table th {
+.settings-table th,
+.cost-table th {
   background-color: var(--table-header-bg-color);
 }
 
 /* Indicate sortable KPI columns */
 .camera-table th.sortable,
 .feed-status th.sortable,
-.captions-table th.sortable {
+.captions-table th.sortable,
+.cost-table th.sortable {
   cursor: pointer;
 }
 
 .camera-table th.sortable::after,
 .feed-status th.sortable::after,
-.captions-table th.sortable::after {
+.captions-table th.sortable::after,
+.cost-table th.sortable::after {
   content: " \2195";
   font-size: 0.8em;
   opacity: 0.6;
@@ -1764,11 +1771,13 @@ details > summary {
   margin: 1rem 0;
 }
 
-.captions-table tr:nth-child(even) {
+.captions-table tr:nth-child(even),
+.cost-table tr:nth-child(even) {
   background-color: var(--table-row-alt-bg-color);
 }
 
-.captions-table tr:hover {
+.captions-table tr:hover,
+.cost-table tr:hover {
   background-color: var(--table-hover-bg-color);
 }
 
@@ -1782,7 +1791,7 @@ details > summary {
 }
 
 .caption-filters input[type="search"],
-.caption-filters input[type="date"] {
+.caption-filters input[type="range"] {
   margin-right: 0.5rem;
   padding: 4px;
 }

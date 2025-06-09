@@ -882,8 +882,8 @@ export function sortCameraTable(option) {
 
 export function setupCaptionsFilter() {
   const searchInput = document.getElementById("captions-search");
-  const startInput = document.getElementById("caption-start");
-  const endInput = document.getElementById("caption-end");
+  const rangeInput = document.getElementById("caption-range");
+  const rangeLabel = document.getElementById("caption-range-label");
   const clearBtn = document.getElementById("caption-clear");
   const rows = document.querySelectorAll("#captions-table tbody tr");
 
@@ -914,9 +914,10 @@ export function setupCaptionsFilter() {
 
   const filter = () => {
     const term = searchInput.value.toLowerCase().trim();
-    const start =
-      startInput && startInput.value ? new Date(startInput.value) : null;
-    const end = endInput && endInput.value ? new Date(endInput.value) : null;
+    const days = rangeInput ? parseInt(rangeInput.value, 10) : NaN;
+    const start = Number.isFinite(days)
+      ? new Date(Date.now() - days * 86400000)
+      : null;
 
     rows.forEach((row) => {
       const timeElem = row.querySelector("td:first-child span");
@@ -925,8 +926,6 @@ export function setupCaptionsFilter() {
       let show = true;
       if (term && !text.includes(term)) show = false;
       if (start && rowDate && rowDate < start) show = false;
-      if (end && rowDate && rowDate > new Date(end.getTime() + 86400000 - 1))
-        show = false;
       row.style.display = show ? "" : "none";
       const captionCell = row.querySelector("td:nth-child(2)");
       if (show) highlight(captionCell, term);
@@ -937,13 +936,16 @@ export function setupCaptionsFilter() {
   };
 
   searchInput.addEventListener("input", filter);
-  if (startInput) startInput.addEventListener("change", filter);
-  if (endInput) endInput.addEventListener("change", filter);
+  if (rangeInput) {
+    rangeInput.addEventListener("input", () => {
+      if (rangeLabel) rangeLabel.textContent = `Last ${rangeInput.value} days`;
+    });
+    rangeInput.addEventListener("change", filter);
+  }
   if (clearBtn)
     clearBtn.addEventListener("click", () => {
       searchInput.value = "";
-      if (startInput) startInput.value = "";
-      if (endInput) endInput.value = "";
+      if (rangeInput) rangeInput.value = "7";
       filter();
     });
 }
@@ -1005,5 +1007,40 @@ export function setupStatusFilter() {
     });
     updateStatusCounts();
     window.addEventListener("templatesLoaded", updateStatusCounts);
+  });
+}
+
+export function updateBrowserOptions() {
+  const browser = document.getElementById("browser");
+  const headless = document.getElementById("headless");
+  const stealth = document.getElementById("stealth");
+  const popup = document.getElementById("popup_xpath");
+  const dedicated = document.getElementById("dedicated_xpath");
+  const enabled = browser && browser.checked;
+  if (headless) {
+    headless.disabled = !enabled;
+    if (!enabled) headless.checked = false;
+  }
+  if (stealth) {
+    stealth.disabled = !enabled;
+    if (!enabled) stealth.checked = false;
+  }
+  if (popup) popup.disabled = !enabled;
+  if (dedicated) dedicated.disabled = !enabled;
+}
+
+export function setupBrowserOptions() {
+  document.addEventListener("DOMContentLoaded", () => {
+    const browser = document.getElementById("browser");
+    const popup = document.getElementById("popup_xpath");
+    const dedicated = document.getElementById("dedicated_xpath");
+    browser?.addEventListener("change", updateBrowserOptions);
+    const ensureBrowser = () => {
+      if (browser && !browser.checked) browser.checked = true;
+      updateBrowserOptions();
+    };
+    popup?.addEventListener("input", ensureBrowser);
+    dedicated?.addEventListener("input", ensureBrowser);
+    updateBrowserOptions();
   });
 }
