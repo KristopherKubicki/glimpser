@@ -276,6 +276,8 @@ BOOLEAN_SETTINGS = {
     "DISCOVERY_AUTOSTART",
     "EMAIL_ENABLED",
     "EMAIL_USE_TLS",
+    "ENFORCE_DOMAIN_IN_HOST",
+    "FFMPEG_HWACCEL",
 }
 
 
@@ -306,6 +308,13 @@ def validate_setting(name: str, value: str) -> str | None:
         if level in {"DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"}:
             return level
         return None
+
+    if key == "FFMPEG_HWACCEL":
+        return (
+            "auto"
+            if val.lower() in {"true", "1", "t", "y", "yes", "on", "auto"}
+            else "False"
+        )
 
     if key in BOOLEAN_SETTINGS:
         return (

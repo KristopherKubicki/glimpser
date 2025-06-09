@@ -52,6 +52,16 @@
     id="settings-form"
     enctype="multipart/form-data"
   >
+    <svg
+      id="unsaved-icon"
+      width="16"
+      height="16"
+      class="unsaved-icon hidden"
+      aria-label="Unsaved changes"
+      title="Unsaved changes"
+    >
+      <use href="{{ url_for('static', filename='icons/sprite.svg') }}#alert" />
+    </svg>
     {% for name, opts in choices.items() %}
     <datalist id="{{ name }}-list">
       {% for opt in opts %}
@@ -114,9 +124,16 @@
                 name="{{ setting.name }}"
                 value="{{ setting.value }}"
                 title="Edit value for {{ setting.name }}"
-                {% if setting.name in placeholders %}
+                {%
+                if
+                setting.name
+                in
+                placeholders
+                %}
                 placeholder="{{ placeholders[setting.name] }}"
-                {% endif %}
+                {%
+                endif
+                %}
                 {%
                 if
                 setting.name
@@ -263,18 +280,6 @@
       />
       {% endif %}
       <button type="submit" title="Save all changes">Save Changes</button>
-      <svg
-        id="unsaved-icon"
-        width="16"
-        height="16"
-        class="unsaved-icon hidden"
-        aria-label="Unsaved changes"
-        title="Unsaved changes"
-      >
-        <use
-          href="{{ url_for('static', filename='icons/sprite.svg') }}#alert"
-        />
-      </svg>
     </div>
     {% if loop.first %}
     <div id="discover-tab" class="tab-content">
