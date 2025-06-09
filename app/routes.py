@@ -39,6 +39,7 @@ from flask import (
     make_response,
     stream_with_context,
     Flask,
+    current_app,
 )
 from collections import deque
 
@@ -311,9 +312,12 @@ def login_required(f: Callable) -> Callable:
                 return redirect(url_for("login", next=request.url))
 
             # Refresh expiry so the timeout is based on inactivity
-            session["expiry"] = (
-                datetime.now() + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
-            ).strftime("%Y-%m-%d %H:%M:%S")
+            timeout = (
+                timedelta(days=config.AUTO_LOGIN_DAYS)
+                if session.get("remember")
+                else timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
+            )
+            session["expiry"] = (datetime.now() + timeout).strftime("%Y-%m-%d %H:%M:%S")
 
             db_session = SessionLocal()
             try:
@@ -1577,6 +1581,7 @@ def init_routes(app: Flask) -> None:
         if request.method == "POST":
             username = (request.form.get("username") or "").strip()
             password = (request.form.get("password") or "").strip()
+            remember = request.form.get("remember") == "on"
             if not username or not password:
                 flash("Username and password are required", "error")
                 return render_template("login.html", page_title="Login"), 400
@@ -1589,9 +1594,19 @@ def init_routes(app: Flask) -> None:
 
             if user and check_password_hash(user.password_hash, password):
                 session["user_id"] = user.id
-                session["expiry"] = (
-                    now + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
-                ).strftime("%Y-%m-%d %H:%M:%S")
+                if remember:
+                    current_app.permanent_session_lifetime = timedelta(
+                        days=config.AUTO_LOGIN_DAYS
+                    )
+                    session["remember"] = True
+                    timeout = timedelta(days=config.AUTO_LOGIN_DAYS)
+                else:
+                    current_app.permanent_session_lifetime = timedelta(
+                        minutes=config.SESSION_TIMEOUT_MINUTES
+                    )
+                    session.pop("remember", None)
+                    timeout = timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
+                session["expiry"] = (now + timeout).strftime("%Y-%m-%d %H:%M:%S")
                 session.permanent = True
                 login_attempts.pop(
                     ip_address, None

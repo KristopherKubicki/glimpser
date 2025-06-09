@@ -259,6 +259,7 @@ FLASK_LOG_LEVEL = get_setting("FLASK_LOG_LEVEL", LOG_LEVEL)
 SESSION_COOKIE_SECURE = get_setting("SESSION_COOKIE_SECURE", "True") == "True"
 SESSION_COOKIE_HTTPONLY = get_setting("SESSION_COOKIE_HTTPONLY", "True") == "True"
 SESSION_TIMEOUT_MINUTES = int(get_setting("SESSION_TIMEOUT_MINUTES", 30))
+AUTO_LOGIN_DAYS = int(get_setting("AUTO_LOGIN_DAYS", 30))
 
 # Clock configuration
 CLOCK_OVERLAY = get_setting("CLOCK_OVERLAY", "False") == "True"

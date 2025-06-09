@@ -19,6 +19,7 @@ export function initNav() {
     const cameraDropdown = document.getElementById("nav-camera-dropdown");
     const currentGroup = window.currentGroup || null;
     const currentCamera = window.currentCamera || null;
+    const menuToggle = document.getElementById("menu-toggle");
 
     if (nav && menuToggle) {
       menuToggle.addEventListener("click", () => {

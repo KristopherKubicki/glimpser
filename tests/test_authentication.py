@@ -13,6 +13,7 @@ import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
 from app.config import USER_NAME
+import time
 from app.routes import login_required
 from app import create_app
 
@@ -413,6 +414,60 @@ class TestAuthentication(unittest.TestCase):
             response = self.client.get("/sso?token=wrong")
             self.assertEqual(response.status_code, 302)
             self.assertIn("/login", response.headers["Location"])
+
+    def test_remember_me_session_persistent(self):
+        login_attempts = {}
+        with (
+            patch("app.routes.SessionLocal") as mock_session_local,
+            patch("app.routes.login_attempts", login_attempts),
+            patch("app.routes.check_password_hash", return_value=True),
+            patch("app.routes.config.AUTO_LOGIN_DAYS", 10),
+        ):
+            dummy_user = SimpleNamespace(id=1, username=USER_NAME, password_hash="hash")
+
+            class DummyQuery:
+                def filter_by(self, **kwargs):
+                    return self
+
+                def first(self):
+                    return dummy_user
+
+            class DummySession:
+                def query(self, model):
+                    return DummyQuery()
+
+                def close(self):
+                    pass
+
+            mock_session_local.return_value = DummySession()
+            response = self.client.post(
+                "/login",
+                data={
+                    "username": USER_NAME,
+                    "password": "correct_password",
+                    "remember": "on",
+                },
+            )
+            self.assertEqual(response.status_code, 302)
+            cookie_header = response.headers.get("Set-Cookie")
+            self.assertIsNotNone(cookie_header)
+            parts = cookie_header.split("Expires=")
+            self.assertEqual(len(parts), 2)
+            expiry_str = parts[1].split(";")[0]
+            expiry = datetime.datetime.strptime(expiry_str, "%a, %d %b %Y %H:%M:%S GMT")
+            self.assertGreater(
+                expiry, datetime.datetime.utcnow() + datetime.timedelta(days=1)
+            )
+
+    def test_sse_unauthorized_message(self):
+        login_attempts = {}
+        response = self.client.get(
+            "/stream_logs",
+            headers={"Accept": "text/event-stream"},
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.mimetype, "text/event-stream")
+        self.assertIn(b'{"error": "unauthorized"}', response.data)
 
 
 if __name__ == "__main__":
