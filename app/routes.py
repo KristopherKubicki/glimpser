@@ -3846,7 +3846,8 @@ def init_routes(app: Flask) -> None:
 
     @app.route("/send_notification", methods=["POST"])
     @login_required
-    def send_notification():
+    def send_notification() -> Response:
+        """Persist an in-app notification and broadcast to browsers."""
         data = request.get_json(force=True)
         title = data.get("title", "Notification")
         body = data.get("body", "")
@@ -3864,7 +3865,9 @@ def init_routes(app: Flask) -> None:
 
     @app.route("/stream_notifications")
     @login_required
-    def stream_notifications():
+    def stream_notifications() -> Response:
+        """Yield queued notifications as a Server-Sent Event stream."""
+
         def generate(last=len(notifications)):
             while True:
                 if last < len(notifications):
@@ -3877,7 +3880,8 @@ def init_routes(app: Flask) -> None:
 
     @app.route("/notifications")
     @login_required
-    def notifications_page():
+    def notifications_page() -> str:
+        """Render paginated list of stored notifications."""
         page = max(int(request.args.get("page", 1)), 1)
         per_page = 20
         session_db = SessionLocal()
@@ -3911,7 +3915,8 @@ def init_routes(app: Flask) -> None:
 
     @app.route("/notifications/read/<int:note_id>", methods=["POST"])
     @login_required
-    def mark_notification_read(note_id: int):
+    def mark_notification_read(note_id: int) -> Response:
+        """Mark a notification as viewed."""
         session_db = SessionLocal()
         try:
             note = session_db.query(Notification).get(note_id)
@@ -3924,7 +3929,8 @@ def init_routes(app: Flask) -> None:
 
     @app.route("/notifications/delete/<int:note_id>", methods=["POST"])
     @login_required
-    def delete_notification(note_id: int):
+    def delete_notification(note_id: int) -> Response:
+        """Delete a notification entry."""
         session_db = SessionLocal()
         try:
             note = session_db.query(Notification).get(note_id)

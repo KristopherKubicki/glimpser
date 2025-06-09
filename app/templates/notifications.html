@@ -1,38 +1,57 @@
-{% extends 'base.html' %}
-{% from 'components.html' import card %}
-{% block content %}
+{% extends 'base.html' %} {% from 'components.html' import card %} {% block
+content %}
 <h1>Notifications</h1>
 {% call card('Recent Notifications') %}
 <table class="notification-table">
   <thead>
-    <tr><th>Time</th><th>Title</th><th>Body</th><th>Status</th><th>Actions</th></tr>
+    <tr>
+      <th>Time</th>
+      <th>Title</th>
+      <th>Body</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
   </thead>
   <tbody>
-  {% for n in notifications %}
+    {% for n in notifications %}
     <tr>
       <td>{{ n.timestamp }}</td>
       <td>{{ n.title }}</td>
       <td>{{ n.body }}</td>
       <td>{{ 'Read' if n.viewed else 'Unread' }}</td>
       <td>
-        <form action="{{ url_for('mark_notification_read', note_id=n.id, page=page) }}" method="post" style="display:inline">
-          <button type="submit" {% if n.viewed %}disabled{% endif %}>Mark Read</button>
+        <form
+          action="{{ url_for('mark_notification_read', note_id=n.id, page=page) }}"
+          method="post"
+          style="display: inline"
+        >
+          <button type="submit" {% if n.viewed %}disabled{% endif %}>
+            Mark Read
+          </button>
         </form>
-        <form action="{{ url_for('delete_notification', note_id=n.id, page=page) }}" method="post" style="display:inline">
+        <form
+          action="{{ url_for('delete_notification', note_id=n.id, page=page) }}"
+          method="post"
+          style="display: inline"
+        >
           <button type="submit">Delete</button>
         </form>
       </td>
     </tr>
-  {% endfor %}
+    {% endfor %}
   </tbody>
 </table>
 <div class="pagination">
-{% if page > 1 %}
-  <a href="{{ url_for('notifications_page', page=page-1) }}" title="Previous page">Previous</a>
-{% endif %}
-{% if page * per_page < total %}
-  <a href="{{ url_for('notifications_page', page=page+1) }}" title="Next page">Next</a>
-{% endif %}
+  {% if page > 1 %}
+  <a
+    href="{{ url_for('notifications_page', page=page-1) }}"
+    title="Previous page"
+    >Previous</a
+  >
+  {% endif %} {% if page * per_page < total %}
+  <a href="{{ url_for('notifications_page', page=page+1) }}" title="Next page"
+    >Next</a
+  >
+  {% endif %}
 </div>
-{% endcall %}
-{% endblock %}
+{% endcall %} {% endblock %}
