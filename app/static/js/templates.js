@@ -1,3 +1,5 @@
+import { enqueueClip } from "./video.js";
+
 export const NO_TIMESTAMP_PLACEHOLDER = "no timestamp";
 
 function safePlay(el) {
@@ -626,14 +628,7 @@ export async function loadTemplates() {
         entries.forEach((entry) => {
           const video = entry.target;
           if (entry.isIntersecting) {
-            if (video.dataset.hdSrc && !video.dataset.hdLoaded) {
-              const source = video.querySelector("source");
-              if (source) {
-                source.src = video.dataset.hdSrc;
-                video.dataset.hdLoaded = "true";
-                video.load();
-              }
-            }
+            enqueueClip(video);
             if (isMobile()) {
               safePlay(video);
             }
