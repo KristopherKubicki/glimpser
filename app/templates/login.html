@@ -39,6 +39,13 @@ content %}
     </div>
     <div id="login-error" class="form-error hidden"></div>
 
+    <div class="checkbox-row">
+      <label for="remember">
+        <input id="remember" type="checkbox" name="remember" />
+        Remember me
+      </label>
+    </div>
+
     {% with messages = get_flashed_messages(with_categories=true) %} {% if
     messages %}
     <div class="flash-messages">

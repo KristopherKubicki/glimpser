@@ -17,6 +17,7 @@ Key topics covered include:
 - Dark mode toggle and mobile-friendly responsive layout.
 - System Status metrics, feed dashboard, and live log viewer.
 - Offline preview of recent snapshots and locally hosted fonts.
+- "Remember me" option on the login page for automatic sign in.
 - Links to the rest of the documentation under `docs/`.
 - Tooltips across the interface for quick explanations.
 - Inline viewing of command-line help via the **Show CLI Help** button.

@@ -62,6 +62,8 @@ updated with `generate_credentials.py` or through the web interface.
   session cookie (default `True`)
 - `SESSION_TIMEOUT_MINUTES` – session timeout after this many minutes of
   inactivity (default `30`)
+- `AUTO_LOGIN_DAYS` – days the session persists when "Remember me" is checked
+  (default `30`)
 
 User accounts are stored in the `users` table. Each record contains the
 `username`, `password_hash`, and an optional `role` that can be used for future
@@ -99,15 +101,26 @@ To enable email notifications, configure the following:
 
 Configure these values to enable Twilio SMS alerts:
 
+- `SMS_ENABLED` – set to `True` to send SMS notifications
+
 - `TWILIO_SID` – your Twilio account SID
 - `TWILIO_TOKEN` – your Twilio auth token
 - `TWILIO_FROM_NUMBER` – number that sends the messages
 - `TWILIO_NUMBER` – phone number that receives alerts
 - `TWILIO_FROM_NUMBER` – number used as the sender (default is `TWILIO_NUMBER`)
 
+### Web Push
+
+Enable push notifications with these values:
+
+- `VAPID_PUBLIC_KEY` – Base64 encoded public key used by the browser
+- `VAPID_PRIVATE_KEY` – matching private key for signing messages
+
 ### CAP
 
 Set these variables to enable Common Alerting Protocol alerts:
+
+- `CAP_ENABLED` – set to `True` to send CAP notifications
 
 - `CAP_ENDPOINT` – URL that accepts CAP XML alerts (empty by default)
 - `CAP_SENDER` – identifier used in the CAP `sender` field (empty by default)

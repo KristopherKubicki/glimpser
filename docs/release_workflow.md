@@ -1,12 +1,13 @@
 # Release Workflow
 
 Glimpser packages are generated automatically when a version tag is pushed to the repository.
-The process is split across two runners:
+The process is split across multiple runners:
 
 - **Ubuntu** builds the Debian package and runs the test suite. The packaging
   script now uses `rsync` to copy directories so unchanged files are skipped,
   speeding up repeated builds.
 - **Windows** builds the standalone executable using `build_windows.py`.
+- **macOS** builds a self-contained application with `build_macos.py`.
 
 The Ubuntu job also generates a small `release-badges.md` file that lists
 status badges for the current tag.  This file becomes the body of the GitHub

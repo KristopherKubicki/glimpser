@@ -207,7 +207,7 @@ well to the existing discovery methods:
 Locally attached USB webcams (for example, Logitech devices) will appear under
 `/dev/video*`.
 
-Remote sources such as **GOES16**, **ZoomEarth**, and **Dopler** can be added
+Remote sources such as **GOES16**, **ZoomEarth**, and **Doppler** can be added
 manually, but they are not discovered automatically because they are hosted
 outside the local network.
 

@@ -1,4 +1,4 @@
-if (typeof window !== 'undefined' && !window.matchMedia) {
+if (typeof window !== "undefined" && !window.matchMedia) {
   window.matchMedia = () => ({
     matches: false,
     addListener: () => {},
@@ -9,11 +9,15 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
   });
 }
 
-if (typeof window !== 'undefined' && !window.IntersectionObserver) {
+if (typeof window !== "undefined" && !window.IntersectionObserver) {
   window.IntersectionObserver = class {
     constructor() {}
     observe() {}
     unobserve() {}
     disconnect() {}
   };
+}
+
+if (typeof window !== "undefined" && !window.menuToggle) {
+  window.menuToggle = document.createElement("div");
 }

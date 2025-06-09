@@ -259,6 +259,7 @@ FLASK_LOG_LEVEL = get_setting("FLASK_LOG_LEVEL", LOG_LEVEL)
 SESSION_COOKIE_SECURE = get_setting("SESSION_COOKIE_SECURE", "True") == "True"
 SESSION_COOKIE_HTTPONLY = get_setting("SESSION_COOKIE_HTTPONLY", "True") == "True"
 SESSION_TIMEOUT_MINUTES = int(get_setting("SESSION_TIMEOUT_MINUTES", 30))
+AUTO_LOGIN_DAYS = int(get_setting("AUTO_LOGIN_DAYS", 30))
 
 # Clock configuration
 CLOCK_OVERLAY = get_setting("CLOCK_OVERLAY", "False") == "True"
@@ -387,12 +388,18 @@ EMAIL_SMTP_TIMEOUT = int(get_setting("EMAIL_SMTP_TIMEOUT", "5"))
 
 
 # SMS/Twilio settings
+SMS_ENABLED = get_setting("SMS_ENABLED", "False")
 TWILIO_SID = get_setting("TWILIO_SID", "")
 TWILIO_TOKEN = get_setting("TWILIO_TOKEN", "")
 TWILIO_NUMBER = get_setting("TWILIO_NUMBER", "")
 TWILIO_FROM_NUMBER = get_setting("TWILIO_FROM_NUMBER", "")
 
+# Web Push settings
+VAPID_PUBLIC_KEY = get_setting("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = get_setting("VAPID_PRIVATE_KEY", "")
+
 # Common Alerting Protocol settings
+CAP_ENABLED = get_setting("CAP_ENABLED", "False")
 CAP_ENDPOINT = get_setting("CAP_ENDPOINT", "")
 CAP_SENDER = get_setting("CAP_SENDER", "")
 

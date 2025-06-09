@@ -16,6 +16,8 @@ import uuid
 import requests
 import fcntl
 import math
+import subprocess
+from functools import lru_cache
 from pathlib import Path
 from datetime import datetime, timedelta
 from dateutil import tz
@@ -39,6 +41,7 @@ from flask import (
     make_response,
     stream_with_context,
     Flask,
+    current_app,
 )
 from collections import deque
 
@@ -76,7 +79,7 @@ from app.config import (
     CLOCK_DIGITAL,
     CLOCK_NAVBAR,
 )
-from app.models import User, Summary
+from app.models import User, Summary, PushSubscription
 from app.utils import (
     scheduling,
     template_manager,
@@ -126,16 +129,132 @@ CACHE_TTL_SEC = 5
 SEGMENT_SEC = 10
 
 
-def _concat_copy(out: Path, parts: list[Path], clip_len: int) -> bool:
-    """Concatenate ``parts`` into ``out`` using ffmpeg copy mode."""
+FFMPEG = config.FFMPEG_PATH  # shortcut
 
-    out_tmp = out.with_suffix(".tmp")
-    concat_payload = "\n".join(f"file '{p.as_posix()}'" for p in parts).encode() + b"\n"
+
+# ---------- tiny helpers ----------------------------------------------------
+@lru_cache(maxsize=256)
+def _duration(p: str) -> float:
+    out = subprocess.check_output(
+        [
+            FFMPEG.replace("ffmpeg", "ffprobe"),
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            p,
+        ]
+    )
+    return float(out.strip())
+
+
+@lru_cache(maxsize=256)
+def _probe(p: str, key: str):
+    out = subprocess.check_output(
+        [
+            FFMPEG.replace("ffmpeg", "ffprobe"),
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            f"stream={key}",
+            "-of",
+            "json",
+            p,
+        ]
+    )
+    return json.loads(out)["streams"][0][key]
+
+
+# ---------- main ------------------------------------------------------------
+def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
+    out_tmp = out.with_suffix(".tmp.mp4")
+    ramroot = Path(tempfile.mkdtemp(dir=Path("/dev/shm")))
+    fixed: list[Path] = []
+
+    # 1) finalise any in-process clip → RAM
+    for p in parts:
+        if p.name.startswith("final_"):
+            fixed.append(p)
+            continue
+        dst = ramroot / f"{p.stem}_fix.mp4"
+        try:
+            subprocess.run(
+                [
+                    FFMPEG,
+                    "-loglevel",
+                    "quiet",
+                    "-i",
+                    p,
+                    "-c",
+                    "copy",
+                    "-movflags",
+                    "+faststart",
+                    "-y",
+                    dst,
+                ],
+                check=True,
+                timeout=10,
+            )
+            fixed.append(dst)
+        except subprocess.SubprocessError as e:
+            logging.warning("skip broken %s (%s)", p, e)
+
+    if not fixed:
+        shutil.rmtree(ramroot)
+        return False
+
+    fixed.sort(key=os.path.getmtime)  # oldest → newest
+    total = sum(_duration(p) for p in fixed)
+
+    # 2) create FRONT-pad if needed
+    if total < clip_len:
+        miss = clip_len - total  # seconds to pad
+        ref = fixed[-1]  # last clip for geometry/fps
+        w, h = _probe(ref, "width"), _probe(ref, "height")
+        fps = eval(_probe(ref, "r_frame_rate"))
+        pad = ramroot / "pad_black.mp4"
+        subprocess.run(
+            [
+                FFMPEG,
+                "-loglevel",
+                "quiet",
+                "-f",
+                "lavfi",
+                "-i",
+                f"color=s={w}x{h}:r={fps}:c=black",
+                "-t",
+                f"{miss:.3f}",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-preset",
+                "ultrafast",
+                "-movflags",
+                "+faststart",
+                "-y",
+                pad,
+            ],
+            check=True,
+            timeout=10,
+        )
+        concat_parts = [pad] + fixed  # pad FIRST
+    else:
+        concat_parts = fixed
+
+    # 3) concat, trim to exactly clip_len, fix timestamps
+    concat_payload = (
+        "\n".join(f"file 'file:{p.as_posix()}'" for p in concat_parts).encode() + b"\n"
+    )
 
     cmd = [
-        config.FFMPEG_PATH,
+        FFMPEG,
         "-loglevel",
-        "error",
+        "warning",
         "-f",
         "concat",
         "-safe",
@@ -143,25 +262,29 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int) -> bool:
         "-protocol_whitelist",
         "file,pipe",
         "-i",
-        "-",
+        "pipe:0",
         "-t",
-        str(clip_len),
+        str(clip_len),  # force exact 120 s
         "-c",
         "copy",
+        "-reset_timestamps",
+        "1",  # PTS starts at 0  ➜ scrub-bar fine
         "-movflags",
         "+faststart",
         "-y",
-        out_tmp.as_posix(),
+        out_tmp,
     ]
 
     try:
-        subprocess.run(cmd, input=concat_payload, timeout=20, check=True)
+        subprocess.run(cmd, input=concat_payload, timeout=30, check=True)
         out_tmp.rename(out)
         return True
-    except Exception as exc:  # pragma: no cover - ffmpeg failures logged
-        logging.error("FFmpeg concat failed: %s", exc)
+    except subprocess.SubprocessError as exc:
+        logging.error("FFmpeg concat failed: %s", exc, exc_info=True)
         out_tmp.unlink(missing_ok=True)
         return False
+    finally:
+        shutil.rmtree(ramroot, ignore_errors=True)
 
 
 try:
@@ -311,9 +434,12 @@ def login_required(f: Callable) -> Callable:
                 return redirect(url_for("login", next=request.url))
 
             # Refresh expiry so the timeout is based on inactivity
-            session["expiry"] = (
-                datetime.now() + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
-            ).strftime("%Y-%m-%d %H:%M:%S")
+            timeout = (
+                timedelta(days=config.AUTO_LOGIN_DAYS)
+                if session.get("remember")
+                else timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
+            )
+            session["expiry"] = (datetime.now() + timeout).strftime("%Y-%m-%d %H:%M:%S")
 
             db_session = SessionLocal()
             try:
@@ -1577,6 +1703,7 @@ def init_routes(app: Flask) -> None:
         if request.method == "POST":
             username = (request.form.get("username") or "").strip()
             password = (request.form.get("password") or "").strip()
+            remember = request.form.get("remember") == "on"
             if not username or not password:
                 flash("Username and password are required", "error")
                 return render_template("login.html", page_title="Login"), 400
@@ -1589,9 +1716,19 @@ def init_routes(app: Flask) -> None:
 
             if user and check_password_hash(user.password_hash, password):
                 session["user_id"] = user.id
-                session["expiry"] = (
-                    now + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
-                ).strftime("%Y-%m-%d %H:%M:%S")
+                if remember:
+                    current_app.permanent_session_lifetime = timedelta(
+                        days=config.AUTO_LOGIN_DAYS
+                    )
+                    session["remember"] = True
+                    timeout = timedelta(days=config.AUTO_LOGIN_DAYS)
+                else:
+                    current_app.permanent_session_lifetime = timedelta(
+                        minutes=config.SESSION_TIMEOUT_MINUTES
+                    )
+                    session.pop("remember", None)
+                    timeout = timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
+                session["expiry"] = (now + timeout).strftime("%Y-%m-%d %H:%M:%S")
                 session.permanent = True
                 login_attempts.pop(
                     ip_address, None
@@ -2687,7 +2824,7 @@ def init_routes(app: Flask) -> None:
     @login_required
     @limit_rate(30)
     def serve_clip(template_name: TemplateName):
-        """Return a short clip built from recent finalized segments."""
+        """Return a short clip built from recent footage."""
 
         template_name = validate_template_name(template_name)
         if template_name is None:
@@ -2707,8 +2844,13 @@ def init_routes(app: Flask) -> None:
 
         clip_path = root / "clip.mp4"
 
+        in_process = root / "in_process.mp4"
+        sources = list(root.glob("final_*.mp4"))
+        if in_process.exists():
+            sources.append(in_process)
+
         newest_src = max(
-            root.glob("final_*.mp4"),
+            sources,
             key=lambda p: p.stat().st_mtime,
             default=None,
         )
@@ -2721,29 +2863,33 @@ def init_routes(app: Flask) -> None:
         ):
             return send_file(clip_path, conditional=True)
 
-        needed = math.ceil(duration / SEGMENT_SEC)
-        parts = sorted(
-            root.glob("final_*.mp4"),
-            key=lambda p: p.stat().st_mtime,
-            reverse=True,
-        )[:needed]
-        parts = sorted(parts, key=lambda p: p.stat().st_mtime)
-
-        blank_duration = duration - len(parts) * SEGMENT_SEC
-        blank_path = root / "blank_tmp.mp4"
-        blank_width, blank_height = (
-            video_archiver.get_video_resolution(newest_src)
-            if newest_src
-            else (None, None)
-        )
-        if blank_duration > 0:
-            video_archiver.create_blank_video(
-                blank_duration,
-                blank_path.as_posix(),
-                width=blank_width,
-                height=blank_height,
+        parts: list[Path] = []
+        in_process_len = 0
+        if in_process.exists():
+            in_process_len = int(
+                video_archiver.get_video_duration(in_process.as_posix()) or 0
             )
-            parts = [blank_path] + parts
+
+        remaining = duration - in_process_len
+        if remaining > 0:
+            final_parts = [
+                p
+                for p in sorted(
+                    root.glob("final_*.mp4"),
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
+                )
+                if p.stat().st_size > 0
+            ]
+            total = 0
+            for part in final_parts:
+                parts.insert(0, part)
+                total += SEGMENT_SEC
+                if total >= remaining:
+                    break
+
+        if in_process.exists():
+            parts.append(in_process)
 
         lock_path = root / ".clip.lock"
         with lock_path.open("w") as lock_fd:
@@ -2755,18 +2901,10 @@ def init_routes(app: Flask) -> None:
             ):
                 return send_file(clip_path, conditional=True)
 
-            if parts and _concat_copy(clip_path, parts, duration):
-                pass
-            else:
-                video_archiver.create_blank_video(
-                    duration,
-                    clip_path.as_posix(),
-                    width=blank_width,
-                    height=blank_height,
-                )
-
-        if blank_path.exists():
-            blank_path.unlink(missing_ok=True)
+            if not parts:
+                video_archiver.create_blank_video(duration, clip_path.as_posix())
+            elif not _concat_copy(clip_path, parts, duration):
+                video_archiver.create_blank_video(duration, clip_path.as_posix())
 
         if clip_path.exists():
             return send_file(clip_path, conditional=True)
@@ -3212,6 +3350,7 @@ def init_routes(app: Flask) -> None:
                 "EMAIL_USERNAME",
                 "EMAIL_PASSWORD",
             ]
+            notification_settings = ["SMS_ENABLED", "CAP_ENABLED"]
             action = request.form.get("action")
             if action == "add":
                 new_name = (request.form.get("new_name") or "").strip()
@@ -3854,6 +3993,50 @@ def init_routes(app: Flask) -> None:
         if len(notifications) > MAX_NOTIFICATIONS:
             notifications.pop(0)
         return jsonify({"status": "queued"})
+
+    @app.route("/register_push", methods=["POST"])
+    @login_required
+    def register_push():
+        sub = request.get_json(force=True)
+        session_db = SessionLocal()
+        try:
+            existing = (
+                session_db.query(PushSubscription)
+                .filter_by(endpoint=sub.get("endpoint"), user_id=session["user_id"])
+                .first()
+            )
+            if not existing:
+                session_db.add(
+                    PushSubscription(
+                        user_id=session["user_id"],
+                        endpoint=sub.get("endpoint"),
+                        auth=sub.get("keys", {}).get("auth"),
+                        p256dh=sub.get("keys", {}).get("p256dh"),
+                        created_at=int(time.time()),
+                    )
+                )
+                session_db.commit()
+            return jsonify({"status": "registered"})
+        finally:
+            session_db.close()
+
+    @app.route("/unregister_push", methods=["POST"])
+    @login_required
+    def unregister_push():
+        sub = request.get_json(force=True)
+        session_db = SessionLocal()
+        try:
+            existing = (
+                session_db.query(PushSubscription)
+                .filter_by(endpoint=sub.get("endpoint"), user_id=session["user_id"])
+                .first()
+            )
+            if existing:
+                session_db.delete(existing)
+                session_db.commit()
+            return jsonify({"status": "deleted"})
+        finally:
+            session_db.close()
 
     @app.route("/stream_notifications")
     @login_required

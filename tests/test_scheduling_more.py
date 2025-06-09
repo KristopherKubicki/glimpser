@@ -29,28 +29,31 @@ def dummy_job(arg):
 
 
 class TestRunWithTimeout(unittest.TestCase):
+    def setUp(self):
+        scheduling.active_jobs.clear()
+
     @patch("app.utils.scheduling.is_system_online", return_value=True)
     def test_run_completes_before_timeout(self, _online):
-        manager = multiprocessing.Manager()
-        d = manager.dict()
+        with multiprocessing.Manager() as manager:
+            d = manager.dict()
 
-        def quick(val):
-            val["done"] = True
+            def quick(val):
+                val["done"] = True
 
-        run_with_timeout(quick, args=(d,), timeout=2)
-        self.assertTrue(d.get("done"))
+            run_with_timeout(quick, args=(d,), timeout=2)
+            self.assertTrue(d.get("done"))
 
     @patch("app.utils.scheduling.is_system_online", return_value=True)
     def test_run_terminated_on_timeout(self, _online):
-        manager = multiprocessing.Manager()
-        d = manager.dict()
+        with multiprocessing.Manager() as manager:
+            d = manager.dict()
 
-        def slow(val):
-            time.sleep(1)
-            val["done"] = True
+            def slow(val):
+                time.sleep(1)
+                val["done"] = True
 
-        run_with_timeout(slow, args=(d,), timeout=0.2)
-        self.assertIsNone(d.get("done"))
+            run_with_timeout(slow, args=(d,), timeout=0.2)
+            self.assertIsNone(d.get("done"))
 
     @patch("app.utils.scheduling.is_system_online", return_value=True)
     @patch("app.utils.scheduling.cas_error")
@@ -66,6 +69,30 @@ class TestRunWithTimeout(unittest.TestCase):
         )
         mock_offline.assert_called_once_with("cam1")
         mock_cas_error.assert_called_once_with("http://ex")
+
+    @patch("app.utils.scheduling.is_system_online", return_value=True)
+    def test_skip_if_active(self, _online):
+        class DummyProc:
+            def is_alive(self):
+                return True
+
+        scheduling.active_jobs["cam1"] = DummyProc()
+        with patch("app.utils.scheduling.multiprocessing.Process") as mock_proc:
+            run_with_timeout(lambda name: None, args=("cam1",), timeout=1)
+            mock_proc.assert_not_called()
+
+    @patch("app.utils.scheduling.is_system_online", return_value=True)
+    def test_backoff_on_failure(self, _online):
+        def bad_job():
+            raise RuntimeError("boom")
+
+        run_with_timeout(bad_job, timeout=1)
+        backoff = scheduling.job_backoff_until.get("bad_job")
+        self.assertIsNotNone(backoff)
+
+        with patch("app.utils.scheduling.multiprocessing.Process") as mock_proc:
+            run_with_timeout(bad_job, timeout=1)
+            mock_proc.assert_not_called()
 
 
 class TestAddMotionAndCaption(unittest.TestCase):
@@ -124,6 +151,9 @@ class TestGetSystemMetrics(unittest.TestCase):
 
 
 class TestOfflineJobQueue(unittest.TestCase):
+    def setUp(self):
+        scheduling.active_jobs.clear()
+
     @patch("app.utils.scheduling.multiprocessing.Process")
     @patch("app.utils.scheduling.SessionLocal")
     @patch("app.utils.scheduling.is_system_online", return_value=False)

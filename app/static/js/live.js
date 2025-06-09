@@ -1,4 +1,5 @@
 import { timeAgo, formatExactTime } from "./templates.js";
+import { attemptAutoLogin } from "./login.js";
 
 const video = document.getElementById("live-video");
 
@@ -1197,6 +1198,13 @@ async function fetchLatestCaptions() {
     const resp = await fetch("/templates");
     if (!resp.ok) return;
     const data = await resp.json();
+    if (data.error === "unauthorized") {
+      const ok = await attemptAutoLogin();
+      if (ok) {
+        fetchLatestCaptions();
+      }
+      return;
+    }
     for (const name in templateDetails) {
       if (data[name]) {
         templateDetails[name].last_caption = data[name].last_caption;
@@ -1377,6 +1385,13 @@ async function attemptReconnect() {
   try {
     const res = await fetch("/network_status");
     const data = await res.json();
+    if (data.error === "unauthorized") {
+      const ok = await attemptAutoLogin();
+      if (ok) {
+        return attemptReconnect();
+      }
+      return;
+    }
     if (data.online) {
       clearInterval(reconnectTimer);
       reconnectTimer = null;
