@@ -4,11 +4,13 @@ content %}
 {% call card('Select Range') %}
 <form id="cost-form" class="cost-form">
   <label for="start-date">From:</label>
-  <input type="date" id="start-date" name="start" />
+  <input type="date" id="start-date" name="start" title="Select start date" />
   <label for="end-date">To:</label>
-  <input type="date" id="end-date" name="end" />
-  <button type="button" id="since-restart">Since Last Restart</button>
-  <button type="button" id="load-cost">Load</button>
+  <input type="date" id="end-date" name="end" title="Select end date" />
+  <button type="button" id="since-restart" title="Use start time from restart">
+    Since Last Restart
+  </button>
+  <button type="button" id="load-cost" title="Load cost data">Load</button>
 </form>
 {% endcall %}
 <canvas id="costChart" width="400" height="300"></canvas>

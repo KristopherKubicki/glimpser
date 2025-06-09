@@ -3,10 +3,26 @@ content %}
 <main class="container help-page">
   <h2 class="page-title">Glimpser Help</h2>
   <div class="tabs">
-    <button class="tab-link active" data-tab="basics-tab">Basics</button>
-    <button class="tab-link" data-tab="usage-tab">Usage</button>
-    <button class="tab-link" data-tab="advanced-tab">Advanced</button>
-    <button class="tab-link" data-tab="support-tab">Support</button>
+    <button
+      class="tab-link active"
+      data-tab="basics-tab"
+      title="Overview of key features"
+    >
+      Basics
+    </button>
+    <button class="tab-link" data-tab="usage-tab" title="How to use Glimpser">
+      Usage
+    </button>
+    <button
+      class="tab-link"
+      data-tab="advanced-tab"
+      title="Advanced options and offline access"
+    >
+      Advanced
+    </button>
+    <button class="tab-link" data-tab="support-tab" title="Help resources">
+      Support
+    </button>
   </div>
 
   <div id="basics-tab" class="tab-content active">
@@ -54,7 +70,9 @@ content %}
       Control Glimpser from the command line. Run
       <code>glimpser --help</code> to list all commands.
     </p>
-    <button id="load-cli-help" class="btn">Show CLI Help</button>
+    <button id="load-cli-help" class="btn" title="Show CLI help output">
+      Show CLI Help
+    </button>
     <pre id="cli-help" class="cli-help hidden" aria-live="polite"></pre>
     {% endcall %}
   </div>

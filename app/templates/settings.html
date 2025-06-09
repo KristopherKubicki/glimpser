@@ -15,17 +15,35 @@ template_form %} {% block content %}
       type="button"
       class="tab-link{% if loop.first %} active{% endif %}"
       data-tab="{{ 'management-tab' if group == 'Credentials & Management' else group|replace(' ', '-') ~ '-tab' }}"
+      title="Open {{ group }} tab"
     >
       {{ group }}
     </button>
     {% if loop.first %}
-    <button type="button" class="tab-link" data-tab="discover-tab">
+    <button
+      type="button"
+      class="tab-link"
+      data-tab="discover-tab"
+      title="Open Discover tab"
+    >
       Discover
     </button>
-    <button type="button" class="tab-link" data-tab="status-tab">
+    <button
+      type="button"
+      class="tab-link"
+      data-tab="status-tab"
+      title="Open System Status tab"
+    >
       System Status
     </button>
-    <button type="button" class="tab-link" data-tab="costs-tab">Costs</button>
+    <button
+      type="button"
+      class="tab-link"
+      data-tab="costs-tab"
+      title="Open Costs tab"
+    >
+      Costs
+    </button>
     {% endif %} {% endfor %}
     <a
       href="{{ url_for('logout') }}"
