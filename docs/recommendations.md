@@ -6,7 +6,7 @@ Glimpser is a powerful monitoring and data aggregation tool that can be used for
 
 Glimpser's ability to aggregate data from multiple sources makes it an excellent tool for comprehensive weather and environmental monitoring.
 
-- **Local Weather Tracking**: Use cameras like ["GOES16"](https://www.goes-r.gov/), ["ZoomEarth"](https://zoom.earth/), and ["Dopler"](https://weather.com/maps/current-weather) to get real-time updates on local weather conditions.
+- **Local Weather Tracking**: Use cameras like ["GOES16"](https://www.goes-r.gov/), ["ZoomEarth"](https://zoom.earth/), and ["Doppler"](https://weather.com/maps/current-weather) to get real-time updates on local weather conditions.
 - **Air Quality Monitoring**: The "AQI" camera can help track air quality, allowing users to make informed decisions about outdoor activities.
 - **Natural Disaster Preparedness**: Utilize ["Lightning"](https://www.lightningmaps.org/), ["Storms"](https://www.nhc.noaa.gov/), and ["NOAA"](https://www.noaa.gov/) feeds to stay ahead of severe weather events.
 - **Climate Change Research**: Long-term data from "Drought" and "Groundwater" cameras can contribute to climate change studies.
