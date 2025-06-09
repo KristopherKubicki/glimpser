@@ -4,7 +4,7 @@ Glimpser runs automated quality checks on every push and pull request.
 The workflow located at `.github/workflows/python-app.yml` performs the
 following tasks:
 
-- Formats Python code with `black` and lints with `flake8`.
+- Formats Python code with `black`, sorts imports with `isort`, and lints with `flake8`.
 - Checks type hints with `mypy`.
 - Lints JavaScript with `eslint` and verifies formatting with `prettier`.
 - Executes `pytest` and `jest` test suites and uploads coverage.
@@ -13,5 +13,5 @@ following tasks:
 - Caches Python and Node dependencies to speed up builds.
 
 Running `pre-commit run --all-files` locally will execute the same Black,
-Flake8, and mypy checks before they fail in CI. These checks help catch
+isort, Flake8, and mypy checks before they fail in CI. These checks help catch
 regressions and security issues before code is merged.
