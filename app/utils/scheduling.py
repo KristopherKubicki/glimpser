@@ -31,6 +31,7 @@ from app.config import (
     LOGGING_PATH,
     FFMPEG_PATH,
     FFMPEG_HWACCEL,
+    WATCHDOG_CPU_THRESHOLD,
     get_setting,
 )
 from app.utils.db import SessionLocal
@@ -152,6 +153,15 @@ def run_with_timeout(func, args=(), timeout=300):
             logging.error("Failed to queue offline job: %s", exc)
         finally:
             session.close()
+        return
+
+    cpu_level = psutil.cpu_percent(interval=0.0)
+    if cpu_level > WATCHDOG_CPU_THRESHOLD:
+        logging.info(
+            "High CPU (%.1f%%); skipping job %s",
+            cpu_level,
+            getattr(func, "__name__", "job"),
+        )
         return
 
     # Determine key for tracking active jobs. For camera updates the first

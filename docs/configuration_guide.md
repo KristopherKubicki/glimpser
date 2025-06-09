@@ -168,10 +168,10 @@ Additional variables control AI behaviour and external tools:
 - `LLM_CAPTION_PROMPT` – default prompt used for image captions
 - `FFMPEG_PATH` – path to the `ffmpeg` binary (default `ffmpeg`)
 - `FFPROBE_PATH` – path to the `ffprobe` binary (default `ffprobe`)
-- `FFMPEG_HWACCEL` – hardware acceleration mode for ffmpeg (`False` disables)
+- `FFMPEG_HWACCEL` – hardware acceleration mode for ffmpeg (default `auto`)
 - When hardware acceleration is enabled and Chrome supports OpenGL, Glimpser
   automatically launches Chrome with `--use-gl=egl` for improved GPU use.
-- `FFMPEG_THREADS` – number of threads ffmpeg uses when encoding (default `5`)
+- `FFMPEG_THREADS` – number of threads ffmpeg uses when encoding (default half the CPU cores)
 - `CLIP_MODEL_NAME` – CLIP model used for object filtering (default `openai/clip-vit-base-patch32`)
   Example: `openai/clip-vit-large-patch14`
   This setting is read-only until Advanced Options are enabled.
