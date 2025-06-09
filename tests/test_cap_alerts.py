@@ -13,6 +13,7 @@ class TestCAPAlerts(unittest.TestCase):
         with (
             patch("app.utils.cap_alerts.CAP_ENDPOINT", ""),
             patch("app.utils.cap_alerts.CAP_SENDER", ""),
+            patch("app.utils.cap_alerts.CAP_ENABLED", "False"),
             patch("requests.post") as mock_post,
         ):
             send_cap_alert("event", "details")
@@ -22,6 +23,7 @@ class TestCAPAlerts(unittest.TestCase):
         with (
             patch("app.utils.cap_alerts.CAP_ENDPOINT", "http://example.com"),
             patch("app.utils.cap_alerts.CAP_SENDER", "sender"),
+            patch("app.utils.cap_alerts.CAP_ENABLED", "True"),
             patch("requests.post") as mock_post,
         ):
             send_cap_alert("event", "details")

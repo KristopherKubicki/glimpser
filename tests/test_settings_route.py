@@ -211,6 +211,19 @@ class TestSettingsRoute(unittest.TestCase):
             flashes = sess.get("_flashes", [])
         self.assertIn(("success", "Settings updated successfully"), flashes)
 
+    def test_notification_toggle(self):
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
+        ):
+            response = self.client.post(
+                "/settings",
+                data={"SMS_ENABLED": "True", "CAP_ENABLED": "False"},
+            )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self._get_value("SMS_ENABLED"), "True")
+        self.assertEqual(self._get_value("CAP_ENABLED"), "False")
+
 
 if __name__ == "__main__":
     unittest.main()

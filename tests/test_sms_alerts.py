@@ -14,6 +14,7 @@ class TestSMSAlerts(unittest.TestCase):
             patch("app.utils.sms_alerts.TWILIO_SID", ""),
             patch("app.utils.sms_alerts.TWILIO_TOKEN", ""),
             patch("app.utils.sms_alerts.TWILIO_NUMBER", ""),
+            patch("app.utils.sms_alerts.SMS_ENABLED", "False"),
             patch.dict(
                 "sys.modules", {"twilio": MagicMock(), "twilio.rest": MagicMock()}
             ),
@@ -38,6 +39,7 @@ class TestSMSAlerts(unittest.TestCase):
                 patch("app.utils.sms_alerts.TWILIO_TOKEN", "token"),
                 patch("app.utils.sms_alerts.TWILIO_NUMBER", "+123"),
                 patch("app.utils.sms_alerts.TWILIO_FROM_NUMBER", "+999"),
+                patch("app.utils.sms_alerts.SMS_ENABLED", "True"),
             ):
                 send_sms_alert("Body")
                 mock_client_class.assert_called_once_with("sid", "token")
