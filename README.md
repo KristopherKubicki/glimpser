@@ -210,6 +210,14 @@ To set up the project for development:
    ```sh
    npm test -- --coverage
    ```
+7. Use the Makefile for common tasks:
+   ```sh
+   make format   # format code
+   make lint     # run linters
+   make test     # run Python tests
+   make test-js  # run JavaScript tests
+   make precommit
+   ```
    See [Developer Guide](docs/developer_guide.md) for details.
 
 ## Releases
