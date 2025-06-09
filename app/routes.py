@@ -2677,8 +2677,18 @@ def init_routes(app: Flask) -> None:
 
         blank_duration = duration - len(parts) * SEGMENT_SEC
         blank_path = root / "blank_tmp.mp4"
+        blank_width, blank_height = (
+            video_archiver.get_video_resolution(newest_src)
+            if newest_src
+            else (None, None)
+        )
         if blank_duration > 0:
-            video_archiver.create_blank_video(blank_duration, blank_path.as_posix())
+            video_archiver.create_blank_video(
+                blank_duration,
+                blank_path.as_posix(),
+                width=blank_width,
+                height=blank_height,
+            )
             parts = [blank_path] + parts
 
         lock_path = root / ".clip.lock"
@@ -2694,7 +2704,12 @@ def init_routes(app: Flask) -> None:
             if parts and _concat_copy(clip_path, parts, duration):
                 pass
             else:
-                video_archiver.create_blank_video(duration, clip_path.as_posix())
+                video_archiver.create_blank_video(
+                    duration,
+                    clip_path.as_posix(),
+                    width=blank_width,
+                    height=blank_height,
+                )
 
         if blank_path.exists():
             blank_path.unlink(missing_ok=True)
