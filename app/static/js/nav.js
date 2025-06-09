@@ -315,6 +315,7 @@ export function initNav() {
       try {
         const data = await fetchJson("/discovery_status");
         const fmt = (s) => `${Math.round(s / 60)}m`;
+        const text = data.status === "none" ? "disabled" : data.status;
         if (data.status === "none") {
           discoveryStatus.style.color = "white";
         } else if (data.status === "running") {
@@ -326,7 +327,7 @@ export function initNav() {
         } else {
           discoveryStatus.style.color = "grey";
         }
-        let title = `Background discovery: ${data.status}`;
+        let title = `Background discovery: ${text}`;
         if (data.running_for) {
           title += `\nRunning for ${fmt(data.running_for)}`;
         } else if (Number.isFinite(data.age) && data.status !== "none") {
