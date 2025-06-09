@@ -2877,7 +2877,6 @@ def init_routes(app: Flask) -> None:
 
     @app.route("/clip/<string:template_name>")
     @login_required
-    @limit_rate(30)
     def serve_clip(template_name: TemplateName):
         """Return a short clip built from recent footage."""
 
