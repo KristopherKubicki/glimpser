@@ -1649,7 +1649,7 @@ def capture_frame_from_stream(
             command.extend(["-rtsp_transport", "tcp"])
             probe_size = PROBE_SIZE_RTSP
             analyze_duration = ANALYZE_DURATION_RTSP
-            if "/streaming/" in url.lower():  # alittle bit of a hack
+            if "/streaming/" in url.lower():  # a little bit of a hack
                 command.extend(["-c:v", "h264"])
                 command.extend(["-r", "1"])
                 probe_size = PROBE_SIZE_OTHER
