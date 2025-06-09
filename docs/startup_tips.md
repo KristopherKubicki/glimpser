@@ -11,6 +11,7 @@ This page lists quick reminders that appear when Glimpser starts.
   ```
 - **Port already in use?** Make sure another process isn't bound to the configured port before starting Glimpser.
 - **Need more logging?** Start the app with `--console-log` to mirror log output to your terminal.
+- **First time running?** After credentials are generated, the log prints a link to open in your browser and complete setup.
 - **Can't reach the server?** Binding `HOST` to `127.0.0.1` or `localhost` makes it invisible to other machines.
 
 Refer to this file any time you hit a startup issue.
