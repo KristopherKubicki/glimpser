@@ -18,13 +18,10 @@
       <svg width="18" height="18">
         <use
           href="{{ url_for('static', filename='icons/sprite.svg') }}#search"
-        />
+        ></use>
       </svg>
     </span>
-    <span
-      id="discovery-bg-status"
-      class="status-text"
-      title="Background discovery status text"
+    <span id="discovery-bg-status" title="Current background discovery status"
       >Checking...</span
     >
   </div>
@@ -43,8 +40,7 @@
       Discover
     </button>
   </div>
-  {% endcall %} {% call card('Scan Progress', 'Shows current scanning stage and
-  ETA') %}
+  {% endcall %} {% call card('Scan Progress') %}
   <div class="wizard-step" title="Progress of the discovery scan">
     <progress
       id="discover-progress"
@@ -52,9 +48,9 @@
       max="100"
       title="Discovery progress"
     ></progress>
-    <span id="discover-message" title="Status messages">&nbsp;</span>
+    <span id="discover-message" title="Status messages"></span>
   </div>
-  {% endcall %} {% call card('Results', 'List of discovered cameras') %}
+  {% endcall %} {% call card('Results') %}
   <div class="wizard-step" title="Review results and export if desired">
     <div class="export-buttons">
       <button
@@ -110,7 +106,7 @@
       </tbody>
     </table>
   </div>
-  {% endcall %} {% call card('Add Camera', 'Create a new camera template') %}
+  {% endcall %} {% call card('Add Camera') %}
   <div class="wizard-step" title="Form to add a new camera">
     <details title="Expand to add a new camera">
       <summary>Add Camera</summary>
