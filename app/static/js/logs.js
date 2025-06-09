@@ -1,3 +1,5 @@
+import { attemptAutoLogin } from "./login.js";
+
 export function updateTable(logs) {
   const tbody = document.querySelector("#log-table tbody");
   if (!tbody) return;
@@ -68,8 +70,14 @@ export function initLogs() {
       };
 
       eventSource.onmessage = (event) => {
-        const logs = JSON.parse(event.data);
-        updateTable(logs);
+        const data = JSON.parse(event.data);
+        if (data.error === "unauthorized") {
+          attemptAutoLogin().then((ok) => {
+            if (ok) startEventStream();
+          });
+          return;
+        }
+        updateTable(data);
       };
 
       eventSource.onerror = (error) => {
