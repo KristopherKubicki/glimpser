@@ -103,6 +103,12 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIsNotNone(advanced, "advanced-toggle missing")
         self.assertEqual(advanced.get("type"), "checkbox")
 
+    def test_captions_prompt_label(self):
+        """Captions page prompt textarea should have a visible label."""
+        html = Path("app/templates/captions.html").read_text(encoding="utf-8")
+        self.assertIn("Prompt</label>", html)
+        self.assertIn("Last caption", html)
+
     def test_edit_template_frequency_min(self):
         parser = parse_template(Path("app/templates/template_details.html"))
         edit_form = next(
