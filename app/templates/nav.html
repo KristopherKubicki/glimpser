@@ -90,6 +90,16 @@
         />
       </svg>
     </a>
+    <a
+      href="/settings"
+      class="settings-icon"
+      title="Update settings"
+      aria-label="Update settings"
+    >
+      <svg width="20" height="20">
+        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#gear" />
+      </svg>
+    </a>
     <div class="caption-container">
       <a
         href="/captions"
@@ -122,16 +132,6 @@
           <div class="digital-clock"></div>
         </div>
       </div>
-    </a>
-    <a
-      href="/settings"
-      class="settings-icon"
-      title="Update settings"
-      aria-label="Update settings"
-    >
-      <svg width="20" height="20">
-        <use href="{{ url_for('static', filename='icons/sprite.svg') }}#gear" />
-      </svg>
     </a>
     {# login link removed from nav bar #}
   </div>

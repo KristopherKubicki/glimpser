@@ -180,6 +180,7 @@ SETTINGS_PLACEHOLDERS = {
     "EMAIL_SENDER": "your-email@example.com",
     "EMAIL_RECIPIENTS": "recipient1@example.com,recipient2@example.com",
     "EMAIL_SMTP_SERVER": "smtp.example.com",
+    "EMAIL_USERNAME": "your-username",
     "CAP_ENDPOINT": "https://alert.example.com",
     "CAP_SENDER": "glimpser@example.com",
 }
