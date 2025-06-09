@@ -1,18 +1,10 @@
-{% extends 'base.html' %}
-{% from 'components.html' import card %}
-{% macro show_info(info) -%}
-    {%- set pieces = [] %}
-    {%- if info.name %}{% set _ = pieces.append(info.name) %}{% endif %}
-    {%- if info.xaddr %}{% set _ = pieces.append(info.xaddr) %}{% endif %}
-    {%- if info.path %}{% set _ = pieces.append(info.path) %}{% endif %}
-    {%- if info.sdp %}{% set _ = pieces.append('SDP available') %}{% endif %}
-    {%- for k, v in info.items() %}
-        {%- if k not in ['name', 'xaddr', 'path', 'sdp', 'mac', 'manufacturer'] %}
-            {%- set _ = pieces.append(k ~ ': ' ~ v) %}
-        {%- endif %}
-    {%- endfor %}
-    {{ pieces|join(' ') }}
-{%- endmacro %}
-{% block content %}
-{% include '_discover_tab.html' %}
-{% endblock %}
+{% extends 'base.html' %} {% from 'components.html' import card, template_form
+%} {% macro show_info(info) -%} {%- set pieces = [] %} {%- if info.name %}{% set
+_ = pieces.append(info.name) %}{% endif %} {%- if info.xaddr %}{% set _ =
+pieces.append(info.xaddr) %}{% endif %} {%- if info.path %}{% set _ =
+pieces.append(info.path) %}{% endif %} {%- if info.sdp %}{% set _ =
+pieces.append('SDP available') %}{% endif %} {%- for k, v in info.items() %} {%-
+if k not in ['name', 'xaddr', 'path', 'sdp', 'mac', 'manufacturer'] %} {%- set _
+= pieces.append(k ~ ': ' ~ v) %} {%- endif %} {%- endfor %} {{ pieces|join(' ')
+}} {%- endmacro %} {% block content %} {% include '_discover_tab.html' %} {%
+endblock %}

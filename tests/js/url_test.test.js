@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
 
-document.body.innerHTML = `<input id="url"><span id="url-status"></span>`;
+document.body.innerHTML = `<input id="url"><span id="url-status"></span><img id="url-preview">`;
 
 let initUrlTester;
 
@@ -26,5 +26,7 @@ describe("url_test", () => {
     const status = document.getElementById("url-status");
     expect(status.textContent).toBe("✓");
     expect(status.classList.contains("ok")).toBe(true);
+    const preview = document.getElementById("url-preview");
+    expect(preview.src).toContain("http://example.com");
   });
 });

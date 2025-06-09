@@ -1182,10 +1182,10 @@ body.advanced-enabled .settings-table input[data-locked] {
 
 .template-actions {
   position: fixed;
-  top: 3rem;
+  top: auto;
   left: 0.5rem;
   right: initial;
-  bottom: auto;
+  bottom: 1rem;
   display: flex;
   flex-direction: row;
   align-items: center;
