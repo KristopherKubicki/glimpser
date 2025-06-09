@@ -1,113 +1,69 @@
 import csv
+import fcntl
 import glob
 import hashlib
 import inspect
-from sqlalchemy import inspect as sa_inspect
 import io
 import json
 import logging
+import math
 import os
+import queue
+import random
 import re
 import shutil
+import sqlite3
+import struct
+import subprocess
 import sys
 import tempfile
+import textwrap
 import time
 import uuid
-import requests
-import fcntl
-import math
-import subprocess
-from functools import lru_cache
-from pathlib import Path
-from datetime import datetime, timedelta
-from dateutil import tz
-
-from functools import wraps
-from threading import Lock, Thread
-import queue
-
-from flask import (
-    abort,
-    jsonify,
-    flash,
-    redirect,
-    render_template,
-    request,
-    send_file,
-    send_from_directory,
-    session,
-    url_for,
-    Response,
-    make_response,
-    stream_with_context,
-    Flask,
-    current_app,
-)
 from collections import deque
+from datetime import datetime, timedelta
+from functools import lru_cache, wraps
+from ipaddress import ip_network
+from pathlib import Path
+from threading import Lock, Thread
+from urllib.parse import urlparse
 
+import psutil
+import requests
+from dateutil import tz
+from flask import (Flask, Response, abort, current_app, flash, jsonify,
+                   make_response, redirect, render_template, request,
+                   send_file, send_from_directory, session,
+                   stream_with_context, url_for)
 from PIL import Image, ImageDraw, ImageFont
-import textwrap
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
-import sqlite3
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
-from ipaddress import ip_network
-import subprocess
-from urllib.parse import urlparse
-import struct
-import random
-import psutil
 
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
 import app.config as config
-from app.config import (
-    API_KEY,
-    SCREENSHOT_DIRECTORY,
-    VIDEO_DIRECTORY,
-    DOCS_DIRECTORY,
-    VERSION,
-    BACKUP_PATH,
-    backup_config,
-    restore_config,
-    SENSITIVE_SETTINGS,
-    CHYRON_SPEED,
-    NAV_ICON,
-    HEALTH_STATUS_ALWAYS_VISIBLE,
-    CLOCK_OVERLAY,
-    CLOCK_DIGITAL,
-    CLOCK_NAVBAR,
-)
-from app.models import User, Summary, PushSubscription
-from app.utils import (
-    scheduling,
-    template_manager,
-    video_archiver,
-    screenshots,
-    camera_discovery,
-    prompt_optimizer,
-    camera_fix,
-)
-
+from app.config import (API_KEY, BACKUP_PATH, CHYRON_SPEED, CLOCK_DIGITAL,
+                        CLOCK_NAVBAR, CLOCK_OVERLAY, DOCS_DIRECTORY,
+                        HEALTH_STATUS_ALWAYS_VISIBLE, NAV_ICON,
+                        SCREENSHOT_DIRECTORY, SENSITIVE_SETTINGS, VERSION,
+                        VIDEO_DIRECTORY, backup_config, restore_config)
+from app.models import PushSubscription, Summary, User
+from app.utils import (camera_discovery, camera_fix, limit_rate,
+                       prompt_optimizer, scheduling, screenshots,
+                       template_manager, video_archiver)
 from app.utils.llm import ask_question
-from app.utils.settings_tooltips import (
-    SETTINGS_TOOLTIPS,
-    SETTINGS_GROUPS,
-    SETTINGS_CHOICES,
-    NUMERIC_FIELDS,
-    EMAIL_FIELDS,
-    LOCKED_SETTINGS,
-    SETTINGS_PLACEHOLDERS,
-)
-
-from app.utils.screenshots import (
-    is_chrome_debug_port_open,
-    check_user_activity,
-    capture_frame_from_stream,
-)
 from app.utils.network import is_system_online
-from app.utils import limit_rate
+from app.utils.screenshots import (capture_frame_from_stream,
+                                   check_user_activity,
+                                   is_chrome_debug_port_open)
+from app.utils.settings_tooltips import (EMAIL_FIELDS, LOCKED_SETTINGS,
+                                         NUMERIC_FIELDS, SETTINGS_CHOICES,
+                                         SETTINGS_GROUPS,
+                                         SETTINGS_PLACEHOLDERS,
+                                         SETTINGS_TOOLTIPS)
 
 # Names of settings that store file paths.
 FILE_LOCATION_NAMES = [
@@ -119,10 +75,12 @@ FILE_LOCATION_NAMES = [
     "SUMMARIES_DIRECTORY",
 ]
 
-from app.utils.db import SessionLocal, engine
-from sqlalchemy.exc import OperationalError, SQLAlchemyError
 import sqlite3
-from typing import Any, Callable, Generator, Optional, List, Dict
+from typing import Any, Callable, Dict, Generator, List, Optional
+
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
+
+from app.utils.db import SessionLocal, engine
 
 # Clip caching constants
 CACHE_TTL_SEC = 120
@@ -214,18 +172,47 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
     if total < clip_len:
         miss = clip_len - total  # seconds to pad
         ref = fixed[-1]  # last clip for geometry/fps
+        first_clip = fixed[0]
         w, h = _probe(ref, "width"), _probe(ref, "height")
         fps = eval(_probe(ref, "r_frame_rate"))
         pad = ramroot / "pad_black.mp4"
+
+        # extract first frame from earliest clip for overlay
+        first_frame = ramroot / "first_frame.jpg"
         subprocess.run(
             [
                 FFMPEG,
                 "-loglevel",
                 "quiet",
+                "-i",
+                first_clip,
+                "-vframes",
+                "1",
+                "-q:v",
+                "2",
+                "-y",
+                first_frame,
+            ],
+            check=True,
+            timeout=10,
+        )
+
+        # create pad using the frame with a fading black overlay
+        subprocess.run(
+            [
+                FFMPEG,
+                "-loglevel",
+                "quiet",
+                "-loop",
+                "1",
+                "-i",
+                first_frame,
                 "-f",
                 "lavfi",
                 "-i",
-                f"color=s={w}x{h}:r={fps}:c=black",
+                f"color=c=black@0.9:s={w}x{h}:r={fps}",
+                "-filter_complex",
+                f"[1:v]format=rgba,fade=t=out:st=0:d={miss}:alpha=1[ov];[0:v][ov]overlay",
                 "-t",
                 f"{miss:.3f}",
                 "-c:v",
@@ -297,30 +284,20 @@ except Exception:
     COMMIT_HASH = "unknown"
 NODE_ENV = os.getenv("NODE_ENV", "development")
 
+from app.utils import validators
+from app.utils.email_alerts import send_email_alert
+from app.utils.profiling import get_latency_stats, profile_route
 # from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock
-from app.utils import validators
-from app.utils.validators import validate_template_name, validate_update_data
-from app.utils.validators import (
-    validate_template_name,
-    validate_update_data,
-    validate_setting,
-)
-from app.utils.profiling import profile_route, get_latency_stats
-from scripts.update_chrome_shortcut import (
-    update_chrome_shortcuts_info,
-    shortcuts_need_patch,
-    first_shortcut_path,
-)
-from app.utils.screenshots import (
-    is_chrome_debug_port_open,
-    check_user_activity,
-    get_chrome_path,
-    get_chrome_version,
-    load_font,
-)
-from app.utils.email_alerts import send_email_alert
+from app.utils.screenshots import (check_user_activity, get_chrome_path,
+                                   get_chrome_version,
+                                   is_chrome_debug_port_open, load_font)
 from app.utils.sms_alerts import send_sms_alert
+from app.utils.validators import (validate_setting, validate_template_name,
+                                  validate_update_data)
+from scripts.update_chrome_shortcut import (first_shortcut_path,
+                                            shortcuts_need_patch,
+                                            update_chrome_shortcuts_info)
 
 
 def restart_server() -> None:
