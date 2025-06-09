@@ -5,3 +5,7 @@ Glimpser avoids launching duplicate capture jobs to reduce CPU load. Each runnin
 If a capture job repeatedly fails or times out, the scheduler backs off before
 retrying. The delay grows exponentially up to five minutes, preventing the
 system from thrashing when a camera remains offline.
+
+When supported, hardware acceleration is enabled automatically to offload video
+processing to the GPU. The default ffmpeg thread count also scales with the
+number of CPU cores so lightweight systems don't get overwhelmed.

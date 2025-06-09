@@ -94,6 +94,13 @@ class TestRunWithTimeout(unittest.TestCase):
             run_with_timeout(bad_job, timeout=1)
             mock_proc.assert_not_called()
 
+    @patch("app.utils.scheduling.psutil.cpu_percent", return_value=95)
+    @patch("app.utils.scheduling.is_system_online", return_value=True)
+    def test_skip_on_high_cpu(self, _online, _cpu):
+        with patch("app.utils.scheduling.multiprocessing.Process") as mock_proc:
+            run_with_timeout(lambda: None, timeout=1)
+            mock_proc.assert_not_called()
+
 
 class TestAddMotionAndCaption(unittest.TestCase):
     def test_image_updated_with_caption_and_motion(self):

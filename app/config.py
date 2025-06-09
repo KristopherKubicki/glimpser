@@ -5,6 +5,8 @@ import json
 import logging
 import argparse
 import sqlite3
+import subprocess
+import shutil
 from pathlib import Path
 from importlib.metadata import PackageNotFoundError, version
 
@@ -304,10 +306,39 @@ LLM_CAPTION_PROMPT = get_setting(
 # FFMPEG/FFPROBE path settings
 FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
 FFPROBE_PATH = get_setting("FFPROBE_PATH", "ffprobe")
+
+
+def _machine_supports_hwaccel() -> bool:
+    """Return ``True`` if GPU devices appear to be available."""
+
+    return os.path.exists("/dev/dri") or shutil.which("nvidia-smi") is not None
+
+
+def _ffmpeg_supports_hwaccel() -> bool:
+    """Return ``True`` if ``ffmpeg`` lists any hardware acceleration methods."""
+
+    try:
+        output = subprocess.check_output(
+            [FFMPEG_PATH, "-hwaccels"], stderr=subprocess.STDOUT, timeout=2
+        ).decode()
+        lines = [l.strip() for l in output.splitlines() if l.strip()]
+        return len(lines) > 1
+    except Exception:
+        return False
+
+
 # Enable GPU acceleration if supported (e.g. "auto", "cuda", etc.)
-FFMPEG_HWACCEL = get_setting("FFMPEG_HWACCEL", "False")
+_hwaccel_cfg = get_setting("FFMPEG_HWACCEL", "auto")
+if _hwaccel_cfg.lower() == "auto":
+    if _machine_supports_hwaccel() and _ffmpeg_supports_hwaccel():
+        FFMPEG_HWACCEL = "auto"
+    else:
+        FFMPEG_HWACCEL = "False"
+else:
+    FFMPEG_HWACCEL = _hwaccel_cfg
+
 # Number of threads FFmpeg should use when encoding/decoding
-FFMPEG_THREADS = int(get_setting("FFMPEG_THREADS", 5))
+FFMPEG_THREADS = int(get_setting("FFMPEG_THREADS", max(1, (os.cpu_count() or 1) // 2)))
 
 # CLIP model used for object filtering in scheduling
 CLIP_MODEL_NAME = get_setting(
