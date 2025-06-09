@@ -16,6 +16,8 @@ import uuid
 import requests
 import fcntl
 import math
+import subprocess
+from functools import lru_cache
 from pathlib import Path
 from datetime import datetime, timedelta
 from dateutil import tz
@@ -127,16 +129,132 @@ CACHE_TTL_SEC = 5
 SEGMENT_SEC = 10
 
 
-def _concat_copy(out: Path, parts: list[Path], clip_len: int) -> bool:
-    """Concatenate ``parts`` into ``out`` using ffmpeg copy mode."""
+FFMPEG = config.FFMPEG_PATH  # shortcut
 
-    out_tmp = out.with_suffix(".tmp")
-    concat_payload = "\n".join(f"file '{p.as_posix()}'" for p in parts).encode() + b"\n"
+
+# ---------- tiny helpers ----------------------------------------------------
+@lru_cache(maxsize=256)
+def _duration(p: str) -> float:
+    out = subprocess.check_output(
+        [
+            FFMPEG.replace("ffmpeg", "ffprobe"),
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            p,
+        ]
+    )
+    return float(out.strip())
+
+
+@lru_cache(maxsize=256)
+def _probe(p: str, key: str):
+    out = subprocess.check_output(
+        [
+            FFMPEG.replace("ffmpeg", "ffprobe"),
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            f"stream={key}",
+            "-of",
+            "json",
+            p,
+        ]
+    )
+    return json.loads(out)["streams"][0][key]
+
+
+# ---------- main ------------------------------------------------------------
+def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
+    out_tmp = out.with_suffix(".tmp.mp4")
+    ramroot = Path(tempfile.mkdtemp(dir=Path("/dev/shm")))
+    fixed: list[Path] = []
+
+    # 1) finalise any in-process clip → RAM
+    for p in parts:
+        if p.name.startswith("final_"):
+            fixed.append(p)
+            continue
+        dst = ramroot / f"{p.stem}_fix.mp4"
+        try:
+            subprocess.run(
+                [
+                    FFMPEG,
+                    "-loglevel",
+                    "quiet",
+                    "-i",
+                    p,
+                    "-c",
+                    "copy",
+                    "-movflags",
+                    "+faststart",
+                    "-y",
+                    dst,
+                ],
+                check=True,
+                timeout=10,
+            )
+            fixed.append(dst)
+        except subprocess.SubprocessError as e:
+            logging.warning("skip broken %s (%s)", p, e)
+
+    if not fixed:
+        shutil.rmtree(ramroot)
+        return False
+
+    fixed.sort(key=os.path.getmtime)  # oldest → newest
+    total = sum(_duration(p) for p in fixed)
+
+    # 2) create FRONT-pad if needed
+    if total < clip_len:
+        miss = clip_len - total  # seconds to pad
+        ref = fixed[-1]  # last clip for geometry/fps
+        w, h = _probe(ref, "width"), _probe(ref, "height")
+        fps = eval(_probe(ref, "r_frame_rate"))
+        pad = ramroot / "pad_black.mp4"
+        subprocess.run(
+            [
+                FFMPEG,
+                "-loglevel",
+                "quiet",
+                "-f",
+                "lavfi",
+                "-i",
+                f"color=s={w}x{h}:r={fps}:c=black",
+                "-t",
+                f"{miss:.3f}",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-preset",
+                "ultrafast",
+                "-movflags",
+                "+faststart",
+                "-y",
+                pad,
+            ],
+            check=True,
+            timeout=10,
+        )
+        concat_parts = [pad] + fixed  # pad FIRST
+    else:
+        concat_parts = fixed
+
+    # 3) concat, trim to exactly clip_len, fix timestamps
+    concat_payload = (
+        "\n".join(f"file 'file:{p.as_posix()}'" for p in concat_parts).encode() + b"\n"
+    )
 
     cmd = [
-        config.FFMPEG_PATH,
+        FFMPEG,
         "-loglevel",
-        "error",
+        "warning",
         "-f",
         "concat",
         "-safe",
@@ -144,25 +262,29 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int) -> bool:
         "-protocol_whitelist",
         "file,pipe",
         "-i",
-        "-",
+        "pipe:0",
         "-t",
-        str(clip_len),
+        str(clip_len),  # force exact 120 s
         "-c",
         "copy",
+        "-reset_timestamps",
+        "1",  # PTS starts at 0  ➜ scrub-bar fine
         "-movflags",
         "+faststart",
         "-y",
-        out_tmp.as_posix(),
+        out_tmp,
     ]
 
     try:
-        subprocess.run(cmd, input=concat_payload, timeout=20, check=True)
+        subprocess.run(cmd, input=concat_payload, timeout=30, check=True)
         out_tmp.rename(out)
         return True
-    except Exception as exc:  # pragma: no cover - ffmpeg failures logged
-        logging.error("FFmpeg concat failed: %s", exc)
+    except subprocess.SubprocessError as exc:
+        logging.error("FFmpeg concat failed: %s", exc, exc_info=True)
         out_tmp.unlink(missing_ok=True)
         return False
+    finally:
+        shutil.rmtree(ramroot, ignore_errors=True)
 
 
 try:
