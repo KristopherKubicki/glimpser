@@ -2,6 +2,7 @@ export function initUrlTester() {
   document.addEventListener("DOMContentLoaded", () => {
     const input = document.getElementById("url");
     const status = document.getElementById("url-status");
+    const preview = document.getElementById("url-preview");
     if (!input || !status) return;
 
     let controller;
@@ -9,6 +10,7 @@ export function initUrlTester() {
       const url = input.value.trim();
       status.textContent = "";
       status.className = "url-status";
+      if (preview) preview.src = url;
       if (!url) return;
       controller?.abort();
       controller = new AbortController();
@@ -36,6 +38,8 @@ export function initUrlTester() {
     };
 
     input.addEventListener("blur", check);
-    input.addEventListener("change", check);
+    input.addEventListener("change", () => {
+      check();
+    });
   });
 }

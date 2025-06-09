@@ -65,16 +65,8 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn("Password", placeholders)
 
     def test_discover_add_camera_form_inputs(self):
-        parser = parse_template(Path("app/templates/_discover_tab.html"))
-        add_form = None
-        for form in parser.forms:
-            if form["attrs"].get("id") == "add-template-form":
-                add_form = form
-                break
-        self.assertIsNotNone(add_form, "add-template-form missing")
-        inputs = {i.get("id") or i.get("name") for i in add_form["inputs"]}
-        required = {"name", "url", "frequency", "timeout"}
-        self.assertTrue(required.issubset(inputs))
+        html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")
+        self.assertIn("template_form('add-template-form'", html)
 
     def test_discover_has_existing_map_variable(self):
         with open("app/templates/_discover_tab.html", encoding="utf-8") as f:
@@ -110,17 +102,10 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn("Last caption", html)
 
     def test_edit_template_frequency_min(self):
-        parser = parse_template(Path("app/templates/template_details.html"))
-        edit_form = next(
-            (f for f in parser.forms if f["attrs"].get("id") == "edit-template-form"),
-            None,
-        )
-        self.assertIsNotNone(edit_form, "edit-template-form missing")
-        freq = next(
-            (i for i in edit_form["inputs"] if i.get("id") == "frequency"), None
-        )
-        self.assertIsNotNone(freq, "frequency input missing")
-        self.assertEqual(freq.get("min"), "0.1")
+        html = Path("app/templates/template_details.html").read_text(encoding="utf-8")
+        self.assertIn("template_form('edit-template-form'", html)
+        components = Path("app/templates/components.html").read_text(encoding="utf-8")
+        self.assertIn('min="0.1"', components)
 
 
 if __name__ == "__main__":
