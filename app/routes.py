@@ -167,6 +167,7 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
 
     fixed.sort(key=os.path.getmtime)  # oldest → newest
     total = sum(_duration(p) for p in fixed)
+    offset = max(total - clip_len, 0)
 
     # 2) create FRONT-pad if needed
     if total < clip_len:
@@ -238,10 +239,11 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
         "\n".join(f"file 'file:{p.as_posix()}'" for p in concat_parts).encode() + b"\n"
     )
 
-    cmd = [
-        FFMPEG,
-        "-loglevel",
-        "warning",
+    cmd = [FFMPEG, "-loglevel", "warning"]
+    if offset:
+        cmd += ["-ss", f"{offset:.3f}"]
+
+    cmd += [
         "-f",
         "concat",
         "-safe",
