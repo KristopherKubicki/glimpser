@@ -78,6 +78,13 @@ logging.getLogger("apscheduler").setLevel(logging.WARNING)
 
 clip_processor, clip_model = None, None
 
+# Track currently running jobs to avoid launching duplicates.
+active_jobs: dict[str, multiprocessing.Process] = {}
+active_jobs_lock = threading.Lock()
+# Track failures and backoff time to slow down flapping jobs.
+job_failures: dict[str, int] = {}
+job_backoff_until: dict[str, float] = {}
+
 
 class GracefulAPScheduler(APScheduler):
     def __init__(self):
@@ -147,8 +154,25 @@ def run_with_timeout(func, args=(), timeout=300):
             session.close()
         return
 
+    # Determine key for tracking active jobs. For camera updates the first
+    # argument is the camera name; otherwise fall back to function name.
+    key = getattr(func, "__name__", "job")
+    if args and isinstance(args[0], str):
+        key = args[0]
+
     try:
-        process = multiprocessing.Process(target=func, args=args)
+        with active_jobs_lock:
+            now = time.time()
+            backoff_until = job_backoff_until.get(key, 0)
+            if now < backoff_until:
+                logging.info("backing off job %s for %.1fs", key, backoff_until - now)
+                return
+            existing = active_jobs.get(key)
+            if existing and existing.is_alive():
+                logging.info("job already running")
+                return
+            process = multiprocessing.Process(target=func, args=args)
+            active_jobs[key] = process
         process.start()
     except OSError as exc:
         logging.error(
@@ -161,13 +185,17 @@ def run_with_timeout(func, args=(), timeout=300):
                 mark_offline(args[0])
             except Exception:
                 pass
+        with active_jobs_lock:
+            active_jobs.pop(key, None)
         return
 
     process.join(timeout)
+    success = True
     if process.is_alive():
         process.terminate()
         process.join()
         logging.warning("Process terminated due to timeout")
+        success = False
         if args and isinstance(args[0], str):
             try:
                 mark_offline(args[0])
@@ -180,6 +208,18 @@ def run_with_timeout(func, args=(), timeout=300):
                         cas_error(url)
             except Exception:
                 pass
+    elif process.exitcode and process.exitcode != 0:
+        success = False
+
+    with active_jobs_lock:
+        active_jobs.pop(key, None)
+        if success:
+            job_failures.pop(key, None)
+            job_backoff_until.pop(key, None)
+        else:
+            fails = job_failures.get(key, 0) + 1
+            job_failures[key] = fails
+            job_backoff_until[key] = time.time() + min(2**fails, 300)
 
 
 MAX_IMAGE_TIME_DIFF = datetime.timedelta(minutes=5)
