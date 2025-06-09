@@ -105,6 +105,13 @@ Configure these values to enable Twilio SMS alerts:
 - `TWILIO_NUMBER` – phone number that receives alerts
 - `TWILIO_FROM_NUMBER` – number used as the sender (default is `TWILIO_NUMBER`)
 
+### Web Push
+
+Enable push notifications with these values:
+
+- `VAPID_PUBLIC_KEY` – Base64 encoded public key used by the browser
+- `VAPID_PRIVATE_KEY` – matching private key for signing messages
+
 ### CAP
 
 Set these variables to enable Common Alerting Protocol alerts:

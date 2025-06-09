@@ -392,6 +392,10 @@ TWILIO_TOKEN = get_setting("TWILIO_TOKEN", "")
 TWILIO_NUMBER = get_setting("TWILIO_NUMBER", "")
 TWILIO_FROM_NUMBER = get_setting("TWILIO_FROM_NUMBER", "")
 
+# Web Push settings
+VAPID_PUBLIC_KEY = get_setting("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = get_setting("VAPID_PRIVATE_KEY", "")
+
 # Common Alerting Protocol settings
 CAP_ENDPOINT = get_setting("CAP_ENDPOINT", "")
 CAP_SENDER = get_setting("CAP_SENDER", "")

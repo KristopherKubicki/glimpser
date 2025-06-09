@@ -76,7 +76,7 @@ from app.config import (
     CLOCK_DIGITAL,
     CLOCK_NAVBAR,
 )
-from app.models import User, Summary
+from app.models import User, Summary, PushSubscription
 from app.utils import (
     scheduling,
     template_manager,
@@ -3854,6 +3854,50 @@ def init_routes(app: Flask) -> None:
         if len(notifications) > MAX_NOTIFICATIONS:
             notifications.pop(0)
         return jsonify({"status": "queued"})
+
+    @app.route("/register_push", methods=["POST"])
+    @login_required
+    def register_push():
+        sub = request.get_json(force=True)
+        session_db = SessionLocal()
+        try:
+            existing = (
+                session_db.query(PushSubscription)
+                .filter_by(endpoint=sub.get("endpoint"), user_id=session["user_id"])
+                .first()
+            )
+            if not existing:
+                session_db.add(
+                    PushSubscription(
+                        user_id=session["user_id"],
+                        endpoint=sub.get("endpoint"),
+                        auth=sub.get("keys", {}).get("auth"),
+                        p256dh=sub.get("keys", {}).get("p256dh"),
+                        created_at=int(time.time()),
+                    )
+                )
+                session_db.commit()
+            return jsonify({"status": "registered"})
+        finally:
+            session_db.close()
+
+    @app.route("/unregister_push", methods=["POST"])
+    @login_required
+    def unregister_push():
+        sub = request.get_json(force=True)
+        session_db = SessionLocal()
+        try:
+            existing = (
+                session_db.query(PushSubscription)
+                .filter_by(endpoint=sub.get("endpoint"), user_id=session["user_id"])
+                .first()
+            )
+            if existing:
+                session_db.delete(existing)
+                session_db.commit()
+            return jsonify({"status": "deleted"})
+        finally:
+            session_db.close()
 
     @app.route("/stream_notifications")
     @login_required

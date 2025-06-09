@@ -16,4 +16,26 @@ export function initNotifications() {
       console.error("Failed to parse notification", err);
     }
   };
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.ready
+      .then((reg) =>
+        reg.pushManager.getSubscription().then((sub) => {
+          if (sub) return null;
+          return reg.pushManager
+            .subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: window.VAPID_PUBLIC_KEY,
+            })
+            .then((subscription) =>
+              fetch("/register_push", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(subscription),
+              }),
+            );
+        }),
+      )
+      .catch(console.error);
+  }
 }
