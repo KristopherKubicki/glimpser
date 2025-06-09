@@ -14,6 +14,7 @@ pyvirtualdisplay==3.0
 scikit-image==0.25.0
 selenium==4.33.0
 SQLAlchemy==2.0.41
+pywebpush==1.14.0
 #torch==2.4.0
 transformers==4.52.4
 undetected-chromedriver==3.5.5
