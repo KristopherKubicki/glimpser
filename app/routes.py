@@ -103,6 +103,7 @@ from app.utils.screenshots import (
     capture_frame_from_stream,
 )
 from app.utils.network import is_system_online
+from app.utils import limit_rate
 
 # Names of settings that store file paths.
 FILE_LOCATION_NAMES = [
@@ -2632,6 +2633,7 @@ def init_routes(app: Flask) -> None:
 
     @app.route("/clip/<string:template_name>")
     @login_required
+    @limit_rate(30)
     def serve_clip(template_name: TemplateName):
         """Return a short clip built from recent finalized segments."""
 
@@ -2762,6 +2764,7 @@ def init_routes(app: Flask) -> None:
 
     @app.route("/compile_teaser", methods=["POST"])
     @login_required
+    @limit_rate(30)
     def take_compile():
         video_archiver.compile_to_teaser()
         return jsonify({"status": "success", "message": "Compilation taken"})
