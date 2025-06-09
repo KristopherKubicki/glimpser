@@ -64,6 +64,7 @@ nav:
       - Jog-Shuttle Control: jog_shuttle.md
       - Live All Playback: live_all.md
       - Live View Scrubbing: live_scrub.md
+      - Clip Player: clip_player.md
       - MCP Integration: mcp_integration.md
       - In-App Onboarding: onboarding.md
       - OpenSSF Scorecard: scorecard.md

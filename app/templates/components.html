@@ -375,4 +375,10 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
     </div>
   </form>
 </div>
+{%- endmacro %} {%- macro clip_player(video_id='live-video',
+poster_id='live-image') -%}
+<div class="video-container full-height">
+  <img id="{{ poster_id }}" loading="lazy" alt="Latest frame" />
+  <video id="{{ video_id }}" autoplay muted controls></video>
+</div>
 {%- endmacro %}

@@ -16,109 +16,30 @@ template_form %} {% block content %}
   href="{{ url_for('static', filename='css/player.css') }}"
 />
 
-<div class="video-container full-height">
-  <img
-    id="live-image"
-    loading="lazy"
-    alt="Live feed frame"
-    title="Current frame from the live feed"
-  />
-  <video id="live-video" class="hidden" autoplay muted>
-    <source src="" type="video/mp4" />
-    Your browser does not support the video tag.
-  </video>
-  <video id="preload-video" class="hidden" muted preload="auto"></video>
-  <div class="video-controls">
-    <input type="range" id="seek-bar" value="0" title="Seek position" />
-
-    <div class="control-row">
-      <button id="play-pause" title="play/pause">
-        <i class="fa-play-pause"></i>
-      </button>
-      <div id="speed-container">
-        <input
-          type="range"
-          id="speed-slider"
-          min="-3"
-          max="4"
-          value="0"
-          step="0.1"
-          oninput="updatePlaybackSpeed()"
-          title="Adjust playback speed"
-        />
-        <label for="speed-slider"
-          >Speed: <span id="speed-value">1x</span></label
-        >
-      </div>
-      <button id="full-screen" title="fullscreen">
-        <i class="fas fa-expand"></i>
-      </button>
-      <select id="video-source" onchange="changeVideoSource()">
-        <option value="png" title="View a series of PNG images">
-          PNG Stream
-        </option>
-        <!-- <option value="m3u8" title="View an HLS (HTTP Live Streaming) video stream">M3U8 Stream</option> -->
-        <option value="loop" title="Loop through available video clips">
-          Loop Videos
-        </option>
-        <option value="mp4" title="View an MP4 video stream">MP4 Stream</option>
-        <option value="live" title="View the direct live stream">
-          Live Video
-        </option>
-        <option value="motion" title="View motion-detected frames">
-          Motion
-        </option>
-        <option
-          value="mjpg"
-          selected
-          title="View an MJPEG (Motion JPEG) stream"
-        >
-          MJPG
-        </option>
-      </select>
+{{ clip_player() }} {% if CLOCK_OVERLAY %}
+<div
+  id="overlayClock"
+  class="cool-clock clock-overlay"
+  data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}"
+>
+  <div class="clock-face">
+    <div class="clock-hands">
+      <div class="hand hour-hand"></div>
+      <div class="hand minute-hand"></div>
+      <div class="hand second-hand"></div>
     </div>
+    <div class="digital-clock"></div>
   </div>
-  <div id="video-overlay" class="video-overlay">
-    <div id="loading-indicator" class="hidden">Loading...</div>
-    <div id="play-pause-indicator" class="video-icon hidden">▶</div>
-    <div id="offline-indicator" class="offline-indicator hidden">
-      <i class="fas fa-video-slash video-icon"></i>
-      <p id="offline-message"></p>
-    </div>
-    <div id="capture-error-indicator" class="error-indicator hidden">
-      <i class="fas fa-exclamation-triangle video-icon"></i>
-      <p id="capture-error-message"></p>
-    </div>
-    <div id="stream-error-indicator" class="error-indicator hidden">
-      <i class="fas fa-times-circle video-icon"></i>
-      <p id="stream-error-message"></p>
-    </div>
-  </div>
-  {% if CLOCK_OVERLAY %}
-  <div
-    id="overlayClock"
-    class="cool-clock clock-overlay"
-    data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}"
-  >
-    <div class="clock-face">
-      <div class="clock-hands">
-        <div class="hand hour-hand"></div>
-        <div class="hand minute-hand"></div>
-        <div class="hand second-hand"></div>
-      </div>
-      <div class="digital-clock"></div>
-    </div>
-  </div>
-  {% endif %}
-  <div id="error-message"></div>
 </div>
+{% endif %}
+<div id="error-message"></div>
 
 <div id="template-details"></div>
 <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
-<script
-  type="module"
-  src="{{ url_for('static', filename='js/live.js') }}"
-></script>
+<script type="module">
+  import { initClipPlayer } from '{{ url_for('static', filename='js/clip_player.js') }}';
+  initClipPlayer({ cameras: ['{{ template_name }}'] });
+</script>
 
 <script>
   function takeInstantScreenshot(templateName) {
