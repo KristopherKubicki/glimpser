@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API discovery and paginated log view
 - LLM summary generation with email alerts
 - Capture time tracking for templates
+- Template tiles lazy load high-quality clips with a two-minute cache
 - FFprobe path configuration
 - Live video streaming endpoint `/live_video`
 - Python 3.11 compatibility

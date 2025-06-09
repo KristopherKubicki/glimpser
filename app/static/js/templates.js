@@ -1,5 +1,25 @@
 export const NO_TIMESTAMP_PLACEHOLDER = "no timestamp";
 
+// Cache high-definition clips for two minutes to limit network load
+const CLIP_CACHE_DURATION_MS = 2 * 60 * 1000;
+const clipCache = new Map();
+
+function fetchCachedClip(name, src) {
+  const now = Date.now();
+  const cached = clipCache.get(name);
+  if (cached && now < cached.expire) {
+    return Promise.resolve(cached.url);
+  }
+  return fetch(src)
+    .then((r) => r.blob())
+    .then((blob) => {
+      const url = URL.createObjectURL(blob);
+      if (cached) URL.revokeObjectURL(cached.url);
+      clipCache.set(name, { url, expire: now + CLIP_CACHE_DURATION_MS });
+      return url;
+    });
+}
+
 let captionsVisible = localStorage.getItem("showCaptions") !== "false";
 
 export function applyCaptionVisibility(width) {
@@ -497,6 +517,30 @@ export async function loadTemplates() {
       { threshold: 0.5 },
     );
 
+    const clipObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const video = entry.target;
+          if (video.dataset.clipLoaded === "true") return;
+          const hd = video.dataset.clipSrc;
+          if (hd) {
+            const name = video.dataset.name;
+            fetchCachedClip(name, hd)
+              .then((url) => {
+                const source = video.querySelector("source");
+                source.src = url;
+                video.load();
+                video.dataset.clipLoaded = "true";
+                clipObserver.unobserve(video);
+              })
+              .catch((err) => console.error("clip load failed", err));
+          }
+        });
+      },
+      { threshold: 0.25 },
+    );
+
     let hasTemplates = false;
     let templateCount = 0;
     Object.entries(templates).forEach(([name, template], index) => {
@@ -537,7 +581,7 @@ export async function loadTemplates() {
             <a href='/templates/${name}'>
               <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
                 <div class="camera-name">${name}</div>
-                <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none">
+                <video data-name="${name}" data-clip-src="/clip/${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none">
                   <source src="/last_video/${name}" type="video/mp4">
                   Your browser does not support the video tag.
                 </video>
@@ -557,6 +601,7 @@ export async function loadTemplates() {
 
           const video = templateDiv.querySelector("video");
           observer.observe(video);
+          clipObserver.observe(video);
 
           video.addEventListener("mouseenter", () => {
             video.playbackRate = 2.0;

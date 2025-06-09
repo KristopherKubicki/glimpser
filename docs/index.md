@@ -9,6 +9,7 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [Video Archiver](video_archiver.md)
 - [Live All Playback](live_all.md)
 - [Live View Scrubbing](live_scrub.md)
+- [Template Clip Caching](template_clip_cache.md)
 - [Jog-Shuttle Control](jog_shuttle.md)
 - [Developer Guide](developer_guide.md)
 - [Testing and Coverage](testing.md)
