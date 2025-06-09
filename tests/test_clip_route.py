@@ -37,19 +37,14 @@ class TestClipRoute(unittest.TestCase):
             f2 = os.path.join(camera_path, "final_2.mp4")
             open(f1, "w").close()
             open(f2, "w").close()
+            in_proc = os.path.join(camera_path, "in_process.mp4")
+            open(in_proc, "w").close()
             os.utime(f1, (1, 1))
             os.utime(f2, (2, 2))
             with (
                 patch("app.routes.VIDEO_DIRECTORY", tmpdir),
                 patch("app.routes.send_file") as mock_send,
             ):
-
-                def fake_blank(duration, output, width=None, height=None):
-                    with open(output, "w"):
-                        pass
-                    return True
-
-                mock_blank.side_effect = fake_blank
 
                 def fake_concat(out, parts, clip_len):
                     with open(out, "w"):
@@ -63,7 +58,7 @@ class TestClipRoute(unittest.TestCase):
         expected = Path(tmpdir, "cam1", "clip.mp4")
         mock_send.assert_called_with(expected, conditional=True)
         mock_concat.assert_called_once()
-        mock_blank.assert_called_once()
+        mock_blank.assert_not_called()
 
     @patch("app.routes._concat_copy", return_value=False)
     @patch("app.routes.video_archiver.create_blank_video")
@@ -87,7 +82,7 @@ class TestClipRoute(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         expected = Path(tmpdir, "cam1", "clip.mp4")
         mock_send.assert_called_with(expected, conditional=True)
-        self.assertEqual(mock_blank.call_count, 2)
+        mock_blank.assert_called_once()
 
 
 if __name__ == "__main__":

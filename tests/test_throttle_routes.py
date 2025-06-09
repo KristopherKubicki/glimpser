@@ -41,7 +41,8 @@ class TestHeavyRouteThrottle(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             camera_path = os.path.join(tmpdir, "cam1")
             os.makedirs(camera_path)
-            open(os.path.join(camera_path, "final_1.mp4"), "w").close()
+            with open(os.path.join(camera_path, "final_1.mp4"), "wb") as f:
+                f.write(b"0")
             with (
                 patch("app.routes.VIDEO_DIRECTORY", tmpdir),
                 patch("app.routes.send_file") as mock_send,
@@ -67,7 +68,7 @@ class TestHeavyRouteThrottle(unittest.TestCase):
         self.assertEqual(resp2.status_code, 429)
         mock_send.assert_called_once()
         mock_concat.assert_called_once()
-        self.assertGreaterEqual(mock_blank.call_count, 1)
+        mock_blank.assert_not_called()
 
 
 if __name__ == "__main__":
