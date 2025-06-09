@@ -90,9 +90,11 @@ template_controls %} {% block content %}
                     class="hover-video"
                     loop
                     muted
+                    preload="none"
                     poster="/last_screenshot/{{ camera }}"
+                    data-hd-src="/clip/{{ camera }}"
                   >
-                    <source src="/clip/{{ camera }}" type="video/mp4" />
+                    <source src="/last_video/{{ camera }}" type="video/mp4" />
                     Your browser does not support the video tag.
                   </video>
                 </div>
