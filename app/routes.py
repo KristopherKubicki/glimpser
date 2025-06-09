@@ -125,7 +125,7 @@ import sqlite3
 from typing import Any, Callable, Generator, Optional, List, Dict
 
 # Clip caching constants
-CACHE_TTL_SEC = 5
+CACHE_TTL_SEC = 120
 SEGMENT_SEC = 10
 
 
@@ -2868,7 +2868,9 @@ def init_routes(app: Flask) -> None:
             and clip_path.stat().st_mtime > newest_src.stat().st_mtime
             and (time.time() - clip_path.stat().st_mtime) < CACHE_TTL_SEC
         ):
-            return send_file(clip_path, conditional=True)
+            resp = send_file(clip_path, conditional=True)
+            resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
+            return resp
 
         parts: list[Path] = []
         in_process_len = 0
@@ -2906,7 +2908,9 @@ def init_routes(app: Flask) -> None:
                 and newest_src
                 and clip_path.stat().st_mtime > newest_src.stat().st_mtime
             ):
-                return send_file(clip_path, conditional=True)
+                resp = send_file(clip_path, conditional=True)
+                resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
+                return resp
 
             if not parts:
                 video_archiver.create_blank_video(duration, clip_path.as_posix())
@@ -2914,7 +2918,9 @@ def init_routes(app: Flask) -> None:
                 video_archiver.create_blank_video(duration, clip_path.as_posix())
 
         if clip_path.exists():
-            return send_file(clip_path, conditional=True)
+            resp = send_file(clip_path, conditional=True)
+            resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
+            return resp
 
         abort(500, "Could not create clip")
 

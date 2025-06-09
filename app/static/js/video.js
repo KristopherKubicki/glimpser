@@ -216,10 +216,27 @@ export function setupVideoControls() {
 
 export function setupStatusPageVideoHover() {
   const thumbnailVideoCells = document.querySelectorAll(".thumbnail-video");
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        const vid = entry.target;
+        if (entry.isIntersecting && vid.dataset.hdSrc && !vid.dataset.hdLoaded) {
+          const src = vid.querySelector("source");
+          if (src) {
+            src.src = vid.dataset.hdSrc;
+            vid.dataset.hdLoaded = "true";
+          }
+        }
+      });
+    },
+    { threshold: 0.5 },
+  );
+
   thumbnailVideoCells.forEach((cell) => {
     const img = cell.querySelector("img.thumbnail");
     const video = cell.querySelector("video.hover-video");
     if (img && video) {
+      observer.observe(video);
       // Update frame based on cursor position over the tile.
       const scrub = (e) => {
         const rect = cell.getBoundingClientRect();
