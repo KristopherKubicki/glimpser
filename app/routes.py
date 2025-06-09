@@ -217,56 +217,74 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
 
         # extract first frame from earliest clip for overlay
         first_frame = ramroot / "first_frame.jpg"
-        subprocess.run(
-            [
-                FFMPEG,
-                "-loglevel",
-                "quiet",
-                "-i",
-                first_clip,
-                "-vframes",
-                "1",
-                "-q:v",
-                "2",
-                "-y",
-                first_frame,
-            ],
-            check=True,
-            timeout=10,
-        )
+        try:
+            subprocess.run(
+                [
+                    FFMPEG,
+                    "-loglevel",
+                    "quiet",
+                    "-i",
+                    first_clip,
+                    "-vframes",
+                    "1",
+                    "-q:v",
+                    "2",
+                    "-y",
+                    first_frame,
+                ],
+                check=True,
+                timeout=20,
+            )
+        except subprocess.TimeoutExpired:
+            logging.error("FFmpeg frame extraction timed out after 20s")
+            return False
+        except (
+            subprocess.SubprocessError
+        ) as exc:  # pragma: no cover - ffmpeg errors logged
+            logging.error("FFmpeg frame extraction failed: %s", exc, exc_info=True)
+            return False
 
         # create pad using the frame with a fading black overlay
-        subprocess.run(
-            [
-                FFMPEG,
-                "-loglevel",
-                "quiet",
-                "-loop",
-                "1",
-                "-i",
-                first_frame,
-                "-f",
-                "lavfi",
-                "-i",
-                f"color=c=black@0.9:s={w}x{h}:r={fps}",
-                "-filter_complex",
-                f"[1:v]format=rgba,fade=t=out:st=0:d={miss}:alpha=1[ov];[0:v][ov]overlay",
-                "-t",
-                f"{miss:.3f}",
-                "-c:v",
-                "libx264",
-                "-pix_fmt",
-                "yuv420p",
-                "-preset",
-                "ultrafast",
-                "-movflags",
-                "+faststart",
-                "-y",
-                pad,
-            ],
-            check=True,
-            timeout=10,
-        )
+        try:
+            subprocess.run(
+                [
+                    FFMPEG,
+                    "-loglevel",
+                    "quiet",
+                    "-loop",
+                    "1",
+                    "-i",
+                    first_frame,
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    f"color=c=black@0.9:s={w}x{h}:r={fps}",
+                    "-filter_complex",
+                    f"[1:v]format=rgba,fade=t=out:st=0:d={miss}:alpha=1[ov];[0:v][ov]overlay",
+                    "-t",
+                    f"{miss:.3f}",
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-preset",
+                    "ultrafast",
+                    "-movflags",
+                    "+faststart",
+                    "-y",
+                    pad,
+                ],
+                check=True,
+                timeout=30,
+            )
+        except subprocess.TimeoutExpired:
+            logging.error("FFmpeg pad generation timed out after 30s")
+            return False
+        except (
+            subprocess.SubprocessError
+        ) as exc:  # pragma: no cover - ffmpeg errors logged
+            logging.error("FFmpeg pad generation failed: %s", exc, exc_info=True)
+            return False
         concat_parts = [pad] + fixed  # pad FIRST
     else:
         concat_parts = fixed
