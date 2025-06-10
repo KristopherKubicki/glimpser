@@ -374,6 +374,22 @@ export function initNav() {
       showNav();
     };
 
+    const setupSpeechStop = () => {
+      const speechIcon = document.getElementById("speech-stop");
+      if (!speechIcon || !("speechSynthesis" in window)) return;
+      const toggle = () => {
+        speechIcon.style.display = window.speechSynthesis.speaking
+          ? "flex"
+          : "none";
+      };
+      speechIcon.addEventListener("click", () => {
+        window.speechSynthesis.cancel();
+        toggle();
+      });
+      toggle();
+      setInterval(toggle, 500);
+    };
+
     const setupCameraNavigation = () => {
       const cameraDropdown = document.getElementById("nav-camera-dropdown");
       if (!cameraDropdown) return;
@@ -449,5 +465,6 @@ export function initNav() {
     }
     initClocks();
     setupNavFade();
+    setupSpeechStop();
   });
 }
