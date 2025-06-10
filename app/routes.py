@@ -3488,7 +3488,9 @@ def init_routes(app: Flask) -> None:
             return redirect(url_for("settings"))
 
         settings = get_all_settings()
-        grouped_settings = {group: [] for group in SETTINGS_GROUPS}
+        grouped_settings: Dict[str, List[Dict[str, Any]]] = {
+            group: [] for group in SETTINGS_GROUPS
+        }
         grouped_settings["Other"] = []
         for setting in settings:
             placed = False
