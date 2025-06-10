@@ -1,21 +1,19 @@
 # Integration tests for retention_policy cleanup logic
 
-import unittest
-import tempfile
 import os
 import sys
+import tempfile
 import time
+import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from unittest.mock import patch
 
-from app.utils.retention_policy import (
-    delete_old_files,
-    get_files_sorted_by_creation_time,
-    retention_cleanup,
-)
 import app.utils.retention_policy as retention_policy
+from app.utils.retention_policy import (cleanup_clips, delete_old_files,
+                                        get_files_sorted_by_creation_time,
+                                        retention_cleanup)
 
 
 class TestRetentionPolicy(unittest.TestCase):
@@ -61,7 +59,7 @@ class TestRetentionPolicy(unittest.TestCase):
     def test_retention_cleanup_invokes_deletion(
         self, mock_delete, mock_get_files, mock_listdir
     ):
-        mock_listdir.side_effect = [["cam1"], ["cam1"]]
+        mock_listdir.side_effect = [["cam1"], ["cam1"], ["cam1"]]
         mock_get_files.return_value = ["f1", "f2"]
 
         retention_cleanup()
@@ -104,6 +102,45 @@ class TestRetentionPolicy(unittest.TestCase):
                 len(os.listdir(os.path.join(shot_dir, "cam1"))),
                 10,
             )
+
+    def test_cleanup_clips_removes_expired(self):
+        with tempfile.TemporaryDirectory() as video_dir:
+            cam_dir = os.path.join(video_dir, "cam1")
+            os.makedirs(cam_dir)
+            clip = os.path.join(cam_dir, "clip.mp4")
+            with open(clip, "w"):
+                pass
+            old = time.time() - 600
+            os.utime(clip, (old, old))
+
+            with (
+                patch.object(retention_policy, "VIDEO_DIRECTORY", video_dir),
+                patch(
+                    "app.utils.retention_policy.check_user_activity",
+                    return_value=False,
+                ),
+            ):
+                cleanup_clips(max_age_minutes=5)
+
+            self.assertFalse(os.path.exists(clip))
+
+    def test_cleanup_clips_keeps_recent(self):
+        with tempfile.TemporaryDirectory() as video_dir:
+            cam_dir = os.path.join(video_dir, "cam1")
+            os.makedirs(cam_dir)
+            clip = os.path.join(cam_dir, "clip.mp4")
+            with open(clip, "w"):
+                pass
+            with (
+                patch.object(retention_policy, "VIDEO_DIRECTORY", video_dir),
+                patch(
+                    "app.utils.retention_policy.check_user_activity",
+                    return_value=False,
+                ),
+            ):
+                cleanup_clips(max_age_minutes=5)
+
+            self.assertTrue(os.path.exists(clip))
 
 
 if __name__ == "__main__":

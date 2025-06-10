@@ -385,6 +385,9 @@ CHYRON_SPEED = int(get_setting("CHYRON_SPEED", 0))
 # Length in seconds returned by the `/clip/<template>` endpoint.
 DEFAULT_CLIP_DURATION = int(get_setting("DEFAULT_CLIP_DURATION", 120))
 
+# Maximum age in minutes before temporary ``clip.mp4`` files are purged.
+MAX_CLIP_AGE_MINUTES = int(get_setting("MAX_CLIP_AGE_MINUTES", 5))
+
 # Whether the System Performance icon in the navigation bar should remain
 # visible even when the application reports healthy status. When set to
 # ``False`` the icon hides itself if all metrics look nominal to reduce

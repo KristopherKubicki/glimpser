@@ -1,15 +1,13 @@
 # utils/retention_policy.py
 
+import logging
 import os
 import time
-import logging
 
-from app.config import (
-    MAX_COMPRESSED_VIDEO_AGE,
-    MAX_RAW_DATA_SIZE,
-    SCREENSHOT_DIRECTORY,
-    VIDEO_DIRECTORY,
-)
+from app.config import (MAX_CLIP_AGE_MINUTES, MAX_COMPRESSED_VIDEO_AGE,
+                        MAX_RAW_DATA_SIZE, SCREENSHOT_DIRECTORY,
+                        VIDEO_DIRECTORY)
+from app.utils.screenshots import check_user_activity
 
 
 def get_files_sorted_by_creation_time(directory):
@@ -67,6 +65,29 @@ def delete_old_files(file_list, max_age, max_size, minimum=10):
             logging.error("Error processing %s: %s", file_path, e)
 
 
+def cleanup_clips(max_age_minutes: int = MAX_CLIP_AGE_MINUTES) -> None:
+    """Delete stale ``clip.mp4`` files when the user is idle."""
+
+    if not (max_age_minutes and max_age_minutes > 0):
+        return
+
+    if check_user_activity(timeout=1):
+        # User is active; postpone cleanup to avoid disrupting playback.
+        return
+
+    expiry = max_age_minutes * 60
+    for camera_name in os.listdir(VIDEO_DIRECTORY):
+        clip_path = os.path.join(VIDEO_DIRECTORY, camera_name, "clip.mp4")
+        if os.path.isfile(clip_path):
+            try:
+                age = time.time() - os.path.getmtime(clip_path)
+                if age > expiry:
+                    os.remove(clip_path)
+                    logging.debug("Deleted expired clip %s", clip_path)
+            except Exception as e:
+                logging.warning("Failed to delete %s: %s", clip_path, e)
+
+
 def retention_cleanup():
     # For each camera, delete old or excess videos
     for camera_name in os.listdir(VIDEO_DIRECTORY):
@@ -79,3 +100,5 @@ def retention_cleanup():
         camera_dir = os.path.join(SCREENSHOT_DIRECTORY, camera_name)
         image_files = get_files_sorted_by_creation_time(camera_dir)
         delete_old_files(image_files, MAX_COMPRESSED_VIDEO_AGE, MAX_RAW_DATA_SIZE)
+
+    cleanup_clips()
