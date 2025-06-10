@@ -1,5 +1,34 @@
 import { setCaptionsVisibility } from "./templates.js";
 
+let scrubTooltip;
+
+function createScrubTooltip() {
+  if (!scrubTooltip) {
+    scrubTooltip = document.createElement("div");
+    scrubTooltip.className = "scrub-tooltip";
+    document.body.appendChild(scrubTooltip);
+  }
+}
+
+function updateScrubTooltip(time, e) {
+  if (!scrubTooltip) return;
+  const formatted = new Date(time * 1000).toISOString().substring(11, 19);
+  scrubTooltip.textContent = formatted;
+  const offset = 8;
+  const width = scrubTooltip.offsetWidth;
+  let left = e.pageX + offset;
+  if (left + width > window.innerWidth) {
+    left = e.pageX - width - offset;
+  }
+  scrubTooltip.style.left = `${left}px`;
+  scrubTooltip.style.top = `${e.pageY + offset}px`;
+  scrubTooltip.classList.add("visible");
+}
+
+function hideScrubTooltip() {
+  if (scrubTooltip) scrubTooltip.classList.remove("visible");
+}
+
 // Prefetch queue to avoid loading many clips at once
 let prefetchQueue = [];
 let processing = false;
@@ -269,13 +298,23 @@ export function setupStatusPageVideoHover() {
     const video = cell.querySelector("video.hover-video");
     if (img && video) {
       observer.observe(video);
-      // Update frame based on cursor position over the tile.
+      let targetTime = 0;
+      let rafId;
+
+      const step = () => {
+        if (!Number.isNaN(targetTime)) {
+          video.currentTime += (targetTime - video.currentTime) * 0.4;
+        }
+        rafId = requestAnimationFrame(step);
+      };
+
       const scrub = (e) => {
         const rect = cell.getBoundingClientRect();
         const ratio = (e.clientX - rect.left) / rect.width;
         const clamped = Math.max(0, Math.min(1, ratio));
         if (!Number.isNaN(video.duration)) {
-          video.currentTime = video.duration * clamped;
+          targetTime = video.duration * clamped;
+          updateScrubTooltip(targetTime, e);
         }
       };
 
@@ -287,26 +326,29 @@ export function setupStatusPageVideoHover() {
         hoverTimer = setTimeout(() => enqueueClip(video), 500);
         img.style.display = "none";
         video.style.display = "block";
+        createScrubTooltip();
         // Load metadata on first hover so currentTime can be set
         if (video.readyState === 0) {
           video.load();
-        }
-        video.pause();
-        if (video.readyState >= 1) {
-          scrub(e);
-        } else {
           const onLoad = () => {
             scrub(e);
             video.removeEventListener("loadedmetadata", onLoad);
           };
           video.addEventListener("loadedmetadata", onLoad);
+        } else {
+          scrub(e);
         }
+        video.pause();
+        if (!rafId) rafId = requestAnimationFrame(step);
       });
 
       cell.addEventListener("mousemove", scrub);
 
       cell.addEventListener("mouseleave", () => {
         clearTimeout(hoverTimer);
+        hideScrubTooltip();
+        cancelAnimationFrame(rafId);
+        rafId = null;
         resetTimeout = setTimeout(() => {
           video.pause();
           video.currentTime = 0;
