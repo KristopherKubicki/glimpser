@@ -79,8 +79,8 @@ confirm='Confirm', cancel='Cancel') -%}
     </button>
   </section>
 </div>
-{%- macro template_form(form_id, action, template=None, preview_src=None,
-preview_id=None, include_name=True, submit_label='Submit') -%}
+{%- endmacro %} {%- macro template_form(form_id, action, template=None,
+preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
 <div class="edit-template-container">
   {% if preview_src or preview_id %}
   <div class="edit-template-preview">
