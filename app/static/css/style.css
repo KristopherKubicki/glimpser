@@ -746,6 +746,10 @@ nav a.active {
   justify-content: center;
 }
 
+#speech-stop {
+  display: none;
+}
+
 .settings-icon svg {
   width: 18px;
   height: 18px;
