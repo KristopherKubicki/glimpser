@@ -1,14 +1,12 @@
-import unittest
 import os
 import tempfile
+import unittest
 
 from PIL import Image
 
-from app.utils.test_pattern import (
-    generate_indian_head_test_pattern,
-    generate_test_pattern,
-    save_test_pattern,
-)
+from app.utils.test_pattern import (generate_geometric_test_pattern,
+                                    generate_indian_head_test_pattern,
+                                    generate_test_pattern, save_test_pattern)
 
 
 class TestTestPattern(unittest.TestCase):
@@ -29,6 +27,11 @@ class TestTestPattern(unittest.TestCase):
         img = generate_indian_head_test_pattern(width=150, height=150)
         self.assertIsInstance(img, Image.Image)
         self.assertEqual(img.size, (150, 150))
+
+    def test_geometric_size(self):
+        img = generate_geometric_test_pattern(width=120, height=120, tiles=5)
+        self.assertIsInstance(img, Image.Image)
+        self.assertEqual(img.size, (120, 120))
 
 
 if __name__ == "__main__":

@@ -136,7 +136,9 @@ Several other routes provide streaming functionality:
 - **GET /clip/<template_name>** – Concatenate the active `in_process.mp4` with recent finalized segments. If the in‑progress video is shorter than the requested `duration` (default `DEFAULT_CLIP_DURATION`) older finalized clips are prepended. When no footage exists the server falls back to a blank video. Subsequent requests reuse the cached clip for speed. Responses include `Cache-Control: public, max-age=120` so browsers retain the clip for two minutes.
 - **GET /test.rtsp** – Basic RTSP endpoint that serves MJPEG frames when used with `/rtsp_stream`. Send periodic `GET_PARAMETER` requests to keep the session alive.
 - **GET /test.mjpg** – MJPEG view of the test frame. Supports optional `camera` and `group` query parameters.
-- **GET /test_pattern.mjpg** – Streams a generated Indian Head test pattern for debugging purposes.
+- **GET /test_pattern.mjpg** – Streams a generated test pattern. Pass
+  `?pattern=geometric` to view the Escher-style geometric design instead of the
+  default Indian Head pattern.
 
 ### 6. Trigger Screenshot Capture
 

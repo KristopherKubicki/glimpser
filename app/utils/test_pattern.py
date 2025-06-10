@@ -8,7 +8,6 @@ from typing import Optional
 
 from PIL import Image, ImageDraw, ImageFont
 
-
 FONT_CANDIDATES = [
     "DejaVuSans-Bold.ttf",
     "DejaVuSans.ttf",
@@ -132,6 +131,41 @@ def generate_indian_head_test_pattern(
     draw.text(
         (width // 2 - tw // 2, height // 2 - th // 2), text, fill="black", font=font
     )
+
+    return img
+
+
+def generate_geometric_test_pattern(
+    width: int = 1280,
+    height: int = 720,
+    tiles: int = 10,
+) -> Image.Image:
+    """Return a geometric test pattern inspired by Escher."""
+
+    img = Image.new("RGB", (width, height), "black")
+    draw = ImageDraw.Draw(img)
+
+    tri_w = width // tiles
+    tri_h = height // tiles
+    colors = [(30, 30, 30), (80, 80, 80)]
+
+    for row in range(tiles):
+        for col in range(tiles * 2):
+            x = col * tri_w // 2
+            y = row * tri_h
+            color = colors[(row + col) % 2]
+            points = [(x, y), (x + tri_w // 2, y + tri_h), (x + tri_w, y)]
+            draw.polygon(points, fill=color)
+
+    center = (width // 2, height // 2)
+    for r in range(min(width, height) // 8, min(width, height) // 2, tri_w):
+        bbox = (
+            center[0] - r,
+            center[1] - r,
+            center[0] + r,
+            center[1] + r,
+        )
+        draw.ellipse(bbox, outline="white")
 
     return img
 
