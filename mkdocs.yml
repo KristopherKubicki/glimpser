@@ -56,6 +56,7 @@ nav:
       - Testing: testing.md
       - Tooltips: tooltips.md
       - SEO Metadata: seo_metadata.md
+      - Robots.txt Endpoint: robots_txt.md
       - Troubleshooting: troubleshooting.md
       - Log Cleaner: log_cleaner.md
       - Video Archiver: video_archiver.md
