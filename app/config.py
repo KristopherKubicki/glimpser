@@ -1,16 +1,16 @@
 # config.py
 
-import os
+import argparse
 import json
 import logging
-import argparse
+import os
+import shutil
 import sqlite3
 import subprocess
-import shutil
-from pathlib import Path
 from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
 
-from dotenv import load_dotenv, find_dotenv
+from dotenv import find_dotenv, load_dotenv
 
 _DOTENV_LOADED = False
 
@@ -437,6 +437,10 @@ CAP_SENDER = get_setting("CAP_SENDER", "")
 # MCP settings
 MCP_SERVER_COMMAND = get_setting("MCP_SERVER_COMMAND", "")
 MCP_SERVER_URL = get_setting("MCP_SERVER_URL", "")
+
+# When ``True`` the ``/robots.txt`` route allows search engine indexing.
+# ``False`` (the default) disallows all crawlers.
+ALLOW_BOTS = get_setting("ALLOW_BOTS", "False") == "True"
 
 # Settings that should never be displayed in the UI
 SENSITIVE_SETTINGS = [

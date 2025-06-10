@@ -18,7 +18,7 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    ```
 3. Set up tooling:
    ```sh
-   make setup  # installs flake8, pre-commit and JS packages
+   make setup  # installs pre-commit hooks and JS packages
    ```
    After installation, verify hooks:
    ```sh

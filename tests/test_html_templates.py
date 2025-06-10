@@ -1,8 +1,8 @@
 import os
 import sys
-from pathlib import Path
-from html.parser import HTMLParser
 import unittest
+from html.parser import HTMLParser
+from pathlib import Path
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -63,6 +63,12 @@ class TestHtmlTemplates(unittest.TestCase):
         placeholders = {i.get("placeholder") for i in parser.forms[0]["inputs"]}
         self.assertIn("Username", placeholders)
         self.assertIn("Password", placeholders)
+
+    def test_login_has_remember_checkbox(self):
+        parser = parse_template(Path("app/templates/login.html"))
+        inputs = [i for i in parser.forms[0]["inputs"] if i.get("name") == "remember"]
+        self.assertTrue(inputs, "remember checkbox missing")
+        self.assertEqual(inputs[0].get("type"), "checkbox")
 
     def test_discover_add_camera_form_inputs(self):
         html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")
