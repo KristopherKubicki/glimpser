@@ -79,8 +79,8 @@ confirm='Confirm', cancel='Cancel') -%}
     </button>
   </section>
 </div>
-{%- endmacro %} {%- macro template_form(form_id, action, template=None,
-preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
+{%- macro template_form(form_id, action, template=None, preview_src=None,
+preview_id=None, include_name=True, submit_label='Submit') -%}
 <div class="edit-template-container">
   {% if preview_src or preview_id %}
   <div class="edit-template-preview">
@@ -104,8 +104,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
     onsubmit="window.sendTelemetry && sendTelemetry('template_submit'); return validateForm()"
     title="Enter template details"
   >
-    <div>
-      {% if include_name %}
+    {% if include_name %}
+    <div class="form-row">
       <label for="name" title="Name of the template">Template Name:</label>
       <input
         type="text"
@@ -116,8 +116,9 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="My Camera"
         title="Enter a unique name for this template"
       />
-      {% endif %}
-
+    </div>
+    {% endif %}
+    <div class="form-row">
       <label for="url" title="URL to monitor">URL:</label>
       <input
         type="url"
@@ -130,7 +131,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         title="Enter the URL to monitor"
       />
       <span id="url-status" class="url-status" title="URL test result"></span>
-
+    </div>
+    <div class="form-row">
       <label for="thumbnail" title="Thumbnail image URL">Thumbnail URL:</label>
       <input
         type="url"
@@ -147,7 +149,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
           alt="Thumbnail preview"
         />
       </div>
-
+    </div>
+    <div class="form-row">
       <label for="frequency" title="How often to check the URL"
         >Frequency (minutes):</label
       >
@@ -162,7 +165,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="30"
         title="Enter how often to check the URL (in minutes)"
       />
-
+    </div>
+    <div class="form-row">
       <label for="timeout" title="Maximum time to wait for a response"
         >Timeout (seconds):</label
       >
@@ -176,7 +180,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="10"
         title="Enter the maximum time to wait for a response (in seconds)"
       />
-
+    </div>
+    <div class="form-row">
       <label for="notes" title="Additional notes">Notes:</label>
       <textarea
         id="notes"
@@ -186,7 +191,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
       >
 {{ template.notes if template else '' }}</textarea
       >
-
+    </div>
+    <div class="form-row">
       <label for="object_filter" title="Filter for specific objects"
         >Object Filter:</label
       >
@@ -198,7 +204,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="person,car"
         title="Enter object types to filter (e.g., 'person,car')"
       />
-
+    </div>
+    <div class="form-row">
       <label
         for="object_confidence"
         title="Minimum confidence for object detection"
@@ -215,7 +222,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="0.5"
         title="Enter the minimum confidence level for object detection (0-1)"
       />
-
+    </div>
+    <div class="form-row">
       <label for="popup_xpath">Popup XPath:</label>
       <div class="xpath-input-container">
         <input
@@ -232,7 +240,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
           Structured
         </button>
       </div>
-
+    </div>
+    <div class="form-row">
       <label for="dedicated_xpath">Dedicated XPath:</label>
       <div class="xpath-input-container">
         <input
@@ -249,7 +258,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
           Structured
         </button>
       </div>
-
+    </div>
+    <div class="form-row">
       <label for="callback_url" title="URL for notifications"
         >Callback URL:</label
       >
@@ -261,7 +271,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="https://example.com/callback"
         title="Enter URL to receive notifications"
       />
-
+    </div>
+    <div class="form-row">
       <label for="proxy" title="Proxy server address">Proxy:</label>
       <input
         type="text"
@@ -271,7 +282,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="proxy.example.com:8080"
         title="Enter proxy server address (optional)"
       />
-
+    </div>
+    <div class="form-row">
       <label for="auth_username" title="Username for camera authentication"
         >Username:</label
       >
@@ -283,7 +295,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="user"
         title="Camera username"
       />
-
+    </div>
+    <div class="form-row">
       <label for="auth_password" title="Password for camera authentication"
         >Password:</label
       >
@@ -295,7 +308,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="pass"
         title="Camera password"
       />
-
+    </div>
+    <div class="form-row">
       <label for="groups" title="Groups for the template, comma separated "
         >Groups:</label
       >
@@ -308,7 +322,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="group1,group2"
         title="Enter comma-separated group names"
       />
-
+    </div>
+    <div class="form-row">
       <label for="rollback_frames" title="Number of frames to rollback"
         >Rollback Frames:</label
       >
@@ -321,8 +336,6 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         title="Enter number of frames to rollback"
       />
     </div>
-    <br />
-
     <div class="checkbox-row">
       <label for="invert" title="Invert image colors">
         <input
@@ -395,8 +408,6 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         Stealth
       </label>
     </div>
-    <br />
-
     <div class="form-actions">
       <input
         type="submit"
