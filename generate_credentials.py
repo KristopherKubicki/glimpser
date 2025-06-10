@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 # generate_credentials.py
 
+import argparse
+import getpass
+import logging
 import secrets
 import sqlite3
-import getpass
-import argparse
 import sys
 
-import app.config
-import logging
 from werkzeug.security import generate_password_hash
+
+import app.config
 
 
 def upsert_setting(name, value, conn):
@@ -122,6 +123,11 @@ def generate_credentials(args):
     conn.close()
 
     logging.info("Credentials and settings updated in the database.")
+    logging.info(
+        "Open http://%s:%s in your browser after starting Glimpser to finish setup.",
+        app.config.HOST,
+        app.config.PORT,
+    )
 
 
 if __name__ == "__main__":

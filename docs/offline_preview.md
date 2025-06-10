@@ -11,3 +11,6 @@ or reports the system is offline, a banner appears below the navigation bar to
 indicate Glimpser is running in offline mode. The banner has the
 `network-banner` class and is hidden until the `show` class is added. It
 disappears automatically once connectivity is restored.
+
+Navigation requests that miss the cache now fall back to `/offline`, so users
+see a friendly message instead of a blank page when connectivity drops.

@@ -9,10 +9,11 @@ This guide provides a high-level look at Glimpser's core components and how they
 - Initializes routes from `app/routes.py`.
 - Starts the background scheduler and optional watchdog thread.
   The watchdog performs health checks every 30 seconds and only triggers
-  a restart after a configurable number of failures. Tune
-  `WATCHDOG_FAILURE_THRESHOLD`, `WATCHDOG_RESTART_COOLDOWN`,
-  `WATCHDOG_MAX_FILE_HANDLES`, `WATCHDOG_CPU_THRESHOLD` and
-  `WATCHDOG_MEMORY_THRESHOLD` to adjust this behaviour. When repeated
+  a restart after a configurable number of failures. Tune the
+  [watchdog settings](configuration_guide.md#watchdog-settings)
+  (`WATCHDOG_FAILURE_THRESHOLD`, `WATCHDOG_RESTART_COOLDOWN`,
+  `WATCHDOG_MAX_FILE_HANDLES`, `WATCHDOG_CPU_THRESHOLD`,
+  `WATCHDOG_MEMORY_THRESHOLD`) to adjust this behaviour. When repeated
   failures occur the watchdog calls `sys.exit(1)`, so run Glimpser under a
   supervisor that automatically restarts the process. Requests to `/health`
   include the configured API

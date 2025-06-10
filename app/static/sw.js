@@ -6,6 +6,7 @@ const OFFLINE_URLS = [
   "/discover",
   "/settings",
   "/templates",
+  "/offline",
   "/static/css/style.css",
   "/static/css/player.css",
   "/static/js/script.js",
@@ -23,6 +24,13 @@ self.addEventListener("fetch", (event) => {
 
   if (OFFLINE_URLS.includes(url.pathname)) {
     event.respondWith(networkFirst(request));
+    return;
+  }
+
+  if (request.mode === "navigate") {
+    event.respondWith(
+      networkFirst(request).then((res) => res || caches.match("/offline")),
+    );
     return;
   }
 

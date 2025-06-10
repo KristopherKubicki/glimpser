@@ -18,6 +18,7 @@ Key topics covered include:
 - System Status metrics, feed dashboard, and live log viewer.
 - Offline preview of recent snapshots and locally hosted fonts.
 - "Remember me" option on the login page for automatic sign in.
+- Logging out now clears any saved credentials so shared devices stay secure.
 - Links to the rest of the documentation under `docs/`.
 - Tooltips across the interface for quick explanations.
 - Inline viewing of command-line help via the **Show CLI Help** button.

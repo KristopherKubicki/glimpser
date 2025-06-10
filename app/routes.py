@@ -1,113 +1,107 @@
 import csv
+import fcntl
 import glob
 import hashlib
 import inspect
-from sqlalchemy import inspect as sa_inspect
 import io
 import json
 import logging
+import math
 import os
+import queue
+import random
 import re
 import shutil
+import sqlite3
+import struct
+import subprocess
 import sys
 import tempfile
+import textwrap
 import time
 import uuid
-import requests
-import fcntl
-import math
-import subprocess
-from functools import lru_cache
-from pathlib import Path
+from collections import deque
 from datetime import datetime, timedelta
-from dateutil import tz
-
-from functools import wraps
+from functools import lru_cache, wraps
+from ipaddress import ip_network
+from pathlib import Path
 from threading import Lock, Thread
-import queue
+from urllib.parse import urlparse
 
+import psutil
+import requests
+from dateutil import tz
 from flask import (
+    Flask,
+    Response,
     abort,
-    jsonify,
+    current_app,
     flash,
+    jsonify,
+    make_response,
     redirect,
     render_template,
     request,
     send_file,
     send_from_directory,
     session,
-    url_for,
-    Response,
-    make_response,
     stream_with_context,
-    Flask,
-    current_app,
+    url_for,
 )
-from collections import deque
-
 from PIL import Image, ImageDraw, ImageFont
-import textwrap
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
-import sqlite3
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
-from ipaddress import ip_network
-import subprocess
-from urllib.parse import urlparse
-import struct
-import random
-import psutil
 
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
 import app.config as config
 from app.config import (
     API_KEY,
-    SCREENSHOT_DIRECTORY,
-    VIDEO_DIRECTORY,
-    DOCS_DIRECTORY,
-    VERSION,
     BACKUP_PATH,
-    backup_config,
-    restore_config,
-    SENSITIVE_SETTINGS,
     CHYRON_SPEED,
-    NAV_ICON,
-    HEALTH_STATUS_ALWAYS_VISIBLE,
-    CLOCK_OVERLAY,
     CLOCK_DIGITAL,
     CLOCK_NAVBAR,
+    CLOCK_OVERLAY,
+    DOCS_DIRECTORY,
+    HEALTH_STATUS_ALWAYS_VISIBLE,
+    NAV_ICON,
+    SCREENSHOT_DIRECTORY,
+    SENSITIVE_SETTINGS,
+    VERSION,
+    VIDEO_DIRECTORY,
+    backup_config,
+    restore_config,
 )
-from app.models import User, Summary, PushSubscription
+from app.models import PushSubscription, Summary, User
 from app.utils import (
+    camera_discovery,
+    camera_fix,
+    limit_rate,
+    prompt_optimizer,
     scheduling,
+    screenshots,
     template_manager,
     video_archiver,
-    screenshots,
-    camera_discovery,
-    prompt_optimizer,
-    camera_fix,
 )
-
 from app.utils.llm import ask_question
+from app.utils.network import is_system_online
+from app.utils.screenshots import (
+    capture_frame_from_stream,
+    check_user_activity,
+    is_chrome_debug_port_open,
+)
 from app.utils.settings_tooltips import (
-    SETTINGS_TOOLTIPS,
-    SETTINGS_GROUPS,
-    SETTINGS_CHOICES,
-    NUMERIC_FIELDS,
     EMAIL_FIELDS,
     LOCKED_SETTINGS,
+    NUMERIC_FIELDS,
+    SETTINGS_CHOICES,
+    SETTINGS_GROUPS,
     SETTINGS_PLACEHOLDERS,
+    SETTINGS_TOOLTIPS,
 )
-
-from app.utils.screenshots import (
-    is_chrome_debug_port_open,
-    check_user_activity,
-    capture_frame_from_stream,
-)
-from app.utils.network import is_system_online
-from app.utils import limit_rate
 
 # Names of settings that store file paths.
 FILE_LOCATION_NAMES = [
@@ -119,13 +113,15 @@ FILE_LOCATION_NAMES = [
     "SUMMARIES_DIRECTORY",
 ]
 
-from app.utils.db import SessionLocal, engine
-from sqlalchemy.exc import OperationalError, SQLAlchemyError
 import sqlite3
-from typing import Any, Callable, Generator, Optional, List, Dict
+from typing import Any, Callable, Dict, Generator, List, Optional
+
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
+
+from app.utils.db import SessionLocal, engine
 
 # Clip caching constants
-CACHE_TTL_SEC = 5
+CACHE_TTL_SEC = 120
 SEGMENT_SEC = 10
 
 
@@ -214,34 +210,81 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
     if total < clip_len:
         miss = clip_len - total  # seconds to pad
         ref = fixed[-1]  # last clip for geometry/fps
+        first_clip = fixed[0]
         w, h = _probe(ref, "width"), _probe(ref, "height")
         fps = eval(_probe(ref, "r_frame_rate"))
         pad = ramroot / "pad_black.mp4"
-        subprocess.run(
-            [
-                FFMPEG,
-                "-loglevel",
-                "quiet",
-                "-f",
-                "lavfi",
-                "-i",
-                f"color=s={w}x{h}:r={fps}:c=black",
-                "-t",
-                f"{miss:.3f}",
-                "-c:v",
-                "libx264",
-                "-pix_fmt",
-                "yuv420p",
-                "-preset",
-                "ultrafast",
-                "-movflags",
-                "+faststart",
-                "-y",
-                pad,
-            ],
-            check=True,
-            timeout=10,
-        )
+
+        # extract first frame from earliest clip for overlay
+        first_frame = ramroot / "first_frame.jpg"
+        try:
+            subprocess.run(
+                [
+                    FFMPEG,
+                    "-loglevel",
+                    "quiet",
+                    "-i",
+                    first_clip,
+                    "-vframes",
+                    "1",
+                    "-q:v",
+                    "2",
+                    "-y",
+                    first_frame,
+                ],
+                check=True,
+                timeout=20,
+            )
+        except subprocess.TimeoutExpired:
+            logging.error("FFmpeg frame extraction timed out after 20s")
+            return False
+        except (
+            subprocess.SubprocessError
+        ) as exc:  # pragma: no cover - ffmpeg errors logged
+            logging.error("FFmpeg frame extraction failed: %s", exc, exc_info=True)
+            return False
+
+        # create pad using the frame with a fading black overlay
+        try:
+            subprocess.run(
+                [
+                    FFMPEG,
+                    "-loglevel",
+                    "quiet",
+                    "-loop",
+                    "1",
+                    "-i",
+                    first_frame,
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    f"color=c=black@0.9:s={w}x{h}:r={fps}",
+                    "-filter_complex",
+                    f"[1:v]format=rgba,fade=t=out:st=0:d={miss}:alpha=1[ov];[0:v][ov]overlay",
+                    "-t",
+                    f"{miss:.3f}",
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-preset",
+                    "ultrafast",
+                    "-movflags",
+                    "+faststart",
+                    "-y",
+                    pad,
+                ],
+                check=True,
+                timeout=30,
+            )
+        except subprocess.TimeoutExpired:
+            logging.error("FFmpeg pad generation timed out after 30s")
+            return False
+        except (
+            subprocess.SubprocessError
+        ) as exc:  # pragma: no cover - ffmpeg errors logged
+            logging.error("FFmpeg pad generation failed: %s", exc, exc_info=True)
+            return False
         concat_parts = [pad] + fixed  # pad FIRST
     else:
         concat_parts = fixed
@@ -250,6 +293,9 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
     concat_payload = (
         "\n".join(f"file 'file:{p.as_posix()}'" for p in concat_parts).encode() + b"\n"
     )
+
+    total_duration = sum(_duration(p) for p in concat_parts)
+    start_offset = max(0.0, total_duration - clip_len)
 
     cmd = [
         FFMPEG,
@@ -263,6 +309,8 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
         "file,pipe",
         "-i",
         "pipe:0",
+        "-ss",
+        f"{start_offset:.3f}",  # trim from start when overlength
         "-t",
         str(clip_len),  # force exact 120 s
         "-c",
@@ -297,30 +345,30 @@ except Exception:
     COMMIT_HASH = "unknown"
 NODE_ENV = os.getenv("NODE_ENV", "development")
 
+from app.utils import validators
+from app.utils.email_alerts import send_email_alert
+from app.utils.profiling import get_latency_stats, profile_route
+
 # from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock
-from app.utils import validators
-from app.utils.validators import validate_template_name, validate_update_data
-from app.utils.validators import (
-    validate_template_name,
-    validate_update_data,
-    validate_setting,
-)
-from app.utils.profiling import profile_route, get_latency_stats
-from scripts.update_chrome_shortcut import (
-    update_chrome_shortcuts_info,
-    shortcuts_need_patch,
-    first_shortcut_path,
-)
 from app.utils.screenshots import (
-    is_chrome_debug_port_open,
     check_user_activity,
     get_chrome_path,
     get_chrome_version,
+    is_chrome_debug_port_open,
     load_font,
 )
-from app.utils.email_alerts import send_email_alert
 from app.utils.sms_alerts import send_sms_alert
+from app.utils.validators import (
+    validate_setting,
+    validate_template_name,
+    validate_update_data,
+)
+from scripts.update_chrome_shortcut import (
+    first_shortcut_path,
+    shortcuts_need_patch,
+    update_chrome_shortcuts_info,
+)
 
 
 def restart_server() -> None:
@@ -1829,12 +1877,19 @@ def init_routes(app: Flask) -> None:
         """Redirect old help route to the main settings page."""
         return redirect(url_for("settings"))
 
+    @app.route("/offline")
+    @login_required
+    def offline_page():
+        """Render a fallback page when offline."""
+        return render_template("offline.html", page_title="Offline")
+
     @app.route("/logout")
     @login_required
     def logout():
         session.pop("user_id", None)
         flash("You have been logged out successfully.", "success")
-        return redirect(url_for("login"))
+        # add query flag so client can clear persistent credentials
+        return redirect(url_for("login", logout="1"))
 
     @app.route("/")
     @login_required
@@ -2822,7 +2877,6 @@ def init_routes(app: Flask) -> None:
 
     @app.route("/clip/<string:template_name>")
     @login_required
-    @limit_rate(30)
     def serve_clip(template_name: TemplateName):
         """Return a short clip built from recent footage."""
 
@@ -2861,7 +2915,9 @@ def init_routes(app: Flask) -> None:
             and clip_path.stat().st_mtime > newest_src.stat().st_mtime
             and (time.time() - clip_path.stat().st_mtime) < CACHE_TTL_SEC
         ):
-            return send_file(clip_path, conditional=True)
+            resp = send_file(clip_path, conditional=True)
+            resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
+            return resp
 
         parts: list[Path] = []
         in_process_len = 0
@@ -2899,7 +2955,9 @@ def init_routes(app: Flask) -> None:
                 and newest_src
                 and clip_path.stat().st_mtime > newest_src.stat().st_mtime
             ):
-                return send_file(clip_path, conditional=True)
+                resp = send_file(clip_path, conditional=True)
+                resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
+                return resp
 
             if not parts:
                 video_archiver.create_blank_video(duration, clip_path.as_posix())
@@ -2907,7 +2965,9 @@ def init_routes(app: Flask) -> None:
                 video_archiver.create_blank_video(duration, clip_path.as_posix())
 
         if clip_path.exists():
-            return send_file(clip_path, conditional=True)
+            resp = send_file(clip_path, conditional=True)
+            resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
+            return resp
 
         abort(500, "Could not create clip")
 

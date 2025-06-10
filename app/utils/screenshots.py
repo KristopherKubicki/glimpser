@@ -9,6 +9,7 @@ import os
 import platform
 import re
 import shutil
+from typing import Optional
 import socket
 import subprocess
 import time
@@ -75,6 +76,8 @@ from app.config import (
 import app.config as config
 from app.utils.validators import validate_proxy, validate_url
 
+FFMPEG_AVAILABLE: Optional[bool] = None
+
 last_camera_test = {}
 last_camera_test_time = {}
 last_camera_header = {}
@@ -128,6 +131,17 @@ def _persist_status_cache() -> None:
 
 
 _load_status_cache()
+
+
+def _check_ffmpeg() -> bool:
+    """Return ``True`` if ``ffmpeg`` executable is available."""
+
+    global FFMPEG_AVAILABLE
+    if FFMPEG_AVAILABLE is None:
+        FFMPEG_AVAILABLE = shutil.which(FFMPEG_PATH) is not None
+        if not FFMPEG_AVAILABLE:
+            logging.error("ffmpeg not found at %s", FFMPEG_PATH)
+    return FFMPEG_AVAILABLE
 
 
 FONT_CANDIDATES = [
@@ -1527,6 +1541,8 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
     if shutil.which("yt-dlp") is None:
         logging.error("yt-dlp is not installed or not in the system path.")
         return False
+    if not _check_ffmpeg():
+        return False
 
     if (
         lurl_cache.get(url, "none") != "good"
@@ -1643,6 +1659,8 @@ def capture_frame_from_stream(
     stealth=False,
 ):
     """Use ffmpeg to capture multiple frames from a video stream and save the last one."""
+    if not _check_ffmpeg():
+        return False
 
     if timeout < 5:
         timeout = 5

@@ -65,6 +65,7 @@ class Template(db.Base):
     auth_username = Column(String, default="")
     auth_password = Column(String, default="")
     url = Column(String, default="")
+    thumbnail = Column(String, default="")
     groups = Column(String, default="")
     invert = Column(Boolean, default=False)
     dark = Column(Boolean, default=False)
@@ -123,6 +124,7 @@ class TemplateManager:
         ensure_column("templates", "capture_failed", "BOOLEAN", "0")
         ensure_column("templates", "auth_username", "VARCHAR(255)", "''")
         ensure_column("templates", "auth_password", "VARCHAR(255)", "''")
+        ensure_column("templates", "thumbnail", "VARCHAR(255)", "''")
 
     def get_session(self):
         """Return a new SQLAlchemy session bound to the app database."""

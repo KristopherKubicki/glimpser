@@ -3,7 +3,7 @@ content %}
 <div class="login-wrapper">
   {% call card('Secure Sign In') %}
   <div class="login-icon" aria-hidden="true">
-    <svg width="40" height="40">
+    <svg width="32" height="32">
       <use href="{{ url_for('static', filename='icons/sprite.svg') }}#lock" />
     </svg>
   </div>
@@ -40,10 +40,8 @@ content %}
     <div id="login-error" class="form-error hidden"></div>
 
     <div class="checkbox-row">
-      <label for="remember">
-        <input id="remember" type="checkbox" name="remember" />
-        Remember me
-      </label>
+      <input id="remember" type="checkbox" name="remember" />
+      <label for="remember">Remember me</label>
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %} {% if

@@ -54,6 +54,7 @@ See [OpenSSF Scorecard](docs/scorecard.md) for details on the security badge.
 - **Camera Discovery**: Open **Settings** and switch to the **Discover** tab to automatically scan the local network for ONVIF, RTSP, RTMP, HTTP/MJPEG, HLS, and SSDP devices. The table now displays each camera's MAC address plus manufacturer and model information when available. Glimpser checks common system OUI databases, an online lookup service, and the ONVIF device service to gather these details.
 - **Camera Fix Suggestions**: Validate a template and discover alternative URLs with `/suggest_fix/<template>`. See [Camera Fix Suggestions](docs/camera_fix.md).
 - **Local Cameras**: The Discover tab also lists any available `/dev/video*` devices for easy webcam integration.
+- **MCP Integration**: Delegate actions to an external control plane. See the [MCP Integration Guide](docs/mcp_integration.md).
 
 - **Web Interface**: A user-friendly web interface allows for easy monitoring and configuration. Users can view live feeds, summaries, and configure settings without delving into the code.
 
@@ -118,6 +119,17 @@ The web interface will be available at [http://localhost:8082](http://localhost:
 ### Common Setup Issues
 
 If you cannot log in or see video feeds, double-check that your `.env` file matches the configuration values in the database. Missing `SECRET_KEY` or API credentials often cause startup failures. Refer to [Troubleshooting](docs/troubleshooting.md) for more solutions.
+
+### Developer Dependencies
+
+To install Python packages required for development, run:
+
+```sh
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+```
+
+Then install linters and JavaScript tools with `make setup` (or `scripts/setup_env.sh`).
 
 ## Usage
 
@@ -192,19 +204,22 @@ To set up the project for development:
    source env/bin/activate  # On Windows, use `env\Scripts\activate`
    ```
 
-3. Install the package in editable mode with development dependencies:
+3. Install Python dependencies:
 
    ```sh
-   pip install -e ".[dev]"
+   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    ```
 
-4. Run tests:
+4. Install developer tooling:
+
+   ```sh
+   make setup  # runs scripts/setup_env.sh
+   ```
+
+5. Run tests:
    ```sh
    pytest
-   ```
-5. Install Node packages for linting and JS tests:
-   ```sh
-   npm install
    ```
 6. Run JavaScript tests with coverage:
    ```sh
@@ -224,7 +239,7 @@ To set up the project for development:
 
 From [Developer Guide](docs/developer_guide.md):
 
-1. Install the tooling and Git hooks:
+1. Install the tooling and Git hooks (or run `make setup`):
    ```sh
    pip install pre-commit black flake8
    npm install

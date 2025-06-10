@@ -1,4 +1,4 @@
-.PHONY: format lint test test-js precommit
+.PHONY: format lint test test-js precommit setup
 
 format:
 	black .
@@ -15,4 +15,7 @@ test-js:
 	npm test
 
 precommit:
-	pre-commit run --all-files
+        pre-commit run --all-files
+
+setup:
+        ./scripts/setup_env.sh

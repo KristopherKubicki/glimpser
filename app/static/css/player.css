@@ -75,6 +75,13 @@
   width: 100%;
 }
 
+@media (max-width: 768px) {
+  .control-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+}
+
 #jog-shuttle {
   width: 60px;
   height: 60px;

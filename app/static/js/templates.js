@@ -1,3 +1,5 @@
+import { enqueueClip } from "./video.js";
+
 export const NO_TIMESTAMP_PLACEHOLDER = "no timestamp";
 
 function safePlay(el) {
@@ -624,10 +626,14 @@ export async function loadTemplates() {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (isMobile() && entry.isIntersecting) {
-            safePlay(entry.target);
+          const video = entry.target;
+          if (entry.isIntersecting) {
+            enqueueClip(video);
+            if (isMobile()) {
+              safePlay(video);
+            }
           } else {
-            entry.target.pause();
+            video.pause();
           }
         });
       },
@@ -681,7 +687,7 @@ export async function loadTemplates() {
               <a href='/templates/${name}'>
                 <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
                   <div class="camera-name">${name}</div>
-                  <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback>
+                  <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback data-hd-src="/clip/${name}">
                     <source src="/last_video/${name}" type="video/mp4">
                     Your browser does not support the video tag.
                   </video>
