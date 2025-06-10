@@ -241,7 +241,7 @@ From [Developer Guide](docs/developer_guide.md):
 
 1. Install the tooling and Git hooks (or run `make setup`):
    ```sh
-   pip install pre-commit black flake8
+   pip install -r requirements-dev.txt
    npm install
    pre-commit install
    ```
