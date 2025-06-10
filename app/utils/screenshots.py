@@ -18,7 +18,6 @@ import time
 from typing import Optional
 from urllib.parse import urlparse
 
-import nodriver
 import psutil
 import urllib3
 from dateutil import tz
@@ -2265,115 +2264,6 @@ def cleanup_old_tempdirs(prefix="glimpser_", max_age_hours=12):
                     shutil.rmtree(dir_path, ignore_errors=True)
             except Exception as e:
                 logging.debug(f"Could not remove {dir_path}: {e}")
-
-
-def capture_screenshot_and_har_nodriver(
-    url: str,
-    output_path: str,
-    har_output_path: str = None,
-    headless: bool = True,
-    width: int = 1920,
-    height: int = 1080,
-    user_agent: str = (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/109.0.5414.120 Safari/537.36"
-    ),
-    timeout: int = 30,
-    enable_dark_mode: bool = False,
-) -> bool:
-    """
-    Capture a screenshot of the given URL and (optionally) store DevTools 'network' events
-    to an HAR-like JSON file, all using nodriver (no Selenium/undetected_chromedriver).
-    """
-
-    # nodriver can both 'launch()' a new Chrome, or 'connect()' to an already-running instance.
-    # Below we launch a fresh headless session for each capture.
-    # For efficiency, consider reusing one launch() if you do multiple captures.
-
-    try:
-        extra = [
-            "--no-sandbox",
-            "--disable-gpu",
-            f"--window-size={width},{height}",
-            "--disable-dev-shm-usage",
-            "--disable-background-networking",
-            "--disable-translate",
-            "--disable-extensions",
-            "--disable-sync",
-        ]
-        chrome_path = get_chrome_path()
-        if chrome_path and _hwaccel_enabled() and _machine_supports_hwaccel() and browser_supports_gl(chrome_path):
-            extra.append("--use-gl=egl")
-
-        with nodriver.launch(headless=headless, extra_args=extra) as browser:
-            cdp = browser.connect()
-
-            # Apply user agent override if desired
-            if user_agent:
-                cdp.send("Network.setUserAgentOverride", userAgent=user_agent)
-
-            # Enable basic events (Page, Network)
-            cdp.send("Page.enable")
-            cdp.send("Network.enable")
-
-            # Optionally turn on "dark mode"
-            if enable_dark_mode:
-                try:
-                    cdp.send("Emulation.setAutoDarkModeOverride", enabled=True)
-                except Exception as dark_ex:
-                    logging.warning(f"Dark mode override failed: {dark_ex}")
-
-            # Collect network requests if you want to store a HAR-like log
-            network_events = []
-
-            def on_event(msg):
-                # Only store Network.* events
-                if msg.get("method", "").startswith("Network."):
-                    network_events.append(msg)
-
-            cdp.add_listener("*", on_event)
-
-            # Set viewport size
-            browser.set_viewport_size(width, height)
-
-            # Navigate to the URL
-            cdp.send("Page.navigate", url=url)
-
-            # Wait until 'Page.loadEventFired' (i.e., DOM load)
-            finished = cdp.wait("Page.loadEventFired", timeout=timeout)
-            if not finished:
-                logging.warning(f"Timeout waiting for {url} to load.")
-                return False
-
-            # A short additional sleep can help ensure images, JS, etc. are fully settled
-            time.sleep(2)
-
-            # Capture a screenshot (returns base64)
-            resp = cdp.send("Page.captureScreenshot", format="png")
-            data_b64 = resp.get("data")
-            if not data_b64:
-                logging.error("No screenshot data returned.")
-                return False
-
-            # Decode and write the PNG
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            with open(output_path, "wb") as f:
-                f.write(base64.b64decode(data_b64))
-
-            logging.debug(f"Screenshot saved to {output_path}")
-
-            # Optionally save a JSON log of the network events
-            if har_output_path:
-                with open(har_output_path, "w", encoding="utf-8") as harf:
-                    json.dump(network_events, harf, indent=2)
-                logging.debug(f"Network events saved to {har_output_path}")
-
-            return True
-
-    except Exception as e:
-        logging.error(f"Error using nodriver for {url}: {e}")
-        return False
 
 
 ########################################
