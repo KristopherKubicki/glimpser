@@ -3293,7 +3293,7 @@ def init_routes(app: Flask) -> None:
             os.path.dirname(os.path.join(__file__)),
             "..",
             SCREENSHOT_DIRECTORY,
-            template_name,
+            str(template_name),
         )
 
         if not os.path.exists(path):
