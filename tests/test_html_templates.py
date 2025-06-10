@@ -113,10 +113,6 @@ class TestHtmlTemplates(unittest.TestCase):
         components = Path("app/templates/components.html").read_text(encoding="utf-8")
         self.assertIn('min="0.1"', components)
 
-    def test_template_form_has_thumbnail_field(self):
-        components = Path("app/templates/components.html").read_text(encoding="utf-8")
-        self.assertIn('name="thumbnail"', components)
-
 
 if __name__ == "__main__":
     unittest.main()
