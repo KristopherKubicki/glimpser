@@ -104,6 +104,38 @@ def generate_test_pattern(
     return img
 
 
+def generate_indian_head_test_pattern(
+    width: int = 1280, height: int = 720
+) -> Image.Image:
+    """Return a grayscale Indian Head-style test pattern."""
+
+    img = Image.new("RGB", (width, height), "gray")
+    draw = ImageDraw.Draw(img)
+
+    draw.line((width // 2, 0, width // 2, height), fill="black", width=3)
+    draw.line((0, height // 2, width, height // 2), fill="black", width=3)
+
+    for scale in (0.4, 0.6, 0.8):
+        radius = int(min(width, height) * scale / 2)
+        bbox = (
+            width // 2 - radius,
+            height // 2 - radius,
+            width // 2 + radius,
+            height // 2 + radius,
+        )
+        draw.ellipse(bbox, outline="black", width=3)
+
+    font = load_font(int(height * 0.05))
+    text = "PLEASE STAND BY"
+    tb = draw.textbbox((0, 0), text, font=font)
+    tw, th = tb[2] - tb[0], tb[3] - tb[1]
+    draw.text(
+        (width // 2 - tw // 2, height // 2 - th // 2), text, fill="black", font=font
+    )
+
+    return img
+
+
 def save_test_pattern(path: str, **kwargs) -> None:
     """Generate a test pattern image and save it as PNG."""
 

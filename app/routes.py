@@ -84,6 +84,7 @@ from app.utils import (
     scheduling,
     screenshots,
     template_manager,
+    test_pattern,
     video_archiver,
 )
 from app.utils.llm import ask_question
@@ -2421,6 +2422,25 @@ def init_routes(app: Flask) -> None:
             generate(
                 group=group, camera=camera, filename="last_motion_caption.png"
             ),
+            mimetype="multipart/x-mixed-replace; boundary=frame",
+        )
+
+    @app.route("/test_pattern.mjpg", methods=["GET"])
+    @login_required
+    def test_pattern_mjpg():
+        def generate_pattern():
+            boundary = b"frame"
+            while True:
+                img = test_pattern.generate_indian_head_test_pattern()
+                buf = io.BytesIO()
+                img.save(buf, format="JPEG")
+                frame = buf.getvalue()
+                yield b"--" + boundary + b"\r\n"
+                yield b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
+                time.sleep(1)
+
+        return Response(
+            generate_pattern(),
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
 
