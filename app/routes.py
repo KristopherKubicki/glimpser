@@ -2144,6 +2144,46 @@ def init_routes(app: Flask) -> None:
             return send_file(last_shot)
         abort(404)
 
+    @app.route("/test_image", methods=["GET"])
+    @login_required
+    def serve_test_image():
+        """Return a test image or screenshot for debugging."""
+
+        camera = request.args.get("camera")
+        ts = request.args.get("time")
+
+        base_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            SCREENSHOT_DIRECTORY,
+        )
+        if camera:
+            camera = validate_template_name(camera)
+            if camera is None:
+                abort(400, "Invalid camera name")
+            base_path = os.path.join(base_path, camera)
+
+        if ts:
+            try:
+                dt = datetime.strptime(ts, "%Y%m%d%H%M%S")
+            except ValueError:
+                abort(400, "time must be YYYYMMDDHHMMSS")
+            filename = scheduling.find_closest_image(base_path, dt)
+            if filename:
+                path = os.path.join(base_path, filename)
+                if os.path.exists(path) and screenshots._is_valid_png(path):
+                    return send_file(path)
+            abort(404)
+
+        test_path = os.path.join(base_path, "test_image.png")
+        if os.path.exists(test_path):
+            return send_file(test_path)
+        img = Image.new("RGB", (64, 64), color="gray")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        return send_file(buf, mimetype="image/png")
+
     @app.route(
         "/test.rtsp",
         methods=[
