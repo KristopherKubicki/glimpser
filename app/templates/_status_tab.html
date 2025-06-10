@@ -75,6 +75,7 @@
   </li>
 </ul>
 {% endcall %} {% call card('Feed Status') %}
+<div class="table-container">
 <table id="feed-status" class="feed-status">
   <thead>
     <tr>
@@ -183,6 +184,7 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
 
 <p>Last summary generated: {{ last_summary or 'N/A' }}</p>
 {% endcall %} {% include 'logs.html' %}
