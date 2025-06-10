@@ -2,39 +2,27 @@
 
 import logging
 import os
+import sys
 import threading
 import time
-import sys
-import psutil
 from datetime import timedelta
 
+import psutil
 from flask import Flask
 
-from app.utils.retention_policy import retention_cleanup
-from app.utils.scheduling import (
-    schedule_crawlers,
-    schedule_summarization,
-    schedule_discovery,
-    schedule_offline_job_processor,
-    scheduler,
-    start_log_caching,
-    start_metrics_collection,
-    stop_event,
-)
-from app.utils.video_archiver import archive_screenshots, compile_to_teaser
-from app.config import (
-    LOG_LEVEL,
-    backup_config,
-    restore_config,
-    DISCOVERY_AUTOSTART,
-    WATCHDOG_FAILURE_THRESHOLD,
-    WATCHDOG_RESTART_COOLDOWN,
-    WATCHDOG_MAX_FILE_HANDLES,
-    WATCHDOG_CPU_THRESHOLD,
-    WATCHDOG_MEMORY_THRESHOLD,
-)
+from app.config import (DISCOVERY_AUTOSTART, LOG_LEVEL, WATCHDOG_CPU_THRESHOLD,
+                        WATCHDOG_FAILURE_THRESHOLD, WATCHDOG_MAX_FILE_HANDLES,
+                        WATCHDOG_MEMORY_THRESHOLD, WATCHDOG_RESTART_COOLDOWN,
+                        backup_config, restore_config)
 from app.utils.email_alerts import email_alert
+from app.utils.retention_policy import cleanup_clips, retention_cleanup
+from app.utils.scheduling import (schedule_crawlers, schedule_discovery,
+                                  schedule_offline_job_processor,
+                                  schedule_summarization, scheduler,
+                                  start_log_caching, start_metrics_collection,
+                                  stop_event)
 from app.utils.sms_alerts import sms_alert
+from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 
 # from app.utils.db import SessionLocal
 # from app.models.log import Log
@@ -100,18 +88,11 @@ def create_app(
     Flask
         The configured Flask application instance.
     """
-    from app.config import (
-        SECRET_KEY,
-        MAX_WORKERS,
-        SCREENSHOT_DIRECTORY,
-        SUMMARIES_DIRECTORY,
-        VIDEO_DIRECTORY,
-        SESSION_COOKIE_SECURE,
-        SESSION_COOKIE_HTTPONLY,
-        SESSION_TIMEOUT_MINUTES,
-        API_KEY,
-        SCHEDULER_API_ENABLED,
-    )
+    from app.config import (API_KEY, MAX_WORKERS, SCHEDULER_API_ENABLED,
+                            SCREENSHOT_DIRECTORY, SECRET_KEY,
+                            SESSION_COOKIE_HTTPONLY, SESSION_COOKIE_SECURE,
+                            SESSION_TIMEOUT_MINUTES, SUMMARIES_DIRECTORY,
+                            VIDEO_DIRECTORY)
 
     app = Flask(__name__)
     app.secret_key = SECRET_KEY
@@ -170,6 +151,12 @@ def create_app(
                 minutes=1,
             )
             scheduler.add_job(
+                id="cleanup_clips",
+                func=cleanup_clips,
+                trigger="interval",
+                minutes=5,
+            )
+            scheduler.add_job(
                 id="retention_cleanup", func=retention_cleanup, trigger="cron", day="*"
             )
             schedule_summarization()
@@ -179,6 +166,7 @@ def create_app(
 
         # Perform initial cleanup
         retention_cleanup()
+        cleanup_clips()
         logging.info("Initialization complete")
 
     # Backup the current configuration
@@ -301,6 +289,7 @@ def create_app(
                     schedule_discovery()
 
             retention_cleanup()
+            cleanup_clips()
             logging.info("Initialization complete")
 
         if enable_watchdog:
