@@ -3004,7 +3004,7 @@ def init_routes(app: Flask) -> None:
             )
 
         image_file = request.files["image_file"]
-        if image_file.filename == "":
+        if not image_file.filename:
             return (
                 jsonify({"status": "error", "message": "No image file provided"}),
                 400,
