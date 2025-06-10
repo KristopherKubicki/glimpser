@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Footer warns when a newer release is available
 - Stream error overlay distinguishes network and unsupported format errors
 - Sortable KPI table on captions page with filtering
+- Escher-inspired geometric test pattern generator
+- `/test_pattern.mjpg` accepts `pattern=geometric` to view the new style
 
 ### Changed
 

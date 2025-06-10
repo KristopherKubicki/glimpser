@@ -2428,10 +2428,15 @@ def init_routes(app: Flask) -> None:
     @app.route("/test_pattern.mjpg", methods=["GET"])
     @login_required
     def test_pattern_mjpg():
+        style = request.args.get("pattern", "indian")
+
         def generate_pattern():
             boundary = b"frame"
             while True:
-                img = test_pattern.generate_indian_head_test_pattern()
+                if style == "geometric":
+                    img = test_pattern.generate_geometric_test_pattern()
+                else:
+                    img = test_pattern.generate_indian_head_test_pattern()
                 buf = io.BytesIO()
                 img.save(buf, format="JPEG")
                 frame = buf.getvalue()
