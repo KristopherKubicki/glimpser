@@ -594,7 +594,7 @@ body.dark-mode {
 header {
   background-color: #000; /* Dark background for better contrast */
   color: #fff; /* White text */
-  padding: 0 4px; /* More compact padding */
+  padding: 2px 4px; /* Add slight spacing from top */
   display: flex; /* Flexbox for layout */
   align-items: center; /* Vertically align items */
   justify-content: flex-start; /* Align items to the left */
@@ -1088,6 +1088,16 @@ a {
   gap: 0.5rem;
 }
 
+#remember {
+  width: 0.9rem;
+  height: 0.9rem;
+  accent-color: var(--primary-color);
+}
+
+.checkbox-row label {
+  font-size: 0.9rem;
+}
+
 /* Toggle switch styling for boolean settings */
 .switch {
   position: relative;
@@ -1335,7 +1345,7 @@ footer {
   max-width: 100vw;
   background-color: #000;
   color: #fff;
-  padding: 10px 10px 0 10px;
+  padding: 10px 10px 2px 10px;
   border-top: 2px solid #444;
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.2);
   position: fixed;
@@ -1453,7 +1463,7 @@ footer.fade-out {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: calc(100vh - 150px);
+  min-height: calc(100dvh - 120px); /* Reduce excess vertical scroll */
   padding: 20px 0;
 }
 .login-container {
