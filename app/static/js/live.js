@@ -3,6 +3,9 @@ import { attemptAutoLogin } from "./login.js";
 
 const video = document.getElementById("live-video");
 
+const CLIP_THROTTLE_MS = 30000;
+let lastClipTime = 0;
+
 function safePlay(el) {
   const promise = el.play();
   if (promise && typeof promise.catch === "function") {
@@ -15,6 +18,18 @@ function safePlay(el) {
       }
     });
   }
+}
+
+function setClipSrc(cameraName) {
+  const now = Date.now();
+  if (now - lastClipTime >= CLIP_THROTTLE_MS) {
+    video.src = `/clip/${cameraName}`;
+    lastClipTime = now;
+  } else {
+    video.src = `/stream.mp4?camera=${encodeURIComponent(cameraName)}`;
+  }
+  video.load();
+  safePlay(video);
 }
 const image = document.getElementById("live-image");
 const templateDetailsContainer = document.getElementById("template-details");
@@ -674,9 +689,7 @@ function playLoop() {
         cameraIndex = 0; // Reset the index to loop through the cameras again
       }
       const cameraName = groupCameras[cameraIndex];
-      video.src = `/clip/${cameraName}`; // Update the video source with the current camera
-      video.load();
-      safePlay(video);
+      setClipSrc(cameraName);
       cameraIndex++; // Move to the next camera
     };
 
@@ -684,9 +697,7 @@ function playLoop() {
     video.addEventListener("ended", loopHandler); // Continue the loop when the video ends
   } else {
     // Handling for individual cameras
-    video.src = `/clip/${currentCamera}`;
-    video.load();
-    safePlay(video);
+    setClipSrc(currentCamera);
   }
 }
 
@@ -788,11 +799,9 @@ function handleVideoEnded() {
     const currentIndex = groupCameras.indexOf(video.dataset.currentCamera);
     const nextIndex = (currentIndex + 1) % groupCameras.length;
     const nextCamera = groupCameras[nextIndex];
-    video.src = `/clip/${nextCamera}`;
+    setClipSrc(nextCamera);
     video.dataset.currentCamera = nextCamera;
   }
-  video.load();
-  safePlay(video);
 }
 
 function playLive() {
@@ -1473,4 +1482,5 @@ export {
   getCameraNames,
   handleNetworkOffline,
   handleNetworkOnline,
+  setClipSrc,
 };
