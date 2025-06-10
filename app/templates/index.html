@@ -1,7 +1,19 @@
 <!-- app/templates/index.html -->
 
 {% extends 'base.html' %} {% from 'components.html' import template_controls %}
-{% block content %} {% call template_controls() %}{% endcall %}
+{% block content %} {% call template_controls() %}
+<select id="sort-date" class="sort-select" aria-label="Sort cameras">
+  <option value="">↕</option>
+  <option value="name_asc">A–Z</option>
+  <option value="name_desc">Z–A</option>
+  <option value="last_desc">Last ↓</option>
+  <option value="last_asc">Last ↑</option>
+  <option value="next_desc">Next ↓</option>
+  <option value="next_asc">Next ↑</option>
+  <option value="error_desc">Error ↓</option>
+  <option value="error_asc">Error ↑</option>
+</select>
+{% endcall %}
 
 <section id="template-list-section">
   <div
