@@ -25,10 +25,5 @@ pynput==1.8.1
 python-dateutil
 python-dotenv
 nodriver==0.46.1
-pytest>=8.3,<8.5
 flax==0.8.5
 jax[cpu]==0.6.1
-black==25.1.0
-flake8==7.2.0
-mkdocs==1.6.1
-mypy==1.16.0
