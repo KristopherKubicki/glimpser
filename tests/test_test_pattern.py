@@ -4,7 +4,11 @@ import tempfile
 
 from PIL import Image
 
-from app.utils.test_pattern import generate_test_pattern, save_test_pattern
+from app.utils.test_pattern import (
+    generate_indian_head_test_pattern,
+    generate_test_pattern,
+    save_test_pattern,
+)
 
 
 class TestTestPattern(unittest.TestCase):
@@ -20,6 +24,11 @@ class TestTestPattern(unittest.TestCase):
             self.assertTrue(os.path.exists(path))
             with Image.open(path) as im:
                 self.assertEqual(im.size, (100, 50))
+
+    def test_indian_head_size(self):
+        img = generate_indian_head_test_pattern(width=150, height=150)
+        self.assertIsInstance(img, Image.Image)
+        self.assertEqual(img.size, (150, 150))
 
 
 if __name__ == "__main__":
