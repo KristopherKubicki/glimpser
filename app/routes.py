@@ -3168,6 +3168,8 @@ def init_routes(app: Flask) -> None:
     def manage_templates():
         if request.method == "POST":
             data = request.json
+            if data is None or "name" not in data:
+                abort(400)
             template_name = validate_template_name(data["name"])
             if template_name is None:
                 abort(404)
@@ -3204,6 +3206,8 @@ def init_routes(app: Flask) -> None:
 
         elif request.method == "DELETE":
             data = request.json
+            if data is None or "name" not in data:
+                abort(400)
             template_name = validate_template_name(data["name"])
             if template_name is None:
                 abort(404)
