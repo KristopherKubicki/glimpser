@@ -8,6 +8,28 @@ from typing import Optional
 
 from PIL import Image, ImageDraw, ImageFont
 
+# Mapping of ASCII digits to their Braille equivalents. Used to display the
+# timestamp in Braille on the generated test pattern.
+BRAILLE_DIGITS = {
+    "0": "\u281a",
+    "1": "\u2801",
+    "2": "\u2803",
+    "3": "\u2809",
+    "4": "\u2819",
+    "5": "\u2811",
+    "6": "\u280b",
+    "7": "\u281b",
+    "8": "\u2813",
+    "9": "\u280a",
+    ":": "\u2812",
+}
+
+
+def _to_braille(text: str) -> str:
+    """Return the supplied text with digits converted to Braille patterns."""
+    return "".join(BRAILLE_DIGITS.get(ch, ch) for ch in text)
+
+
 FONT_CANDIDATES = [
     "DejaVuSans-Bold.ttf",
     "DejaVuSans.ttf",
@@ -99,11 +121,27 @@ def generate_test_pattern(
     return img
 
 
-def generate_indian_head_test_pattern(width: int = 1280, height: int = 720) -> Image.Image:
-    """Return a grayscale Indian Head-style test pattern."""
+def generate_indian_head_test_pattern(
+    width: int = 1280,
+    height: int = 720,
+    spinner: str | None = None,
+) -> Image.Image:
+    """Return a grayscale Indian Head-style test pattern with extras."""
 
     img = Image.new("RGB", (width, height), "gray")
     draw = ImageDraw.Draw(img)
+
+    # Mosaic background inspired by the former geometric pattern
+    tri_w = width // 10
+    tri_h = height // 10
+    colors = [(30, 30, 30), (80, 80, 80)]
+    for row in range(10):
+        for col in range(20):
+            x = col * tri_w // 2
+            y = row * tri_h
+            color = colors[(row + col) % 2]
+            points = [(x, y), (x + tri_w // 2, y + tri_h), (x + tri_w, y)]
+            draw.polygon(points, fill=color)
 
     draw.line((width // 2, 0, width // 2, height), fill="black", width=3)
     draw.line((0, height // 2, width, height // 2), fill="black", width=3)
@@ -124,6 +162,26 @@ def generate_indian_head_test_pattern(width: int = 1280, height: int = 720) -> I
     tw, th = tb[2] - tb[0], tb[3] - tb[1]
     draw.text((width // 2 - tw // 2, height // 2 - th // 2), text, fill="black", font=font)
 
+    # Display the current time in multiple languages and Braille near the bottom
+    timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+    font_small = load_font(int(height * 0.04))
+    lines = [
+        f"Time: {timestamp}",
+        f"Hora: {timestamp}",
+        f"Heure: {timestamp}",
+        _to_braille(timestamp),
+    ]
+    for i, line in enumerate(lines):
+        tb = draw.textbbox((0, 0), line, font=font_small)
+        tw, th = tb[2] - tb[0], tb[3] - tb[1]
+        draw.text((width // 2 - tw // 2, height - (len(lines) - i) * (th + 4)), line, fill="white", font=font_small)
+
+    # Optional spinner overlay for fun
+    if spinner:
+        sb = draw.textbbox((0, 0), spinner, font=font)
+        sw, sh = sb[2] - sb[0], sb[3] - sb[1]
+        draw.text((width - sw - 10, 10), spinner, fill="white", font=font)
+
     return img
 
 
@@ -131,35 +189,12 @@ def generate_geometric_test_pattern(
     width: int = 1280,
     height: int = 720,
     tiles: int = 10,
+    spinner: str | None = None,
 ) -> Image.Image:
-    """Return a geometric test pattern inspired by Escher."""
+    """Legacy wrapper that now returns the unified test pattern."""
 
-    img = Image.new("RGB", (width, height), "black")
-    draw = ImageDraw.Draw(img)
-
-    tri_w = width // tiles
-    tri_h = height // tiles
-    colors = [(30, 30, 30), (80, 80, 80)]
-
-    for row in range(tiles):
-        for col in range(tiles * 2):
-            x = col * tri_w // 2
-            y = row * tri_h
-            color = colors[(row + col) % 2]
-            points = [(x, y), (x + tri_w // 2, y + tri_h), (x + tri_w, y)]
-            draw.polygon(points, fill=color)
-
-    center = (width // 2, height // 2)
-    for r in range(min(width, height) // 8, min(width, height) // 2, tri_w):
-        bbox = (
-            center[0] - r,
-            center[1] - r,
-            center[0] + r,
-            center[1] + r,
-        )
-        draw.ellipse(bbox, outline="white")
-
-    return img
+    # `tiles` is ignored but kept for backward compatibility
+    return generate_indian_head_test_pattern(width=width, height=height, spinner=spinner)
 
 
 def save_test_pattern(path: str, **kwargs) -> None:
