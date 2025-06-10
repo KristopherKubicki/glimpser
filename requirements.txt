@@ -9,7 +9,6 @@ numpy==2.2.6
 pdf2image==1.17.0
 Pillow==11.2.1
 psutil~=7.0.0
-pysqlite3==0.5.4
 pyvirtualdisplay==3.0
 scikit-image==0.25.0
 selenium==4.33.0
@@ -25,5 +24,3 @@ pynput==1.8.1
 python-dateutil
 python-dotenv
 nodriver==0.46.1
-flax==0.8.5
-jax[cpu]==0.6.1
