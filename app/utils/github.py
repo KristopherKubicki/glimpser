@@ -5,9 +5,7 @@ from typing import Optional
 
 import requests
 
-GITHUB_RELEASES_URL = (
-    "https://api.github.com/repos/KristopherKubicki/glimpser/releases/latest"
-)
+GITHUB_RELEASES_URL = "https://api.github.com/repos/KristopherKubicki/glimpser/releases/latest"
 
 
 def _parse_version(version: str) -> list[int]:

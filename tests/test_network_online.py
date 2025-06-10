@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.utils.network import is_system_online, _get_test_hosts
+from app.utils.network import _get_test_hosts, is_system_online
 
 
 class TestIsSystemOnline(unittest.TestCase):

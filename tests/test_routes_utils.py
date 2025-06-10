@@ -1,10 +1,10 @@
-import unittest
-import time
 import hashlib
-import sys
-import types
-import tempfile
 import os
+import sys
+import tempfile
+import time
+import types
+import unittest
 from unittest.mock import patch
 
 # Provide a dummy psutil module if it's not installed
@@ -109,7 +109,7 @@ for sub in [
         if sub == "email_alerts":
             mod.email_alert = lambda *a, **k: None
 
-from app.routes import generate_timed_hash, is_hash_valid, generate_video_stream
+from app.routes import generate_timed_hash, generate_video_stream, is_hash_valid
 
 
 class TestRoutesUtils(unittest.TestCase):
@@ -130,9 +130,7 @@ class TestRoutesUtils(unittest.TestCase):
 
             # Expired timestamp -> invalid
             expired_time = str(int(time.time()) - 1)
-            expired_digest = hashlib.sha256(
-                f"{constant_key}{expired_time}".encode()
-            ).hexdigest()
+            expired_digest = hashlib.sha256(f"{constant_key}{expired_time}".encode()).hexdigest()
             expired_value = f"{expired_digest}.{expired_time}"
             self.assertFalse(is_hash_valid(expired_value))
 

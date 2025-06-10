@@ -1,23 +1,23 @@
 # tests/test_routes.py
 
-import unittest
 import os
 import sys
+import unittest
 from unittest.mock import patch
+
 from flask import Flask
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.routes import init_routes
-from app.models import Summary
 from types import SimpleNamespace
+
+from app.models import Summary
+from app.routes import init_routes
 
 
 class TestRoutes(unittest.TestCase):
     def setUp(self):
-        template_dir = os.path.join(
-            os.path.abspath(os.path.dirname(__file__)), "../app/templates"
-        )
+        template_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "../app/templates")
         self.app = Flask(__name__, template_folder=template_dir)
         self.app.config["SECRET_KEY"] = "my_secret_key"
         init_routes(self.app)
@@ -151,9 +151,7 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.SessionLocal")
     @patch("app.routes.login_attempts", {})
     @patch("app.routes.render_template")
-    def test_login_failure(
-        self, mock_render_template, mock_session_local, mock_check_password
-    ):
+    def test_login_failure(self, mock_render_template, mock_session_local, mock_check_password):
         mock_check_password.return_value = False
         dummy_user = SimpleNamespace(id=1, username="testuser", password_hash="hash")
 
@@ -182,9 +180,7 @@ class TestRoutes(unittest.TestCase):
 
         mock_session_local.return_value = DummySession()
 
-        response = self.client.post(
-            "/login", data={"username": "testuser", "password": "wrongpassword"}
-        )
+        response = self.client.post("/login", data={"username": "testuser", "password": "wrongpassword"})
         self.assertEqual(response.status_code, 200)
         mock_render_template.assert_called_with("login.html", page_title="Login")
 
@@ -263,17 +259,13 @@ class TestRoutes(unittest.TestCase):
         mock_get_templates.return_value = {"camera": {}}
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
-        mock_render_template.assert_called_with(
-            "index.html", template_details={"camera": {}}, page_title="Dashboard"
-        )
+        mock_render_template.assert_called_with("index.html", template_details={"camera": {}}, page_title="Dashboard")
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
     @patch("app.routes.template_manager.get_templates")
     @patch("app.routes.render_template")
-    def test_captions(
-        self, mock_render_template, mock_get_templates, mock_session_local
-    ):
+    def test_captions(self, mock_render_template, mock_get_templates, mock_session_local):
         dummy_user = SimpleNamespace(id=1)
 
         class DummyQuery:
@@ -352,13 +344,9 @@ class TestRoutes(unittest.TestCase):
 
         mock_session_local.return_value = DummySession()
         mock_save_template.return_value = True
-        response = self.client.post(
-            "/templates", json={"name": "new_template", "url": "http://example.com"}
-        )
+        response = self.client.post("/templates", json={"name": "new_template", "url": "http://example.com"})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.get_json(), {"status": "success", "message": "Template saved"}
-        )
+        self.assertEqual(response.get_json(), {"status": "success", "message": "Template saved"})
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
@@ -384,9 +372,7 @@ class TestRoutes(unittest.TestCase):
         mock_delete_template.return_value = True
         response = self.client.delete("/templates", json={"name": "template_to_delete"})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.get_json(), {"status": "success", "message": "Template deleted"}
-        )
+        self.assertEqual(response.get_json(), {"status": "success", "message": "Template deleted"})
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
@@ -431,12 +417,8 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.SessionLocal")
     @patch("app.routes.camera_discovery.discover_cameras")
     @patch("app.routes.render_template")
-    def test_discover_route(
-        self, mock_render_template, mock_discover, mock_session_local
-    ):
-        mock_discover.return_value = [
-            {"ip": "1.2.3.4", "protocol": "rtsp", "port": 554, "info": {}}
-        ]
+    def test_discover_route(self, mock_render_template, mock_discover, mock_session_local):
+        mock_discover.return_value = [{"ip": "1.2.3.4", "protocol": "rtsp", "port": 554, "info": {}}]
         dummy_user = SimpleNamespace(id=1)
 
         class DummyQuery:
@@ -467,9 +449,7 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.SessionLocal")
     @patch("app.routes.camera_discovery.discover_cameras")
     def test_discover_scan(self, mock_discover, mock_session_local):
-        mock_discover.return_value = [
-            {"ip": "1.2.3.4", "protocol": "rtsp", "port": 554, "info": {}}
-        ]
+        mock_discover.return_value = [{"ip": "1.2.3.4", "protocol": "rtsp", "port": 554, "info": {}}]
         dummy_user = SimpleNamespace(id=1)
 
         class DummyQuery:
@@ -528,9 +508,7 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.session", {"user_id": 1})
     @patch("app.routes.template_manager.get_template")
     @patch("app.routes.render_template")
-    def test_live_single_camera(
-        self, mock_render_template, mock_get_template, mock_session_local
-    ):
+    def test_live_single_camera(self, mock_render_template, mock_get_template, mock_session_local):
         """The live route should render only the requested camera."""
 
         mock_get_template.return_value = {"url": "https://example.com"}
@@ -567,9 +545,7 @@ class TestRoutes(unittest.TestCase):
         mock_groups.return_value = ["group1", "group2"]
         response = self.client.get("/group/group1")
         self.assertEqual(response.status_code, 200)
-        mock_render_template.assert_called_with(
-            "group.html", group_name="group1", page_title="Group – group1"
-        )
+        mock_render_template.assert_called_with("group.html", group_name="group1", page_title="Group – group1")
 
     @patch("app.routes.get_active_groups")
     @patch("app.routes.session", {"user_id": 1})

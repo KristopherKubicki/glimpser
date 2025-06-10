@@ -1,9 +1,10 @@
 import os
 import sys
 import unittest
-from flask import Flask
-from unittest.mock import patch
 from pathlib import Path
+from unittest.mock import patch
+
+from flask import Flask
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -38,9 +39,7 @@ class TestSearchSuggestionsEndpoint(unittest.TestCase):
     @patch("app.routes.Path.glob")
     @patch("app.routes.get_active_groups")
     @patch("app.routes.template_manager.get_templates")
-    def test_search_suggestions_docs(
-        self, mock_get_templates, mock_get_groups, mock_glob
-    ):
+    def test_search_suggestions_docs(self, mock_get_templates, mock_get_groups, mock_glob):
         mock_get_templates.return_value = {}
         mock_get_groups.return_value = []
         mock_glob.return_value = [

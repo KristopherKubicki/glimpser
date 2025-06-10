@@ -2,7 +2,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 VERSION_FILE = Path("setup.py")
 
 

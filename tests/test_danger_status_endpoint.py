@@ -1,8 +1,9 @@
 import os
 import sys
 import unittest
-from flask import Flask
 from unittest.mock import patch
+
+from flask import Flask
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -26,9 +27,7 @@ class TestDangerStatusEndpoint(unittest.TestCase):
     @patch("app.routes.shortcuts_need_patch", return_value=False)
     @patch("app.routes.is_chrome_debug_port_open", return_value=True)
     @patch("app.routes.check_user_activity", return_value=False)
-    def test_danger_ready(
-        self, mock_idle, mock_port, mock_patch, mock_path, mock_shortcut, mock_ver
-    ):
+    def test_danger_ready(self, mock_idle, mock_port, mock_patch, mock_path, mock_shortcut, mock_ver):
         resp = self.client.get("/danger_status")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(
@@ -52,9 +51,7 @@ class TestDangerStatusEndpoint(unittest.TestCase):
     @patch("app.routes.shortcuts_need_patch", return_value=False)
     @patch("app.routes.is_chrome_debug_port_open", return_value=False)
     @patch("app.routes.check_user_activity", return_value=False)
-    def test_danger_port_closed(
-        self, mock_idle, mock_port, mock_patch, mock_path, mock_shortcut, mock_ver
-    ):
+    def test_danger_port_closed(self, mock_idle, mock_port, mock_patch, mock_path, mock_shortcut, mock_ver):
         """Should report not ready when the debug port is closed."""
         resp = self.client.get("/danger_status")
         self.assertEqual(resp.status_code, 200)
@@ -79,9 +76,7 @@ class TestDangerStatusEndpoint(unittest.TestCase):
     @patch("app.routes.shortcuts_need_patch", return_value=False)
     @patch("app.routes.is_chrome_debug_port_open", return_value=True)
     @patch("app.routes.check_user_activity", return_value=True)
-    def test_danger_user_active(
-        self, mock_idle, mock_port, mock_patch, mock_path, mock_shortcut, mock_ver
-    ):
+    def test_danger_user_active(self, mock_idle, mock_port, mock_patch, mock_path, mock_shortcut, mock_ver):
         """Should report not ready when user activity is detected."""
         resp = self.client.get("/danger_status")
         self.assertEqual(resp.status_code, 200)

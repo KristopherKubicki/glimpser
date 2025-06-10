@@ -1,12 +1,13 @@
 # app/utils/validators.py
 
-from werkzeug.utils import secure_filename
 import os
-import socket
-from zoneinfo import ZoneInfo
 import re
-from urllib.parse import urlparse
+import socket
 from ipaddress import ip_address
+from urllib.parse import urlparse
+from zoneinfo import ZoneInfo
+
+from werkzeug.utils import secure_filename
 
 
 def is_bool_string(value: object) -> bool:
@@ -102,9 +103,7 @@ def validate_template_name(template_name: str):
     if template_name is None or not isinstance(template_name, str):
         return None
 
-    allowed_chars = set(
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-."
-    )
+    allowed_chars = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.")
     if not all(char in allowed_chars for char in template_name):
         return None
 
@@ -312,16 +311,10 @@ def validate_setting(name: str, value: str) -> str | None:
         return None
 
     if key == "FFMPEG_HWACCEL":
-        return (
-            "auto"
-            if val.lower() in {"true", "1", "t", "y", "yes", "on", "auto"}
-            else "False"
-        )
+        return "auto" if val.lower() in {"true", "1", "t", "y", "yes", "on", "auto"} else "False"
 
     if key in BOOLEAN_SETTINGS:
-        return (
-            "True" if val.lower() in {"true", "1", "t", "y", "yes", "on"} else "False"
-        )
+        return "True" if val.lower() in {"true", "1", "t", "y", "yes", "on"} else "False"
 
     if key in INTEGER_RANGES:
         try:

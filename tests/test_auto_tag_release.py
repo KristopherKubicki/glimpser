@@ -15,9 +15,7 @@ class TestAutoTagRelease(unittest.TestCase):
         with patch("scripts.auto_tag_release.subprocess.run", mock_run):
             self.assertTrue(auto_tag_release.tag_exists("v1.0.0"))
             self.assertFalse(auto_tag_release.tag_exists("v3.0.0"))
-        mock_run.assert_called_with(
-            ["git", "tag", "-l", "v3.0.0"], capture_output=True, text=True
-        )
+        mock_run.assert_called_with(["git", "tag", "-l", "v3.0.0"], capture_output=True, text=True)
 
     def test_create_tag_invokes_git_commands(self):
         with patch("scripts.auto_tag_release.subprocess.check_call") as mock_call:

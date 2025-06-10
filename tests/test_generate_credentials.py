@@ -51,9 +51,7 @@ class TestGenerateCredentials(unittest.TestCase):
     def test_create_settings(self):
         generate_credentials.create_settings(self.conn)
         cursor = self.conn.cursor()
-        cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='settings'"
-        )
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'")
         result = cursor.fetchone()
         self.assertIsNotNone(result)
 
@@ -61,9 +59,7 @@ class TestGenerateCredentials(unittest.TestCase):
         """The users table should be created if missing."""
         generate_credentials.create_users(self.conn)
         cursor = self.conn.cursor()
-        cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
-        )
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
         self.assertIsNotNone(cursor.fetchone())
 
     def test_upsert_user(self):
@@ -86,9 +82,7 @@ class TestGenerateCredentials(unittest.TestCase):
     @patch("generate_credentials.input")
     @patch(
         "generate_credentials.app.config.get_setting",
-        side_effect=lambda n, d=None: (
-            config.DATABASE_PATH if n == "DATABASE_PATH" else d
-        ),
+        side_effect=lambda n, d=None: (config.DATABASE_PATH if n == "DATABASE_PATH" else d),
     )
     def test_generate_credentials_interactive(
         self,
@@ -116,9 +110,7 @@ class TestGenerateCredentials(unittest.TestCase):
         self.assertEqual(cur.fetchone()[0], "hashed_password")
         cur.execute("SELECT value FROM settings WHERE name='SECRET_KEY'")
         self.assertEqual(cur.fetchone()[0], "secretkey")
-        cur.execute(
-            "SELECT username, password_hash FROM users WHERE username='testuser'"
-        )
+        cur.execute("SELECT username, password_hash FROM users WHERE username='testuser'")
         self.assertEqual(cur.fetchone(), ("testuser", "hashed_password"))
 
         mock_log.assert_has_calls(
@@ -133,9 +125,7 @@ class TestGenerateCredentials(unittest.TestCase):
         )
 
     @patch("generate_credentials.generate_password_hash", return_value="h")
-    @patch(
-        "generate_credentials.app.config.get_setting", side_effect=lambda n, d=None: d
-    )
+    @patch("generate_credentials.app.config.get_setting", side_effect=lambda n, d=None: d)
     def test_generate_credentials_args(self, mock_get, mock_hash):
         """Non-interactive credentials creation should populate both tables."""
         generate_credentials.create_settings(self.conn)
@@ -161,9 +151,7 @@ class TestGenerateCredentials(unittest.TestCase):
         self.assertEqual(cur.fetchone(), ("bob", "h"))
 
     @patch("generate_credentials.generate_password_hash", return_value="pw")
-    @patch(
-        "generate_credentials.app.config.get_setting", side_effect=lambda n, d=None: d
-    )
+    @patch("generate_credentials.app.config.get_setting", side_effect=lambda n, d=None: d)
     def test_update_password_only(self, mock_get, mock_hash):
         """Updating only the password should still modify the users table."""
         generate_credentials.create_settings(self.conn)
@@ -183,9 +171,7 @@ class TestGenerateCredentials(unittest.TestCase):
         self.assertEqual(cur.fetchone(), ("admin", "pw"))
 
     @patch("generate_credentials.generate_password_hash", return_value="h")
-    @patch(
-        "generate_credentials.app.config.get_setting", side_effect=lambda n, d=None: d
-    )
+    @patch("generate_credentials.app.config.get_setting", side_effect=lambda n, d=None: d)
     def test_update_key_only(self, mock_get, mock_hash):
         """Updating only the secret key should still update the users table."""
         generate_credentials.create_settings(self.conn)

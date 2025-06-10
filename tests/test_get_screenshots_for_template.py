@@ -14,9 +14,7 @@ class TestGetScreenshotsForTemplate(unittest.TestCase):
         self.test_dir = "test_sort_shots"
         self.base = os.path.join(self.test_dir, "cam1")
         os.makedirs(self.base, exist_ok=True)
-        self.patch = patch(
-            "app.utils.template_manager.SCREENSHOT_DIRECTORY", self.test_dir
-        )
+        self.patch = patch("app.utils.template_manager.SCREENSHOT_DIRECTORY", self.test_dir)
         self.patch.start()
 
         open(os.path.join(self.base, "cam1_20240101000000.png"), "wb").close()

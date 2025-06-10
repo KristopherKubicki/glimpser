@@ -4,9 +4,12 @@ import unittest
 
 from PIL import Image
 
-from app.utils.test_pattern import (generate_geometric_test_pattern,
-                                    generate_indian_head_test_pattern,
-                                    generate_test_pattern, save_test_pattern)
+from app.utils.test_pattern import (
+    generate_geometric_test_pattern,
+    generate_indian_head_test_pattern,
+    generate_test_pattern,
+    save_test_pattern,
+)
 
 
 class TestTestPattern(unittest.TestCase):

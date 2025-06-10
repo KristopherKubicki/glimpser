@@ -1,11 +1,11 @@
-import unittest
-import sys
 import os
+import sys
+import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.utils.screenshots import parse_url, is_address_reachable, get_arp_output
+from app.utils.screenshots import get_arp_output, is_address_reachable, parse_url
 
 
 class TestURLParsing(unittest.TestCase):
@@ -39,16 +39,16 @@ class TestARPTable(unittest.TestCase):
 
     @patch("subprocess.check_output")
     def test_get_arp_output_linux(self, mock_check_output):
-        mock_check_output.return_value = (
-            b"192.168.0.1 dev eth0 lladdr 00:11:22:33:44:55 REACHABLE"
-        )
+        mock_check_output.return_value = b"192.168.0.1 dev eth0 lladdr 00:11:22:33:44:55 REACHABLE"
         ip_address = "192.168.0.1"
         result = get_arp_output(ip_address, timeout=5)
         self.assertIn(b"REACHABLE", result)
 
     @patch("subprocess.check_output")
     def test_get_arp_output_windows(self, mock_check_output):
-        mock_check_output.return_value = b"Internet Address      Physical Address      Type\n192.168.0.1          00-11-22-33-44-55     dynamic"
+        mock_check_output.return_value = (
+            b"Internet Address      Physical Address      Type\n192.168.0.1          00-11-22-33-44-55     dynamic"
+        )
         ip_address = "192.168.0.1"
         result = get_arp_output(ip_address, timeout=5)
         self.assertIn(b"dynamic", result)

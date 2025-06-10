@@ -1,10 +1,11 @@
-import unittest
-import tempfile
 import os
-from PIL import Image
+import tempfile
+import unittest
 from unittest.mock import patch
 
-from app.utils.screenshots import create_placeholder, _finalize_screenshot
+from PIL import Image
+
+from app.utils.screenshots import _finalize_screenshot, create_placeholder
 
 
 class TestPlaceholderGeneration(unittest.TestCase):

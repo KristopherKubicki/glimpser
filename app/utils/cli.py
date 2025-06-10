@@ -43,9 +43,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
         help="Enable logging to the console",
         default=False,
     )
-    parser.add_argument(
-        "--debug", action="store_true", default=config.DEBUG, help="Enable debug mode"
-    )
+    parser.add_argument("--debug", action="store_true", default=config.DEBUG, help="Enable debug mode")
     parser.add_argument(
         "--no-scheduler",
         action="store_true",

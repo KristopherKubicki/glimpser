@@ -10,17 +10,29 @@ from datetime import timedelta
 import psutil
 from flask import Flask
 
-from app.config import (DISCOVERY_AUTOSTART, LOG_LEVEL, WATCHDOG_CPU_THRESHOLD,
-                        WATCHDOG_FAILURE_THRESHOLD, WATCHDOG_MAX_FILE_HANDLES,
-                        WATCHDOG_MEMORY_THRESHOLD, WATCHDOG_RESTART_COOLDOWN,
-                        backup_config, restore_config)
+from app.config import (
+    DISCOVERY_AUTOSTART,
+    LOG_LEVEL,
+    WATCHDOG_CPU_THRESHOLD,
+    WATCHDOG_FAILURE_THRESHOLD,
+    WATCHDOG_MAX_FILE_HANDLES,
+    WATCHDOG_MEMORY_THRESHOLD,
+    WATCHDOG_RESTART_COOLDOWN,
+    backup_config,
+    restore_config,
+)
 from app.utils.email_alerts import email_alert
 from app.utils.retention_policy import cleanup_clips, retention_cleanup
-from app.utils.scheduling import (schedule_crawlers, schedule_discovery,
-                                  schedule_offline_job_processor,
-                                  schedule_summarization, scheduler,
-                                  start_log_caching, start_metrics_collection,
-                                  stop_event)
+from app.utils.scheduling import (
+    schedule_crawlers,
+    schedule_discovery,
+    schedule_offline_job_processor,
+    schedule_summarization,
+    scheduler,
+    start_log_caching,
+    start_metrics_collection,
+    stop_event,
+)
 from app.utils.sms_alerts import sms_alert
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 
@@ -88,19 +100,24 @@ def create_app(
     Flask
         The configured Flask application instance.
     """
-    from app.config import (API_KEY, MAX_WORKERS, SCHEDULER_API_ENABLED,
-                            SCREENSHOT_DIRECTORY, SECRET_KEY,
-                            SESSION_COOKIE_HTTPONLY, SESSION_COOKIE_SECURE,
-                            SESSION_TIMEOUT_MINUTES, SUMMARIES_DIRECTORY,
-                            VIDEO_DIRECTORY)
+    from app.config import (
+        API_KEY,
+        MAX_WORKERS,
+        SCHEDULER_API_ENABLED,
+        SCREENSHOT_DIRECTORY,
+        SECRET_KEY,
+        SESSION_COOKIE_HTTPONLY,
+        SESSION_COOKIE_SECURE,
+        SESSION_TIMEOUT_MINUTES,
+        SUMMARIES_DIRECTORY,
+        VIDEO_DIRECTORY,
+    )
 
     app = Flask(__name__)
     app.secret_key = SECRET_KEY
     app.config["SESSION_COOKIE_SECURE"] = SESSION_COOKIE_SECURE
     app.config["SESSION_COOKIE_HTTPONLY"] = SESSION_COOKIE_HTTPONLY
-    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(
-        minutes=SESSION_TIMEOUT_MINUTES
-    )
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=SESSION_TIMEOUT_MINUTES)
     # Set up logging using the configured level
     log_level = getattr(logging, str(LOG_LEVEL).upper(), logging.WARN)
     app.logger.setLevel(log_level)
@@ -116,17 +133,13 @@ def create_app(
 
     # Configure the scheduler executor
     if schedule is True:
-        app.config["SCHEDULER_EXECUTORS"] = {
-            "default": {"type": "processpool", "max_workers": MAX_WORKERS}
-        }
+        app.config["SCHEDULER_EXECUTORS"] = {"default": {"type": "processpool", "max_workers": MAX_WORKERS}}
         app.config["SCHEDULER_API_ENABLED"] = SCHEDULER_API_ENABLED
         logging.info("Starting with %s workers" % str(MAX_WORKERS))
         scheduler.init_app(app)
 
     # Set up and start the scheduler
-    if schedule is True and (
-        os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug
-    ):
+    if schedule is True and (os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug):
         scheduler.start()
         logging.info("Initializing scheduler...")
 
@@ -156,9 +169,7 @@ def create_app(
                 trigger="interval",
                 minutes=5,
             )
-            scheduler.add_job(
-                id="retention_cleanup", func=retention_cleanup, trigger="cron", day="*"
-            )
+            scheduler.add_job(id="retention_cleanup", func=retention_cleanup, trigger="cron", day="*")
             schedule_summarization()
             schedule_offline_job_processor()
             if DISCOVERY_AUTOSTART:
@@ -204,15 +215,10 @@ def create_app(
                     mem_usage = psutil.virtual_memory().percent
 
                     # Only check open files when system usage is high
-                    if (
-                        cpu_usage > WATCHDOG_CPU_THRESHOLD
-                        or mem_usage > WATCHDOG_MEMORY_THRESHOLD
-                    ):
+                    if cpu_usage > WATCHDOG_CPU_THRESHOLD or mem_usage > WATCHDOG_MEMORY_THRESHOLD:
                         open_files = current_process.open_files()
                         if len(open_files) > max_file_handles:
-                            raise Exception(
-                                f"Too many open file handles: {len(open_files)}"
-                            )
+                            raise Exception(f"Too many open file handles: {len(open_files)}")
 
                 except Exception as e:
                     logging.error("Application error detected: %s", e)
@@ -220,23 +226,17 @@ def create_app(
                     current_time = time.time()
                     if failure_count >= failure_threshold:
                         if current_time - last_restart_time > restart_cooldown:
-                            logging.info(
-                                "Attempting to restore previous configuration..."
-                            )
+                            logging.info("Attempting to restore previous configuration...")
                             try:
                                 restore_config()
                             except Exception as config_error:
-                                logging.error(
-                                    "Failed to restore configuration: %s", config_error
-                                )
+                                logging.error("Failed to restore configuration: %s", config_error)
                             logging.info("Forcing application restart...")
                             last_restart_time = current_time
                             failure_count = 0
                             sys.exit(1)  # Force restart the application gracefully
                         else:
-                            logging.warning(
-                                "Restart cooldown in effect. Skipping restart."
-                            )
+                            logging.warning("Restart cooldown in effect. Skipping restart.")
                     else:
                         logging.warning(
                             "Health check failed (%s/%s)",
@@ -252,11 +252,7 @@ def create_app(
         """Initialize scheduler and monitoring in a low priority thread."""
         backup_config()
 
-        if (
-            schedule
-            and (os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug)
-            and not scheduler.running
-        ):
+        if schedule and (os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug) and not scheduler.running:
             scheduler.start()
             logging.info("Initializing scheduler...")
 
@@ -293,9 +289,7 @@ def create_app(
             logging.info("Initialization complete")
 
         if enable_watchdog:
-            watchdog_thread = threading.Thread(
-                target=_watchdog_thread, name="watchdog", daemon=True
-            )
+            watchdog_thread = threading.Thread(target=_watchdog_thread, name="watchdog", daemon=True)
             watchdog_thread.start()
             app.watchdog_thread = watchdog_thread
 
@@ -316,8 +310,6 @@ def create_app(
         app.scheduler = scheduler
 
     if schedule or enable_watchdog or log_cache:
-        threading.Thread(
-            target=_start_background_components, name="init-bg", daemon=True
-        ).start()
+        threading.Thread(target=_start_background_components, name="init-bg", daemon=True).start()
 
     return app

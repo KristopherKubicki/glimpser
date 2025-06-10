@@ -1,24 +1,24 @@
-import time
-import os
-import multiprocessing
-import tempfile
-from types import SimpleNamespace
-import unittest
-from unittest.mock import patch
 import json
-from PIL import Image
+import multiprocessing
+import os
 import sys
+import tempfile
+import time
+import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
+
+from PIL import Image
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.utils import scheduling
 from app.utils.scheduling import (
-    run_with_timeout,
     add_motion_and_caption,
     get_system_metrics,
     process_offline_jobs,
+    run_with_timeout,
 )
-
 
 dummy_log = []
 
@@ -164,9 +164,7 @@ class TestOfflineJobQueue(unittest.TestCase):
     @patch("app.utils.scheduling.multiprocessing.Process")
     @patch("app.utils.scheduling.SessionLocal")
     @patch("app.utils.scheduling.is_system_online", return_value=False)
-    def test_queue_created_when_offline(
-        self, _online, mock_session_local, mock_process
-    ):
+    def test_queue_created_when_offline(self, _online, mock_session_local, mock_process):
         class DummySession:
             def __init__(self):
                 self.added = []

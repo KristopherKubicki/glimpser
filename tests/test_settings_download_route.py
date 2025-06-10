@@ -1,9 +1,10 @@
 import os
 import sys
-import unittest
 import tempfile
-from flask import Flask
+import unittest
 from unittest.mock import patch
+
+from flask import Flask
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

@@ -1,6 +1,6 @@
+import importlib
 import os
 import sqlite3
-import importlib
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -46,9 +46,7 @@ class TestSyncVersion(unittest.TestCase):
 
     def _get_value(self):
         conn = sqlite3.connect(self.db_path)
-        row = conn.execute(
-            "SELECT value FROM settings WHERE name = 'VERSION'"
-        ).fetchone()
+        row = conn.execute("SELECT value FROM settings WHERE name = 'VERSION'").fetchone()
         conn.close()
         return row[0] if row else None
 

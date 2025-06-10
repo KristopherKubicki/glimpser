@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.utils import prompt_optimizer  # noqa: E402
 import app.utils.image_processing as img_proc  # noqa: E402
+from app.utils import prompt_optimizer  # noqa: E402
 
 
 class TestPromptOptimizer(unittest.TestCase):

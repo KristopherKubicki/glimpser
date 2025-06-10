@@ -1,11 +1,11 @@
 # tests/test_llm.py
 
-import unittest
-import sys
-import os
-import json
 import datetime
-from unittest.mock import patch, MagicMock
+import json
+import os
+import sys
+import unittest
+from unittest.mock import MagicMock, patch
 
 # Add the parent directory to the Python path to import the app module
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -30,9 +30,7 @@ class TestLLM(unittest.TestCase):
         result = summarize("Test prompt")
 
         ts = int(datetime.datetime.now().timestamp())
-        expected_result = json.dumps(
-            {ts: "Mock summary", ts + 5: "With multiple lines"}
-        )
+        expected_result = json.dumps({ts: "Mock summary", ts + 5: "With multiple lines"})
         self.assertEqual(json.loads(result), json.loads(expected_result))
 
         # Verify that the API was called with the correct parameters

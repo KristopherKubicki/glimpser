@@ -1,10 +1,11 @@
-import os
 import io
+import os
 import shutil
 import unittest
+from unittest.mock import patch
+
 from flask import Flask
 from PIL import Image
-from unittest.mock import patch
 
 from app.routes import init_routes
 
@@ -33,9 +34,7 @@ class TestUploadNavIcon(unittest.TestCase):
         Image.new("RGB", (150, 22)).save(img_bytes, format="PNG")
         img_bytes.seek(0)
         data = {"logo_file": (img_bytes, "logo.png")}
-        resp = self.client.post(
-            "/upload_nav_icon", data=data, content_type="multipart/form-data"
-        )
+        resp = self.client.post("/upload_nav_icon", data=data, content_type="multipart/form-data")
         self.assertEqual(resp.status_code, 302)
         saved = os.path.join(self.static_dir, "img", "logo.png")
         self.assertTrue(os.path.exists(saved))

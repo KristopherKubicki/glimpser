@@ -1,4 +1,5 @@
 import unittest
+
 from jinja2 import Environment, FileSystemLoader
 
 
@@ -16,9 +17,7 @@ class TestJinjaMacros(unittest.TestCase):
         self.assertIn('id="remove-cancel"', html)
 
     def test_card_wraps_content(self):
-        tmpl = self.env.from_string(
-            '{% from "components.html" import card %}{% call card("Title") %}Body{% endcall %}'
-        )
+        tmpl = self.env.from_string('{% from "components.html" import card %}{% call card("Title") %}Body{% endcall %}')
         html = tmpl.render()
         self.assertIn('<div class="card">', html)
         self.assertIn('<div class="card-header">Title</div>', html)

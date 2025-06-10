@@ -1,5 +1,5 @@
-import os
 import importlib
+import os
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -14,9 +14,7 @@ class TestSummaryStorage(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.db_path = os.path.join(self.temp_dir.name, "test.db")
-        self.env_patch = patch.dict(
-            os.environ, {"GLIMPSER_DATABASE_PATH": self.db_path}
-        )
+        self.env_patch = patch.dict(os.environ, {"GLIMPSER_DATABASE_PATH": self.db_path})
         self.env_patch.start()
 
         importlib.reload(config)

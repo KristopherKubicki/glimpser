@@ -1,9 +1,10 @@
 # app/utils/detect.py
 
+import logging
+
 import numpy as np
 from PIL import Image
 from skimage.metrics import structural_similarity as ssim
-import logging
 
 
 def calculate_difference_fast(image_path_a, image_path_b, downsample_size=(100, 100)):

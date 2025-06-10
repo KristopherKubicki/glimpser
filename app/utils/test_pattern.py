@@ -80,16 +80,12 @@ def generate_test_pattern(
         [width // 2 - tw // 2 - 4, bar_h + 4, width // 2 + tw // 2 + 4, bar_h + th + 8],
         fill=(0, 0, 0),
     )
-    draw.text(
-        (width // 2 - tw // 2, bar_h + 6), timestamp, fill="white", font=font_large
-    )
+    draw.text((width // 2 - tw // 2, bar_h + 6), timestamp, fill="white", font=font_large)
 
     mystic = "Seek the unseen"
     mb = draw.textbbox((0, 0), mystic, font=font_small)
     mw, mh = mb[2] - mb[0], mb[3] - mb[1]
-    draw.text(
-        (width // 2 - mw // 2, bar_h + th + 14), mystic, fill="white", font=font_small
-    )
+    draw.text((width // 2 - mw // 2, bar_h + th + 14), mystic, fill="white", font=font_small)
 
     if camera_name:
         draw.text((10, bar_h + 10), camera_name, fill="white", font=font_small)
@@ -103,9 +99,7 @@ def generate_test_pattern(
     return img
 
 
-def generate_indian_head_test_pattern(
-    width: int = 1280, height: int = 720
-) -> Image.Image:
+def generate_indian_head_test_pattern(width: int = 1280, height: int = 720) -> Image.Image:
     """Return a grayscale Indian Head-style test pattern."""
 
     img = Image.new("RGB", (width, height), "gray")
@@ -128,9 +122,7 @@ def generate_indian_head_test_pattern(
     text = "PLEASE STAND BY"
     tb = draw.textbbox((0, 0), text, font=font)
     tw, th = tb[2] - tb[0], tb[3] - tb[1]
-    draw.text(
-        (width // 2 - tw // 2, height // 2 - th // 2), text, fill="black", font=font
-    )
+    draw.text((width // 2 - tw // 2, height // 2 - th // 2), text, fill="black", font=font)
 
     return img
 

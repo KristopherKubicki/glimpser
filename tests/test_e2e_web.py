@@ -1,13 +1,12 @@
+import argparse
+import importlib
 import os
 import shutil
-from threading import Thread
-from werkzeug.serving import make_server
-
-import importlib
-from unittest.mock import patch
-import argparse
-
 import sys
+from threading import Thread
+from unittest.mock import patch
+
+from werkzeug.serving import make_server
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -20,10 +19,10 @@ import app
 
 try:
     from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service as ChromeService
-    from selenium.webdriver.firefox.service import Service as FirefoxService
-    from selenium.webdriver.common.by import By
     from selenium.common.exceptions import WebDriverException
+    from selenium.webdriver.chrome.service import Service as ChromeService
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.firefox.service import Service as FirefoxService
 except Exception:  # pragma: no cover - optional dependency may not be present
     webdriver = None  # type: ignore
     By = None
@@ -114,10 +113,10 @@ def live_server_with_user(tmp_path_factory):
     secure_patch = patch("app.config.SESSION_COOKIE_SECURE", False)
     secure_patch.start()
 
-    import generate_credentials
     import app.config as config
-    import app.utils.db as db
     import app.routes as routes
+    import app.utils.db as db
+    import generate_credentials
 
     importlib.reload(config)
     importlib.reload(db)

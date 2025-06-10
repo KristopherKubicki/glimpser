@@ -1,12 +1,12 @@
-import unittest
-import socket
 import os
+import socket
 import sys
 import tempfile
-from pathlib import Path
+import unittest
 from ipaddress import ip_network
-from unittest.mock import patch, mock_open
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import mock_open, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -232,12 +232,8 @@ class TestCameraDiscovery(unittest.TestCase):
                 "info": {},
             },  # duplicate
         ]
-        mock_mdns.return_value = [
-            {"ip": "192.168.1.7", "protocol": "mdns", "port": 8080, "info": {}}
-        ]
-        mock_ssdp.return_value = [
-            {"ip": "192.168.1.8", "protocol": "ssdp", "port": 80, "info": {}}
-        ]
+        mock_mdns.return_value = [{"ip": "192.168.1.7", "protocol": "mdns", "port": 8080, "info": {}}]
+        mock_ssdp.return_value = [{"ip": "192.168.1.8", "protocol": "ssdp", "port": 80, "info": {}}]
         result = camera_discovery.discover_cameras()
         expected = [
             {"ip": "192.168.1.6", "protocol": "onvif", "port": 80, "info": {}},
@@ -294,11 +290,7 @@ class TestCameraDiscovery(unittest.TestCase):
             {(c["ip"], c["protocol"], c["port"]) for c in result},
             {(c["ip"], c["protocol"], c["port"]) for c in expected},
         )
-        upstreams = [
-            c["info"].get("upstream")
-            for c in result
-            if c["ip"] == "192.168.1.6" and c["protocol"] == "onvif"
-        ]
+        upstreams = [c["info"].get("upstream") for c in result if c["ip"] == "192.168.1.6" and c["protocol"] == "onvif"]
         self.assertEqual(upstreams[0], "192.168.1.1")
 
     @patch("app.utils.camera_discovery._local_subnets", return_value=[])
@@ -326,9 +318,7 @@ class TestCameraDiscovery(unittest.TestCase):
         mock_onvif,
         *_mocks,
     ):
-        mock_onvif.return_value = [
-            {"ip": "192.168.1.6", "protocol": "rtsp", "port": 554, "info": {}}
-        ]
+        mock_onvif.return_value = [{"ip": "192.168.1.6", "protocol": "rtsp", "port": 554, "info": {}}]
         mock_mac.return_value = "000c29aabbcc"
         mock_vendor.return_value = "VMware"
 
@@ -561,9 +551,7 @@ class TestCameraDiscovery(unittest.TestCase):
         mock_onvif,
         mock_ports,
     ):
-        mock_rtsp.return_value = [
-            {"ip": "1.2.3.4", "protocol": "rtsp", "port": 554, "info": {}}
-        ]
+        mock_rtsp.return_value = [{"ip": "1.2.3.4", "protocol": "rtsp", "port": 554, "info": {}}]
         cams = camera_discovery.discover_cameras()
         cam = cams[0]
         self.assertEqual(cam.get("url"), "rtsp://1.2.3.4:554/")
@@ -594,9 +582,7 @@ class TestCameraDiscovery(unittest.TestCase):
             "10.0.0.5         0x1         0x2         00:11:22:33:44:55     *        wlan0\n"
         )
         with patch("builtins.open", mock_open(read_data=arp)):
-            self.assertEqual(
-                camera_discovery._mac_for_ip("192.168.1.5"), "00:0c:29:aa:bb:cc"
-            )
+            self.assertEqual(camera_discovery._mac_for_ip("192.168.1.5"), "00:0c:29:aa:bb:cc")
             self.assertIsNone(camera_discovery._mac_for_ip("10.0.0.8"))
 
     @patch("app.utils.camera_discovery.requests.get")
@@ -623,9 +609,7 @@ class TestCameraDiscovery(unittest.TestCase):
     @patch("app.utils.camera_discovery.requests.get")
     def test_remote_vendor_lookup_success(self, mock_get):
         camera_discovery._remote_vendor_lookup.cache_clear()
-        mock_get.return_value = SimpleNamespace(
-            status_code=200, json=lambda: {"company": "AcmeCam"}
-        )
+        mock_get.return_value = SimpleNamespace(status_code=200, json=lambda: {"company": "AcmeCam"})
         vendor = camera_discovery._remote_vendor_lookup("00:11:22:33:44:55")
         self.assertEqual(vendor, "AcmeCam")
 

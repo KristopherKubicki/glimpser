@@ -11,9 +11,12 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from unittest.mock import patch
 
 import app.utils.retention_policy as retention_policy
-from app.utils.retention_policy import (cleanup_clips, delete_old_files,
-                                        get_files_sorted_by_creation_time,
-                                        retention_cleanup)
+from app.utils.retention_policy import (
+    cleanup_clips,
+    delete_old_files,
+    get_files_sorted_by_creation_time,
+    retention_cleanup,
+)
 
 
 class TestRetentionPolicy(unittest.TestCase):
@@ -56,9 +59,7 @@ class TestRetentionPolicy(unittest.TestCase):
     @patch("app.utils.retention_policy.os.listdir")
     @patch("app.utils.retention_policy.get_files_sorted_by_creation_time")
     @patch("app.utils.retention_policy.delete_old_files")
-    def test_retention_cleanup_invokes_deletion(
-        self, mock_delete, mock_get_files, mock_listdir
-    ):
+    def test_retention_cleanup_invokes_deletion(self, mock_delete, mock_get_files, mock_listdir):
         mock_listdir.side_effect = [["cam1"], ["cam1"], ["cam1"]]
         mock_get_files.return_value = ["f1", "f2"]
 

@@ -1,11 +1,12 @@
+import http.server
 import os
 import sys
 import threading
 from unittest.mock import patch
-import http.server
-from werkzeug.serving import make_server
-import requests
+
 import pytest
+import requests
+from werkzeug.serving import make_server
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from app import create_app

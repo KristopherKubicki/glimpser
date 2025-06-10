@@ -1,5 +1,6 @@
 import socket
 from zoneinfo import available_timezones
+
 import psutil
 
 SETTINGS_TOOLTIPS = {
@@ -50,9 +51,7 @@ def _host_choices() -> list[str]:
     try:
         for addrs in psutil.net_if_addrs().values():
             for addr in addrs:
-                if addr.family == socket.AF_INET and not addr.address.startswith(
-                    "127."
-                ):
+                if addr.family == socket.AF_INET and not addr.address.startswith("127."):
                     if addr.address not in choices:
                         choices.append(addr.address)
     except Exception:

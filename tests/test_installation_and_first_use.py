@@ -1,16 +1,18 @@
-import unittest
 import os
+import shutil
 import sys
 import tempfile
-import shutil
+import unittest
+
 from flask import Flask
 
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app import create_app
-import app.config as config
 from importlib import reload
+
+import app.config as config
+from app import create_app
 from app.utils import db
 from app.utils.template_manager import TemplateManager
 
@@ -65,9 +67,7 @@ class TestInstallationAndFirstUse(unittest.TestCase):
     def test_root_route(self):
         """Test the root route of the application"""
         response = self.client.get("/")
-        self.assertEqual(
-            response.status_code, 302
-        )  # will be a redirect because of no auth
+        self.assertEqual(response.status_code, 302)  # will be a redirect because of no auth
         self.assertTrue("/login" in response.text)
 
 

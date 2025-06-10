@@ -15,9 +15,7 @@ class TestSMSAlerts(unittest.TestCase):
             patch("app.utils.sms_alerts.TWILIO_TOKEN", ""),
             patch("app.utils.sms_alerts.TWILIO_NUMBER", ""),
             patch("app.utils.sms_alerts.SMS_ENABLED", "False"),
-            patch.dict(
-                "sys.modules", {"twilio": MagicMock(), "twilio.rest": MagicMock()}
-            ),
+            patch.dict("sys.modules", {"twilio": MagicMock(), "twilio.rest": MagicMock()}),
             patch("twilio.rest.Client") as mock_client,
         ):
             send_sms_alert("body")
@@ -43,16 +41,12 @@ class TestSMSAlerts(unittest.TestCase):
             ):
                 send_sms_alert("Body")
                 mock_client_class.assert_called_once_with("sid", "token")
-                client_instance.messages.create.assert_called_once_with(
-                    body="Body", from_="+999", to="+123"
-                )
+                client_instance.messages.create.assert_called_once_with(body="Body", from_="+999", to="+123")
 
     def test_sms_alert_wrapper(self):
         with patch("app.utils.sms_alerts.send_sms_alert") as mock_send:
             sms_alert("Test", "Details")
-            mock_send.assert_called_once_with(
-                "Glimpser Alert: Test\n\nDetails:\nDetails"
-            )
+            mock_send.assert_called_once_with("Glimpser Alert: Test\n\nDetails:\nDetails")
 
 
 if __name__ == "__main__":

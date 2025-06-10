@@ -4,9 +4,13 @@ import logging
 import os
 import time
 
-from app.config import (MAX_CLIP_AGE_MINUTES, MAX_COMPRESSED_VIDEO_AGE,
-                        MAX_RAW_DATA_SIZE, SCREENSHOT_DIRECTORY,
-                        VIDEO_DIRECTORY)
+from app.config import (
+    MAX_CLIP_AGE_MINUTES,
+    MAX_COMPRESSED_VIDEO_AGE,
+    MAX_RAW_DATA_SIZE,
+    SCREENSHOT_DIRECTORY,
+    VIDEO_DIRECTORY,
+)
 from app.utils.screenshots import check_user_activity
 
 
@@ -17,9 +21,7 @@ def get_files_sorted_by_creation_time(directory):
     # Get all files with their full path and sort them by creation time in ascending order
     try:
         files = [
-            os.path.join(directory, f)
-            for f in os.listdir(directory)
-            if not os.path.islink(os.path.join(directory, f))
+            os.path.join(directory, f) for f in os.listdir(directory) if not os.path.islink(os.path.join(directory, f))
         ]
         files.sort(key=lambda x: os.path.getctime(x))
     except Exception as e:
@@ -39,11 +41,7 @@ def delete_old_files(file_list, max_age, max_size, minimum=10):
     # Delete files if total size exceeds the maximum size or they are older than max_age
     # start from oldest to newest
     for file_path in files_to_check:
-        if (
-            "in_process." in file_path
-            or "last_motion." in file_path
-            or "prev_motion." in file_path
-        ):
+        if "in_process." in file_path or "last_motion." in file_path or "prev_motion." in file_path:
             continue
 
         try:

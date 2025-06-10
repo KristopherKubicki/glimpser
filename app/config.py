@@ -43,9 +43,7 @@ def _parse_cli_args():
     parser = argparse.ArgumentParser(description="Glimpser configuration")
     parser.add_argument("--db-path", help="Path to the SQLite database file")
     parser.add_argument("--log-path", help="Path to the log file")
-    parser.add_argument(
-        "--backup-path", help="Path to the configuration backup JSON file"
-    )
+    parser.add_argument("--backup-path", help="Path to the configuration backup JSON file")
     return parser.parse_args()
 
 
@@ -55,14 +53,10 @@ _cli_args = _parse_cli_args() if __name__ == "__main__" else None
 _BASE_DIR = Path(__file__).resolve().parent.parent
 
 DATABASE_PATH = (
-    _cli_args.db_path
-    if _cli_args and _cli_args.db_path
-    else os.getenv("GLIMPSER_DATABASE_PATH", "data/glimpser.db")
+    _cli_args.db_path if _cli_args and _cli_args.db_path else os.getenv("GLIMPSER_DATABASE_PATH", "data/glimpser.db")
 )
 LOGGING_PATH = (
-    _cli_args.log_path
-    if _cli_args and _cli_args.log_path
-    else os.getenv("GLIMPSER_LOGGING_PATH", "logs/glimpser.log")
+    _cli_args.log_path if _cli_args and _cli_args.log_path else os.getenv("GLIMPSER_LOGGING_PATH", "logs/glimpser.log")
 )
 
 # Ensure paths remain valid if the working directory changes.
@@ -73,13 +67,9 @@ LOGGING_PATH = str(_log_rel if _log_rel.is_absolute() else _BASE_DIR / _log_rel)
 # Ensure the backup file lives inside the project directory unless an absolute
 # path is provided. This avoids errors when the working directory changes.
 _backup_env = os.getenv("GLIMPSER_BACKUP_PATH", "data/config_backup.json")
-_backup_raw = (
-    _cli_args.backup_path if _cli_args and _cli_args.backup_path else _backup_env
-)
+_backup_raw = _cli_args.backup_path if _cli_args and _cli_args.backup_path else _backup_env
 _backup_path = Path(_backup_raw)
-BACKUP_PATH = str(
-    _backup_path if _backup_path.is_absolute() else _BASE_DIR / _backup_path
-)
+BACKUP_PATH = str(_backup_path if _backup_path.is_absolute() else _BASE_DIR / _backup_path)
 
 # ``SessionLocal`` and ``_engine`` are created lazily and cached so repeated
 # imports or function calls don't open additional connections.  Tests may patch
@@ -169,9 +159,7 @@ def restore_config():
         try:
             for name, value in config_dict.items():
                 session.execute(
-                    text(
-                        "INSERT OR REPLACE INTO settings (name, value) VALUES (:name, :value)"
-                    ),
+                    text("INSERT OR REPLACE INTO settings (name, value) VALUES (:name, :value)"),
                     {"name": name, "value": value},
                 )
             session.commit()
@@ -250,9 +238,7 @@ MAX_RAW_DATA_SIZE = int(get_setting("MAX_RAW_DATA_SIZE", 500 * 1024 * 1024))  # 
 MAX_IMAGE_RETENTION_AGE = int(get_setting("MAX_IMAGE_RETENTION_AGE", 8))
 MAX_VIDEO_RETENTION_AGE = int(get_setting("MAX_VIDEO_RETENTION_AGE", 365))
 MAX_COMPRESSED_VIDEO_AGE = int(get_setting("MAX_COMPRESSED_VIDEO_AGE", 7))  # days
-MAX_IN_PROCESS_VIDEO_SIZE = int(
-    get_setting("MAX_IN_PROCESS_VIDEO_SIZE", 100 * 1024 * 1024)
-)  # 100 MB
+MAX_IN_PROCESS_VIDEO_SIZE = int(get_setting("MAX_IN_PROCESS_VIDEO_SIZE", 100 * 1024 * 1024))  # 100 MB
 
 LOG_LEVEL = get_setting("LOG_LEVEL", "WARN")
 FLASK_LOG_LEVEL = get_setting("FLASK_LOG_LEVEL", LOG_LEVEL)
@@ -318,9 +304,7 @@ def _ffmpeg_supports_hwaccel() -> bool:
     """Return ``True`` if ``ffmpeg`` lists any hardware acceleration methods."""
 
     try:
-        output = subprocess.check_output(
-            [FFMPEG_PATH, "-hwaccels"], stderr=subprocess.STDOUT, timeout=2
-        ).decode()
+        output = subprocess.check_output([FFMPEG_PATH, "-hwaccels"], stderr=subprocess.STDOUT, timeout=2).decode()
         lines = [l.strip() for l in output.splitlines() if l.strip()]
         return len(lines) > 1
     except Exception:
@@ -392,9 +376,7 @@ MAX_CLIP_AGE_MINUTES = int(get_setting("MAX_CLIP_AGE_MINUTES", 5))
 # visible even when the application reports healthy status. When set to
 # ``False`` the icon hides itself if all metrics look nominal to reduce
 # clutter. Set ``True`` to keep it visible at all times.
-HEALTH_STATUS_ALWAYS_VISIBLE = (
-    get_setting("HEALTH_STATUS_ALWAYS_VISIBLE", "False") == "True"
-)
+HEALTH_STATUS_ALWAYS_VISIBLE = get_setting("HEALTH_STATUS_ALWAYS_VISIBLE", "False") == "True"
 
 # Watchdog configuration values. These control how aggressively the
 # watchdog restarts the application when health checks fail.

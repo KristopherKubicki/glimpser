@@ -1,8 +1,9 @@
 import os
 import sys
 import unittest
-from flask import Flask
 from unittest.mock import patch
+
+from flask import Flask
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -20,9 +21,7 @@ class TestDiscoverSubnetsEndpoint(unittest.TestCase):
     def tearDown(self):
         self.login_patch.stop()
 
-    @patch(
-        "app.routes.camera_discovery._local_subnets", return_value=["192.168.0.0/24"]
-    )
+    @patch("app.routes.camera_discovery._local_subnets", return_value=["192.168.0.0/24"])
     def test_returns_subnets(self, mock_subnets):
         resp = self.client.get("/discover/subnets")
         self.assertEqual(resp.status_code, 200)

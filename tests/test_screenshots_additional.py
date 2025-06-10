@@ -1,9 +1,10 @@
-import unittest
 import os
+import shutil
 import sys
 import tempfile
-import shutil
+import unittest
 from unittest.mock import patch
+
 from PIL import Image
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -73,26 +74,10 @@ class TestScreenshotsExtras(unittest.TestCase):
     def test_browser_selection(self):
         url = "http://example.com"
         with patch.object(ss, "is_enhanced", return_value=False):
-            self.assertTrue(
-                ss.should_use_lightweight_browser(
-                    url, None, None, False, False, False, False
-                )
-            )
-            self.assertFalse(
-                ss.should_use_lightweight_browser(
-                    url, None, None, True, False, False, False
-                )
-            )
-            self.assertTrue(
-                ss.should_use_phantom_browser(
-                    url, None, None, False, False, False, False
-                )
-            )
-            self.assertFalse(
-                ss.should_use_phantom_browser(
-                    url, None, None, False, True, False, False
-                )
-            )
+            self.assertTrue(ss.should_use_lightweight_browser(url, None, None, False, False, False, False))
+            self.assertFalse(ss.should_use_lightweight_browser(url, None, None, True, False, False, False))
+            self.assertTrue(ss.should_use_phantom_browser(url, None, None, False, False, False, False))
+            self.assertFalse(ss.should_use_phantom_browser(url, None, None, False, True, False, False))
 
 
 if __name__ == "__main__":

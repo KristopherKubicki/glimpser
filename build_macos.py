@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build a macOS bundle using PyInstaller."""
 import os
+
 import PyInstaller.__main__
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))

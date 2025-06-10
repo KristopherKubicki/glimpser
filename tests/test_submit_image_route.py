@@ -1,11 +1,12 @@
-import os
-import sys
-import shutil
-import unittest
 import io
+import os
+import shutil
+import sys
+import unittest
+from unittest.mock import patch
+
 from flask import Flask
 from PIL import Image
-from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -20,9 +21,7 @@ class TestSubmitImageRoute(unittest.TestCase):
         self.login_patch = patch("app.routes.login_required", lambda x: x)
         self.sc_patch = patch("app.routes.SCREENSHOT_DIRECTORY", self.sshot_dir)
         self.tpl_patch = patch("app.routes.template_manager.get_template")
-        self.update_patch = patch(
-            "app.routes.template_manager.update_last_screenshot_time"
-        )
+        self.update_patch = patch("app.routes.template_manager.update_last_screenshot_time")
         self.ts_patch = patch("app.routes.screenshots.add_timestamp")
         self.login_patch.start()
         self.sc_patch.start()
