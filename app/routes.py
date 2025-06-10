@@ -315,6 +315,10 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
         "file,pipe",
         "-i",
         "pipe:0",
+        "-fflags",
+        "+genpts",
+        "-avoid_negative_ts",
+        "make_zero",
         "-ss",
         f"{start_offset:.3f}",  # trim from start when overlength
         "-t",

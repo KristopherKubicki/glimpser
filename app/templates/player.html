@@ -18,7 +18,7 @@
 		const cameraNameElement = document.getElementById('camera-name');
             if (cameras.length > 0) {
                 const currentCamera = cameras[currentCameraIndex];
-                videoElement.src = `/clip/${currentCamera}`;
+                videoElement.src = `/clip/${currentCamera}?t=${Date.now()}`;
                 videoElement.load();
                 videoElement.playbackRate = 0.25;
                 videoElement.play();
