@@ -14,9 +14,14 @@ function safePlay(el) {
   }
 }
 
-function createMobileCard(name) {
+function createMobileCard(name, template, index) {
   const div = document.createElement("div");
   div.classList.add("templateDiv", "mobile-card");
+  div.dataset.name = name;
+  div.dataset.index = index.toString();
+  div.dataset.last = template.last_screenshot_time || "";
+  div.dataset.next = template.next_screenshot_time || "";
+  div.dataset.error = template.capture_failed ? "1" : "0";
   const link = document.createElement("a");
   link.href = `/templates/${name}`;
   link.textContent = name;
@@ -673,7 +678,7 @@ export async function loadTemplates() {
         if (isIndexPage) {
           let templateDiv;
           if (isMobile()) {
-            templateDiv = createMobileCard(name);
+            templateDiv = createMobileCard(name, template, index);
             templateList.appendChild(templateDiv);
           } else {
             templateDiv = document.createElement("div");
@@ -682,6 +687,12 @@ export async function loadTemplates() {
             templateDiv.style.transform = "translateY(20px)";
             templateDiv.style.transition =
               "opacity 0.5s ease, transform 0.5s ease";
+
+            templateDiv.dataset.name = name;
+            templateDiv.dataset.index = index.toString();
+            templateDiv.dataset.last = template.last_screenshot_time || "";
+            templateDiv.dataset.next = template.next_screenshot_time || "";
+            templateDiv.dataset.error = template.capture_failed ? "1" : "0";
 
             templateDiv.innerHTML = `
               <a href='/templates/${name}'>
@@ -866,24 +877,60 @@ export function setupSorting() {
 export function setupSortMenu() {
   const menu = document.getElementById("sort-date");
   if (!menu) return;
-  menu.addEventListener("change", () => sortCameraTable(menu.value));
+  menu.addEventListener("change", () => sortTemplates(menu.value));
 }
 
-export function sortCameraTable(option) {
+export function sortTemplates(option) {
   const table = document.getElementById("camera-table");
-  if (!table) return;
-  const tbody = table.tBodies[0];
-  const rows = Array.from(tbody.rows);
+  const list = document.getElementById("template-list");
   const [field, direction] = option.split("_");
-  if (!field) {
-    rows.sort((a, b) => parseInt(a.dataset.index) - parseInt(b.dataset.index));
-  } else {
-    rows.sort(
-      (a, b) => new Date(a.dataset[field]) - new Date(b.dataset[field]),
-    );
+
+  if (table) {
+    const tbody = table.tBodies[0];
+    const rows = Array.from(tbody.rows);
+    const getVal = (row) => {
+      if (field === "alpha") return row.textContent.trim().toLowerCase();
+      if (field === "error") return parseInt(row.dataset.error || "0");
+      return row.dataset[field] || "";
+    };
+    rows.sort((a, b) => {
+      if (!field) {
+        return parseInt(a.dataset.index) - parseInt(b.dataset.index);
+      }
+      if (field === "alpha") {
+        return getVal(a).localeCompare(getVal(b));
+      }
+      if (field === "error") {
+        return getVal(a) - getVal(b);
+      }
+      return new Date(getVal(a)) - new Date(getVal(b));
+    });
     if (direction === "desc") rows.reverse();
+    rows.forEach((row) => tbody.appendChild(row));
+    return;
   }
-  rows.forEach((row) => tbody.appendChild(row));
+
+  if (!list) return;
+  const items = Array.from(list.querySelectorAll(".templateDiv"));
+  const getVal = (item) => {
+    if (field === "alpha") return item.dataset.name?.toLowerCase() || "";
+    if (field === "error") return parseInt(item.dataset.error || "0");
+    return item.dataset[field] || "";
+  };
+  items.sort((a, b) => {
+    if (!field) {
+      return parseInt(a.dataset.index) - parseInt(b.dataset.index);
+    }
+    if (field === "alpha") {
+      return getVal(a).localeCompare(getVal(b));
+    }
+    if (field === "error") {
+      return getVal(a) - getVal(b);
+    }
+    return new Date(getVal(a)) - new Date(getVal(b));
+  });
+  if (direction === "desc") items.reverse();
+  items.forEach((item) => list.appendChild(item));
 }
 
 export function setupCaptionsFilter() {
