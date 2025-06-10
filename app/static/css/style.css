@@ -1984,6 +1984,9 @@ details > summary {
   border-collapse: collapse;
   margin-top: 10px;
 }
+.table-container {
+  overflow-x: auto;
+}
 .feed-status th,
 .feed-status td {
   padding: 6px 8px;
