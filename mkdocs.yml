@@ -78,3 +78,6 @@ nav:
       - UI Component Guide: style_guide.md
       - Navigation Logo: navigation_logo.md
       - Governance: governance.md
+      - Rotate Button: rotate_button.md
+      - Size Audit: size_audit.md
+      - Template Edit Preview: edit_template_preview.md
