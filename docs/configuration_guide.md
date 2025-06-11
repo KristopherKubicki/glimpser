@@ -179,6 +179,7 @@ Additional variables control AI behaviour and external tools:
 - When hardware acceleration is enabled and Chrome supports OpenGL, Glimpser
   automatically launches Chrome with `--use-gl=egl` for improved GPU use.
 - `FFMPEG_THREADS` – number of threads ffmpeg uses when encoding (default half the CPU cores)
+- `CRAWLER_STARTUP_SPREAD` – minutes to stagger initial crawler runs at startup (default `10`)
 - `CLIP_MODEL_NAME` – CLIP model used for object filtering (default `openai/clip-vit-base-patch32`)
   Example: `openai/clip-vit-large-patch14`
   This setting is read-only until Advanced Options are enabled.

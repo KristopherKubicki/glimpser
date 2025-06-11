@@ -11,10 +11,12 @@ SETTINGS_TOOLTIPS = {
     "USER_NAME": "Interface login user",
     "MAX_WORKERS": "Concurrent worker threads",
     "LLM_CAPTION_PROMPT": (
-        "System prompt used for image captions. Supports the $datetime token and" " can span multiple lines."
+        "System prompt used for image captions. Supports the $datetime token and"
+        " can span multiple lines."
     ),
     "LLM_SUMMARY_PROMPT": (
-        "System prompt for daily summaries. May be multi-line and also supports" " the $datetime token."
+        "System prompt for daily summaries. May be multi-line and also supports"
+        " the $datetime token."
     ),
     "MAX_RAW_DATA_SIZE": "Raw data threshold",
     "MAX_IMAGE_RETENTION_AGE": "Image retention days",
@@ -26,6 +28,7 @@ SETTINGS_TOOLTIPS = {
     "LIVE_FALLBACK_FPS": "Frame rate for still image streams",
     "LIVE_MAX_FAILURES": "Max retries for live streams",
     "CHYRON_SPEED": "Duration of caption banner in seconds",
+    "CRAWLER_STARTUP_SPREAD": "Minutes to stagger initial crawler runs",
     "EMAIL_ENABLED": "Toggle email notifications",
     "SMS_ENABLED": "Toggle SMS notifications",
     "CAP_ENABLED": "Toggle CAP notifications",
@@ -55,7 +58,9 @@ def _host_choices() -> list[str]:
     try:
         for addrs in psutil.net_if_addrs().values():
             for addr in addrs:
-                if addr.family == socket.AF_INET and not addr.address.startswith("127."):
+                if addr.family == socket.AF_INET and not addr.address.startswith(
+                    "127."
+                ):
                     if addr.address not in choices:
                         choices.append(addr.address)
     except Exception:
@@ -135,6 +140,7 @@ SETTINGS_GROUPS = {
         "WATCHDOG_FAILURE_THRESHOLD",
         "WATCHDOG_RESTART_COOLDOWN",
         "WATCHDOG_MAX_FILE_HANDLES",
+        "CRAWLER_STARTUP_SPREAD",
         "DISCOVERY_AUTOSTART",
         "CLIP_MODEL_NAME",
         "FFMPEG_PATH",

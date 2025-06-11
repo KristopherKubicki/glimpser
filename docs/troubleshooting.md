@@ -49,6 +49,7 @@ This guide addresses common issues that users might encounter while using Glimps
 - Reduce the number of concurrent data sources
 - Increase the refresh interval for less critical sources
 - Check the `MAX_WORKERS` setting and adjust if necessary
+- Increase `CRAWLER_STARTUP_SPREAD` to stagger camera startup more gently
 - Open the _System Status_ tab under Settings to watch CPU and memory usage in real time
 
 ### Problem: Out of memory errors
