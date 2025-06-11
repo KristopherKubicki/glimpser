@@ -2141,7 +2141,7 @@ details > summary {
 }
 
 .metric-bar {
-  width: 8rem;
+  width: 6rem;
   height: 0.6rem;
   vertical-align: middle;
   margin: 0 0.25rem;

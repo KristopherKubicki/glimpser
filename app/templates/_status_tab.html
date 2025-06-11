@@ -80,8 +80,8 @@
   <thead>
     <tr>
       <th class="sortable" data-type="string" title="Camera name">Feed</th>
-      <th class="sortable" data-type="date" title="Most recent screenshot time">Last Image</th>
       <th class="sortable" data-type="date" title="Most recent caption time">Last Caption</th>
+      <th class="sortable" data-type="date" title="Most recent screenshot time">Last Image</th>
       <th class="sortable" data-type="number" title="Total screenshots">Shots</th>
       <th class="sortable" data-type="number" title="Total videos">Videos</th>
       <th class="sortable" data-type="number" title="Disk usage">Storage</th>
@@ -119,20 +119,6 @@
         <a href="{{ url_for('template_details', template_name=feed.name) }}" title="View template details">{{ feed.name }}</a>
       </td>
       <td
-        data-label="Last Image"
-        data-value="{{ feed.last_screenshot_time or '' }}"
-      >
-        {% if feed.last_screenshot_display %}
-        <span
-          class="humanized-time"
-          data-time="{{ feed.last_screenshot_time }}"
-          title="{{ feed.last_screenshot_time }}"
-        >
-          {{ feed.last_screenshot_display }}
-        </span>
-        {% else %} N/A {% endif %}
-      </td>
-      <td
         data-label="Last Caption"
         data-value="{{ feed.last_caption_time or '' }}"
       >
@@ -143,6 +129,20 @@
           title="{{ feed.last_caption_time }}"
         >
           {{ feed.last_caption_display }}
+        </span>
+        {% else %} N/A {% endif %}
+      </td>
+      <td
+        data-label="Last Image"
+        data-value="{{ feed.last_screenshot_time or '' }}"
+      >
+        {% if feed.last_screenshot_display %}
+        <span
+          class="humanized-time"
+          data-time="{{ feed.last_screenshot_time }}"
+          title="{{ feed.last_screenshot_time }}"
+        >
+          {{ feed.last_screenshot_display }}
         </span>
         {% else %} N/A {% endif %}
       </td>

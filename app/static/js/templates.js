@@ -337,17 +337,17 @@ export function timeAgo(dateString) {
   if (diffInSeconds < 0) return "in the future";
 
   const intervals = [
-    { label: "year", seconds: 31536000 },
-    { label: "month", seconds: 2592000 },
-    { label: "day", seconds: 86400 },
-    { label: "hour", seconds: 3600 },
-    { label: "minute", seconds: 60 },
-    { label: "second", seconds: 1 },
+    { label: "year", short: "y", seconds: 31536000 },
+    { label: "month", short: "mo", seconds: 2592000 },
+    { label: "day", short: "d", seconds: 86400 },
+    { label: "hour", short: "h", seconds: 3600 },
+    { label: "minute", short: "m", seconds: 60 },
+    { label: "second", short: "s", seconds: 1 },
   ];
 
-  for (const { label, seconds } of intervals) {
+  for (const { label, short, seconds } of intervals) {
     const count = Math.floor(diffInSeconds / seconds);
-    if (count >= 1) return `${count} ${label}${count > 1 ? "s" : ""} ago`;
+    if (count >= 1) return `${count}${short} ago`;
   }
   return "just now";
 }
