@@ -6,6 +6,7 @@ The main template view scales thumbnails with a width slider on desktop screens 
 
 The header navigation also uses smaller padding so it stays out of the way on both mobile and desktop.
 The main content now has less top padding so on‑page controls like the search bar sit closer to the navigation.
+The template control panel now compresses on phones with Search, Play All and Sort in one row while the status legend hides.
 The header navigation also uses smaller padding so it stays out of the way on both mobile and desktop. The header now sticks to the top of the screen as you scroll so navigation is always accessible.
 The footer now condenses on small screens by hiding the copyright notice and build information, leaving only the essential navigation links.
 The header navigation collapses into a stacked menu on small screens. Links grow larger with extra padding so they're easier to tap. The clock, scrolling caption chyron and temporary flash messages are all hidden on phones to maximize space.
