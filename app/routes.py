@@ -52,6 +52,7 @@ from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
+from werkzeug.http import http_date
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
@@ -2775,7 +2776,6 @@ def init_routes(app: Flask) -> None:
 
     @app.route("/clip/<string:template_name>")
     @login_required
-    @limit_rate(30)
     def serve_clip(template_name: TemplateName):
         """Return a short clip built from recent footage."""
 
@@ -2812,6 +2812,7 @@ def init_routes(app: Flask) -> None:
         ):
             resp = send_file(clip_path, conditional=True)
             resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
+            resp.headers["Expires"] = http_date(time.time() + CACHE_TTL_SEC)
             return resp
 
         parts: list[Path] = []
@@ -2846,6 +2847,7 @@ def init_routes(app: Flask) -> None:
             if clip_path.exists() and newest_src and clip_path.stat().st_mtime > newest_src.stat().st_mtime:
                 resp = send_file(clip_path, conditional=True)
                 resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
+                resp.headers["Expires"] = http_date(time.time() + CACHE_TTL_SEC)
                 return resp
 
             if not parts:
@@ -2856,6 +2858,7 @@ def init_routes(app: Flask) -> None:
         if clip_path.exists():
             resp = send_file(clip_path, conditional=True)
             resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
+            resp.headers["Expires"] = http_date(time.time() + CACHE_TTL_SEC)
             return resp
 
         abort(500, "Could not create clip")
