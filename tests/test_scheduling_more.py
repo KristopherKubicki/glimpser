@@ -55,10 +55,11 @@ class TestRunWithTimeout(unittest.TestCase):
             run_with_timeout(slow, args=(d,), timeout=0.2)
             self.assertIsNone(d.get("done"))
 
+    @patch("app.utils.scheduling.psutil.cpu_percent", return_value=10)
     @patch("app.utils.scheduling.is_system_online", return_value=True)
     @patch("app.utils.scheduling.cas_error")
     @patch("app.utils.scheduling.mark_offline")
-    def test_timeout_marks_offline(self, mock_offline, mock_cas_error, _online):
+    def test_timeout_marks_offline(self, mock_offline, mock_cas_error, _online, _cpu):
         def slow(name, template):
             time.sleep(1)
 

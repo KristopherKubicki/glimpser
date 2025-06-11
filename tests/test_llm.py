@@ -4,6 +4,7 @@ import datetime
 import json
 import os
 import sys
+import time
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -27,9 +28,10 @@ class TestLLM(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
+        start = time.time()
         result = summarize("Test prompt")
 
-        ts = int(datetime.datetime.now().timestamp())
+        ts = int(start + 0.5)
         expected_result = json.dumps({ts: "Mock summary", ts + 5: "With multiple lines"})
         self.assertEqual(json.loads(result), json.loads(expected_result))
 
@@ -80,9 +82,10 @@ class TestLLM(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
+        start = time.time()
         result = summarize("Test prompt", history="Previous conversation")
 
-        ts = int(datetime.datetime.now().timestamp())
+        ts = int(start + 0.5)
         expected_result = json.dumps({ts: "Mock summary with history"})
         self.assertEqual(json.loads(result), json.loads(expected_result))
 
