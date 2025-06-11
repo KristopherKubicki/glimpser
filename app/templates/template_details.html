@@ -165,10 +165,11 @@ template_form %} {% block content %}
   <summary>Edit Template</summary>
   <div id="edit-template">
     <h3>Edit Template Details</h3>
-    {{ template_form('edit-template-form', '/update_template/' ~ template_name,
+    {{ template_form( 'edit-template-form', '/update_template/' ~ template_name,
     template=template_details, preview_src='/stream.mjpg?camera=' ~
     template_name, preview_id='mini-live-preview', include_name=False,
-    submit_label='Update Template') }}
+    submit_label='Update Template', object_tokens=object_tokens,
+    clip_model=clip_model ) }}
   </div>
   <div id="delete-template" class="form-actions">
     <button
@@ -574,10 +575,10 @@ template_form %} {% block content %}
       title="Close dialog"
       >&times;</span
     >
-    {{ template_form('edit-template-form', '/update_template/' ~ template_name,
+    {{ template_form( 'edit-template-form', '/update_template/' ~ template_name,
     template=template_details, preview_src='/stream.mjpg?camera=' ~
     template_name, preview_id='mini-live-preview', include_name=False,
-    submit_label='Save') }}
+    submit_label='Save', object_tokens=object_tokens, clip_model=clip_model ) }}
   </div>
 </div>
 {% endblock %}

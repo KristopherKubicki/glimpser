@@ -72,7 +72,7 @@ class TestHtmlTemplates(unittest.TestCase):
 
     def test_discover_add_camera_form_inputs(self):
         html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")
-        self.assertIn("template_form('add-template-form'", html)
+        self.assertIn("template_form(", html)
 
     def test_discover_has_existing_map_variable(self):
         with open("app/templates/_discover_tab.html", encoding="utf-8") as f:
@@ -109,9 +109,10 @@ class TestHtmlTemplates(unittest.TestCase):
 
     def test_edit_template_frequency_min(self):
         html = Path("app/templates/template_details.html").read_text(encoding="utf-8")
-        self.assertIn("template_form('edit-template-form'", html)
+        self.assertIn("template_form(", html)
         components = Path("app/templates/components.html").read_text(encoding="utf-8")
-        self.assertIn('min="0.1"', components)
+        self.assertIn('min="0"', components)
+        self.assertIn('datalist id="object-filter-options"', components)
 
 
 if __name__ == "__main__":

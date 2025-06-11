@@ -1115,6 +1115,10 @@ a {
   align-items: center;
 }
 
+.short-input {
+  width: 6rem;
+}
+
 .checkbox-row {
   display: flex;
   align-items: center;
@@ -1197,7 +1201,7 @@ body.advanced-enabled .settings-table input[data-locked] {
 }
 
 .xpath-input-container input {
-  width: 70%;
+  width: 60%;
 }
 
 .xpath-input-container button {
