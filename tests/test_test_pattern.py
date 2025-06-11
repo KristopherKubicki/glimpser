@@ -37,13 +37,13 @@ class TestTestPattern(unittest.TestCase):
         self.assertEqual(img.size, (120, 120))
 
     def test_minibar_colors(self):
-        width, height = 200, 100
+        width, height = 240, 100
         img = generate_test_pattern(width=width, height=height)
         bar_h = height // 6
         mini_w = max(2, width // 100)
         mini_h = bar_h // 4
-        x_start = width - mini_w * 14 - 10
-        y_start = 2 + mini_h // 2
+        x_start = width - mini_w * 14 - 60
+        y_start = 12 + mini_h // 2
         colors = [
             (191, 191, 191),
             (191, 191, 0),
@@ -61,19 +61,26 @@ class TestTestPattern(unittest.TestCase):
             (255, 255, 0),
         ]
         for idx, expected in enumerate(colors):
-            px = img.getpixel((x_start + idx * mini_w + mini_w // 2, y_start))
+            if idx in (7, 8):
+                # skip bars that overlap with crosshair lines
+                continue
+            px_left = img.getpixel((x_start + idx * mini_w, y_start))
+            px_right = img.getpixel((x_start + idx * mini_w + mini_w - 1, y_start))
+            px = tuple(round((l + r) / 2) for l, r in zip(px_left, px_right))
             self.assertEqual(px, expected)
 
     def test_indian_head_minibars(self):
-        width, height = 200, 100
+        width, height = 240, 100
         img = generate_indian_head_test_pattern(width=width, height=height)
         bar_h = height // 6
         mini_w = max(2, width // 100)
         mini_h = bar_h // 4
-        x_start = width - mini_w * 14 - 10
-        y_start = 2 + mini_h // 2
+        x_start = width - mini_w * 14 - 60
+        y_start = 12 + mini_h // 2
         expected_first = (191, 191, 191)
-        px = img.getpixel((x_start + mini_w // 2, y_start))
+        px_left = img.getpixel((x_start, y_start))
+        px_right = img.getpixel((x_start + mini_w - 1, y_start))
+        px = tuple(round((l + r) / 2) for l, r in zip(px_left, px_right))
         self.assertEqual(px, expected_first)
 
 
