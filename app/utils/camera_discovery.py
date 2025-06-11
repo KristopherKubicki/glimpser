@@ -989,6 +989,46 @@ def discover_cameras(progress_callback=None, subnets=None):
         }
     )
 
+    cameras.append(
+        {
+            "ip": "127.0.0.1",
+            "protocol": "http",
+            "port": PORT,
+            "info": {"name": "Test Pattern"},
+            "url": f"http://127.0.0.1:{PORT}/test_pattern.mjpg",
+        }
+    )
+
+    cameras.append(
+        {
+            "ip": "127.0.0.1",
+            "protocol": "http",
+            "port": PORT,
+            "info": {"name": "All Cameras"},
+            "url": f"http://127.0.0.1:{PORT}/stream.mjpg?group=all",
+        }
+    )
+
+    cameras.append(
+        {
+            "ip": "127.0.0.1",
+            "protocol": "http",
+            "port": PORT,
+            "info": {"name": "All Motion"},
+            "url": f"http://127.0.0.1:{PORT}/motion.mjpg?group=all",
+        }
+    )
+
+    cameras.append(
+        {
+            "ip": "127.0.0.1",
+            "protocol": "http",
+            "port": PORT,
+            "info": {"name": "All Captions"},
+            "url": f"http://127.0.0.1:{PORT}/caption.mjpg?group=all",
+        }
+    )
+
     # remove duplicates but keep distinct URLs
     unique = {}
     for cam in cameras:
