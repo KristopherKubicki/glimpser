@@ -394,6 +394,10 @@ CRAWLER_STARTUP_SPREAD = int(get_setting("CRAWLER_STARTUP_SPREAD", 10))
 
 MAX_CLIP_AGE_MINUTES = int(get_setting("MAX_CLIP_AGE_MINUTES", 5))
 
+# Skip clip pre-rendering when the number of cameras exceeds this limit.
+# Set to 0 to always refresh clips regardless of count.
+CLIP_REFRESH_MAX_CAMERAS = int(get_setting("CLIP_REFRESH_MAX_CAMERAS", 10))
+
 # Whether the System Performance icon in the navigation bar should remain
 # visible even when the application reports healthy status. When set to
 # ``False`` the icon hides itself if all metrics look nominal to reduce
