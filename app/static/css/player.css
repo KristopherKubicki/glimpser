@@ -42,6 +42,11 @@
     transform 0.3s;
   max-width: 100vw;
 }
+.video-controls.fade-out {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px);
+}
 .video-container:hover .video-controls {
   opacity: 1;
   pointer-events: auto;

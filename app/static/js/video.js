@@ -304,6 +304,31 @@ export function setupVideoControls() {
         break;
     }
   });
+
+  const container = video.closest(".video-container");
+  const controls = container?.querySelector(".video-controls");
+  let fadeTimeout;
+  let autoplayTimeout;
+
+  const showControls = () => {
+    if (controls) controls.classList.remove("fade-out");
+    clearTimeout(fadeTimeout);
+    clearTimeout(autoplayTimeout);
+    fadeTimeout = setTimeout(() => {
+      if (controls) controls.classList.add("fade-out");
+    }, 3000);
+    autoplayTimeout = setTimeout(() => {
+      video.playbackRate = 0.5;
+      if (video.paused) safePlay(video);
+    }, 60000);
+  };
+
+  if (container) {
+    ["mousemove", "touchstart", "click"].forEach((evt) =>
+      container.addEventListener(evt, showControls),
+    );
+    showControls();
+  }
 }
 
 export function setupStatusPageVideoHover() {
