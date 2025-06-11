@@ -7,12 +7,27 @@ export function initTooltips() {
     const moveTooltip = (e) => {
       const offset = 10;
       const tooltipWidth = tooltip.offsetWidth;
-      let left = e.pageX + offset;
+      const tooltipHeight = tooltip.offsetHeight;
+
+      const x = e.pageX ?? e.clientX;
+      const y = e.pageY ?? e.clientY;
+
+      let left = x + offset;
       if (left + tooltipWidth > window.innerWidth) {
-        left = e.pageX - tooltipWidth - offset;
+        left = x - tooltipWidth - offset;
       }
+
+      let top = y + offset;
+      const viewportBottom = window.scrollY + window.innerHeight;
+      if (top + tooltipHeight > viewportBottom) {
+        top = y - tooltipHeight - offset;
+      }
+      if (top < window.scrollY) {
+        top = window.scrollY;
+      }
+
       tooltip.style.left = `${left}px`;
-      tooltip.style.top = `${e.pageY + offset}px`;
+      tooltip.style.top = `${top}px`;
     };
 
     const showTooltip = (e) => {
