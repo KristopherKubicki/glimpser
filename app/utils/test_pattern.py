@@ -152,10 +152,12 @@ def generate_test_pattern(
     mini_w = max(2, width // 100)
     mini_h = bar_h // 4
     font_tiny = load_font(8)
-    x_start = width - mini_w * (len(mini_709) + len(mini_2020)) - 10 - 50
+    x_start = width - mini_w * (len(mini_709) + len(mini_2020)) - 10 - 100
     y_start = 2 + 10
     for color, label in mini_709 + mini_2020:
-        draw.rectangle([x_start, y_start, x_start + mini_w, y_start + mini_h], fill=color)
+        draw.rectangle(
+            [x_start, y_start, x_start + mini_w, y_start + mini_h], fill=color
+        )
         text_color = "white" if sum(color) < 382 else "black"
         draw.text((x_start + 1, y_start + 1), label, fill=text_color, font=font_tiny)
         x_start += mini_w
@@ -227,12 +229,16 @@ def generate_test_pattern(
         [width // 2 - tw // 2 - 4, bar_h + 4, width // 2 + tw // 2 + 4, bar_h + th + 8],
         fill=(0, 0, 0),
     )
-    draw.text((width // 2 - tw // 2, bar_h + 6), timestamp, fill="white", font=font_large)
+    draw.text(
+        (width // 2 - tw // 2, bar_h + 6), timestamp, fill="white", font=font_large
+    )
 
     mystic = "Seek the unseen"
     mb = draw.textbbox((0, 0), mystic, font=font_small)
     mw, mh = mb[2] - mb[0], mb[3] - mb[1]
-    draw.text((width // 2 - mw // 2, bar_h + th + 14), mystic, fill="white", font=font_small)
+    draw.text(
+        (width // 2 - mw // 2, bar_h + th + 14), mystic, fill="white", font=font_small
+    )
 
     # stable reference patch for tests
     patch_x = width // 2 + 6
@@ -309,10 +315,12 @@ def generate_indian_head_test_pattern(
     mini_w = max(2, width // 100)
     mini_h = bar_h // 4
     font_tiny = load_font(8)
-    x_start = width - mini_w * (len(mini_709) + len(mini_2020)) - 10 - 50
+    x_start = width - mini_w * (len(mini_709) + len(mini_2020)) - 10 - 100
     y_start = 2 + 10
     for color, label in mini_709 + mini_2020:
-        draw.rectangle([x_start, y_start, x_start + mini_w, y_start + mini_h], fill=color)
+        draw.rectangle(
+            [x_start, y_start, x_start + mini_w, y_start + mini_h], fill=color
+        )
         text_color = "white" if sum(color) < 382 else "black"
         draw.text((x_start + 1, y_start + 1), label, fill=text_color, font=font_tiny)
         x_start += mini_w
@@ -332,41 +340,39 @@ def generate_indian_head_test_pattern(
 
     font = load_font(int(height * 0.05))
 
-    # Display the current time in several numeral systems near the right center
+    # Baseline-aligned HH:MM:SS clock near the right center
     timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-    font_small = load_font(int(height * 0.04))
     h, m, s = timestamp.split(":")
-    lines = [
-        f"{h}:{m}:{s}",
-        f"{_to_braille(h)}:{_to_braille(m)}:{_to_braille(s)}",
-        f"{_to_roman(int(h))}:{_to_roman(int(m))}:{_to_roman(int(s))}",
-        f"{int(h):05b}:{int(m):06b}:{int(s):06b}",
-    ]
 
-    hours = [h, _to_braille(h), _to_roman(int(h)), f"{int(h):05b}"]
-    mins = [m, _to_braille(m), _to_roman(int(m)), f"{int(m):06b}"]
-    secs = [s, _to_braille(s), _to_roman(int(s)), f"{int(s):06b}"]
-    parts = list(zip(hours, mins, secs))
+    font_h = load_font(int(height * 0.09))
+    font_m = load_font(int(height * 0.07))
+    font_s = load_font(int(height * 0.06))
+    font_colon = font_m
 
-    colon_w = draw.textlength(":", font=font_small)
-    hours_w = [draw.textlength(text, font=font_small) for text in hours]
-    mins_w = [draw.textlength(text, font=font_small) for text in mins]
-    secs_w = [draw.textlength(text, font=font_small) for text in secs]
-    max_min_w = max(mins_w)
-    max_sec_w = max(secs_w)
-    colon_x2 = width - 10 - max_sec_w
-    colon_x1 = colon_x2 - colon_w - max_min_w
+    margin_right = 60
+    asc_h, _ = font_h.getmetrics()
+    asc_m, _ = font_m.getmetrics()
+    asc_s, _ = font_s.getmetrics()
+    asc_c, _ = font_colon.getmetrics()
 
-    metrics = [draw.textbbox((0, 0), line, font=font_small) for line in lines]
-    heights = [m[3] - m[1] for m in metrics]
-    spacing = 8
-    total_height = sum(heights) + spacing * (len(lines) - 1)
-    y = height // 2 - total_height // 2
-    for (h_part, m_part, s_part), hgt, hw in zip(parts, heights, hours_w):
-        line = f"{h_part}:{m_part}:{s_part}"
-        x = colon_x1 - hw
-        draw.text((x, y), line, fill="white", font=font_small)
-        y += hgt + spacing
+    baseline = height // 2
+
+    w_h = draw.textlength(h, font=font_h)
+    w_m = draw.textlength(m, font=font_m)
+    w_s = draw.textlength(s, font=font_s)
+    w_colon = draw.textlength(":", font=font_colon)
+
+    x_s = width - margin_right - w_s
+    x_c2 = x_s - w_colon
+    x_m = x_c2 - w_m
+    x_c1 = x_m - w_colon
+    x_h = x_c1 - w_h
+
+    draw.text((x_h, baseline - asc_h), h, fill="white", font=font_h)
+    draw.text((x_c1, baseline - asc_c), ":", fill="white", font=font_colon)
+    draw.text((x_m, baseline - asc_m), m, fill="white", font=font_m)
+    draw.text((x_c2, baseline - asc_c), ":", fill="white", font=font_colon)
+    draw.text((x_s, baseline - asc_s), s, fill="white", font=font_s)
 
     # Optional spinner overlay for fun
     if spinner:
@@ -422,14 +428,18 @@ def generate_indian_head_test_pattern(
     for freq in range(1, 11):
         for x in range(20):
             col = 255 if (x // freq) % 2 == 0 else 0
-            draw.line((wedge_x + x, wedge_y, wedge_x + x, wedge_y + 20), fill=(col, col, col))
+            draw.line(
+                (wedge_x + x, wedge_y, wedge_x + x, wedge_y + 20), fill=(col, col, col)
+            )
         wedge_x += 22
     wedge_x = 10
     wedge_y += 24
     for freq in range(1, 11):
         for y in range(20):
             col = 255 if (y // freq) % 2 == 0 else 0
-            draw.line((wedge_x, wedge_y + y, wedge_x + 20, wedge_y + y), fill=(col, col, col))
+            draw.line(
+                (wedge_x, wedge_y + y, wedge_x + 20, wedge_y + y), fill=(col, col, col)
+            )
         wedge_x += 22
 
     target_y = ramp_y - 40
@@ -459,7 +469,9 @@ def generate_geometric_test_pattern(
     """Legacy wrapper that now returns the unified test pattern."""
 
     # `tiles` is ignored but kept for backward compatibility
-    return generate_indian_head_test_pattern(width=width, height=height, spinner=spinner)
+    return generate_indian_head_test_pattern(
+        width=width, height=height, spinner=spinner
+    )
 
 
 def save_test_pattern(path: str, **kwargs) -> None:

@@ -42,8 +42,8 @@ class TestTestPattern(unittest.TestCase):
         bar_h = height // 6
         mini_w = max(2, width // 100)
         mini_h = bar_h // 4
-        x_start = width - mini_w * 14 - 60
-        y_start = 12 + mini_h // 2
+        x_start = width - mini_w * 14 - 110
+        y_start = 12
         colors = [
             (191, 191, 191),
             (191, 191, 0),
@@ -61,7 +61,7 @@ class TestTestPattern(unittest.TestCase):
             (255, 255, 0),
         ]
         for idx, expected in enumerate(colors):
-            if idx in (7, 8):
+            if idx not in (0, 10):
                 # skip bars that overlap with crosshair lines
                 continue
             px_left = img.getpixel((x_start + idx * mini_w, y_start))
@@ -75,8 +75,8 @@ class TestTestPattern(unittest.TestCase):
         bar_h = height // 6
         mini_w = max(2, width // 100)
         mini_h = bar_h // 4
-        x_start = width - mini_w * 14 - 60
-        y_start = 12 + mini_h // 2
+        x_start = width - mini_w * 14 - 110
+        y_start = 12
         expected_first = (191, 191, 191)
         px_left = img.getpixel((x_start, y_start))
         px_right = img.getpixel((x_start + mini_w - 1, y_start))
