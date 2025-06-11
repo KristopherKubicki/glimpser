@@ -11,3 +11,4 @@ The test pattern includes calibration checks for panel accuracy and HDR tone map
 - **HDR specular targets** at 400, 1 000 and 4 000 nit simulate tone mapping.
 - **Mid‑grey uniformity patch** reveals panel mura without blinding brightness.
 - **Skin‑tone chip** around CIE ab ≈ (20, 15) confirms natural faces.
+- **Synthwave sunrise** with a small horizon line and trees for visual flair.
