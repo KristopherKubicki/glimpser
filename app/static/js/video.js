@@ -75,6 +75,7 @@ function safePlay(el) {
 export function initVideoControls() {
   document.addEventListener("DOMContentLoaded", () => {
     setupStatusPageVideoHover();
+    setupCaptionsPageVideoHover();
     setupVideoControls();
 
     const playAllButton = document.getElementById("play-all-button");
@@ -357,6 +358,74 @@ export function setupStatusPageVideoHover() {
         }, 1000); // restore screenshot a bit after leaving
       });
     }
+  });
+}
+
+export function setupCaptionsPageVideoHover() {
+  const containers = document.querySelectorAll(
+    ".captions-page .video-container",
+  );
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        const vid = entry.target;
+        if (entry.isIntersecting) {
+          enqueueClip(vid);
+        }
+      });
+    },
+    { threshold: 0.5 },
+  );
+
+  containers.forEach((container) => {
+    const video = container.querySelector("video.hover-video");
+    if (!video) return;
+    observer.observe(video);
+    let targetTime = 0;
+    let rafId;
+
+    const step = () => {
+      if (!Number.isNaN(targetTime)) {
+        video.currentTime += (targetTime - video.currentTime) * 0.4;
+      }
+      rafId = requestAnimationFrame(step);
+    };
+
+    const scrub = (e) => {
+      const rect = container.getBoundingClientRect();
+      const ratio = (e.clientX - rect.left) / rect.width;
+      const clamped = Math.max(0, Math.min(1, ratio));
+      if (!Number.isNaN(video.duration)) {
+        targetTime = video.duration * clamped;
+        updateScrubTooltip(targetTime, e);
+      }
+    };
+
+    container.addEventListener("mouseenter", (e) => {
+      createScrubTooltip();
+      if (video.readyState === 0) {
+        video.load();
+        const onLoad = () => {
+          scrub(e);
+          video.removeEventListener("loadedmetadata", onLoad);
+        };
+        video.addEventListener("loadedmetadata", onLoad);
+      } else {
+        scrub(e);
+      }
+      video.pause();
+      if (!rafId) rafId = requestAnimationFrame(step);
+    });
+
+    container.addEventListener("mousemove", scrub);
+
+    container.addEventListener("mouseleave", () => {
+      hideScrubTooltip();
+      cancelAnimationFrame(rafId);
+      rafId = null;
+      video.pause();
+      video.currentTime = 0;
+    });
   });
 }
 
