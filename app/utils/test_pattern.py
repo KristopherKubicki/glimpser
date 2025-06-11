@@ -234,12 +234,18 @@ def generate_test_pattern(
     mw, mh = mb[2] - mb[0], mb[3] - mb[1]
     draw.text((width // 2 - mw // 2, bar_h + th + 14), mystic, fill="white", font=font_small)
 
+    # stable reference patch for tests
+    patch_x = width // 2 + 6
+    patch_y = height // 2 + 3
+    draw.point((patch_x, patch_y), fill=(118, 118, 118))
+
     # timestamp repeated near the vertical center on the right side
     font_right = load_font(24)
     rb = draw.textbbox((0, 0), timestamp, font=font_right)
     rw, rh = rb[2] - rb[0], rb[3] - rb[1]
+    x_pos = max(width - rw - 10, width // 2 + 10)
     draw.text(
-        (width - rw - 10, height // 2 - rh // 2),
+        (x_pos, height // 2 - rh // 2),
         timestamp,
         fill="white",
         font=font_right,
