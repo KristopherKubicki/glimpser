@@ -110,6 +110,15 @@ class TestNetworkTestingUtils(unittest.TestCase):
         self.assertFalse(result)
         self.assertEqual(status, 800)
 
+    def test_network_idle_condition_skips_bad_logs(self):
+        bad = {"message": "Network.response not-json"}
+        driver = DummyDriver(performance_logs=[[bad]])
+        gen = self._time_gen(step=0.2)
+        with patch("time.time", side_effect=gen), patch("time.sleep"):
+            result, status = network_idle_condition(driver, "http://ex", timeout=0.5, idle_time=0)
+        self.assertTrue(result)
+        self.assertEqual(status, 800)
+
     def test_check_network_errors_no_error(self):
         driver = DummyDriver(browser_logs=[[{"level": "INFO", "message": "ok"}]])
         gen = self._time_gen()

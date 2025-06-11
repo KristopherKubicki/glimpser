@@ -27,7 +27,11 @@ def network_idle_condition(driver, url, timeout=30, idle_time=0.25, stealth=Fals
         logs = driver.get_log("performance")
         events = [log for log in logs if "Network.response" in log["message"] or "Network.request" in log["message"]]
         for gevent in events:
-            levent = json.loads(gevent.get("message"))
+            try:
+                levent = json.loads(gevent.get("message"))
+            except json.JSONDecodeError:
+                # Skip malformed log entries instead of raising an exception
+                continue
             lurl = levent.get("message", {}).get("params", {}).get("response", {}).get("url")
             if lurl == gurl:
                 lstatus = levent.get("message", {}).get("params", {}).get("response", {}).get("status")
