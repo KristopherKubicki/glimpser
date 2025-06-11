@@ -3,6 +3,8 @@
 .video-container {
   max-width: 100vw;
   width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
   max-height: 92vh;
   position: relative;
   /* Hide scroll bars for a cleaner live view */
@@ -10,8 +12,14 @@
 }
 
 .video-container.full-height {
-  height: 92vh;
+  height: auto;
   max-height: 92vh;
+}
+
+@media (min-width: 768px) {
+  .video-container.full-height {
+    height: 92vh;
+  }
 }
 #live-video,
 #live-image {
