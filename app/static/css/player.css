@@ -11,6 +11,32 @@
   overflow: hidden;
 }
 
+.clip-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0.25rem 0.5rem;
+  font-size: 1.5rem;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.4);
+  border: none;
+  cursor: pointer;
+  z-index: 5;
+}
+
+.clip-nav.prev {
+  left: 0.5rem;
+}
+
+.clip-nav.next {
+  right: 0.5rem;
+}
+
+.clip-nav:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .video-container.full-height {
   height: auto;
   max-height: 92vh;
