@@ -28,6 +28,7 @@ from transformers import CLIPModel, CLIPProcessor
 from app.config import (
     AUTO_UPDATE_BRANCH,
     CLIP_MODEL_NAME,
+    CLIP_REFRESH_MAX_CAMERAS,
     CRAWLER_STARTUP_SPREAD,
     DEBUG,
     FFMPEG_HWACCEL,
@@ -1526,11 +1527,20 @@ def schedule_auto_update() -> None:
 
 def refresh_clips() -> None:
     """Pre-generate short clips for each camera."""
+    cameras = [
+        name for name in os.listdir(VIDEO_DIRECTORY) if validate_template_name(name)
+    ]
+
+    if CLIP_REFRESH_MAX_CAMERAS and len(cameras) > CLIP_REFRESH_MAX_CAMERAS:
+        logging.info(
+            "Skipping clip refresh for %d cameras (limit %d)",
+            len(cameras),
+            CLIP_REFRESH_MAX_CAMERAS,
+        )
+        return
 
     base_url = f"http://127.0.0.1:{PORT}"
-    for camera_name in os.listdir(VIDEO_DIRECTORY):
-        if not validate_template_name(camera_name):
-            continue
+    for camera_name in cameras:
         try:
             requests.get(f"{base_url}/clip/{camera_name}", timeout=5)
         except Exception:

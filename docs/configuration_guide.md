@@ -75,6 +75,8 @@ user table in sync.
 - `SCREENSHOT_DIRECTORY` – directory for raw screenshots (default `data/screenshots/`)
 - `VIDEO_DIRECTORY` – directory for recorded videos (default `data/video/`)
 - `CLIPS_DIRECTORY` – directory used to cache short clips (default `data/clips/`)
+- `CLIP_REFRESH_MAX_CAMERAS` – skip clip pre-rendering when more than this many
+  cameras exist (default `10`, use `0` to disable the check)
 - `SUMMARIES_DIRECTORY` – **deprecated**; summaries are now stored in the database.
 
   Older deployments may still reference this path but it is no longer used.
