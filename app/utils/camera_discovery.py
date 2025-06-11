@@ -53,7 +53,11 @@ def _load_local_ouis() -> dict[str, str]:
     return vendors
 
 
-OUI_MAP.update(_load_local_ouis())
+# Merge local OUI data without clobbering built‑in mappings. Some
+# distributions ship different vendor names for the same prefix which can
+# break unit tests expecting the bundled values.
+for _prefix, _vendor in _load_local_ouis().items():
+    OUI_MAP.setdefault(_prefix, _vendor)
 
 # Ports checked for additional metadata after discovery. The list focuses on
 # common services exposed by cameras and network appliances. New ports can be
