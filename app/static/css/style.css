@@ -986,7 +986,8 @@ a {
 /* Adjust padding and margin for better spacing */
 .video-container {
   padding: 2px; /* Space around the preview */
-  height: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -1944,6 +1945,21 @@ details > summary {
 
 .edit-template-container {
   display: flow-root;
+}
+
+@media (max-width: 768px) {
+  .edit-template-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .edit-template-preview,
+  .thumbnail-preview {
+    float: none;
+    margin: 0 0 1rem;
+    width: 100%;
+    max-width: 320px;
+  }
 }
 
 .edit-template-preview {
