@@ -87,6 +87,28 @@ class TestClipRoute(unittest.TestCase):
         mock_send.assert_called_with(expected, conditional=True)
         mock_blank.assert_called_once()
 
+    @patch("app.routes.scheduling.get_system_metrics")
+    def test_clip_busy_returns_last_video(self, mock_metrics):
+        mock_metrics.return_value = {
+            "cpu_usage": config.WATCHDOG_CPU_THRESHOLD + 5,
+            "memory_usage": 10,
+            "thread_count": 200,
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            camera_path = os.path.join(tmpdir, "cam1")
+            os.makedirs(camera_path)
+            final = os.path.join(camera_path, "final_1.mp4")
+            open(final, "w").close()
+            with (
+                patch("app.routes.VIDEO_DIRECTORY", tmpdir),
+                patch("app.routes.CLIPS_DIRECTORY", tmpdir),
+                patch("app.routes.send_file") as mock_send,
+            ):
+                resp = self.client.get("/clip/cam1")
+
+        self.assertEqual(resp.status_code, 200)
+        mock_send.assert_called_with(final)
+
 
 if __name__ == "__main__":
     unittest.main()

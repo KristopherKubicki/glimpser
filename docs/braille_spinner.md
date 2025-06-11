@@ -6,3 +6,8 @@ This keeps pages responsive and provides visual feedback that higher quality
 footage is on the way. The template details player now performs the same
 preload-and-swap so you begin watching instantly while the HD clip downloads in
 the background.
+
+When system metrics exceed safe thresholds the `/clip` endpoint now falls
+back to `/last_video` immediately. The response includes an
+`X-Degraded-Service: busy` header and the spinner switches to a dotted
+pattern to indicate reduced quality.

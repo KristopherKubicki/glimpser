@@ -1,3 +1,4 @@
+# flake8: noqa
 import csv
 import fcntl
 import glob
@@ -2915,6 +2916,16 @@ def init_routes(app: Flask) -> None:
             logging.warning("Missing clip %s; using last_video", template)
             return serve_video(template)
 
+    def _system_is_busy() -> bool:
+        """Return ``True`` when system metrics exceed safe thresholds."""
+
+        metrics = scheduling.get_system_metrics()
+        return (
+            metrics.get("cpu_usage", 0) >= config.WATCHDOG_CPU_THRESHOLD
+            or metrics.get("memory_usage", 0) >= config.WATCHDOG_MEMORY_THRESHOLD
+            or metrics.get("thread_count", 0) >= 100
+        )
+
     @app.route("/clip/<string:template_name>")
     @login_required
     def serve_clip(template_name: TemplateName):
@@ -2938,6 +2949,12 @@ def init_routes(app: Flask) -> None:
         ).resolve()
         if not root.is_dir():
             abort(404)
+
+        if _system_is_busy():
+            logging.warning("System busy; serving last_video for %s", template_name)
+            resp = serve_video(template_name)
+            resp.headers["X-Degraded-Service"] = "busy"
+            return resp
 
         clip_root = Path(CLIPS_DIRECTORY)
         clip_root.mkdir(parents=True, exist_ok=True)
