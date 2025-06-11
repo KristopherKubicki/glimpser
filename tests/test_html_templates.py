@@ -123,6 +123,10 @@ class TestHtmlTemplates(unittest.TestCase):
         components = Path("app/templates/components.html").read_text(encoding="utf-8")
         self.assertIn('<select id="groups"', components)
 
+    def test_template_details_has_spinner(self):
+        html = Path("app/templates/template_details.html").read_text(encoding="utf-8")
+        self.assertIn('class="loading-spinner"', html)
+
 
 if __name__ == "__main__":
     unittest.main()

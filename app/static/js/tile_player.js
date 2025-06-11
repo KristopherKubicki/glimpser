@@ -1,3 +1,5 @@
+import { showBounce } from "./video.js";
+
 export function initTilePlayer() {
   const video = document.getElementById("live-video");
   if (!video) return;
@@ -17,7 +19,10 @@ export function initTilePlayer() {
     try {
       const res = await fetch(url, { signal: abortCtl.signal });
       clearTimeout(timer);
-      if (!res.ok) return;
+      if (!res.ok) {
+        showBounce(video);
+        return;
+      }
       const blob = await res.blob();
       const objUrl = URL.createObjectURL(blob);
       const pos = video.currentTime;
@@ -31,7 +36,7 @@ export function initTilePlayer() {
       if (source) source.src = objUrl;
       video.load();
     } catch (_) {
-      /* ignore */
+      showBounce(video);
     }
   }
 

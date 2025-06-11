@@ -10,10 +10,12 @@ document.body.innerHTML = `
 `;
 
 let enqueueClip;
+let showBounce;
 
 beforeAll(async () => {
   const mod = await import("../../app/static/js/video.js");
   enqueueClip = mod.enqueueClip;
+  showBounce = mod.showBounce;
 });
 
 jest.useFakeTimers();
@@ -28,4 +30,11 @@ test("spinner visible while clip loads", () => {
   expect(spinner.classList.contains("visible")).toBe(true);
   jest.runAllTimers();
   expect(spinner.classList.contains("visible")).toBe(false);
+});
+
+test("spinner bounces when clip fails", () => {
+  const video = document.querySelector("video");
+  const spinner = document.querySelector(".loading-spinner");
+  showBounce(video);
+  expect(spinner.classList.contains("bounce")).toBe(true);
 });

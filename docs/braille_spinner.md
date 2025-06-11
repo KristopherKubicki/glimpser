@@ -11,3 +11,5 @@ When system metrics exceed safe thresholds the `/clip` endpoint now falls
 back to `/last_video` immediately. The response includes an
 `X-Degraded-Service: busy` header and the spinner switches to a dotted
 pattern to indicate reduced quality.
+If the clip fails to load, the braille icon now bounces in place so you know the
+player is waiting for the higher quality video.

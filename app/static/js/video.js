@@ -38,6 +38,7 @@ const spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "
 function showSpinner(video) {
   const spinner = video.parentElement?.querySelector(".loading-spinner");
   if (!spinner || spinner.dataset.active === "true") return;
+  spinner.classList.remove("bounce");
   let i = 0;
   spinner.textContent = spinnerFrames[i];
   spinner.classList.add("visible");
@@ -51,10 +52,19 @@ function showSpinner(video) {
 
 function hideSpinner(video) {
   const spinner = video.parentElement?.querySelector(".loading-spinner");
-  if (!spinner || spinner.dataset.active !== "true") return;
+  if (!spinner) return;
   clearInterval(Number(spinner.dataset.intervalId));
   spinner.dataset.active = "false";
   spinner.classList.remove("visible");
+  spinner.classList.remove("bounce");
+}
+
+export function showBounce(video) {
+  const spinner = video.parentElement?.querySelector(".loading-spinner");
+  if (!spinner) return;
+  clearInterval(Number(spinner.dataset.intervalId));
+  spinner.dataset.active = "false";
+  spinner.classList.add("visible", "bounce");
 }
 
 export function setQueueDelay(ms) {
@@ -81,7 +91,7 @@ function processQueue() {
     src.src = vid.dataset.hdSrc;
     vid.dataset.hdLoaded = "true";
     vid.addEventListener("canplay", () => hideSpinner(vid), { once: true });
-    vid.addEventListener("error", () => hideSpinner(vid), { once: true });
+    vid.addEventListener("error", () => showBounce(vid), { once: true });
     vid.load();
   }
   setTimeout(processQueue, queueDelay);
