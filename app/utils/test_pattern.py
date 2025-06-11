@@ -70,7 +70,6 @@ def _format_binary_time(timestamp: str) -> str:
 
 
 FONT_CANDIDATES = [
-    "DejaVuSansMono.ttf",
     "DejaVuSans-Bold.ttf",
     "DejaVuSans.ttf",
     "Arial.ttf",
@@ -328,38 +327,57 @@ def generate_indian_head_test_pattern(
 
     # Display the current time in several numeral systems near the right center
     timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-    font_small = load_font(int(height * 0.04))
     h, m, s = timestamp.split(":")
+
     lines = [
-        f"{h}:{m}:{s}",
-        f"{_to_braille(h)}:{_to_braille(m)}:{_to_braille(s)}",
-        f"{_to_roman(int(h))}:{_to_roman(int(m))}:{_to_roman(int(s))}",
-        f"{int(h):05b}:{int(m):06b}:{int(s):06b}",
+        (h, m, s),
+        (_to_braille(h), _to_braille(m), _to_braille(s)),
+        (_to_roman(int(h)), _to_roman(int(m)), _to_roman(int(s))),
+        (f"{int(h):05b}", f"{int(m):06b}", f"{int(s):06b}"),
     ]
+    font_sizes = [
+        int(height * 0.04),
+        int(height * 0.04),
+        int(height * 0.05),
+        int(height * 0.035),
+    ]
+    fonts = [load_font(sz) for sz in font_sizes]
 
-    hours = [h, _to_braille(h), _to_roman(int(h)), f"{int(h):05b}"]
-    mins = [m, _to_braille(m), _to_roman(int(m)), f"{int(m):06b}"]
-    secs = [s, _to_braille(s), _to_roman(int(s)), f"{int(s):06b}"]
-    parts = list(zip(hours, mins, secs))
+    hours_w = [draw.textlength(p[0], font=f) for p, f in zip(lines, fonts)]
+    mins_w = [draw.textlength(p[1], font=f) for p, f in zip(lines, fonts)]
+    secs_w = [draw.textlength(p[2], font=f) for p, f in zip(lines, fonts)]
+    colon_w = [draw.textlength(":", font=f) for f in fonts]
 
-    colon_w = draw.textlength(":", font=font_small)
-    hours_w = [draw.textlength(text, font=font_small) for text in hours]
-    mins_w = [draw.textlength(text, font=font_small) for text in mins]
-    secs_w = [draw.textlength(text, font=font_small) for text in secs]
-    max_min_w = max(mins_w)
-    max_sec_w = max(secs_w)
-    colon_x2 = width - 10 - max_sec_w
-    colon_x1 = colon_x2 - colon_w - max_min_w
+    max_h = max(hours_w)
+    max_m = max(mins_w)
+    max_s = max(secs_w)
+    max_c = max(colon_w)
 
-    metrics = [draw.textbbox((0, 0), line, font=font_small) for line in lines]
-    heights = [m[3] - m[1] for m in metrics]
+    colon_x2 = width - 10 - max_s - max_c
+    colon_x1 = colon_x2 - max_m - max_c
+
+    heights = [
+        draw.textbbox((0, 0), f"{p[0]}:{p[1]}:{p[2]}", font=f)[3]
+        - draw.textbbox((0, 0), f"{p[0]}:{p[1]}:{p[2]}", font=f)[1]
+        for p, f in zip(lines, fonts)
+    ]
     spacing = 8
     total_height = sum(heights) + spacing * (len(lines) - 1)
     y = height // 2 - total_height // 2
-    for (h_part, m_part, s_part), hgt, hw in zip(parts, heights, hours_w):
-        line = f"{h_part}:{m_part}:{s_part}"
-        x = colon_x1 - hw
-        draw.text((x, y), line, fill="white", font=font_small)
+
+    for (hrs, mins, secs), font, h_w, m_w, s_w, c_w, hgt in zip(
+        lines, fonts, hours_w, mins_w, secs_w, colon_w, heights
+    ):
+        x_hour = colon_x1 - h_w
+        x_colon1 = colon_x1
+        x_min = colon_x2 - c_w - m_w
+        x_colon2 = colon_x2
+        x_sec = colon_x2 + c_w
+        draw.text((x_hour, y), hrs, fill="white", font=font)
+        draw.text((x_colon1, y), ":", fill="white", font=font)
+        draw.text((x_min, y), mins, fill="white", font=font)
+        draw.text((x_colon2, y), ":", fill="white", font=font)
+        draw.text((x_sec, y), secs, fill="white", font=font)
         y += hgt + spacing
 
     # Optional spinner overlay for fun
