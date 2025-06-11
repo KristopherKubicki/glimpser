@@ -157,7 +157,7 @@ export function initNav() {
         if (!data) return;
         if (data.status === "healthy") {
           healthStatus.style.color = "green";
-          healthStatus.title = "System Status: Healthy\n\n";
+          healthStatus.title = "Status: Healthy\n\n";
           if (!healthAlwaysVisible) {
             healthStatus.style.display = "none";
           } else {
@@ -166,7 +166,7 @@ export function initNav() {
         } else {
           healthStatus.style.display = "flex";
           healthStatus.style.color = "red";
-          healthStatus.title = "System Status: Degraded\n\n";
+          healthStatus.title = "Status: Degraded\n\n";
         }
         healthStatus.title +=
           `CPU: ${data.metrics.cpu_usage}%\n` +
