@@ -2906,6 +2906,15 @@ def init_routes(app: Flask) -> None:
 
         abort(404)
 
+    def _send_clip_or_last(path: Path, template: str):
+        """Return the clip file or fall back to ``last_video``."""
+
+        try:
+            return send_file(path, conditional=True)
+        except FileNotFoundError:
+            logging.warning("Missing clip %s; using last_video", template)
+            return serve_video(template)
+
     @app.route("/clip/<string:template_name>")
     @login_required
     def serve_clip(template_name: TemplateName):
@@ -2951,7 +2960,7 @@ def init_routes(app: Flask) -> None:
             and clip_path.stat().st_mtime > newest_src.stat().st_mtime
             and (time.time() - clip_path.stat().st_mtime) < CACHE_TTL_SEC
         ):
-            resp = send_file(clip_path, conditional=True)
+            resp = _send_clip_or_last(clip_path, template_name)
             resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
             resp.headers["Expires"] = http_date(time.time() + CACHE_TTL_SEC)
             return resp
@@ -2992,7 +3001,7 @@ def init_routes(app: Flask) -> None:
                 and newest_src
                 and clip_path.stat().st_mtime > newest_src.stat().st_mtime
             ):
-                resp = send_file(clip_path, conditional=True)
+                resp = _send_clip_or_last(clip_path, template_name)
                 resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
                 resp.headers["Expires"] = http_date(time.time() + CACHE_TTL_SEC)
                 return resp
@@ -3003,7 +3012,7 @@ def init_routes(app: Flask) -> None:
                 video_archiver.create_blank_video(duration, clip_path.as_posix())
 
         if clip_path.exists():
-            resp = send_file(clip_path, conditional=True)
+            resp = _send_clip_or_last(clip_path, template_name)
             resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
             resp.headers["Expires"] = http_date(time.time() + CACHE_TTL_SEC)
             return resp
