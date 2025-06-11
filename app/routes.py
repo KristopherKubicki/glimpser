@@ -2912,7 +2912,9 @@ def init_routes(app: Flask) -> None:
             return send_file(path, conditional=True)
         except FileNotFoundError:
             logging.warning("Missing clip %s; using last_video", template)
-            return serve_video(template)
+            resp = serve_video(template)
+            resp.headers["X-Clip-Status"] = "waiting"
+            return resp
 
     def _system_is_busy() -> bool:
         """Return ``True`` when system metrics exceed safe thresholds."""

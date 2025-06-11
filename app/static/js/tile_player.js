@@ -1,3 +1,5 @@
+import { showSpinner, hideSpinner } from "./video.js";
+
 export function initTilePlayer() {
   const video = document.getElementById("live-video");
   if (!video) return;
@@ -8,6 +10,26 @@ export function initTilePlayer() {
 
   let abortCtl;
 
+  const container = video.parentElement;
+  let spinner = container?.querySelector(".loading-spinner");
+  if (!spinner && container) {
+    spinner = document.createElement("div");
+    spinner.className = "loading-spinner";
+    spinner.setAttribute("aria-hidden", "true");
+    container.appendChild(spinner);
+  }
+
+  function showBounce() {
+    if (!spinner) return;
+    spinner.textContent = "\u25CF";
+    spinner.classList.add("bouncy", "visible");
+  }
+
+  function hideBounce() {
+    if (!spinner) return;
+    spinner.classList.remove("bouncy", "visible");
+  }
+
   async function loadHdClip() {
     const url = video.dataset.hdSrc;
     if (!url) return;
@@ -15,13 +37,21 @@ export function initTilePlayer() {
     abortCtl = new AbortController();
     const timer = setTimeout(() => abortCtl.abort(), 10000);
     try {
+      showSpinner(video);
       const res = await fetch(url, { signal: abortCtl.signal });
       clearTimeout(timer);
+      hideSpinner(video);
       if (!res.ok) return;
       const blob = await res.blob();
       const objUrl = URL.createObjectURL(blob);
       const pos = video.currentTime;
       const paused = video.paused;
+      if (res.headers.get("X-Clip-Status") === "waiting") {
+        showBounce();
+        const onHide = () => hideBounce();
+        video.addEventListener("canplay", onHide, { once: true });
+        video.addEventListener("error", onHide, { once: true });
+      }
       const onLoad = () => {
         video.currentTime = Math.min(pos, video.duration || pos);
         if (!paused) video.play().catch(() => {});
@@ -31,7 +61,8 @@ export function initTilePlayer() {
       if (source) source.src = objUrl;
       video.load();
     } catch (_) {
-      /* ignore */
+      hideSpinner(video);
+      hideBounce();
     }
   }
 
@@ -41,6 +72,7 @@ export function initTilePlayer() {
     if (source) source.src = `/last_video/${name}`;
     video.setAttribute("data-hd-src", `/clip/${name}`);
     video.load();
+    hideBounce();
     loadHdClip();
   }
 
