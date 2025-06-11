@@ -14,7 +14,7 @@ template_form %} {% block content %}
     <button
       type="button"
       class="tab-link{% if loop.first %} active{% endif %}"
-      data-tab="{{ 'management-tab' if group == 'Credentials & Management' else group|replace(' ', '-') ~ '-tab' }}"
+      data-tab="{{ 'management-tab' if group == 'Admin' else group|replace(' ', '-') ~ '-tab' }}"
       title="Open {{ group }} tab"
     >
       {{ group }}
@@ -32,9 +32,9 @@ template_form %} {% block content %}
       type="button"
       class="tab-link"
       data-tab="status-tab"
-      title="Open System Status tab"
+      title="Open Status tab"
     >
-      System Status
+      Status
     </button>
     <button
       type="button"
@@ -88,7 +88,7 @@ template_form %} {% block content %}
     </datalist>
     {% endfor %} {% for group, items in grouped_settings.items() %}
     <div
-      id="{{ 'management-tab' if group == 'Credentials & Management' else group|replace(' ', '-') ~ '-tab' }}"
+      id="{{ 'management-tab' if group == 'Admin' else group|replace(' ', '-') ~ '-tab' }}"
       class="tab-content{% if loop.first %} active{% endif %}"
     >
       {% call card(group) %}
@@ -120,15 +120,23 @@ template_form %} {% block content %}
                   />
                 <span class="slider round"></span>
               </label>
-              {% elif 'KEY' in setting.name %}
-              {% set sprite = url_for('static', filename='icons/sprite.svg') %}
+              {% elif 'KEY' in setting.name %} {% set sprite = url_for('static',
+              filename='icons/sprite.svg') %}
               <input
                 id="{{ setting.name }}"
                 type="password"
                 name="{{ setting.name }}"
                 value="{{ setting.value }}"
                 title="Edit value for {{ setting.name }}"
-                {% if setting.name in locked_settings %}disabled data-locked{% endif %}
+                {%
+                if
+                setting.name
+                in
+                locked_settings
+                %}disabled
+                data-locked{%
+                endif
+                %}
               />
               <button
                 type="button"
@@ -194,8 +202,8 @@ template_form %} {% block content %}
           {% endfor %}
         </tbody>
       </table>
-      {% endcall %} {% if group == 'Credentials & Management' %} {% call
-      card('Configuration Management') %}
+      {% endcall %} {% if group == 'Admin' %} {% call card('Configuration
+      Management') %}
       <div class="checkbox-row">
         <span>Advanced Options</span>
         <label class="switch" title="Toggle advanced options">

@@ -107,7 +107,7 @@ SETTINGS_GROUPS = {
         "CLOCK_DIGITAL",
         "CLOCK_NAVBAR",
     ],
-    "Credentials & Management": [
+    "Admin": [
         "USER_NAME",
         "USER_PASSWORD_HASH",
         "SECRET_KEY",
@@ -148,7 +148,7 @@ SETTINGS_GROUPS = {
         "FFMPEG_HWACCEL",
         "FFMPEG_THREADS",
     ],
-    "Integrations & Other": [
+    "Advanced": [
         "EMAIL_ENABLED",
         "SMS_ENABLED",
         "CAP_ENABLED",

@@ -3616,12 +3616,10 @@ def init_routes(app: Flask) -> None:
             if not placed:
                 grouped_settings["Other"].append(setting)
 
-        if "Integrations & Other" in grouped_settings:
-            grouped_settings["Integrations & Other"].extend(
-                grouped_settings.get("Other", [])
-            )
+        if "Advanced" in grouped_settings:
+            grouped_settings["Advanced"].extend(grouped_settings.get("Other", []))
         else:
-            grouped_settings["Integrations & Other"] = grouped_settings.get("Other", [])
+            grouped_settings["Advanced"] = grouped_settings.get("Other", [])
         grouped_settings.pop("Other", None)
 
         # Remove empty groups to avoid blank headings in the UI
@@ -3629,8 +3627,8 @@ def init_routes(app: Flask) -> None:
 
         collapsed_groups = {
             "Capture",
-            "Credentials & Management",
-            "Integrations & Other",
+            "Admin",
+            "Advanced",
         }
         file_location_items = [s for s in settings if s["name"] in FILE_LOCATION_NAMES]
         file_info = file_location_metrics(file_location_items)
@@ -3967,7 +3965,7 @@ def init_routes(app: Flask) -> None:
     @app.route("/status")
     @login_required
     def status():
-        """Redirect to the System Status tab under Settings for consistency."""
+        """Redirect to the Status tab under Settings for consistency."""
         return redirect(url_for("settings", tab="status-tab"))
 
     @app.route("/logs")
