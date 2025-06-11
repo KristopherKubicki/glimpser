@@ -11,11 +11,11 @@ template_form %} {% block content %}
   {% endif %}
 </script>
 
-  <div
-    class="video-container full-height"
-    role="region"
-    aria-label="Live video feed"
-  >
+<div
+  class="video-container full-height"
+  role="region"
+  aria-label="Live video feed"
+>
   <button
     id="prev-clip-btn"
     class="clip-nav prev"
@@ -32,11 +32,11 @@ template_form %} {% block content %}
   >
     &#9654;
   </button>
-    <video
-      id="live-video"
-      controls
-      autoplay
-      muted
+  <video
+    id="live-video"
+    controls
+    autoplay
+    muted
     preload="none"
     poster="/last_screenshot/{{ template_name }}"
   >
@@ -536,7 +536,8 @@ template_form %} {% block content %}
 <script>
   window.recentVideos = {{ videos|tojson }};
   document.addEventListener("DOMContentLoaded", () => {
-    const list = window.recentVideos || [];
+    const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+    const list = (window.recentVideos || []).sort((a, b) => collator.compare(b, a));
     if (!list.length) return;
     let index = 0;
     const video = document.getElementById("live-video");
@@ -546,7 +547,17 @@ template_form %} {% block content %}
 
     const updateButtons = () => {
       if (prev) prev.disabled = index <= 0;
-      if (next) next.disabled = index >= list.length - 1;
+      if (next) {
+        if (index >= list.length - 1) {
+          next.classList.add("go-live");
+          next.textContent = "Live";
+          next.disabled = false;
+        } else {
+          next.classList.remove("go-live");
+          next.textContent = "\u25B6";
+          next.disabled = false;
+        }
+      }
     };
 
     const loadClip = (i) => {
@@ -559,8 +570,23 @@ template_form %} {% block content %}
       updateButtons();
     };
 
-    prev?.addEventListener("click", () => loadClip(index - 1));
-    next?.addEventListener("click", () => loadClip(index + 1));
+    const flash = (btn) => {
+      btn.classList.add("clicked");
+      setTimeout(() => btn.classList.remove("clicked"), 150);
+    };
+
+    prev?.addEventListener("click", () => {
+      flash(prev);
+      loadClip(index - 1);
+    });
+    next?.addEventListener("click", () => {
+      flash(next);
+      if (index >= list.length - 1) {
+        window.location.href = `/live?camera=${window.currentCamera}`;
+      } else {
+        loadClip(index + 1);
+      }
+    });
 
     document.addEventListener("keydown", (e) => {
       if (
@@ -571,7 +597,11 @@ template_form %} {% block content %}
       if (e.key === "ArrowLeft") {
         loadClip(index - 1);
       } else if (e.key === "ArrowRight") {
-        loadClip(index + 1);
+        if (index >= list.length - 1) {
+          window.location.href = `/live?camera=${window.currentCamera}`;
+        } else {
+          loadClip(index + 1);
+        }
       }
     });
 

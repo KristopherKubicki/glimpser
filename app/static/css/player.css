@@ -22,6 +22,18 @@
   border: none;
   cursor: pointer;
   z-index: 5;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+
+.clip-nav.clicked {
+  transform: translateY(-50%) scale(0.9);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.clip-nav.go-live {
+  background: rgba(0, 128, 0, 0.6);
 }
 
 .clip-nav.prev {
