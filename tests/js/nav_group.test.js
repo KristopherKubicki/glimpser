@@ -3,6 +3,7 @@ import { jest } from "@jest/globals";
 document.body.innerHTML = `
   <select id="nav-group-dropdown"></select>
   <select id="nav-camera-dropdown"></select>
+  <select id="group-selector"></select>
   <nav></nav>
 `;
 
@@ -49,5 +50,15 @@ describe("nav group dropdown", () => {
     dd.value = "all";
     dd.dispatchEvent(new Event("change"));
     expect(window.location.href).toBe("/live");
+  });
+
+  test("live page uses changeGroup", () => {
+    window.changeGroup = jest.fn();
+    const dd = setup();
+    window.location.pathname = "/live";
+    dd.value = "kitchen";
+    dd.dispatchEvent(new Event("change"));
+    expect(window.changeGroup).toHaveBeenCalled();
+    expect(window.location.href).toBe("");
   });
 });
