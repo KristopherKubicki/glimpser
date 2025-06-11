@@ -93,8 +93,22 @@ def generate_test_pattern(
     height: int = 720,
     logo_path: Optional[str] = None,
     camera_name: str | None = None,
+    variant: str = "color",
+    spinner: str | None = None,
 ) -> Image.Image:
-    """Return a PIL image with a broadcast-style test pattern and calibration aids."""
+    """Return a PIL image with calibration aids.
+
+    ``variant`` selects the style. ``"color"`` is the default broadcast pattern
+    while ``"classic"`` reproduces the former Indian Head design. ``spinner`` is
+    ignored for the color style.
+    """
+
+    if variant == "classic":
+        return _generate_classic_test_pattern(
+            width=width, height=height, spinner=spinner
+        )
+
+    img = Image.new("RGB", (width, height))
 
     img = Image.new("RGB", (width, height))
     draw = ImageDraw.Draw(img)
@@ -269,12 +283,12 @@ def generate_test_pattern(
     return img
 
 
-def generate_indian_head_test_pattern(
+def _generate_classic_test_pattern(
     width: int = 1280,
     height: int = 720,
     spinner: str | None = None,
 ) -> Image.Image:
-    """Return a grayscale Indian Head-style test pattern with extras."""
+    """Return the classic grayscale test pattern."""
 
     img = Image.new("RGB", (width, height), "gray")
     draw = ImageDraw.Draw(img)
@@ -460,6 +474,18 @@ def generate_indian_head_test_pattern(
     return img
 
 
+def generate_indian_head_test_pattern(
+    width: int = 1280,
+    height: int = 720,
+    spinner: str | None = None,
+) -> Image.Image:
+    """Compatibility wrapper for ``variant='classic'``."""
+
+    return generate_test_pattern(
+        width=width, height=height, variant="classic", spinner=spinner
+    )
+
+
 def generate_geometric_test_pattern(
     width: int = 1280,
     height: int = 720,
@@ -468,9 +494,9 @@ def generate_geometric_test_pattern(
 ) -> Image.Image:
     """Legacy wrapper that now returns the unified test pattern."""
 
-    # `tiles` is ignored but kept for backward compatibility
-    return generate_indian_head_test_pattern(
-        width=width, height=height, spinner=spinner
+    # ``tiles`` is ignored but kept for backward compatibility
+    return generate_test_pattern(
+        width=width, height=height, variant="classic", spinner=spinner
     )
 
 
