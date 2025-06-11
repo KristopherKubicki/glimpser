@@ -270,6 +270,7 @@ def generate_indian_head_test_pattern(
     tri_w = width // 10
     tri_h = height // 10
     colors = [(30, 30, 30), (80, 80, 80)]
+
     for row in range(5):
         for col in range(10):
             x = col * tri_w // 2
@@ -277,6 +278,37 @@ def generate_indian_head_test_pattern(
             color = colors[(row + col) % 2]
             points = [(x, y), (x + tri_w // 2, y + tri_h), (x + tri_w, y)]
             draw.polygon(points, fill=color)
+
+    # miniature SMPTE bars and wide-gamut Rec.2020 bars in the upper right
+    mini_709 = [
+        ((191, 191, 191), "W"),
+        ((191, 191, 0), "Y"),
+        ((0, 191, 191), "C"),
+        ((0, 191, 0), "G"),
+        ((191, 0, 191), "M"),
+        ((191, 0, 0), "R"),
+        ((0, 0, 191), "B"),
+        ((0, 0, 0), "K"),
+    ]
+    mini_2020 = [
+        ((255, 0, 0), "R"),
+        ((0, 255, 0), "G"),
+        ((0, 0, 255), "B"),
+        ((0, 255, 255), "C"),
+        ((255, 0, 255), "M"),
+        ((255, 255, 0), "Y"),
+    ]
+    bar_h = height // 6
+    mini_w = max(2, width // 100)
+    mini_h = bar_h // 4
+    font_tiny = load_font(8)
+    x_start = width - mini_w * (len(mini_709) + len(mini_2020)) - 10
+    y_start = 2
+    for color, label in mini_709 + mini_2020:
+        draw.rectangle([x_start, y_start, x_start + mini_w, y_start + mini_h], fill=color)
+        text_color = "white" if sum(color) < 382 else "black"
+        draw.text((x_start + 1, y_start + 1), label, fill=text_color, font=font_tiny)
+        x_start += mini_w
 
     draw.line((width // 2, 0, width // 2, height), fill="black", width=3)
     draw.line((0, height // 2, width, height // 2), fill="black", width=3)
