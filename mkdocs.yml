@@ -70,6 +70,7 @@ nav:
       - Jog-Shuttle Control: jog_shuttle.md
       - Live All Playback: live_all.md
       - Live View Scrubbing: live_scrub.md
+      - Clip Navigation: clip_navigation.md
       - LLM Prompt Settings: llm_prompts.md
       - MCP Integration: mcp_integration.md
       - In-App Onboarding: onboarding.md

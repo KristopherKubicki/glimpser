@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import re
 import shutil
 from datetime import datetime
 
@@ -32,7 +33,9 @@ def is_snapshot_url(url: str) -> bool:
     if not url:
         return False
     url = url.lower()
-    return url.endswith((".jpg", ".jpeg", ".png")) or "snapshot" in url or "picture" in url
+    return (
+        url.endswith((".jpg", ".jpeg", ".png")) or "snapshot" in url or "picture" in url
+    )
 
 
 class Template(db.Base):
@@ -161,7 +164,11 @@ class TemplateManager:
 
         session = self.get_session()
         try:
-            templates = session.query(Template).order_by(Template.last_caption_time.desc()).all()
+            templates = (
+                session.query(Template)
+                .order_by(Template.last_caption_time.desc())
+                .all()
+            )
             result = []
             for template in templates:
                 if template.name is None or template.name == "":
@@ -233,17 +240,29 @@ class TemplateManager:
                             value = int(value)
                         elif key in ["frequency", "timeout"]:
                             if value == "":
-                                value = default_frequency if key == "frequency" else default_timeout
+                                value = (
+                                    default_frequency
+                                    if key == "frequency"
+                                    else default_timeout
+                                )
 
                             value = int(value)
                             if key == "frequency" and value > 525600:
                                 value = 525600
-                            if key == "frequency" and value < 0.01:  # that's less than 1 fps...
+                            if (
+                                key == "frequency" and value < 0.01
+                            ):  # that's less than 1 fps...
                                 value = 0.01
 
-                            if key == "timeout" and value >= float(details.get("frequency", template.frequency)) * 60:
+                            if (
+                                key == "timeout"
+                                and value
+                                >= float(details.get("frequency", template.frequency))
+                                * 60
+                            ):
                                 value = (
-                                    int(details.get("frequency", template.frequency)) * 60
+                                    int(details.get("frequency", template.frequency))
+                                    * 60
                                 )  # adjust the timeout down
                             if key == "timeout" and value < 1:
                                 value = 1
@@ -252,8 +271,12 @@ class TemplateManager:
                             if value == "":
                                 value = 0.5
                             value = float(value)
-                            if details.get("object_filter", template.object_filter) and (value < 0 or value > 1):
-                                raise ValueError("Object confidence must be between 0 and 1")
+                            if details.get(
+                                "object_filter", template.object_filter
+                            ) and (value < 0 or value > 1):
+                                raise ValueError(
+                                    "Object confidence must be between 0 and 1"
+                                )
                         elif key in ["popup_xpath", "dedicated_xpath"]:
                             if value and not value.startswith("//"):
                                 raise ValueError(f"{key} must start with '//'")
@@ -514,13 +537,18 @@ def get_screenshots_for_template(name: str) -> list:
     screenshots = [
         f
         for f in os.listdir(os.path.join(SCREENSHOT_DIRECTORY, name))
-        if f.startswith(name) and f.endswith(".png") and ".tmp" not in f and ".partial" not in f
+        if f.startswith(name)
+        and f.endswith(".png")
+        and ".tmp" not in f
+        and ".partial" not in f
     ]
 
     try:
         sorted_screenshots = sorted(
             screenshots,
-            key=lambda x: datetime.strptime(x[len(name) + 1 : -4].replace("_blank", ""), "%Y%m%d%H%M%S"),
+            key=lambda x: datetime.strptime(
+                x[len(name) + 1 : -4].replace("_blank", ""), "%Y%m%d%H%M%S"
+            ),
             reverse=True,
         )
     except Exception as e:
@@ -554,10 +582,12 @@ def get_videos_for_template(name: str):
         for f in os.listdir(os.path.join(VIDEO_DIRECTORY, name))
         if (f.startswith(name) or f.startswith("final_")) and f.endswith(".mp4")
     ]
-    sorted_videos = sorted(
-        videos,
-        reverse=True,
-    )
+
+    def _sort_key(filename: str) -> int:
+        match = re.search(r"(\d+)(?=\.mp4$)", filename)
+        return int(match.group(1)) if match else -1
+
+    sorted_videos = sorted(videos, key=_sort_key, reverse=True)
     return sorted_videos[:10]
 
 
@@ -669,7 +699,9 @@ def record_llm_usage(name: str, tokens: int) -> None:
     elif not isinstance(entry, dict):
         entry = {"total": 0, "entries": []}
 
-    entry["entries"].append({"time": datetime.utcnow().strftime("%Y-%m-%d"), "tokens": int(tokens)})
+    entry["entries"].append(
+        {"time": datetime.utcnow().strftime("%Y-%m-%d"), "tokens": int(tokens)}
+    )
     entry["total"] += int(tokens)
     data[name] = entry
 
@@ -712,7 +744,9 @@ def get_llm_response_count(name: str) -> int:
     return 0
 
 
-def get_llm_cost_estimate(name: str, start_date: str | None = None, end_date: str | None = None) -> str:
+def get_llm_cost_estimate(
+    name: str, start_date: str | None = None, end_date: str | None = None
+) -> str:
     """Estimate LLM cost for ``name`` within an optional date range."""
 
     name = validate_template_name(name)
@@ -811,7 +845,9 @@ def update_last_screenshot_time(name: str) -> None:
     try:
         template = session.query(Template).filter_by(name=name).first()
         if template:
-            template.last_screenshot_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            template.last_screenshot_time = datetime.utcnow().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
             template.offline_since = ""
             template.capture_failed = False
             session.commit()
