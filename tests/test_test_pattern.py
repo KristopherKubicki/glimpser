@@ -64,6 +64,18 @@ class TestTestPattern(unittest.TestCase):
             px = img.getpixel((x_start + idx * mini_w + mini_w // 2, y_start))
             self.assertEqual(px, expected)
 
+    def test_indian_head_minibars(self):
+        width, height = 200, 100
+        img = generate_indian_head_test_pattern(width=width, height=height)
+        bar_h = height // 6
+        mini_w = max(2, width // 100)
+        mini_h = bar_h // 4
+        x_start = width - mini_w * 14 - 10
+        y_start = 2 + mini_h // 2
+        expected_first = (191, 191, 191)
+        px = img.getpixel((x_start + mini_w // 2, y_start))
+        self.assertEqual(px, expected_first)
+
 
 if __name__ == "__main__":
     unittest.main()
