@@ -222,4 +222,13 @@
     <circle cx="9" cy="12" r="1" fill="currentColor" />
     <circle cx="15" cy="12" r="1" fill="currentColor" />
   </symbol>
+  <symbol id="eye" viewBox="0 0 24 24">
+    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" stroke="currentColor" stroke-width="2" fill="none" />
+    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none" />
+  </symbol>
+  <symbol id="eye-off" viewBox="0 0 24 24">
+    <path d="M1 1l22 22" stroke="currentColor" stroke-width="2" />
+    <path d="M17.94 17.94A10.7 10.7 0 0112 19c-7 0-11-7-11-7a20 20 0 015.36-5.94" stroke="currentColor" stroke-width="2" fill="none" />
+    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none" />
+  </symbol>
 </svg>

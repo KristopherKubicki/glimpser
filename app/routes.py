@@ -3469,6 +3469,11 @@ def init_routes(app: Flask) -> None:
             "running": is_chrome_debug_port_open("127.0.0.1", 9222),
         }
 
+        last_backup = None
+        if os.path.exists(BACKUP_PATH):
+            ts = datetime.fromtimestamp(os.path.getmtime(BACKUP_PATH))
+            last_backup = ts.strftime("%Y-%m-%d %H:%M:%S")
+
         templates = template_manager.get_templates()
         existing_urls = {t.get("url"): n for n, t in templates.items() if t.get("url")}
 
@@ -3493,6 +3498,7 @@ def init_routes(app: Flask) -> None:
             file_info=file_info,
             existing_urls=existing_urls,
             placeholders=SETTINGS_PLACEHOLDERS,
+            last_backup=last_backup,
             page_title="Settings",
         )
 

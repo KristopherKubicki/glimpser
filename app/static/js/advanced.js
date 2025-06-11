@@ -19,6 +19,11 @@ export function initAdvanced() {
     toggle.checked = enabled;
     applyState(enabled);
 
-    toggle.addEventListener("change", () => applyState(toggle.checked));
+    toggle.addEventListener("change", () => {
+      if (toggle.checked) {
+        alert("Be careful! Advanced mode can damage your system or database.");
+      }
+      applyState(toggle.checked);
+    });
   });
 }
