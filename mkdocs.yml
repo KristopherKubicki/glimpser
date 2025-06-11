@@ -47,6 +47,7 @@ nav:
       - Search Autocomplete: search_autocomplete.md
       - Recommendations: recommendations.md
       - Release Workflow: release_workflow.md
+      - Automatic Update: auto_update.md
       - Settings Page: settings_page.md
       - Clock Settings: clock_settings.md
       - Braille Loading Spinner: braille_spinner.md

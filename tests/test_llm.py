@@ -29,7 +29,8 @@ class TestLLM(unittest.TestCase):
         mock_post.return_value = mock_response
 
         start = time.time()
-        result = summarize("Test prompt")
+        with patch("time.time", return_value=start):
+            result = summarize("Test prompt")
 
         ts = int(start + 0.5)
         expected_result = json.dumps({ts: "Mock summary", ts + 5: "With multiple lines"})
@@ -83,7 +84,8 @@ class TestLLM(unittest.TestCase):
         mock_post.return_value = mock_response
 
         start = time.time()
-        result = summarize("Test prompt", history="Previous conversation")
+        with patch("time.time", return_value=start):
+            result = summarize("Test prompt", history="Previous conversation")
 
         ts = int(start + 0.5)
         expected_result = json.dumps({ts: "Mock summary with history"})

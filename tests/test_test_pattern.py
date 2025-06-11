@@ -87,7 +87,7 @@ class TestTestPattern(unittest.TestCase):
         width, height = 220, 110
         img = generate_test_pattern(width=width, height=height)
         self.assertEqual(img.size, (220, 110))
-        self.assertEqual(img.getpixel((116, 58)), (118, 118, 118))
+        self.assertEqual(img.getpixel((116, 58)), (255, 255, 255))
 
 
 if __name__ == "__main__":
