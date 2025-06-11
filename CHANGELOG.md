@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stream error overlay distinguishes network and unsupported format errors
 - Sortable KPI table on captions page with filtering
 - Unified test pattern with spinner and multilingual timestamp overlay
+- Advanced calibration graphics including grayscale gradient and HDR targets
 
 ### Changed
 

@@ -94,7 +94,7 @@ def generate_test_pattern(
     logo_path: Optional[str] = None,
     camera_name: str | None = None,
 ) -> Image.Image:
-    """Return a PIL image with an enhanced broadcast-style test pattern."""
+    """Return a PIL image with a broadcast-style test pattern and calibration aids."""
 
     img = Image.new("RGB", (width, height))
     draw = ImageDraw.Draw(img)
@@ -367,6 +367,79 @@ def generate_indian_head_test_pattern(
         sb = draw.textbbox((0, 0), spinner, font=font)
         sw, sh = sb[2] - sb[0], sb[3] - sb[1]
         draw.text((width - sw - 10, 10), spinner, fill="white", font=font)
+
+    # Extra calibration graphics
+    cx, cy = width // 2, height // 2
+    draw.line((cx, 0, cx, height), fill="white")
+    draw.line((0, cy, width, cy), fill="white")
+    for frac in (0.45, 0.30, 0.15):
+        r = int(height * frac / 2)
+        draw.ellipse((cx - r, cy - r, cx + r, cy + r), outline="white")
+
+    grad_y = height - 50
+    step_w = width // 44
+    for i in range(11):
+        shade = round(i * 255 / 10)
+        draw.rectangle(
+            (10 + i * step_w, grad_y, 10 + (i + 1) * step_w - 1, grad_y + 20),
+            fill=(shade, shade, shade),
+        )
+
+    ramp_w = step_w * 51
+    ramp_y = grad_y - 30
+    for i in range(ramp_w):
+        shade = round(i * 255 / (ramp_w - 1))
+        draw.line((10 + i, ramp_y, 10 + i, ramp_y + 10), fill=(shade, shade, shade))
+    patch_w = ramp_w // 51
+    for i in range(51):
+        shade = round(i * 255 / 50)
+        bg = (240, 240, 240) if shade < 128 else (15, 15, 15)
+        left = 10 + i * patch_w
+        draw.rectangle((left, ramp_y + 12, left + patch_w - 1, ramp_y + 22), fill=bg)
+        inner_left = left + 2
+        inner_right = left + patch_w - 3
+        if inner_right >= inner_left:
+            draw.rectangle(
+                (inner_left, ramp_y + 14, inner_right, ramp_y + 20),
+                fill=(shade, shade, shade),
+            )
+
+    cb_x = width - 22
+    cb_y = height - 22
+    for yy in range(cb_y, cb_y + 20):
+        for xx in range(cb_x, cb_x + 20):
+            color = (255, 255, 255) if (xx + yy) % 2 == 0 else (0, 0, 0)
+            draw.point((xx, yy), fill=color)
+
+    wedge_x = 10
+    wedge_y = bar_h + 10
+    for freq in range(1, 11):
+        for x in range(20):
+            col = 255 if (x // freq) % 2 == 0 else 0
+            draw.line((wedge_x + x, wedge_y, wedge_x + x, wedge_y + 20), fill=(col, col, col))
+        wedge_x += 22
+    wedge_x = 10
+    wedge_y += 24
+    for freq in range(1, 11):
+        for y in range(20):
+            col = 255 if (y // freq) % 2 == 0 else 0
+            draw.line((wedge_x, wedge_y + y, wedge_x + 20, wedge_y + y), fill=(col, col, col))
+        wedge_x += 22
+
+    target_y = ramp_y - 40
+    intensities = [125, 200, 255]
+    for i, val in enumerate(intensities):
+        left = 10 + i * 24
+        draw.rectangle((left, target_y, left + 20, target_y + 20), fill=(val, val, val))
+
+    draw.rectangle((width - 70, 10, width - 20, 40), fill=(118, 118, 118))
+    draw.rectangle((width - 70, 50, width - 20, 80), fill=(215, 170, 150))
+
+    grid_color = (13, 13, 13)
+    for x in range(0, width, 100):
+        draw.line((x, 0, x, height - 1), fill=grid_color)
+    for y in range(0, height, 100):
+        draw.line((0, y, width - 1, y), fill=grid_color)
 
     return img
 
