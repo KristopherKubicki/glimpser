@@ -17,7 +17,7 @@ from app import create_app, scheduler
 from app.utils.cli import build_argument_parser, cli_help_text
 from app.utils.scheduling import get_system_metrics, stop_background_tasks
 
-banner = """\033[96m
+banner = f"""\033[96m
           ____  _  _
          / ___|| |(_)_ __ ___  _ __  ___  ___ _ __
         | |  _ | || | '_ ` _ `| '_ `/ __|/ _ ` '__|
