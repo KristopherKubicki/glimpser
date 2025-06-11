@@ -1252,6 +1252,10 @@ def get_feed_status():
             elif not user_idle:
                 danger_reason = "user"
 
+        with active_jobs_lock:
+            job = active_jobs.get(name)
+            capturing = bool(job and job.is_alive())
+
         feeds.append(
             {
                 "name": name,
@@ -1271,6 +1275,7 @@ def get_feed_status():
                 "llm_cost_estimate": llm_cost,
                 "danger": danger,
                 "danger_reason": danger_reason,
+                "capturing": capturing,
             }
         )
 
