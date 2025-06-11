@@ -17,7 +17,7 @@ repos:
       # 2️⃣  Let Black format everything after isort touched the imports
       - id: black
         name: black
-        entry: black --line-length 120
+        entry: black --line-length 88
         language: system
         types: [python]
 
