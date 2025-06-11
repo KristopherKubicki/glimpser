@@ -62,6 +62,7 @@ from app.config import (
     API_KEY,
     BACKUP_PATH,
     CHYRON_SPEED,
+    CLIP_MODEL_NAME,
     CLOCK_DIGITAL,
     CLOCK_NAVBAR,
     CLOCK_OVERLAY,
@@ -3160,12 +3161,15 @@ def init_routes(app: Flask) -> None:
             abort(404)  # Template not found
         lscreenshots = template_manager.get_screenshots_for_template(template_name)
         lvideos = template_manager.get_videos_for_template(template_name)
+        object_tokens = ["person", "car", "dog", "cat", "truck", "bus", "bicycle"]
         return render_template(
             "template_details.html",
             template_name=template_name,
             template_details=template_details,
             screenshots=lscreenshots,
             videos=lvideos,
+            object_tokens=object_tokens,
+            clip_model=CLIP_MODEL_NAME,
             page_title="Camera Details",
         )
 
@@ -3588,10 +3592,13 @@ def init_routes(app: Flask) -> None:
             url = t.get("url")
             if url:
                 existing_urls[url] = name
+        object_tokens = ["person", "car", "dog", "cat", "truck", "bus", "bicycle"]
         return render_template(
             "discover.html",
             cameras=[],
             existing_urls=existing_urls,
+            object_tokens=object_tokens,
+            clip_model=CLIP_MODEL_NAME,
             page_title="Discover Cameras",
         )
 

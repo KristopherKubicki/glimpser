@@ -23,8 +23,8 @@ export function initFormValidation() {
       return false;
     }
 
-    if (frequency < 1 || frequency > 525600) {
-      alert("Frequency must be between 1 and 525600 minutes (1 year).");
+    if (frequency < 0 || frequency > 43200) {
+      alert("Frequency must be between 0 and 43200 minutes (30 days).");
       return false;
     }
 
@@ -38,8 +38,13 @@ export function initFormValidation() {
       }
     }
 
-    if (timeout < 1 || timeout >= frequency * 60) {
-      alert("Timeout must be at least 1 second and less than the frequency.");
+    if (timeout < 3 || timeout > 59) {
+      alert("Timeout must be between 3 and 59 seconds.");
+      return false;
+    }
+
+    if (frequency > 0 && timeout >= frequency * 60) {
+      alert("Timeout must be less than the frequency.");
       return false;
     }
 

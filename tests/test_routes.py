@@ -3,6 +3,7 @@
 import os
 import sys
 import unittest
+from unittest import mock
 from unittest.mock import patch
 
 from flask import Flask
@@ -443,7 +444,12 @@ class TestRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mock_discover.assert_not_called()
         mock_render_template.assert_called_with(
-            "discover.html", cameras=[], existing_urls={}, page_title="Discover Cameras"
+            "discover.html",
+            cameras=[],
+            existing_urls={},
+            object_tokens=mock.ANY,
+            clip_model=mock.ANY,
+            page_title="Discover Cameras",
         )
 
     @patch("app.routes.SessionLocal")

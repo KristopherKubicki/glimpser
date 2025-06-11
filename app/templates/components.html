@@ -80,12 +80,14 @@ confirm='Confirm', cancel='Cancel') -%}
   </section>
 </div>
 {%- endmacro %} {%- macro template_form(form_id, action, template=None,
-preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
+preview_src=None, preview_id=None, include_name=True, submit_label='Submit',
+object_tokens=None, clip_model=None) -%}
 <div class="edit-template-container">
   {% if preview_src or preview_id %}
   <div class="edit-template-preview">
     <img
       src="{{ preview_src }}"
+      data-placeholder="{{ preview_src }}"
       {%
       if
       preview_id
@@ -141,12 +143,23 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         id="frequency"
         name="frequency"
         value="{{ template.frequency if template else 30 }}"
-        min="0.1"
-        step="0.1"
+        min="0"
+        max="43200"
+        step="1"
+        list="frequency-options"
+        class="short-input"
         required
         placeholder="30"
         title="Enter how often to check the URL (in minutes)"
       />
+      <datalist id="frequency-options">
+        <option value="5"></option>
+        <option value="15"></option>
+        <option value="30"></option>
+        <option value="60"></option>
+        <option value="360"></option>
+        <option value="1440"></option>
+      </datalist>
     </div>
     <div class="form-row">
       <label for="timeout" title="Maximum time to wait for a response"
@@ -157,11 +170,22 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         id="timeout"
         name="timeout"
         value="{{ template.timeout if template else 10 }}"
-        min="1"
+        min="3"
+        max="59"
+        step="1"
+        list="timeout-options"
+        class="short-input"
         required
         placeholder="10"
         title="Enter the maximum time to wait for a response (in seconds)"
       />
+      <datalist id="timeout-options">
+        <option value="5"></option>
+        <option value="10"></option>
+        <option value="15"></option>
+        <option value="30"></option>
+        <option value="45"></option>
+      </datalist>
     </div>
     <div class="form-row">
       <label for="notes" title="Additional notes">Notes:</label>
@@ -175,7 +199,9 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
       >
     </div>
     <div class="form-row">
-      <label for="object_filter" title="Filter for specific objects"
+      <label
+        for="object_filter"
+        title="Filter for specific objects using {{ clip_model }}"
         >Object Filter:</label
       >
       <input
@@ -184,8 +210,14 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         name="object_filter"
         value="{{ template.object_filter if template else '' }}"
         placeholder="person,car"
+        list="object-filter-options"
         title="Enter object types to filter (e.g., 'person,car')"
       />
+      <datalist id="object-filter-options">
+        {% for token in object_tokens or [] %}
+        <option value="{{ token }}"></option>
+        {% endfor %}
+      </datalist>
     </div>
     <div class="form-row">
       <label
