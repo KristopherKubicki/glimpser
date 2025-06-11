@@ -44,7 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced camera list UI and video player controls
 - Updated package requirements and cleaned up imports
 - Added CPU builds of JAX 0.6.1 and Flax 0.2.0
-- Bumped scikit-image to 0.25.0
+- Removed the `scikit-image` dependency in favor of a lightweight image
+  comparison implementation
 - Bumped numpy to 1.26.0
 - Removed nodriver and its screenshot helper
 - Updated default VERSION to 0.2.7 for footer display
