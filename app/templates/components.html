@@ -229,6 +229,7 @@ object_tokens=None, clip_model=None) -%}
         type="number"
         id="object_confidence"
         name="object_confidence"
+        class="short-input"
         value="{{ template.object_confidence if template else '' }}"
         min="0"
         max="1"
@@ -324,20 +325,10 @@ object_tokens=None, clip_model=None) -%}
       />
     </div>
     <div class="form-row">
-      <label for="groups" title="Groups for the template, comma separated "
-        >Groups:</label
-      >
-      <input
-        type="text"
-        id="groups"
-        name="groups"
-        value="{{ template.groups if template else '' }}"
-        pattern="[\w,\- ]*"
-        placeholder="group1,group2"
-        title="Enter comma-separated group names"
-      />
+      <label for="groups" title="Select an existing group">Group:</label>
+      <select id="groups" name="groups" title="Choose a group"></select>
     </div>
-    <div class="form-row">
+    <div class="form-row hidden">
       <label for="rollback_frames" title="Number of frames to rollback"
         >Rollback Frames:</label
       >
