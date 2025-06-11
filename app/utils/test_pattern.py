@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import math
 import os
 from typing import Optional
 
@@ -54,20 +55,26 @@ def generate_test_pattern(
     logo_path: Optional[str] = None,
     camera_name: str | None = None,
 ) -> Image.Image:
-    """Return a PIL image with a colorful test pattern."""
+    """Return a PIL image with an enhanced broadcast-style test pattern."""
 
     img = Image.new("RGB", (width, height))
     draw = ImageDraw.Draw(img)
 
-    # background gradient
-    start = (20, 0, 40)
-    end = (0, 0, 0)
+    # background gradient with three stops for smoother transitions
+    stops = [
+        (0, (40, 0, 60)),
+        (height // 2, (20, 20, 40)),
+        (height, (0, 0, 0)),
+    ]
     for y in range(height):
-        ratio = y / height
-        r = int(start[0] * (1 - ratio) + end[0] * ratio)
-        g = int(start[1] * (1 - ratio) + end[1] * ratio)
-        b = int(start[2] * (1 - ratio) + end[2] * ratio)
-        draw.line([(0, y), (width, y)], fill=(r, g, b))
+        for (y0, c0), (y1, c1) in zip(stops, stops[1:]):
+            if y0 <= y <= y1:
+                ratio = (y - y0) / (y1 - y0)
+                r = int(c0[0] * (1 - ratio) + c1[0] * ratio)
+                g = int(c0[1] * (1 - ratio) + c1[1] * ratio)
+                b = int(c0[2] * (1 - ratio) + c1[2] * ratio)
+                draw.line([(0, y), (width, y)], fill=(r, g, b))
+                break
 
     # SMPTE-like color bars
     bars = [
@@ -84,13 +91,62 @@ def generate_test_pattern(
     for i, color in enumerate(bars):
         draw.rectangle([i * bar_w, 0, (i + 1) * bar_w, bar_h], fill=color)
 
-    # checker pattern at the bottom
+    # checker pattern limited to the bottom-right quadrant
     sq = 20
     y0 = height - bar_h
+    x0 = width * 3 // 4
     for y in range(y0, height, sq):
-        for x in range(0, width, sq):
+        for x in range(x0, width, sq):
             fill = (255, 255, 255) if (x // sq + y // sq) % 2 == 0 else (0, 0, 0)
             draw.rectangle([x, y, x + sq - 1, y + sq - 1], fill=fill)
+
+    # grayscale blocks for exposure checking
+    block_w = width // 20
+    block_h = bar_h // 3
+    for i in range(6):
+        shade = int(255 * i / 5)
+        draw.rectangle(
+            [i * block_w + 10, y0 - block_h - 5, (i + 1) * block_w + 10, y0 - 5],
+            fill=(shade, shade, shade),
+        )
+
+    # fine lines for sharpness tests around center
+    center_x = width // 2
+    center_y = height // 2
+    for offset in range(-20, 25, 5):
+        draw.line(
+            (center_x + offset, bar_h, center_x + offset, height - bar_h),
+            fill="white",
+        )
+        draw.line(
+            (0, center_y + offset, width, center_y + offset),
+            fill="white",
+        )
+
+    # interlaced lines for moire effect
+    for y in range(bar_h, height, 4):
+        draw.line((0, y, width, y), fill=(30, 30, 30))
+
+    # wedge calibration dots around the bullseye
+    radius = min(width, height) * 0.4
+    for angle in range(0, 360, 30):
+        a = math.radians(angle)
+        x = center_x + radius * math.cos(a)
+        y = center_y + radius * math.sin(a)
+        draw.ellipse((x - 3, y - 3, x + 3, y + 3), fill="white")
+
+    # central bullseye target
+    for r in range(60, 0, -20):
+        draw.ellipse(
+            (
+                center_x - r,
+                center_y - r,
+                center_x + r,
+                center_y + r,
+            ),
+            outline="white",
+            width=2,
+        )
 
     # time and mystic text
     font_large = load_font(32)
@@ -108,6 +164,17 @@ def generate_test_pattern(
     mb = draw.textbbox((0, 0), mystic, font=font_small)
     mw, mh = mb[2] - mb[0], mb[3] - mb[1]
     draw.text((width // 2 - mw // 2, bar_h + th + 14), mystic, fill="white", font=font_small)
+
+    # timestamp repeated near the vertical center on the right side
+    font_right = load_font(24)
+    rb = draw.textbbox((0, 0), timestamp, font=font_right)
+    rw, rh = rb[2] - rb[0], rb[3] - rb[1]
+    draw.text(
+        (width - rw - 10, height // 2 - rh // 2),
+        timestamp,
+        fill="white",
+        font=font_right,
+    )
 
     if camera_name:
         draw.text((10, bar_h + 10), camera_name, fill="white", font=font_small)
@@ -174,7 +241,12 @@ def generate_indian_head_test_pattern(
     for i, line in enumerate(lines):
         tb = draw.textbbox((0, 0), line, font=font_small)
         tw, th = tb[2] - tb[0], tb[3] - tb[1]
-        draw.text((width // 2 - tw // 2, height - (len(lines) - i) * (th + 4)), line, fill="white", font=font_small)
+        draw.text(
+            (width // 2 - tw // 2, height - (len(lines) - i) * (th + 4)),
+            line,
+            fill="white",
+            font=font_small,
+        )
 
     # Optional spinner overlay for fun
     if spinner:
