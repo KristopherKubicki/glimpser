@@ -64,7 +64,7 @@ export function initTemplates() {
   document.addEventListener("DOMContentLoaded", () => {
     const form = document.querySelector("#template-form form");
     const groupDropdown = document.getElementById("group-dropdown");
-    const groupsInput = document.getElementById("groups");
+    const groupsSelect = document.getElementById("groups");
     const templateDetails = document
       .getElementById("template-form")
       ?.closest("details");
@@ -162,8 +162,8 @@ export function initTemplates() {
     }
 
     function autofillGroup() {
-      if (groupsInput && groupDropdown && groupDropdown.value !== "all") {
-        groupsInput.value = groupDropdown.value;
+      if (groupsSelect && groupDropdown && groupDropdown.value !== "all") {
+        groupsSelect.value = groupDropdown.value;
       }
     }
 
@@ -289,25 +289,51 @@ export function initTemplates() {
 
 export async function loadGroups() {
   const groupDropdown = document.getElementById("group-dropdown");
-  if (!groupDropdown) return;
-  groupDropdown.innerHTML = '<option value="all">Loading groups...</option>';
-  groupDropdown.disabled = true;
+  const groupsSelect = document.getElementById("groups");
+  if (!groupDropdown && !groupsSelect) return;
+  if (groupDropdown) {
+    groupDropdown.innerHTML = '<option value="all">Loading groups...</option>';
+    groupDropdown.disabled = true;
+  }
+  if (groupsSelect) {
+    groupsSelect.innerHTML = '<option value="">Loading...</option>';
+    groupsSelect.disabled = true;
+  }
 
   try {
     const response = await fetch("/groups");
     const groups = await response.json();
-    groupDropdown.innerHTML = '<option value="all">All Groups</option>';
+    if (groupDropdown) {
+      groupDropdown.innerHTML = '<option value="all">All Groups</option>';
+    }
+    if (groupsSelect) {
+      groupsSelect.innerHTML = '<option value="">Select a group</option>';
+    }
     groups.forEach((group) => {
-      const option = document.createElement("option");
-      option.value = group;
-      option.textContent = group;
-      groupDropdown.appendChild(option);
+      if (groupDropdown) {
+        const option = document.createElement("option");
+        option.value = group;
+        option.textContent = group;
+        groupDropdown.appendChild(option);
+      }
+      if (groupsSelect) {
+        const option = document.createElement("option");
+        option.value = group;
+        option.textContent = group;
+        groupsSelect.appendChild(option);
+      }
     });
   } catch (error) {
     console.error("Error loading groups:", error);
-    groupDropdown.innerHTML = '<option value="all">All Groups</option>';
+    if (groupDropdown) {
+      groupDropdown.innerHTML = '<option value="all">All Groups</option>';
+    }
+    if (groupsSelect) {
+      groupsSelect.innerHTML = '<option value="">Select a group</option>';
+    }
   } finally {
-    groupDropdown.disabled = false;
+    if (groupDropdown) groupDropdown.disabled = false;
+    if (groupsSelect) groupsSelect.disabled = false;
   }
 
   // Close the loadGroups function
