@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Footer warns when a newer release is available
 - Stream error overlay distinguishes network and unsupported format errors
 - Sortable KPI table on captions page with filtering
+- Unified test pattern with spinner and multilingual timestamp overlay
+- Advanced calibration graphics including grayscale gradient and HDR targets
 
 ### Changed
 
@@ -44,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added CPU builds of JAX 0.6.1 and Flax 0.2.0
 - Bumped scikit-image to 0.25.0
 - Bumped numpy to 1.26.0
+- Removed nodriver and its screenshot helper
 - Updated default VERSION to 0.2.7 for footer display
 - The footer name now links to https://glimpser.net
 - Bulk tools menu is expanded by default on the captions page

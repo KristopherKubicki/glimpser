@@ -1,21 +1,21 @@
 # tests/test_authentication.py
 
-import unittest
-
 import os
 import sys
+import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 import datetime
-import unittest
-from unittest.mock import patch
-from types import SimpleNamespace
-from app.config import USER_NAME
 import time
-from app.routes import login_required
+import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
+
 from app import create_app
+from app.config import USER_NAME
+from app.routes import login_required
 
 
 class TestAuthentication(unittest.TestCase):
@@ -91,9 +91,7 @@ class TestAuthentication(unittest.TestCase):
 
             mock_session_local.return_value = DummySession()
 
-            response = self.client.post(
-                "/login", data={"username": USER_NAME, "password": "wrong_password"}
-            )
+            response = self.client.post("/login", data={"username": USER_NAME, "password": "wrong_password"})
             self.assertEqual(response.status_code, 200)
 
     def test_login_failure_lockout(self):
@@ -104,9 +102,7 @@ class TestAuthentication(unittest.TestCase):
                 patch("app.routes.SessionLocal") as mock_session_local,
                 patch("app.routes.check_password_hash", return_value=False),
             ):
-                dummy_user = SimpleNamespace(
-                    id=1, username=USER_NAME, password_hash="hash"
-                )
+                dummy_user = SimpleNamespace(id=1, username=USER_NAME, password_hash="hash")
 
                 class DummyQuery:
                     def filter_by(self, **kwargs):
@@ -123,9 +119,7 @@ class TestAuthentication(unittest.TestCase):
                         pass
 
                 mock_session_local.return_value = DummySession()
-                self.client.post(
-                    "/login", data={"username": USER_NAME, "password": "wrong_password"}
-                )
+                self.client.post("/login", data={"username": USER_NAME, "password": "wrong_password"})
 
         with (
             patch("app.routes.SessionLocal") as mock_session_local,
@@ -148,9 +142,7 @@ class TestAuthentication(unittest.TestCase):
                     pass
 
             mock_session_local.return_value = DummySession()
-            response = self.client.post(
-                "/login", data={"username": USER_NAME, "password": "wrong_password"}
-            )
+            response = self.client.post("/login", data={"username": USER_NAME, "password": "wrong_password"})
         self.assertEqual(response.status_code, 429)  # Expecting lockout response
         login_attempts = {}  # reset
 
@@ -177,9 +169,7 @@ class TestAuthentication(unittest.TestCase):
                     pass
 
             mock_session_local.return_value = DummySession()
-            self.client.post(
-                "/login", data={"username": USER_NAME, "password": "correct_password"}
-            )
+            self.client.post("/login", data={"username": USER_NAME, "password": "correct_password"})
         response = self.client.get("/logout")
         self.assertEqual(response.status_code, 302)
         self.assertIn("/login", response.headers["Location"])
@@ -219,9 +209,7 @@ class TestAuthentication(unittest.TestCase):
     def test_login_required_with_expired_session(self):
         login_attempts = {}  # reset
         # Set an expiry date that is in the past
-        expired_time = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        expired_time = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
         dummy_user = SimpleNamespace(id=1, username=USER_NAME)
 
         class DummyQuery:
@@ -248,9 +236,7 @@ class TestAuthentication(unittest.TestCase):
 
     def test_login_required_refreshes_expiry(self):
         login_attempts = {}  # reset
-        initial_expiry = (
-            datetime.datetime.now() + datetime.timedelta(minutes=5)
-        ).strftime("%Y-%m-%d %H:%M:%S")
+        initial_expiry = (datetime.datetime.now() + datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
         session_data = {"user_id": 1, "expiry": initial_expiry}
         dummy_user = SimpleNamespace(id=1, username=USER_NAME)
 
@@ -276,9 +262,7 @@ class TestAuthentication(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertIn(b"Protected Content", response.data)
             self.assertNotEqual(session_data["expiry"], initial_expiry)
-            new_ts = datetime.datetime.strptime(
-                session_data["expiry"], "%Y-%m-%d %H:%M:%S"
-            )
+            new_ts = datetime.datetime.strptime(session_data["expiry"], "%Y-%m-%d %H:%M:%S")
             old_ts = datetime.datetime.strptime(initial_expiry, "%Y-%m-%d %H:%M:%S")
             self.assertGreater(new_ts, old_ts)
 
@@ -286,15 +270,11 @@ class TestAuthentication(unittest.TestCase):
         login_attempts = {}  # reset
         mock_api_key = "mock_api_key_for_testing"
         with patch("app.routes.API_KEY", mock_api_key):
-            response = self.client.get(
-                "/protected", headers={"X-API-Key": mock_api_key}
-            )
+            response = self.client.get("/protected", headers={"X-API-Key": mock_api_key})
             self.assertEqual(response.status_code, 200)
             self.assertIn(b"Protected Content", response.data)
 
-            response = self.client.get(
-                "/protected", headers={"X-API-Key": "wrong_api_key"}
-            )
+            response = self.client.get("/protected", headers={"X-API-Key": "wrong_api_key"})
             self.assertEqual(response.status_code, 401)
             self.assertIn(b"Invalid API key", response.data)
 
@@ -343,9 +323,7 @@ class TestAuthentication(unittest.TestCase):
                 patch("app.routes.session", {"user_id": 1}),
                 patch("app.routes.SessionLocal", return_value=DummySession()),
             ):
-                response = self.client.get(
-                    "/protected", headers={"X-API-Key": mock_api_key}
-                )
+                response = self.client.get("/protected", headers={"X-API-Key": mock_api_key})
                 self.assertEqual(response.status_code, 200)
                 self.assertIn(b"Protected Content", response.data)
 
@@ -362,17 +340,13 @@ class TestAuthentication(unittest.TestCase):
         # Test with a replay attack scenario (using a previously valid API key)
         mock_api_key = "mock_api_key_for_testing"
         with patch("app.routes.API_KEY", mock_api_key):
-            response = self.client.get(
-                "/protected", headers={"X-API-Key": mock_api_key}
-            )
+            response = self.client.get("/protected", headers={"X-API-Key": mock_api_key})
             self.assertEqual(response.status_code, 200)
             self.assertIn(b"Protected Content", response.data)
 
         # Assume API key should now be invalid (e.g., if it was a one-time-use key)
         with patch("app.routes.API_KEY", "another_mock_api_key"):
-            response = self.client.get(
-                "/protected", headers={"X-API-Key": mock_api_key}
-            )
+            response = self.client.get("/protected", headers={"X-API-Key": mock_api_key})
             self.assertEqual(response.status_code, 401)
             self.assertIn(b"Invalid API key", response.data)
 
@@ -455,9 +429,7 @@ class TestAuthentication(unittest.TestCase):
             self.assertEqual(len(parts), 2)
             expiry_str = parts[1].split(";")[0]
             expiry = datetime.datetime.strptime(expiry_str, "%a, %d %b %Y %H:%M:%S GMT")
-            self.assertGreater(
-                expiry, datetime.datetime.utcnow() + datetime.timedelta(days=1)
-            )
+            self.assertGreater(expiry, datetime.datetime.utcnow() + datetime.timedelta(days=1))
 
     def test_sse_unauthorized_message(self):
         login_attempts = {}

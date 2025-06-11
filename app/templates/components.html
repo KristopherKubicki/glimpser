@@ -80,12 +80,14 @@ confirm='Confirm', cancel='Cancel') -%}
   </section>
 </div>
 {%- endmacro %} {%- macro template_form(form_id, action, template=None,
-preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
+preview_src=None, preview_id=None, include_name=True, submit_label='Submit',
+object_tokens=None, clip_model=None) -%}
 <div class="edit-template-container">
   {% if preview_src or preview_id %}
   <div class="edit-template-preview">
     <img
       src="{{ preview_src }}"
+      data-placeholder="{{ preview_src }}"
       {%
       if
       preview_id
@@ -104,8 +106,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
     onsubmit="window.sendTelemetry && sendTelemetry('template_submit'); return validateForm()"
     title="Enter template details"
   >
-    <div>
-      {% if include_name %}
+    {% if include_name %}
+    <div class="form-row">
       <label for="name" title="Name of the template">Template Name:</label>
       <input
         type="text"
@@ -116,8 +118,9 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="My Camera"
         title="Enter a unique name for this template"
       />
-      {% endif %}
-
+    </div>
+    {% endif %}
+    <div class="form-row">
       <label for="url" title="URL to monitor">URL:</label>
       <input
         type="url"
@@ -130,24 +133,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         title="Enter the URL to monitor"
       />
       <span id="url-status" class="url-status" title="URL test result"></span>
-
-      <label for="thumbnail" title="Thumbnail image URL">Thumbnail URL:</label>
-      <input
-        type="url"
-        id="thumbnail"
-        name="thumbnail"
-        value="{{ template.thumbnail if template else '' }}"
-        placeholder="https://example.com/thumb.jpg"
-        title="Optional thumbnail image URL"
-      />
-      <div class="thumbnail-preview">
-        <img
-          id="thumbnail-img"
-          src="{{ template.thumbnail or url_for('static', filename='img/glimpser_small.png') }}"
-          alt="Thumbnail preview"
-        />
-      </div>
-
+    </div>
+    <div class="form-row">
       <label for="frequency" title="How often to check the URL"
         >Frequency (minutes):</label
       >
@@ -156,13 +143,25 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         id="frequency"
         name="frequency"
         value="{{ template.frequency if template else 30 }}"
-        min="0.1"
-        step="0.1"
+        min="0"
+        max="43200"
+        step="1"
+        list="frequency-options"
+        class="short-input"
         required
         placeholder="30"
         title="Enter how often to check the URL (in minutes)"
       />
-
+      <datalist id="frequency-options">
+        <option value="5"></option>
+        <option value="15"></option>
+        <option value="30"></option>
+        <option value="60"></option>
+        <option value="360"></option>
+        <option value="1440"></option>
+      </datalist>
+    </div>
+    <div class="form-row">
       <label for="timeout" title="Maximum time to wait for a response"
         >Timeout (seconds):</label
       >
@@ -171,12 +170,24 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         id="timeout"
         name="timeout"
         value="{{ template.timeout if template else 10 }}"
-        min="1"
+        min="3"
+        max="59"
+        step="1"
+        list="timeout-options"
+        class="short-input"
         required
         placeholder="10"
         title="Enter the maximum time to wait for a response (in seconds)"
       />
-
+      <datalist id="timeout-options">
+        <option value="5"></option>
+        <option value="10"></option>
+        <option value="15"></option>
+        <option value="30"></option>
+        <option value="45"></option>
+      </datalist>
+    </div>
+    <div class="form-row">
       <label for="notes" title="Additional notes">Notes:</label>
       <textarea
         id="notes"
@@ -186,8 +197,11 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
       >
 {{ template.notes if template else '' }}</textarea
       >
-
-      <label for="object_filter" title="Filter for specific objects"
+    </div>
+    <div class="form-row">
+      <label
+        for="object_filter"
+        title="Filter for specific objects using {{ clip_model }}"
         >Object Filter:</label
       >
       <input
@@ -196,9 +210,16 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         name="object_filter"
         value="{{ template.object_filter if template else '' }}"
         placeholder="person,car"
+        list="object-filter-options"
         title="Enter object types to filter (e.g., 'person,car')"
       />
-
+      <datalist id="object-filter-options">
+        {% for token in object_tokens or [] %}
+        <option value="{{ token }}"></option>
+        {% endfor %}
+      </datalist>
+    </div>
+    <div class="form-row">
       <label
         for="object_confidence"
         title="Minimum confidence for object detection"
@@ -208,6 +229,7 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         type="number"
         id="object_confidence"
         name="object_confidence"
+        class="short-input"
         value="{{ template.object_confidence if template else '' }}"
         min="0"
         max="1"
@@ -215,7 +237,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="0.5"
         title="Enter the minimum confidence level for object detection (0-1)"
       />
-
+    </div>
+    <div class="form-row">
       <label for="popup_xpath">Popup XPath:</label>
       <div class="xpath-input-container">
         <input
@@ -232,7 +255,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
           Structured
         </button>
       </div>
-
+    </div>
+    <div class="form-row">
       <label for="dedicated_xpath">Dedicated XPath:</label>
       <div class="xpath-input-container">
         <input
@@ -249,7 +273,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
           Structured
         </button>
       </div>
-
+    </div>
+    <div class="form-row">
       <label for="callback_url" title="URL for notifications"
         >Callback URL:</label
       >
@@ -261,7 +286,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="https://example.com/callback"
         title="Enter URL to receive notifications"
       />
-
+    </div>
+    <div class="form-row">
       <label for="proxy" title="Proxy server address">Proxy:</label>
       <input
         type="text"
@@ -271,7 +297,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="proxy.example.com:8080"
         title="Enter proxy server address (optional)"
       />
-
+    </div>
+    <div class="form-row">
       <label for="auth_username" title="Username for camera authentication"
         >Username:</label
       >
@@ -283,7 +310,8 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="user"
         title="Camera username"
       />
-
+    </div>
+    <div class="form-row">
       <label for="auth_password" title="Password for camera authentication"
         >Password:</label
       >
@@ -295,20 +323,12 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         placeholder="pass"
         title="Camera password"
       />
-
-      <label for="groups" title="Groups for the template, comma separated "
-        >Groups:</label
-      >
-      <input
-        type="text"
-        id="groups"
-        name="groups"
-        value="{{ template.groups if template else '' }}"
-        pattern="[\w,\- ]*"
-        placeholder="group1,group2"
-        title="Enter comma-separated group names"
-      />
-
+    </div>
+    <div class="form-row">
+      <label for="groups" title="Select an existing group">Group:</label>
+      <select id="groups" name="groups" title="Choose a group"></select>
+    </div>
+    <div class="form-row hidden">
       <label for="rollback_frames" title="Number of frames to rollback"
         >Rollback Frames:</label
       >
@@ -321,8 +341,6 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         title="Enter number of frames to rollback"
       />
     </div>
-    <br />
-
     <div class="checkbox-row">
       <label for="invert" title="Invert image colors">
         <input
@@ -395,8 +413,6 @@ preview_src=None, preview_id=None, include_name=True, submit_label='Submit') -%}
         Stealth
       </label>
     </div>
-    <br />
-
     <div class="form-actions">
       <input
         type="submit"

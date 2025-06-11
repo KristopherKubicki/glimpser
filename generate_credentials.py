@@ -131,9 +131,7 @@ def generate_credentials(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Generate or update credentials and settings."
-    )
+    parser = argparse.ArgumentParser(description="Generate or update credentials and settings.")
     parser.add_argument("--db-path", type=str, help="Path to the SQLite database file.")
     parser.add_argument("--username", type=str, help="Username for login.")
     parser.add_argument("--password", type=str, help="Password for login.")
@@ -147,9 +145,7 @@ if __name__ == "__main__":
         type=str,
         help="Custom secret key. Generates a new one if not provided.",
     )
-    parser.add_argument(
-        "--update-key", action="store_true", help="Update the secret key."
-    )
+    parser.add_argument("--update-key", action="store_true", help="Update the secret key.")
     args = parser.parse_args()
 
     generate_credentials(args)

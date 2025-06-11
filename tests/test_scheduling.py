@@ -1,19 +1,20 @@
 # test/test_scheduling.py
 
-import unittest
-from unittest.mock import patch, MagicMock
-import sys
 import os
+import sys
 import tempfile
+import unittest
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
+
 from PIL import Image
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.utils.scheduling import (
+    find_closest_image,
     scheduler,
     start_log_caching,
-    find_closest_image,
 )
 
 
@@ -133,9 +134,7 @@ class TestScheduler(unittest.TestCase):
                 Image.new("RGB", (1, 1)).save(os.path.join(tmp, filename))
 
             last_caption_time = datetime(2023, 1, 1, 0, 10, 0)
-            result = find_closest_image(
-                tmp, last_caption_time, max_time_diff=timedelta(seconds=60)
-            )
+            result = find_closest_image(tmp, last_caption_time, max_time_diff=timedelta(seconds=60))
             self.assertIsNone(result)
 
     """

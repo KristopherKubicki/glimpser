@@ -1,13 +1,13 @@
-import unittest
 import os
+import shutil
 import sys
 import tempfile
 import time
-import shutil
+import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.utils.screenshots import run_cmd, cleanup_old_tempdirs
+from app.utils.screenshots import cleanup_old_tempdirs, run_cmd
 
 
 class TestRunCmd(unittest.TestCase):

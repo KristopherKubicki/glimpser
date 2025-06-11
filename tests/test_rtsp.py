@@ -5,8 +5,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 import unittest
 from unittest.mock import patch
 
-from app import create_app
 import app.routes as routes
+from app import create_app
 
 
 class TestRTSP(unittest.TestCase):
@@ -70,9 +70,7 @@ class TestRTSP(unittest.TestCase):
         fake_frame = b"JPEGDATA"
         rtp_header = b"\x80\x60\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01"
 
-        def fake_generate(
-            group=None, filename="latest_camera.png", rtsp=False, session_id=None
-        ):
+        def fake_generate(group=None, filename="latest_camera.png", rtsp=False, session_id=None):
             def gen():
                 if rtsp:
                     yield rtp_header + fake_frame

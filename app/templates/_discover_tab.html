@@ -31,6 +31,7 @@
       id="discover-btn"
       class="btn btn-primary"
       title="Scan the network for cameras"
+      type="button"
     >
       Discover
     </button>
@@ -63,15 +64,15 @@
         Export CSV
       </button>
     </div>
-    <table class="camera-table">
+    <table id="discover-table" class="camera-table">
       <thead>
         <tr>
-          <th title="Camera IP address">IP</th>
-          <th title="Protocol type">Protocol</th>
-          <th title="Port number">Port</th>
-          <th title="MAC address">MAC</th>
-          <th title="Device manufacturer">Manufacturer</th>
-          <th title="Additional information">Info</th>
+          <th class="sortable" title="Camera IP address">IP</th>
+          <th class="sortable" title="Protocol type">Protocol</th>
+          <th class="sortable" data-type="number" title="Port number">Port</th>
+          <th class="sortable" title="MAC address">MAC</th>
+          <th class="sortable" title="Device manufacturer">Manufacturer</th>
+          <th title="Device details"></th>
           <th title="Add camera"></th>
         </tr>
       </thead>
@@ -84,7 +85,16 @@
           <td>{{ cam.port }}</td>
           <td>{{ cam.info.mac }}</td>
           <td>{{ cam.info.manufacturer }}</td>
-          <td>{{ show_info(cam.info) }}</td>
+          <td>
+            <svg class="camera-icon" width="12" height="12" aria-hidden="true">
+              <use
+                href="{{ url_for('static', filename='icons/sprite.svg') }}#camera"
+              ></use>
+            </svg>
+            {% if show_info(cam.info) %}
+            <span class="info-icon" title="{{ show_info(cam.info) }}">ℹ️</span>
+            {% endif %}
+          </td>
           <td>
             {% if url in existing_urls %}
             <a
@@ -113,14 +123,17 @@
   </div>
   {% endcall %} {% call card('Add Camera') %}
   <div class="wizard-step" title="Form to add a new camera">
-    {{ template_form('add-template-form', '/templates',
-    preview_id='url-preview') }}
+    {{ template_form( 'add-template-form', '/templates',
+    preview_src='/test_pattern.mjpg?pattern=geometric',
+    preview_id='url-preview', object_tokens=object_tokens, clip_model=clip_model
+    ) }}
   </div>
   {% endcall %}
 </div>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     const existingMap = {{ existing_urls | tojson | safe }};
+    const iconUrl = "{{ url_for('static', filename='icons/sprite.svg') }}";
     const button = document.getElementById("discover-btn");
     const msg = document.getElementById("discover-message");
     const progress = document.getElementById("discover-progress");
@@ -187,13 +200,15 @@
                             <input type="hidden" name="name" value="${cam.ip}">
                             <button type="submit" title="Add this camera">Add</button>
                         </form>`;
+          const info = renderInfo(cam.info);
           tr.innerHTML = `
                     <td>${cam.ip}</td>
                     <td>${cam.protocol}</td>
                     <td>${cam.port}</td>
                     <td>${cam.info.mac || ""}</td>
                     <td>${cam.info.manufacturer || ""}</td>
-                    <td>${renderInfo(cam.info)}</td>
+                    <td><svg class="camera-icon" width="12" height="12" aria-hidden="true"><use href="${iconUrl}#camera"></use></svg>
+                    ${info ? `<span class="info-icon" title="${info}">ℹ️</span>` : ""}</td>
                     <td>${action}</td>`;
           body.appendChild(tr);
         };

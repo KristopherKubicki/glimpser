@@ -1,5 +1,6 @@
 import socket
 from zoneinfo import available_timezones
+
 import psutil
 
 SETTINGS_TOOLTIPS = {
@@ -9,8 +10,12 @@ SETTINGS_TOOLTIPS = {
     "PORT": "Web server port",
     "USER_NAME": "Interface login user",
     "MAX_WORKERS": "Concurrent worker threads",
-    "LLM_CAPTION_PROMPT": "Prompt for image captioning",
-    "LLM_SUMMARY_PROMPT": "Prompt for daily summaries",
+    "LLM_CAPTION_PROMPT": (
+        "System prompt used for image captions. Supports the $datetime token and" " can span multiple lines."
+    ),
+    "LLM_SUMMARY_PROMPT": (
+        "System prompt for daily summaries. May be multi-line and also supports" " the $datetime token."
+    ),
     "MAX_RAW_DATA_SIZE": "Raw data threshold",
     "MAX_IMAGE_RETENTION_AGE": "Image retention days",
     "MAX_VIDEO_RETENTION_AGE": "Video retention days",
@@ -50,9 +55,7 @@ def _host_choices() -> list[str]:
     try:
         for addrs in psutil.net_if_addrs().values():
             for addr in addrs:
-                if addr.family == socket.AF_INET and not addr.address.startswith(
-                    "127."
-                ):
+                if addr.family == socket.AF_INET and not addr.address.startswith("127."):
                     if addr.address not in choices:
                         choices.append(addr.address)
     except Exception:

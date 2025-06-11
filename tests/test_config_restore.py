@@ -1,8 +1,8 @@
 """Tests for config.restore_config."""
 
+import importlib
 import os
 import sqlite3
-import importlib
 import tempfile
 import unittest
 from unittest.mock import patch

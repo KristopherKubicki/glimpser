@@ -1,12 +1,12 @@
-import unittest
+import datetime
+import importlib
+import json
+import os
 import random
 import string
-import datetime
-import json
-from unittest.mock import patch
 import tempfile
-import os
-import importlib
+import unittest
+from unittest.mock import patch
 
 import app.config as config
 import app.utils.db as db
@@ -33,10 +33,7 @@ class TestFuzzUpdateSummary(unittest.TestCase):
 
             for _ in range(num_iterations):
                 num_templates = random.randint(1, 10)
-                templates = {
-                    f"template_{i}": self.generate_random_template()
-                    for i in range(num_templates)
-                }
+                templates = {f"template_{i}": self.generate_random_template() for i in range(num_templates)}
 
                 with (
                     patch(
@@ -45,26 +42,20 @@ class TestFuzzUpdateSummary(unittest.TestCase):
                     ),
                     patch(
                         "app.utils.scheduling.summarize",
-                        return_value="".join(
-                            random.choices(string.ascii_letters + string.digits, k=50)
-                        ),
+                        return_value="".join(random.choices(string.ascii_letters + string.digits, k=50)),
                     ),
                 ):
                     try:
                         scheduling.update_summary()
                     except Exception as e:
                         env_patch.stop()
-                        self.fail(
-                            f"update_summary raised {type(e).__name__} unexpectedly: {str(e)}"
-                        )
+                        self.fail(f"update_summary raised {type(e).__name__} unexpectedly: {str(e)}")
             env_patch.stop()
 
     def generate_random_template(self):
         return {
             "name": "".join(random.choices(string.ascii_letters, k=10)),
-            "groups": ",".join(
-                random.choices(string.ascii_lowercase, k=random.randint(1, 5))
-            ),
+            "groups": ",".join(random.choices(string.ascii_lowercase, k=random.randint(1, 5))),
             "last_caption_time": f"2023-{random.randint(1,12):02d}-{random.randint(1,28):02d} {random.randint(0,23):02d}:{random.randint(0,59):02d}:{random.randint(0,59):02d}",
             "notes": "".join(
                 random.choices(
@@ -90,9 +81,7 @@ class TestFuzzUpdateSummary(unittest.TestCase):
         elif rand < 0.4:
             template["last_caption_time"] = ""
         elif rand < 0.6:
-            dt = datetime.datetime.utcnow() - datetime.timedelta(
-                hours=random.randint(4, 24)
-            )
+            dt = datetime.datetime.utcnow() - datetime.timedelta(hours=random.randint(4, 24))
             template["last_caption_time"] = dt.strftime("%Y-%m-%d %H:%M:%S")
         if random.random() < 0.2:
             template["notes"] *= random.randint(2, 4)
@@ -102,10 +91,7 @@ class TestFuzzUpdateSummary(unittest.TestCase):
 
     def random_summary(self):
         if random.random() < 0.5:
-            entries = {
-                str(i): "".join(random.choices(string.ascii_letters, k=5))
-                for i in range(random.randint(1, 3))
-            }
+            entries = {str(i): "".join(random.choices(string.ascii_letters, k=5)) for i in range(random.randint(1, 3))}
             return json.dumps(entries)
         return "".join(random.choices(string.ascii_letters + string.digits, k=50))
 
@@ -128,10 +114,7 @@ class TestFuzzUpdateSummary(unittest.TestCase):
 
             for _ in range(num_iterations):
                 num_templates = random.randint(1, 10)
-                templates = {
-                    f"template_{i}": self.generate_random_template_edge()
-                    for i in range(num_templates)
-                }
+                templates = {f"template_{i}": self.generate_random_template_edge() for i in range(num_templates)}
 
                 with (
                     patch(
@@ -147,9 +130,7 @@ class TestFuzzUpdateSummary(unittest.TestCase):
                         scheduling.update_summary()
                     except Exception as e:
                         env_patch.stop()
-                        self.fail(
-                            f"update_summary raised {type(e).__name__} unexpectedly: {str(e)}"
-                        )
+                        self.fail(f"update_summary raised {type(e).__name__} unexpectedly: {str(e)}")
             env_patch.stop()
 
 

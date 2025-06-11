@@ -1,14 +1,12 @@
-import unittest
-import tempfile
-import os
 import importlib.util
+import os
+import tempfile
+import unittest
 from datetime import datetime, timedelta
 
 # Dynamically load the video_details module without importing the full
 # ``app`` package and its heavy dependencies.
-module_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "app", "utils", "video_details.py")
-)
+module_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app", "utils", "video_details.py"))
 spec = importlib.util.spec_from_file_location("video_details", module_path)
 video_details = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(video_details)
@@ -41,12 +39,8 @@ class TestVideoDetails(unittest.TestCase):
         self.create_dummy_file("video3.mp4", days_ago=3)
 
         latest_date = get_latest_video_date(self.temp_dir)
-        expected_date = (datetime.now() - timedelta(days=1)).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-        self.assertEqual(
-            latest_date[:10], expected_date[:10]
-        )  # Compare only the date part
+        expected_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+        self.assertEqual(latest_date[:10], expected_date[:10])  # Compare only the date part
 
     def test_get_latest_screenshot_date(self):
         self.create_dummy_file("screenshot1.png", days_ago=2)
@@ -54,12 +48,8 @@ class TestVideoDetails(unittest.TestCase):
         self.create_dummy_file("screenshot3.png", days_ago=3)
 
         latest_date = get_latest_screenshot_date(self.temp_dir)
-        expected_date = (datetime.now() - timedelta(days=1)).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-        self.assertEqual(
-            latest_date[:10], expected_date[:10]
-        )  # Compare only the date part
+        expected_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+        self.assertEqual(latest_date[:10], expected_date[:10])  # Compare only the date part
 
     def test_get_latest_file(self):
         self.create_dummy_file("file1.txt", days_ago=2)

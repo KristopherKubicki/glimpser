@@ -1,20 +1,20 @@
-import sys
 import os
-import unittest
+import sys
 import tempfile
-from unittest.mock import patch, MagicMock
+import unittest
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.utils.template_manager import (
-    TemplateManager,
     Template,
-    mark_offline,
-    update_last_screenshot_time,
-    set_capture_failed,
+    TemplateManager,
     get_storage_usage,
     get_storage_usage_bytes,
     get_templates,
+    mark_offline,
+    set_capture_failed,
+    update_last_screenshot_time,
 )
 from app.utils.validators import validate_template_name
 
@@ -187,9 +187,7 @@ class TestTemplateManager(unittest.TestCase):
 
         mock_session_instance.add.reset_mock()
 
-        result = self.template_manager.save_template(
-            "test_template2", {"frequency": 1, "timeout": 120}
-        )
+        result = self.template_manager.save_template("test_template2", {"frequency": 1, "timeout": 120})
         self.assertFalse(result)
         self.assertEqual(mock_session_instance.commit.call_count, 1)
 
@@ -294,9 +292,7 @@ class TestOfflineHandling(unittest.TestCase):
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
         template = Template(name="cam1")
-        mock_sess.query.return_value.filter_by.return_value.first.return_value = (
-            template
-        )
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = template
 
         mark_offline("cam1")
 
@@ -308,9 +304,7 @@ class TestOfflineHandling(unittest.TestCase):
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
         template = Template(name="cam1", offline_since="yesterday")
-        mock_sess.query.return_value.filter_by.return_value.first.return_value = (
-            template
-        )
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = template
 
         update_last_screenshot_time("cam1")
 
@@ -323,9 +317,7 @@ class TestOfflineHandling(unittest.TestCase):
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
         template = Template(name="cam1")
-        mock_sess.query.return_value.filter_by.return_value.first.return_value = (
-            template
-        )
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = template
 
         set_capture_failed("cam1", True)
 
@@ -420,9 +412,7 @@ class TestSchedulerUpdates(unittest.TestCase):
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
         template = Template(name="cam1", frequency=1)
-        mock_sess.query.return_value.filter_by.return_value.first.return_value = (
-            template
-        )
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = template
 
         manager = TemplateManager()
         result = manager.save_template("cam1", {"frequency": 2})

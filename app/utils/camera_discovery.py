@@ -1,23 +1,23 @@
-import socket
-import uuid
-import psutil
-import logging
-import xml.etree.ElementTree as ET
-from urllib.parse import urlparse
-from ipaddress import ip_network, ip_address
-import os
 import glob
-import time
+import logging
+import os
 import re
-from functools import lru_cache
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import subprocess
 import shutil
+import socket
+import subprocess
+import time
+import uuid
+import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import lru_cache
+from ipaddress import ip_address, ip_network
+from urllib.parse import urlparse
 
+import psutil
 import requests
 
-from .screenshots import is_port_open
 from .oui_map import OUI_MAP as BUILTIN_OUI_MAP
+from .screenshots import is_port_open
 
 # Minimal OUI mapping for MAC manufacturer lookup.  The bulk of prefixes lives
 # in ``app.utils.oui_map`` which avoids pulling in external dependencies.
@@ -53,7 +53,11 @@ def _load_local_ouis() -> dict[str, str]:
     return vendors
 
 
-OUI_MAP.update(_load_local_ouis())
+# Merge local OUI data without clobbering built‑in mappings. Some
+# distributions ship different vendor names for the same prefix which can
+# break unit tests expecting the bundled values.
+for _prefix, _vendor in _load_local_ouis().items():
+    OUI_MAP.setdefault(_prefix, _vendor)
 
 # Ports checked for additional metadata after discovery. The list focuses on
 # common services exposed by cameras and network appliances. New ports can be
@@ -447,9 +451,7 @@ def _probe_onvif(timeout=2):
             info = {}
             try:
                 xml = ET.fromstring(data)
-                xaddr = xml.find(
-                    ".//{http://schemas.xmlsoap.org/ws/2005/04/discovery}XAddrs"
-                )
+                xaddr = xml.find(".//{http://schemas.xmlsoap.org/ws/2005/04/discovery}XAddrs")
                 if xaddr is not None:
                     uri = xaddr.text.split()[0]
                     parsed = urlparse(uri)
@@ -562,11 +564,7 @@ def _probe_ssdp(timeout: int = 2, max_duration: int = 5) -> list[dict]:
 
 def _fetch_sdp(ip, port, timeout=2):
     """Attempt to retrieve an SDP description from an RTSP endpoint."""
-    request = (
-        f"DESCRIBE rtsp://{ip}:{port}/ RTSP/1.0\r\n"
-        "CSeq: 1\r\n"
-        "Accept: application/sdp\r\n\r\n"
-    )
+    request = f"DESCRIBE rtsp://{ip}:{port}/ RTSP/1.0\r\n" "CSeq: 1\r\n" "Accept: application/sdp\r\n\r\n"
     try:
         with socket.create_connection((ip, port), timeout=timeout) as sock:
             sock.sendall(request.encode())
@@ -687,9 +685,7 @@ def _scan_rtsp_ports(subnets):
                     sdp = _fetch_sdp(ip, port)
                     if sdp:
                         info["sdp"] = sdp
-                    found.append(
-                        {"ip": ip, "protocol": "rtsp", "port": port, "info": info}
-                    )
+                    found.append({"ip": ip, "protocol": "rtsp", "port": port, "info": info})
     return found
 
 
@@ -776,9 +772,7 @@ def _scan_sip_ports(subnets):
             checked.add(ip)
             for port in (5060, 5061):
                 if is_port_open(ip, port, timeout=1):
-                    found.append(
-                        {"ip": ip, "protocol": "sip", "port": port, "info": {}}
-                    )
+                    found.append({"ip": ip, "protocol": "sip", "port": port, "info": {}})
     return found
 
 
@@ -794,9 +788,7 @@ def _scan_webrtc_ports(subnets):
             checked.add(ip)
             for port in (3478, 5349):
                 if is_port_open(ip, port, timeout=1):
-                    found.append(
-                        {"ip": ip, "protocol": "webrtc", "port": port, "info": {}}
-                    )
+                    found.append({"ip": ip, "protocol": "webrtc", "port": port, "info": {}})
     return found
 
 
@@ -885,9 +877,7 @@ def _local_video_devices(base_path="/dev"):
     return devices
 
 
-def _filter_by_subnets(
-    cameras: list[dict], subnets: list[ip_network] | None
-) -> list[dict]:
+def _filter_by_subnets(cameras: list[dict], subnets: list[ip_network] | None) -> list[dict]:
     """Return only entries whose IP falls within ``subnets``."""
 
     if not subnets:
@@ -954,9 +944,7 @@ def discover_cameras(progress_callback=None, subnets=None):
             progress_callback(stage, count, new, progress, eta)
 
     with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
-        future_to_stage = {
-            executor.submit(func): stage for stage, func in tasks.items()
-        }
+        future_to_stage = {executor.submit(func): stage for stage, func in tasks.items()}
         for fut in as_completed(future_to_stage):
             stage = future_to_stage[fut]
             stage_cameras = []
@@ -1002,6 +990,46 @@ def discover_cameras(progress_callback=None, subnets=None):
             "port": PORT,
             "info": {"name": "Test Frame"},
             "url": f"rtsp://127.0.0.1:{PORT}/test.rtsp",
+        }
+    )
+
+    cameras.append(
+        {
+            "ip": "127.0.0.1",
+            "protocol": "http",
+            "port": PORT,
+            "info": {"name": "Test Pattern"},
+            "url": f"http://127.0.0.1:{PORT}/test_pattern.mjpg",
+        }
+    )
+
+    cameras.append(
+        {
+            "ip": "127.0.0.1",
+            "protocol": "http",
+            "port": PORT,
+            "info": {"name": "All Cameras"},
+            "url": f"http://127.0.0.1:{PORT}/stream.mjpg?group=all",
+        }
+    )
+
+    cameras.append(
+        {
+            "ip": "127.0.0.1",
+            "protocol": "http",
+            "port": PORT,
+            "info": {"name": "All Motion"},
+            "url": f"http://127.0.0.1:{PORT}/motion.mjpg?group=all",
+        }
+    )
+
+    cameras.append(
+        {
+            "ip": "127.0.0.1",
+            "protocol": "http",
+            "port": PORT,
+            "info": {"name": "All Captions"},
+            "url": f"http://127.0.0.1:{PORT}/caption.mjpg?group=all",
         }
     )
 

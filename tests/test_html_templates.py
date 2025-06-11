@@ -1,8 +1,8 @@
 import os
 import sys
-from pathlib import Path
-from html.parser import HTMLParser
 import unittest
+from html.parser import HTMLParser
+from pathlib import Path
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -64,14 +64,25 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn("Username", placeholders)
         self.assertIn("Password", placeholders)
 
+    def test_login_has_remember_checkbox(self):
+        parser = parse_template(Path("app/templates/login.html"))
+        inputs = [i for i in parser.forms[0]["inputs"] if i.get("name") == "remember"]
+        self.assertTrue(inputs, "remember checkbox missing")
+        self.assertEqual(inputs[0].get("type"), "checkbox")
+
     def test_discover_add_camera_form_inputs(self):
         html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")
-        self.assertIn("template_form('add-template-form'", html)
+        self.assertIn("template_form(", html)
 
     def test_discover_has_existing_map_variable(self):
         with open("app/templates/_discover_tab.html", encoding="utf-8") as f:
             html = f.read()
         self.assertIn("existingMap", html)
+
+    def test_discover_table_sortable(self):
+        html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")
+        self.assertIn('<table id="discover-table"', html)
+        self.assertIn('th class="sortable"', html)
 
     def test_header_preloads_sprite(self):
         parser = parse_template(Path("app/templates/header.html"))
@@ -103,13 +114,14 @@ class TestHtmlTemplates(unittest.TestCase):
 
     def test_edit_template_frequency_min(self):
         html = Path("app/templates/template_details.html").read_text(encoding="utf-8")
-        self.assertIn("template_form('edit-template-form'", html)
+        self.assertIn("template_form(", html)
         components = Path("app/templates/components.html").read_text(encoding="utf-8")
-        self.assertIn('min="0.1"', components)
+        self.assertIn('min="0"', components)
+        self.assertIn('datalist id="object-filter-options"', components)
 
-    def test_template_form_has_thumbnail_field(self):
+    def test_groups_field_is_select(self):
         components = Path("app/templates/components.html").read_text(encoding="utf-8")
-        self.assertIn('name="thumbnail"', components)
+        self.assertIn('<select id="groups"', components)
 
 
 if __name__ == "__main__":

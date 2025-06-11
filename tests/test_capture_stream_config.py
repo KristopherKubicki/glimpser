@@ -1,5 +1,5 @@
-import os
 import importlib
+import os
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -32,9 +32,7 @@ class TestCaptureStreamConfig(unittest.TestCase):
             )
 
             with (
-                patch(
-                    "app.utils.screenshots.shutil.which", return_value="/usr/bin/ffmpeg"
-                ),
+                patch("app.utils.screenshots.shutil.which", return_value="/usr/bin/ffmpeg"),
                 patch("app.utils.screenshots.subprocess.run") as mock_run,
                 patch("app.utils.screenshots.os.makedirs"),
                 patch("app.utils.screenshots.os.path.exists", return_value=True),

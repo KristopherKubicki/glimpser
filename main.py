@@ -1,20 +1,19 @@
 #!./env/bin/python3
 #  main.py
 
+import argparse
+import atexit
 import logging
 import os
-import subprocess
-import argparse
-import time
 import signal
+import socket
+import subprocess
 import sys
 import threading
-import atexit
-import socket
+import time
 
 import app.config as config
-from app import create_app
-from app import scheduler
+from app import create_app, scheduler
 from app.utils.cli import build_argument_parser, cli_help_text
 from app.utils.scheduling import get_system_metrics, stop_background_tasks
 
@@ -56,9 +55,7 @@ def setup_config(args=None):
     config.DATABASE_PATH = args.db_path
     config.HOST = args.host
     if config.ENFORCE_DOMAIN_IN_HOST and "." not in config.HOST:
-        raise ValueError(
-            "HOST must include a domain when ENFORCE_DOMAIN_IN_HOST is enabled"
-        )
+        raise ValueError("HOST must include a domain when ENFORCE_DOMAIN_IN_HOST is enabled")
     config.PORT = args.port
     config.LOGGING_PATH = args.log_path
     config.DEBUG_MODE = args.debug
@@ -146,9 +143,7 @@ def create_application(args=None):
         setup_logging()
 
     if config.ENFORCE_DOMAIN_IN_HOST and "." not in config.HOST:
-        raise ValueError(
-            "HOST must include a domain when ENFORCE_DOMAIN_IN_HOST is enabled"
-        )
+        raise ValueError("HOST must include a domain when ENFORCE_DOMAIN_IN_HOST is enabled")
 
     ensure_directories()
     generate_credentials_if_needed()
@@ -219,9 +214,7 @@ class CleanupManager:
                 try:
                     thread.join(timeout=0.01)
                     if thread.is_alive():
-                        logging.warning(
-                            "Thread %s is still alive after join", thread.name
-                        )
+                        logging.warning("Thread %s is still alive after join", thread.name)
                 except Exception as e:
                     logging.error("Error terminating thread %s: %s", thread.name, e)
 
@@ -279,15 +272,11 @@ def display_startup_tips():
             config.HOST,
         )
     if config.SESSION_COOKIE_SECURE:
-        logging.warning(
-            "SESSION_COOKIE_SECURE is enabled; browsers only send the login cookie over HTTPS."
-        )
+        logging.warning("SESSION_COOKIE_SECURE is enabled; browsers only send the login cookie over HTTPS.")
 
 
 def _format_table(rows, headers):
-    col_widths = [
-        max(len(str(item)) for item in column) for column in zip(headers, *rows)
-    ]
+    col_widths = [max(len(str(item)) for item in column) for column in zip(headers, *rows)]
     header = " | ".join(h.ljust(w) for h, w in zip(headers, col_widths))
     separator = "-+-".join("-" * w for w in col_widths)
     lines = [header, separator]
@@ -414,9 +403,7 @@ def main(argv=None):
             config.HOST,
             config.PORT,
         )
-        app.run(
-            host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True
-        )
+        app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True)
     except KeyboardInterrupt:
         logging.info("KeyboardInterrupt received. Cleaning up...")
         cleanup_resources()

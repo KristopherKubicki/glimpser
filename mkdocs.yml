@@ -49,13 +49,16 @@ nav:
       - Release Workflow: release_workflow.md
       - Settings Page: settings_page.md
       - Clock Settings: clock_settings.md
+      - Braille Loading Spinner: braille_spinner.md
       - Configuration Management: config_management.md
       - System Monitoring: system_monitoring.md
       - Performance Tuning: performance_tuning.md
       - Telemetry: telemetry.md
       - Testing: testing.md
+      - Test Pattern Reference: test_pattern_reference.md
       - Tooltips: tooltips.md
       - SEO Metadata: seo_metadata.md
+      - Robots.txt Endpoint: robots_txt.md
       - Troubleshooting: troubleshooting.md
       - Log Cleaner: log_cleaner.md
       - Video Archiver: video_archiver.md
@@ -66,10 +69,11 @@ nav:
       - Jog-Shuttle Control: jog_shuttle.md
       - Live All Playback: live_all.md
       - Live View Scrubbing: live_scrub.md
+      - LLM Prompt Settings: llm_prompts.md
       - MCP Integration: mcp_integration.md
       - In-App Onboarding: onboarding.md
       - OpenSSF Scorecard: scorecard.md
       - Startup Tips and Gotchas: startup_tips.md
       - UI Component Guide: style_guide.md
-      - Thumbnail Field: thumbnail_field.md
+      - Navigation Logo: navigation_logo.md
       - Governance: governance.md

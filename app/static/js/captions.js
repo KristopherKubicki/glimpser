@@ -1,7 +1,25 @@
 import { updateHumanizedTimes } from "./templates.js";
 
+function playTone(duration = 500) {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return;
+  const ctx = new Ctx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.value = 440;
+  gain.gain.setValueAtTime(0.05, ctx.currentTime);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + duration / 1000);
+  osc.onended = () => ctx.close();
+}
+
 export function initCaptions() {
-  document.addEventListener("DOMContentLoaded", () => {
+  const run = () => {
+    const supportsSpeech =
+      "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
     const tabs = document.querySelectorAll(".tab-link");
     const contents = document.querySelectorAll(".tab-content");
     if (!tabs.length) return;
@@ -58,26 +76,51 @@ export function initCaptions() {
       if (table && data.answer) {
         const now = new Date().toISOString().replace("T", " ").slice(0, 19);
         const rowQ = document.createElement("tr");
-        rowQ.innerHTML = `<td>${now}</td><td>Q: ${chatQuestion.value}</td><td><button class="play-caption" title="Play caption">&#9658;</button></td>`;
-        rowQ.querySelector("button").dataset.caption =
-          `Q: ${chatQuestion.value}`;
+        rowQ.innerHTML = `<td>${now}</td><td>Q: ${chatQuestion.value}</td>`;
+        if (supportsSpeech) {
+          const btn = document.createElement("button");
+          btn.className = "play-caption";
+          btn.title = "Play caption";
+          btn.innerHTML = "&#9658;";
+          btn.dataset.caption = `Q: ${chatQuestion.value}`;
+          const cell = document.createElement("td");
+          cell.appendChild(btn);
+          rowQ.appendChild(cell);
+        }
+
         const rowA = document.createElement("tr");
-        rowA.innerHTML = `<td>${now}</td><td>A: ${data.answer}</td><td><button class="play-caption" title="Play caption">&#9658;</button></td>`;
-        rowA.querySelector("button").dataset.caption = `A: ${data.answer}`;
+        rowA.innerHTML = `<td>${now}</td><td>A: ${data.answer}</td>`;
+        if (supportsSpeech) {
+          const btnA = document.createElement("button");
+          btnA.className = "play-caption";
+          btnA.title = "Play caption";
+          btnA.innerHTML = "&#9658;";
+          btnA.dataset.caption = `A: ${data.answer}`;
+          const cellA = document.createElement("td");
+          cellA.appendChild(btnA);
+          rowA.appendChild(cellA);
+        }
         table.prepend(rowA);
         table.prepend(rowQ);
       }
     });
 
     const captionsTable = document.getElementById("captions-table");
-    captionsTable?.addEventListener("click", (e) => {
-      const btn = e.target.closest(".play-caption");
-      if (!btn || !window.speechSynthesis) return;
-      const text = btn.dataset.caption;
-      if (!text) return;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
-    });
+    if (supportsSpeech) {
+      captionsTable?.addEventListener("click", (e) => {
+        const btn = e.target.closest(".play-caption");
+        if (!btn) return;
+        const text = btn.dataset.caption;
+        if (!text) return;
+        window.speechSynthesis.cancel();
+        playTone();
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+      });
+    } else {
+      document
+        .querySelectorAll(".play-caption")
+        .forEach((b) => b.classList.add("hidden"));
+    }
 
     document.getElementById("camera-table")?.addEventListener("click", (e) => {
       const btn = e.target.closest(".update-button");
@@ -94,42 +137,49 @@ export function initCaptions() {
     const captionTable = document.querySelector("#captions-table tbody");
     let activeBtn = null;
     let paused = false;
-    captionTable?.addEventListener("click", (e) => {
-      const btn = e.target.closest(".speech-btn");
-      if (!btn) return;
-      const text = btn
-        .closest("td")
-        ?.querySelector(".caption-text")?.textContent;
-      if (!text) return;
-      if (
-        btn === activeBtn &&
-        speechSynthesis.speaking &&
-        !speechSynthesis.paused
-      ) {
-        speechSynthesis.pause();
-        btn.textContent = "\u25B6";
-        paused = true;
-        return;
-      }
-      if (btn === activeBtn && paused) {
-        speechSynthesis.resume();
+    if (!supportsSpeech) {
+      document
+        .querySelectorAll(".speech-btn, .play-caption")
+        .forEach((b) => b.classList.add("hidden"));
+    } else {
+      captionTable?.addEventListener("click", (e) => {
+        const btn = e.target.closest(".speech-btn");
+        if (!btn) return;
+        const text = btn
+          .closest("td")
+          ?.querySelector(".caption-text")?.textContent;
+        if (!text) return;
+        if (
+          btn === activeBtn &&
+          speechSynthesis.speaking &&
+          !speechSynthesis.paused
+        ) {
+          speechSynthesis.pause();
+          btn.textContent = "\u25B6";
+          paused = true;
+          return;
+        }
+        if (btn === activeBtn && paused) {
+          speechSynthesis.resume();
+          btn.textContent = "\u23F8";
+          paused = false;
+          return;
+        }
+        speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.onend = () => {
+          if (activeBtn) activeBtn.textContent = "\u25B6";
+          activeBtn = null;
+          paused = false;
+        };
+        playTone();
+        speechSynthesis.speak(utter);
+        if (activeBtn) activeBtn.textContent = "\u25B6";
+        activeBtn = btn;
         btn.textContent = "\u23F8";
         paused = false;
-        return;
-      }
-      speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.onend = () => {
-        if (activeBtn) activeBtn.textContent = "\u25B6";
-        activeBtn = null;
-        paused = false;
-      };
-      speechSynthesis.speak(utter);
-      if (activeBtn) activeBtn.textContent = "\u25B6";
-      activeBtn = btn;
-      btn.textContent = "\u23F8";
-      paused = false;
-    });
+      });
+    }
 
     tabs.forEach((tab) => {
       tab.addEventListener("click", () => {
@@ -150,7 +200,12 @@ export function initCaptions() {
     }
 
     setupLiveHistoryUpdates();
-  });
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", run);
+  } else {
+    run();
+  }
 }
 
 function setupLiveHistoryUpdates() {

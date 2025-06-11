@@ -1,5 +1,5 @@
-import os
 import logging
+import os
 from datetime import datetime
 
 
@@ -21,17 +21,11 @@ def get_latest_file(directory, ext="png"):
     if os.path.exists(lpath):
         return lpath
 
-    files = [
-        f
-        for f in os.listdir(directory)
-        if f.endswith("." + ext) and os.path.isfile(os.path.join(directory, f))
-    ]
+    files = [f for f in os.listdir(directory) if f.endswith("." + ext) and os.path.isfile(os.path.join(directory, f))]
     if not files:
         return None
     try:
-        latest_file = max(
-            files, key=lambda x: os.path.getmtime(os.path.join(directory, x))
-        )
+        latest_file = max(files, key=lambda x: os.path.getmtime(os.path.join(directory, x)))
     except Exception as e:
         logging.warning("file error %s", e)
         return None

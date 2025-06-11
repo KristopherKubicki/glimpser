@@ -2,33 +2,32 @@
 
 import datetime
 import glob
+import logging
 import os
 import subprocess
 import tempfile
 import time
-import logging
-from PIL import Image
-from filelock import FileLock
-
-from app.utils.screenshots import is_mostly_blank
 from enum import Enum, auto
 
-from .validators import validate_template_name
+from filelock import FileLock
+from PIL import Image
 
 from app.config import (
+    FFMPEG_HWACCEL,
+    FFMPEG_PATH,
+    FFMPEG_THREADS,
+    FFPROBE_PATH,
     MAX_COMPRESSED_VIDEO_AGE,
     MAX_IN_PROCESS_VIDEO_SIZE,
     NAME,
     SCREENSHOT_DIRECTORY,
     VERSION,
     VIDEO_DIRECTORY,
-    FFMPEG_PATH,
-    FFPROBE_PATH,
-    FFMPEG_HWACCEL,
-    FFMPEG_THREADS,
 )
+from app.utils.screenshots import is_mostly_blank
 
 from .template_manager import get_templates
+from .validators import validate_template_name
 
 
 class ConcatStatus(Enum):
@@ -71,9 +70,7 @@ def run_ffmpeg(command, timeout: int = 30):
     if result.stderr:
         logging.debug("ffmpeg stderr: %s", result.stderr.strip())
     if result.returncode != 0:
-        raise subprocess.CalledProcessError(
-            result.returncode, command, output=result.stdout, stderr=result.stderr
-        )
+        raise subprocess.CalledProcessError(result.returncode, command, output=result.stdout, stderr=result.stderr)
     return result
 
 
@@ -95,9 +92,7 @@ def pipe_ffmpeg_frames(command, frame_files):
     if stderr:
         logging.debug("ffmpeg stderr: %s", stderr.decode().strip())
     if process.returncode != 0:
-        raise subprocess.CalledProcessError(
-            process.returncode, command, output=stdout, stderr=stderr
-        )
+        raise subprocess.CalledProcessError(process.returncode, command, output=stdout, stderr=stderr)
     return process
 
 
@@ -161,9 +156,7 @@ def compile_to_teaser():
             os.makedirs(camera_path, exist_ok=True)
 
             # Get the most recent "in_process.mp4" video
-            video_files = sorted(
-                glob.glob(camera_path + "/*in_process.mp4"), reverse=True
-            )
+            video_files = sorted(glob.glob(camera_path + "/*in_process.mp4"), reverse=True)
             if video_files:
                 latest_video = video_files[0]
                 ldur = get_video_duration(latest_video)
@@ -182,20 +175,14 @@ def compile_to_teaser():
                     if trimmed_group_name:
                         if trimmed_group_name not in final_videos:
                             final_videos[trimmed_group_name] = []
-                        final_videos[trimmed_group_name].append(
-                            os.path.abspath(latest_video)
-                        )
+                        final_videos[trimmed_group_name].append(os.path.abspath(latest_video))
 
         # Concatenate the videos without re-encoding for all cameras
-        compile_videos(
-            temp_file.name, os.path.join(VIDEO_DIRECTORY, "all_in_process.mp4")
-        )
+        compile_videos(temp_file.name, os.path.join(VIDEO_DIRECTORY, "all_in_process.mp4"))
 
         # Concatenate the videos for each group
         for group, videos in final_videos.items():
-            with tempfile.NamedTemporaryFile(
-                mode="w+"
-            ) as group_temp_file:  # should be cleaning up automatically...
+            with tempfile.NamedTemporaryFile(mode="w+") as group_temp_file:  # should be cleaning up automatically...
                 for video in videos:
                     group_temp_file.write(f"file '{video}'\n")
                 group_temp_file.flush()
@@ -307,9 +294,7 @@ def get_video_duration(video_path):
     ]
     duration = 0
     try:
-        result = subprocess.run(
-            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-        )
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         duration = float(result.stdout.strip())
     except Exception:
         pass
@@ -335,9 +320,7 @@ def get_video_resolution(video_path):
         os.path.abspath(video_path),
     ]
     try:
-        result = subprocess.run(
-            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-        )
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if result.stdout.strip():
             w_h = result.stdout.strip().split("x")
             if len(w_h) == 2:
@@ -437,9 +420,7 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
         if file_updated:
             mod_time = os.path.getmtime(in_process_video)
             if abs(time.time() - mod_time) > 10:
-                logging.warning(
-                    "in_process video timestamp stale: %s", in_process_video
-                )
+                logging.warning("in_process video timestamp stale: %s", in_process_video)
                 return False
         return True
     return False
@@ -489,9 +470,7 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
 
     # Check size and age of the in-process video for rotation
     if os.path.isfile(in_process_video):
-        file_size_exceeded = (
-            os.path.getsize(in_process_video) > MAX_IN_PROCESS_VIDEO_SIZE
-        )
+        file_size_exceeded = os.path.getsize(in_process_video) > MAX_IN_PROCESS_VIDEO_SIZE
         file_age_exceeded = is_video_expired(in_process_video, MAX_COMPRESSED_VIDEO_AGE)
 
         # consider when the length is 2x300 frames as well so we always
@@ -510,9 +489,7 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
     if os.path.exists(in_process_video):
         video_mod_time = os.path.getmtime(in_process_video)
         ldur = get_video_duration(in_process_video)
-        if (
-            ldur < 10 and time.time() - video_mod_time > 60 * 60
-        ):  # could be a waste of 300 frames...
+        if ldur < 10 and time.time() - video_mod_time > 60 * 60:  # could be a waste of 300 frames...
             video_mod_time = 0
             # go bigger...
 
@@ -610,14 +587,10 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
                 "+faststart",
             ]
         )
-        create_command.extend(
-            ["-metadata", "creation_time=%sZ" % datetime.datetime.utcnow()]
-        )
+        create_command.extend(["-metadata", "creation_time=%sZ" % datetime.datetime.utcnow()])
         create_command.extend(["-metadata", "encoded_by=%s" % NAME])
         create_command.extend(["-metadata", "version=%s" % VERSION])
-        create_command.extend(
-            ["-y", os.path.abspath(temp_video)]
-        )  # Overwrite if exists
+        create_command.extend(["-y", os.path.abspath(temp_video)])  # Overwrite if exists
 
         lout, lerr = None, None
         try:
@@ -639,9 +612,7 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
                 ldur2 = get_video_duration(temp_video)
                 if os.path.getsize(temp_video) > 0 and ldur2 == 300 / 25:
                     os.rename(temp_video, in_process_video)
-                elif round(ldur2, 1) == round(
-                    (len(new_files) / 25), 1
-                ):  # this is a perfect encode...
+                elif round(ldur2, 1) == round((len(new_files) / 25), 1):  # this is a perfect encode...
                     concatenate_videos(in_process_video, temp_video, video_path)
                 else:
                     # this means a lot of frame drops
@@ -668,9 +639,7 @@ def _old_compile_to_video_inner(camera_path, video_path) -> bool:
 
     # Check size and age of the in-process video for rotation
     if os.path.isfile(in_process_video):
-        file_size_exceeded = (
-            os.path.getsize(in_process_video) > MAX_IN_PROCESS_VIDEO_SIZE
-        )
+        file_size_exceeded = os.path.getsize(in_process_video) > MAX_IN_PROCESS_VIDEO_SIZE
         file_age_exceeded = is_video_expired(in_process_video, MAX_COMPRESSED_VIDEO_AGE)
 
         # consider when the length is 2x300 frames as well so we always
@@ -690,9 +659,7 @@ def _old_compile_to_video_inner(camera_path, video_path) -> bool:
     if os.path.exists(in_process_video):
         video_mod_time = os.path.getmtime(in_process_video)
         ldur = get_video_duration(in_process_video)
-        if (
-            ldur < 10 and time.time() - video_mod_time > 60 * 60
-        ):  # could be a waste of 300 frames...
+        if ldur < 10 and time.time() - video_mod_time > 60 * 60:  # could be a waste of 300 frames...
             # print("  skipping ", in_process_video, ldur, time.time() - video_mod_time)
             video_mod_time = 0
             # go bigger...
@@ -743,9 +710,7 @@ def _old_compile_to_video_inner(camera_path, video_path) -> bool:
 
     if new_files:
         # keep the size/“_2” filter you already had
-        candidate = [
-            f for f in new_files[-300:] if os.path.getsize(f) > 10 and "_2" in f
-        ]
+        candidate = [f for f in new_files[-300:] if os.path.getsize(f) > 10 and "_2" in f]
 
         # drop corrupt or truncated PNGs
         frame_files = []
@@ -789,9 +754,7 @@ def _old_compile_to_video_inner(camera_path, video_path) -> bool:
                 "+faststart",
             ]
         )
-        create_command.extend(
-            ["-metadata", "creation_time=%sZ" % datetime.datetime.utcnow()]
-        )
+        create_command.extend(["-metadata", "creation_time=%sZ" % datetime.datetime.utcnow()])
         create_command.extend(["-metadata", f"encoded_by={NAME}"])
         create_command.extend(["-metadata", f"version={VERSION}"])
         create_command.extend(["-y", os.path.abspath(temp_video)])

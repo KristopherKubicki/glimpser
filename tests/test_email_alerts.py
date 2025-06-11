@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.utils.email_alerts import send_email_alert, email_alert
+from app.utils.email_alerts import email_alert, send_email_alert
 
 
 class TestEmailAlerts(unittest.TestCase):
@@ -76,9 +76,7 @@ class TestEmailAlerts(unittest.TestCase):
     def test_email_alert_wrapper(self):
         with patch("app.utils.email_alerts.send_email_alert") as mock_send:
             email_alert("Test", "Details")
-            mock_send.assert_called_once_with(
-                "Glimpser Alert: Test", "Event Type: Test\n\nDetails:\nDetails"
-            )
+            mock_send.assert_called_once_with("Glimpser Alert: Test", "Event Type: Test\n\nDetails:\nDetails")
 
 
 if __name__ == "__main__":

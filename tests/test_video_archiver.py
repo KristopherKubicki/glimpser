@@ -1,27 +1,27 @@
-import unittest
 import os
+import subprocess
 import sys
 import tempfile
-import subprocess
-from unittest.mock import patch, MagicMock
+import unittest
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from app.config import VIDEO_DIRECTORY
 from app.utils.validators import validate_template_name
 from app.utils.video_archiver import (
+    ConcatStatus,
+    archive_screenshots,
+    compile_to_teaser,
+    compile_to_video,
+    compile_videos,
+    concatenate_videos,
+    get_video_duration,
+    handle_concat_error,
+    run_ffmpeg,
     touch,
     trim_group_name,
-    compile_to_teaser,
-    compile_videos,
-    get_video_duration,
-    concatenate_videos,
-    handle_concat_error,
-    ConcatStatus,
-    compile_to_video,
-    archive_screenshots,
-    run_ffmpeg,
 )
-from app.config import VIDEO_DIRECTORY
 
 
 class TestVideoArchiver(unittest.TestCase):
@@ -59,9 +59,7 @@ class TestVideoArchiver(unittest.TestCase):
     @patch("app.utils.video_archiver.get_templates")
     @patch("app.utils.video_archiver.get_video_duration")
     @patch("app.utils.video_archiver.compile_videos")
-    def test_compile_to_teaser(
-        self, mock_compile_videos, mock_get_video_duration, mock_get_templates
-    ):
+    def test_compile_to_teaser(self, mock_compile_videos, mock_get_video_duration, mock_get_templates):
         mock_get_templates.return_value = {
             "camera1": {"groups": "group1,group2"},
             "camera2": {"groups": "group2,group3"},
@@ -131,9 +129,7 @@ class TestVideoArchiver(unittest.TestCase):
 
     @patch("app.utils.video_archiver.get_video_duration")
     @patch("subprocess.run")
-    def test_concatenate_videos_retry(
-        self, mock_subprocess_run, mock_get_video_duration
-    ):
+    def test_concatenate_videos_retry(self, mock_subprocess_run, mock_get_video_duration):
         mock_get_video_duration.return_value = 10
         mock_subprocess_run.side_effect = [
             RuntimeError("Resource temporarily unavailable"),
@@ -157,9 +153,7 @@ class TestVideoArchiver(unittest.TestCase):
     @patch("app.utils.video_archiver.logging.warning")
     @patch("app.utils.video_archiver.get_video_duration")
     @patch("subprocess.run")
-    def test_concatenate_videos_stale_timestamp(
-        self, mock_subprocess_run, mock_get_video_duration, mock_warning
-    ):
+    def test_concatenate_videos_stale_timestamp(self, mock_subprocess_run, mock_get_video_duration, mock_warning):
         mock_get_video_duration.return_value = 10
         mock_subprocess_run.return_value.returncode = 0
         with (
@@ -182,9 +176,7 @@ class TestVideoArchiver(unittest.TestCase):
             patch("os.path.getsize", return_value=100),
             patch("os.rename") as mock_rename,
         ):
-            status = handle_concat_error(
-                Exception("Invalid data found"), "temp.mp4", "in_process.mp4"
-            )
+            status = handle_concat_error(Exception("Invalid data found"), "temp.mp4", "in_process.mp4")
             mock_rename.assert_called_once_with("temp.mp4", "in_process.mp4")
             self.assertEqual(status, ConcatStatus.RECOVERED)
 
@@ -204,9 +196,7 @@ class TestVideoArchiver(unittest.TestCase):
             patch("os.path.getsize", return_value=100),
             patch("os.rename") as mock_rename,
         ):
-            status = handle_concat_error(
-                Exception("Some fatal error"), "temp.mp4", "in_process.mp4"
-            )
+            status = handle_concat_error(Exception("Some fatal error"), "temp.mp4", "in_process.mp4")
             mock_rename.assert_called_once_with("temp.mp4", "in_process.mp4")
             self.assertEqual(status, ConcatStatus.FATAL)
 
@@ -247,9 +237,7 @@ class TestVideoArchiver(unittest.TestCase):
     @patch("app.utils.video_archiver.pipe_ffmpeg_frames")
     @patch("app.utils.video_archiver.Image.open")
     @patch("glob.glob")
-    def test_compile_to_video_ignores_blank_frames(
-        self, mock_glob, mock_open, mock_pipe
-    ):
+    def test_compile_to_video_ignores_blank_frames(self, mock_glob, mock_open, mock_pipe):
         mock_glob.return_value = ["shot_blank.png", "shot_2.png"]
 
         captured_lines = []

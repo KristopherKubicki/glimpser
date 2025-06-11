@@ -1,15 +1,15 @@
-import sys
-import os
-import unittest
-from unittest.mock import patch, MagicMock
-import tempfile
 import logging
+import os
+import sys
+import tempfile
+import unittest
 from unittest import mock
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import main
 import app.config as config
+import main
 
 
 class TestMain(unittest.TestCase):
@@ -62,13 +62,9 @@ class TestMain(unittest.TestCase):
         self.assertEqual(config.PORT, 8080)
         self.assertEqual(config.LOGGING_PATH, os.path.join(self.temp_dir, "log.txt"))
         self.assertTrue(config.DEBUG_MODE)
-        self.assertEqual(
-            config.SCREENSHOT_DIRECTORY, os.path.join(self.temp_dir, "screenshots")
-        )
+        self.assertEqual(config.SCREENSHOT_DIRECTORY, os.path.join(self.temp_dir, "screenshots"))
         self.assertEqual(config.VIDEO_DIRECTORY, os.path.join(self.temp_dir, "videos"))
-        self.assertEqual(
-            config.SUMMARIES_DIRECTORY, os.path.join(self.temp_dir, "summaries")
-        )
+        self.assertEqual(config.SUMMARIES_DIRECTORY, os.path.join(self.temp_dir, "summaries"))
 
     @patch.object(logging, "getLogger")
     def test_setup_logging(self, mock_get_logger):
@@ -82,9 +78,7 @@ class TestMain(unittest.TestCase):
         main.setup_logging(args)
 
         mock_logger.setLevel.assert_called_once_with(logging.DEBUG)
-        mock_logger.addHandler.assert_any_call(
-            mock.ANY
-        )  # Check that any handler was added
+        mock_logger.addHandler.assert_any_call(mock.ANY)  # Check that any handler was added
 
     """
     @patch("logging.FileHandler")
@@ -245,9 +239,7 @@ class TestMain(unittest.TestCase):
     @patch("main.create_app")
     @patch("main.ensure_directories")
     @patch("main.generate_credentials_if_needed")
-    def test_enforce_domain_host_create_application(
-        self, mock_generate, mock_ensure, mock_create_app
-    ):
+    def test_enforce_domain_host_create_application(self, mock_generate, mock_ensure, mock_create_app):
         args = MagicMock()
         args.db_path = os.path.join(self.temp_dir, "db.sqlite")
         args.host = "localhost"

@@ -1,7 +1,11 @@
 import { initTemplates } from "./templates.js";
 import { initVideoControls } from "./video.js";
 import { initSchedulerToggle } from "./scheduler.js";
-import { initDiscoveryToggle, initSubnetInput } from "./discovery.js";
+import {
+  initDiscoveryToggle,
+  initSubnetInput,
+  initDiscoveryTable,
+} from "./discovery.js";
 import { initNav } from "./nav.js";
 import { initFormValidation, initAddSettingValidation } from "./form.js";
 import { initFooterFade } from "./footer.js";
@@ -19,6 +23,7 @@ import { initControlsDropdown } from "./controls.js";
 import { initAutocomplete } from "./autocomplete.js";
 import { initCosts } from "./costs.js";
 import { initAdvanced } from "./advanced.js";
+import { initKeyVisibility } from "./key_visibility.js";
 import { initCliHelp } from "./cli_help.js";
 import { initNetworkBanner } from "./network_banner.js";
 import { initUnsavedIndicator } from "./unsaved.js";
@@ -28,6 +33,7 @@ initVideoControls();
 initSchedulerToggle();
 initDiscoveryToggle();
 initSubnetInput();
+initDiscoveryTable();
 initNav();
 initFormValidation();
 initAddSettingValidation();
@@ -47,5 +53,6 @@ initControlsDropdown();
 initAutocomplete();
 initCosts();
 initAdvanced();
+initKeyVisibility();
 initUnsavedIndicator();
 initCliHelp();

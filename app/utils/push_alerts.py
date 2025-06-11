@@ -3,11 +3,11 @@
 import json
 import logging
 
-from pywebpush import webpush, WebPushException
+from pywebpush import WebPushException, webpush
 
-from app.utils.db import SessionLocal
-from app.models import PushSubscription
 from app.config import VAPID_PRIVATE_KEY, VAPID_PUBLIC_KEY
+from app.models import PushSubscription
+from app.utils.db import SessionLocal
 
 
 def send_push_alert(title: str, body: str) -> None:

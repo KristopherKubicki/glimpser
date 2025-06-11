@@ -1,9 +1,61 @@
 import { setCaptionsVisibility } from "./templates.js";
 
+let scrubTooltip;
+
+function createScrubTooltip() {
+  if (!scrubTooltip) {
+    scrubTooltip = document.createElement("div");
+    scrubTooltip.className = "scrub-tooltip";
+    document.body.appendChild(scrubTooltip);
+  }
+}
+
+function updateScrubTooltip(time, e) {
+  if (!scrubTooltip) return;
+  const formatted = new Date(time * 1000).toISOString().substring(11, 19);
+  scrubTooltip.textContent = formatted;
+  const offset = 8;
+  const width = scrubTooltip.offsetWidth;
+  let left = e.pageX + offset;
+  if (left + width > window.innerWidth) {
+    left = e.pageX - width - offset;
+  }
+  scrubTooltip.style.left = `${left}px`;
+  scrubTooltip.style.top = `${e.pageY + offset}px`;
+  scrubTooltip.classList.add("visible");
+}
+
+function hideScrubTooltip() {
+  if (scrubTooltip) scrubTooltip.classList.remove("visible");
+}
+
 // Prefetch queue to avoid loading many clips at once
 let prefetchQueue = [];
 let processing = false;
 let queueDelay = 1000;
+const spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+function showSpinner(video) {
+  const spinner = video.parentElement?.querySelector(".loading-spinner");
+  if (!spinner || spinner.dataset.active === "true") return;
+  let i = 0;
+  spinner.textContent = spinnerFrames[i];
+  spinner.classList.add("visible");
+  spinner.dataset.active = "true";
+  const id = setInterval(() => {
+    i = (i + 1) % spinnerFrames.length;
+    spinner.textContent = spinnerFrames[i];
+  }, 100);
+  spinner.dataset.intervalId = id.toString();
+}
+
+function hideSpinner(video) {
+  const spinner = video.parentElement?.querySelector(".loading-spinner");
+  if (!spinner || spinner.dataset.active !== "true") return;
+  clearInterval(Number(spinner.dataset.intervalId));
+  spinner.dataset.active = "false";
+  spinner.classList.remove("visible");
+}
 
 export function setQueueDelay(ms) {
   queueDelay = ms;
@@ -13,6 +65,7 @@ export function enqueueClip(video) {
   if (!video.dataset.hdSrc || video.dataset.hdLoaded === "true") return;
   if (prefetchQueue.includes(video)) return;
   prefetchQueue.push(video);
+  showSpinner(video);
   if (!processing) processQueue();
 }
 
@@ -27,6 +80,8 @@ function processQueue() {
   if (src) {
     src.src = vid.dataset.hdSrc;
     vid.dataset.hdLoaded = "true";
+    vid.addEventListener("canplay", () => hideSpinner(vid), { once: true });
+    vid.addEventListener("error", () => hideSpinner(vid), { once: true });
     vid.load();
   }
   setTimeout(processQueue, queueDelay);
@@ -46,6 +101,7 @@ function safePlay(el) {
 export function initVideoControls() {
   document.addEventListener("DOMContentLoaded", () => {
     setupStatusPageVideoHover();
+    setupCaptionsPageVideoHover();
     setupVideoControls();
 
     const playAllButton = document.getElementById("play-all-button");
@@ -248,6 +304,31 @@ export function setupVideoControls() {
         break;
     }
   });
+
+  const container = video.closest(".video-container");
+  const controls = container?.querySelector(".video-controls");
+  let fadeTimeout;
+  let autoplayTimeout;
+
+  const showControls = () => {
+    if (controls) controls.classList.remove("fade-out");
+    clearTimeout(fadeTimeout);
+    clearTimeout(autoplayTimeout);
+    fadeTimeout = setTimeout(() => {
+      if (controls) controls.classList.add("fade-out");
+    }, 3000);
+    autoplayTimeout = setTimeout(() => {
+      video.playbackRate = 0.5;
+      if (video.paused) safePlay(video);
+    }, 60000);
+  };
+
+  if (container) {
+    ["mousemove", "touchstart", "click"].forEach((evt) =>
+      container.addEventListener(evt, showControls),
+    );
+    showControls();
+  }
 }
 
 export function setupStatusPageVideoHover() {
@@ -269,13 +350,23 @@ export function setupStatusPageVideoHover() {
     const video = cell.querySelector("video.hover-video");
     if (img && video) {
       observer.observe(video);
-      // Update frame based on cursor position over the tile.
+      let targetTime = 0;
+      let rafId;
+
+      const step = () => {
+        if (!Number.isNaN(targetTime)) {
+          video.currentTime += (targetTime - video.currentTime) * 0.4;
+        }
+        rafId = requestAnimationFrame(step);
+      };
+
       const scrub = (e) => {
         const rect = cell.getBoundingClientRect();
         const ratio = (e.clientX - rect.left) / rect.width;
         const clamped = Math.max(0, Math.min(1, ratio));
         if (!Number.isNaN(video.duration)) {
-          video.currentTime = video.duration * clamped;
+          targetTime = video.duration * clamped;
+          updateScrubTooltip(targetTime, e);
         }
       };
 
@@ -287,26 +378,29 @@ export function setupStatusPageVideoHover() {
         hoverTimer = setTimeout(() => enqueueClip(video), 500);
         img.style.display = "none";
         video.style.display = "block";
+        createScrubTooltip();
         // Load metadata on first hover so currentTime can be set
         if (video.readyState === 0) {
           video.load();
-        }
-        video.pause();
-        if (video.readyState >= 1) {
-          scrub(e);
-        } else {
           const onLoad = () => {
             scrub(e);
             video.removeEventListener("loadedmetadata", onLoad);
           };
           video.addEventListener("loadedmetadata", onLoad);
+        } else {
+          scrub(e);
         }
+        video.pause();
+        if (!rafId) rafId = requestAnimationFrame(step);
       });
 
       cell.addEventListener("mousemove", scrub);
 
       cell.addEventListener("mouseleave", () => {
         clearTimeout(hoverTimer);
+        hideScrubTooltip();
+        cancelAnimationFrame(rafId);
+        rafId = null;
         resetTimeout = setTimeout(() => {
           video.pause();
           video.currentTime = 0;
@@ -315,6 +409,72 @@ export function setupStatusPageVideoHover() {
         }, 1000); // restore screenshot a bit after leaving
       });
     }
+  });
+}
+
+export function setupCaptionsPageVideoHover() {
+  const containers = document.querySelectorAll(
+    ".captions-page .video-container",
+  );
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        const vid = entry.target;
+        if (entry.isIntersecting) {
+          enqueueClip(vid);
+        }
+      });
+    },
+    { threshold: 0.5 },
+  );
+
+  containers.forEach((container) => {
+    const video = container.querySelector("video.hover-video");
+    if (!video) return;
+    observer.observe(video);
+    let targetTime = 0;
+    let rafId;
+
+    const step = () => {
+      if (!Number.isNaN(targetTime)) {
+        video.currentTime += (targetTime - video.currentTime) * 0.4;
+      }
+      rafId = requestAnimationFrame(step);
+    };
+
+    const scrub = (e) => {
+      const rect = container.getBoundingClientRect();
+      const ratio = (e.clientX - rect.left) / rect.width;
+      const clamped = Math.max(0, Math.min(1, ratio));
+      if (!Number.isNaN(video.duration)) {
+        targetTime = video.duration * clamped;
+      }
+    };
+
+    container.addEventListener("mouseenter", (e) => {
+      if (video.readyState === 0) {
+        video.load();
+        const onLoad = () => {
+          scrub(e);
+          video.removeEventListener("loadedmetadata", onLoad);
+        };
+        video.addEventListener("loadedmetadata", onLoad);
+      } else {
+        scrub(e);
+      }
+      video.pause();
+      if (!rafId) rafId = requestAnimationFrame(step);
+    });
+
+    container.addEventListener("mousemove", scrub);
+
+    container.addEventListener("mouseleave", () => {
+      hideScrubTooltip();
+      cancelAnimationFrame(rafId);
+      rafId = null;
+      video.pause();
+      video.currentTime = 0;
+    });
   });
 }
 

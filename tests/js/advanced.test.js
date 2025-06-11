@@ -45,3 +45,13 @@ test("locked inputs toggle disabled state", () => {
   toggle.dispatchEvent(new Event("change"));
   expect(locked.disabled).toBe(false);
 });
+
+test("enabling shows warning alert", () => {
+  initAdvanced();
+  document.dispatchEvent(new Event("DOMContentLoaded"));
+  window.alert = jest.fn();
+  const toggle = document.getElementById("advanced-toggle");
+  toggle.checked = true;
+  toggle.dispatchEvent(new Event("change"));
+  expect(window.alert).toHaveBeenCalled();
+});

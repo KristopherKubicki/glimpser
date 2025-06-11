@@ -8,11 +8,14 @@ export function initUrlTester() {
     if (!input || !status) return;
 
     let controller;
+    const defaultSrc = preview
+      ? preview.dataset.placeholder || preview.src
+      : "";
     const check = async () => {
       const url = input.value.trim();
       status.textContent = "";
       status.className = "url-status";
-      if (preview) preview.src = url;
+      if (preview) preview.src = url || defaultSrc;
       if (!url) return;
       controller?.abort();
       controller = new AbortController();

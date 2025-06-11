@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Dict, List
-
 import logging
+from typing import Any, Dict, List
 
 try:
     from openai_agents_python import (
-        MCPServerStdio,
         MCPServerSse,
+        MCPServerStdio,
         MCPServerStreamableHttp,
     )
 except Exception:  # pragma: no cover - openai-agents may not be installed
@@ -35,14 +34,9 @@ class _StubMCPServer:
         self._tools[name] = {"description": description, "func": func}
 
     async def list_tools(self) -> List[Dict[str, Any]]:
-        return [
-            {"name": name, "description": info["description"]}
-            for name, info in self._tools.items()
-        ]
+        return [{"name": name, "description": info["description"]} for name, info in self._tools.items()]
 
-    async def call_tool(
-        self, name: str, params: Dict[str, Any] | None = None
-    ) -> Dict[str, Any]:
+    async def call_tool(self, name: str, params: Dict[str, Any] | None = None) -> Dict[str, Any]:
         info = self._tools.get(name)
         if not info:
             return {"error": f"Unknown tool: {name}"}
@@ -77,9 +71,7 @@ class MCPClient:
         await self._ensure_server()
         return await self._server.list_tools()
 
-    async def call_tool(
-        self, name: str, params: Dict[str, Any] | None = None
-    ) -> Dict[str, Any]:
+    async def call_tool(self, name: str, params: Dict[str, Any] | None = None) -> Dict[str, Any]:
         await self._ensure_server()
         return await self._server.call_tool(name, params)
 

@@ -1,7 +1,7 @@
-import unittest
-import sys
-import os
 import datetime
+import os
+import sys
+import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -92,9 +92,7 @@ class TestLogFiltering(unittest.TestCase):
             [
                 l
                 for l in self.logs
-                if datetime.datetime(2023, 1, 2)
-                <= l["timestamp"]
-                <= datetime.datetime(2023, 1, 4, 23, 59, 59)
+                if datetime.datetime(2023, 1, 2) <= l["timestamp"] <= datetime.datetime(2023, 1, 4, 23, 59, 59)
             ],
             key=lambda x: x["timestamp"],
             reverse=True,

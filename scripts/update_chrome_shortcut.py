@@ -30,16 +30,8 @@ def update_chrome_shortcuts() -> list[Path]:
     shell = win32com.client.Dispatch("WScript.Shell")
     locations = [
         Path(os.environ.get("USERPROFILE", "")) / "Desktop",
-        Path(os.environ.get("APPDATA", ""))
-        / "Microsoft"
-        / "Windows"
-        / "Start Menu"
-        / "Programs",
-        Path(os.environ.get("ProgramData", ""))
-        / "Microsoft"
-        / "Windows"
-        / "Start Menu"
-        / "Programs",
+        Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs",
+        Path(os.environ.get("ProgramData", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs",
     ]
 
     updated: list[Path] = []
@@ -74,16 +66,8 @@ def shortcuts_need_patch() -> bool:
     shell = win32com.client.Dispatch("WScript.Shell")
     locations = [
         Path(os.environ.get("USERPROFILE", "")) / "Desktop",
-        Path(os.environ.get("APPDATA", ""))
-        / "Microsoft"
-        / "Windows"
-        / "Start Menu"
-        / "Programs",
-        Path(os.environ.get("ProgramData", ""))
-        / "Microsoft"
-        / "Windows"
-        / "Start Menu"
-        / "Programs",
+        Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs",
+        Path(os.environ.get("ProgramData", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs",
     ]
 
     for loc in locations:
@@ -105,16 +89,8 @@ def first_shortcut_path() -> Path | None:
     shell = win32com.client.Dispatch("WScript.Shell")
     locations = [
         Path(os.environ.get("USERPROFILE", "")) / "Desktop",
-        Path(os.environ.get("APPDATA", ""))
-        / "Microsoft"
-        / "Windows"
-        / "Start Menu"
-        / "Programs",
-        Path(os.environ.get("ProgramData", ""))
-        / "Microsoft"
-        / "Windows"
-        / "Start Menu"
-        / "Programs",
+        Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs",
+        Path(os.environ.get("ProgramData", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs",
     ]
 
     for loc in locations:

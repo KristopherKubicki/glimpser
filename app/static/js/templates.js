@@ -14,9 +14,14 @@ function safePlay(el) {
   }
 }
 
-function createMobileCard(name) {
+function createMobileCard(name, template, index) {
   const div = document.createElement("div");
   div.classList.add("templateDiv", "mobile-card");
+  div.dataset.name = name;
+  div.dataset.index = index.toString();
+  div.dataset.last = template.last_screenshot_time || "";
+  div.dataset.next = template.next_screenshot_time || "";
+  div.dataset.error = template.capture_failed ? "1" : "0";
   const link = document.createElement("a");
   link.href = `/templates/${name}`;
   link.textContent = name;
@@ -59,7 +64,7 @@ export function initTemplates() {
   document.addEventListener("DOMContentLoaded", () => {
     const form = document.querySelector("#template-form form");
     const groupDropdown = document.getElementById("group-dropdown");
-    const groupsInput = document.getElementById("groups");
+    const groupsSelect = document.getElementById("groups");
     const templateDetails = document
       .getElementById("template-form")
       ?.closest("details");
@@ -157,8 +162,8 @@ export function initTemplates() {
     }
 
     function autofillGroup() {
-      if (groupsInput && groupDropdown && groupDropdown.value !== "all") {
-        groupsInput.value = groupDropdown.value;
+      if (groupsSelect && groupDropdown && groupDropdown.value !== "all") {
+        groupsSelect.value = groupDropdown.value;
       }
     }
 
@@ -284,25 +289,51 @@ export function initTemplates() {
 
 export async function loadGroups() {
   const groupDropdown = document.getElementById("group-dropdown");
-  if (!groupDropdown) return;
-  groupDropdown.innerHTML = '<option value="all">Loading groups...</option>';
-  groupDropdown.disabled = true;
+  const groupsSelect = document.getElementById("groups");
+  if (!groupDropdown && !groupsSelect) return;
+  if (groupDropdown) {
+    groupDropdown.innerHTML = '<option value="all">Loading groups...</option>';
+    groupDropdown.disabled = true;
+  }
+  if (groupsSelect) {
+    groupsSelect.innerHTML = '<option value="">Loading...</option>';
+    groupsSelect.disabled = true;
+  }
 
   try {
     const response = await fetch("/groups");
     const groups = await response.json();
-    groupDropdown.innerHTML = '<option value="all">All Groups</option>';
+    if (groupDropdown) {
+      groupDropdown.innerHTML = '<option value="all">All Groups</option>';
+    }
+    if (groupsSelect) {
+      groupsSelect.innerHTML = '<option value="">Select a group</option>';
+    }
     groups.forEach((group) => {
-      const option = document.createElement("option");
-      option.value = group;
-      option.textContent = group;
-      groupDropdown.appendChild(option);
+      if (groupDropdown) {
+        const option = document.createElement("option");
+        option.value = group;
+        option.textContent = group;
+        groupDropdown.appendChild(option);
+      }
+      if (groupsSelect) {
+        const option = document.createElement("option");
+        option.value = group;
+        option.textContent = group;
+        groupsSelect.appendChild(option);
+      }
     });
   } catch (error) {
     console.error("Error loading groups:", error);
-    groupDropdown.innerHTML = '<option value="all">All Groups</option>';
+    if (groupDropdown) {
+      groupDropdown.innerHTML = '<option value="all">All Groups</option>';
+    }
+    if (groupsSelect) {
+      groupsSelect.innerHTML = '<option value="">Select a group</option>';
+    }
   } finally {
-    groupDropdown.disabled = false;
+    if (groupDropdown) groupDropdown.disabled = false;
+    if (groupsSelect) groupsSelect.disabled = false;
   }
 
   // Close the loadGroups function
@@ -332,17 +363,17 @@ export function timeAgo(dateString) {
   if (diffInSeconds < 0) return "in the future";
 
   const intervals = [
-    { label: "year", seconds: 31536000 },
-    { label: "month", seconds: 2592000 },
-    { label: "day", seconds: 86400 },
-    { label: "hour", seconds: 3600 },
-    { label: "minute", seconds: 60 },
-    { label: "second", seconds: 1 },
+    { label: "year", short: "y", seconds: 31536000 },
+    { label: "month", short: "mo", seconds: 2592000 },
+    { label: "day", short: "d", seconds: 86400 },
+    { label: "hour", short: "h", seconds: 3600 },
+    { label: "minute", short: "m", seconds: 60 },
+    { label: "second", short: "s", seconds: 1 },
   ];
 
-  for (const { label, seconds } of intervals) {
+  for (const { label, short, seconds } of intervals) {
     const count = Math.floor(diffInSeconds / seconds);
-    if (count >= 1) return `${count} ${label}${count > 1 ? "s" : ""} ago`;
+    if (count >= 1) return `${count}${short} ago`;
   }
   return "just now";
 }
@@ -673,7 +704,7 @@ export async function loadTemplates() {
         if (isIndexPage) {
           let templateDiv;
           if (isMobile()) {
-            templateDiv = createMobileCard(name);
+            templateDiv = createMobileCard(name, template, index);
             templateList.appendChild(templateDiv);
           } else {
             templateDiv = document.createElement("div");
@@ -683,10 +714,17 @@ export async function loadTemplates() {
             templateDiv.style.transition =
               "opacity 0.5s ease, transform 0.5s ease";
 
+            templateDiv.dataset.name = name;
+            templateDiv.dataset.index = index.toString();
+            templateDiv.dataset.last = template.last_screenshot_time || "";
+            templateDiv.dataset.next = template.next_screenshot_time || "";
+            templateDiv.dataset.error = template.capture_failed ? "1" : "0";
+
             templateDiv.innerHTML = `
               <a href='/templates/${name}'>
                 <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
                   <div class="camera-name">${name}</div>
+                  <div class="loading-spinner" aria-hidden="true"></div>
                   <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback data-hd-src="/clip/${name}">
                     <source src="/last_video/${name}" type="video/mp4">
                     Your browser does not support the video tag.
@@ -866,24 +904,60 @@ export function setupSorting() {
 export function setupSortMenu() {
   const menu = document.getElementById("sort-date");
   if (!menu) return;
-  menu.addEventListener("change", () => sortCameraTable(menu.value));
+  menu.addEventListener("change", () => sortTemplates(menu.value));
 }
 
-export function sortCameraTable(option) {
+export function sortTemplates(option) {
   const table = document.getElementById("camera-table");
-  if (!table) return;
-  const tbody = table.tBodies[0];
-  const rows = Array.from(tbody.rows);
+  const list = document.getElementById("template-list");
   const [field, direction] = option.split("_");
-  if (!field) {
-    rows.sort((a, b) => parseInt(a.dataset.index) - parseInt(b.dataset.index));
-  } else {
-    rows.sort(
-      (a, b) => new Date(a.dataset[field]) - new Date(b.dataset[field]),
-    );
+
+  if (table) {
+    const tbody = table.tBodies[0];
+    const rows = Array.from(tbody.rows);
+    const getVal = (row) => {
+      if (field === "alpha") return row.textContent.trim().toLowerCase();
+      if (field === "error") return parseInt(row.dataset.error || "0");
+      return row.dataset[field] || "";
+    };
+    rows.sort((a, b) => {
+      if (!field) {
+        return parseInt(a.dataset.index) - parseInt(b.dataset.index);
+      }
+      if (field === "alpha") {
+        return getVal(a).localeCompare(getVal(b));
+      }
+      if (field === "error") {
+        return getVal(a) - getVal(b);
+      }
+      return new Date(getVal(a)) - new Date(getVal(b));
+    });
     if (direction === "desc") rows.reverse();
+    rows.forEach((row) => tbody.appendChild(row));
+    return;
   }
-  rows.forEach((row) => tbody.appendChild(row));
+
+  if (!list) return;
+  const items = Array.from(list.querySelectorAll(".templateDiv"));
+  const getVal = (item) => {
+    if (field === "alpha") return item.dataset.name?.toLowerCase() || "";
+    if (field === "error") return parseInt(item.dataset.error || "0");
+    return item.dataset[field] || "";
+  };
+  items.sort((a, b) => {
+    if (!field) {
+      return parseInt(a.dataset.index) - parseInt(b.dataset.index);
+    }
+    if (field === "alpha") {
+      return getVal(a).localeCompare(getVal(b));
+    }
+    if (field === "error") {
+      return getVal(a) - getVal(b);
+    }
+    return new Date(getVal(a)) - new Date(getVal(b));
+  });
+  if (direction === "desc") items.reverse();
+  items.forEach((item) => list.appendChild(item));
 }
 
 export function setupCaptionsFilter() {

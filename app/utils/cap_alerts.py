@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 import requests
 

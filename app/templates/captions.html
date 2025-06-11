@@ -40,13 +40,16 @@ template_controls %} {% block content %}
 
   <div id="prompts-tab" class="tab-content active">
     {% call template_controls() %}
-    <label for="sort-date" title="Sort camera table">Sort:</label>
-    <select id="sort-date" title="Sort camera table">
-      <option value="">Default</option>
-      <option value="last_desc">Last &darr;</option>
-      <option value="last_asc">Last &uarr;</option>
-      <option value="next_asc">Next &uarr;</option>
-      <option value="next_desc">Next &darr;</option>
+    <select id="sort-date" class="sort-select" aria-label="Sort cameras">
+      <option value="">↕</option>
+      <option value="name_asc">A–Z</option>
+      <option value="name_desc">Z–A</option>
+      <option value="last_desc">Last ↓</option>
+      <option value="last_asc">Last ↑</option>
+      <option value="next_desc">Next ↓</option>
+      <option value="next_asc">Next ↑</option>
+      <option value="error_desc">Error ↓</option>
+      <option value="error_asc">Error ↑</option>
     </select>
     {% endcall %}
 
@@ -66,6 +69,7 @@ template_controls %} {% block content %}
             data-index="{{ loop.index0 }}"
             data-last="{{ template_details[camera]['last_screenshot'] }}"
             data-next="{{ template_details[camera]['next_screenshot'] }}"
+            data-error="{{ 1 if template_details[camera]['capture_failed'] else 0 }}"
             data-groups="{{ template_details[camera]['groups'] }}"
             data-screenshot_count="{{ template_details[camera]['screenshot_count'] }}"
             data-video_count="{{ template_details[camera]['video_count'] }}"
@@ -110,8 +114,19 @@ template_controls %} {% block content %}
                       class="notes-textarea"
                       placeholder="Edit caption prompt"
                     >
-{{ template_details[camera]['notes'] }}</textarea
+{{ template_details[camera]['notes'] }}</textarea>
+                    <button
+                      class="update-button"
+                      data-template="{{ camera }}"
+                      title="Send updated prompt"
+                      aria-label="Send updated prompt"
                     >
+                      <svg width="16" height="16" aria-hidden="true">
+                        <use
+                          href="{{ url_for('static', filename='icons/sprite.svg') }}#login"
+                        />
+                      </svg>
+                    </button>
                   </div>
                   <div class="chat-response">
                     <label id="last-caption-label-{{ camera }}"
@@ -126,18 +141,6 @@ template_controls %} {% block content %}
                     </div>
                   </div>
                 </div>
-                <button
-                  class="update-button"
-                  data-template="{{ camera }}"
-                  title="Send updated prompt"
-                  aria-label="Send updated prompt"
-                >
-                  <svg width="16" height="16" aria-hidden="true">
-                    <use
-                      href="{{ url_for('static', filename='icons/sprite.svg') }}#login"
-                    />
-                  </svg>
-                </button>
               </form>
             </td>
           </tr>

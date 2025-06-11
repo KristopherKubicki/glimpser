@@ -1,9 +1,9 @@
+import os
+
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.config import DATABASE_PATH
-import os
 
 DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 
@@ -26,17 +26,11 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
 
-def ensure_column(
-    table_name: str, column_name: str, column_type: str, default: str
-) -> None:
+def ensure_column(table_name: str, column_name: str, column_type: str, default: str) -> None:
     """Add a column to a table if it doesn't already exist."""
 
     with engine.begin() as conn:
         result = conn.execute(text(f"PRAGMA table_info({table_name})"))
         columns = [row[1] for row in result]
         if column_name not in columns:
-            conn.execute(
-                text(
-                    f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type} DEFAULT {default}"
-                )
-            )
+            conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type} DEFAULT {default}"))

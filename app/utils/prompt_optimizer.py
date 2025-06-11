@@ -2,10 +2,11 @@
 
 import os
 
-from app.config import SCREENSHOT_DIRECTORY, CHATGPT_KEY
-from .template_manager import get_screenshots_for_template
-from .image_processing import ChatGPTImageComparison
 import app.utils.image_processing as img_proc
+from app.config import CHATGPT_KEY, SCREENSHOT_DIRECTORY
+
+from .image_processing import ChatGPTImageComparison
+from .template_manager import get_screenshots_for_template
 
 
 def generate_prompt(template_name: str, num_images: int = 3) -> str:
@@ -24,11 +25,7 @@ def generate_prompt(template_name: str, num_images: int = 3) -> str:
         SCREENSHOT_DIRECTORY,
         template_name,
     )
-    image_paths = [
-        os.path.join(base, shot)
-        for shot in screenshots
-        if os.path.exists(os.path.join(base, shot))
-    ]
+    image_paths = [os.path.join(base, shot) for shot in screenshots if os.path.exists(os.path.join(base, shot))]
     if not image_paths:
         return ""
 

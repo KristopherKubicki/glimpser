@@ -51,6 +51,8 @@ Interactive forms now include additional tooltips:
 - **Help page tabs** – each tab button explains what information the section contains.
 - **Settings tabs** – hovering shows which category will open.
 - **Cost dashboards** – date selectors, the Load buttons and range slider include titles.
+- **LLM_PROMPT settings** – tooltips explain that the caption and summary prompts
+  support `$datetime` and can span multiple lines.
 
 ## Dynamic Tooltips
 

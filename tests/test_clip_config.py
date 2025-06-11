@@ -3,6 +3,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+
 from PIL import Image
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -15,9 +16,7 @@ class TestClipModelSetting(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             cam_dir = os.path.join(tmp, "cam1")
             os.makedirs(cam_dir)
-            Image.new("RGB", (10, 10)).save(
-                os.path.join(cam_dir, "cam1_20240101000000.png")
-            )
+            Image.new("RGB", (10, 10)).save(os.path.join(cam_dir, "cam1_20240101000000.png"))
 
             template = {
                 "name": "cam1",
@@ -81,9 +80,7 @@ class TestClipModelSetting(unittest.TestCase):
                 patch("os.rename"),
                 patch("os.unlink"),
                 patch("app.utils.scheduling.CLIPModel", DummyModel) as mock_model_class,
-                patch(
-                    "app.utils.scheduling.CLIPProcessor", DummyProcessor
-                ) as mock_processor_class,
+                patch("app.utils.scheduling.CLIPProcessor", DummyProcessor) as mock_processor_class,
             ):
                 scheduling.clip_model = None
                 scheduling.clip_processor = None

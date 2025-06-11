@@ -121,21 +121,26 @@ template_form %} {% block content %}
                 <span class="slider round"></span>
               </label>
               {% elif 'KEY' in setting.name %}
+              {% set sprite = url_for('static', filename='icons/sprite.svg') %}
               <input
+                id="{{ setting.name }}"
                 type="password"
                 name="{{ setting.name }}"
                 value="{{ setting.value }}"
                 title="Edit value for {{ setting.name }}"
-                {%
-                if
-                setting.name
-                in
-                locked_settings
-                %}disabled
-                data-locked{%
-                endif
-                %}
+                {% if setting.name in locked_settings %}disabled data-locked{% endif %}
               />
+              <button
+                type="button"
+                class="toggle-key-visibility"
+                data-input="{{ setting.name }}"
+                data-sprite="{{ sprite }}"
+                title="Show key"
+              >
+                <svg width="16" height="16">
+                  <use href="{{ sprite }}#eye" />
+                </svg>
+              </button>
               {% else %}
               <input
                 type="{{ 'number' if setting.name in numeric_fields else 'text' }}"
@@ -198,6 +203,7 @@ template_form %} {% block content %}
           <span class="slider round"></span>
         </label>
       </div>
+      <p>Last backup: {{ last_backup or 'Never' }}</p>
       <button
         type="submit"
         name="action"

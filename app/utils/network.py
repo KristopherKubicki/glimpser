@@ -1,6 +1,6 @@
-import socket
 import logging
 import os
+import socket
 
 
 def _get_test_hosts():

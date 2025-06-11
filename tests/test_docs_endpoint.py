@@ -1,9 +1,10 @@
 import os
 import sys
-import unittest
 import tempfile
-from flask import Flask
+import unittest
 from unittest.mock import patch
+
+from flask import Flask
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -16,9 +17,7 @@ class TestDocsEndpoint(unittest.TestCase):
         self.login_patch = patch("app.routes.login_required", lambda x: x)
         self.login_patch.start()
         self.temp_dir = tempfile.TemporaryDirectory()
-        with open(
-            os.path.join(self.temp_dir.name, "test.md"), "w", encoding="utf-8"
-        ) as fh:
+        with open(os.path.join(self.temp_dir.name, "test.md"), "w", encoding="utf-8") as fh:
             fh.write("content")
         self.docs_patch = patch("app.routes.DOCS_DIRECTORY", self.temp_dir.name)
         self.docs_patch.start()

@@ -1,5 +1,6 @@
 import json
 import time
+
 from selenium.webdriver.common.by import By
 
 
@@ -24,27 +25,12 @@ def network_idle_condition(driver, url, timeout=30, idle_time=0.25, stealth=Fals
             break
 
         logs = driver.get_log("performance")
-        events = [
-            log
-            for log in logs
-            if "Network.response" in log["message"]
-            or "Network.request" in log["message"]
-        ]
+        events = [log for log in logs if "Network.response" in log["message"] or "Network.request" in log["message"]]
         for gevent in events:
             levent = json.loads(gevent.get("message"))
-            lurl = (
-                levent.get("message", {})
-                .get("params", {})
-                .get("response", {})
-                .get("url")
-            )
+            lurl = levent.get("message", {}).get("params", {}).get("response", {}).get("url")
             if lurl == gurl:
-                lstatus = (
-                    levent.get("message", {})
-                    .get("params", {})
-                    .get("response", {})
-                    .get("status")
-                )
+                lstatus = levent.get("message", {}).get("params", {}).get("response", {}).get("status")
 
                 # Treat any 4xx or 5xx response as a failure so the caller can
                 # bail out early on server errors.
@@ -77,10 +63,7 @@ def check_network_errors(driver, url, timeout=30):
         logs = driver.get_log("browser")
         for log in logs:
             if log["level"] == "SEVERE":
-                if (
-                    "Failed to load resource" in log["message"]
-                    or "NetworkError" in log["message"]
-                ):
+                if "Failed to load resource" in log["message"] or "NetworkError" in log["message"]:
                     errors.append(log["message"])
 
         if errors:

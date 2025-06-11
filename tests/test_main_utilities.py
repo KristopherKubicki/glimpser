@@ -1,8 +1,8 @@
-import sys
 import os
-import unittest
 import signal
-from unittest.mock import patch, MagicMock, call
+import sys
+import unittest
+from unittest.mock import MagicMock, call, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -81,9 +81,7 @@ class TestMainUtilities(unittest.TestCase):
     @patch("main.sys.exit")
     @patch("main.time.sleep")
     def test_graceful_shutdown_exits(self, mock_sleep, mock_exit, mock_cleanup):
-        main.graceful_shutdown(
-            signal.SIGTERM if hasattr(signal, "SIGTERM") else 0, None
-        )
+        main.graceful_shutdown(signal.SIGTERM if hasattr(signal, "SIGTERM") else 0, None)
         mock_cleanup.assert_called_once()
         mock_exit.assert_called_once_with(0)
 

@@ -1,6 +1,6 @@
+import importlib
 import os
 import sys
-import importlib
 import tempfile
 import unittest
 from unittest.mock import patch
