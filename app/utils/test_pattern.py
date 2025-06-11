@@ -70,6 +70,7 @@ def _format_binary_time(timestamp: str) -> str:
 
 
 FONT_CANDIDATES = [
+    "DejaVuSansMono.ttf",
     "DejaVuSans-Bold.ttf",
     "DejaVuSans.ttf",
     "Arial.ttf",
@@ -151,8 +152,8 @@ def generate_test_pattern(
     mini_w = max(2, width // 100)
     mini_h = bar_h // 4
     font_tiny = load_font(8)
-    x_start = width - mini_w * (len(mini_709) + len(mini_2020)) - 10
-    y_start = 2
+    x_start = width - mini_w * (len(mini_709) + len(mini_2020)) - 10 - 50
+    y_start = 2 + 10
     for color, label in mini_709 + mini_2020:
         draw.rectangle([x_start, y_start, x_start + mini_w, y_start + mini_h], fill=color)
         text_color = "white" if sum(color) < 382 else "black"
@@ -302,8 +303,8 @@ def generate_indian_head_test_pattern(
     mini_w = max(2, width // 100)
     mini_h = bar_h // 4
     font_tiny = load_font(8)
-    x_start = width - mini_w * (len(mini_709) + len(mini_2020)) - 10
-    y_start = 2
+    x_start = width - mini_w * (len(mini_709) + len(mini_2020)) - 10 - 50
+    y_start = 2 + 10
     for color, label in mini_709 + mini_2020:
         draw.rectangle([x_start, y_start, x_start + mini_w, y_start + mini_h], fill=color)
         text_color = "white" if sum(color) < 382 else "black"
@@ -328,20 +329,38 @@ def generate_indian_head_test_pattern(
     # Display the current time in several numeral systems near the right center
     timestamp = datetime.datetime.now().strftime("%H:%M:%S")
     font_small = load_font(int(height * 0.04))
+    h, m, s = timestamp.split(":")
     lines = [
-        timestamp,
-        _to_braille(timestamp),
-        _format_roman_time(timestamp),
-        _format_binary_time(timestamp),
+        f"{h}:{m}:{s}",
+        f"{_to_braille(h)}:{_to_braille(m)}:{_to_braille(s)}",
+        f"{_to_roman(int(h))}:{_to_roman(int(m))}:{_to_roman(int(s))}",
+        f"{int(h):05b}:{int(m):06b}:{int(s):06b}",
     ]
+
+    hours = [h, _to_braille(h), _to_roman(int(h)), f"{int(h):05b}"]
+    mins = [m, _to_braille(m), _to_roman(int(m)), f"{int(m):06b}"]
+    secs = [s, _to_braille(s), _to_roman(int(s)), f"{int(s):06b}"]
+    parts = list(zip(hours, mins, secs))
+
+    colon_w = draw.textlength(":", font=font_small)
+    hours_w = [draw.textlength(text, font=font_small) for text in hours]
+    mins_w = [draw.textlength(text, font=font_small) for text in mins]
+    secs_w = [draw.textlength(text, font=font_small) for text in secs]
+    max_min_w = max(mins_w)
+    max_sec_w = max(secs_w)
+    colon_x2 = width - 10 - max_sec_w
+    colon_x1 = colon_x2 - colon_w - max_min_w
+
     metrics = [draw.textbbox((0, 0), line, font=font_small) for line in lines]
-    widths = [m[2] - m[0] for m in metrics]
     heights = [m[3] - m[1] for m in metrics]
-    total_height = sum(heights) + 4 * (len(lines) - 1)
+    spacing = 8
+    total_height = sum(heights) + spacing * (len(lines) - 1)
     y = height // 2 - total_height // 2
-    for line, w, h in zip(lines, widths, heights):
-        draw.text((width - w - 10, y), line, fill="white", font=font_small)
-        y += h + 4
+    for (h_part, m_part, s_part), hgt, hw in zip(parts, heights, hours_w):
+        line = f"{h_part}:{m_part}:{s_part}"
+        x = colon_x1 - hw
+        draw.text((x, y), line, fill="white", font=font_small)
+        y += hgt + spacing
 
     # Optional spinner overlay for fun
     if spinner:
