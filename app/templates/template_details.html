@@ -16,14 +16,18 @@ template_form %} {% block content %}
   href="{{ url_for('static', filename='css/player.css') }}"
 />
 
-<div class="video-container full-height">
+<div
+  class="video-container full-height"
+  role="region"
+  aria-label="Live video feed"
+>
   <img
     id="live-image"
     loading="lazy"
     alt="Live feed frame"
     title="Current frame from the live feed"
   />
-  <video id="live-video" class="hidden" autoplay muted>
+  <video id="live-video" class="hidden" autoplay muted tabindex="0">
     <source src="" type="video/mp4" />
     Your browser does not support the video tag.
   </video>
@@ -32,7 +36,11 @@ template_form %} {% block content %}
     <input type="range" id="seek-bar" value="0" title="Seek position" />
 
     <div class="control-row">
-      <button id="play-pause" title="play/pause">
+      <button
+        id="play-pause"
+        title="play/pause"
+        aria-label="Play or pause video"
+      >
         <i class="fa-play-pause"></i>
       </button>
       <div id="speed-container">
@@ -50,8 +58,25 @@ template_form %} {% block content %}
           >Speed: <span id="speed-value">1x</span></label
         >
       </div>
-      <button id="full-screen" title="fullscreen">
+      <div id="jog-shuttle" title="Jog shuttle control"></div>
+
+      <!-- <button id="cast-button">Cast</button> -->
+      <button
+        id="full-screen"
+        title="fullscreen"
+        aria-label="Toggle fullscreen"
+      >
         <i class="fas fa-expand"></i>
+      </button>
+      <button
+        id="toggle-details"
+        title="Show details"
+        aria-label="Toggle details"
+      >
+        <i class="fas fa-info-circle"></i>
+      </button>
+      <button id="rotate-video" title="Rotate 90°" aria-label="Rotate video">
+        <i class="fas fa-sync-alt"></i>
       </button>
       <select id="video-source" onchange="changeVideoSource()">
         <option value="png" title="View a series of PNG images">
@@ -78,7 +103,12 @@ template_form %} {% block content %}
       </select>
     </div>
   </div>
-  <div id="video-overlay" class="video-overlay">
+  <div
+    id="video-overlay"
+    class="video-overlay"
+    role="region"
+    aria-live="polite"
+  >
     <div id="loading-indicator" class="hidden">Loading...</div>
     <div id="play-pause-indicator" class="video-icon hidden">▶</div>
     <div id="offline-indicator" class="offline-indicator hidden">
