@@ -52,3 +52,54 @@ export function initTilePlayer() {
 }
 
 document.addEventListener("DOMContentLoaded", initTilePlayer);
+
+export function updateCameraOptions(group) {
+  const camSelect = document.getElementById("camera-selector");
+  if (!camSelect) return;
+  camSelect.innerHTML = "";
+  if (!group || group === "all") {
+    camSelect.style.display = "none";
+    const opt = document.createElement("option");
+    opt.value = "All";
+    opt.textContent = "All";
+    camSelect.appendChild(opt);
+    camSelect.value = "All";
+    return;
+  }
+  camSelect.style.display = "";
+  const groupOpt = document.createElement("option");
+  groupOpt.value = `group-${group}`;
+  groupOpt.textContent = `Group: ${group}`;
+  camSelect.appendChild(groupOpt);
+  Object.entries(window.templateDetails || {})
+    .filter(
+      ([, det]) =>
+        det.groups &&
+        det.groups
+          .split(",")
+          .map((s) => s.trim())
+          .includes(group),
+    )
+    .map(([cam]) => cam)
+    .sort()
+    .forEach((cam) => {
+      const opt = document.createElement("option");
+      opt.value = cam;
+      opt.textContent = cam;
+      camSelect.appendChild(opt);
+    });
+  camSelect.value = `group-${group}`;
+}
+
+export function changeGroup() {
+  const groupSelector = document.getElementById("group-selector");
+  const group = groupSelector ? groupSelector.value : "all";
+  const navGroup = document.getElementById("nav-group-dropdown");
+  if (navGroup) navGroup.value = group;
+  updateCameraOptions(group);
+  const camSelect = document.getElementById("camera-selector");
+  if (camSelect) camSelect.dispatchEvent(new Event("change"));
+}
+
+window.changeGroup = changeGroup;
+window.updateCameraOptions = updateCameraOptions;
