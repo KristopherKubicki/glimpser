@@ -44,6 +44,7 @@ class TestClipRoute(unittest.TestCase):
             os.utime(f2, (2, 2))
             with (
                 patch("app.routes.VIDEO_DIRECTORY", tmpdir),
+                patch("app.routes.CLIPS_DIRECTORY", tmpdir),
                 patch("app.routes.send_file") as mock_send,
             ):
 
@@ -56,7 +57,7 @@ class TestClipRoute(unittest.TestCase):
                 resp = self.client.get("/clip/cam1")
 
         self.assertEqual(resp.status_code, 200)
-        expected = Path(tmpdir, "cam1", "clip.mp4")
+        expected = Path(tmpdir, "cam1.mp4")
         mock_send.assert_called_with(expected, conditional=True)
         mock_concat.assert_called_once()
         mock_blank.assert_not_called()
@@ -69,6 +70,7 @@ class TestClipRoute(unittest.TestCase):
             os.makedirs(camera_path)
             with (
                 patch("app.routes.VIDEO_DIRECTORY", tmpdir),
+                patch("app.routes.CLIPS_DIRECTORY", tmpdir),
                 patch("app.routes.send_file") as mock_send,
             ):
 
@@ -81,7 +83,7 @@ class TestClipRoute(unittest.TestCase):
                 resp = self.client.get("/clip/cam1")
 
         self.assertEqual(resp.status_code, 200)
-        expected = Path(tmpdir, "cam1", "clip.mp4")
+        expected = Path(tmpdir, "cam1.mp4")
         mock_send.assert_called_with(expected, conditional=True)
         mock_blank.assert_called_once()
 

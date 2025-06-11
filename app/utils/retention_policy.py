@@ -5,6 +5,7 @@ import os
 import time
 
 from app.config import (
+    CLIPS_DIRECTORY,
     MAX_CLIP_AGE_MINUTES,
     MAX_COMPRESSED_VIDEO_AGE,
     MAX_RAW_DATA_SIZE,
@@ -21,7 +22,9 @@ def get_files_sorted_by_creation_time(directory):
     # Get all files with their full path and sort them by creation time in ascending order
     try:
         files = [
-            os.path.join(directory, f) for f in os.listdir(directory) if not os.path.islink(os.path.join(directory, f))
+            os.path.join(directory, f)
+            for f in os.listdir(directory)
+            if not os.path.islink(os.path.join(directory, f))
         ]
         files.sort(key=lambda x: os.path.getctime(x))
     except Exception as e:
@@ -41,7 +44,11 @@ def delete_old_files(file_list, max_age, max_size, minimum=10):
     # Delete files if total size exceeds the maximum size or they are older than max_age
     # start from oldest to newest
     for file_path in files_to_check:
-        if "in_process." in file_path or "last_motion." in file_path or "prev_motion." in file_path:
+        if (
+            "in_process." in file_path
+            or "last_motion." in file_path
+            or "prev_motion." in file_path
+        ):
             continue
 
         try:
@@ -74,8 +81,13 @@ def cleanup_clips(max_age_minutes: int = MAX_CLIP_AGE_MINUTES) -> None:
         return
 
     expiry = max_age_minutes * 60
-    for camera_name in os.listdir(VIDEO_DIRECTORY):
-        clip_path = os.path.join(VIDEO_DIRECTORY, camera_name, "clip.mp4")
+    if not os.path.isdir(CLIPS_DIRECTORY):
+        return
+
+    for clip_file in os.listdir(CLIPS_DIRECTORY):
+        if not clip_file.endswith(".mp4"):
+            continue
+        clip_path = os.path.join(CLIPS_DIRECTORY, clip_file)
         if os.path.isfile(clip_path):
             try:
                 age = time.time() - os.path.getmtime(clip_path)
