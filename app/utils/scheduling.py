@@ -17,6 +17,7 @@ import time
 from collections import deque
 
 import psutil
+import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
@@ -32,6 +33,7 @@ from app.config import (
     FFMPEG_HWACCEL,
     FFMPEG_PATH,
     LOGGING_PATH,
+    PORT,
     SCREENSHOT_DIRECTORY,
     SUMMARIES_DIRECTORY,
     VIDEO_DIRECTORY,
@@ -76,6 +78,7 @@ from .template_manager import (
     set_capture_failed,
     update_last_screenshot_time,
 )
+from .validators import validate_template_name
 
 logging.getLogger("apscheduler").setLevel(logging.WARNING)
 
@@ -1515,6 +1518,34 @@ def schedule_auto_update() -> None:
             trigger="interval",
             hours=1,
             id="auto_update",
+            replace_existing=True,
+        )
+    except Exception as e:
+        logging.error("job schedule error: %s", e)
+
+
+def refresh_clips() -> None:
+    """Pre-generate short clips for each camera."""
+
+    base_url = f"http://127.0.0.1:{PORT}"
+    for camera_name in os.listdir(VIDEO_DIRECTORY):
+        if not validate_template_name(camera_name):
+            continue
+        try:
+            requests.get(f"{base_url}/clip/{camera_name}", timeout=5)
+        except Exception:
+            logging.debug("clip refresh failed for %s", camera_name)
+
+
+def schedule_clip_refresh() -> None:
+    """Schedule periodic clip refresh jobs."""
+
+    try:
+        scheduler.add_job(
+            func=refresh_clips,
+            trigger="interval",
+            minutes=5,
+            id="refresh_clips",
             replace_existing=True,
         )
     except Exception as e:

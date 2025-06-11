@@ -218,6 +218,7 @@ SCHEDULER_API_ENABLED = get_setting("SCHEDULER_API_ENABLED", "True") == "True"
 # be careful when mounting network devices
 SCREENSHOT_DIRECTORY = "data/screenshots/"
 VIDEO_DIRECTORY = "data/video/"
+CLIPS_DIRECTORY = "data/clips/"
 SUMMARIES_DIRECTORY = "data/summaries/"
 DOCS_DIRECTORY = "docs"
 

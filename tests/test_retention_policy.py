@@ -59,7 +59,9 @@ class TestRetentionPolicy(unittest.TestCase):
     @patch("app.utils.retention_policy.os.listdir")
     @patch("app.utils.retention_policy.get_files_sorted_by_creation_time")
     @patch("app.utils.retention_policy.delete_old_files")
-    def test_retention_cleanup_invokes_deletion(self, mock_delete, mock_get_files, mock_listdir):
+    def test_retention_cleanup_invokes_deletion(
+        self, mock_delete, mock_get_files, mock_listdir
+    ):
         mock_listdir.side_effect = [["cam1"], ["cam1"], ["cam1"]]
         mock_get_files.return_value = ["f1", "f2"]
 
@@ -105,17 +107,17 @@ class TestRetentionPolicy(unittest.TestCase):
             )
 
     def test_cleanup_clips_removes_expired(self):
-        with tempfile.TemporaryDirectory() as video_dir:
-            cam_dir = os.path.join(video_dir, "cam1")
+        with tempfile.TemporaryDirectory() as clip_dir:
+            cam_dir = os.path.join(clip_dir, "cam1")
             os.makedirs(cam_dir)
-            clip = os.path.join(cam_dir, "clip.mp4")
+            clip = os.path.join(clip_dir, "cam1.mp4")
             with open(clip, "w"):
                 pass
             old = time.time() - 600
             os.utime(clip, (old, old))
 
             with (
-                patch.object(retention_policy, "VIDEO_DIRECTORY", video_dir),
+                patch.object(retention_policy, "CLIPS_DIRECTORY", clip_dir),
                 patch(
                     "app.utils.retention_policy.check_user_activity",
                     return_value=False,
@@ -126,14 +128,14 @@ class TestRetentionPolicy(unittest.TestCase):
             self.assertFalse(os.path.exists(clip))
 
     def test_cleanup_clips_keeps_recent(self):
-        with tempfile.TemporaryDirectory() as video_dir:
-            cam_dir = os.path.join(video_dir, "cam1")
+        with tempfile.TemporaryDirectory() as clip_dir:
+            cam_dir = os.path.join(clip_dir, "cam1")
             os.makedirs(cam_dir)
-            clip = os.path.join(cam_dir, "clip.mp4")
+            clip = os.path.join(clip_dir, "cam1.mp4")
             with open(clip, "w"):
                 pass
             with (
-                patch.object(retention_policy, "VIDEO_DIRECTORY", video_dir),
+                patch.object(retention_policy, "CLIPS_DIRECTORY", clip_dir),
                 patch(
                     "app.utils.retention_policy.check_user_activity",
                     return_value=False,
