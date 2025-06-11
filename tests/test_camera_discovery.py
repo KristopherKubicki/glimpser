@@ -10,6 +10,7 @@ from unittest.mock import mock_open, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from app import config
 from app.utils import camera_discovery
 
 
@@ -619,6 +620,39 @@ class TestCameraDiscovery(unittest.TestCase):
         mock_get.side_effect = Exception("boom")
         vendor = camera_discovery._remote_vendor_lookup("00:11:22:33:44:55")
         self.assertIsNone(vendor)
+
+    @patch("app.utils.camera_discovery._local_subnets", return_value=[])
+    @patch("app.utils.camera_discovery._local_video_devices", return_value=[])
+    @patch("app.utils.camera_discovery._scan_hls_streams", return_value=[])
+    @patch("app.utils.camera_discovery._scan_http_endpoints", return_value=[])
+    @patch("app.utils.camera_discovery._scan_snmp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_webrtc_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_sip_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_rtmp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_rtsp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._probe_ssdp", return_value=[])
+    @patch("app.utils.camera_discovery._probe_mdns", return_value=[])
+    @patch("app.utils.camera_discovery._probe_onvif", return_value=[])
+    @patch("app.utils.camera_discovery._mac_manufacturer")
+    @patch("app.utils.camera_discovery._mac_for_ip")
+    @patch("app.utils.camera_discovery.is_port_open", return_value=False)
+    @patch("app.utils.camera_discovery._trace_upstream", return_value=None)
+    def test_local_endpoints(
+        self,
+        mock_trace,
+        mock_is_port_open,
+        mock_mac,
+        mock_vendor,
+        mock_onvif,
+        *_mocks,
+    ):
+        cams = camera_discovery.discover_cameras()
+        urls = {c["url"] for c in cams}
+        base = f"http://127.0.0.1:{config.PORT}"
+        self.assertIn(f"{base}/test_pattern.mjpg", urls)
+        self.assertIn(f"{base}/stream.mjpg?group=all", urls)
+        self.assertIn(f"{base}/motion.mjpg?group=all", urls)
+        self.assertIn(f"{base}/caption.mjpg?group=all", urls)
 
     def test_load_local_ouis(self):
         """_load_local_ouis should parse valid lines and ignore others."""

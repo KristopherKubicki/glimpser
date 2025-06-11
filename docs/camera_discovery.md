@@ -191,6 +191,10 @@ It now also includes an **Internal Caption** entry streaming `/internal_caption.
 which loops recent caption text for convenient review.
 A **Test Frame** entry is also available, streaming `/test.mjpg` so you can quickly
 verify connectivity without adding a real camera.
+A `/test_pattern.mjpg` feed presents a basic pattern for overlay testing.
+You'll also see **All Cameras** endpoints like `/stream.mjpg?group=all`,
+`/motion.mjpg?group=all`, and `/caption.mjpg?group=all` that combine frames from
+every camera.
 
 ## Common cameras to try
 
