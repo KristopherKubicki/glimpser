@@ -87,6 +87,7 @@
       <th class="sortable" data-type="number" title="Disk usage">Storage</th>
       <th class="sortable" data-type="number" title="LLM responses">LLM Resp</th>
       <th class="sortable" data-type="number" title="Estimated LLM cost">LLM Cost</th>
+      <th class="sortable capture-col" data-type="string" title="Capture activity">Capturing</th>
       <th class="sortable status-col" data-type="string" title="Current feed status">Status</th>
     </tr>
   </thead>
@@ -160,6 +161,9 @@
       </td>
       <td data-label="LLM Cost" data-value="{{ feed.llm_cost_estimate }}">
         {{ feed.llm_cost_estimate }}
+      </td>
+      <td class="capture-col" data-label="Capturing" data-value="{{ '1' if feed.capturing else '0' }}">
+        <span class="capture-dot{% if feed.capturing %} active{% endif %}"></span>
       </td>
       <td class="status-col" data-label="Status" data-value="{{ feed.status }}">
         {% if feed.danger_reason %}
