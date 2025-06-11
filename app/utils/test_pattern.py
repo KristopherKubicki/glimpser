@@ -25,6 +25,9 @@ BRAILLE_DIGITS = {
     ":": "\u2812",
 }
 
+BRAILLE_RADIUS = 2
+BRAILLE_SPACING = 2
+
 
 def _to_braille(text: str) -> str:
     """Return the supplied text with digits converted to Braille patterns."""
@@ -69,6 +72,66 @@ def _format_binary_time(timestamp: str) -> str:
     return f"{h:05b}:{m:06b}:{s:06b}"
 
 
+def _roman_segment_widths(font: ImageFont.FreeTypeFont) -> tuple[int, int, int, int]:
+    """Return maximum segment widths for Roman numeral timestamps."""
+    dummy = Image.new("RGB", (1, 1))
+    d = ImageDraw.Draw(dummy)
+    hours = [_to_roman(i) for i in range(24)]
+    mins = [_to_roman(i) for i in range(60)]
+    seg1 = max(d.textlength(h, font=font) for h in hours)
+    seg2 = max(d.textlength(m, font=font) for m in mins)
+    seg3 = seg2
+    colon_w = d.textlength(":", font=font)
+    return seg1, seg2, seg3, colon_w
+
+
+def _draw_braille_text(
+    draw: ImageDraw.ImageDraw,
+    pos: tuple[int, int],
+    text: str,
+    radius: int = BRAILLE_RADIUS,
+    spacing: int = BRAILLE_SPACING,
+    fill: str = "white",
+) -> int:
+    """Draw ``text`` using simple braille dots and return its width."""
+
+    def _dots(bits: int) -> list[tuple[int, int]]:
+        mapping = {
+            0: (0, 0),
+            1: (0, 1),
+            2: (0, 2),
+            3: (1, 0),
+            4: (1, 1),
+            5: (1, 2),
+        }
+        return [mapping[i] for i in range(6) if bits & (1 << i)]
+
+    x, y = pos
+    char_w = 2 * radius + spacing
+    for ch in _to_braille(text):
+        bits = ord(ch) - 0x2800
+        for cx, cy in _dots(bits):
+            draw.ellipse(
+                (
+                    x + cx * char_w - radius,
+                    y + cy * (radius * 2 + spacing) - radius,
+                    x + cx * char_w + radius,
+                    y + cy * (radius * 2 + spacing) + radius,
+                ),
+                fill=fill,
+            )
+        x += char_w + spacing
+    return x - pos[0]
+
+
+def _braille_text_width(
+    text: str, radius: int = BRAILLE_RADIUS, spacing: int = BRAILLE_SPACING
+) -> int:
+    """Return the width of ``text`` when drawn with :func:`_draw_braille_text`."""
+    char_w = 2 * radius + spacing
+    return len(text) * (char_w + spacing) - spacing
+
+
 FONT_CANDIDATES = [
     "DejaVuSansMono.ttf",
     "DejaVuSans-Bold.ttf",
@@ -82,10 +145,19 @@ def load_font(size: int) -> ImageFont.FreeTypeFont:
     """Return a TrueType font for overlays."""
     for name in FONT_CANDIDATES:
         try:
-            return ImageFont.truetype(name, size)
+            font = ImageFont.truetype(name, size)
+            if font.getmask("\u2801").getbbox():
+                return font
         except OSError:
             continue
-    return ImageFont.load_default()
+    font = ImageFont.load_default()
+    if font.getmask("\u2801").getbbox():
+        return font
+    try:
+        path = os.path.join(os.path.dirname(ImageFont.__file__), "DejaVuSansMono.ttf")
+        return ImageFont.truetype(path, size)
+    except OSError:
+        return font
 
 
 def generate_test_pattern(
@@ -260,10 +332,20 @@ def generate_test_pattern(
     ]
 
     segments = [t.replace("\u2812", ":").split(":") for t in formats]
-    seg1_max = max(draw.textlength(s[0], font=font_right) for s in segments)
-    seg2_max = max(draw.textlength(s[1], font=font_right) for s in segments)
-    seg3_max = max(draw.textlength(s[2], font=font_right) for s in segments)
-    colon_w = draw.textlength(":", font=font_right)
+    roman_w1, roman_w2, roman_w3, colon_w = _roman_segment_widths(font_right)
+    seg1_max = max(
+        draw.textlength("23", font=font_right),
+        draw.textlength("10111", font=font_right),
+        roman_w1,
+        draw.textlength(_to_braille("00"), font=font_right),
+    )
+    seg2_max = max(
+        draw.textlength("59", font=font_right),
+        draw.textlength("111011", font=font_right),
+        roman_w2,
+        draw.textlength(_to_braille("00"), font=font_right),
+    )
+    seg3_max = seg2_max
 
     total_w = seg1_max + colon_w + seg2_max + colon_w + seg3_max
     x_start = width - total_w - 10
@@ -274,30 +356,53 @@ def generate_test_pattern(
     for idx, parts in enumerate(segments):
         x = x_start
         y = y_start + idx * (font_right.size + 4)
-        draw.text(
-            (x + seg1_max - draw.textlength(parts[0], font=font_right), y),
-            parts[0],
-            fill="white",
-            font=font_right,
-        )
-        x += seg1_max
-        draw.text((x, y), ":", fill="white", font=font_right)
-        x += colon_w
-        draw.text(
-            (x + seg2_max - draw.textlength(parts[1], font=font_right), y),
-            parts[1],
-            fill="white",
-            font=font_right,
-        )
-        x += seg2_max
-        draw.text((x, y), ":", fill="white", font=font_right)
-        x += colon_w
-        draw.text(
-            (x + seg3_max - draw.textlength(parts[2], font=font_right), y),
-            parts[2],
-            fill="white",
-            font=font_right,
-        )
+        if idx == len(formats) - 1:
+            _draw_braille_text(
+                draw,
+                (x + seg1_max - _braille_text_width(parts[0]), y),
+                parts[0],
+            )
+            x += seg1_max
+            _draw_braille_text(draw, (x, y), ":")
+            x += colon_w
+            _draw_braille_text(
+                draw,
+                (x + seg2_max - _braille_text_width(parts[1]), y),
+                parts[1],
+            )
+            x += seg2_max
+            _draw_braille_text(draw, (x, y), ":")
+            x += colon_w
+            _draw_braille_text(
+                draw,
+                (x + seg3_max - _braille_text_width(parts[2]), y),
+                parts[2],
+            )
+        else:
+            draw.text(
+                (x + seg1_max - draw.textlength(parts[0], font=font_right), y),
+                parts[0],
+                fill="white",
+                font=font_right,
+            )
+            x += seg1_max
+            draw.text((x, y), ":", fill="white", font=font_right)
+            x += colon_w
+            draw.text(
+                (x + seg2_max - draw.textlength(parts[1], font=font_right), y),
+                parts[1],
+                fill="white",
+                font=font_right,
+            )
+            x += seg2_max
+            draw.text((x, y), ":", fill="white", font=font_right)
+            x += colon_w
+            draw.text(
+                (x + seg3_max - draw.textlength(parts[2], font=font_right), y),
+                parts[2],
+                fill="white",
+                font=font_right,
+            )
 
     if camera_name:
         draw.text((10, bar_h + 10), camera_name, fill="white", font=font_small)
