@@ -397,12 +397,10 @@ export function setupCaptionsPageVideoHover() {
       const clamped = Math.max(0, Math.min(1, ratio));
       if (!Number.isNaN(video.duration)) {
         targetTime = video.duration * clamped;
-        updateScrubTooltip(targetTime, e);
       }
     };
 
     container.addEventListener("mouseenter", (e) => {
-      createScrubTooltip();
       if (video.readyState === 0) {
         video.load();
         const onLoad = () => {

@@ -17,7 +17,7 @@ beforeAll(async () => {
   setup = mod.setupCaptionsPageVideoHover;
 });
 
-test("scrub tooltip appears on captions page hover", () => {
+test("scrub tooltip is suppressed on captions page hover", () => {
   Object.defineProperty(HTMLMediaElement.prototype, "duration", {
     configurable: true,
     get() {
@@ -33,6 +33,5 @@ test("scrub tooltip appears on captions page hover", () => {
     new MouseEvent("mousemove", { clientX: 5, clientY: 5 }),
   );
   const tooltip = document.querySelector(".scrub-tooltip");
-  expect(tooltip).not.toBeNull();
-  expect(tooltip.classList.contains("visible")).toBe(true);
+  expect(tooltip).toBeNull();
 });
