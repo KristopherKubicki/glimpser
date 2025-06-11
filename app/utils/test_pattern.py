@@ -31,6 +31,44 @@ def _to_braille(text: str) -> str:
     return "".join(BRAILLE_DIGITS.get(ch, ch) for ch in text)
 
 
+def _to_roman(num: int) -> str:
+    """Return the number as a Roman numeral ("N" for zero)."""
+    if num == 0:
+        return "N"
+    numerals = [
+        ("M", 1000),
+        ("CM", 900),
+        ("D", 500),
+        ("CD", 400),
+        ("C", 100),
+        ("XC", 90),
+        ("L", 50),
+        ("XL", 40),
+        ("X", 10),
+        ("IX", 9),
+        ("V", 5),
+        ("IV", 4),
+        ("I", 1),
+    ]
+    result = []
+    for symbol, value in numerals:
+        count, num = divmod(num, value)
+        result.append(symbol * count)
+    return "".join(result)
+
+
+def _format_roman_time(timestamp: str) -> str:
+    """Return the timestamp represented with Roman numerals."""
+    h, m, s = map(int, timestamp.split(":"))
+    return f"{_to_roman(h)}:{_to_roman(m)}:{_to_roman(s)}"
+
+
+def _format_binary_time(timestamp: str) -> str:
+    """Return the timestamp in binary notation."""
+    h, m, s = map(int, timestamp.split(":"))
+    return f"{h:05b}:{m:06b}:{s:06b}"
+
+
 FONT_CANDIDATES = [
     "DejaVuSans-Bold.ttf",
     "DejaVuSans.ttf",
@@ -158,12 +196,16 @@ def generate_test_pattern(
         [width // 2 - tw // 2 - 4, bar_h + 4, width // 2 + tw // 2 + 4, bar_h + th + 8],
         fill=(0, 0, 0),
     )
-    draw.text((width // 2 - tw // 2, bar_h + 6), timestamp, fill="white", font=font_large)
+    draw.text(
+        (width // 2 - tw // 2, bar_h + 6), timestamp, fill="white", font=font_large
+    )
 
     mystic = "Seek the unseen"
     mb = draw.textbbox((0, 0), mystic, font=font_small)
     mw, mh = mb[2] - mb[0], mb[3] - mb[1]
-    draw.text((width // 2 - mw // 2, bar_h + th + 14), mystic, fill="white", font=font_small)
+    draw.text(
+        (width // 2 - mw // 2, bar_h + th + 14), mystic, fill="white", font=font_small
+    )
 
     # timestamp repeated near the vertical center on the right side
     font_right = load_font(24)
@@ -202,8 +244,8 @@ def generate_indian_head_test_pattern(
     tri_w = width // 10
     tri_h = height // 10
     colors = [(30, 30, 30), (80, 80, 80)]
-    for row in range(10):
-        for col in range(20):
+    for row in range(5):
+        for col in range(10):
             x = col * tri_w // 2
             y = row * tri_h
             color = colors[(row + col) % 2]
@@ -224,29 +266,24 @@ def generate_indian_head_test_pattern(
         draw.ellipse(bbox, outline="black", width=3)
 
     font = load_font(int(height * 0.05))
-    text = "PLEASE STAND BY"
-    tb = draw.textbbox((0, 0), text, font=font)
-    tw, th = tb[2] - tb[0], tb[3] - tb[1]
-    draw.text((width // 2 - tw // 2, height // 2 - th // 2), text, fill="black", font=font)
 
-    # Display the current time in multiple languages and Braille near the bottom
+    # Display the current time in several numeral systems near the right center
     timestamp = datetime.datetime.now().strftime("%H:%M:%S")
     font_small = load_font(int(height * 0.04))
     lines = [
-        f"Time: {timestamp}",
-        f"Hora: {timestamp}",
-        f"Heure: {timestamp}",
+        timestamp,
         _to_braille(timestamp),
+        _format_roman_time(timestamp),
+        _format_binary_time(timestamp),
     ]
-    for i, line in enumerate(lines):
-        tb = draw.textbbox((0, 0), line, font=font_small)
-        tw, th = tb[2] - tb[0], tb[3] - tb[1]
-        draw.text(
-            (width // 2 - tw // 2, height - (len(lines) - i) * (th + 4)),
-            line,
-            fill="white",
-            font=font_small,
-        )
+    metrics = [draw.textbbox((0, 0), line, font=font_small) for line in lines]
+    widths = [m[2] - m[0] for m in metrics]
+    heights = [m[3] - m[1] for m in metrics]
+    total_height = sum(heights) + 4 * (len(lines) - 1)
+    y = height // 2 - total_height // 2
+    for line, w, h in zip(lines, widths, heights):
+        draw.text((width - w - 10, y), line, fill="white", font=font_small)
+        y += h + 4
 
     # Optional spinner overlay for fun
     if spinner:
@@ -266,7 +303,9 @@ def generate_geometric_test_pattern(
     """Legacy wrapper that now returns the unified test pattern."""
 
     # `tiles` is ignored but kept for backward compatibility
-    return generate_indian_head_test_pattern(width=width, height=height, spinner=spinner)
+    return generate_indian_head_test_pattern(
+        width=width, height=height, spinner=spinner
+    )
 
 
 def save_test_pattern(path: str, **kwargs) -> None:
