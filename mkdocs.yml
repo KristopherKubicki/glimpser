@@ -54,6 +54,7 @@ nav:
       - Performance Tuning: performance_tuning.md
       - Telemetry: telemetry.md
       - Testing: testing.md
+      - Test Pattern Reference: test_pattern_reference.md
       - Tooltips: tooltips.md
       - SEO Metadata: seo_metadata.md
       - Robots.txt Endpoint: robots_txt.md

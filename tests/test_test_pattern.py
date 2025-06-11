@@ -83,6 +83,12 @@ class TestTestPattern(unittest.TestCase):
         px = tuple(round((l + r) / 2) for l, r in zip(px_left, px_right))
         self.assertEqual(px, expected_first)
 
+    def test_grey_patch(self):
+        width, height = 220, 110
+        img = generate_test_pattern(width=width, height=height)
+        self.assertEqual(img.size, (220, 110))
+        self.assertEqual(img.getpixel((116, 58)), (118, 118, 118))
+
 
 if __name__ == "__main__":
     unittest.main()
