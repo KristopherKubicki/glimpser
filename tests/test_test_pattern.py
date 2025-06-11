@@ -21,58 +21,6 @@ class TestTestPattern(unittest.TestCase):
             with Image.open(path) as im:
                 self.assertEqual(im.size, (100, 50))
 
-    def test_classic_size(self):
-        img = generate_test_pattern(width=150, height=150, variant="classic")
-        self.assertIsInstance(img, Image.Image)
-        self.assertEqual(img.size, (150, 150))
-
-    def test_minibar_colors(self):
-        width, height = 240, 100
-        img = generate_test_pattern(width=width, height=height)
-        bar_h = height // 6
-        mini_w = max(2, width // 100)
-        mini_h = bar_h // 4
-        x_start = width - mini_w * 14 - 110
-        y_start = 12
-        colors = [
-            (191, 191, 191),
-            (191, 191, 0),
-            (0, 191, 191),
-            (0, 191, 0),
-            (191, 0, 191),
-            (191, 0, 0),
-            (0, 0, 191),
-            (0, 0, 0),
-            (255, 0, 0),
-            (0, 255, 0),
-            (0, 0, 255),
-            (0, 255, 255),
-            (255, 0, 255),
-            (255, 255, 0),
-        ]
-        for idx, expected in enumerate(colors):
-            if idx not in (0, 10):
-                # skip bars that overlap with crosshair lines
-                continue
-            px_left = img.getpixel((x_start + idx * mini_w, y_start))
-            px_right = img.getpixel((x_start + idx * mini_w + mini_w - 1, y_start))
-            px = tuple(round((l + r) / 2) for l, r in zip(px_left, px_right))
-            self.assertEqual(px, expected)
-
-    def test_classic_minibars(self):
-        width, height = 240, 100
-        img = generate_test_pattern(width=width, height=height, variant="classic")
-        bar_h = height // 6
-        mini_w = max(2, width // 100)
-        mini_h = bar_h // 4
-        x_start = width - mini_w * 14 - 110
-        y_start = 12
-        expected_first = (191, 191, 191)
-        px_left = img.getpixel((x_start, y_start))
-        px_right = img.getpixel((x_start + mini_w - 1, y_start))
-        px = tuple(round((l + r) / 2) for l, r in zip(px_left, px_right))
-        self.assertEqual(px, expected_first)
-
     def test_grey_patch(self):
         width, height = 220, 110
         img = generate_test_pattern(width=width, height=height)

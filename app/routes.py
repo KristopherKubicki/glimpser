@@ -2353,9 +2353,7 @@ def init_routes(app: Flask) -> None:
             boundary = b"frame"
             while True:
                 spinner = spinner_frames[index % len(spinner_frames)]
-                img = test_pattern.generate_test_pattern(
-                    spinner=spinner, variant="classic"
-                )
+                img = test_pattern.generate_test_pattern(spinner=spinner)
                 buf = io.BytesIO()
                 img.save(buf, format="JPEG")
                 frame = buf.getvalue()
