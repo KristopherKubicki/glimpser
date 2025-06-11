@@ -1,4 +1,5 @@
 import { fetchJson } from "./fetch_utils.js";
+import { setupTableSorting } from "./templates.js";
 
 export function initDiscoveryToggle() {
   document.addEventListener("DOMContentLoaded", () => {
@@ -116,5 +117,13 @@ export function initSubnetInput() {
         input.setCustomValidity("");
       }
     });
+  });
+}
+
+export function initDiscoveryTable() {
+  document.addEventListener("DOMContentLoaded", () => {
+    if (document.getElementById("discover-table")) {
+      setupTableSorting("discover-table");
+    }
   });
 }
