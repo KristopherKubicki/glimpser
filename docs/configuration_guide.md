@@ -169,8 +169,10 @@ skip validation adhere to the safer defaults.
 Additional variables control AI behaviour and external tools:
 
 - `LLM_MODEL_VERSION` – language model version to use (default `gpt-4.1-mini`). Supported models: `gpt-4.1-mini`, `gpt-4.1`, `gpt-4`
-- `LLM_SUMMARY_PROMPT` – default prompt used for log summaries
-- `LLM_CAPTION_PROMPT` – default prompt used for image captions
+- `LLM_SUMMARY_PROMPT` – system prompt for log summaries. See [LLM Prompt Settings](llm_prompts.md)
+  for the default text and `$datetime` token details.
+- `LLM_CAPTION_PROMPT` – system prompt for image captions. Refer to
+  [LLM Prompt Settings](llm_prompts.md) for examples and usage.
 - `FFMPEG_PATH` – path to the `ffmpeg` binary (default `ffmpeg`)
 - `FFPROBE_PATH` – path to the `ffprobe` binary (default `ffprobe`)
 - `FFMPEG_HWACCEL` – hardware acceleration mode for ffmpeg (default `auto`)

@@ -10,8 +10,12 @@ SETTINGS_TOOLTIPS = {
     "PORT": "Web server port",
     "USER_NAME": "Interface login user",
     "MAX_WORKERS": "Concurrent worker threads",
-    "LLM_CAPTION_PROMPT": "Prompt for image captioning",
-    "LLM_SUMMARY_PROMPT": "Prompt for daily summaries",
+    "LLM_CAPTION_PROMPT": (
+        "System prompt used for image captions. Supports the $datetime token and" " can span multiple lines."
+    ),
+    "LLM_SUMMARY_PROMPT": (
+        "System prompt for daily summaries. May be multi-line and also supports" " the $datetime token."
+    ),
     "MAX_RAW_DATA_SIZE": "Raw data threshold",
     "MAX_IMAGE_RETENTION_AGE": "Image retention days",
     "MAX_VIDEO_RETENTION_AGE": "Video retention days",
