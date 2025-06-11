@@ -129,6 +129,36 @@ def generate_test_pattern(
     for i, color in enumerate(bars):
         draw.rectangle([i * bar_w, 0, (i + 1) * bar_w, bar_h], fill=color)
 
+    # miniature SMPTE bars and wide-gamut Rec.2020 bars
+    mini_709 = [
+        ((191, 191, 191), "W"),
+        ((191, 191, 0), "Y"),
+        ((0, 191, 191), "C"),
+        ((0, 191, 0), "G"),
+        ((191, 0, 191), "M"),
+        ((191, 0, 0), "R"),
+        ((0, 0, 191), "B"),
+        ((0, 0, 0), "K"),
+    ]
+    mini_2020 = [
+        ((255, 0, 0), "R"),
+        ((0, 255, 0), "G"),
+        ((0, 0, 255), "B"),
+        ((0, 255, 255), "C"),
+        ((255, 0, 255), "M"),
+        ((255, 255, 0), "Y"),
+    ]
+    mini_w = max(2, width // 100)
+    mini_h = bar_h // 4
+    font_tiny = load_font(8)
+    x_start = width - mini_w * (len(mini_709) + len(mini_2020)) - 10
+    y_start = 2
+    for color, label in mini_709 + mini_2020:
+        draw.rectangle([x_start, y_start, x_start + mini_w, y_start + mini_h], fill=color)
+        text_color = "white" if sum(color) < 382 else "black"
+        draw.text((x_start + 1, y_start + 1), label, fill=text_color, font=font_tiny)
+        x_start += mini_w
+
     # checker pattern limited to the bottom-right quadrant
     sq = 20
     y0 = height - bar_h
@@ -196,16 +226,12 @@ def generate_test_pattern(
         [width // 2 - tw // 2 - 4, bar_h + 4, width // 2 + tw // 2 + 4, bar_h + th + 8],
         fill=(0, 0, 0),
     )
-    draw.text(
-        (width // 2 - tw // 2, bar_h + 6), timestamp, fill="white", font=font_large
-    )
+    draw.text((width // 2 - tw // 2, bar_h + 6), timestamp, fill="white", font=font_large)
 
     mystic = "Seek the unseen"
     mb = draw.textbbox((0, 0), mystic, font=font_small)
     mw, mh = mb[2] - mb[0], mb[3] - mb[1]
-    draw.text(
-        (width // 2 - mw // 2, bar_h + th + 14), mystic, fill="white", font=font_small
-    )
+    draw.text((width // 2 - mw // 2, bar_h + th + 14), mystic, fill="white", font=font_small)
 
     # timestamp repeated near the vertical center on the right side
     font_right = load_font(24)
@@ -303,9 +329,7 @@ def generate_geometric_test_pattern(
     """Legacy wrapper that now returns the unified test pattern."""
 
     # `tiles` is ignored but kept for backward compatibility
-    return generate_indian_head_test_pattern(
-        width=width, height=height, spinner=spinner
-    )
+    return generate_indian_head_test_pattern(width=width, height=height, spinner=spinner)
 
 
 def save_test_pattern(path: str, **kwargs) -> None:
