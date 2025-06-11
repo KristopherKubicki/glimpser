@@ -27,6 +27,7 @@ import { initKeyVisibility } from "./key_visibility.js";
 import { initCliHelp } from "./cli_help.js";
 import { initNetworkBanner } from "./network_banner.js";
 import { initUnsavedIndicator } from "./unsaved.js";
+import { initVideoZoom } from "./zoom.js";
 
 initTemplates();
 initVideoControls();
@@ -56,3 +57,4 @@ initAdvanced();
 initKeyVisibility();
 initUnsavedIndicator();
 initCliHelp();
+initVideoZoom();
