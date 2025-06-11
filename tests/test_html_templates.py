@@ -79,6 +79,11 @@ class TestHtmlTemplates(unittest.TestCase):
             html = f.read()
         self.assertIn("existingMap", html)
 
+    def test_discover_table_sortable(self):
+        html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")
+        self.assertIn('<table id="discover-table"', html)
+        self.assertIn('th class="sortable"', html)
+
     def test_header_preloads_sprite(self):
         parser = parse_template(Path("app/templates/header.html"))
         expected_href = "{{ url_for('static', filename='icons/sprite.svg') }}"

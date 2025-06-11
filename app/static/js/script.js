@@ -1,7 +1,11 @@
 import { initTemplates } from "./templates.js";
 import { initVideoControls } from "./video.js";
 import { initSchedulerToggle } from "./scheduler.js";
-import { initDiscoveryToggle, initSubnetInput } from "./discovery.js";
+import {
+  initDiscoveryToggle,
+  initSubnetInput,
+  initDiscoveryTable,
+} from "./discovery.js";
 import { initNav } from "./nav.js";
 import { initFormValidation, initAddSettingValidation } from "./form.js";
 import { initFooterFade } from "./footer.js";
@@ -28,6 +32,7 @@ initVideoControls();
 initSchedulerToggle();
 initDiscoveryToggle();
 initSubnetInput();
+initDiscoveryTable();
 initNav();
 initFormValidation();
 initAddSettingValidation();

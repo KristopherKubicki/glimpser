@@ -64,14 +64,14 @@
         Export CSV
       </button>
     </div>
-    <table class="camera-table">
+    <table id="discover-table" class="camera-table">
       <thead>
         <tr>
-          <th title="Camera IP address">IP</th>
-          <th title="Protocol type">Protocol</th>
-          <th title="Port number">Port</th>
-          <th title="MAC address">MAC</th>
-          <th title="Device manufacturer">Manufacturer</th>
+          <th class="sortable" title="Camera IP address">IP</th>
+          <th class="sortable" title="Protocol type">Protocol</th>
+          <th class="sortable" data-type="number" title="Port number">Port</th>
+          <th class="sortable" title="MAC address">MAC</th>
+          <th class="sortable" title="Device manufacturer">Manufacturer</th>
           <th title="Device details"></th>
           <th title="Add camera"></th>
         </tr>
@@ -86,7 +86,7 @@
           <td>{{ cam.info.mac }}</td>
           <td>{{ cam.info.manufacturer }}</td>
           <td>
-            <svg class="camera-icon" aria-hidden="true">
+            <svg class="camera-icon" width="12" height="12" aria-hidden="true">
               <use
                 href="{{ url_for('static', filename='icons/sprite.svg') }}#camera"
               ></use>
@@ -207,7 +207,7 @@
                     <td>${cam.port}</td>
                     <td>${cam.info.mac || ""}</td>
                     <td>${cam.info.manufacturer || ""}</td>
-                    <td><svg class="camera-icon" aria-hidden="true"><use href="${iconUrl}#camera"></use></svg>
+                    <td><svg class="camera-icon" width="12" height="12" aria-hidden="true"><use href="${iconUrl}#camera"></use></svg>
                     ${info ? `<span class="info-icon" title="${info}">ℹ️</span>` : ""}</td>
                     <td>${action}</td>`;
           body.appendChild(tr);
