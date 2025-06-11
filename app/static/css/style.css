@@ -2355,7 +2355,7 @@ details > summary {
   right: 0.5rem;
   left: auto;
   transform: none;
-  font-family: monospace;
+  font-family: SimBraille, "Apple Braille", "DejaVu Sans Mono", monospace;
   font-size: 20px;
   pointer-events: none;
   color: #fff;

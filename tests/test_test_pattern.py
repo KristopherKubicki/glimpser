@@ -4,7 +4,13 @@ import unittest
 
 from PIL import Image
 
-from app.utils.test_pattern import generate_test_pattern, save_test_pattern
+from app.utils.test_pattern import (
+    _format_binary_time,
+    _format_roman_time,
+    _to_braille,
+    generate_test_pattern,
+    save_test_pattern,
+)
 
 
 class TestTestPattern(unittest.TestCase):
@@ -27,6 +33,14 @@ class TestTestPattern(unittest.TestCase):
         self.assertEqual(img.size, (220, 110))
         # the patch is drawn as a mid-gray reference point
         self.assertEqual(img.getpixel((116, 58)), (118, 118, 118))
+
+
+class TestTimeFormatHelpers(unittest.TestCase):
+    def test_time_format_helpers(self):
+        ts = "12:34:56"
+        self.assertEqual(_format_binary_time(ts), "01100:100010:111000")
+        self.assertEqual(_format_roman_time(ts), "XII:XXXIV:LVI")
+        self.assertEqual(_to_braille(ts), "⠁⠃⠒⠉⠙⠒⠑⠋")
 
 
 if __name__ == "__main__":
