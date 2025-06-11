@@ -33,6 +33,29 @@ function hideScrubTooltip() {
 let prefetchQueue = [];
 let processing = false;
 let queueDelay = 1000;
+const spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+function showSpinner(video) {
+  const spinner = video.parentElement?.querySelector(".loading-spinner");
+  if (!spinner || spinner.dataset.active === "true") return;
+  let i = 0;
+  spinner.textContent = spinnerFrames[i];
+  spinner.classList.add("visible");
+  spinner.dataset.active = "true";
+  const id = setInterval(() => {
+    i = (i + 1) % spinnerFrames.length;
+    spinner.textContent = spinnerFrames[i];
+  }, 100);
+  spinner.dataset.intervalId = id.toString();
+}
+
+function hideSpinner(video) {
+  const spinner = video.parentElement?.querySelector(".loading-spinner");
+  if (!spinner || spinner.dataset.active !== "true") return;
+  clearInterval(Number(spinner.dataset.intervalId));
+  spinner.dataset.active = "false";
+  spinner.classList.remove("visible");
+}
 
 export function setQueueDelay(ms) {
   queueDelay = ms;
@@ -42,6 +65,7 @@ export function enqueueClip(video) {
   if (!video.dataset.hdSrc || video.dataset.hdLoaded === "true") return;
   if (prefetchQueue.includes(video)) return;
   prefetchQueue.push(video);
+  showSpinner(video);
   if (!processing) processQueue();
 }
 
@@ -56,6 +80,8 @@ function processQueue() {
   if (src) {
     src.src = vid.dataset.hdSrc;
     vid.dataset.hdLoaded = "true";
+    vid.addEventListener("canplay", () => hideSpinner(vid), { once: true });
+    vid.addEventListener("error", () => hideSpinner(vid), { once: true });
     vid.load();
   }
   setTimeout(processQueue, queueDelay);

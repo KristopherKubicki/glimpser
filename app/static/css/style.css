@@ -2322,3 +2322,18 @@ details > summary {
   margin: 0.5rem 0;
   display: block;
 }
+
+/* Braille loading spinner */
+.loading-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: monospace;
+  font-size: 20px;
+  pointer-events: none;
+  display: none;
+}
+.loading-spinner.visible {
+  display: block;
+}

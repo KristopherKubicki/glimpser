@@ -49,6 +49,7 @@ nav:
       - Release Workflow: release_workflow.md
       - Settings Page: settings_page.md
       - Clock Settings: clock_settings.md
+      - Braille Loading Spinner: braille_spinner.md
       - Configuration Management: config_management.md
       - System Monitoring: system_monitoring.md
       - Performance Tuning: performance_tuning.md
