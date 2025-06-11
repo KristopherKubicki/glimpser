@@ -417,8 +417,15 @@ class TestRoutes(unittest.TestCase):
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.camera_discovery.discover_cameras")
+    @patch("app.routes.template_manager.get_templates")
     @patch("app.routes.render_template")
-    def test_discover_route(self, mock_render_template, mock_discover, mock_session_local):
+    def test_discover_route(
+        self,
+        mock_render_template,
+        mock_get_templates,
+        mock_discover,
+        mock_session_local,
+    ):
         mock_discover.return_value = [{"ip": "1.2.3.4", "protocol": "rtsp", "port": 554, "info": {}}]
         dummy_user = SimpleNamespace(id=1)
 
@@ -437,6 +444,7 @@ class TestRoutes(unittest.TestCase):
                 pass
 
         mock_session_local.return_value = DummySession()
+        mock_get_templates.return_value = {}
 
         with self.client.session_transaction() as sess:
             sess["user_id"] = 1
