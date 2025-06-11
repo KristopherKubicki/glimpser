@@ -58,8 +58,8 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 
 The main dashboard now displays the current time in the lower right corner. Hover over the time to view the full ISO 8601 timestamp.
 
-Thumbnails also now show the last capture time in a human readable
-"X ago" format, matching the tables on the Captions page.
+Thumbnails also now show the last capture time in a compact
+"5m ago" style, matching the tables on the Captions page.
 The Live View page displays the time of the latest frame in the
 lower-right corner using the same format. Timestamp parsing was improved so
 times display correctly across time zones instead of always showing

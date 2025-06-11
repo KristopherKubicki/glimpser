@@ -90,9 +90,9 @@ describe("script.js", () => {
     const oneDayAgo = new Date(now.getTime() - 86400000);
 
     expect(timeAgo(now)).toBe("just now");
-    expect(timeAgo(oneMinuteAgo)).toBe("1 minute ago");
-    expect(timeAgo(oneHourAgo)).toBe("1 hour ago");
-    expect(timeAgo(oneDayAgo)).toBe("1 day ago");
+    expect(timeAgo(oneMinuteAgo)).toBe("1m ago");
+    expect(timeAgo(oneHourAgo)).toBe("1h ago");
+    expect(timeAgo(oneDayAgo)).toBe("1d ago");
   });
 
   test("timeAgo handles null and undefined", () => {
