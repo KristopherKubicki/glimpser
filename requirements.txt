@@ -23,4 +23,3 @@ yt-dlp==2025.5.22
 pynput==1.8.1
 python-dateutil
 python-dotenv
-nodriver==0.46.1

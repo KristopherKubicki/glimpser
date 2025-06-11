@@ -16,6 +16,8 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    pip install -r requirements.txt
    pip install -r requirements-dev.txt
    ```
+   Screenshots now rely solely on Selenium; the optional `nodriver` dependency
+   has been removed from `requirements.txt`.
 3. Set up tooling:
    ```sh
    make setup  # installs pre-commit hooks and JS packages
