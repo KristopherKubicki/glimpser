@@ -114,8 +114,19 @@ template_controls %} {% block content %}
                       class="notes-textarea"
                       placeholder="Edit caption prompt"
                     >
-{{ template_details[camera]['notes'] }}</textarea
+{{ template_details[camera]['notes'] }}</textarea>
+                    <button
+                      class="update-button"
+                      data-template="{{ camera }}"
+                      title="Send updated prompt"
+                      aria-label="Send updated prompt"
                     >
+                      <svg width="16" height="16" aria-hidden="true">
+                        <use
+                          href="{{ url_for('static', filename='icons/sprite.svg') }}#login"
+                        />
+                      </svg>
+                    </button>
                   </div>
                   <div class="chat-response">
                     <label id="last-caption-label-{{ camera }}"
@@ -130,18 +141,6 @@ template_controls %} {% block content %}
                     </div>
                   </div>
                 </div>
-                <button
-                  class="update-button"
-                  data-template="{{ camera }}"
-                  title="Send updated prompt"
-                  aria-label="Send updated prompt"
-                >
-                  <svg width="16" height="16" aria-hidden="true">
-                    <use
-                      href="{{ url_for('static', filename='icons/sprite.svg') }}#login"
-                    />
-                  </svg>
-                </button>
               </form>
             </td>
           </tr>
