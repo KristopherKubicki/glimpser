@@ -255,8 +255,9 @@ h2 {
 
 @media (max-width: 767px) {
   #sort-date {
-    width: 100%;
-    font-size: 16px;
+    width: 5rem;
+    margin-bottom: 0;
+    font-size: 14px;
   }
 }
 
@@ -334,11 +335,17 @@ h2 {
     margin-bottom: 10px;
   }
   #template-controls {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
   }
   #template-controls input[type="text"] {
-    width: 100%;
+    width: 6rem;
+  }
+  #status-legend {
+    display: none;
+  }
+  #controls-wrapper {
+    font-size: 0.75rem;
   }
   #template-list {
     grid-template-columns: 1fr; /* Single column layout on mobile */
