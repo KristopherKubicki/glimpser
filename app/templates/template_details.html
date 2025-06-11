@@ -11,16 +11,32 @@ template_form %} {% block content %}
   {% endif %}
 </script>
 
-<div
-  class="video-container full-height"
-  role="region"
-  aria-label="Live video feed"
->
-  <video
-    id="live-video"
-    controls
-    autoplay
-    muted
+  <div
+    class="video-container full-height"
+    role="region"
+    aria-label="Live video feed"
+  >
+  <button
+    id="prev-clip-btn"
+    class="clip-nav prev"
+    title="Previous clip"
+    aria-label="Previous clip"
+  >
+    &#9664;
+  </button>
+  <button
+    id="next-clip-btn"
+    class="clip-nav next"
+    title="Next clip"
+    aria-label="Next clip"
+  >
+    &#9654;
+  </button>
+    <video
+      id="live-video"
+      controls
+      autoplay
+      muted
     preload="none"
     poster="/last_screenshot/{{ template_name }}"
   >
@@ -516,4 +532,50 @@ template_form %} {% block content %}
     submit_label='Save', object_tokens=object_tokens, clip_model=clip_model ) }}
   </div>
 </div>
+
+<script>
+  window.recentVideos = {{ videos|tojson }};
+  document.addEventListener("DOMContentLoaded", () => {
+    const list = window.recentVideos || [];
+    if (!list.length) return;
+    let index = 0;
+    const video = document.getElementById("live-video");
+    const source = video?.querySelector("source");
+    const prev = document.getElementById("prev-clip-btn");
+    const next = document.getElementById("next-clip-btn");
+
+    const updateButtons = () => {
+      if (prev) prev.disabled = index <= 0;
+      if (next) next.disabled = index >= list.length - 1;
+    };
+
+    const loadClip = (i) => {
+      if (i < 0 || i >= list.length) return;
+      index = i;
+      const file = list[i];
+      if (source) source.src = `/videos/${window.currentCamera}/${file}`;
+      video.removeAttribute("data-hd-src");
+      video.load();
+      updateButtons();
+    };
+
+    prev?.addEventListener("click", () => loadClip(index - 1));
+    next?.addEventListener("click", () => loadClip(index + 1));
+
+    document.addEventListener("keydown", (e) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
+      if (e.key === "ArrowLeft") {
+        loadClip(index - 1);
+      } else if (e.key === "ArrowRight") {
+        loadClip(index + 1);
+      }
+    });
+
+    updateButtons();
+  });
+</script>
 {% endblock %}
