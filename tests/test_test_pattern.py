@@ -34,6 +34,11 @@ class TestTestPattern(unittest.TestCase):
         # the patch is drawn as a mid-gray reference point
         self.assertEqual(img.getpixel((116, 58)), (118, 118, 118))
 
+    def test_spinner_overlay(self):
+        img = generate_test_pattern(width=120, height=60, spinner="⠋")
+        region = [img.getpixel((x, y)) for x in range(100, 115) for y in range(5, 20)]
+        self.assertIn((255, 255, 255), region)
+
 
 class TestTimeFormatHelpers(unittest.TestCase):
     def test_time_format_helpers(self):

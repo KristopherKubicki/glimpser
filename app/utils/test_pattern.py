@@ -208,6 +208,34 @@ def generate_test_pattern(
     for i, color in enumerate(bars):
         draw.rectangle([i * bar_w, 0, (i + 1) * bar_w, bar_h], fill=color)
 
+    # subtle synthwave sunrise near the horizon
+    sun_r = min(width, height) // 10
+    horizon_y = height - bar_h - sun_r
+    sun_cx = width // 4
+    for r in range(sun_r, 0, -2):
+        ratio = r / sun_r
+        color = (
+            int(255 * ratio),
+            int(80 + 100 * (1 - ratio)),
+            int(150 + 50 * ratio),
+        )
+        draw.arc(
+            [sun_cx - r, horizon_y - r, sun_cx + r, horizon_y + r],
+            start=180,
+            end=360,
+            fill=color,
+            width=2,
+        )
+    draw.line([(0, horizon_y), (width, horizon_y)], fill=(80, 0, 80))
+    for x_off in range(-sun_r, sun_r + 1, sun_r // 4):
+        draw.line(
+            [
+                (sun_cx + x_off, horizon_y),
+                (sun_cx + x_off, horizon_y - 5),
+            ],
+            fill=(80, 0, 80),
+        )
+
     # miniature SMPTE bars and wide-gamut Rec.2020 bars
     mini_709 = [
         ((191, 191, 191), "W"),
@@ -302,9 +330,8 @@ def generate_test_pattern(
     timestamp = datetime.datetime.now().strftime("%H:%M:%S")
 
     if spinner:
-        sb = draw.textbbox((0, 0), spinner, font=font_small)
-        sw, sh = sb[2] - sb[0], sb[3] - sb[1]
-        draw.text((width - sw - 10, 10), spinner, fill="white", font=font_small)
+        sw = _braille_text_width(spinner)
+        _draw_braille_text(draw, (width - sw - 10, 10), spinner)
 
     # stable reference patch for tests
     patch_x = width // 2 + 6
@@ -330,7 +357,7 @@ def generate_test_pattern(
     colon_w = max(
         colon_w_std, draw.textlength(":", font=font_binary), _braille_text_width(":")
     )
-    colon_gap = colon_w + 4
+    colon_gap = colon_w + 2
     seg1_max = max(
         draw.textlength("23", font=font_right),
         draw.textlength("10111", font=font_binary),
@@ -354,7 +381,7 @@ def generate_test_pattern(
         font_right.size,
         font_braille.size,
     ]
-    spacing_y = 8
+    spacing_y = 16
     total_h = sum(line_heights) + spacing_y * (len(line_heights) - 1)
     y_start = height // 2 - total_h // 2 + 3
 
