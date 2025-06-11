@@ -521,3 +521,4 @@ export function startCasting() {
 // expose queue functions for other modules
 window.enqueueClip = enqueueClip;
 window.setQueueDelay = setQueueDelay;
+export { showSpinner, hideSpinner };
