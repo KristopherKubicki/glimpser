@@ -10,11 +10,12 @@ This endpoint now redirects to the _System Status_ tab on the Settings page. The
 
 ### Feed Dashboard
 
-Below the system metrics the page lists each configured feed with a color-coded indicator. Hovering over a red or yellow dot now shows a short tooltip describing the issue, including when the feed went offline and the most recent related log entry if available.
+Below the system metrics the page lists each configured feed with a color-coded indicator. Hovering over a red or yellow dot now shows a short tooltip describing the issue, including when the feed went offline and the most recent related log entry if available. A new **Capturing** column highlights feeds that are actively capturing.
 
 - **Green** – the feed is updating on schedule.
 - **Yellow** – the last capture is behind its configured frequency.
 - **Red** – capturing failed or the feed is offline.
+- **Blue** – a capture job is currently running.
 - Cameras marked as **Danger** show a hazard icon when the feature is required.
   The icon is orange if Danger mode is available but suppressed due to recent
   user activity and red when Danger mode is disabled or Chrome's debugging port

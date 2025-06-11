@@ -62,6 +62,22 @@ class TestFeedStatusTooltip(unittest.TestCase):
             feeds = scheduling.get_feed_status()
         self.assertEqual(feeds[0]["danger_reason"], "user")
 
+    def test_capturing_flag_set(self):
+        now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        templates = {"cam1": {"last_screenshot_time": now}}
+
+        class DummyProcess:
+            def is_alive(self):
+                return True
+
+        with (
+            patch("app.utils.scheduling.get_templates", return_value=templates),
+            patch("app.utils.scheduling.active_jobs", {"cam1": DummyProcess()}),
+            patch("app.utils.scheduling.active_jobs_lock", DummyLock()),
+        ):
+            feeds = scheduling.get_feed_status()
+        self.assertTrue(feeds[0]["capturing"])
+
 
 if __name__ == "__main__":
     unittest.main()
