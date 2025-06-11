@@ -25,6 +25,7 @@ from PIL import Image, ImageDraw
 from transformers import CLIPModel, CLIPProcessor
 
 from app.config import (
+    AUTO_UPDATE_BRANCH,
     CLIP_MODEL_NAME,
     DEBUG,
     FFMPEG_HWACCEL,
@@ -37,6 +38,7 @@ from app.config import (
     get_setting,
 )
 from app.models import OfflineJob, Summary
+from app.utils.auto_update import check_for_update
 from app.utils.db import SessionLocal
 
 from . import camera_discovery
@@ -1421,6 +1423,23 @@ def schedule_offline_job_processor() -> None:
             trigger="interval",
             seconds=30,
             id="process_offline_jobs",
+            replace_existing=True,
+        )
+    except Exception as e:
+        logging.error("job schedule error: %s", e)
+
+
+def schedule_auto_update() -> None:
+    """Schedule periodic auto-update checks."""
+
+    if AUTO_UPDATE_BRANCH == "None":
+        return
+    try:
+        scheduler.add_job(
+            func=check_for_update,
+            trigger="interval",
+            hours=1,
+            id="auto_update",
             replace_existing=True,
         )
     except Exception as e:

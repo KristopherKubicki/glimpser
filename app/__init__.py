@@ -24,6 +24,7 @@ from app.config import (
 from app.utils.email_alerts import email_alert
 from app.utils.retention_policy import cleanup_clips, retention_cleanup
 from app.utils.scheduling import (
+    schedule_auto_update,
     schedule_crawlers,
     schedule_discovery,
     schedule_offline_job_processor,
@@ -153,6 +154,7 @@ def create_app(
             scheduler.add_job(id="retention_cleanup", func=retention_cleanup, trigger="cron", day="*")
             schedule_summarization()
             schedule_offline_job_processor()
+            schedule_auto_update()
             if DISCOVERY_AUTOSTART:
                 schedule_discovery()
 

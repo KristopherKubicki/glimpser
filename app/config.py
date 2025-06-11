@@ -427,6 +427,13 @@ MCP_SERVER_URL = get_setting("MCP_SERVER_URL", "")
 # ``False`` (the default) disallows all crawlers.
 ALLOW_BOTS = get_setting("ALLOW_BOTS", "False") == "True"
 
+# Branch to auto-update from when new releases are available. "None" disables
+# automatic updates. Values other than "Main" or "Staging" revert to "None".
+AUTO_UPDATE_BRANCH = get_setting("AUTO_UPDATE_BRANCH", "None")
+if AUTO_UPDATE_BRANCH not in {"None", "Main", "Staging"}:
+    logging.warning("Invalid AUTO_UPDATE_BRANCH %s", AUTO_UPDATE_BRANCH)
+    AUTO_UPDATE_BRANCH = "None"
+
 # Settings that should never be displayed in the UI
 SENSITIVE_SETTINGS = [
     "SECRET_KEY",
