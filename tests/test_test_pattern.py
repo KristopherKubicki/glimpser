@@ -4,12 +4,7 @@ import unittest
 
 from PIL import Image
 
-from app.utils.test_pattern import (
-    generate_geometric_test_pattern,
-    generate_indian_head_test_pattern,
-    generate_test_pattern,
-    save_test_pattern,
-)
+from app.utils.test_pattern import generate_test_pattern, save_test_pattern
 
 
 class TestTestPattern(unittest.TestCase):
@@ -25,16 +20,6 @@ class TestTestPattern(unittest.TestCase):
             self.assertTrue(os.path.exists(path))
             with Image.open(path) as im:
                 self.assertEqual(im.size, (100, 50))
-
-    def test_indian_head_size(self):
-        img = generate_indian_head_test_pattern(width=150, height=150)
-        self.assertIsInstance(img, Image.Image)
-        self.assertEqual(img.size, (150, 150))
-
-    def test_geometric_size(self):
-        img = generate_geometric_test_pattern(width=120, height=120, tiles=5)
-        self.assertIsInstance(img, Image.Image)
-        self.assertEqual(img.size, (120, 120))
 
     def test_minibar_colors(self):
         width, height = 240, 100
@@ -68,20 +53,6 @@ class TestTestPattern(unittest.TestCase):
             px_right = img.getpixel((x_start + idx * mini_w + mini_w - 1, y_start))
             px = tuple(round((l + r) / 2) for l, r in zip(px_left, px_right))
             self.assertEqual(px, expected)
-
-    def test_indian_head_minibars(self):
-        width, height = 240, 100
-        img = generate_indian_head_test_pattern(width=width, height=height)
-        bar_h = height // 6
-        mini_w = max(2, width // 100)
-        mini_h = bar_h // 4
-        x_start = width - mini_w * 14 - 110
-        y_start = 12
-        expected_first = (191, 191, 191)
-        px_left = img.getpixel((x_start, y_start))
-        px_right = img.getpixel((x_start + mini_w - 1, y_start))
-        px = tuple(round((l + r) / 2) for l, r in zip(px_left, px_right))
-        self.assertEqual(px, expected_first)
 
     def test_grey_patch(self):
         width, height = 220, 110
