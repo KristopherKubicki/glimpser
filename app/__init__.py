@@ -36,27 +36,8 @@ from app.utils.scheduling import (
 from app.utils.sms_alerts import sms_alert
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 
-# from app.utils.db import SessionLocal
-# from app.models.log import Log
-
 # needed for the llava compare
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-"""
-class SQLAlchemyHandler(logging.Handler):
-    def __init__(self):
-        super().__init__()
-        self.session = scoped_session(SessionLocal)
-
-    def emit(self, record):
-        log_entry = Log(
-            level=record.levelname,
-            message=record.getMessage(),
-            source=record.name
-        )
-        self.session.add(log_entry)
-        self.session.commit()
-"""
 
 
 def create_app(
