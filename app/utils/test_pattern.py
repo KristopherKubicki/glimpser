@@ -239,13 +239,6 @@ def generate_test_pattern(
         (width // 2 - tw // 2, bar_h + 6), timestamp, fill="white", font=font_large
     )
 
-    mystic = "Seek the unseen"
-    mb = draw.textbbox((0, 0), mystic, font=font_small)
-    mw, mh = mb[2] - mb[0], mb[3] - mb[1]
-    draw.text(
-        (width // 2 - mw // 2, bar_h + th + 14), mystic, fill="white", font=font_small
-    )
-
     if spinner:
         sb = draw.textbbox((0, 0), spinner, font=font_small)
         sw, sh = sb[2] - sb[0], sb[3] - sb[1]
@@ -256,17 +249,55 @@ def generate_test_pattern(
     patch_y = height // 2 + 3
     draw.point((patch_x, patch_y), fill=(118, 118, 118))
 
-    # timestamp repeated near the vertical center on the right side
-    font_right = load_font(24)
-    rb = draw.textbbox((0, 0), timestamp, font=font_right)
-    rw, rh = rb[2] - rb[0], rb[3] - rb[1]
-    x_pos = max(width - rw - 10, width // 2 + 10)
-    draw.text(
-        (x_pos, height // 2 - rh // 2),
-        timestamp,
-        fill="white",
-        font=font_right,
+    # multiple time codes stacked on the right side
+    font_right = load_font(26)
+    time_simple = timestamp.split(" ")[1]
+    formats = [
+        time_simple,
+        _format_binary_time(time_simple),
+        _format_roman_time(time_simple),
+        _to_braille(time_simple),
+    ]
+
+    segments = [t.replace("\u2812", ":").split(":") for t in formats]
+    seg1_max = max(draw.textlength(s[0], font=font_right) for s in segments)
+    seg2_max = max(draw.textlength(s[1], font=font_right) for s in segments)
+    seg3_max = max(draw.textlength(s[2], font=font_right) for s in segments)
+    colon_w = draw.textlength(":", font=font_right)
+
+    total_w = seg1_max + colon_w + seg2_max + colon_w + seg3_max
+    x_start = width - total_w - 10
+    y_start = height // 2 - (
+        (len(formats) * font_right.size + (len(formats) - 1) * 4) // 2
     )
+
+    for idx, parts in enumerate(segments):
+        x = x_start
+        y = y_start + idx * (font_right.size + 4)
+        draw.text(
+            (x + seg1_max - draw.textlength(parts[0], font=font_right), y),
+            parts[0],
+            fill="white",
+            font=font_right,
+        )
+        x += seg1_max
+        draw.text((x, y), ":", fill="white", font=font_right)
+        x += colon_w
+        draw.text(
+            (x + seg2_max - draw.textlength(parts[1], font=font_right), y),
+            parts[1],
+            fill="white",
+            font=font_right,
+        )
+        x += seg2_max
+        draw.text((x, y), ":", fill="white", font=font_right)
+        x += colon_w
+        draw.text(
+            (x + seg3_max - draw.textlength(parts[2], font=font_right), y),
+            parts[2],
+            fill="white",
+            font=font_right,
+        )
 
     if camera_name:
         draw.text((10, bar_h + 10), camera_name, fill="white", font=font_small)
