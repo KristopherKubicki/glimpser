@@ -724,6 +724,7 @@ export async function loadTemplates() {
               <a href='/templates/${name}'>
                 <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
                   <div class="camera-name">${name}</div>
+                  <div class="loading-spinner" aria-hidden="true"></div>
                   <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback data-hd-src="/clip/${name}">
                     <source src="/last_video/${name}" type="video/mp4">
                     Your browser does not support the video tag.
