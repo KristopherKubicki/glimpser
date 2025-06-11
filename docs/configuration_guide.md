@@ -74,6 +74,7 @@ user table in sync.
 
 - `SCREENSHOT_DIRECTORY` – directory for raw screenshots (default `data/screenshots/`)
 - `VIDEO_DIRECTORY` – directory for recorded videos (default `data/video/`)
+- `CLIPS_DIRECTORY` – directory used to cache short clips (default `data/clips/`)
 - `SUMMARIES_DIRECTORY` – **deprecated**; summaries are now stored in the database.
 
   Older deployments may still reference this path but it is no longer used.
@@ -179,6 +180,7 @@ Additional variables control AI behaviour and external tools:
 - When hardware acceleration is enabled and Chrome supports OpenGL, Glimpser
   automatically launches Chrome with `--use-gl=egl` for improved GPU use.
 - `FFMPEG_THREADS` – number of threads ffmpeg uses when encoding (default half the CPU cores)
+- `CRAWLER_STARTUP_SPREAD` – minutes to stagger initial crawler runs at startup (default `10`)
 - `CLIP_MODEL_NAME` – CLIP model used for object filtering (default `openai/clip-vit-base-patch32`)
   Example: `openai/clip-vit-large-patch14`
   This setting is read-only until Advanced Options are enabled.

@@ -358,14 +358,33 @@ template_form %} {% block content %}
     });
     if (!currentlyVisible) {
       target.style.display = "block";
+      if (id === "videos-modal") {
+        const live = document.getElementById("live-video");
+        if (live) {
+          live.dataset.resumeOnClose = live.paused ? "false" : "true";
+          live.pause();
+        }
+      }
       document.querySelector(".template-actions")?.classList.remove("fade-out");
     } else {
+      if (id === "videos-modal") {
+        const live = document.getElementById("live-video");
+        if (live && live.dataset.resumeOnClose === "true") {
+          live.play().catch(() => {});
+        }
+      }
       document.querySelector(".template-actions")?.classList.remove("fade-out");
     }
   }
 
   function closeGenericModal(id) {
     document.getElementById(id).style.display = "none";
+    if (id === "videos-modal") {
+      const live = document.getElementById("live-video");
+      if (live && live.dataset.resumeOnClose === "true") {
+        live.play().catch(() => {});
+      }
+    }
     document.querySelector(".template-actions")?.classList.remove("fade-out");
   }
 </script>

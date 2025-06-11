@@ -93,10 +93,10 @@ def generate_test_pattern(
     height: int = 720,
     logo_path: Optional[str] = None,
     camera_name: str | None = None,
+    variant: str = "color",
     spinner: str | None = None,
 ) -> Image.Image:
     """Return a PIL image with calibration aids.
-
     ``spinner`` overlays a simple spinner glyph on the pattern.
     """
 
@@ -278,28 +278,6 @@ def generate_test_pattern(
             img.paste(logo, (width - logo.width - 10, height - logo.height - 10), logo)
 
     return img
-
-
-def generate_indian_head_test_pattern(
-    width: int = 1280,
-    height: int = 720,
-    spinner: str | None = None,
-) -> Image.Image:
-    """Compatibility wrapper for legacy name."""
-
-    return generate_test_pattern(width=width, height=height, spinner=spinner)
-
-
-def generate_geometric_test_pattern(
-    width: int = 1280,
-    height: int = 720,
-    tiles: int = 10,
-    spinner: str | None = None,
-) -> Image.Image:
-    """Legacy wrapper that now returns the unified test pattern."""
-
-    # ``tiles`` is ignored but kept for backward compatibility
-    return generate_test_pattern(width=width, height=height, spinner=spinner)
 
 
 def save_test_pattern(path: str, **kwargs) -> None:

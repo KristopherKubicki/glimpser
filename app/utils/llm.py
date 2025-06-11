@@ -20,7 +20,7 @@ def summarize(
     history: Optional[str] = None,
     tokens: int = 4096,
     *,
-    timeout: int = 10,
+    timeout: int = 30,
     retries: int = 2,
 ):
     """
@@ -43,7 +43,9 @@ def summarize(
     global last_429_error_time
 
     # Rate limiting: Check if a 429 error occurred in the last 15 minutes
-    if last_429_error_time and (datetime.datetime.now() - last_429_error_time) < datetime.timedelta(minutes=15):
+    if last_429_error_time and (
+        datetime.datetime.now() - last_429_error_time
+    ) < datetime.timedelta(minutes=15):
         return None
 
     if CHATGPT_KEY is None or len(CHATGPT_KEY) < 1 or len(CHATGPT_KEY) > 128:
@@ -63,7 +65,9 @@ def summarize(
     url = "https://api.openai.com/v1/chat/completions"
 
     # Prepare the summary prompt
-    lsummary_prompt = LLM_SUMMARY_PROMPT.replace("$datetime", str(datetime.datetime.now()))
+    lsummary_prompt = LLM_SUMMARY_PROMPT.replace(
+        "$datetime", str(datetime.datetime.now())
+    )
 
     # Construct the messages for the API request
     messages = [
@@ -124,9 +128,13 @@ def summarize(
             logging.warning("API response missing expected fields: %s", result)
             return None
 
-        response_text = result["choices"][0]["message"]["content"].replace("\n\n", "\t").strip()
+        response_text = (
+            result["choices"][0]["message"]["content"].replace("\n\n", "\t").strip()
+        )
         ltokens = result["usage"]["total_tokens"]
-        logging.info("Total tokens used: %s (Cost: $%0.5f)", ltokens, ltokens * 0.005 / 1000)
+        logging.info(
+            "Total tokens used: %s (Cost: $%0.5f)", ltokens, ltokens * 0.005 / 1000
+        )
 
         # Convert the response text to a JSON format
         ljson = {}
@@ -153,7 +161,7 @@ def summarize(
         return None
 
 
-def ask_question(question: str, history: str = "", *, timeout: int = 10) -> str | None:
+def ask_question(question: str, history: str = "", *, timeout: int = 30) -> str | None:
     """Return the answer to ``question`` using ``history`` as context."""
 
     if not question or not CHATGPT_KEY:
@@ -187,7 +195,9 @@ def ask_question(question: str, history: str = "", *, timeout: int = 10) -> str 
             timeout=timeout,
         )
         result = response.json()
-        return result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        return (
+            result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        )
     except Exception as e:  # pragma: no cover - network errors
         logging.error("ChatGPT request failed: %s", e)
     return None
