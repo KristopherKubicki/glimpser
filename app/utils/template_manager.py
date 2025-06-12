@@ -834,6 +834,28 @@ def get_llm_cost_summary(
     return summary, total_tokens, f"${total_cost:.3f}"
 
 
+def group_cost_summary(
+    summary: list[dict[str, object]], top: int = 10
+) -> list[dict[str, object]]:
+    """Return ``summary`` sorted by cost with smaller entries grouped."""
+
+    def _cost_val(entry: dict[str, object]) -> float:
+        try:
+            return float(str(entry.get("cost", "$0")).replace("$", ""))
+        except Exception:
+            return 0.0
+
+    rows = sorted(summary, key=_cost_val, reverse=True)
+    if len(rows) <= top:
+        return rows
+
+    keep = rows[: top - 1]
+    other_tokens = sum(r.get("tokens", 0) for r in rows[top - 1 :])
+    other_cost = sum(_cost_val(r) for r in rows[top - 1 :])
+    keep.append({"name": "Other", "tokens": other_tokens, "cost": f"${other_cost:.3f}"})
+    return keep
+
+
 def update_last_screenshot_time(name: str) -> None:
     """Set ``last_screenshot_time`` to now and clear ``offline_since``."""
     name = validate_template_name(name)

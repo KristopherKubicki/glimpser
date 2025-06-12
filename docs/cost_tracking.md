@@ -8,6 +8,10 @@ An overall cost summary now appears under **Settings → Costs**. This tab now
 includes a small pie chart and sortable columns. Adjust the date range with the
 slider to view recent spending.
 
+The Settings cost tab shows only the nine most expensive templates when more
+than ten cameras are present. All remaining templates are combined into a
+single **Other** row to keep the table manageable.
+
 An additional **LLM Cost Summary** page now provides a date range picker to
 review costs for a specific period. Use the **Since Last Restart** shortcut to
 fill the start date with the server start time. A pie chart shows how costs are

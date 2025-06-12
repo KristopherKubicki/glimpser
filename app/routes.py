@@ -3640,6 +3640,7 @@ def init_routes(app: Flask) -> None:
         last_summary = scheduling.get_last_summary_time()
         danger_enabled = config.get_setting("DANGER_MODE", "True") == "True"
         cost_summary, total_tokens, total_cost = template_manager.get_llm_cost_summary()
+        cost_summary = template_manager.group_cost_summary(cost_summary, top=10)
 
         chrome_path = get_chrome_path()
         danger_info = {
