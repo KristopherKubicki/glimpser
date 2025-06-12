@@ -123,10 +123,11 @@ export function updateCameraOptions(group) {
   camSelect.value = `group-${group}`;
 }
 
-export function changeGroup() {
-  const groupSelector = document.getElementById("group-selector");
-  const group = groupSelector ? groupSelector.value : "all";
+export function changeGroup(group) {
   const navGroup = document.getElementById("nav-group-dropdown");
+  if (!group) {
+    group = navGroup ? navGroup.value : "all";
+  }
   if (navGroup) navGroup.value = group;
   updateCameraOptions(group);
   const camSelect = document.getElementById("camera-selector");

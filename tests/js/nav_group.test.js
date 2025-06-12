@@ -3,7 +3,6 @@ import { jest } from "@jest/globals";
 document.body.innerHTML = `
   <select id="nav-group-dropdown"></select>
   <select id="nav-camera-dropdown"></select>
-  <select id="group-selector"></select>
   <nav></nav>
 `;
 

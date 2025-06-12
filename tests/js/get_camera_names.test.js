@@ -22,8 +22,6 @@ document.body.innerHTML = `
   <input id="seek-bar" />
   <div id="jog-shuttle"></div>
   <select id="video-source"><option value="mjpg">MJPG</option></select>
-  <select id="camera-selector"></select>
-  <select id="group-selector"></select>
 `;
 
 window.templateDetails = {
@@ -33,26 +31,16 @@ window.templateDetails = {
 
 describe("getCameraNames", () => {
   let getCameraNames;
-  let changeCamera;
+  let changeGroup;
   beforeAll(async () => {
     const mod = await import("../../app/static/js/live.js");
     getCameraNames = mod.getCameraNames;
-    changeCamera = window.changeCamera;
+    changeGroup = window.changeGroup;
   });
 
   test("filters out group entries", () => {
-    const selector = document.getElementById("camera-selector");
-    selector.innerHTML = `
-      <option value="All">All</option>
-      <option value="group-test">group-test</option>
-      <option value="cam1">cam1</option>
-      <option value="cam2">cam2</option>
-    `;
-    selector.value = "group-test";
-    changeCamera();
-
-    selector.value = "All";
-    changeCamera();
+    changeGroup("test");
+    changeGroup("all");
 
     expect(getCameraNames()).toEqual(["cam1", "cam2"]);
     expect(window.templateDetails["All"].groupCameras).toEqual([

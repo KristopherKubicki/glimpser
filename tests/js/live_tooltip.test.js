@@ -22,7 +22,6 @@ document.body.innerHTML = `
   <div id="toggle-details"></div>
   <input id="seek-bar">
   <div id="jog-shuttle"></div>
-  <select id="group-selector"></select>
   <select id="video-source"><option value="mjpg" selected>MJPG</option></select>
 `;
 Object.defineProperty(window.HTMLMediaElement.prototype, "pause", {
