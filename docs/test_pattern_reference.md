@@ -12,3 +12,4 @@ The test pattern includes calibration checks for panel accuracy and HDR tone map
 - **Mid‑grey uniformity patch** reveals panel mura without blinding brightness.
 - **Skin‑tone chip** around CIE ab ≈ (20, 15) confirms natural faces.
 - **Synthwave sunrise** with a small horizon line and trees for visual flair.
+- **Swatch Internet Time** (@beats) joins the stacked clocks for a fun extra.
