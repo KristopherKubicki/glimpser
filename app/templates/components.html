@@ -152,6 +152,15 @@ object_tokens=None, clip_model=None) -%}
         placeholder="30"
         title="Enter how often to check the URL (in minutes)"
       />
+      <!-- suggestions only; users may enter any value -->
+      <datalist id="frequency-options">
+        <option value="5"></option>
+        <option value="15"></option>
+        <option value="30"></option>
+        <option value="60"></option>
+        <option value="360"></option>
+        <option value="1440"></option>
+      </datalist>
       <label for="timeout" title="Maximum time to wait for a response"
         >Timeout (seconds):</label
       >
@@ -169,22 +178,14 @@ object_tokens=None, clip_model=None) -%}
         placeholder="10"
         title="Enter the maximum time to wait for a response (in seconds)"
       />
+      <datalist id="timeout-options">
+        <option value="5"></option>
+        <option value="10"></option>
+        <option value="15"></option>
+        <option value="30"></option>
+        <option value="45"></option>
+      </datalist>
     </div>
-    <datalist id="frequency-options">
-      <option value="5"></option>
-      <option value="15"></option>
-      <option value="30"></option>
-      <option value="60"></option>
-      <option value="360"></option>
-      <option value="1440"></option>
-    </datalist>
-    <datalist id="timeout-options">
-      <option value="5"></option>
-      <option value="10"></option>
-      <option value="15"></option>
-      <option value="30"></option>
-      <option value="45"></option>
-    </datalist>
     <input
       type="hidden"
       id="notes"
