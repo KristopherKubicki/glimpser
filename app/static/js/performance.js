@@ -45,8 +45,8 @@ export function updatePerformanceMetrics() {
       const cpuList = document.getElementById("thread-cpu-list");
       if (cpuList) {
         cpuList.textContent = (metrics.top_threads || [])
-          .map((t) => `${t.id}:${t.cpu}%`)
-          .join(" ");
+          .map((t) => `${t.id} (${t.cpu}%)`)
+          .join(", ");
       }
 
       const uptimeVal = document.getElementById("uptime-value");

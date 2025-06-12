@@ -13,8 +13,7 @@
       id="scheduler-status"
       class="status-dot"
       title="Green = running, red = stopped or error"
-      >Checking status...</span
-    >
+    ></span>
   </li>
   <li title="Current CPU utilization">
     <span class="metric-label">CPU Usage:</span>
@@ -82,10 +81,15 @@
   </li>
   <li title="GPU acceleration status">
     <span class="metric-label">GPU:</span>
-    <span
-      id="gpu-status"
-      class="status-dot {{ 'ok' if metrics.ffmpeg_gpu_enabled else ('slow' if metrics.gpu_support else 'error') }}"
-    ></span>
+    <a
+      href="/settings?tab=Capture-tab#FFMPEG_HWACCEL"
+      title="Configure hardware acceleration"
+    >
+      <span
+        id="gpu-status"
+        class="status-dot {{ 'ok' if metrics.ffmpeg_gpu_enabled else ('slow' if metrics.gpu_support else 'error') }}"
+      ></span>
+    </a>
   </li>
 </ul>
 {% endcall %} {% call card('Feed Status') %}

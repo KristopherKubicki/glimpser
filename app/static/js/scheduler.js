@@ -7,8 +7,10 @@ function setStatus(el, status) {
 }
 
 function updateStatusText(el, status) {
-  el.textContent = status;
+  if (!el) return;
   const map = { running: "ok", stopped: "error", error: "error" };
+  el.title = status;
+  el.textContent = "";
   setStatus(el, map[status] || "error");
 }
 
