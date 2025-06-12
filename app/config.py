@@ -424,11 +424,10 @@ EMAIL_SENDER = get_setting("EMAIL_SENDER", "")
 EMAIL_RECIPIENTS = get_setting("EMAIL_RECIPIENTS", "")
 EMAIL_SMTP_SERVER = get_setting("EMAIL_SMTP_SERVER", "")
 EMAIL_SMTP_PORT = get_setting("EMAIL_SMTP_PORT", "587")
-EMAIL_SMTP_TIMEOUT = int(get_setting("EMAIL_SMTP_TIMEOUT", 10))
+EMAIL_SMTP_TIMEOUT = int(get_setting("EMAIL_SMTP_TIMEOUT", "5"))
 EMAIL_USE_TLS = get_setting("EMAIL_USE_TLS", "True")
 EMAIL_USERNAME = get_setting("EMAIL_USERNAME", "")
 EMAIL_PASSWORD = get_setting("EMAIL_PASSWORD", "")
-EMAIL_SMTP_TIMEOUT = int(get_setting("EMAIL_SMTP_TIMEOUT", "5"))
 
 
 # SMS/Twilio settings
