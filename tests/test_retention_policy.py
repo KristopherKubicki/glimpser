@@ -39,6 +39,15 @@ class TestRetentionPolicy(unittest.TestCase):
             remaining_files = os.listdir(temp_dir)
             self.assertEqual(set(remaining_files), {"file3.txt", "file4.txt"})
 
+    def test_delete_old_files_removes_directories(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dir_path = os.path.join(temp_dir, "old")
+            os.makedirs(dir_path)
+
+            delete_old_files([dir_path], max_age=0, max_size=0, minimum=0)
+
+            self.assertFalse(os.path.exists(dir_path))
+
     def test_get_files_sorted_by_creation_time(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             file_paths = []

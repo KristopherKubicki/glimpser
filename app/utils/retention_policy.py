@@ -3,6 +3,7 @@
 import logging
 import os
 import time
+import shutil
 
 from app.config import (
     CLIPS_DIRECTORY,
@@ -52,6 +53,11 @@ def delete_old_files(file_list, max_age, max_size, minimum=10):
             continue
 
         try:
+            if os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+                logging.debug("Deleted directory %s", file_path)
+                continue
+
             file_age = current_time - os.path.getctime(file_path)
             file_size = os.path.getsize(file_path)
             total_size += file_size
