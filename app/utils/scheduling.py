@@ -17,6 +17,11 @@ import time
 from collections import deque
 
 import psutil
+
+try:
+    from setproctitle import setproctitle
+except Exception:  # pragma: no cover - optional dependency
+    setproctitle = None
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -127,6 +132,16 @@ class GracefulAPScheduler(APScheduler):
 scheduler = GracefulAPScheduler()
 
 
+def _run_target(func, args):
+    """Wrapper to set process title before executing ``func``."""
+    if setproctitle:
+        title = getattr(func, "__name__", "job")
+        if args and isinstance(args[0], str):
+            title += f":{args[0]}"
+        setproctitle(f"glimpser {title}")
+    func(*args)
+
+
 def run_with_timeout(func, args=(), timeout=300):
     """Run *func* in a separate process with a timeout.
 
@@ -187,7 +202,7 @@ def run_with_timeout(func, args=(), timeout=300):
             if existing and existing.is_alive():
                 logging.info("job already running")
                 return
-            process = multiprocessing.Process(target=func, args=args)
+            process = multiprocessing.Process(target=_run_target, args=(func, args))
             active_jobs[key] = process
         process.start()
     except OSError as exc:
