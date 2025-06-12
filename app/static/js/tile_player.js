@@ -69,8 +69,19 @@ export function initTilePlayer() {
   function play(name) {
     if (!name) return;
     current = name;
-    if (source) source.src = `/last_video/${name}`;
-    video.setAttribute("data-hd-src", `/clip/${name}`);
+
+    if (name === "All") {
+      if (source) source.src = "/last_teaser?group=all";
+      video.setAttribute("data-hd-src", "/stream.mp4");
+    } else if (name.startsWith("group-")) {
+      const group = encodeURIComponent(name.slice(6));
+      if (source) source.src = `/last_teaser?group=${group}`;
+      video.setAttribute("data-hd-src", `/stream.mp4?group=${group}`);
+    } else {
+      if (source) source.src = `/last_video/${name}`;
+      video.setAttribute("data-hd-src", `/clip/${name}`);
+    }
+
     video.load();
     hideBounce();
     loadHdClip();
