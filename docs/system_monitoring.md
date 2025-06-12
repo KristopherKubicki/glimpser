@@ -45,6 +45,7 @@ name, last image time, last caption time, any KPI column, or status.
 - **FFmpeg Version** – version string and path to the ffmpeg binary
 - **Machine HW Accel** – whether GPU devices are detected
 - **FFmpeg HW Accel** – whether ffmpeg supports hardware acceleration
+- **FFmpeg GPU Support** – whether ffmpeg lists available hwaccel methods
 - **HW Accel Enabled** – if hardware acceleration is configured
 - **FFmpeg GPU Enabled** – whether ffmpeg is currently using GPU acceleration
 - **Danger Mode Enabled** – whether the DANGER_MODE setting is on
@@ -52,6 +53,10 @@ name, last image time, last caption time, any KPI column, or status.
 Boolean metrics now display a green dot when enabled and a red dot when
 disabled to make the status easier to scan. GPU acceleration uses a yellow dot
 when hardware is available but not currently active.
+
+If the system detects GPU hardware but `ffmpeg` lacks hardware acceleration
+support, a warning is printed during startup. Ensure your `ffmpeg` binary is
+built with the necessary drivers when this appears.
 
 ## Streaming Logs
 

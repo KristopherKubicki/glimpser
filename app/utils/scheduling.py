@@ -1132,6 +1132,7 @@ def get_system_metrics():
     disk_usage = psutil.disk_usage("/").percent
     open_files = len(psutil.Process().open_files())
     ffmpeg_path = shutil.which(FFMPEG_PATH) or FFMPEG_PATH
+    ffmpeg_gpu_support = ffmpeg_supports_hwaccel()
     return {
         "cpu_usage": round(system_metrics["cpu_usage"], 1),
         "memory_usage": round(system_metrics["memory_usage"], 1),
@@ -1143,7 +1144,8 @@ def get_system_metrics():
         "ffmpeg_version": ffmpeg_version(),
         "ffmpeg_path": ffmpeg_path,
         "machine_hwaccel": machine_supports_hwaccel(),
-        "ffmpeg_hwaccel": ffmpeg_supports_hwaccel(),
+        "ffmpeg_hwaccel": ffmpeg_gpu_support,
+        "ffmpeg_gpu_support": ffmpeg_gpu_support,
         "hwaccel_enabled": bool(FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false"),
         "gpu_support": machine_supports_hwaccel(),
         "ffmpeg_gpu_enabled": bool(
