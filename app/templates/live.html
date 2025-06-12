@@ -20,26 +20,6 @@
   </video>
 </div>
 
-<select id="group-selector" onchange="changeGroup()">
-  <option value="all" title="View all groups">All</option>
-  {% set all_groups = [] %} {% for camera, details in template_details.items()
-  %} {% if details.groups %} {% for group in details.groups.split(',') %} {% if
-  group %} {% set _ = all_groups.append(group|trim) %} {% endif %} {% endfor %}
-  {% endif %} {% endfor %} {% for group in all_groups|unique|sort %}
-  <option value="{{ group }}" title="View group {{ group }}">
-    {{ group }}
-  </option>
-  {% endfor %}
-</select>
-
-<select id="camera-selector" onchange="changeCamera()" class="hidden">
-  {% for camera in template_details.keys()|sort %}
-  <option value="{{ camera }}" title="View camera {{ camera }}">
-    Camera: {{ camera }}
-  </option>
-  {% endfor %}
-</select>
-
 <script
   type="module"
   src="{{ url_for('static', filename='js/tile_player.js') }}"

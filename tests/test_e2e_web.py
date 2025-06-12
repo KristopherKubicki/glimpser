@@ -173,8 +173,6 @@ def test_login_and_redirect(live_server_with_user, browser):
     browser.find_element(By.ID, "search-input")
     browser.get(f"{live_server_with_user}/live")
     video = browser.find_element(By.ID, "live-video")
-    selector = browser.find_element(By.ID, "camera-selector")
     slider = browser.find_element(By.ID, "speed-slider")
     assert video is not None
-    assert selector is not None
     assert slider is not None

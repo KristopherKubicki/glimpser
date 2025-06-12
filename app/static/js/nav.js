@@ -62,12 +62,8 @@ export function initNav() {
           if (cameraDropdown && currentCamera) {
             cameraDropdown.value = currentCamera;
           }
-          const grpSelector = document.getElementById("group-selector");
-          if (grpSelector) {
-            grpSelector.value = currentGroup;
-            if (typeof window.updateCameraOptions === "function") {
-              window.updateCameraOptions(currentGroup);
-            }
+          if (typeof window.updateCameraOptions === "function") {
+            window.updateCameraOptions(currentGroup);
           }
         }
       } catch (error) {
@@ -122,13 +118,9 @@ export function initNav() {
           window.location.pathname.startsWith("/live") &&
           typeof window.changeGroup === "function"
         ) {
-          const grpSelector = document.getElementById("group-selector");
-          if (grpSelector) {
-            grpSelector.value = selected;
-            window.changeGroup();
-            loadNavCameras(selected);
-            return;
-          }
+          window.changeGroup(selected);
+          loadNavCameras(selected);
+          return;
         }
         if (selected === "all") {
           window.location.href = "/live";

@@ -2,10 +2,6 @@ import { jest } from "@jest/globals";
 
 document.body.innerHTML = `
   <video id="live-video"><source></source></video>
-  <select id="camera-selector">
-    <option value="cam1">cam1</option>
-    <option value="cam2">cam2</option>
-  </select>
 `;
 
 window.templateDetails = { cam1: {}, cam2: {} };

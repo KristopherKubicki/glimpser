@@ -101,7 +101,6 @@ let jogSpeed = 1;
 let jogDirection = 1;
 let jogging = false;
 let isSeeking = false;
-const groupSelector = document.getElementById("group-selector");
 // Track whether template details are shown. Expose on window so inline
 // scripts and other modules can share this state.
 window.detailsVisible = false;
@@ -148,12 +147,14 @@ function updateCameraOptions(group) {
   camSelect.value = `group-${group}`;
 }
 
-function changeGroup() {
-  const group = groupSelector ? groupSelector.value : "all";
+function changeGroup(group) {
   const navGroup = document.getElementById("nav-group-dropdown");
+  if (!group) {
+    group = navGroup ? navGroup.value : "all";
+  }
   if (navGroup) navGroup.value = group;
   updateCameraOptions(group);
-  changeCamera();
+  changeCamera(group === "all" ? "All" : `group-${group}`);
 }
 
 // Restore previously selected camera, source and speed from localStorage so
@@ -171,13 +172,6 @@ function loadSavedPreferences() {
     ) {
       currentCamera = savedCam;
       camSelect.value = savedCam;
-      if (groupSelector) {
-        if (savedCam === "All") {
-          groupSelector.value = "all";
-        } else if (savedCam.startsWith("group-")) {
-          groupSelector.value = savedCam.split("group-")[1];
-        }
-      }
     }
     if (navGroup) {
       if (currentCamera === "All") {
@@ -185,8 +179,8 @@ function loadSavedPreferences() {
       } else if (currentCamera.startsWith("group-")) {
         navGroup.value = currentCamera.split("group-")[1];
       }
+      updateCameraOptions(navGroup.value);
     }
-    if (groupSelector) updateCameraOptions(groupSelector.value);
   }
 
   const sourceSelect = document.getElementById("video-source");
@@ -389,10 +383,21 @@ image.addEventListener("error", () => {
   }, 2000);
 });
 
-function changeCamera() {
+function changeCamera(selectedValue) {
   showLoadingIndicator();
-  const cameraSelector = document.getElementById("camera-selector");
-  const selectedValue = cameraSelector.value;
+  if (!selectedValue) {
+    const cameraSelector = document.getElementById("camera-selector");
+    if (cameraSelector) {
+      selectedValue = cameraSelector.value;
+    } else {
+      const navGroup = document.getElementById("nav-group-dropdown");
+      if (navGroup && navGroup.value !== "all") {
+        selectedValue = `group-${navGroup.value}`;
+      } else {
+        selectedValue = "All";
+      }
+    }
+  }
   // Check if the camera is connected
   let isConnected = checkCameraConnection(currentCamera);
 
@@ -441,13 +446,6 @@ function changeCamera() {
       navGroup.value = selectedValue.split("group-")[1];
     } else {
       navGroup.value = "";
-    }
-  }
-  if (groupSelector) {
-    if (selectedValue === "All") {
-      groupSelector.value = "all";
-    } else if (selectedValue.startsWith("group-")) {
-      groupSelector.value = selectedValue.split("group-")[1];
     }
   }
 
@@ -1380,6 +1378,8 @@ window.selectPreviousCamera = selectPreviousCamera;
 window.selectNextSource = selectNextSource;
 window.selectPreviousSource = selectPreviousSource;
 window.togglePlayback = togglePlayback;
+window.changeGroup = changeGroup;
+window.updateCameraOptions = updateCameraOptions;
 
 if (playButton) {
   playButton.addEventListener("click", togglePlayback);
