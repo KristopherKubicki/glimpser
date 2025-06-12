@@ -285,27 +285,25 @@ template_form %} {% block content %}
         alt="Current navigation logo"
         class="logo-preview"
       />
-      <form
-        action="{{ url_for('upload_nav_icon') }}"
-        method="post"
-        enctype="multipart/form-data"
+      <label for="logo-choice" class="sr-only">Built-in logo</label>
+      <select
+        name="logo_choice"
+        id="logo-choice"
+        form="nav-logo-form"
+        title="Upload your own PNG image. Select the default option to restore the original logo."
       >
-        <label for="logo-choice" class="sr-only">Built-in logo</label>
-        <select
-          name="logo_choice"
-          id="logo-choice"
-          title="Upload your own PNG image. Select the default option to restore the original logo."
-        >
-          <option value="img/glimpser_small.png">Default</option>
-        </select>
-        <input
-          type="file"
-          name="logo_file"
-          accept="image/png"
-          title="Upload custom logo"
-        />
-        <button type="submit" title="Update navigation logo">Save Logo</button>
-      </form>
+        <option value="img/glimpser_small.png">Default</option>
+      </select>
+      <input
+        type="file"
+        name="logo_file"
+        accept="image/png"
+        form="nav-logo-form"
+        title="Upload custom logo"
+      />
+      <button type="submit" form="nav-logo-form" title="Update navigation logo">
+        Save Logo
+      </button>
       {% endcall %}
       <input
         type="hidden"
@@ -329,6 +327,12 @@ template_form %} {% block content %}
     </div>
     {% endif %} {% endfor %}
   </form>
+  <form
+    id="nav-logo-form"
+    action="{{ url_for('upload_nav_icon') }}"
+    method="post"
+    enctype="multipart/form-data"
+  ></form>
   {{ confirm_modal('delete-setting', 'Delete this setting?', 'Delete', 'Cancel')
   }}
 </main>
