@@ -46,5 +46,9 @@ test("loads clip when video becomes visible", async () => {
 
   callback([{ target: video, isIntersecting: true }]);
 
+  expect(source.src).toMatch(/\/last_video\/cam1$/);
+
+  video.dispatchEvent(new Event("mouseenter"));
+
   expect(source.src).toMatch(/\/clip\/cam1$/);
 });
