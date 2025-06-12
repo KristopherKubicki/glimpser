@@ -7,6 +7,11 @@ footage is on the way. The dashboard now loads HD clips on demand when you hover
 a camera tile. The template details player performs the same preload-and-swap so
 you begin watching instantly while the HD clip downloads in the background.
 
+Hovering a tile for at least a third of a second now triggers the HD clip fetch.
+Rushing across many tiles no longer spawns new renders for each one. If more
+than eight tiles are visible or a tile is under 200&nbsp;px wide the dashboard
+sticks with the low‑resolution `/last_video` preview.
+
 When system metrics exceed safe thresholds the `/clip` endpoint now falls
 back to `/last_video` immediately. The response includes an
 `X-Degraded-Service: busy` header and the spinner switches to a dotted
