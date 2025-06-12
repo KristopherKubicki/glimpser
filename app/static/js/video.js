@@ -69,6 +69,11 @@ export function enqueueClip(video) {
   if (!processing) processQueue();
 }
 
+export function clearPrefetchQueue() {
+  prefetchQueue = [];
+  processing = false;
+}
+
 function processQueue() {
   const vid = prefetchQueue.shift();
   if (!vid) {
@@ -190,6 +195,15 @@ export function updateVideoSources() {
     const timestamp = new Date().getTime();
     video.querySelector("source").src = `/clip/${name}?t=${timestamp}`;
     video.poster = `/last_screenshot/${name}?t=${timestamp}`;
+  });
+}
+
+export function initVisibilityHandler() {
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      document.querySelectorAll("video").forEach((v) => v.pause());
+      clearPrefetchQueue();
+    }
   });
 }
 
@@ -521,4 +535,5 @@ export function startCasting() {
 // expose queue functions for other modules
 window.enqueueClip = enqueueClip;
 window.setQueueDelay = setQueueDelay;
+window.clearPrefetchQueue = clearPrefetchQueue;
 export { showSpinner, hideSpinner };

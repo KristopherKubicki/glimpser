@@ -1,5 +1,5 @@
 import { initTemplates } from "./templates.js";
-import { initVideoControls } from "./video.js";
+import { initVideoControls, initVisibilityHandler } from "./video.js";
 import { initSchedulerToggle } from "./scheduler.js";
 import {
   initDiscoveryToggle,
@@ -31,6 +31,7 @@ import { initVideoZoom } from "./zoom.js";
 
 initTemplates();
 initVideoControls();
+initVisibilityHandler();
 initSchedulerToggle();
 initDiscoveryToggle();
 initSubnetInput();

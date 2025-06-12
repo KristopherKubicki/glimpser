@@ -250,6 +250,15 @@ source. That could cause extra network requests and confusing behavior.
 - The player now destroys any active HLS or looping handlers before starting the
   new stream, so switching sources cleanly stops the old one.
 
+### Problem: Cameras keep loading after leaving the dashboard
+
+Thumbnail players could keep downloading clips after you navigate away.
+
+**Solution:**
+
+- Update to the latest version.
+- Background preloading now stops when the tab loses focus.
+
 ### Problem: Loop video or the "All" camera shows `Format error`
 
 This typically happens when Glimpser cannot locate a recent MP4 clip for a
