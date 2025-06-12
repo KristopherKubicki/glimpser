@@ -122,6 +122,11 @@
     </table>
   </div>
   {% endcall %} {% call card('Add Camera') %}
+  <p class="form-help">
+    Enter the camera or dashboard URL and tab out of the field to verify it
+    works. The live preview updates automatically. Expand
+    <em>Advanced Options</em> to configure XPaths, callbacks and credentials.
+  </p>
   <div class="wizard-step" title="Form to add a new camera">
     {{ template_form( 'add-template-form', '/templates',
     preview_src='/test_pattern.mjpg?pattern=geometric',

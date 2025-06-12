@@ -47,9 +47,10 @@ This guide will walk you through the process of setting up Glimpser and running 
 
 3. Choose a data source type (e.g., camera, dashboard, or video stream).
 
-4. Configure the source settings (URL, refresh rate, etc.). A small status icon
-   next to the URL turns green once the address is reachable, helping catch typos
-   before saving.
+4. Configure the source settings (URL, refresh rate, etc.). As you leave the URL
+   field, Glimpser checks the address and shows a green check mark when it
+   responds. Expand **Advanced Options** to enter XPaths, callbacks or login
+   credentials if needed.
 
 5. Save the source configuration.
 
