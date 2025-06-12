@@ -51,15 +51,28 @@ template_controls %} {% block content %}
       <option value="error_desc">Error ↓</option>
       <option value="error_asc">Error ↑</option>
     </select>
+    <div class="field-toggle">
+      <label>
+        <input
+          type="radio"
+          name="caption-field"
+          value="caption"
+          checked
+        />
+        Caption
+      </label>
+      <label>
+        <input type="radio" name="caption-field" value="prompt" /> Prompt
+      </label>
+    </div>
     {% endcall %}
 
-    <h2>Camera Notes</h2>
     <div id="template-list">
       <table id="camera-table" class="camera-table">
         <thead>
           <tr>
             <th class="sortable" data-type="string">Camera</th>
-            <th>Caption</th>
+            <th class="sortable view-header" data-type="string">Caption</th>
           </tr>
         </thead>
         <tbody>
