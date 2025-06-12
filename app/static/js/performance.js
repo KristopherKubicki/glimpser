@@ -40,6 +40,13 @@ export function updatePerformanceMetrics() {
       const threadCount = document.getElementById("thread-count");
       if (threadCount) threadCount.textContent = metrics.thread_count;
 
+      const cpuList = document.getElementById("thread-cpu-list");
+      if (cpuList) {
+        cpuList.textContent = (metrics.top_threads || [])
+          .map((t) => `${t.id}:${t.cpu}%`)
+          .join(" ");
+      }
+
       const uptimeVal = document.getElementById("uptime-value");
       if (uptimeVal) uptimeVal.textContent = metrics.uptime;
 

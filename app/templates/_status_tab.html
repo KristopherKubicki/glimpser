@@ -62,6 +62,10 @@
     <span class="metric-label">Thread Count:</span>
     <span id="thread-count">{{ metrics.thread_count }}</span>
   </li>
+  <li title="Top threads by CPU usage">
+    <span class="metric-label">Top Threads:</span>
+    <span id="thread-cpu-list">{{ metrics.top_threads }}</span>
+  </li>
   <li title="System uptime">
     <span class="metric-label">Uptime:</span>
     <span id="uptime-value">{{ metrics.uptime }}</span>
@@ -76,118 +80,162 @@
 </ul>
 {% endcall %} {% call card('Feed Status') %}
 <div class="table-container">
-<table id="feed-status" class="feed-status">
-  <thead>
-    <tr>
-      <th class="sortable" data-type="string" title="Camera name">Feed</th>
-      <th class="sortable" data-type="date" title="Most recent caption time">Last Caption</th>
-      <th class="sortable" data-type="date" title="Most recent screenshot time">Last Image</th>
-      <th class="sortable" data-type="number" title="Total screenshots">Shots</th>
-      <th class="sortable" data-type="number" title="Total videos">Videos</th>
-      <th class="sortable" data-type="number" title="Disk usage">Storage</th>
-      <th class="sortable" data-type="number" title="LLM responses">LLM Resp</th>
-      <th class="sortable" data-type="number" title="Estimated LLM cost">LLM Cost</th>
-      <th class="sortable capture-col" data-type="string" title="Capture activity">Capturing</th>
-      <th class="sortable status-col" data-type="string" title="Current feed status">Status</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for feed in feeds %}
-    <tr
-      class="{{ feed.status }}{% if feed.danger_reason %} danger-{{ feed.danger_reason }}{% endif %}"
-    >
-      <td data-label="Feed" data-value="{{ feed.name }}">
-        <svg
-          width="12"
-          height="12"
-          class="camera-icon {{ feed.camera_type }}"
-          aria-label="{{ feed.camera_tooltip }}"
-          title="{{ feed.camera_tooltip }}"
+  <table id="feed-status" class="feed-status">
+    <thead>
+      <tr>
+        <th class="sortable" data-type="string" title="Camera name">Feed</th>
+        <th class="sortable" data-type="date" title="Most recent caption time">
+          Last Caption
+        </th>
+        <th
+          class="sortable"
+          data-type="date"
+          title="Most recent screenshot time"
         >
-          <use href="{{ url_for('static', filename='icons/sprite.svg') }}#{% if feed.camera_type == 'browser' %}browser{% elif 'stealth' in feed.camera_type %}mask{% else %}camera{% endif %}" />
-        </svg>
-        {% if feed.danger %}
-        <svg
-          width="12"
-          height="12"
-          class="danger-icon-inline {{ feed.danger_reason or '' }}"
-          aria-label="Danger mode"
-          title="{{ 'Danger mode disabled' if feed.danger_reason == 'disabled' else 'Danger mode user active' if feed.danger_reason == 'user' else 'Danger mode' }}"
+          Last Image
+        </th>
+        <th class="sortable" data-type="number" title="Total screenshots">
+          Shots
+        </th>
+        <th class="sortable" data-type="number" title="Total videos">Videos</th>
+        <th class="sortable" data-type="number" title="Disk usage">Storage</th>
+        <th class="sortable" data-type="number" title="LLM responses">
+          LLM Resp
+        </th>
+        <th class="sortable" data-type="number" title="Estimated LLM cost">
+          LLM Cost
+        </th>
+        <th
+          class="sortable capture-col"
+          data-type="string"
+          title="Capture activity"
         >
-          <use href="{{ url_for('static', filename='icons/sprite.svg') }}#alert" />
-        </svg>
-        {% endif %}
-        <a href="{{ url_for('template_details', template_name=feed.name) }}" title="View template details">{{ feed.name }}</a>
-      </td>
-      <td
-        data-label="Last Caption"
-        data-value="{{ feed.last_caption_time or '' }}"
+          Capturing
+        </th>
+        <th
+          class="sortable status-col"
+          data-type="string"
+          title="Current feed status"
+        >
+          Status
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for feed in feeds %}
+      <tr
+        class="{{ feed.status }}{% if feed.danger_reason %} danger-{{ feed.danger_reason }}{% endif %}"
       >
-        {% if feed.last_caption_display %}
-        <span
-          class="humanized-time"
-          data-time="{{ feed.last_caption_time }}"
-          title="{{ feed.last_caption_time }}"
+        <td data-label="Feed" data-value="{{ feed.name }}">
+          <svg
+            width="12"
+            height="12"
+            class="camera-icon {{ feed.camera_type }}"
+            aria-label="{{ feed.camera_tooltip }}"
+            title="{{ feed.camera_tooltip }}"
+          >
+            <use
+              href="{{ url_for('static', filename='icons/sprite.svg') }}#{% if feed.camera_type == 'browser' %}browser{% elif 'stealth' in feed.camera_type %}mask{% else %}camera{% endif %}"
+            />
+          </svg>
+          {% if feed.danger %}
+          <svg
+            width="12"
+            height="12"
+            class="danger-icon-inline {{ feed.danger_reason or '' }}"
+            aria-label="Danger mode"
+            title="{{ 'Danger mode disabled' if feed.danger_reason == 'disabled' else 'Danger mode user active' if feed.danger_reason == 'user' else 'Danger mode' }}"
+          >
+            <use
+              href="{{ url_for('static', filename='icons/sprite.svg') }}#alert"
+            />
+          </svg>
+          {% endif %}
+          <a
+            href="{{ url_for('template_details', template_name=feed.name) }}"
+            title="View template details"
+            >{{ feed.name }}</a
+          >
+        </td>
+        <td
+          data-label="Last Caption"
+          data-value="{{ feed.last_caption_time or '' }}"
         >
-          {{ feed.last_caption_display }}
-        </span>
-        {% else %} N/A {% endif %}
-      </td>
-      <td
-        data-label="Last Image"
-        data-value="{{ feed.last_screenshot_time or '' }}"
-      >
-        {% if feed.last_screenshot_display %}
-        <span
-          class="humanized-time"
-          data-time="{{ feed.last_screenshot_time }}"
-          title="{{ feed.last_screenshot_time }}"
+          {% if feed.last_caption_display %}
+          <span
+            class="humanized-time"
+            data-time="{{ feed.last_caption_time }}"
+            title="{{ feed.last_caption_time }}"
+          >
+            {{ feed.last_caption_display }}
+          </span>
+          {% else %} N/A {% endif %}
+        </td>
+        <td
+          data-label="Last Image"
+          data-value="{{ feed.last_screenshot_time or '' }}"
         >
-          {{ feed.last_screenshot_display }}
-        </span>
-        {% else %} N/A {% endif %}
-      </td>
-      <td data-label="Shots" data-value="{{ feed.screenshot_count }}">
-        {{ feed.screenshot_count }}
-      </td>
-      <td data-label="Videos" data-value="{{ feed.video_count }}">
-        {{ feed.video_count }}
-      </td>
-      <td data-label="Storage" data-value="{{ feed.storage_usage_bytes }}">
-        {{ feed.storage_usage }}
-      </td>
-      <td data-label="LLM Resp" data-value="{{ feed.llm_response_count }}">
-        {{ feed.llm_response_count }}
-      </td>
-      <td data-label="LLM Cost" data-value="{{ feed.llm_cost_estimate }}">
-        {{ feed.llm_cost_estimate }}
-      </td>
-      <td class="capture-col" data-label="Capturing" data-value="{{ '1' if feed.capturing else '0' }}">
-        <span class="capture-dot{% if feed.capturing %} active{% endif %}"></span>
-      </td>
-      <td class="status-col" data-label="Status" data-value="{{ feed.status }}">
-        {% if feed.danger_reason %}
-        <svg
-          width="12"
-          height="12"
-          class="danger-icon {{ feed.danger_reason }}"
-          aria-label="Danger mode required"
-          title="{{ 'Danger mode disabled' if feed.danger_reason == 'disabled' else 'User active' }}"
+          {% if feed.last_screenshot_display %}
+          <span
+            class="humanized-time"
+            data-time="{{ feed.last_screenshot_time }}"
+            title="{{ feed.last_screenshot_time }}"
+          >
+            {{ feed.last_screenshot_display }}
+          </span>
+          {% else %} N/A {% endif %}
+        </td>
+        <td data-label="Shots" data-value="{{ feed.screenshot_count }}">
+          {{ feed.screenshot_count }}
+        </td>
+        <td data-label="Videos" data-value="{{ feed.video_count }}">
+          {{ feed.video_count }}
+        </td>
+        <td data-label="Storage" data-value="{{ feed.storage_usage_bytes }}">
+          {{ feed.storage_usage }}
+        </td>
+        <td data-label="LLM Resp" data-value="{{ feed.llm_response_count }}">
+          {{ feed.llm_response_count }}
+        </td>
+        <td data-label="LLM Cost" data-value="{{ feed.llm_cost_estimate }}">
+          {{ feed.llm_cost_estimate }}
+        </td>
+        <td
+          class="capture-col"
+          data-label="Capturing"
+          data-value="{{ '1' if feed.capturing else '0' }}"
         >
-          <use
-            href="{{ url_for('static', filename='icons/sprite.svg') }}#alert"
-          />
-        </svg>
-        {% endif %}
-        <span
-          class="status-dot {{ feed.status }}"
-          title="{{ feed.tooltip }}"
-        ></span>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+          <span
+            class="capture-dot{% if feed.capturing %} active{% endif %}"
+          ></span>
+        </td>
+        <td
+          class="status-col"
+          data-label="Status"
+          data-value="{{ feed.status }}"
+        >
+          {% if feed.danger_reason %}
+          <svg
+            width="12"
+            height="12"
+            class="danger-icon {{ feed.danger_reason }}"
+            aria-label="Danger mode required"
+            title="{{ 'Danger mode disabled' if feed.danger_reason == 'disabled' else 'User active' }}"
+          >
+            <use
+              href="{{ url_for('static', filename='icons/sprite.svg') }}#alert"
+            />
+          </svg>
+          {% endif %}
+          <span
+            class="status-dot {{ feed.status }}"
+            title="{{ feed.tooltip }}"
+          ></span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 
 <p>Last summary generated: {{ last_summary or 'N/A' }}</p>

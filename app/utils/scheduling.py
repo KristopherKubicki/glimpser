@@ -1052,12 +1052,15 @@ system_metrics = {
     "memory_usage": 0.0,
     "thread_count": 0,
     "start_time": time.time(),
+    "top_threads": [],
 }
 
 
 stop_event = threading.Event()
 metrics_thread = None
 log_caching_thread = None
+thread_cpu_times = {}
+last_thread_sample = time.time()
 
 
 def ffmpeg_version() -> str:
@@ -1094,11 +1097,27 @@ def collect_system_metrics():
     """Continuously update CPU and memory metrics."""
     # Prime psutil's CPU measurement to avoid blocking on the first call
     psutil.cpu_percent(interval=None)
+    proc = psutil.Process()
+    global thread_cpu_times, last_thread_sample
+    proc.cpu_percent(interval=None)
     while not stop_event.is_set():
+        start = time.time()
         # Non-blocking call since we primed above
         system_metrics["cpu_usage"] = psutil.cpu_percent(interval=None)
         system_metrics["memory_usage"] = psutil.virtual_memory().percent
         system_metrics["thread_count"] = threading.active_count()
+
+        interval = start - last_thread_sample or 1
+        current = {t.id: t.user_time + t.system_time for t in proc.threads()}
+        usages = []
+        for tid, ttime in current.items():
+            prev = thread_cpu_times.get(tid, ttime)
+            cpu = ((ttime - prev) / interval) * 100 / psutil.cpu_count()
+            usages.append({"id": tid, "cpu": round(cpu, 1)})
+        thread_cpu_times = current
+        last_thread_sample = start
+        usages.sort(key=lambda x: x["cpu"], reverse=True)
+        system_metrics["top_threads"] = usages[:5]
         time.sleep(5)  # Collect metrics every 5 seconds
 
 
@@ -1119,6 +1138,7 @@ def get_system_metrics():
         "disk_usage": round(disk_usage, 1),
         "open_files": open_files,
         "thread_count": system_metrics["thread_count"],
+        "top_threads": system_metrics.get("top_threads", []),
         "uptime": f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s",
         "ffmpeg_version": ffmpeg_version(),
         "ffmpeg_path": ffmpeg_path,

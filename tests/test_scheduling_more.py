@@ -136,6 +136,7 @@ class TestGetSystemMetrics(unittest.TestCase):
                 "cpu_usage": 1.234,
                 "memory_usage": 2.345,
                 "thread_count": 5,
+                "top_threads": [{"id": 123, "cpu": 10.0}],
                 "start_time": time.time() - 3661,
             }
         )
@@ -156,6 +157,7 @@ class TestGetSystemMetrics(unittest.TestCase):
         self.assertTrue(metrics["gpu_support"])
         self.assertTrue(metrics["ffmpeg_gpu_enabled"])
         self.assertTrue(metrics["danger_mode"])
+        self.assertEqual(metrics["top_threads"], [{"id": 123, "cpu": 10.0}])
 
 
 class TestOfflineJobQueue(unittest.TestCase):
@@ -165,7 +167,9 @@ class TestOfflineJobQueue(unittest.TestCase):
     @patch("app.utils.scheduling.multiprocessing.Process")
     @patch("app.utils.scheduling.SessionLocal")
     @patch("app.utils.scheduling.is_system_online", return_value=False)
-    def test_queue_created_when_offline(self, _online, mock_session_local, mock_process):
+    def test_queue_created_when_offline(
+        self, _online, mock_session_local, mock_process
+    ):
         class DummySession:
             def __init__(self):
                 self.added = []
