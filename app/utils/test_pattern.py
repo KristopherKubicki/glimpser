@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime
 import math
 import os
+import time
 from typing import Optional
 
 from PIL import Image, ImageDraw, ImageFont
@@ -182,7 +183,7 @@ def generate_test_pattern(
 
     img = Image.new("RGB", (width, height))
 
-    img = Image.new("RGB", (width, height))
+    img = Image.new("RGBA", (width, height))
     draw = ImageDraw.Draw(img)
 
     # background gradient with three stops for smoother transitions
@@ -244,6 +245,21 @@ def generate_test_pattern(
             fill=(80, 0, 80),
         )
 
+    # drifting clouds across the sun for subtle animation
+    cloud_layer = Image.new("RGBA", (width, height))
+    cloud_draw = ImageDraw.Draw(cloud_layer)
+    # base motion on current time so clouds drift continuously
+    offset = int(time.time() * 5) % (width + sun_r * 2) - sun_r
+    cloud_y = horizon_y - sun_r - 20
+    for i in range(3):
+        cx = (offset + i * sun_r * 2) % (width + sun_r * 2) - sun_r
+        cloud_draw.ellipse(
+            [cx, cloud_y, cx + sun_r * 2, cloud_y + sun_r],
+            fill=(255, 255, 255, 80),
+        )
+    img = Image.alpha_composite(img, cloud_layer)
+    draw = ImageDraw.Draw(img)
+
     # miniature SMPTE bars and wide-gamut Rec.2020 bars
     mini_709 = [
         ((191, 191, 191), "W"),
@@ -296,18 +312,18 @@ def generate_test_pattern(
             )
             draw.rectangle([x, y, x + sq - 1, y + sq - 1], fill=fill)
 
-    # grayscale blocks for exposure checking above the checker patch
-    block_w = pat_w // 4
-    block_h = bar_h // 3
-    start_x = x0
+    # grayscale swatch aligned with the checker patch
+    block_w = sq
+    block_h = pat_h // 4
+    start_x = x0 + pat_w + 5
     for i in range(4):
         shade = int(255 * i / 3)
         draw.rectangle(
             [
-                start_x + i * block_w,
-                y0 - block_h - 5,
-                start_x + (i + 1) * block_w,
-                y0 - 5,
+                start_x,
+                y0 + i * block_h,
+                start_x + block_w,
+                y0 + (i + 1) * block_h,
             ],
             fill=(shade, shade, shade),
         )
@@ -318,11 +334,9 @@ def generate_test_pattern(
     max_off = 20
     for offset in range(-max_off, max_off + 1, 5):
         shade = int(255 - (abs(offset) / max_off) * 155)
-        color = (shade, shade, shade)
-        draw.line(
-            (center_x + offset, bar_h, center_x + offset, height - bar_h),
-            fill=color,
-        )
+        alpha = int(200 - (abs(offset) / max_off) * 200)
+        color = (shade, shade, shade, alpha)
+        draw.line((center_x + offset, 0, center_x + offset, height), fill=color)
         draw.line((0, center_y + offset, width, center_y + offset), fill=color)
 
     # interlaced lines for moire effect
@@ -510,7 +524,7 @@ def generate_test_pattern(
             logo = logo.resize((int(logo.width * scale), int(logo.height * scale)))
             img.paste(logo, (width - logo.width - 10, height - logo.height - 10), logo)
 
-    return img
+    return img.convert("RGB")
 
 
 def save_test_pattern(path: str, **kwargs) -> None:
