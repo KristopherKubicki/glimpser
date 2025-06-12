@@ -1,4 +1,6 @@
 let cpuData = [];
+let memoryData = [];
+let diskData = [];
 const maxDataPoints = 60;
 
 function setProgress(el, value) {
@@ -60,6 +62,8 @@ export function updatePerformanceMetrics() {
       }
 
       updateCPUSparkline(metrics.cpu_usage);
+      updateMemorySparkline(metrics.memory_usage);
+      updateDiskSparkline(metrics.disk_usage);
     });
 }
 
@@ -81,6 +85,66 @@ export function updateCPUSparkline(newValue) {
 
   const step = width / (maxDataPoints - 1);
   cpuData.forEach((value, index) => {
+    const x = index * step;
+    const y = height - (value / 100) * height;
+    if (index === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+
+  ctx.stroke();
+}
+
+export function updateMemorySparkline(newValue) {
+  memoryData.push(newValue);
+  if (memoryData.length > maxDataPoints) {
+    memoryData.shift();
+  }
+
+  const canvas = document.getElementById("memory-sparkline");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const width = canvas.width;
+  const height = canvas.height;
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.strokeStyle = "#28a745";
+  ctx.beginPath();
+
+  const step = width / (maxDataPoints - 1);
+  memoryData.forEach((value, index) => {
+    const x = index * step;
+    const y = height - (value / 100) * height;
+    if (index === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+
+  ctx.stroke();
+}
+
+export function updateDiskSparkline(newValue) {
+  diskData.push(newValue);
+  if (diskData.length > maxDataPoints) {
+    diskData.shift();
+  }
+
+  const canvas = document.getElementById("disk-sparkline");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const width = canvas.width;
+  const height = canvas.height;
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.strokeStyle = "#ffc107";
+  ctx.beginPath();
+
+  const step = width / (maxDataPoints - 1);
+  diskData.forEach((value, index) => {
     const x = index * step;
     const y = height - (value / 100) * height;
     if (index === 0) {

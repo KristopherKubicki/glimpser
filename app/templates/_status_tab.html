@@ -41,7 +41,12 @@
       max="100"
     ></progress>
     <span id="memory-value">{{ metrics.memory_usage }}%</span>
-    <canvas class="sparkline" width="100" height="20"></canvas>
+    <canvas
+      id="memory-sparkline"
+      class="sparkline"
+      width="100"
+      height="20"
+    ></canvas>
   </li>
   <li title="Disk space used">
     <span class="metric-label">Disk Usage:</span>
@@ -52,7 +57,12 @@
       max="100"
     ></progress>
     <span id="disk-value">{{ metrics.disk_usage }}%</span>
-    <canvas class="sparkline" width="100" height="20"></canvas>
+    <canvas
+      id="disk-sparkline"
+      class="sparkline"
+      width="100"
+      height="20"
+    ></canvas>
   </li>
   <li title="Open file handles">
     <span class="metric-label">Open Files:</span>

@@ -6,7 +6,7 @@ This guide explains how to check Glimpser's health metrics and view live logs.
 
 **GET /status**
 
-This endpoint now redirects to the _Status_ tab on the Settings page. The tab shows current system metrics and includes the live log viewer. Metrics are collected in a background thread. See `app/utils/scheduling.py` for implementation details. Raw values can also be retrieved programmatically from the `/health` endpoint. The metrics list and feed dashboard are grouped into separate cards for a cleaner layout. CPU, memory, and disk usage display small progress bars for a quick visual indicator. Metrics refresh automatically every few seconds.
+This endpoint now redirects to the _Status_ tab on the Settings page. The tab shows current system metrics and includes the live log viewer. Metrics are collected in a background thread. See `app/utils/scheduling.py` for implementation details. Raw values can also be retrieved programmatically from the `/health` endpoint. The metrics list and feed dashboard are grouped into separate cards for a cleaner layout. CPU, memory, and disk usage display small progress bars for a quick visual indicator with tiny trend lines showing recent changes. Metrics refresh automatically every few seconds.
 
 ### Feed Dashboard
 

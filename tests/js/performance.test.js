@@ -13,10 +13,14 @@ document.body.innerHTML = `
   <div id="thread-count"></div>
   <div id="uptime-value"></div>
   <canvas id="cpu-sparkline" width="100" height="20"></canvas>
+  <canvas id="memory-sparkline" width="100" height="20"></canvas>
+  <canvas id="disk-sparkline" width="100" height="20"></canvas>
 `;
 
 // Provide a mock canvas context
 const canvas = document.getElementById('cpu-sparkline');
+const memoryCanvas = document.getElementById('memory-sparkline');
+const diskCanvas = document.getElementById('disk-sparkline');
 const ctx = {
   clearRect: jest.fn(),
   beginPath: jest.fn(),
@@ -25,10 +29,14 @@ const ctx = {
   stroke: jest.fn(),
 };
 canvas.getContext = jest.fn(() => ctx);
+memoryCanvas.getContext = jest.fn(() => ctx);
+diskCanvas.getContext = jest.fn(() => ctx);
 
 let performanceModule;
 let updatePerformanceMetrics;
 let updateCPUSparkline;
+let updateMemorySparkline;
+let updateDiskSparkline;
 
 beforeAll(async () => {
   global.fetch = jest.fn(() => Promise.resolve({ json: () => Promise.resolve({}) }));
@@ -36,6 +44,8 @@ beforeAll(async () => {
   performanceModule = await import('../../app/static/js/performance.js');
   updatePerformanceMetrics = performanceModule.updatePerformanceMetrics;
   updateCPUSparkline = performanceModule.updateCPUSparkline;
+  updateMemorySparkline = performanceModule.updateMemorySparkline;
+  updateDiskSparkline = performanceModule.updateDiskSparkline;
 });
 
 describe('performance.js', () => {
@@ -64,17 +74,20 @@ describe('performance.js', () => {
     expect(document.getElementById('thread-count').textContent).toBe('8');
     expect(document.getElementById('uptime-value').textContent).toBe('1h');
 
-    const ctxCalled = canvas.getContext();
-    expect(ctxCalled.clearRect).toHaveBeenCalled();
+    expect(canvas.getContext).toHaveBeenCalled();
+    expect(memoryCanvas.getContext).toHaveBeenCalled();
+    expect(diskCanvas.getContext).toHaveBeenCalled();
   });
 
-  test('updateCPUSparkline draws on the canvas', () => {
+  test('sparkline functions draw on their canvases', () => {
     updateCPUSparkline(10);
-    const ctx = canvas.getContext();
-    expect(ctx.clearRect).toHaveBeenCalled();
-    expect(ctx.beginPath).toHaveBeenCalled();
-    expect(ctx.moveTo).toHaveBeenCalled();
-    expect(ctx.lineTo).toHaveBeenCalled();
-    expect(ctx.stroke).toHaveBeenCalled();
+    updateMemorySparkline(20);
+    updateDiskSparkline(30);
+    const ctxRef = canvas.getContext();
+    expect(ctxRef.clearRect).toHaveBeenCalled();
+    expect(ctxRef.beginPath).toHaveBeenCalled();
+    expect(ctxRef.moveTo).toHaveBeenCalled();
+    expect(ctxRef.lineTo).toHaveBeenCalled();
+    expect(ctxRef.stroke).toHaveBeenCalled();
   });
 });
