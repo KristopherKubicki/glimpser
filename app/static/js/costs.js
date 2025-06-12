@@ -1,7 +1,9 @@
 import { setupTableSorting } from "./templates.js";
 
 export function groupSmallValues(rows, limit = 15) {
-  if (rows.length <= limit) return rows;
+  if (limit <= 0 || rows.length <= limit) {
+    return [...rows].sort((a, b) => b.cost - a.cost);
+  }
   const sorted = [...rows].sort((a, b) => a.cost - b.cost);
   const bottom = sorted.slice(0, limit);
   const other = bottom.reduce(
@@ -27,14 +29,16 @@ export function initCosts() {
     let chart;
 
     const render = (rows) => {
+      const limit = rows.length > 10 ? rows.length - 9 : 0;
+      const grouped =
+        limit > 0 ? groupSmallValues(rows, limit) : groupSmallValues(rows, 0);
       tbody.innerHTML = "";
-      for (const row of rows) {
+      for (const row of grouped) {
         const tr = document.createElement("tr");
         tr.innerHTML = `<td>${row.name}</td><td data-value="${row.tokens}">${row.tokens}</td><td data-value="${row.cost}">$${row.cost.toFixed(2)}</td>`;
         tbody.appendChild(tr);
       }
       if (!ctx) return;
-      const grouped = groupSmallValues(rows);
       const labels = grouped.map((r) => r.name);
       const values = grouped.map((r) => r.cost);
       const bg = labels.map((_, i) => `hsl(${(i * 60) % 360},70%,60%)`);

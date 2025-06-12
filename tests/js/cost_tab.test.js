@@ -52,3 +52,14 @@ test("groups bottom rows", () => {
   expect(other.name).toBe("Other");
   expect(other.cost).toBeGreaterThan(0);
 });
+
+test("limits to top 10 rows", () => {
+  const rows = Array.from({ length: 12 }, (_, i) => ({
+    name: `cam${i}`,
+    tokens: 1,
+    cost: i + 1,
+  }));
+  const grouped = groupSmallValues(rows, rows.length - 9);
+  expect(grouped.length).toBe(10);
+  expect(grouped[grouped.length - 1].name).toBe("Other");
+});
