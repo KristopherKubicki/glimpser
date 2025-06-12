@@ -72,6 +72,14 @@ def _format_binary_time(timestamp: str) -> str:
     return f"{h:05b}:{m:06b}:{s:06b}"
 
 
+def _format_beats_time(timestamp: str) -> str:
+    """Return the time in Swatch Internet Time (".beats")."""
+    h, m, s = map(int, timestamp.split(":"))
+    total_seconds = h * 3600 + m * 60 + s
+    beats = int(((total_seconds + 3600) % 86400) / 86.4)
+    return f"@{beats:03d}"
+
+
 def _roman_segment_widths(font: ImageFont.FreeTypeFont) -> tuple[int, int, int, int]:
     """Return maximum segment widths for Roman numeral timestamps."""
     dummy = Image.new("RGB", (1, 1))
@@ -331,7 +339,7 @@ def generate_test_pattern(
 
     if spinner:
         sw = _braille_text_width(spinner)
-        _draw_braille_text(draw, (width - sw - 10, 10), spinner)
+        _draw_braille_text(draw, (width - sw - 30, 20), spinner)
 
     # stable reference patch for tests
     patch_x = width // 2 + 6
@@ -343,14 +351,16 @@ def generate_test_pattern(
     font_binary = load_font(22)
     font_braille = load_font(30)
     time_simple = timestamp
+    beats_time = _format_beats_time(time_simple)
     formats = [
         time_simple,
         _format_binary_time(time_simple),
         _format_roman_time(time_simple),
+        beats_time,
         _to_braille(time_simple),
     ]
 
-    fonts = [font_right, font_binary, font_right, font_braille]
+    fonts = [font_right, font_binary, font_right, font_right, font_braille]
     segments = [t.replace("\u2812", ":").split(":") for t in formats]
 
     roman_w1, roman_w2, roman_w3, colon_w_std = _roman_segment_widths(font_right)
@@ -372,70 +382,85 @@ def generate_test_pattern(
     )
     seg3_max = seg2_max
 
-    total_w = seg1_max + colon_gap + seg2_max + colon_gap + seg3_max
-    x_start = width - total_w - 10
+    beats_w = draw.textlength(beats_time, font=font_right)
+    total_w = max(seg1_max + colon_gap + seg2_max + colon_gap + seg3_max, beats_w)
+    x_start = width - total_w - 30
 
     line_heights = [
         font_right.size,
         font_binary.size,
         font_right.size,
+        font_right.size,
         font_braille.size,
     ]
-    spacing_y = 16
+    spacing_y = 22
     total_h = sum(line_heights) + spacing_y * (len(line_heights) - 1)
-    y_start = height // 2 - total_h // 2 + 3
+    y_start = height // 2 - total_h // 2 + 20
 
+    clock_color = (200, 200, 200)
     current_y = y_start
     for idx, parts in enumerate(segments):
         x = x_start
         y = current_y
         font = fonts[idx]
         if idx == len(formats) - 1:
+            x -= _braille_text_width("0")
             _draw_braille_text(
                 draw,
                 (x + seg1_max - _braille_text_width(parts[0]), y),
                 parts[0],
+                fill=clock_color,
             )
             x += seg1_max
-            _draw_braille_text(draw, (x, y), ":")
+            _draw_braille_text(draw, (x, y), ":", fill=clock_color)
             x += colon_gap
             _draw_braille_text(
                 draw,
                 (x + seg2_max - _braille_text_width(parts[1]), y),
                 parts[1],
+                fill=clock_color,
             )
             x += seg2_max
-            _draw_braille_text(draw, (x, y), ":")
+            _draw_braille_text(draw, (x, y), ":", fill=clock_color)
             x += colon_gap
             _draw_braille_text(
                 draw,
                 (x + seg3_max - _braille_text_width(parts[2]), y),
                 parts[2],
+                fill=clock_color,
+            )
+            current_y += line_heights[idx] + spacing_y
+        elif len(parts) == 1:
+            draw.text(
+                (x + total_w - draw.textlength(parts[0], font=font), y),
+                parts[0],
+                fill=clock_color,
+                font=font,
             )
             current_y += line_heights[idx] + spacing_y
         else:
             draw.text(
                 (x + seg1_max - draw.textlength(parts[0], font=font), y),
                 parts[0],
-                fill="white",
+                fill=clock_color,
                 font=font,
             )
             x += seg1_max
-            draw.text((x, y), ":", fill="white", font=font)
+            draw.text((x, y), ":", fill=clock_color, font=font)
             x += colon_gap
             draw.text(
                 (x + seg2_max - draw.textlength(parts[1], font=font), y),
                 parts[1],
-                fill="white",
+                fill=clock_color,
                 font=font,
             )
             x += seg2_max
-            draw.text((x, y), ":", fill="white", font=font)
+            draw.text((x, y), ":", fill=clock_color, font=font)
             x += colon_gap
             draw.text(
                 (x + seg3_max - draw.textlength(parts[2], font=font), y),
                 parts[2],
-                fill="white",
+                fill=clock_color,
                 font=font,
             )
             current_y += line_heights[idx] + spacing_y

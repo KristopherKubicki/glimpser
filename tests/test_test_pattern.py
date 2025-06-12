@@ -5,6 +5,7 @@ import unittest
 from PIL import Image
 
 from app.utils.test_pattern import (
+    _format_beats_time,
     _format_binary_time,
     _format_roman_time,
     _to_braille,
@@ -36,7 +37,7 @@ class TestTestPattern(unittest.TestCase):
 
     def test_spinner_overlay(self):
         img = generate_test_pattern(width=120, height=60, spinner="⠋")
-        region = [img.getpixel((x, y)) for x in range(100, 115) for y in range(5, 20)]
+        region = [img.getpixel((x, y)) for x in range(80, 95) for y in range(20, 35)]
         self.assertIn((255, 255, 255), region)
 
 
@@ -45,6 +46,7 @@ class TestTimeFormatHelpers(unittest.TestCase):
         ts = "12:34:56"
         self.assertEqual(_format_binary_time(ts), "01100:100010:111000")
         self.assertEqual(_format_roman_time(ts), "XII:XXXIV:LVI")
+        self.assertEqual(_format_beats_time(ts), "@565")
         self.assertEqual(_to_braille(ts), "⠁⠃⠒⠉⠙⠒⠑⠋")
 
 
