@@ -201,3 +201,19 @@
     display: inline-block;
   }
 }
+
+/* Hide volume controls since clips currently have no audio */
+video::-webkit-media-controls-mute-button,
+video::-webkit-media-controls-volume-slider,
+video::-webkit-media-controls-volume-control-container {
+  display: none;
+}
+
+video::-moz-volume-control {
+  display: none;
+}
+
+#volume-bar,
+#mute {
+  display: none;
+}
