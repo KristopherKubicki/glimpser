@@ -15,6 +15,7 @@ import time
 import app.config as config
 from app import create_app, scheduler
 from app.utils.cli import build_argument_parser, cli_help_text
+from app.utils.logging_utils import ColorFormatter, RateLimitFilter
 from app.utils.scheduling import get_system_metrics, stop_background_tasks
 
 banner = f"""\033[96m
@@ -76,6 +77,7 @@ def setup_logging(args=None):
     This function sets up file logging and optionally console logging based on the provided arguments.
     """
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    color_formatter = ColorFormatter("%(asctime)s - %(levelname)s - %(message)s")
     logger = logging.getLogger()
     logger.setLevel(getattr(logging, args.log_level if args else config.LOG_LEVEL))
 
@@ -85,12 +87,15 @@ def setup_logging(args=None):
     # Set up file logging
     file_handler = logging.FileHandler(config.LOGGING_PATH)
     file_handler.setFormatter(formatter)
+    rate_filter = RateLimitFilter(config.LOG_RATE_LIMIT_SEC)
+    file_handler.addFilter(rate_filter)
     logger.addHandler(file_handler)
 
     # Set up console logging if requested
     if args and args.console_log:
         console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
+        console_handler.setFormatter(color_formatter if config.LOG_COLOR else formatter)
+        console_handler.addFilter(rate_filter)
         logger.addHandler(console_handler)
 
 
