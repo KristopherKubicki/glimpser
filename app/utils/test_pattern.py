@@ -276,13 +276,21 @@ def generate_test_pattern(
         draw.text((x_start + 1, y_start + 1), label, fill=text_color, font=font_tiny)
         x_start += mini_w
 
-    # checker pattern limited to the bottom-right quadrant
+    # checker pattern centered in the upper-left quadrant
     sq = 20
-    y0 = height - bar_h
-    x0 = width * 3 // 4
-    for y in range(y0, height, sq):
-        for x in range(x0, width, sq):
-            fill = (255, 255, 255) if (x // sq + y // sq) % 2 == 0 else (0, 0, 0)
+    quad_w = width // 2
+    quad_h = (height - bar_h) // 2
+    pat_w = quad_w // 2
+    pat_h = quad_h // 2
+    x0 = quad_w // 2 - pat_w // 2
+    y0 = bar_h + quad_h // 2 - pat_h // 2
+    for y in range(y0, y0 + pat_h, sq):
+        for x in range(x0, x0 + pat_w, sq):
+            fill = (
+                (255, 255, 255)
+                if ((x - x0) // sq + (y - y0) // sq) % 2 == 0
+                else (0, 0, 0)
+            )
             draw.rectangle([x, y, x + sq - 1, y + sq - 1], fill=fill)
 
     # grayscale blocks for exposure checking
@@ -356,12 +364,14 @@ def generate_test_pattern(
         time_simple,
         _format_binary_time(time_simple),
         _format_roman_time(time_simple),
-        beats_time,
         _to_braille(time_simple),
+        beats_time,
     ]
 
-    fonts = [font_right, font_binary, font_right, font_right, font_braille]
+    fonts = [font_right, font_binary, font_right, font_braille, font_right]
     segments = [t.replace("\u2812", ":").split(":") for t in formats]
+
+    braille_idx = 3
 
     roman_w1, roman_w2, roman_w3, colon_w_std = _roman_segment_widths(font_right)
     colon_w = max(
@@ -390,11 +400,12 @@ def generate_test_pattern(
         font_right.size,
         font_binary.size,
         font_right.size,
-        font_right.size,
         font_braille.size,
+        font_right.size,
     ]
     spacing_y = 22
-    total_h = sum(line_heights) + spacing_y * (len(line_heights) - 1)
+    extra_gap = 30
+    total_h = sum(line_heights) + spacing_y * (len(line_heights) - 1) + extra_gap
     y_start = height // 2 - total_h // 2 + 20
 
     clock_color = (200, 200, 200)
@@ -403,7 +414,7 @@ def generate_test_pattern(
         x = x_start
         y = current_y
         font = fonts[idx]
-        if idx == len(formats) - 1:
+        if idx == braille_idx:
             x -= _braille_text_width("0")
             _draw_braille_text(
                 draw,
@@ -430,6 +441,8 @@ def generate_test_pattern(
                 fill=clock_color,
             )
             current_y += line_heights[idx] + spacing_y
+            if idx == 1:
+                current_y += extra_gap
         elif len(parts) == 1:
             draw.text(
                 (x + total_w - draw.textlength(parts[0], font=font), y),
@@ -438,6 +451,8 @@ def generate_test_pattern(
                 font=font,
             )
             current_y += line_heights[idx] + spacing_y
+            if idx == 1:
+                current_y += extra_gap
         else:
             draw.text(
                 (x + seg1_max - draw.textlength(parts[0], font=font), y),
@@ -464,6 +479,8 @@ def generate_test_pattern(
                 font=font,
             )
             current_y += line_heights[idx] + spacing_y
+            if idx == 1:
+                current_y += extra_gap
     if camera_name:
         draw.text((10, bar_h + 10), camera_name, fill="white", font=font_small)
 
