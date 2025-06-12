@@ -54,8 +54,9 @@ class TestTestPattern(unittest.TestCase):
         ):
             img = generate_test_pattern(width=120, height=60)
         cx, cy = 60, 30
-        end_x = int(round(cx + 60 * math.cos(math.radians((15 / 60) * 360 - 90))))
-        end_y = int(round(cy + 60 * math.sin(math.radians((15 / 60) * 360 - 90))))
+        hand_len = min(120, 60) * 0.4
+        end_x = int(round(cx + hand_len * math.cos(math.radians((15 / 60) * 360 - 90))))
+        end_y = int(round(cy + hand_len * math.sin(math.radians((15 / 60) * 360 - 90))))
         end_x = min(img.width - 1, end_x)
         end_y = min(img.height - 1, end_y)
         self.assertEqual(img.getpixel((end_x, end_y)), (255, 255, 255))
