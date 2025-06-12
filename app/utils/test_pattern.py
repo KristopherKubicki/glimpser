@@ -341,6 +341,14 @@ def generate_test_pattern(
             width=2,
         )
 
+    # add a simple second hand so the bullseye doubles as a clock face
+    h, m, s = map(int, datetime.datetime.now().strftime("%H:%M:%S").split(":"))
+    angle = math.radians((s / 60) * 360 - 90)
+    length = 60
+    end_x = center_x + length * math.cos(angle)
+    end_y = center_y + length * math.sin(angle)
+    draw.line((center_x, center_y, end_x, end_y), fill="white", width=2)
+
     # overlay spinner if provided
     font_small = load_font(20)
     timestamp = datetime.datetime.now().strftime("%H:%M:%S")
@@ -408,7 +416,8 @@ def generate_test_pattern(
     total_h = sum(line_heights) + spacing_y * (len(line_heights) - 1) + extra_gap
     y_start = height // 2 - total_h // 2 + 20
 
-    clock_color = (200, 200, 200)
+    # lighten the stacked clocks so they distract less from the pattern
+    clock_color = (160, 160, 160)
     current_y = y_start
     for idx, parts in enumerate(segments):
         x = x_start
