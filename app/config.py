@@ -328,15 +328,10 @@ def _ffmpeg_supports_hwaccel() -> bool:
         return False
 
 
-# Enable GPU acceleration if supported (e.g. "auto", "cuda", etc.)
+# Enable GPU acceleration by default. "auto" lets ffmpeg pick the best
+# available method and falls back to software when no GPU is present.
 _hwaccel_cfg = get_setting("FFMPEG_HWACCEL", "auto")
-if _hwaccel_cfg.lower() == "auto":
-    if _machine_supports_hwaccel() and _ffmpeg_supports_hwaccel():
-        FFMPEG_HWACCEL = "auto"
-    else:
-        FFMPEG_HWACCEL = "False"
-else:
-    FFMPEG_HWACCEL = _hwaccel_cfg
+FFMPEG_HWACCEL = _hwaccel_cfg if _hwaccel_cfg.lower() != "auto" else "auto"
 
 # Number of threads FFmpeg should use when encoding/decoding
 FFMPEG_THREADS = int(get_setting("FFMPEG_THREADS", max(1, (os.cpu_count() or 1) // 2)))
