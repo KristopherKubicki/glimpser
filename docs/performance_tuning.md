@@ -9,3 +9,8 @@ system from thrashing when a camera remains offline.
 When supported, hardware acceleration is enabled automatically to offload video
 processing to the GPU. The default ffmpeg thread count also scales with the
 number of CPU cores so lightweight systems don't get overwhelmed.
+
+Crawler startups are spread automatically using a mathematical scheduler that
+minimizes simultaneous runs. At launch, each crawler is assigned an offset based
+on its frequency so heavy jobs are distributed evenly over the window defined by
+`CRAWLER_STARTUP_SPREAD`.
