@@ -15,3 +15,4 @@ The test pattern includes calibration checks for panel accuracy and HDR tone map
 - **Swatch Internet Time** (@beats) joins the stacked clocks for a fun extra.
 - **Analog second hand** in the bullseye extends to the outer dots for easy reading.
 - **Braille spinner** in the corner updates once per second during streaming.
+- **Mini color bars** in the top-left align with a reduced checker patch and grayscale swatch.
