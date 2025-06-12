@@ -153,6 +153,7 @@ class TestGetSystemMetrics(unittest.TestCase):
         self.assertEqual(metrics["ffmpeg_path"], "/usr/bin/ffmpeg")
         self.assertTrue(metrics["machine_hwaccel"])
         self.assertTrue(metrics["ffmpeg_hwaccel"])
+        self.assertTrue(metrics["ffmpeg_gpu_support"])
         self.assertTrue(metrics["hwaccel_enabled"])
         self.assertTrue(metrics["gpu_support"])
         self.assertTrue(metrics["ffmpeg_gpu_enabled"])
