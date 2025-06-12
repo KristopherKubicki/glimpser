@@ -2361,7 +2361,7 @@ def init_routes(app: Flask) -> None:
                 yield b"--" + boundary + b"\r\n"
                 yield b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
                 index += 1
-                time.sleep(0.2)
+                time.sleep(1.0)
 
         return Response(
             generate_pattern(),

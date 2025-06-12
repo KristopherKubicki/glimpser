@@ -277,13 +277,16 @@ def generate_test_pattern(
         x_start += mini_w
 
     # checker pattern centered in the upper-left quadrant
-    sq = 20
+    # reduce area and snap to grid for cleaner look
+    sq = 30
     quad_w = width // 2
     quad_h = (height - bar_h) // 2
-    pat_w = quad_w // 2
-    pat_h = quad_h // 2
+    pat_w = quad_w // 3
+    pat_h = quad_h // 3
     x0 = quad_w // 2 - pat_w // 2
     y0 = bar_h + quad_h // 2 - pat_h // 2
+    x0 -= x0 % sq
+    y0 -= y0 % sq
     for y in range(y0, y0 + pat_h, sq):
         for x in range(x0, x0 + pat_w, sq):
             fill = (
@@ -293,43 +296,51 @@ def generate_test_pattern(
             )
             draw.rectangle([x, y, x + sq - 1, y + sq - 1], fill=fill)
 
-    # grayscale blocks for exposure checking
-    block_w = width // 20
+    # grayscale blocks for exposure checking above the checker patch
+    block_w = pat_w // 4
     block_h = bar_h // 3
-    for i in range(6):
-        shade = int(255 * i / 5)
+    start_x = x0
+    for i in range(4):
+        shade = int(255 * i / 3)
         draw.rectangle(
-            [i * block_w + 10, y0 - block_h - 5, (i + 1) * block_w + 10, y0 - 5],
+            [
+                start_x + i * block_w,
+                y0 - block_h - 5,
+                start_x + (i + 1) * block_w,
+                y0 - 5,
+            ],
             fill=(shade, shade, shade),
         )
 
-    # fine lines for sharpness tests around center
+    # fine lines for sharpness tests around center fade outward
     center_x = width // 2
     center_y = height // 2
-    for offset in range(-20, 25, 5):
+    max_off = 20
+    for offset in range(-max_off, max_off + 1, 5):
+        shade = int(255 - (abs(offset) / max_off) * 155)
+        color = (shade, shade, shade)
         draw.line(
             (center_x + offset, bar_h, center_x + offset, height - bar_h),
-            fill="white",
+            fill=color,
         )
-        draw.line(
-            (0, center_y + offset, width, center_y + offset),
-            fill="white",
-        )
+        draw.line((0, center_y + offset, width, center_y + offset), fill=color)
 
     # interlaced lines for moire effect
     for y in range(bar_h, height, 4):
         draw.line((0, y, width, y), fill=(30, 30, 30))
 
     # wedge calibration dots around the bullseye
-    radius = min(width, height) * 0.4
+    wedge_radius = min(width, height) * 0.4
     for angle in range(0, 360, 30):
         a = math.radians(angle)
-        x = center_x + radius * math.cos(a)
-        y = center_y + radius * math.sin(a)
+        x = center_x + wedge_radius * math.cos(a)
+        y = center_y + wedge_radius * math.sin(a)
         draw.ellipse((x - 3, y - 3, x + 3, y + 3), fill="white")
 
-    # central bullseye target
-    for r in range(60, 0, -20):
+    # central bullseye target with fading rings
+    for idx, r in enumerate(range(60, 0, -20)):
+        shade = 255 - idx * 60
+        color = (shade, shade, shade)
         draw.ellipse(
             (
                 center_x - r,
@@ -337,16 +348,16 @@ def generate_test_pattern(
                 center_x + r,
                 center_y + r,
             ),
-            outline="white",
+            outline=color,
             width=2,
         )
 
     # add a simple second hand so the bullseye doubles as a clock face
     h, m, s = map(int, datetime.datetime.now().strftime("%H:%M:%S").split(":"))
     angle = math.radians((s / 60) * 360 - 90)
-    length = 60
-    end_x = center_x + length * math.cos(angle)
-    end_y = center_y + length * math.sin(angle)
+    hand_len = wedge_radius
+    end_x = center_x + hand_len * math.cos(angle)
+    end_y = center_y + hand_len * math.sin(angle)
     draw.line((center_x, center_y, end_x, end_y), fill="white", width=2)
 
     # overlay spinner if provided

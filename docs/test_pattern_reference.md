@@ -13,4 +13,5 @@ The test pattern includes calibration checks for panel accuracy and HDR tone map
 - **Skin‑tone chip** around CIE ab ≈ (20, 15) confirms natural faces.
 - **Synthwave sunrise** with a small horizon line and trees for visual flair.
 - **Swatch Internet Time** (@beats) joins the stacked clocks for a fun extra.
-- **Analog second hand** in the bullseye shows the live time at a glance.
+- **Analog second hand** in the bullseye extends to the outer dots for easy reading.
+- **Braille spinner** in the corner updates once per second during streaming.
