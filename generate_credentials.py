@@ -14,6 +14,17 @@ import app.config
 
 
 def upsert_setting(name, value, conn):
+    """Insert or update a setting in the database.
+
+    Parameters
+    ----------
+    name : str
+        Setting key.
+    value : str | None
+        Value to store; if ``None`` the function does nothing.
+    conn : sqlite3.Connection
+        Database connection.
+    """
     if value is None:
         return
 
@@ -30,6 +41,13 @@ def upsert_setting(name, value, conn):
 
 
 def create_settings(conn):
+    """Create the ``settings`` table if it is missing.
+
+    Parameters
+    ----------
+    conn : sqlite3.Connection
+        Open database connection.
+    """
     create_settings_table = """
     CREATE TABLE IF NOT EXISTS settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,6 +61,13 @@ def create_settings(conn):
 
 
 def create_users(conn):
+    """Create the ``users`` table if it is missing.
+
+    Parameters
+    ----------
+    conn : sqlite3.Connection
+        Open database connection.
+    """
     create_users_table = """
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,6 +82,19 @@ def create_users(conn):
 
 
 def upsert_user(username, password_hash, role, conn):
+    """Insert or update a user record.
+
+    Parameters
+    ----------
+    username : str
+        Login name for the user.
+    password_hash : str
+        Hashed password to store.
+    role : str
+        User role within the application.
+    conn : sqlite3.Connection
+        Database connection.
+    """
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -70,6 +108,13 @@ def upsert_user(username, password_hash, role, conn):
 
 
 def generate_credentials(args):
+    """Create or update application credentials and settings.
+
+    Parameters
+    ----------
+    args : argparse.Namespace | None
+        Command line arguments. If ``None`` the function prompts interactively.
+    """
     # Use the provided or default database path
     database_path = app.config.get_setting("DATABASE_PATH", "data/glimpser.db")
     if args and args.db_path:
@@ -131,7 +176,9 @@ def generate_credentials(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate or update credentials and settings.")
+    parser = argparse.ArgumentParser(
+        description="Generate or update credentials and settings."
+    )
     parser.add_argument("--db-path", type=str, help="Path to the SQLite database file.")
     parser.add_argument("--username", type=str, help="Username for login.")
     parser.add_argument("--password", type=str, help="Password for login.")
@@ -145,7 +192,9 @@ if __name__ == "__main__":
         type=str,
         help="Custom secret key. Generates a new one if not provided.",
     )
-    parser.add_argument("--update-key", action="store_true", help="Update the secret key.")
+    parser.add_argument(
+        "--update-key", action="store_true", help="Update the secret key."
+    )
     args = parser.parse_args()
 
     generate_credentials(args)
