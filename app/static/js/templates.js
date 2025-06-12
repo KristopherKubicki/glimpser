@@ -659,7 +659,6 @@ export async function loadTemplates() {
         entries.forEach((entry) => {
           const video = entry.target;
           if (entry.isIntersecting) {
-            enqueueClip(video);
             if (isMobile()) {
               safePlay(video);
             }
@@ -760,6 +759,7 @@ export async function loadTemplates() {
             video.addEventListener("mouseenter", (e) => {
               clearTimeout(resetTimeout);
               video.style.display = "block";
+              enqueueClip(video);
               // Load metadata on first hover so currentTime can be set
               if (video.readyState === 0) {
                 video.load();
