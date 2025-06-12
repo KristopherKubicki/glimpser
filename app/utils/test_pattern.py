@@ -221,12 +221,13 @@ def generate_test_pattern(
     sun_r = min(width, height) // 10
     horizon_y = height - bar_h - sun_r
     sun_cx = width // 4
+    shimmer = 1 + 0.05 * math.sin(time.time() * 2)
     for r in range(sun_r, 0, -2):
         ratio = r / sun_r
         color = (
-            int(255 * ratio),
-            int(80 + 100 * (1 - ratio)),
-            int(150 + 50 * ratio),
+            int(min(255, 255 * ratio * shimmer)),
+            int(min(255, (80 + 100 * (1 - ratio)) * shimmer)),
+            int(min(255, (150 + 50 * ratio) * shimmer)),
         )
         draw.arc(
             [sun_cx - r, horizon_y - r, sun_cx + r, horizon_y + r],
@@ -245,17 +246,19 @@ def generate_test_pattern(
             fill=(80, 0, 80),
         )
 
-    # drifting clouds across the sun for subtle animation
+    # drifting clouds subtly obscure the sun
     cloud_layer = Image.new("RGBA", (width, height))
     cloud_draw = ImageDraw.Draw(cloud_layer)
-    # base motion on current time so clouds drift continuously
-    offset = int(time.time() * 5) % (width + sun_r * 2) - sun_r
-    cloud_y = horizon_y - sun_r - 20
-    for i in range(3):
-        cx = (offset + i * sun_r * 2) % (width + sun_r * 2) - sun_r
+    offset = int(time.time() * 10) % (width + sun_r) - sun_r // 2
+    base_y = horizon_y - sun_r - 20
+    c_rx = sun_r // 2
+    c_ry = sun_r // 3
+    for i in range(5):
+        cx = (offset + i * c_rx * 2) % (width + sun_r) - c_rx
+        cy = base_y - (i % 3) * (sun_r // 6)
         cloud_draw.ellipse(
-            [cx, cloud_y, cx + sun_r * 2, cloud_y + sun_r],
-            fill=(255, 255, 255, 80),
+            [cx, cy, cx + c_rx * 2, cy + c_ry],
+            fill=(255, 255, 255, 40),
         )
     img = Image.alpha_composite(img, cloud_layer)
     draw = ImageDraw.Draw(img)
@@ -282,8 +285,9 @@ def generate_test_pattern(
     mini_w = max(2, width // 100)
     mini_h = bar_h // 4
     font_tiny = load_font(8)
-    x_start = width - mini_w * (len(mini_709) + len(mini_2020)) - 10 - 100
-    y_start = 2 + 10
+    x_start = 10
+    y_start = 10
+    mini_total_w = mini_w * (len(mini_709) + len(mini_2020))
     for color, label in mini_709 + mini_2020:
         draw.rectangle(
             [x_start, y_start, x_start + mini_w, y_start + mini_h], fill=color
@@ -292,17 +296,12 @@ def generate_test_pattern(
         draw.text((x_start + 1, y_start + 1), label, fill=text_color, font=font_tiny)
         x_start += mini_w
 
-    # checker pattern centered in the upper-left quadrant
-    # reduce area and snap to grid for cleaner look
-    sq = 30
-    quad_w = width // 2
-    quad_h = (height - bar_h) // 2
-    pat_w = quad_w // 3
-    pat_h = quad_h // 3
-    x0 = quad_w // 2 - pat_w // 2
-    y0 = bar_h + quad_h // 2 - pat_h // 2
-    x0 -= x0 % sq
-    y0 -= y0 % sq
+    # smaller checkerboard aligned with the mini bars
+    sq = max(10, mini_w)
+    pat_w = mini_total_w
+    pat_h = sq * 4
+    x0 = 10
+    y0 = y_start + mini_h + 5
     for y in range(y0, y0 + pat_h, sq):
         for x in range(x0, x0 + pat_w, sq):
             fill = (
@@ -312,8 +311,8 @@ def generate_test_pattern(
             )
             draw.rectangle([x, y, x + sq - 1, y + sq - 1], fill=fill)
 
-    # grayscale swatch aligned with the checker patch
-    block_w = sq
+    # grayscale swatch matching checker height
+    block_w = mini_w
     block_h = pat_h // 4
     start_x = x0 + pat_w + 5
     for i in range(4):
