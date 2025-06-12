@@ -15,6 +15,8 @@ import textwrap
 import threading
 import time
 from collections import deque
+from functools import reduce
+from math import gcd
 
 import psutil
 import requests
@@ -957,6 +959,56 @@ def schedule_summarization():
         logging.error("job schedule error: %s", e)
 
 
+def lcm(a: int, b: int) -> int:
+    """Return least common multiple of ``a`` and ``b``."""
+
+    return abs(a * b) // gcd(a, b) if a and b else 0
+
+
+def _lcm_many(values) -> int:
+    """Return the LCM of ``values`` using :func:`lcm`."""
+
+    return reduce(lcm, values, 1)
+
+
+def calculate_optimal_offsets(templates: dict, spread_minutes: int) -> dict:
+    """Return startup offsets in seconds for each crawler.
+
+    The algorithm spreads initial runs across ``spread_minutes`` by computing a
+    window based on the LCM of crawler frequencies. Each crawler is then placed
+    within that window at the least-loaded slot to minimize overlapping starts.
+    """
+
+    if not templates:
+        return {}
+
+    frequencies = {
+        name: 60 * int(t.get("frequency", 30)) for name, t in templates.items()
+    }
+    window = max(_lcm_many(frequencies.values()), spread_minutes * 60)
+    window = min(window, 86_400)  # cap at one day to keep arrays manageable
+    step = window // max(len(frequencies), 1)
+    load = [0] * window
+    offsets = {}
+
+    for name, freq in sorted(frequencies.items(), key=lambda x: x[1], reverse=True):
+        best_offset = 0
+        best_count = float("inf")
+        for offset in range(0, window, step or 1):
+            count = sum(load[t] for t in range(offset, window, freq))
+            if count < best_count:
+                best_count = count
+                best_offset = offset
+            if best_count == 0:
+                break
+        for t in range(best_offset, window, freq):
+            load[t] += 1
+        scaled = int(best_offset / window * spread_minutes * 60)
+        offsets[name] = scaled
+
+    return offsets
+
+
 def schedule_crawlers():
     """
     Fetch templates and schedule them according to their frequency, then schedule
@@ -974,16 +1026,14 @@ def schedule_crawlers():
             except Exception:
                 pass
 
-    total_crawlers = len(templates)
-    # Spread initial jobs across ``CRAWLER_STARTUP_SPREAD`` minutes so
-    # many cameras don't start at once.
-    base_delay = max(CRAWLER_STARTUP_SPREAD, 0) * 60
+    # Determine optimized startup offsets for each crawler
+    offsets = calculate_optimal_offsets(templates, CRAWLER_STARTUP_SPREAD)
 
-    # shuffle the template so its not always the same ones
+    # Shuffle templates so the same cameras don't always start first
     shuffled_templates = list(templates.items())
     random.shuffle(shuffled_templates)
 
-    for index, (id, template) in enumerate(shuffled_templates):
+    for id, template in shuffled_templates:
         name = template.get("name")
         if name is None or name == "":
             continue
@@ -1001,21 +1051,8 @@ def schedule_crawlers():
             logging.error(f"Error determining frequency for {name}: {e}")
             seconds = 60 * 30  # Fallback to default value if there's an issue
 
-        # Calculate the delay increment dynamically based on the total number of crawlers
-        lbase_delay = base_delay
-        if seconds > 120:
-            lbase_delay *= 2
-        if seconds > 240:
-            lbase_delay *= 2
-        if seconds > 360:
-            lbase_delay *= 2
-        if seconds > 720:
-            lbase_delay *= 2
-
-        delay_increment = lbase_delay / total_crawlers if total_crawlers else 0
-
-        # Calculate the offset delay for this crawler
-        offset_delay_seconds = index * delay_increment + index
+        # Look up the pre-calculated startup offset for this crawler
+        offset_delay_seconds = offsets.get(name, 0)
 
         # Apply the incremental delay to space out job scheduling
         try:
