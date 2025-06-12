@@ -14,6 +14,7 @@ beforeAll(async () => {
 });
 
 test("loads clip when video becomes visible", async () => {
+  jest.useFakeTimers();
   let callback;
   window.IntersectionObserver = class {
     constructor(cb) {
@@ -41,6 +42,17 @@ test("loads clip when video becomes visible", async () => {
   await loadTemplates();
   const video = document.querySelector("video");
   const source = video.querySelector("source");
+  video.getBoundingClientRect = () => ({
+    width: 250,
+    height: 0,
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
+    x: 0,
+    y: 0,
+    toJSON() {},
+  });
   expect(source.src).toMatch(/\/last_video\/cam1$/);
   expect(video.dataset.hdSrc).toBe("/clip/cam1");
 
@@ -49,6 +61,8 @@ test("loads clip when video becomes visible", async () => {
   expect(source.src).toMatch(/\/last_video\/cam1$/);
 
   video.dispatchEvent(new Event("mouseenter"));
+
+  jest.advanceTimersByTime(300);
 
   expect(source.src).toMatch(/\/clip\/cam1$/);
 });

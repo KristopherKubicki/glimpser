@@ -755,11 +755,19 @@ export async function loadTemplates() {
             };
 
             let resetTimeout;
+            let dwellTimeout;
 
             video.addEventListener("mouseenter", (e) => {
               clearTimeout(resetTimeout);
+              clearTimeout(dwellTimeout);
               video.style.display = "block";
-              enqueueClip(video);
+              dwellTimeout = setTimeout(() => {
+                const tiles = document.querySelectorAll(".templateDiv").length;
+                const width = video.getBoundingClientRect().width;
+                if (tiles <= 8 && width >= 200) {
+                  enqueueClip(video);
+                }
+              }, 300);
               // Load metadata on first hover so currentTime can be set
               if (video.readyState === 0) {
                 video.load();
@@ -779,6 +787,7 @@ export async function loadTemplates() {
             video.addEventListener("mousemove", scrub);
 
             video.addEventListener("mouseleave", () => {
+              clearTimeout(dwellTimeout);
               resetTimeout = setTimeout(() => {
                 video.pause();
                 video.currentTime = 0;
