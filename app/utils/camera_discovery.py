@@ -451,7 +451,9 @@ def _probe_onvif(timeout=2):
             info = {}
             try:
                 xml = ET.fromstring(data)
-                xaddr = xml.find(".//{http://schemas.xmlsoap.org/ws/2005/04/discovery}XAddrs")
+                xaddr = xml.find(
+                    ".//{http://schemas.xmlsoap.org/ws/2005/04/discovery}XAddrs"
+                )
                 if xaddr is not None:
                     uri = xaddr.text.split()[0]
                     parsed = urlparse(uri)
@@ -564,7 +566,11 @@ def _probe_ssdp(timeout: int = 2, max_duration: int = 5) -> list[dict]:
 
 def _fetch_sdp(ip, port, timeout=2):
     """Attempt to retrieve an SDP description from an RTSP endpoint."""
-    request = f"DESCRIBE rtsp://{ip}:{port}/ RTSP/1.0\r\n" "CSeq: 1\r\n" "Accept: application/sdp\r\n\r\n"
+    request = (
+        f"DESCRIBE rtsp://{ip}:{port}/ RTSP/1.0\r\n"
+        "CSeq: 1\r\n"
+        "Accept: application/sdp\r\n\r\n"
+    )
     try:
         with socket.create_connection((ip, port), timeout=timeout) as sock:
             sock.sendall(request.encode())
@@ -685,7 +691,9 @@ def _scan_rtsp_ports(subnets):
                     sdp = _fetch_sdp(ip, port)
                     if sdp:
                         info["sdp"] = sdp
-                    found.append({"ip": ip, "protocol": "rtsp", "port": port, "info": info})
+                    found.append(
+                        {"ip": ip, "protocol": "rtsp", "port": port, "info": info}
+                    )
     return found
 
 
@@ -772,7 +780,9 @@ def _scan_sip_ports(subnets):
             checked.add(ip)
             for port in (5060, 5061):
                 if is_port_open(ip, port, timeout=1):
-                    found.append({"ip": ip, "protocol": "sip", "port": port, "info": {}})
+                    found.append(
+                        {"ip": ip, "protocol": "sip", "port": port, "info": {}}
+                    )
     return found
 
 
@@ -788,7 +798,9 @@ def _scan_webrtc_ports(subnets):
             checked.add(ip)
             for port in (3478, 5349):
                 if is_port_open(ip, port, timeout=1):
-                    found.append({"ip": ip, "protocol": "webrtc", "port": port, "info": {}})
+                    found.append(
+                        {"ip": ip, "protocol": "webrtc", "port": port, "info": {}}
+                    )
     return found
 
 
@@ -877,7 +889,9 @@ def _local_video_devices(base_path="/dev"):
     return devices
 
 
-def _filter_by_subnets(cameras: list[dict], subnets: list[ip_network] | None) -> list[dict]:
+def _filter_by_subnets(
+    cameras: list[dict], subnets: list[ip_network] | None
+) -> list[dict]:
     """Return only entries whose IP falls within ``subnets``."""
 
     if not subnets:
@@ -944,7 +958,9 @@ def discover_cameras(progress_callback=None, subnets=None):
             progress_callback(stage, count, new, progress, eta)
 
     with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
-        future_to_stage = {executor.submit(func): stage for stage, func in tasks.items()}
+        future_to_stage = {
+            executor.submit(func): stage for stage, func in tasks.items()
+        }
         for fut in as_completed(future_to_stage):
             stage = future_to_stage[fut]
             stage_cameras = []
@@ -990,6 +1006,16 @@ def discover_cameras(progress_callback=None, subnets=None):
             "port": PORT,
             "info": {"name": "Test Frame"},
             "url": f"rtsp://127.0.0.1:{PORT}/test.rtsp",
+        }
+    )
+
+    cameras.append(
+        {
+            "ip": "127.0.0.1",
+            "protocol": "http",
+            "port": PORT,
+            "info": {"name": "Test Frame"},
+            "url": f"http://127.0.0.1:{PORT}/test.mjpg",
         }
     )
 
