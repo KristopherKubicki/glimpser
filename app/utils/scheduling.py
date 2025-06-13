@@ -1353,7 +1353,7 @@ def get_feed_status():
     user_idle = not check_user_activity(timeout=1)
 
     def _humanize(ts: str | None) -> str | None:
-        """Return a simple "time ago" string for the given timestamp."""
+        """Return a short "time ago" string like "5m ago"."""
         if not ts:
             return None
         try:
@@ -1365,17 +1365,17 @@ def get_feed_status():
         if diff < 0:
             return "in the future"
         intervals = (
-            ("year", 31536000),
-            ("month", 2592000),
-            ("day", 86400),
-            ("hour", 3600),
-            ("minute", 60),
-            ("second", 1),
+            ("y", 31536000),
+            ("mo", 2592000),
+            ("d", 86400),
+            ("h", 3600),
+            ("m", 60),
+            ("s", 1),
         )
-        for label, seconds in intervals:
+        for short, seconds in intervals:
             count = int(diff // seconds)
             if count >= 1:
-                return f"{count} {label}{'s' if count > 1 else ''} ago"
+                return f"{count}{short} ago"
         return "just now"
 
     def _iso(ts: str | None) -> str | None:
