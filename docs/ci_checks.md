@@ -9,6 +9,7 @@ following tasks:
 - Executes `pytest` and `jest` test suites and uploads coverage.
 - Coverage reports allow a small drop (up to 0.5%) before the Codecov check fails.
 - Scans dependencies using `pip safety` and `npm audit`.
+- Runs OWASP Dependency Check via `.github/workflows/dependency-check.yml` to detect vulnerable packages.
 - Caches Python and Node dependencies to speed up builds.
 
 These checks help catch regressions and security issues before code is merged.
