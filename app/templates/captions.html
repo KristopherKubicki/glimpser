@@ -34,7 +34,7 @@ template_controls %} {% block content %}
 
   <div class="tabs">
     <button class="tab-link active" data-tab="prompts-tab">Prompts</button>
-    <button class="tab-link" data-tab="history-tab">History</button>
+    <button class="tab-link" data-tab="history-tab">Summaries</button>
     <button class="tab-link" data-tab="bulk-tab">Bulk Tools</button>
   </div>
 
@@ -53,12 +53,7 @@ template_controls %} {% block content %}
     </select>
     <div class="field-toggle">
       <label>
-        <input
-          type="radio"
-          name="caption-field"
-          value="caption"
-          checked
-        />
+        <input type="radio" name="caption-field" value="caption" checked />
         Caption
       </label>
       <label>
@@ -127,7 +122,8 @@ template_controls %} {% block content %}
                       class="notes-textarea"
                       placeholder="Edit caption prompt"
                     >
-{{ template_details[camera]['notes'] }}</textarea>
+{{ template_details[camera]['notes'] }}</textarea
+                    >
                     <button
                       class="update-button"
                       data-template="{{ camera }}"
