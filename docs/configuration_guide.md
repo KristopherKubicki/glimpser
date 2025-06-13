@@ -188,6 +188,7 @@ Additional variables control AI behaviour and external tools:
 - `CLIP_MODEL_NAME` – CLIP model used for object filtering (default `openai/clip-vit-base-patch32`)
   Example: `openai/clip-vit-large-patch14`
   This setting is read-only until Advanced Options are enabled.
+- `CLIP_MODEL_PATH` – path to the ONNX model used for object filtering (default `models/clip-vit-b-32.onnx`). The runtime automatically selects CUDA or CPU providers when available. If `onnxruntime` is not installed, object filtering is skipped.
 - `SCHEDULER_API_ENABLED` – toggle the APScheduler REST API (default `True`)
 
 Refer to the code comments in `app/config.py` for full details on each setting.

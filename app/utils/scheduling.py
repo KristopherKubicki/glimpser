@@ -24,17 +24,25 @@ try:
     from setproctitle import setproctitle
 except Exception:  # pragma: no cover - optional dependency
     setproctitle = None
+import numpy as np
+
+try:  # prefer ONNX for lightweight deployments
+    import onnxruntime as ort
+except Exception:  # pragma: no cover - optional dependency
+    ort = None
+
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
 from flask_apscheduler import APScheduler
 from PIL import Image, ImageDraw
-from transformers import CLIPModel, CLIPProcessor
+from transformers import CLIPProcessor
 
 from app.config import (
     AUTO_UPDATE_BRANCH,
     CLIP_MODEL_NAME,
+    CLIP_MODEL_PATH,
     CLIP_REFRESH_MAX_CAMERAS,
     CRAWLER_STARTUP_SPREAD,
     DEBUG,
@@ -90,7 +98,7 @@ from .validators import validate_template_name
 
 logging.getLogger("apscheduler").setLevel(logging.WARNING)
 
-clip_processor, clip_model = None, None
+clip_processor, clip_session = None, None
 
 # Track currently running jobs to avoid launching duplicates.
 active_jobs: dict[str, multiprocessing.Process] = {}
@@ -606,31 +614,49 @@ def update_camera(name, template, image_file=None, motion=False):
         # run the object detect AFTER the motion detetor
         if allow is True and object_filter and object_confidence is not None:
 
-            global clip_model, clip_processor
+            global clip_session, clip_processor
 
-            if clip_model is None:
-                clip_model = CLIPModel.from_pretrained(CLIP_MODEL_NAME)
+            # Prefer the lightweight ONNX backend when available
+            use_onnx = ort is not None
 
-            if clip_processor is None:
-                clip_processor = CLIPProcessor.from_pretrained(CLIP_MODEL_NAME)
+            if use_onnx:
+                if clip_session is None:
+                    providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+                    try:
+                        clip_session = ort.InferenceSession(
+                            CLIP_MODEL_PATH, providers=providers
+                        )
+                    except Exception:
+                        clip_session = ort.InferenceSession(CLIP_MODEL_PATH)
 
-            # Load the latest image
-            latest_image_path = os.path.join(directory, png_files[-1])
-            image = Image.open(latest_image_path)
+                if clip_processor is None:
+                    clip_processor = CLIPProcessor.from_pretrained(CLIP_MODEL_NAME)
 
-            # Process the image and text
-            inputs = clip_processor(
-                text=[object_filter], images=image, return_tensors="pt", padding=True
-            )
+                # Load the latest image
+                latest_image_path = os.path.join(directory, png_files[-1])
+                image = Image.open(latest_image_path)
 
-            # Get the logits from the model
-            outputs = clip_model(**inputs)
-            logits_per_image = (
-                outputs.logits_per_image
-            )  # this is the image-text similarity score
-            probs = logits_per_image.softmax(
-                dim=1
-            )  # we can take the softmax to get probabilities
+                inputs = clip_processor(
+                    text=[object_filter],
+                    images=image,
+                    return_tensors="np",
+                    padding=True,
+                )
+
+                outputs = clip_session.run(
+                    None,
+                    {
+                        "input_ids": inputs["input_ids"],
+                        "attention_mask": inputs["attention_mask"],
+                        "pixel_values": inputs["pixel_values"],
+                    },
+                )
+                logits = outputs[0]
+                exp = np.exp(logits)
+                probs = exp / exp.sum(axis=1, keepdims=True)
+            else:
+                # Skip detection when onnxruntime is unavailable
+                probs = np.array([[0.0]])
 
             # Check if the object is detected with confidence higher than the threshold
             if probs[0, 0] >= object_confidence:

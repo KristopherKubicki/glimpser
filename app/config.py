@@ -344,6 +344,12 @@ CLIP_MODEL_NAME = get_setting(
     "openai/clip-vit-base-patch32",
 )
 
+# Path to ONNX model used for object filtering
+CLIP_MODEL_PATH = get_setting(
+    "CLIP_MODEL_PATH",
+    "models/clip-vit-b-32.onnx",
+)
+
 
 # New settings for capture_frame_from_stream function
 NUM_FRAMES = int(get_setting("NUM_FRAMES", 3))
