@@ -1765,13 +1765,12 @@ body.advanced-enabled .advanced-only {
 
 .chat-box {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.5rem;
 }
 
 .chat-prompt,
 .chat-response {
-  flex: 1 1 300px;
   display: flex;
   flex-direction: column;
 }
@@ -1787,16 +1786,6 @@ body.advanced-enabled .advanced-only {
 
 .chat-box label {
   font-weight: 600;
-}
-
-@media (max-width: 600px) {
-  .chat-box {
-    flex-direction: column;
-  }
-  .chat-prompt,
-  .chat-response {
-    flex: 1 1 100%;
-  }
 }
 
 .filter-controls {
