@@ -97,13 +97,14 @@ class TestTestPattern(unittest.TestCase):
         ):
             img = generate_test_pattern(width=400, height=400)
 
-        y_start = 400 // 2 - 248 // 2 + 20
+        y_start = 400 // 2 - 374 // 2 + 20
         region = [
             img.getpixel((x, y))
             for x in range(30, 120)
             for y in range(y_start, y_start + 30)
         ]
         self.assertIn((160, 160, 160), region)
+        self.assertTrue(any(pixel != (0, 0, 0) for pixel in region))
 
     def test_qr_code_overlay(self):
         stub = Image.new("RGBA", (12, 12), (255, 255, 255, 255))
@@ -129,12 +130,34 @@ class TestTestPattern(unittest.TestCase):
         self.assertEqual(meta["st2110_21_hash"], expected_hash)
         self.assertIn("smpte2086", meta)
 
+    def test_moon_drawn(self):
+        class FixedDatetime(datetime.datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return cls(2020, 1, 1, 12, 0, 0)
+
+        with unittest.mock.patch(
+            "app.utils.test_pattern.datetime.datetime", FixedDatetime
+        ):
+            img = generate_test_pattern(width=200, height=100)
+
+        bar_h = 100 // 16
+        bars_total = bar_h * 2
+        step_h = max(4, bar_h // 3)
+        sun_r = min(200, 100) // 10
+        horizon_y = 100 - bars_total - step_h - sun_r
+        moon_r = sun_r // 2
+        moon_cx = 200 * 3 // 4
+        pixel = img.getpixel((moon_cx, horizon_y - moon_r // 2))
+        self.assertNotEqual(pixel, (0, 0, 0))
+        self.assertNotEqual(pixel, (80, 0, 80))
+
 
 class TestTimeFormatHelpers(unittest.TestCase):
     def test_time_format_helpers(self):
         ts = "12:34:56"
         self.assertEqual(_format_binary_time(ts), "01100100010111000")
-        self.assertEqual(_format_roman_time(ts), "XIIXXXIVLVI")
+        self.assertEqual(_format_roman_time(ts), "XII:XXXIV:LVI")
         self.assertEqual(_format_hex_time(ts), "0C:22:38")
         self.assertEqual(_format_beats_time(ts), "@565")
         self.assertEqual(_to_braille(ts), "⠁⠃⠒⠉⠙⠒⠑⠋")
