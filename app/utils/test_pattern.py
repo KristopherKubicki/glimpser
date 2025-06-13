@@ -9,6 +9,7 @@ import json
 import math
 import os
 import time
+import subprocess
 from typing import Optional
 
 from dateutil import tz
@@ -193,6 +194,43 @@ def load_font(size: int) -> ImageFont.FreeTypeFont:
         return ImageFont.truetype(path, size)
     except OSError:
         return font
+
+
+def _generate_bit_matrix(data: str, size: int = 16) -> list[list[bool]]:
+    """Return a simple bit matrix derived from ``data``."""
+    digest = hashlib.sha256(data.encode()).digest()
+    bits = "".join(f"{b:08b}" for b in digest)
+    while len(bits) < size * size:
+        digest = hashlib.sha256(digest).digest()
+        bits += "".join(f"{b:08b}" for b in digest)
+    bits = bits[: size * size]
+    return [[bits[i * size + j] == "1" for j in range(size)] for i in range(size)]
+
+
+def _draw_pulsing_matrix(
+    base: Image.Image,
+    matrix: list[list[bool]],
+    pos: tuple[int, int],
+    scale: int = 3,
+) -> None:
+    """Overlay ``matrix`` onto ``base`` with a subtle pulse effect."""
+
+    brightness = 0.8 + 0.2 * math.sin(time.time() * 2)
+    draw = ImageDraw.Draw(base)
+    x0, y0 = pos
+    for y, row in enumerate(matrix):
+        for x, val in enumerate(row):
+            if val:
+                shade = int(255 * brightness)
+                draw.rectangle(
+                    [
+                        x0 + x * scale,
+                        y0 + y * scale,
+                        x0 + (x + 1) * scale - 1,
+                        y0 + (y + 1) * scale - 1,
+                    ],
+                    fill=(shade, shade, shade),
+                )
 
 
 def generate_test_pattern(
@@ -639,6 +677,22 @@ def generate_test_pattern(
         draw.text(
             (10, bars_total + step_h + 10), camera_name, fill="white", font=font_small
         )
+
+    # pulsing QR-style code with the time and commit hash
+    try:
+        commit_hash = (
+            subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+            .decode()
+            .strip()
+        )
+    except Exception:
+        commit_hash = "unknown"
+    qr_data = f"{timestamp}-{commit_hash}"
+    matrix = _generate_bit_matrix(qr_data)
+    qr_scale = max(2, width // 160)
+    qr_size = len(matrix) * qr_scale
+    qr_pos = (width - qr_size - 10, height - qr_size - 10)
+    _draw_pulsing_matrix(img, matrix, qr_pos, scale=qr_scale)
 
     # redraw the second hand above overlays
     h, m, s = map(int, datetime.datetime.now().strftime("%H:%M:%S").split(":"))

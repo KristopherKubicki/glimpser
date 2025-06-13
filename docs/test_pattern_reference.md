@@ -17,6 +17,7 @@ The test pattern includes calibration checks for panel accuracy and HDR tone map
 - **Date overlay** appears on the left aligned with the standard clock.
 - **Braille spinner** in the corner updates once per second during streaming.
 - **Mini color bars** in the top-left align with a reduced checker patch and grayscale swatch.
+- **Pulsing QR code** with the current time and build hash appears in the lower-right quadrant.
 
 The pattern now also includes:
 
