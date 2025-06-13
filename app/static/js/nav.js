@@ -145,6 +145,8 @@ export function initNav() {
 
     if (cameraDropdown) {
       cameraDropdown.addEventListener("change", () => {
+        // Avoid navigation when adjusting the live view
+        if (window.location.pathname.startsWith("/live")) return;
         if (cameraDropdown.value) {
           window.location.href = `/templates/${encodeURIComponent(
             cameraDropdown.value,
@@ -407,7 +409,11 @@ export function initNav() {
         const next = (idx + delta + opts.length) % opts.length;
         const cam = opts[next].value;
         cameraDropdown.value = cam;
-        window.location.href = `/templates/${encodeURIComponent(cam)}`;
+        if (window.location.pathname.startsWith("/live")) {
+          cameraDropdown.dispatchEvent(new Event("change"));
+        } else {
+          window.location.href = `/templates/${encodeURIComponent(cam)}`;
+        }
       };
 
       document.addEventListener("keydown", (e) => {
