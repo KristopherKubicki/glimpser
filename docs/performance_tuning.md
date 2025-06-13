@@ -14,3 +14,6 @@ Crawler startups are spread automatically using a mathematical scheduler that
 minimizes simultaneous runs. At launch, each crawler is assigned an offset based
 on its frequency so heavy jobs are distributed evenly over the window defined by
 `CRAWLER_STARTUP_SPREAD`.
+
+Dashboard thumbnails now lazy load. Each video tile sets its poster image only
+when it enters the viewport, reducing initial network requests for large setups.

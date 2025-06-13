@@ -665,6 +665,9 @@ export async function loadTemplates() {
         entries.forEach((entry) => {
           const video = entry.target;
           if (entry.isIntersecting) {
+            if (!video.poster && video.dataset.poster) {
+              video.poster = video.dataset.poster;
+            }
             if (isMobile()) {
               safePlay(video);
             }
@@ -730,7 +733,7 @@ export async function loadTemplates() {
                 <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
                   <div class="camera-name">${name}</div>
                   <div class="loading-spinner" aria-hidden="true"></div>
-                  <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback data-hd-src="/clip/${name}">
+                  <video data-name="${name}" data-poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback data-hd-src="/clip/${name}" loading="lazy">
                     <source src="/last_video/${name}" type="video/mp4">
                     Your browser does not support the video tag.
                   </video>
