@@ -477,14 +477,27 @@ template_form %} {% block content %}
     <div class="videos-grid">
       {% for video in videos %}
       <div class="video">
+        {% if video == 'last_video.mp4' %}
+        <video
+          src="/last_video/{{template_name}}"
+          data-file="last_video.mp4"
+          height="200"
+          autoplay
+          loop
+          muted
+          title="Recent video capture: last"
+        ></video>
+        {% else %}
         <video
           src="/videos/{{template_name}}/{{video}}"
+          data-file="{{ video }}"
           height="200"
           autoplay
           loop
           muted
           title="Recent video capture: {{video}}"
         ></video>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
@@ -535,79 +548,9 @@ template_form %} {% block content %}
 
 <script>
   window.recentVideos = {{ videos|tojson }};
-  document.addEventListener("DOMContentLoaded", () => {
-    const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
-    const list = (window.recentVideos || []).sort((a, b) =>
-      collator.compare(a, b),
-    );
-    if (!list.length) return;
-    let index = 0;
-    const video = document.getElementById("live-video");
-    const source = video?.querySelector("source");
-    const prev = document.getElementById("prev-clip-btn");
-    const next = document.getElementById("next-clip-btn");
-
-    const updateButtons = () => {
-      if (prev) prev.disabled = index <= 0;
-      if (next) {
-        if (index >= list.length - 1) {
-          next.classList.add("go-live");
-          next.textContent = "Live";
-          next.disabled = false;
-        } else {
-          next.classList.remove("go-live");
-          next.textContent = "\u25B6";
-          next.disabled = false;
-        }
-      }
-    };
-
-    const loadClip = (i) => {
-      if (i < 0 || i >= list.length) return;
-      index = i;
-      const file = list[i];
-      if (source) source.src = `/videos/${window.currentCamera}/${file}`;
-      video.removeAttribute("data-hd-src");
-      video.load();
-      updateButtons();
-    };
-
-    const flash = (btn) => {
-      btn.classList.add("clicked");
-      setTimeout(() => btn.classList.remove("clicked"), 150);
-    };
-
-    prev?.addEventListener("click", () => {
-      flash(prev);
-      loadClip(index - 1);
-    });
-    next?.addEventListener("click", () => {
-      flash(next);
-      if (index >= list.length - 1) {
-        window.location.href = `/live?camera=${window.currentCamera}`;
-      } else {
-        loadClip(index + 1);
-      }
-    });
-
-    document.addEventListener("keydown", (e) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      )
-        return;
-      if (e.key === "ArrowLeft") {
-        loadClip(index - 1);
-      } else if (e.key === "ArrowRight") {
-        if (index >= list.length - 1) {
-          window.location.href = `/live?camera=${window.currentCamera}`;
-        } else {
-          loadClip(index + 1);
-        }
-      }
-    });
-
-    updateButtons();
-  });
 </script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/recent_videos.js') }}"
+></script>
 {% endblock %}
