@@ -55,6 +55,8 @@ jobs:
           ${{ runner.os }}-npm-
     - name: Install Node dependencies
       run: npm install
+    - name: Install Node prettier
+      run: npm install --save-dev jest prettier
     - name: Audit npm packages
       run: npm audit --audit-level=high
     - name: Lint JavaScript
