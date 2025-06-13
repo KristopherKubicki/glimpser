@@ -81,7 +81,7 @@ confirm='Confirm', cancel='Cancel') -%}
 </div>
 {%- endmacro %} {%- macro template_form(form_id, action, template=None,
 preview_src=None, preview_id=None, include_name=True, submit_label='Submit',
-object_tokens=None, clip_model=None, clip_gpu=False) -%}
+object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
 <div class="edit-template-container">
   {% if preview_src or preview_id %}
   <div class="edit-template-preview">
@@ -131,8 +131,9 @@ object_tokens=None, clip_model=None, clip_gpu=False) -%}
           value="{{ template.url if template else '' }}"
           required
           pattern="https?://.+"
-          placeholder="https://example.com/video"
+          placeholder="{{ url_for('test_pattern_mjpg', _external=True) }}"
           title="Enter the URL to monitor"
+          data-default-url="{{ default_url or '' }}"
         />
         <span id="url-status" class="url-status" title="URL test result"></span>
       </div>

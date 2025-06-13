@@ -128,10 +128,12 @@
     >ℹ️</span
   >' | safe) %}
   <div class="wizard-step" title="Form to add a new camera">
-    {{ template_form( 'add-template-form', '/templates',
-    preview_src='/test_pattern.mjpg?pattern=geometric',
+    {{ template_form( 'add-template-form', '/templates', template={'url':
+    url_for('test_pattern_mjpg', _external=True)},
+    preview_src=url_for('test_pattern_mjpg', pattern='geometric'),
     preview_id='url-preview', object_tokens=object_tokens,
-    clip_model=clip_model, clip_gpu=clip_gpu ) }}
+    clip_model=clip_model, clip_gpu=clip_gpu,
+    default_url=url_for('test_pattern_mjpg', _external=True) ) }}
   </div>
   {% endcall %}
 </div>

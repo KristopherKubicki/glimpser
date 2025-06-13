@@ -30,6 +30,7 @@ export function initUrlTester() {
     const defaultSrc = preview
       ? preview.dataset.placeholder || preview.src
       : "";
+    const defaultUrl = input.dataset.defaultUrl;
     const setStatus = (cls) => {
       status.textContent = "";
       status.className = "url-status" + (cls ? ` ${cls}` : "");
@@ -69,6 +70,13 @@ export function initUrlTester() {
     };
 
     toggleDisabled();
+    if (!input.value && defaultUrl) {
+      input.value = defaultUrl;
+      toggleDisabled();
+      setTimeout(() => {
+        check();
+      }, 1000);
+    }
     input.addEventListener("input", () => {
       toggleDisabled();
       setStatus(input.value.trim() ? "pending" : "");
