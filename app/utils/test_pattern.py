@@ -8,7 +8,10 @@ import os
 import time
 from typing import Optional
 
+from dateutil import tz
 from PIL import Image, ImageDraw, ImageFont
+
+from app import config
 
 # Mapping of ASCII digits to their Braille equivalents. Used to display the
 # timestamp in Braille on the generated test pattern.
@@ -263,6 +266,17 @@ def generate_test_pattern(
     img = Image.alpha_composite(img, cloud_layer)
     draw = ImageDraw.Draw(img)
 
+    # label the sunrise with the running version
+    font_version = load_font(18)
+    version_text = f"glimpser v{config.VERSION}"
+    text_w = draw.textlength(version_text, font=font_version)
+    draw.text(
+        (sun_cx - text_w // 2, horizon_y + 10),
+        version_text,
+        fill=(160, 160, 160),
+        font=font_version,
+    )
+
     # miniature SMPTE bars and wide-gamut Rec.2020 bars
     mini_709 = [
         ((191, 191, 191), "W"),
@@ -378,6 +392,8 @@ def generate_test_pattern(
     now = datetime.datetime.now()
     timestamp = now.strftime("%H:%M:%S")
     date_text = now.strftime("%Y-%m-%d")
+    zone = tz.gettz(config.TZ) or tz.UTC
+    tz_text = now.astimezone(zone).tzname() or config.TZ
 
     if spinner:
         sw = _braille_text_width(spinner)
@@ -399,10 +415,18 @@ def generate_test_pattern(
         _format_binary_time(time_simple),
         _format_roman_time(time_simple),
         _to_braille(time_simple),
+        tz_text,
         beats_time,
     ]
 
-    fonts = [font_right, font_binary, font_right, font_braille, font_right]
+    fonts = [
+        font_right,
+        font_binary,
+        font_right,
+        font_braille,
+        font_right,
+        font_right,
+    ]
     segments = [t.replace("\u2812", ":").split(":") for t in formats]
 
     braille_idx = 3
@@ -436,16 +460,45 @@ def generate_test_pattern(
         font_right.size,
         font_braille.size,
         font_right.size,
+        font_right.size,
     ]
     spacing_y = 22
     extra_gap = 30
-    total_h = sum(line_heights) + spacing_y * (len(line_heights) - 1) + extra_gap
+    total_h = sum(line_heights) + spacing_y * (len(line_heights) - 1) + extra_gap * 2
     y_start = height // 2 - total_h // 2 + 20
 
     # lighten the stacked clocks so they distract less from the pattern
     clock_color = (160, 160, 160)
-    draw.text((30, y_start), date_text, fill=clock_color, font=font_right)
+    date_parts = date_text.split("-")
+    date_seg1 = draw.textlength("0000", font=font_right)
+    date_seg = draw.textlength("00", font=font_right)
+    x_date = 30
+    draw.text(
+        (x_date + date_seg1 - draw.textlength(date_parts[0], font=font_right), y_start),
+        date_parts[0],
+        fill=clock_color,
+        font=font_right,
+    )
+    x_date += date_seg1
+    draw.text((x_date, y_start), "-", fill=clock_color, font=font_right)
+    x_date += colon_gap
+    draw.text(
+        (x_date + date_seg - draw.textlength(date_parts[1], font=font_right), y_start),
+        date_parts[1],
+        fill=clock_color,
+        font=font_right,
+    )
+    x_date += date_seg
+    draw.text((x_date, y_start), "-", fill=clock_color, font=font_right)
+    x_date += colon_gap
+    draw.text(
+        (x_date + date_seg - draw.textlength(date_parts[2], font=font_right), y_start),
+        date_parts[2],
+        fill=clock_color,
+        font=font_right,
+    )
     current_y = y_start
+    timezone_idx = 4
     for idx, parts in enumerate(segments):
         x = x_start
         y = current_y
@@ -477,7 +530,7 @@ def generate_test_pattern(
                 fill=clock_color,
             )
             current_y += line_heights[idx] + spacing_y
-            if idx == 1:
+            if idx in {1, timezone_idx}:
                 current_y += extra_gap
         elif len(parts) == 1:
             draw.text(
@@ -487,7 +540,7 @@ def generate_test_pattern(
                 font=font,
             )
             current_y += line_heights[idx] + spacing_y
-            if idx == 1:
+            if idx in {1, timezone_idx}:
                 current_y += extra_gap
         else:
             draw.text(
@@ -515,10 +568,18 @@ def generate_test_pattern(
                 font=font,
             )
             current_y += line_heights[idx] + spacing_y
-            if idx == 1:
+            if idx in {1, timezone_idx}:
                 current_y += extra_gap
     if camera_name:
         draw.text((10, bar_h + 10), camera_name, fill="white", font=font_small)
+
+    # redraw the second hand above overlays
+    h, m, s = map(int, datetime.datetime.now().strftime("%H:%M:%S").split(":"))
+    angle = math.radians((s / 60) * 360 - 90)
+    hand_len = wedge_radius
+    end_x = center_x + hand_len * math.cos(angle)
+    end_y = center_y + hand_len * math.sin(angle)
+    draw.line((center_x, center_y, end_x, end_y), fill="white", width=2)
 
     if logo_path and os.path.exists(logo_path):
         with Image.open(logo_path).convert("RGBA") as logo:
