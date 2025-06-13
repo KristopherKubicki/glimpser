@@ -135,8 +135,8 @@ object_tokens=None, clip_model=None) -%}
       <span id="url-status" class="url-status" title="URL test result"></span>
     </div>
     <div class="form-row double-row">
-      <label for="frequency" class="sr-only" title="How often to check the URL"
-        >Frequency</label
+      <label for="frequency" title="How often to check the URL (minutes)"
+        >Freq. (m):</label
       >
       <input
         type="number"
@@ -161,33 +161,9 @@ object_tokens=None, clip_model=None) -%}
         <option value="360"></option>
         <option value="1440"></option>
       </datalist>
-      <label
-        for="timeout"
-        class="sr-only"
-        title="Maximum time to wait for a response"
-        >Timeout</label
-      >
-      <input
-        type="number"
-        id="timeout"
-        name="timeout"
-        value="{{ template.timeout if template else 10 }}"
-        min="3"
-        max="59"
-        step="1"
-        list="timeout-options"
-        class="short-input"
-        required
-        placeholder="Seconds"
-        title="Maximum wait time (seconds)"
-      />
-      <datalist id="timeout-options">
-        <option value="5"></option>
-        <option value="10"></option>
-        <option value="15"></option>
-        <option value="30"></option>
-        <option value="45"></option>
-      </datalist>
+      <label for="groups" title="Select an existing group">Group:</label>
+      <!-- prettier-ignore -->
+      <select id="groups" name="groups" class="sm-select" title="Choose a group"></select>
     </div>
     <input
       type="hidden"
@@ -195,13 +171,34 @@ object_tokens=None, clip_model=None) -%}
       name="notes"
       value="{{ template.notes if template else '' }}"
     />
-    <div class="form-row">
-      <label for="groups" title="Select an existing group">Group:</label>
-      <!-- prettier-ignore -->
-      <select id="groups" name="groups" class="sm-select" title="Choose a group"></select>
-    </div>
     <details class="advanced-settings">
       <summary title="Show additional fields">Advanced Options</summary>
+      <div class="form-row">
+        <label for="timeout" title="Maximum time to wait for a response"
+          >Timeout:</label
+        >
+        <input
+          type="number"
+          id="timeout"
+          name="timeout"
+          value="{{ template.timeout if template else 10 }}"
+          min="3"
+          max="59"
+          step="1"
+          list="timeout-options"
+          class="short-input"
+          required
+          placeholder="Seconds"
+          title="Maximum wait time (seconds)"
+        />
+        <datalist id="timeout-options">
+          <option value="5"></option>
+          <option value="10"></option>
+          <option value="15"></option>
+          <option value="30"></option>
+          <option value="45"></option>
+        </datalist>
+      </div>
       <div class="form-row double-row">
         <label
           for="object_filter"
