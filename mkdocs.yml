@@ -66,6 +66,7 @@ nav:
       - Dashboard Border Legend: border_legend.md
       - Caption Overlay Toggle: caption_overlay_toggle.md
       - Caption or Prompt Toggle: caption_prompt_toggle.md
+      - Caption Prefix Issue: caption_prefix.md
       - Captions Chatbot: chatbot.md
       - Continuous Integration Checks: ci_checks.md
       - Jog-Shuttle Control: jog_shuttle.md

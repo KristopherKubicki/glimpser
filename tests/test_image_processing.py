@@ -79,7 +79,9 @@ class TestImageProcessing(unittest.TestCase):
         image_size = (100, 100)
 
         # Apply adjust_bbox_to_aspect_ratio function
-        adjusted_bbox = adjust_bbox_to_aspect_ratio(bbox, image_size, aspect_ratio=(16, 9))
+        adjusted_bbox = adjust_bbox_to_aspect_ratio(
+            bbox, image_size, aspect_ratio=(16, 9)
+        )
 
         # Check if the adjusted bounding box has the correct aspect ratio
         width = adjusted_bbox[2] - adjusted_bbox[0]
@@ -132,7 +134,9 @@ class TestChatGPTImageComparison(unittest.TestCase):
             mock_post.return_value = mock_response
 
             # Test the compare_images method
-            result, tokens = comparison.compare_images("Test prompt", [image1_path, image2_path])
+            result, tokens = comparison.compare_images(
+                "Test prompt", [image1_path, image2_path]
+            )
 
             # Assertions
             self.assertIsNotNone(result)
@@ -142,23 +146,35 @@ class TestChatGPTImageComparison(unittest.TestCase):
             # Check if the API was called with correct parameters
             mock_post.assert_called_once()
             call_args = mock_post.call_args[1]
-            self.assertEqual(call_args["headers"]["Authorization"], f"Bearer {comparison.api_key}")
-            self.assertEqual(call_args["json"]["model"], "gpt-4.1-mini")  # Assuming this is the default model
+            self.assertEqual(
+                call_args["headers"]["Authorization"], f"Bearer {comparison.api_key}"
+            )
+            self.assertEqual(
+                call_args["json"]["model"], "gpt-4.1-mini"
+            )  # Assuming this is the default model
             self.assertIn("Test prompt", str(call_args["json"]["messages"]))
 
             # Test with low_res=True
-            comparison.compare_images("Test prompt", [image1_path, image2_path], low_res=True)
-            self.assertIn("'detail': 'low'", str(mock_post.call_args[1]["json"]["messages"]))
+            comparison.compare_images(
+                "Test prompt", [image1_path, image2_path], low_res=True
+            )
+            self.assertIn(
+                "'detail': 'low'", str(mock_post.call_args[1]["json"]["messages"])
+            )
 
             # Test error handling
             mock_post.side_effect = Exception("API Error")
-            result, tokens = comparison.compare_images("Test prompt", [image1_path, image2_path])
+            result, tokens = comparison.compare_images(
+                "Test prompt", [image1_path, image2_path]
+            )
             self.assertIsNone(result)
             self.assertEqual(tokens, 0)
 
             # Test rate limiting
             comparison.last_429_error_time = datetime.datetime.now()
-            result, tokens = comparison.compare_images("Test prompt", [image1_path, image2_path])
+            result, tokens = comparison.compare_images(
+                "Test prompt", [image1_path, image2_path]
+            )
             self.assertIsNone(result)
             self.assertEqual(tokens, 0)
 
@@ -175,7 +191,9 @@ class TestChatGPTCompareIntegration(unittest.TestCase):
     @patch("app.utils.llm_cache.store")
     @patch("app.utils.llm_cache.get")
     @patch.object(ChatGPTImageComparison, "compare_images")
-    def test_chatgpt_compare_uses_cache(self, mock_compare, mock_get, mock_store, mock_record, mock_exists):
+    def test_chatgpt_compare_uses_cache(
+        self, mock_compare, mock_get, mock_store, mock_record, mock_exists
+    ):
         mock_get.return_value = {"response": "cached", "tokens": 3}
         result = chatgpt_compare("Prompt", ["img.png"], template_name="cam1")
         self.assertEqual(result, "cached")
@@ -189,13 +207,30 @@ class TestChatGPTCompareIntegration(unittest.TestCase):
     @patch("app.utils.llm_cache.store")
     @patch("app.utils.llm_cache.get", return_value=None)
     @patch.object(ChatGPTImageComparison, "compare_images")
-    def test_chatgpt_compare_calls_api(self, mock_compare, mock_get, mock_store, mock_record, mock_exists):
+    def test_chatgpt_compare_calls_api(
+        self, mock_compare, mock_get, mock_store, mock_record, mock_exists
+    ):
         mock_compare.return_value = ("result", 5)
         result = chatgpt_compare("Prompt", ["img.png"], template_name="cam1")
         self.assertEqual(result, "result")
         mock_compare.assert_called_once()
         mock_store.assert_called_once_with("Prompt", "result", 5, ["img.png"])
         mock_record.assert_called_once_with("cam1", 5)
+
+
+class TestCleanCaption(unittest.TestCase):
+    def test_clean_caption_removes_headers_and_formatting(self):
+        from app.utils.image_processing import clean_caption
+
+        self.assertEqual(
+            clean_caption("Caption: **A bird**"),
+            "A bird",
+        )
+
+    def test_clean_caption_handles_title(self):
+        from app.utils.image_processing import clean_caption
+
+        self.assertEqual(clean_caption("Title: **Scene**"), "Scene")
 
 
 if __name__ == "__main__":
