@@ -38,6 +38,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8 pytest coverage safety black pre-commit mypy
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
         pre-commit install-hooks
     - name: Run pre-commit
       run: pre-commit run --all-files
