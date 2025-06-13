@@ -54,8 +54,8 @@ Install the required Python packages:
 pip install -r requirements.txt
 ```
 
-The `requirements.txt` file now includes the CPU builds of **JAX 0.6.1** and
-**Flax 0.8.5**, along with updated `numpy` (1.25.0).
+The `requirements.txt` file lists the dependencies, including `numpy` pinned
+below version 2 (>=1.26,<2.0).
 
 ### 6. (Optional) Configure Environment Variables
 
