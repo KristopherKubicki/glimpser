@@ -97,7 +97,9 @@ class TestTestPattern(unittest.TestCase):
         ):
             img = generate_test_pattern(width=400, height=400)
 
-        y_start = 400 // 2 - 374 // 2 + 20
+        line_heights = [26, 26, 30, 22, 26]
+        total_h = sum(line_heights) + 22 * (len(line_heights) - 1) + 30 * 2
+        y_start = 400 // 2 - total_h // 2 + 20
         region = [
             img.getpixel((x, y))
             for x in range(30, 120)
