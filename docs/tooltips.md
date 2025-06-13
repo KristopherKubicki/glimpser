@@ -53,6 +53,8 @@ Interactive forms now include additional tooltips:
 - **Cost dashboards** – date selectors, the Load buttons and range slider include titles.
 - **LLM_PROMPT settings** – tooltips explain that the caption and summary prompts
   support `$datetime` and can span multiple lines.
+- **Settings table** – every configuration row now includes a short tooltip summarizing
+  the variable's purpose.
 
 ## Dynamic Tooltips
 
