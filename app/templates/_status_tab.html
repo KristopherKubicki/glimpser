@@ -103,7 +103,7 @@
           data-type="string"
           title="Capture activity"
         >
-          Capturing
+          Cap.
         </th>
         <th
           class="sortable status-col"
@@ -117,14 +117,14 @@
           data-type="date"
           title="Most recent caption time"
         >
-          Last Caption
+          Caption
         </th>
         <th
           class="sortable time-col"
           data-type="date"
           title="Most recent screenshot time"
         >
-          Last Image
+          Image
         </th>
         <th class="sortable" data-type="number" title="Total screenshots">
           Shots
@@ -137,7 +137,7 @@
           LLM
         </th>
         <th class="sortable" data-type="number" title="Estimated LLM cost">
-          LLM Cost
+          LLM $
         </th>
       </tr>
     </thead>
@@ -179,7 +179,7 @@
         </td>
         <td
           class="capture-col"
-          data-label="Capturing"
+          data-label="Cap."
           data-value="{{ '1' if feed.capturing else '0' }}"
         >
           <span
@@ -210,7 +210,7 @@
           ></span>
         </td>
         <td
-          data-label="Last Caption"
+          data-label="Caption"
           class="time-col"
           data-value="{{ feed.last_caption_time or '' }}"
         >
@@ -225,7 +225,7 @@
           {% else %} N/A {% endif %}
         </td>
         <td
-          data-label="Last Image"
+          data-label="Image"
           class="time-col"
           data-value="{{ feed.last_screenshot_time or '' }}"
         >
@@ -259,7 +259,7 @@
         >
           {{ feed.llm_response_count }}
         </td>
-        <td data-label="LLM Cost" data-value="{{ feed.llm_cost_estimate }}">
+        <td data-label="LLM $" data-value="{{ feed.llm_cost_estimate }}">
           {{ feed.llm_cost_estimate }}
         </td>
       </tr>

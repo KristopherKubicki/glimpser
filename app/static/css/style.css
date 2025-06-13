@@ -2118,6 +2118,11 @@ details > summary {
   border: 1px solid var(--table-border-color);
   white-space: nowrap;
 }
+.feed-status td:first-child {
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .feed-status thead th {
   position: sticky;
   top: 0;
@@ -2188,13 +2193,14 @@ details > summary {
   text-align: center;
 }
 
+
 .capture-col {
-  width: 3rem;
+  width: 2.5rem;
   text-align: center;
 }
 
 .time-col {
-  width: 5rem;
+  width: 4rem;
   text-align: center;
 }
 
