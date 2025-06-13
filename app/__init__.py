@@ -129,8 +129,10 @@ def create_app(
         scheduler.init_app(app)
 
     # Set up and start the scheduler
-    if schedule is True and (
-        os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug
+    if (
+        schedule is True
+        and (os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug)
+        and not scheduler.running
     ):
         scheduler.start()
         logging.info("Initializing scheduler...")
