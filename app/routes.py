@@ -3675,7 +3675,9 @@ def init_routes(app: Flask) -> None:
         feeds = scheduling.get_feed_status()
         last_summary = scheduling.get_last_summary_time()
         danger_enabled = config.get_setting("DANGER_MODE", "True") == "True"
-        cost_summary, total_tokens, total_cost = template_manager.get_llm_cost_summary()
+        cost_summary, total_tokens, total_cost, total_calls = (
+            template_manager.get_llm_cost_summary()
+        )
         cost_summary = template_manager.group_cost_summary(cost_summary, top=10)
 
         chrome_path = get_chrome_path()
@@ -3714,6 +3716,7 @@ def init_routes(app: Flask) -> None:
             cost_summary=cost_summary,
             total_tokens=total_tokens,
             total_cost=total_cost,
+            total_calls=total_calls,
             danger_info=danger_info,
             shortcut_options=shortcut_opts,
             choices=SETTINGS_CHOICES,
@@ -4070,13 +4073,14 @@ def init_routes(app: Flask) -> None:
     def api_llm_cost_summary():
         start = request.args.get("start")
         end = request.args.get("end")
-        summary, _, _ = template_manager.get_llm_cost_summary(
+        summary, _, _, _ = template_manager.get_llm_cost_summary(
             start_date=start, end_date=end
         )
         costs = {
             entry["name"]: {
                 "tokens": entry["tokens"],
                 "cost": entry["cost"],
+                "calls": entry.get("calls", 0),
             }
             for entry in summary
         }

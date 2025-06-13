@@ -1,8 +1,8 @@
 import { jest } from "@jest/globals";
 
 document.body.innerHTML = `
-  <input id="cost-range" type="range" value="7">
-  <span id="cost-range-label"></span>
+  <input id="cost-start" type="date">
+  <input id="cost-end" type="date">
   <input id="cost-top" type="range" value="10">
   <span id="cost-top-label"></span>
   <table id="cost-table"><tbody></tbody></table>
@@ -21,7 +21,7 @@ beforeAll(async () => {
 
 global.fetch = jest.fn(() =>
   Promise.resolve({
-    json: () => Promise.resolve({ cam1: { cost: "$1.00", tokens: 1 } }),
+    json: () => Promise.resolve({ cam1: { cost: "$1.00", tokens: 1, calls: 1 } }),
   }),
 );
 
@@ -29,15 +29,15 @@ global.Chart = jest.fn(function () {
   this.update = jest.fn();
 });
 
-test("slider triggers fetch", async () => {
+test("date picker triggers fetch", async () => {
   initCosts();
   document.dispatchEvent(new Event("DOMContentLoaded"));
   await Promise.resolve();
   expect(fetch).toHaveBeenCalledTimes(1);
-  const slider = document.getElementById("cost-range");
+  const start = document.getElementById("cost-start");
   fetch.mockClear();
-  slider.value = "10";
-  slider.dispatchEvent(new Event("change"));
+  start.value = "2023-01-01";
+  start.dispatchEvent(new Event("change"));
   await Promise.resolve();
   expect(fetch).toHaveBeenCalledTimes(1);
 });
@@ -59,6 +59,7 @@ test("groups bottom rows", () => {
     name: `cam${i}`,
     tokens: 1,
     cost: i,
+    calls: 1,
   }));
   const grouped = groupSmallValues(rows, 15);
   expect(grouped.length).toBe(6); // 5 top + Other
@@ -72,6 +73,7 @@ test("limits to top 10 rows", () => {
     name: `cam${i}`,
     tokens: 1,
     cost: i + 1,
+    calls: 1,
   }));
   const grouped = groupSmallValues(rows, rows.length - 9);
   expect(grouped.length).toBe(10);
