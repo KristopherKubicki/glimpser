@@ -186,17 +186,32 @@ main {
 .scrub-tooltip.visible {
   opacity: 1;
 }
+.url-input-container {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.url-input {
+  width: 90%;
+}
+
 .url-status {
   display: inline-block;
-  width: 1em;
-  text-align: center;
+  width: 12px;
+  height: 12px;
   margin-left: 4px;
+  border-radius: 50%;
+  background-color: gray;
+}
+.url-status.pending {
+  background-color: #f0ad4e;
 }
 .url-status.ok {
-  color: #5cb85c;
+  background-color: #5cb85c;
 }
 .url-status.bad {
-  color: #d9534f;
+  background-color: #d9534f;
 }
 .link {
   color: rgb(192, 192, 192);
@@ -1916,7 +1931,6 @@ details > summary {
   height: 100%;
 }
 
-
 .captions-table td:first-child {
   white-space: nowrap;
   width: 12rem;
@@ -2203,7 +2217,6 @@ details > summary {
   width: 4rem;
   text-align: center;
 }
-
 
 .capture-col {
   width: 2.5rem;

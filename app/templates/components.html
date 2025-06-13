@@ -122,17 +122,20 @@ object_tokens=None, clip_model=None, clip_gpu=False) -%}
     {% endif %}
     <div class="form-row">
       <label for="url" title="URL to monitor">URL:</label>
-      <input
-        type="url"
-        id="url"
-        name="url"
-        value="{{ template.url if template else '' }}"
-        required
-        pattern="https?://.+"
-        placeholder="https://example.com/video"
-        title="Enter the URL to monitor"
-      />
-      <span id="url-status" class="url-status" title="URL test result"></span>
+      <div class="url-input-container">
+        <input
+          type="url"
+          id="url"
+          name="url"
+          class="url-input"
+          value="{{ template.url if template else '' }}"
+          required
+          pattern="https?://.+"
+          placeholder="https://example.com/video"
+          title="Enter the URL to monitor"
+        />
+        <span id="url-status" class="url-status" title="URL test result"></span>
+      </div>
     </div>
     <div class="form-row double-row">
       <label for="frequency" title="How often to check the URL (minutes)"
