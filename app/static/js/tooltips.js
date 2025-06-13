@@ -12,6 +12,22 @@ export function initTooltips() {
       const x = e.pageX ?? e.clientX;
       const y = e.pageY ?? e.clientY;
 
+      const container = e.target.closest(".video-container");
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        let left = rect.right + offset;
+        if (left + tooltipWidth > window.innerWidth) {
+          left = rect.left - tooltipWidth - offset;
+        }
+        let top = rect.top;
+        if (top + tooltipHeight > window.innerHeight) {
+          top = rect.bottom - tooltipHeight;
+        }
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+        return;
+      }
+
       let left = x + offset;
       if (left + tooltipWidth > window.innerWidth) {
         left = x - tooltipWidth - offset;
