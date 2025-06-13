@@ -246,7 +246,14 @@ def run_with_timeout(func, args=(), timeout=300):
             if existing and existing.is_alive():
                 logging.info("job already running")
                 return
-            process = multiprocessing.Process(target=_run_target, args=(func, args))
+            proc_title = getattr(func, "__name__", "job")
+            if args and isinstance(args[0], str):
+                proc_title += f":{args[0]}"
+            process = multiprocessing.Process(
+                target=_run_target,
+                args=(func, args),
+                name=f"glimpser {proc_title}",
+            )
             active_jobs[key] = process
         process.start()
     except OSError as exc:
