@@ -24,7 +24,13 @@
   z-index: 5;
   transition:
     background 0.2s,
-    transform 0.2s;
+    transform 0.2s,
+    opacity 0.3s;
+}
+
+.clip-nav.fade-out {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .clip-nav.clicked {
