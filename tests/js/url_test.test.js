@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
 
-document.body.innerHTML = `<input id="url"><span id="url-status"></span><img id="url-preview">`;
+document.body.innerHTML = `<form><input id="url"><span id="url-status"></span><img id="url-preview"><input type="submit"></form>`;
 
 let initUrlTester;
 
@@ -33,5 +33,22 @@ describe("url_test", () => {
     expect(status.classList.contains("ok")).toBe(true);
     const preview = document.getElementById("url-preview");
     expect(preview.src).toContain("http://example.com");
+  });
+
+  test("paste triggers check and enables submit", async () => {
+    const res = Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    });
+    global.fetch = jest.fn(() => res);
+    initUrlTester();
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+    const input = document.getElementById("url");
+    const submit = document.querySelector("input[type='submit']");
+    input.value = "http://example.com";
+    input.dispatchEvent(new Event("paste"));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fetch).toHaveBeenCalled();
+    expect(submit.disabled).toBe(false);
   });
 });
