@@ -628,7 +628,7 @@ class TestRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.get_json(),
-            {"caption": "hello", "timestamp": "1970-01-01 00:00:00"},
+            {"caption": "hello", "timestamp": "1970-01-01T00:00:00Z"},
         )
 
 

@@ -543,6 +543,11 @@ def is_mostly_blank(
     """
     arr = np.asarray(image.convert("RGB"), dtype=np.int16)
 
+    # Tiny images often have little variance and can trigger false positives.
+    # Skip blank detection entirely for images smaller than 50x50 pixels.
+    if arr.shape[0] < 50 or arr.shape[1] < 50:
+        return False
+
     # ---------- 1.  “Mostly blank?”  ----------
     blank = np.array(blank_color, dtype=np.int16)
     blank_px = np.all(np.abs(arr - blank) <= 30, axis=-1).mean()

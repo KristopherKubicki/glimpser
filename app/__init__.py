@@ -127,7 +127,8 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
             "default": {"type": "processpool", "max_workers": MAX_WORKERS}
         }
         logging.info("Starting with %s workers" % str(MAX_WORKERS))
-        scheduler.init_app(app)
+        if not scheduler.running:
+            scheduler.init_app(app)
 
     # Set up and start the scheduler
     if schedule is True and (

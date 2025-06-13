@@ -1077,14 +1077,16 @@ def init_routes(app: Flask) -> None:
             rec = session_db.query(Summary).order_by(Summary.timestamp.desc()).first()
             if rec:
                 try:
-                    data = json.loads(rec.content)
+                    data = json.loads(getattr(rec, "content", ""))
                     if data:
                         caption = next(iter(data.values()))
                 except Exception:
-                    caption = rec.content
-                timestamp = datetime.utcfromtimestamp(rec.timestamp).strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
+                    caption = getattr(rec, "content", "")
+                ts = getattr(rec, "timestamp", None)
+                if ts is not None:
+                    timestamp = datetime.utcfromtimestamp(ts).strftime(
+                        "%Y-%m-%dT%H:%M:%SZ"
+                    )
         except Exception as e:  # pragma: no cover - unexpected DB errors
             logging.error("error retrieving captions status: %s", e)
         finally:
