@@ -355,8 +355,10 @@ export function timeAgo(dateString) {
     dateString instanceof Date
       ? dateString.toISOString()
       : dateString.includes("T")
-        ? dateString
-        : dateString.replace(" ", "T");
+        ? /Z$|[+-]\d{2}:?\d{2}$/.test(dateString)
+          ? dateString
+          : `${dateString}Z`
+        : `${dateString.replace(" ", "T")}Z`;
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) return "just now";
   const diffInSeconds = Math.floor((now - parsed) / 1000);
@@ -383,7 +385,11 @@ export function formatExactTime(dateString) {
     dateString instanceof Date
       ? dateString
       : new Date(
-          dateString.includes("T") ? dateString : dateString.replace(" ", "T"),
+          dateString.includes("T")
+            ? /Z$|[+-]\d{2}:?\d{2}$/.test(dateString)
+              ? dateString
+              : `${dateString}Z`
+            : `${dateString.replace(" ", "T")}Z`,
         );
   return date.toString();
 }

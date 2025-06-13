@@ -99,4 +99,12 @@ describe("script.js", () => {
     expect(timeAgo(null)).toBe("just now");
     expect(timeAgo(undefined)).toBe("just now");
   });
+
+  test("timeAgo treats naive timestamps as UTC", () => {
+    process.env.TZ = "America/Chicago";
+    jest.useFakeTimers().setSystemTime(new Date("2024-01-01T01:00:00Z"));
+    expect(timeAgo("2024-01-01 00:00:00")).toBe("1h ago");
+    jest.useRealTimers();
+    delete process.env.TZ;
+  });
 });
