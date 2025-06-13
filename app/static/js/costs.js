@@ -57,7 +57,10 @@ export function initCosts() {
         chart = new Chart(ctx, {
           type: "pie",
           data: chartData,
-          options: { plugins: { legend: { display: false } } },
+          options: {
+            responsive: false,
+            plugins: { legend: { display: false } },
+          },
         });
       }
     };
@@ -149,7 +152,10 @@ export function initCostSummary(startTime) {
         chart = new Chart(ctx, {
           type: "pie",
           data: chartData,
-          options: { plugins: { legend: { display: false } } },
+          options: {
+            responsive: false,
+            plugins: { legend: { display: false } },
+          },
         });
       }
     };
