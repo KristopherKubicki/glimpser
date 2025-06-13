@@ -2,6 +2,8 @@
 
 This guide explains how to check Glimpser's health metrics and view live logs.
 
+![System Monitoring Flow](images/system_monitoring_flow.svg)
+
 ## System Status Endpoint
 
 **GET /status**

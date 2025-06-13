@@ -7,3 +7,7 @@ branch. If all CI checks for that commit pass, the release is installed via
 `pip` and the process restarts automatically. Use `None` (the default) to
 disable automatic updates.
 
+The timeline below summarizes this process:
+
+![Automatic Update Process](images/auto_update_process.svg)
+
