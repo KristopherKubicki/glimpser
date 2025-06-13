@@ -88,7 +88,7 @@ class TestClipModelSetting(unittest.TestCase):
                 self.assertEqual(DummySession.calls, ["custom-model"])
                 self.assertEqual(DummyProcessor.calls, ["custom-model"])
 
-    def test_custom_pytorch_clip_model_used(self):
+    def test_skips_when_onnx_missing(self):
         with tempfile.TemporaryDirectory() as tmp:
             cam_dir = os.path.join(tmp, "cam1")
             os.makedirs(cam_dir)
@@ -108,51 +108,13 @@ class TestClipModelSetting(unittest.TestCase):
                 "livecaption": "false",
             }
 
-            class DummyModel:
-                calls = []
-
-                @classmethod
-                def from_pretrained(cls, name):
-                    cls.calls.append(name)
-                    return cls()
-
-                def __call__(self, **inputs):
-                    class Out:
-                        def __init__(self):
-                            self.logits_per_image = DummyTensor()
-
-                    return Out()
-
-            class DummyTensor:
-                def softmax(self, dim):
-                    class Prob:
-                        def detach(self):
-                            class C:
-                                def cpu(self):
-                                    class N:
-                                        def numpy(self):
-                                            return np.array([[1.0]])
-
-                                    return N()
-
-                            return C()
-
-                    return Prob()
-
             class DummyProcessor:
-                calls = []
+                called = False
 
                 @classmethod
                 def from_pretrained(cls, name):
-                    cls.calls.append(name)
+                    cls.called = True
                     return cls()
-
-                def __call__(self, text, images, return_tensors=None, padding=None):
-                    return {
-                        "input_ids": np.array([[0]]),
-                        "attention_mask": np.array([[1]]),
-                        "pixel_values": np.zeros((1, 3, 32, 32)),
-                    }
 
             with (
                 patch("app.utils.scheduling.SCREENSHOT_DIRECTORY", tmp),
@@ -170,17 +132,12 @@ class TestClipModelSetting(unittest.TestCase):
                 patch("os.rename"),
                 patch("os.unlink"),
                 patch("app.utils.scheduling.ort", None),
-                patch("app.utils.scheduling.CLIPModel", DummyModel) as mock_model_class,
-                patch(
-                    "app.utils.scheduling.CLIPProcessor", DummyProcessor
-                ) as mock_processor_class,
+                patch("app.utils.scheduling.CLIPProcessor", DummyProcessor),
             ):
                 scheduling.clip_session = None
-                scheduling.clip_model = None
                 scheduling.clip_processor = None
                 scheduling.update_camera("cam1", template)
-                self.assertEqual(DummyModel.calls, ["custom-model"])
-                self.assertEqual(DummyProcessor.calls, ["custom-model"])
+                self.assertFalse(DummyProcessor.called)
 
 
 if __name__ == "__main__":
