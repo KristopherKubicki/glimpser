@@ -126,7 +126,8 @@ def create_app(
         }
         app.config["SCHEDULER_API_ENABLED"] = SCHEDULER_API_ENABLED
         logging.info("Starting with %s workers" % str(MAX_WORKERS))
-        scheduler.init_app(app)
+        if not scheduler.running:
+            scheduler.init_app(app)
 
     # Set up and start the scheduler
     if (
