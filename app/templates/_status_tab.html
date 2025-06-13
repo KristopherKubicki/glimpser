@@ -1,5 +1,6 @@
 {% call card('System Metrics') %}
-<ul class="metrics-list">
+<div class="metrics-container">
+  <ul class="metrics-list">
   <li title="Start or stop the scheduler">
     <span class="metric-label">Scheduler:</span>
     <button
@@ -73,14 +74,6 @@
   </li>
   <li title="Top threads by CPU usage">
     <span class="metric-label">Top Threads:</span>
-    <ul id="thread-cpu-list" class="thread-list">
-      {% for t in metrics.top_threads %}
-      <li>
-        <span class="thread-name">{{ t.name }}</span>
-        <span class="thread-cpu">{{ t.cpu }}%</span>
-      </li>
-      {% endfor %}
-    </ul>
   </li>
   <li title="System uptime">
     <span class="metric-label">Uptime:</span>
@@ -98,7 +91,24 @@
       ></span>
     </a>
   </li>
-</ul>
+  </ul>
+  <table id="thread-table" class="thread-table" title="CPU usage by thread">
+    <thead>
+      <tr>
+        <th>Thread</th>
+        <th>CPU %</th>
+      </tr>
+    </thead>
+    <tbody id="thread-table-body">
+      {% for t in metrics.top_threads %}
+      <tr>
+        <td class="thread-name">{{ t.name }}</td>
+        <td class="thread-cpu">{{ t.cpu }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endcall %} {% call card('Feed Status') %}
 <div class="table-container">
   <table id="feed-status" class="feed-status">
