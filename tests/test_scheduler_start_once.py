@@ -12,6 +12,8 @@ from app.utils.scheduling import scheduler
 
 
 def test_scheduler_starts_once():
+    scheduler.shutdown(wait=False)
+    scheduler.set_scheduler(BackgroundScheduler())
     calls = []
 
     original_start = scheduler.start
