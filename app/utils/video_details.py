@@ -121,13 +121,11 @@ def get_latest_date(directory, ext="png"):
     try:
         # Construct the full path to the latest file
         latest_file_path = os.path.join(directory, latest_file)
-        # Get the creation time of the latest file
+        # Get the modification time of the latest file
         latest_file_mtime = os.path.getmtime(latest_file_path)
     except Exception as e:
         logging.warning("file error %s", e)
         return None
 
-    # Convert the timestamp to UTC datetime string
-    # return datetime.utcfromtimestamp(latest_file_mtime).strftime("%Y-%m-%d %H:%M:%S")
-    #  I think there is a risk of double timestamping here, so I removed the UTC conversion
-    return datetime.fromtimestamp(latest_file_mtime).strftime("%Y-%m-%d %H:%M:%S")
+    # Always return timestamps in UTC for consistency across the codebase
+    return datetime.utcfromtimestamp(latest_file_mtime).strftime("%Y-%m-%d %H:%M:%S")
