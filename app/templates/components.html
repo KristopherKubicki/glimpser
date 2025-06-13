@@ -108,7 +108,7 @@ object_tokens=None, clip_model=None, clip_gpu=False) -%}
   >
     {% if include_name %}
     <div class="form-row">
-      <label for="name" title="Name of the template">Template Name:</label>
+      <label for="name" title="Name of the template">Name:</label>
       <input
         type="text"
         id="name"
@@ -145,7 +145,7 @@ object_tokens=None, clip_model=None, clip_gpu=False) -%}
         type="number"
         id="frequency"
         name="frequency"
-        value="{{ template.frequency if template else 30 }}"
+        value="{{ template.frequency if template else 5 }}"
         min="0"
         max="43200"
         step="1"
@@ -164,9 +164,16 @@ object_tokens=None, clip_model=None, clip_gpu=False) -%}
         <option value="360"></option>
         <option value="1440"></option>
       </datalist>
-      <label for="groups" title="Select an existing group">Group:</label>
+      <label for="groups" title="Select or create a group">Group:</label>
       <!-- prettier-ignore -->
-      <select id="groups" name="groups" class="sm-select" title="Choose a group"></select>
+      <input
+        id="groups"
+        name="groups"
+        list="group-options"
+        class="sm-select"
+        title="Choose or enter a group"
+      />
+      <datalist id="group-options"></datalist>
     </div>
     <input
       type="hidden"

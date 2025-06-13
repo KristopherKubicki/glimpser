@@ -119,9 +119,10 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn('min="0"', components)
         self.assertIn('datalist id="object-filter-options"', components)
 
-    def test_groups_field_is_select(self):
+    def test_groups_field_has_datalist(self):
         components = Path("app/templates/components.html").read_text(encoding="utf-8")
-        self.assertIn('<select id="groups"', components)
+        self.assertIn('id="groups"', components)
+        self.assertIn('datalist id="group-options"', components)
 
     def test_object_filter_gpu_icon_present(self):
         components = Path("app/templates/components.html").read_text(encoding="utf-8")
