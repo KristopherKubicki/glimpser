@@ -105,7 +105,6 @@ class TestTestPattern(unittest.TestCase):
         ]
         self.assertTrue(any(pixel != (0, 0, 0) for pixel in region))
 
-
     def test_qr_code_overlay(self):
         stub = Image.new("RGBA", (12, 12), (255, 255, 255, 255))
         with (
