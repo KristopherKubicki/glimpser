@@ -9,9 +9,11 @@ export function initUrlTester() {
 
     const form = input.closest("form");
     const controlled = [];
+    let submit;
     if (form) {
       form.querySelectorAll("input, select, textarea").forEach((el) => {
         if (el === input || el.id === "name") return;
+        if (!submit && el.type === "submit") submit = el;
         controlled.push([el, el.disabled]);
       });
     }
@@ -21,6 +23,7 @@ export function initUrlTester() {
       controlled.forEach(([el, orig]) => {
         el.disabled = disable || orig;
       });
+      if (submit) submit.disabled = disable;
     };
 
     let controller;
@@ -36,6 +39,7 @@ export function initUrlTester() {
       const url = input.value.trim();
       setStatus("");
       if (preview) preview.src = url || defaultSrc;
+      if (submit) submit.disabled = true;
       if (!url) return;
       controller?.abort();
       controller = new AbortController();
@@ -50,13 +54,16 @@ export function initUrlTester() {
         const data = await res.json();
         if (res.ok && data.ok) {
           setStatus("ok");
+          if (submit) submit.disabled = false;
         } else {
           setStatus("bad");
+          if (submit) submit.disabled = true;
         }
         sendTelemetry("url_test", { url, ok: data.ok });
       } catch {
         if (controller.signal.aborted) return;
         setStatus("bad");
+        if (submit) submit.disabled = true;
         sendTelemetry("url_test", { url, ok: false });
       }
     };
@@ -65,6 +72,12 @@ export function initUrlTester() {
     input.addEventListener("input", () => {
       toggleDisabled();
       setStatus(input.value.trim() ? "pending" : "");
+      if (submit) submit.disabled = true;
+    });
+    input.addEventListener("paste", () => {
+      setTimeout(() => {
+        check();
+      }, 0);
     });
     input.addEventListener("blur", check);
     input.addEventListener("change", () => {
