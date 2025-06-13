@@ -5,6 +5,10 @@ files are rotated when they grow too large or when their creation date exceeds
 `MAX_COMPRESSED_VIDEO_AGE` days. FFmpeg stdout and stderr are logged to aid
 troubleshooting.
 
+The pipeline below summarizes this process:
+
+![Video Archiver Pipeline](images/video_archiver_pipeline.svg)
+
 Concatenation now uses FFmpeg's **concat demuxer** with `-c copy` so that
 existing segments are joined without re-encoding. This keeps the CPU overhead
 low and preserves the original image quality.

@@ -4,6 +4,8 @@ Glimpser can delegate actions to an external **Model Control Plane (MCP)**. The
 MCP server exposes a list of tools that can be invoked from the web interface or
 through the `/mcp/tool/<name>` endpoint.
 
+![MCP Integration Flow](images/mcp_integration_flow.svg)
+
 ## Configuration
 Set `MCP_SERVER_COMMAND` or `MCP_SERVER_URL` in `app/config.py` to point to the
 MCP server. When neither is configured, Glimpser falls back to a lightweight

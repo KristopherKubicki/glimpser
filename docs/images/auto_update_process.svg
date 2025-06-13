@@ -1,0 +1,22 @@
+<svg width="220" height="290" viewBox="0 0 220 290" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="stage" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f9f9f9" />
+      <stop offset="100%" stop-color="#dcdcdc" />
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333" />
+    </marker>
+  </defs>
+  <rect x="50" y="10" width="120" height="30" fill="url(#stage)" stroke="#333" />
+  <text x="110" y="30" font-size="12" text-anchor="middle" fill="#333">Check Release</text>
+  <line x1="110" y1="40" x2="110" y2="70" stroke="#333" marker-end="url(#arrow)" />
+  <rect x="50" y="70" width="120" height="30" fill="url(#stage)" stroke="#333" />
+  <text x="110" y="90" font-size="12" text-anchor="middle" fill="#333">Download</text>
+  <line x1="110" y1="100" x2="110" y2="130" stroke="#333" marker-end="url(#arrow)" />
+  <rect x="50" y="130" width="120" height="30" fill="url(#stage)" stroke="#333" />
+  <text x="110" y="150" font-size="12" text-anchor="middle" fill="#333">Install</text>
+  <line x1="110" y1="160" x2="110" y2="190" stroke="#333" marker-end="url(#arrow)" />
+  <rect x="50" y="190" width="120" height="30" fill="url(#stage)" stroke="#333" />
+  <text x="110" y="210" font-size="12" text-anchor="middle" fill="#333">Restart</text>
+</svg>
