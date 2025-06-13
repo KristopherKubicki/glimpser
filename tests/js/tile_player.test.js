@@ -57,3 +57,20 @@ test("group change updates video src", () => {
   expect(src).toMatch(/\/last_teaser\?group=kitchen$/);
   expect(hd).toMatch(/\/stream.mp4\?group=kitchen$/);
 });
+
+test("fallback to nav camera dropdown", () => {
+  document.body.innerHTML = `
+    <video id="live-video"><source></source></video>
+    <select id="nav-camera-dropdown"></select>
+  `;
+
+  window.templateDetails = {
+    cam1: { groups: "foo" },
+    cam2: { groups: "foo" },
+  };
+
+  init();
+  changeGroup("foo");
+  const src = document.querySelector("#live-video source").src;
+  expect(src).toMatch(/\/last_teaser\?group=foo$/);
+});
