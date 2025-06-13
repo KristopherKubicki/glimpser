@@ -583,7 +583,7 @@ body.dark-mode {
 }
 
 .timestamp {
-  bottom: 0;
+  bottom: calc(var(--timestamp-font-size) + 4px);
   right: 0;
   font-size: var(--timestamp-font-size);
 }
@@ -1429,7 +1429,7 @@ video.hover-video[data-timestamp] {
 video.hover-video[data-timestamp]::after {
   content: attr(data-timestamp);
   position: absolute;
-  bottom: 0;
+  bottom: calc(var(--timestamp-font-size) + 4px);
   right: 0;
   padding: 5px;
   background-color: rgba(0, 0, 0, 0.5);
