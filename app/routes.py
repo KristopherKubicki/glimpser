@@ -2374,9 +2374,7 @@ def init_routes(app: Flask) -> None:
             while True:
                 spinner = spinner_frames[index % len(spinner_frames)]
                 img = test_pattern.generate_test_pattern(spinner=spinner)
-                buf = io.BytesIO()
-                img.save(buf, format="JPEG")
-                frame = buf.getvalue()
+                frame = test_pattern.encode_jpeg_with_metadata(img)
                 yield b"--" + boundary + b"\r\n"
                 yield b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
                 index += 1
