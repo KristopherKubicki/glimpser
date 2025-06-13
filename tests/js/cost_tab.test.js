@@ -3,6 +3,8 @@ import { jest } from "@jest/globals";
 document.body.innerHTML = `
   <input id="cost-range" type="range" value="7">
   <span id="cost-range-label"></span>
+  <input id="cost-top" type="range" value="10">
+  <span id="cost-top-label"></span>
   <table id="cost-table"><tbody></tbody></table>
   <canvas id="costChart"></canvas>
   <script id="cost-data" type="application/json">[]</script>
@@ -38,6 +40,18 @@ test("slider triggers fetch", async () => {
   slider.dispatchEvent(new Event("change"));
   await Promise.resolve();
   expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+test("top slider does not fetch", async () => {
+  initCosts();
+  document.dispatchEvent(new Event("DOMContentLoaded"));
+  await Promise.resolve();
+  fetch.mockClear();
+  const top = document.getElementById("cost-top");
+  top.value = "15";
+  top.dispatchEvent(new Event("input"));
+  await Promise.resolve();
+  expect(fetch).toHaveBeenCalledTimes(0);
 });
 
 test("groups bottom rows", () => {
