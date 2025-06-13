@@ -540,29 +540,26 @@ def generate_test_pattern(
     font_braille = load_font(30)
     time_simple = timestamp
     beats_time = _format_beats_time(time_simple)
-    hex_time = _format_hex_time(time_simple)
     formats = [
         time_simple,
-        _to_braille(time_simple),
         _format_roman_time(time_simple),
+        _to_braille(time_simple),
         _format_binary_time(time_simple),
-        tz_text,
         beats_time,
-        hex_time,
+        tz_text,
     ]
 
     fonts = [
         font_right,
+        font_right,
         font_braille,
-        font_right,
         font_binary,
-        font_right,
         font_right,
         font_right,
     ]
     segments = [t.replace("\u2812", ":").split(":") for t in formats]
 
-    braille_idx = 1
+    braille_idx = 2
 
     roman_w1, roman_w2, roman_w3, colon_w_std = _roman_segment_widths(font_right)
     colon_w = max(
@@ -584,18 +581,17 @@ def generate_test_pattern(
     seg3_max = seg2_max
 
     beats_w = draw.textlength(beats_time, font=font_right)
-    hex_w = draw.textlength(hex_time, font=font_right)
     total_w = max(
-        seg1_max + colon_gap + seg2_max + colon_gap + seg3_max, beats_w, hex_w
+        seg1_max + colon_gap + seg2_max + colon_gap + seg3_max,
+        beats_w,
     )
     x_start = width - total_w - 30
 
     line_heights = [
         font_right.size,
+        font_right.size,
         font_braille.size,
-        font_right.size,
         font_binary.size,
-        font_right.size,
         font_right.size,
         font_right.size,
     ]
@@ -634,9 +630,14 @@ def generate_test_pattern(
         fill=clock_color,
         font=font_right,
     )
+    x_date += date_seg
+    space_w = draw.textlength(" ", font=font_right)
+    draw.text((x_date, y_start), " ", fill=clock_color, font=font_right)
+    x_date += space_w
+    draw.text((x_date, y_start), beats_time, fill=clock_color, font=font_right)
     current_y = y_start
-    timezone_idx = 4
-    roman_idx = 2
+    timezone_idx = 5
+    roman_idx = 1
     for idx, parts in enumerate(segments):
         x = x_start
         y = current_y
