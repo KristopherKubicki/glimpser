@@ -1,0 +1,21 @@
+<svg width="200" height="240" viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333" />
+    </marker>
+  </defs>
+  <rect x="40" y="10" width="120" height="30" fill="#e0e0e0" stroke="#333" />
+  <text x="100" y="30" font-size="12" text-anchor="middle" fill="#333">Data Source</text>
+  <line x1="100" y1="40" x2="100" y2="60" stroke="#333" marker-end="url(#arrow)" />
+  <rect x="40" y="60" width="120" height="30" fill="#e0e0e0" stroke="#333" />
+  <text x="100" y="80" font-size="12" text-anchor="middle" fill="#333">Extraction</text>
+  <line x1="100" y1="90" x2="100" y2="110" stroke="#333" marker-end="url(#arrow)" />
+  <rect x="40" y="110" width="120" height="30" fill="#e0e0e0" stroke="#333" />
+  <text x="100" y="130" font-size="12" text-anchor="middle" fill="#333">Transformation</text>
+  <line x1="100" y1="140" x2="100" y2="160" stroke="#333" marker-end="url(#arrow)" />
+  <rect x="40" y="160" width="120" height="30" fill="#e0e0e0" stroke="#333" />
+  <text x="100" y="180" font-size="12" text-anchor="middle" fill="#333">Storage</text>
+  <line x1="100" y1="190" x2="100" y2="210" stroke="#333" marker-end="url(#arrow)" />
+  <rect x="40" y="210" width="120" height="30" fill="#e0e0e0" stroke="#333" />
+  <text x="100" y="230" font-size="12" text-anchor="middle" fill="#333">Analysis</text>
+</svg>

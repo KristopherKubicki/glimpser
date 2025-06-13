@@ -39,6 +39,8 @@ The general flow of the capture process is as follows:
 9. **Post-Processing**: Apply any necessary post-processing steps, such as adding timestamps or applying dark mode.
 10. **Result Handling**: Return the success status of the capture process.
 
+![Collection Waterfall](images/collection_waterfall.svg)
+
 ## Content-Specific Capture Methods
 
 Glimpser uses different methods to capture various types of content:
