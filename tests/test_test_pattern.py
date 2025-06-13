@@ -103,6 +103,7 @@ class TestTestPattern(unittest.TestCase):
             for x in range(30, 120)
             for y in range(y_start, y_start + 30)
         ]
+        self.assertIn((160, 160, 160), region)
         self.assertTrue(any(pixel != (0, 0, 0) for pixel in region))
 
     def test_qr_code_overlay(self):
