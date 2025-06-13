@@ -14,8 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Run OWASP Dependency Check
-        uses: dependency-check/Dependency-Check_Action@v2.0.3
+        uses: owasp/dependency-check-action@v1.0.0
         with:
           project: glimpser
           path: .
@@ -23,13 +24,16 @@ jobs:
           out: reports
           fail_on_cvss: 7
           fail_on_severity: high
+
       - name: Upload dependency-check report
         uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
           path: reports
+
       - name: Generate CycloneDX SBOM
         run: pipx run cyclonedx-bom -o sbom.xml
+
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
