@@ -1603,14 +1603,6 @@ input[type="submit"]:hover {
     padding: 0.5rem;
   }
 
-  .mobile-link {
-    display: block;
-    width: 100%;
-    text-align: center;
-  }
-
-  .mobile-card video,
-  .mobile-card img,
   .mobile-card .caption-overlay {
     display: none;
   }

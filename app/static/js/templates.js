@@ -14,19 +14,48 @@ function safePlay(el) {
   }
 }
 
-function createMobileCard(name, template, index) {
+function createTemplateCard(name, template, index, mobile) {
+  const lastScreenshotTime =
+    template.last_screenshot_time || NO_TIMESTAMP_PLACEHOLDER;
+  const humanizedTimestamp =
+    lastScreenshotTime === NO_TIMESTAMP_PLACEHOLDER
+      ? NO_TIMESTAMP_PLACEHOLDER
+      : timeAgo(lastScreenshotTime);
+  const lastScreenshotDate = new Date(lastScreenshotTime);
+  const ageMinutes = (Date.now() - lastScreenshotDate.getTime()) / 60000;
+  const videoContainerClass = "video-container";
+  const errorClass = template.capture_failed
+    ? "template-error"
+    : "recent-screenshot";
+  const borderColor = computeBorderColor(ageMinutes, template.capture_failed);
+
   const div = document.createElement("div");
-  div.classList.add("templateDiv", "mobile-card");
+  div.classList.add("templateDiv");
+  if (mobile) div.classList.add("mobile-card");
+  div.style.opacity = "0";
+  div.style.transform = "translateY(20px)";
+  div.style.transition = "opacity 0.5s ease, transform 0.5s ease";
+
   div.dataset.name = name;
   div.dataset.index = index.toString();
   div.dataset.last = template.last_screenshot_time || "";
   div.dataset.next = template.next_screenshot_time || "";
   div.dataset.error = template.capture_failed ? "1" : "0";
-  const link = document.createElement("a");
-  link.href = `/templates/${name}`;
-  link.textContent = name;
-  link.className = "mobile-link";
-  div.appendChild(link);
+
+  div.innerHTML = `
+    <a href='/templates/${name}'>
+      <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
+        <div class="camera-name">${name}</div>
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <video data-name="${name}" data-poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback data-hd-src="/clip/${name}" loading="lazy">
+          <source src="/last_video/${name}" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <div class="caption-overlay">${template.last_caption || ""}</div>
+      </div>
+    </a>
+    <a href='${template.url}' target='_blank' class='open-url-link' title='Open monitored page' aria-label='Open monitored page'>↗</a>
+  `;
   return div;
 }
 
@@ -408,6 +437,58 @@ export function computeBorderColor(ageMinutes, isError) {
   return `rgba(${base[0]}, ${base[1]}, ${base[2]}, ${alpha})`;
 }
 
+function attachVideoHover(video, name) {
+  const scrub = (e) => {
+    const rect = video.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    const clamped = Math.max(0, Math.min(1, ratio));
+    if (!Number.isNaN(video.duration)) {
+      video.currentTime = video.duration * clamped;
+    }
+  };
+
+  let resetTimeout;
+  let dwellTimeout;
+
+  video.addEventListener("mouseenter", (e) => {
+    clearTimeout(resetTimeout);
+    clearTimeout(dwellTimeout);
+    video.style.display = "block";
+    dwellTimeout = setTimeout(() => {
+      const tiles = document.querySelectorAll(".templateDiv").length;
+      const width = video.getBoundingClientRect().width;
+      if (tiles <= 8 && width >= 200) {
+        enqueueClip(video);
+      }
+    }, 300);
+    if (video.readyState === 0) {
+      video.load();
+    }
+    video.pause();
+    if (video.readyState >= 1) {
+      scrub(e);
+    } else {
+      const onLoad = () => {
+        scrub(e);
+        video.removeEventListener("loadedmetadata", onLoad);
+      };
+      video.addEventListener("loadedmetadata", onLoad);
+    }
+  });
+
+  video.addEventListener("mousemove", scrub);
+
+  video.addEventListener("mouseleave", () => {
+    clearTimeout(dwellTimeout);
+    resetTimeout = setTimeout(() => {
+      video.pause();
+      video.currentTime = 0;
+      video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
+      video.load();
+    }, 1000);
+  });
+}
+
 export function updateGridLayout() {
   const templateList = document.getElementById("template-list");
   if (!templateList) return;
@@ -710,103 +791,24 @@ export async function loadTemplates() {
         );
 
         if (isIndexPage) {
-          let templateDiv;
-          if (isMobile()) {
-            templateDiv = createMobileCard(name, template, index);
-            templateList.appendChild(templateDiv);
-          } else {
-            templateDiv = document.createElement("div");
-            templateDiv.classList.add("templateDiv");
-            templateDiv.style.opacity = "0";
-            templateDiv.style.transform = "translateY(20px)";
-            templateDiv.style.transition =
-              "opacity 0.5s ease, transform 0.5s ease";
+          const mobileView = isMobile();
+          const templateDiv = createTemplateCard(
+            name,
+            template,
+            index,
+            mobileView,
+          );
+          templateList.appendChild(templateDiv);
 
-            templateDiv.dataset.name = name;
-            templateDiv.dataset.index = index.toString();
-            templateDiv.dataset.last = template.last_screenshot_time || "";
-            templateDiv.dataset.next = template.next_screenshot_time || "";
-            templateDiv.dataset.error = template.capture_failed ? "1" : "0";
+          void templateDiv.offsetWidth;
+          setTimeout(() => {
+            templateDiv.style.opacity = "1";
+            templateDiv.style.transform = "translateY(0)";
+          }, index * 100);
 
-            templateDiv.innerHTML = `
-              <a href='/templates/${name}'>
-                <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
-                  <div class="camera-name">${name}</div>
-                  <div class="loading-spinner" aria-hidden="true"></div>
-                  <video data-name="${name}" data-poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback data-hd-src="/clip/${name}" loading="lazy">
-                    <source src="/last_video/${name}" type="video/mp4">
-                    Your browser does not support the video tag.
-                  </video>
-                  <div class="caption-overlay">${template.last_caption || ""}</div>
-                </div>
-              </a>
-              <a href='${template.url}' target='_blank' class='open-url-link' title='Open monitored page' aria-label='Open monitored page'>↗</a>
-            `;
-            templateList.appendChild(templateDiv);
-
-            void templateDiv.offsetWidth;
-            setTimeout(() => {
-              templateDiv.style.opacity = "1";
-              templateDiv.style.transform = "translateY(0)";
-            }, index * 100);
-
-            const video = templateDiv.querySelector("video");
-            observer.observe(video);
-
-            // Update frame based on cursor position over the tile.
-            const scrub = (e) => {
-              const rect = video.getBoundingClientRect();
-              const ratio = (e.clientX - rect.left) / rect.width;
-              const clamped = Math.max(0, Math.min(1, ratio));
-              if (!Number.isNaN(video.duration)) {
-                video.currentTime = video.duration * clamped;
-              }
-            };
-
-            let resetTimeout;
-            let dwellTimeout;
-
-            video.addEventListener("mouseenter", (e) => {
-              clearTimeout(resetTimeout);
-              clearTimeout(dwellTimeout);
-              video.style.display = "block";
-              dwellTimeout = setTimeout(() => {
-                const tiles = document.querySelectorAll(".templateDiv").length;
-                const width = video.getBoundingClientRect().width;
-                if (tiles <= 8 && width >= 200) {
-                  enqueueClip(video);
-                }
-              }, 300);
-              // Load metadata on first hover so currentTime can be set
-              if (video.readyState === 0) {
-                video.load();
-              }
-              video.pause();
-              if (video.readyState >= 1) {
-                scrub(e);
-              } else {
-                const onLoad = () => {
-                  scrub(e);
-                  video.removeEventListener("loadedmetadata", onLoad);
-                };
-                video.addEventListener("loadedmetadata", onLoad);
-              }
-            });
-
-            video.addEventListener("mousemove", scrub);
-
-            video.addEventListener("mouseleave", () => {
-              clearTimeout(dwellTimeout);
-              resetTimeout = setTimeout(() => {
-                video.pause();
-                video.currentTime = 0;
-                //video.style.display = "none";
-                // Reset to the poster image on hover exit
-                video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
-                video.load();
-              }, 1000); // restore screenshot a bit after leaving
-            });
-          }
+          const video = templateDiv.querySelector("video");
+          observer.observe(video);
+          attachVideoHover(video, name);
         } else if (isCaptionsPage) {
           const templateDiv = document.createElement("div");
           templateDiv.classList.add("templateDiv");
