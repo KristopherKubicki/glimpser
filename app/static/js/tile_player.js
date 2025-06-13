@@ -40,6 +40,8 @@ export function initTilePlayer() {
 
   function playMjpg(group) {
     if (!group) return;
+    showSpinner(video);
+    image.onload = () => hideSpinner(video);
     video.style.display = "none";
     image.style.display = "block";
     image.src = `/stream.mjpg?group=${encodeURIComponent(group)}&time=${Date.now()}`;
@@ -107,14 +109,36 @@ export function initTilePlayer() {
     image.style.display = "none";
 
     if (name === "All") {
-      if (source) source.src = "/last_teaser?group=all";
+      const first = Object.keys(window.templateDetails || {})[0];
+      if (first && source) source.src = `/last_video/${first}`;
       video.setAttribute("data-hd-src", "/stream.mp4");
+      video.addEventListener(
+        "ended",
+        () => {
+          showSpinner(video);
+          image.addEventListener("load", () => hideSpinner(video), {
+            once: true,
+          });
+          playMjpg("all");
+        },
+        { once: true },
+      );
     } else if (name.startsWith("group-")) {
       const raw = name.slice(6);
       const group = encodeURIComponent(raw);
       if (source) source.src = `/last_teaser?group=${group}`;
       video.setAttribute("data-hd-src", `/stream.mp4?group=${group}`);
-      scheduleLive(raw);
+      video.addEventListener(
+        "ended",
+        () => {
+          showSpinner(video);
+          image.addEventListener("load", () => hideSpinner(video), {
+            once: true,
+          });
+          playMjpg(raw);
+        },
+        { once: true },
+      );
     } else {
       if (source) source.src = `/last_video/${name}`;
       video.setAttribute("data-hd-src", `/clip/${name}`);
