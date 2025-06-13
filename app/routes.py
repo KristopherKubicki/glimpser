@@ -3660,11 +3660,15 @@ def init_routes(app: Flask) -> None:
         templates = template_manager.get_templates()
         existing_urls = {t.get("url"): n for n, t in templates.items() if t.get("url")}
 
+        tooltips = dict(SETTINGS_TOOLTIPS)
+        if not metrics.get("ffmpeg_gpu_support"):
+            tooltips["FFMPEG_HWACCEL"] = "Hardware acceleration not available"
+
         return render_template(
             "settings.html",
             grouped_settings=grouped_settings,
             collapsed_groups=collapsed_groups,
-            tooltips=SETTINGS_TOOLTIPS,
+            tooltips=tooltips,
             metrics=metrics,
             feeds=feeds,
             last_summary=last_summary,

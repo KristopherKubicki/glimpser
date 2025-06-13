@@ -1198,6 +1198,11 @@ input:checked + .slider:before {
   cursor: not-allowed;
 }
 
+.settings-table input[data-unavailable] + .slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .settings-table input[data-locked]:not([type="checkbox"]) {
   opacity: 0.5;
   cursor: not-allowed;
