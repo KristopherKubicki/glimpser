@@ -962,9 +962,11 @@ nav a.active {
 
   /* Adjust slider for mobile */
   #speed-slider {
-    width: 100%; /* Use the full width for the slider */
-    height: 30px; /* Increase the height for a larger touch area */
-    margin: 10px 0; /* Add some vertical margin */
+    writing-mode: bt-lr;
+    -webkit-appearance: slider-vertical;
+    width: 30px;
+    height: 120px;
+    margin: 0 10px; /* Space left and right of the vertical slider */
   }
 }
 
