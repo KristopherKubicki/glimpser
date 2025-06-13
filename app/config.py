@@ -131,6 +131,7 @@ def get_setting(name, default=None):
             logging.warning("initialization error %s", e)
     except SQLAlchemyError as e:
         logging.warning("database error %s", e)
+    # Catch any unforeseen errors so they are logged before being re-raised.
     except Exception as e:  # pragma: no cover - unexpected errors
         logging.exception("unexpected error while fetching setting")
         raise
@@ -152,6 +153,7 @@ def backup_config() -> bool:
     except (OperationalError, SQLAlchemyError, sqlite3.OperationalError, OSError) as e:
         logging.warning("backup failed: %s", e)
         success = False
+    # Log unexpected errors before re-raising so callers see the original issue.
     except Exception as e:  # pragma: no cover - unexpected errors
         logging.exception("unexpected error during backup")
         raise
@@ -206,6 +208,7 @@ def sync_version(pkg_version: str) -> None:
             logging.warning("initialization error %s", e)
     except SQLAlchemyError as e:
         logging.warning("database error %s", e)
+    # Catch-all ensures any other DB errors are logged before raising them.
     except Exception as e:  # pragma: no cover - unexpected errors
         logging.exception("unexpected error during version sync")
         raise
@@ -326,7 +329,7 @@ def _ffmpeg_supports_hwaccel() -> bool:
         ).decode()
         lines = [l.strip() for l in output.splitlines() if l.strip()]
         return len(lines) > 1
-    except Exception:
+    except (subprocess.SubprocessError, FileNotFoundError, UnicodeDecodeError):
         return False
 
 

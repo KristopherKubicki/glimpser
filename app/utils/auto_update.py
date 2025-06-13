@@ -22,7 +22,7 @@ def _ci_green(commit: str) -> bool:
         resp = requests.get(GITHUB_STATUS_URL.format(sha=commit), timeout=5)
         if resp.status_code == 200:
             return resp.json().get("state") == "success"
-    except Exception as exc:  # pragma: no cover - log and ignore failures
+    except requests.RequestException as exc:  # pragma: no cover - network error
         logging.debug("CI status check failed: %s", exc)
     return False
 
@@ -66,5 +66,8 @@ def check_for_update() -> None:
         if _download_and_install(latest):
             logging.warning("Auto-updating to %s", latest)
             os.execv(sys.executable, [sys.executable] + sys.argv)
-    except Exception as exc:  # pragma: no cover - log and ignore failures
+    except (
+        requests.RequestException,
+        OSError,
+    ) as exc:  # pragma: no cover - network or OS error
         logging.debug("Auto-update check failed: %s", exc)
