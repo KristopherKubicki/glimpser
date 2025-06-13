@@ -57,6 +57,18 @@ function hideSpinner(video) {
   spinner.classList.remove("visible");
 }
 
+function showErrorIndicator(video) {
+  const spinner = video.parentElement?.querySelector(".loading-spinner");
+  if (!spinner) return;
+  spinner.textContent = "⠿";
+  spinner.classList.add("shake", "visible");
+  clearTimeout(spinner.errorTimeoutId);
+  spinner.errorTimeoutId = setTimeout(() => {
+    spinner.classList.remove("shake", "visible");
+    spinner.textContent = "";
+  }, 2000);
+}
+
 export function setQueueDelay(ms) {
   queueDelay = ms;
 }
@@ -86,7 +98,14 @@ function processQueue() {
     src.src = vid.dataset.hdSrc;
     vid.dataset.hdLoaded = "true";
     vid.addEventListener("canplay", () => hideSpinner(vid), { once: true });
-    vid.addEventListener("error", () => hideSpinner(vid), { once: true });
+    vid.addEventListener(
+      "error",
+      () => {
+        hideSpinner(vid);
+        showErrorIndicator(vid);
+      },
+      { once: true },
+    );
     vid.load();
   }
   setTimeout(processQueue, queueDelay);
@@ -536,4 +555,4 @@ export function startCasting() {
 window.enqueueClip = enqueueClip;
 window.setQueueDelay = setQueueDelay;
 window.clearPrefetchQueue = clearPrefetchQueue;
-export { showSpinner, hideSpinner };
+export { showSpinner, hideSpinner, showErrorIndicator };
