@@ -2581,6 +2581,7 @@ def _capture_danger_mode(
     # This part uses normal Selenium for the attach:
     danger_options = webdriver.ChromeOptions()
     danger_options.debugger_address = "127.0.0.1:9222"
+    danger_options.add_experimental_option("detach", True)
 
     driver = None
     original_window = None
@@ -2608,7 +2609,9 @@ def _capture_danger_mode(
         # Attempt dark mode if desired
         if dark and not invert:
             try:
-                driver.execute_cdp_cmd("Emulation.setAutoDarkModeOverride", {"enabled": True})
+                driver.execute_cdp_cmd(
+                    "Emulation.setAutoDarkModeOverride", {"enabled": True}
+                )
             except Exception as e:
                 logging.debug(f"[danger_mode] setAutoDarkModeOverride failed: {e}")
         time.sleep(5)
@@ -2654,10 +2657,16 @@ def _capture_danger_mode(
             try:
                 driver.switch_to.window(original_window)
             except Exception as ex:
-                logging.debug(f"Could not switch to original window in danger mode: {ex}")
+                logging.debug(
+                    f"Could not switch to original window in danger mode: {ex}"
+                )
 
-        # DO NOT do driver.quit() in Danger mode: that kills the user's entire Chrome
-        driver = None
+        # Close driver session without killing the user's browser
+        if driver:
+            try:
+                driver.quit()
+            except Exception as ex:
+                logging.debug(f"driver.quit() failed in danger mode: {ex}")
 
 
 def _remove_popup(driver, popup_xpath):

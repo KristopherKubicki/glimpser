@@ -54,11 +54,13 @@ def browser():
     driver = _create_driver()
     if driver is None:
         pytest.skip("Web driver not available")
-    yield driver
     try:
-        driver.quit()
-    except Exception:
-        pass
+        yield driver
+    finally:
+        try:
+            driver.quit()
+        except Exception:
+            pass
 
 
 @pytest.fixture()
