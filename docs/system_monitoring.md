@@ -10,7 +10,7 @@ This endpoint now redirects to the _Status_ tab on the Settings page. The tab sh
 
 ### Feed Dashboard
 
-Below the system metrics the page lists each configured feed with a color-coded indicator. Hovering over a red or yellow dot now shows a short tooltip describing the issue, including when the feed went offline and the most recent related log entry if available. A new **Capturing** column highlights feeds that are actively capturing.
+Below the system metrics the page lists each configured feed with a color-coded indicator. Hovering over a red or yellow dot now shows a short tooltip describing the issue, including when the feed went offline and the most recent related log entry if available. The **Capturing** and **Status** columns now appear directly after the feed name so mobile browsers show them first. The capturing icon uses a small countdown spinner whenever a job is running.
 
 - **Green** – the feed is updating on schedule.
 - **Yellow** – the last capture is behind its configured frequency.
@@ -26,7 +26,7 @@ same table appears on the _Status_ tab under Settings so you can review
 usage metrics without leaving the configuration interface.
 
 Additional KPI columns track the number of screenshots, videos, total storage
-used, LLM responses, and estimated LLM cost for each feed. Costs now display three decimal places.
+used, LLM counts, and estimated LLM cost for each feed. Costs now display three decimal places.
 
 The header row stays visible while scrolling so column names are always accessible.
 
