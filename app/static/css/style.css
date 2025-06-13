@@ -596,6 +596,28 @@ body.dark-mode {
   border: 2px solid red;
 }
 
+.recording {
+  border: 2px solid red !important;
+}
+
+.record-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: red;
+  animation: blink-record 1s steps(1, start) infinite;
+  display: none;
+}
+
+@keyframes blink-record {
+  50% {
+    opacity: 0;
+  }
+}
+
 .caption-overlay {
   position: absolute;
   left: 0;
@@ -1884,6 +1906,7 @@ body.advanced-enabled .advanced-only {
   border: 1px solid var(--table-border-color);
 }
 
+/* stylelint-disable-next-line selector-id-pattern */
 #costChart {
   padding: 0.5rem;
 }

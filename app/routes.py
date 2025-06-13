@@ -17,10 +17,10 @@ import sqlite3
 import struct
 import subprocess
 import sys
-import typing
 import tempfile
 import textwrap
 import time
+import typing
 import uuid
 from collections import deque
 from datetime import datetime, timedelta
@@ -3308,6 +3308,34 @@ def init_routes(app: Flask) -> None:
                     "message": f"Screenshot for {template_name} taken",
                 }
             )
+
+    @app.route("/record/<string:template_name>", methods=["POST"])
+    @login_required
+    def record_high_speed(template_name: TemplateName):
+        """Capture frames rapidly for a short duration."""
+
+        template_name = validate_template_name(str(template_name))
+        if template_name is None:
+            abort(404)
+
+        templates = template_manager.get_templates()
+        template = templates.get(template_name)
+        if template is None:
+            abort(404)
+
+        duration = int(request.args.get("duration", 20))
+
+        def _record() -> None:
+            end = time.time() + duration
+            while time.time() < end:
+                try:
+                    scheduling.update_camera(template_name, template)
+                except Exception:
+                    logging.exception("High-speed capture failed: %s", template_name)
+                time.sleep(0.2)
+
+        Thread(target=_record, daemon=True).start()
+        return jsonify({"status": "started"})
 
     @app.route("/templates", methods=["GET", "POST", "DELETE"])
     @login_required
