@@ -1,6 +1,7 @@
 import logging
 import time
 from typing import Dict
+from urllib.parse import urlparse
 
 
 class ColorFormatter(logging.Formatter):
@@ -37,3 +38,21 @@ class RateLimitFilter(logging.Filter):
             return False
         self.last_emit[message] = now
         return True
+
+
+def sanitize_url(url: str) -> str:
+    """Return *url* stripped of any embedded credentials."""
+
+    if not url:
+        return url
+    try:
+        parts = urlparse(url)
+        if parts.username or parts.password:
+            netloc = parts.hostname or ""
+            if parts.port:
+                netloc += f":{parts.port}"
+            parts = parts._replace(netloc=netloc)
+            return parts.geturl()
+    except Exception:
+        pass
+    return url

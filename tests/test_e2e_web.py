@@ -126,9 +126,9 @@ def live_server_with_user(tmp_path_factory):
     args = argparse.Namespace(
         db_path=db_path,
         username="e2e",
-        password="secret",
+        password="secret",  # pragma: allowlist secret
         update_password=False,
-        secret_key="secretkey",
+        secret_key="secretkey",  # pragma: allowlist secret
         update_key=False,
     )
     generate_credentials.generate_credentials(args)

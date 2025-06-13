@@ -45,7 +45,9 @@ class TestSettingsRoute(unittest.TestCase):
         conn.commit()
         conn.close()
 
-        self.app = app.create_app(enable_watchdog=False, schedule=False, log_cache=False)
+        self.app = app.create_app(
+            enable_watchdog=False, schedule=False, log_cache=False
+        )
         self.client = self.app.test_client()
         self.app_context = self.app.app_context()
         self.app_context.push()
@@ -102,7 +104,9 @@ class TestSettingsRoute(unittest.TestCase):
             patch("app.routes.session", {"user_id": 1}),
             patch("app.routes.login_required", lambda x: x),
         ):
-            response = self.client.post("/settings", data={"action": "delete", "name_to_delete": "TEST"})
+            response = self.client.post(
+                "/settings", data={"action": "delete", "name_to_delete": "TEST"}
+            )
         self.assertEqual(response.status_code, 302)
         self.assertIsNone(self._get_value("TEST"))
 
@@ -116,7 +120,7 @@ class TestSettingsRoute(unittest.TestCase):
             "EMAIL_SMTP_PORT": "587",
             "EMAIL_USE_TLS": "True",
             "EMAIL_USERNAME": "user",
-            "EMAIL_PASSWORD": "pass",
+            "EMAIL_PASSWORD": "pass",  # pragma: allowlist secret
         }
         with (
             patch("app.routes.session", {"user_id": 1}),

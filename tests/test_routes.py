@@ -22,7 +22,7 @@ class TestRoutes(unittest.TestCase):
             os.path.abspath(os.path.dirname(__file__)), "../app/templates"
         )
         self.app = Flask(__name__, template_folder=template_dir)
-        self.app.config["SECRET_KEY"] = "my_secret_key"
+        self.app.config["SECRET_KEY"] = "my_secret_key"  # pragma: allowlist secret
         init_routes(self.app)
         self.client = self.app.test_client()
 
@@ -145,7 +145,10 @@ class TestRoutes(unittest.TestCase):
 
         response = self.client.post(
             "/login",
-            data={"username": "testuser", "password": "testpassword"},
+            data={
+                "username": "testuser",
+                "password": "testpassword",  # pragma: allowlist secret
+            },
         )
         self.assertEqual(response.status_code, 302)
         self.assertIn("/", response.headers["Location"])
@@ -186,7 +189,11 @@ class TestRoutes(unittest.TestCase):
         mock_session_local.return_value = DummySession()
 
         response = self.client.post(
-            "/login", data={"username": "testuser", "password": "wrongpassword"}
+            "/login",
+            data={
+                "username": "testuser",
+                "password": "wrongpassword",  # pragma: allowlist secret
+            },
         )
         self.assertEqual(response.status_code, 200)
         mock_render_template.assert_called_with("login.html", page_title="Login")

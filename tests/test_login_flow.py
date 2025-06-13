@@ -33,9 +33,9 @@ def test_client(tmp_path):
     args = SimpleNamespace(
         db_path=str(db_path),
         username="testuser",
-        password="secret",
+        password="secret",  # pragma: allowlist secret
         update_password=False,
-        secret_key="secretkey",
+        secret_key="secretkey",  # pragma: allowlist secret
         update_key=False,
     )
     generate_credentials.generate_credentials(args)
@@ -60,7 +60,7 @@ def test_client(tmp_path):
 def test_login_logout_flow(test_client):
     response = test_client.post(
         "/login",
-        data={"username": "testuser", "password": "secret"},
+        data={"username": "testuser", "password": "secret"},  # pragma: allowlist secret
     )
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/")
