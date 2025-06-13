@@ -43,6 +43,26 @@ class TestTestPattern(unittest.TestCase):
         region = [img.getpixel((x, y)) for x in range(80, 95) for y in range(20, 35)]
         self.assertIn((255, 255, 255), region)
 
+    def test_super_patches_and_zone_plate(self):
+        width, height = 160, 160
+        img = generate_test_pattern(width=width, height=height)
+
+        bar_h = height // 16
+        bars_total = bar_h * 2
+        step_h = max(4, bar_h // 3)
+        patch_y = bars_total + step_h + 2 + 4
+
+        self.assertEqual(img.getpixel((4, patch_y)), (255, 255, 255))
+        self.assertEqual(img.getpixel((width - 4, patch_y)), (0, 0, 0))
+
+        cx, cy = width // 2, height // 2
+        region = {
+            img.getpixel((cx + dx, cy + dy))
+            for dx in range(-4, 5)
+            for dy in range(-4, 5)
+        }
+        self.assertGreater(len(region), 1)
+
     def test_clock_hand_drawn(self):
         class FixedDatetime(datetime.datetime):
             @classmethod
