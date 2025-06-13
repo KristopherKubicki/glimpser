@@ -621,12 +621,22 @@ def update_camera(name, template, image_file=None, motion=False):
 
             if use_onnx:
                 if clip_session is None:
-                    providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+                    # Prefer GPU when available and fall back to CPU. This uses
+                    # the providers reported by onnxruntime so it works even
+                    # when CUDA is not installed.
+                    available = getattr(ort, "get_available_providers", lambda: [])()
+                    providers = (
+                        ["CUDAExecutionProvider"]
+                        if "CUDAExecutionProvider" in available
+                        else ["CPUExecutionProvider"]
+                    )
                     try:
                         clip_session = ort.InferenceSession(
                             CLIP_MODEL_PATH, providers=providers
                         )
-                    except Exception:
+                    except TypeError:
+                        # Some runtimes (or tests) may not accept the providers
+                        # keyword. Fall back to default initialization.
                         clip_session = ort.InferenceSession(CLIP_MODEL_PATH)
 
                 if clip_processor is None:
