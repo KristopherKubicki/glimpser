@@ -39,8 +39,9 @@ The general flow of the capture process is as follows:
 9. **Post-Processing**: Apply any necessary post-processing steps, such as adding timestamps or applying dark mode.
 10. **Result Handling**: Return the success status of the capture process.
 
-The waterfall diagram below shows how captured data moves from the initial
-source through processing and finally to visualization.
+The following diagram illustrates the major phases of Glimpser's capture
+waterfall: input validation, capture execution, normalization, persistent
+storage, and final dashboard display.
 
 ![Collection Waterfall Diagram](images/collection_waterfall.svg)
 
