@@ -179,8 +179,9 @@ Additional variables control AI behaviour and external tools:
 - `FFMPEG_PATH` – path to the `ffmpeg` binary (default `ffmpeg`)
 - `FFPROBE_PATH` – path to the `ffprobe` binary (default `ffprobe`)
 - `FFMPEG_HWACCEL` – hardware acceleration mode for ffmpeg (default `auto`).
-  The `auto` setting lets ffmpeg use GPU decoding when available and falls back
-  to software otherwise.
+  When set to `auto` Glimpser inspects available encoders and enables the first
+  supported GPU method (`cuda`, `vaapi`, `qsv`, `v4l2m2m`) or falls back to
+  software when none are detected.
 - When hardware acceleration is enabled and Chrome supports OpenGL, Glimpser
   automatically launches Chrome with `--use-gl=egl` for improved GPU use.
 - `FFMPEG_THREADS` – number of threads ffmpeg uses when encoding (default half the CPU cores)

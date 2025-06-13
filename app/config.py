@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -330,10 +331,42 @@ def _ffmpeg_supports_hwaccel() -> bool:
         return False
 
 
+def _detect_best_encoder() -> str:
+    """Return the best hardware encoder ``ffmpeg`` supports.
+
+    The detection checks for common GPU encoder names and returns the
+    corresponding ``-hwaccel`` flag. ``"false"`` is returned when no supported
+    encoder is found or ``ffmpeg`` is missing.
+    """
+
+    try:
+        encoders = subprocess.check_output(
+            [FFMPEG_PATH, "-encoders", "-hide_banner"],
+            stderr=subprocess.STDOUT,
+            timeout=2,
+        ).decode()
+    except Exception:
+        return "false"
+
+    mappings = [
+        ("h264_nvenc", "cuda"),
+        ("h264_vaapi", "vaapi"),
+        ("h264_qsv", "qsv"),
+        ("h264_v4l2m2m", "v4l2m2m"),
+    ]
+    for codec, accel in mappings:
+        if re.search(codec, encoders):
+            return accel
+    return "false"
+
+
 # Enable GPU acceleration by default. "auto" lets ffmpeg pick the best
 # available method and falls back to software when no GPU is present.
 _hwaccel_cfg = get_setting("FFMPEG_HWACCEL", "auto")
-FFMPEG_HWACCEL = _hwaccel_cfg if _hwaccel_cfg.lower() != "auto" else "auto"
+if _hwaccel_cfg.lower() == "auto":
+    FFMPEG_HWACCEL = _detect_best_encoder()
+else:
+    FFMPEG_HWACCEL = _hwaccel_cfg
 
 # Number of threads FFmpeg should use when encoding/decoding
 FFMPEG_THREADS = int(get_setting("FFMPEG_THREADS", max(1, (os.cpu_count() or 1) // 2)))
