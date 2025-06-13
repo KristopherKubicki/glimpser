@@ -17,3 +17,8 @@ on its frequency so heavy jobs are distributed evenly over the window defined by
 
 Dashboard thumbnails now lazy load. Each video tile sets its poster image only
 when it enters the viewport, reducing initial network requests for large setups.
+
+The template grid uses a small virtual list so the DOM only contains tiles that
+are near the viewport. As you scroll, new elements stream in while offscreen
+tiles are discarded. This keeps interactions smooth even with dozens of
+cameras.
