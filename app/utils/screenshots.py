@@ -23,6 +23,8 @@ import urllib3
 from dateutil import tz
 from werkzeug.utils import secure_filename
 
+from app.utils.logging_utils import sanitize_url
+
 os.environ["WDM_LOG"] = "0"
 os.environ["WDM_LOG_LEVEL"] = "0"
 logging.getLogger("webdriver_manager").setLevel(logging.WARNING)
@@ -121,7 +123,10 @@ def _load_status_cache() -> None:
 def _persist_status_cache() -> None:
     """Write ``status_code_cache`` to ``STATUS_CACHE_PATH``."""
     os.makedirs(os.path.dirname(STATUS_CACHE_PATH), exist_ok=True)
-    data = {url: {"code": code, "time": status_code_cache_time.get(url, 0)} for url, code in status_code_cache.items()}
+    data = {
+        url: {"code": code, "time": status_code_cache_time.get(url, 0)}
+        for url, code in status_code_cache.items()
+    }
     try:
         with open(STATUS_CACHE_PATH, "w") as f:
             json.dump(data, f)
@@ -316,7 +321,9 @@ def idle_seconds_x11() -> int:
             libX11_path = ctypes.util.find_library("X11")
             libXss_path = ctypes.util.find_library("Xss")
             if not (libX11_path and libXss_path):
-                raise RuntimeError("libX11 or libXss not found (install libx11-6 libxss1).")
+                raise RuntimeError(
+                    "libX11 or libXss not found (install libx11-6 libxss1)."
+                )
 
             _x11 = ctypes.cdll.LoadLibrary(libX11_path)
             _xss = ctypes.cdll.LoadLibrary(libXss_path)
@@ -426,7 +433,9 @@ def check_user_activity(timeout=10):
     mouse_listener = None
     keyboard_listener = None
     try:
-        mouse_listener = mouse.Listener(on_move=on_move, on_click=on_click, on_scroll=on_scroll)
+        mouse_listener = mouse.Listener(
+            on_move=on_move, on_click=on_click, on_scroll=on_scroll
+        )
         keyboard_listener = keyboard.Listener(on_press=on_press)
 
         # Start listeners
@@ -619,7 +628,9 @@ def run_cmd(cmd, timeout):
 
 def add_timestamp(image_path, name="unknown", invert=False):
     if os.path.exists(image_path):
-        with Image.open(image_path) as image:  # consider unlinking if this fails to open
+        with Image.open(
+            image_path
+        ) as image:  # consider unlinking if this fails to open
             # Convert the image to RGBA mode in case it's a format that doesn't support transparency
             try:
                 image = image.convert("RGB")
@@ -709,7 +720,9 @@ def add_timestamp(image_path, name="unknown", invert=False):
             )
 
             if utc_timestamp != timestamp:
-                tz_bbox = draw.textbbox((0, 0), utc_timestamp + "Z", font=font_small, stroke_width=1)
+                tz_bbox = draw.textbbox(
+                    (0, 0), utc_timestamp + "Z", font=font_small, stroke_width=1
+                )
                 text_w = tz_bbox[2] - tz_bbox[0]
                 text_h = tz_bbox[3] - tz_bbox[1]
                 background = Image.new(
@@ -782,6 +795,7 @@ def download_image(
     """
 
     proxy = validate_proxy(proxy)
+    clean_url = sanitize_url(url)
 
     # ideally the timeout should be pretty high, its an image, and it could be real big
     if timeout < 10:
@@ -791,7 +805,7 @@ def download_image(
 
     cached = get_cached_status_code(url)
     if cached is not None and cached != 200:
-        logging.debug(f"Skipping {url} due to cached status {cached}")
+        logging.debug(f"Skipping {clean_url} due to cached status {cached}")
         return False
     try:
         lua = UA
@@ -854,9 +868,11 @@ def download_image(
                 os.remove(tmp_path)
         else:
             response.close()
-            logging.warning(f"Error downloading image: HTTP status code {status} {url}")
+            logging.warning(
+                f"Error downloading image: HTTP status code {status} {clean_url}"
+            )
     except Exception as e:
-        logging.error(f"Error downloading image: {e} {url} {timeout}")
+        logging.error(f"Error downloading image: {e} {clean_url} {timeout}")
         set_cached_status_code(url, 0)
     finally:
         if response is not None:
@@ -882,9 +898,13 @@ def download_pdf(
     tmp_name = None  # path of the downloaded PDF
     lsuccess = False
 
+    clean_url = sanitize_url(url)
+
     cached = get_cached_status_code(url)
     if cached is not None and cached != 200:
-        logging.debug(f"Skipping PDF download for {url} due to cached status {cached}")
+        logging.debug(
+            f"Skipping PDF download for {clean_url} due to cached status {cached}"
+        )
         return False
 
     if timeout < 10:
@@ -994,7 +1014,9 @@ def get_arp_output(ip_address, timeout):
     else:
         command = ["ip", "neigh", "show", ip_address]
     try:
-        return subprocess.check_output(command, stderr=subprocess.STDOUT, timeout=timeout)
+        return subprocess.check_output(
+            command, stderr=subprocess.STDOUT, timeout=timeout
+        )
     except FileNotFoundError:
         return b""
 
@@ -1097,7 +1119,9 @@ def cas_error(url):
     entry["last"] = time.time()
 
     if entry["errors"] > 2:
-        logging.error(f"Could not reach host: {url} {entry['errors']} times")
+        logging.error(
+            f"Could not reach host: {sanitize_url(url)} {entry['errors']} times"
+        )
         entry["timeout"] = time.time() + 60 * 60  # 1 hour timeout
 
 
@@ -1123,6 +1147,7 @@ def capture_or_download(name: str, template: dict) -> bool:
     url = template.get("url")
     username = template.get("auth_username")
     password = template.get("auth_password")
+    clean_url = sanitize_url(url)
 
     # Disallow local file paths to avoid unintended file disclosure
     parsed = urlparse(url)
@@ -1133,13 +1158,14 @@ def capture_or_download(name: str, template: dict) -> bool:
         # just skip things that are obviously broken.  "Backoff"..
         return False
     if (
-        lurl_cache.get(url, "none") != "good" and time.time() - lurl_cache_time.get(url, 0) < 3600
+        lurl_cache.get(url, "none") != "good"
+        and time.time() - lurl_cache_time.get(url, 0) < 3600
     ):  # try every 1 hour no matter what??
         return False
 
     cached_status = get_cached_status_code(url)
     if cached_status is not None and cached_status >= 400:
-        logging.debug(f"Skipping {url} due to cached status {cached_status}")
+        logging.debug(f"Skipping {clean_url} due to cached status {cached_status}")
         return False
 
     popup_xpath = template.get("popup_xpath")
@@ -1165,7 +1191,7 @@ def capture_or_download(name: str, template: dict) -> bool:
     if domain:
         lreach = is_address_reachable(domain, port=port)
         if lreach is False:
-            logging.debug(f"Could not reach host: {name} {url}")
+            logging.debug(f"Could not reach host: {name} {clean_url}")
             cas_error(url)
             return False
 
@@ -1175,7 +1201,9 @@ def capture_or_download(name: str, template: dict) -> bool:
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     # Determine content type
-    content_type, is_modified = get_content_type(url, danger, stealth=stealth, username=username, password=password)
+    content_type, is_modified = get_content_type(
+        url, danger, stealth=stealth, username=username, password=password
+    )
 
     # check if modified.
     if is_modified is False and not danger and not browser:
@@ -1201,7 +1229,9 @@ def capture_or_download(name: str, template: dict) -> bool:
         cas_error(url)
 
     if is_pdf_url(url, content_type) and not danger and not browser:
-        lsuc = download_pdf(url, output_path, timeout, name, invert, dark, stealth, username, password)
+        lsuc = download_pdf(
+            url, output_path, timeout, name, invert, dark, stealth, username, password
+        )
         if lsuc is True:
             return lsuc
         cas_error(url)
@@ -1212,24 +1242,32 @@ def capture_or_download(name: str, template: dict) -> bool:
             return lsuc
         cas_error(url)
 
-    if is_enhanced(url) and not danger and not browser:  # this is going to launch ytdlp, which is not a browser
+    if (
+        is_enhanced(url) and not danger and not browser
+    ):  # this is going to launch ytdlp, which is not a browser
         lsuc = capture_frame_with_ytdlp(url, output_path, name, invert)
         if lsuc is True:
             return lsuc
         cas_error(url)
 
     # Attempt lightweight browser capture for simple web pages, wont pick if theres xpath or anything
-    if should_use_lightweight_browser(url, dedicated_selector, popup_xpath, headless, stealth, browser, danger):
-        lsuc = capture_screenshot_and_har_light(url, output_path, timeout, name, invert, template.get("proxy"), dark)
+    if should_use_lightweight_browser(
+        url, dedicated_selector, popup_xpath, headless, stealth, browser, danger
+    ):
+        lsuc = capture_screenshot_and_har_light(
+            url, output_path, timeout, name, invert, template.get("proxy"), dark
+        )
         if lsuc is True:
             return lsuc
         if time.time() - tstart > timeout:
             logging.error(
-                f"   *fail lightweight {url}"
+                f"   *fail lightweight {clean_url}"
             )  # if  we get a bunch of failures in a row here, we should block on lightweight
             cas_error(url)
 
-    if should_use_phantom_browser(url, dedicated_selector, popup_xpath, headless, stealth, browser, danger):
+    if should_use_phantom_browser(
+        url, dedicated_selector, popup_xpath, headless, stealth, browser, danger
+    ):
         lsuc = capture_screenshot_phantom(
             url=url,
             output_path=output_path,
@@ -1242,7 +1280,7 @@ def capture_or_download(name: str, template: dict) -> bool:
         if lsuc is True:
             return lsuc
         if time.time() - tstart > timeout:
-            logging.error(f"   *fail phantom {url} ")
+            logging.error(f"   *fail phantom {clean_url} ")
             cas_error(url)
 
     # Fall back to full browser capture
@@ -1268,7 +1306,7 @@ def capture_or_download(name: str, template: dict) -> bool:
 
     if not danger:
         # logging.error(" *** fail ", url, "brow", browser, "headless", headless, "stealth", stealth, "danger", danger, "dedicated", dedicated_selector, "popup", popup_xpath)
-        logging.error(f"Failed to capture or download content from {url}")
+        logging.error(f"Failed to capture or download content from {clean_url}")
 
     return False
 
@@ -1303,7 +1341,9 @@ def check_if_modified(url, headers) -> bool:
     return True  # Content has changed or was never checked before
 
 
-def get_content_type(url, danger, stealth=False, username=None, password=None) -> (str, bool):
+def get_content_type(
+    url, danger, stealth=False, username=None, password=None
+) -> (str, bool):
     """
     Determine the content type of the URL.
 
@@ -1318,13 +1358,17 @@ def get_content_type(url, danger, stealth=False, username=None, password=None) -
         str: The determined content type, or an empty string if not determined.
     """
     # Check cache first
-    if last_camera_header.get(url) and last_camera_header_time.get(url, 0) > time.time() - 60 * 60:
+    if (
+        last_camera_header.get(url)
+        and last_camera_header_time.get(url, 0) > time.time() - 60 * 60
+    ):
         return last_camera_header.get(url), True
 
     if "http" not in url or danger:
         return "", True
 
     content_type = ""
+    clean_url = sanitize_url(url)
     methods = [requests.head, requests.get]
 
     lua = UA
@@ -1363,7 +1407,7 @@ def get_content_type(url, danger, stealth=False, username=None, password=None) -
                 )
 
             if resp.status_code >= 400:
-                logging.info(f"HTTP error {resp.status_code} for {url}")
+                logging.info(f"HTTP error {resp.status_code} for {clean_url}")
                 set_cached_status_code(url, resp.status_code)
                 return "", False
 
@@ -1371,7 +1415,7 @@ def get_content_type(url, danger, stealth=False, username=None, password=None) -
             content_type = resp.headers.get("Content-Type", "").lower()
             break  # success → stop loop
         except Exception as e:
-            logging.info(f"{verb} {url} failed: {e}")
+            logging.info(f"{verb} {clean_url} failed: {e}")
 
     """
     modified = True
@@ -1404,7 +1448,7 @@ def get_content_type(url, danger, stealth=False, username=None, password=None) -
                 )
 
             if response.status_code >= 400:
-                logging.info(f"HTTP error {response.status_code} for {url}")
+                logging.info(f"HTTP error {response.status_code} for {clean_url}")
                 set_cached_status_code(url, response.status_code)
                 return "", False
 
@@ -1414,7 +1458,7 @@ def get_content_type(url, danger, stealth=False, username=None, password=None) -
             content_type = response.headers.get("Content-Type", "").lower()
             break  # Exit the loop if successful
         except Exception as e:
-            logging.info(f"Error {method.__name__.upper()} {url}: {e}")
+            logging.info(f"Error {method.__name__.upper()} {clean_url}: {e}")
     """
 
     # Cache the result
@@ -1448,7 +1492,9 @@ def get_digest_auth(url, username=None, password=None):
 def is_image_url(url, content_type):
     """Check if the URL is likely to be an image."""
     image_extensions = [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".gif", "/picture"]
-    return any(ext in url.lower() for ext in image_extensions) or "image/" in content_type
+    return (
+        any(ext in url.lower() for ext in image_extensions) or "image/" in content_type
+    )
 
 
 def is_pdf_url(url, content_type):
@@ -1459,10 +1505,14 @@ def is_pdf_url(url, content_type):
 def is_video_stream_url(url, content_type):
     """Check if the URL is likely to be a video stream."""
     video_indicators = [".mjpg", ".mp4", ".gif", ".webp", "rtsp://", ".m3u8", ":5004/"]
-    return any(ind in url.lower() for ind in video_indicators) or "video/" in content_type
+    return (
+        any(ind in url.lower() for ind in video_indicators) or "video/" in content_type
+    )
 
 
-def should_use_lightweight_browser(url, dedicated_selector, popup_xpath, headless, stealth, browser, danger):
+def should_use_lightweight_browser(
+    url, dedicated_selector, popup_xpath, headless, stealth, browser, danger
+):
     """Determine if a lightweight browser should be used for capture."""
 
     # print("   <<<<", dedicated_selector, "pop", popup_xpath, "stealth", stealth, browser, is_enhanced(url), danger)
@@ -1478,7 +1528,9 @@ def should_use_lightweight_browser(url, dedicated_selector, popup_xpath, headles
     )
 
 
-def should_use_phantom_browser(url, dedicated_selector, popup_xpath, headless, stealth, browser, danger):
+def should_use_phantom_browser(
+    url, dedicated_selector, popup_xpath, headless, stealth, browser, danger
+):
     """Determine if a lightweight browser should be used for capture."""
     return (
         re.findall(r"^https?://", url, flags=re.I)
@@ -1508,10 +1560,11 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
         return False
 
     if (
-        lurl_cache.get(url, "none") != "good" and time.time() - lurl_cache_time.get(url, 0) < 3600
+        lurl_cache.get(url, "none") != "good"
+        and time.time() - lurl_cache_time.get(url, 0) < 3600
     ):  # try every 1 hour no matter what??
         # don't keep retrying on known bad
-        logging.debug("skipping %s %s", lurl_cache[url], url)
+        logging.debug("skipping %s %s", lurl_cache[url], sanitize_url(url))
         return False
 
     lsuccess = False
@@ -1537,7 +1590,9 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
 
         if result.returncode != 0:
             lurl_cache[url] = "bad"
-            if re.findall(r"(?:vailable|found|404)", result.stderr.decode("utf-8").lower()):
+            if re.findall(
+                r"(?:vailable|found|404)", result.stderr.decode("utf-8").lower()
+            ):
                 lurl_cache[url] = "offline"
                 # print("offline", url)
             return False
@@ -1592,7 +1647,9 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
         # 3) Check output; add timestamp
         if os.path.exists(output_path) and _is_valid_png(output_path):
             add_timestamp(output_path, name=name, invert=invert)
-            logging.debug(f"Successfully captured frame with ytdlp+ffmpeg: {url}")
+            logging.debug(
+                f"Successfully captured frame with ytdlp+ffmpeg: {sanitize_url(url)}"
+            )
             lsuccess = True
 
         return lsuccess
@@ -1621,6 +1678,8 @@ def capture_frame_from_stream(
     """Use ffmpeg to capture multiple frames from a video stream and save the last one."""
     if not _check_ffmpeg():
         return False
+
+    clean_url = sanitize_url(url)
 
     if timeout < 5:
         timeout = 5
@@ -1715,17 +1774,17 @@ def capture_frame_from_stream(
                 timeout=timeout,
             )
         except subprocess.TimeoutExpired:
-            logging.error("ffmpeg timed out for %s after %ss", url, timeout)
+            logging.error("ffmpeg timed out for %s after %ss", clean_url, timeout)
             return False
         except subprocess.CalledProcessError as e:
             logging.error(
                 "ffmpeg failed for %s: %s",
-                url,
+                clean_url,
                 e.stderr.decode("utf-8", "ignore")[:200],
             )
             return False
         except Exception as e:
-            logging.error("Error running ffmpeg for %s: %s", url, e)
+            logging.error("Error running ffmpeg for %s: %s", clean_url, e)
             return False
 
         try:
@@ -1740,19 +1799,23 @@ def capture_frame_from_stream(
                 shutil.move(last_frame_path, output_path)
                 if os.path.exists(output_path) and _is_valid_png(output_path):
                     add_timestamp(output_path, name=name, invert=invert)
-                    logging.debug(f"Successfully captured frame from stream {url}")
+                    logging.debug(
+                        f"Successfully captured frame from stream {clean_url}"
+                    )
                     return True
             else:
-                logging.error(f"No frames captured from stream {url}")
+                logging.error(f"No frames captured from stream {clean_url}")
         except Exception as e:
             logging.error(f"Error capturing frames from stream: {e}")
 
-    logging.error(f"Error capturing frame with {FFMPEG_PATH}: {url}")
+    logging.error(f"Error capturing frame with {FFMPEG_PATH}: {clean_url}")
     return False
 
 
 def apply_dark_mode(img, rng=30, txt_rng=120):
-    arr = np.asarray(img.convert("RGB")).copy()  # copy to avoid "assignment destination is read-only" errors
+    arr = np.asarray(
+        img.convert("RGB")
+    ).copy()  # copy to avoid "assignment destination is read-only" errors
     dark = arr <= rng
     light = arr >= 255 - txt_rng
     mask = dark.any(axis=-1) | light.any(axis=-1)
@@ -1775,6 +1838,7 @@ def capture_screenshot_and_har_light(
     """
     proxy = validate_proxy(proxy)
     url = validate_url(url)
+    clean_url = sanitize_url(url)
     if url is None:
         logging.warning("Invalid URL provided for screenshot capture")
         return False
@@ -1845,7 +1909,9 @@ def capture_screenshot_and_har_light(
         with Image.open(tmp_path) as image:
             image = image.convert("RGB")  # ensure RGB
             if is_mostly_blank(image):
-                logging.warning(f"Captured image is mostly blank—skipping. {url} {name}")
+                logging.warning(
+                    f"Captured image is mostly blank—skipping. {clean_url} {name}"
+                )
                 os.unlink(tmp_path)
                 return False
 
@@ -1864,13 +1930,13 @@ def capture_screenshot_and_har_light(
 
         # If you capture HAR data, do that here as well...
         logging.debug(
-            f"Successfully captured light screenshot for {url} at {output_path} "
+            f"Successfully captured light screenshot for {clean_url} at {output_path} "
             f"({round(time.time() - start_time, 3)}s)"
         )
         return lsuccess
 
     except subprocess.TimeoutExpired:
-        logging.warning("wkhtmltoimage timed out for %s after %ss", url, timeout)
+        logging.warning("wkhtmltoimage timed out for %s after %ss", clean_url, timeout)
         return False
     except Exception as e:
         logging.error(f"Error in capture_screenshot_and_har_light: {e}")
@@ -1896,12 +1962,19 @@ def get_chrome_path():
         if os.path.exists(path):
             return path
     """
-    return shutil.which("google-chrome") or shutil.which("chromium") or shutil.which("chromium-browser")
+    return (
+        shutil.which("google-chrome")
+        or shutil.which("chromium")
+        or shutil.which("chromium-browser")
+    )
 
 
 def get_chrome_version(chrome_path):
     # Command to get the installed version of Chrome
-    if chrome_version.get(chrome_path) is not None and chrome_version[chrome_path][1] > time.time() - 60 * 60:
+    if (
+        chrome_version.get(chrome_path) is not None
+        and chrome_version[chrome_path][1] > time.time() - 60 * 60
+    ):
         return int(chrome_version[chrome_path][0])
 
     try:
@@ -1926,11 +1999,15 @@ def extract_version(driver_path):
         # Extract the version using regex to handle different structures
         match = re.search(r"(\d+)\.(\d+)\.(\d+)\.(\d+)", driver_path)
         if match:
-            return int(match.group(1))  # Return the main version part (e.g., 124 from 124.0.6367.207)
+            return int(
+                match.group(1)
+            )  # Return the main version part (e.g., 124 from 124.0.6367.207)
         else:
             raise ValueError("Version number not found in the path.")
     except Exception as e:
-        logging.error("Error extracting version from path: %s, error: %s", driver_path, e)
+        logging.error(
+            "Error extracting version from path: %s, error: %s", driver_path, e
+        )
         # Default to a known working version if extraction fails
         return 135
 
@@ -2095,6 +2172,7 @@ def capture_screenshot_phantom(
         logging.warning("PhantomJS not found; cannot capture screenshot.")
         return False
 
+    clean_url = sanitize_url(url)
     if not (url.lower().startswith("http://") or url.lower().startswith("https://")):
         url = "https://" + url
 
@@ -2108,7 +2186,9 @@ def capture_screenshot_phantom(
     if popup_xpath:
         safe_popup_xpath = popup_xpath.replace("\\", "\\\\").replace('"', '\\"')
     if dedicated_selector:
-        safe_dedicated_selector = dedicated_selector.replace("\\", "\\\\").replace('"', '\\"')
+        safe_dedicated_selector = dedicated_selector.replace("\\", "\\\\").replace(
+            '"', '\\"'
+        )
 
     remove_popup_script = ""
     if popup_xpath:
@@ -2223,14 +2303,16 @@ def capture_screenshot_phantom(
                 stdout=subprocess.DEVNULL,
             )
         except subprocess.TimeoutExpired:
-            logging.warning(f"PhantomJS timed out for {url}.")
+            logging.warning(f"PhantomJS timed out for {clean_url}.")
             return False
         except Exception as e:
-            logging.warning(f"PhantomJS error for {url}: {e}")
+            logging.warning(f"PhantomJS error for {clean_url}: {e}")
             return False
 
         if not os.path.exists(screenshot_tmp):
-            logging.warning(f"PhantomJS script completed but no screenshot found for {url}")
+            logging.warning(
+                f"PhantomJS script completed but no screenshot found for {clean_url}"
+            )
             return False
 
         try:
@@ -2242,7 +2324,9 @@ def capture_screenshot_phantom(
                 dark=dark,
             )
         except Exception as e:
-            logging.error(f"Error post-processing Phantom screenshot for {url}: {e}")
+            logging.error(
+                f"Error post-processing Phantom screenshot for {clean_url}: {e}"
+            )
             return False
 
 
@@ -2308,12 +2392,15 @@ def capture_screenshot_and_har(
     proxy = validate_proxy(proxy)
 
     # Quick sanity check
+    clean_url = sanitize_url(url)
     if not re.match(r"^https?://", url, flags=re.IGNORECASE):
-        logging.error(f"[capture_screenshot_and_har] Not a valid http/https URL: {url}")
+        logging.error(
+            f"[capture_screenshot_and_har] Not a valid http/https URL: {clean_url}"
+        )
         return False
 
     if not is_system_online():
-        logging.warning("System offline; skipping capture for %s", url)
+        logging.warning("System offline; skipping capture for %s", clean_url)
         return False
 
     if timeout < 30:
@@ -2336,14 +2423,18 @@ def capture_screenshot_and_har(
         # If we rely on the user's local Chrome with remote-debugging-port=9222,
         # let's confirm it's actually open.
         if not is_chrome_debug_port_open("127.0.0.1", 9222):
-            logging.warning("[capture_screenshot_and_har] Danger mode requested, but no Chrome on port 9222.")
+            logging.warning(
+                "[capture_screenshot_and_har] Danger mode requested, but no Chrome on port 9222."
+            )
             return False
 
         # Optionally, skip if we detect user activity (like your `check_user_activity`).
         # from app.utils.screenshots import check_user_activity
         if check_user_activity(timeout=10):
             # print("skipping danger mode", name)
-            logging.warning("User is active; skipping Danger screenshot to avoid messing with user’s browser.")
+            logging.warning(
+                "User is active; skipping Danger screenshot to avoid messing with user’s browser."
+            )
             return False
 
         # print("not skipping danger mode", name)
@@ -2380,7 +2471,11 @@ def capture_screenshot_and_har(
         driver_options.add_argument("--no-sandbox")
         driver_options.add_argument("--disable-dev-shm-usage")
         driver_options.add_argument("--disable-gpu")
-        if _hwaccel_enabled() and _machine_supports_hwaccel() and browser_supports_gl(chrome_path):
+        if (
+            _hwaccel_enabled()
+            and _machine_supports_hwaccel()
+            and browser_supports_gl(chrome_path)
+        ):
             driver_options.add_argument("--use-gl=egl")
         if stealth:
             apply_stealth_options(driver_options)
@@ -2397,20 +2492,42 @@ def capture_screenshot_and_har(
         driver_options.add_argument(
             "--disable-component-extensions-with-background-pages"
         )  # Disables unnecessary extensions
-        driver_options.add_argument("--disable-client-side-phishing-detection")  # Speeds up execution
-        driver_options.add_argument("--disable-default-apps")  # Prevents default apps from loading
-        driver_options.add_argument("--disable-hang-monitor")  # Prevents Chrome from freezing when unresponsive
-        driver_options.add_argument("--disable-ipc-flooding-protection")  # Prevents IPC issues
-        driver_options.add_argument("--disable-renderer-backgrounding")  # Ensures no CPU throttling
+        driver_options.add_argument(
+            "--disable-client-side-phishing-detection"
+        )  # Speeds up execution
+        driver_options.add_argument(
+            "--disable-default-apps"
+        )  # Prevents default apps from loading
+        driver_options.add_argument(
+            "--disable-hang-monitor"
+        )  # Prevents Chrome from freezing when unresponsive
+        driver_options.add_argument(
+            "--disable-ipc-flooding-protection"
+        )  # Prevents IPC issues
+        driver_options.add_argument(
+            "--disable-renderer-backgrounding"
+        )  # Ensures no CPU throttling
         if not stealth:
-            driver_options.add_argument("--enable-automation")  # Explicitly marks as automation-friendly
-        driver_options.add_argument("--force-device-scale-factor=1")  # Prevents UI scaling issues
-        driver_options.add_argument("--force-color-profile=srgb")  # Prevents color space issues
-        driver_options.add_argument("--metrics-recording-only")  # Reduces telemetry load
-        driver_options.add_argument("--safebrowsing-disable-auto-update")  # Reduces network requests
+            driver_options.add_argument(
+                "--enable-automation"
+            )  # Explicitly marks as automation-friendly
+        driver_options.add_argument(
+            "--force-device-scale-factor=1"
+        )  # Prevents UI scaling issues
+        driver_options.add_argument(
+            "--force-color-profile=srgb"
+        )  # Prevents color space issues
+        driver_options.add_argument(
+            "--metrics-recording-only"
+        )  # Reduces telemetry load
+        driver_options.add_argument(
+            "--safebrowsing-disable-auto-update"
+        )  # Reduces network requests
         driver_options.add_argument("--disable-translate")  # Prevents translation UI
         driver_options.add_argument("--no-first-run")  # Skips first-time setup
-        driver_options.add_argument("--disable-notifications")  # Disables notification popups
+        driver_options.add_argument(
+            "--disable-notifications"
+        )  # Disables notification popups
         driver_options.add_argument("--disable-extensions")  # Reduces memory footprint
         driver_options.add_argument("--disable-site-isolation-trials")
 
@@ -2433,13 +2550,17 @@ def capture_screenshot_and_har(
         # Attempt dark mode for the loaded page, if desired
         if dark and not invert:
             try:
-                driver.execute_cdp_cmd("Emulation.setAutoDarkModeOverride", {"enabled": True})
+                driver.execute_cdp_cmd(
+                    "Emulation.setAutoDarkModeOverride", {"enabled": True}
+                )
             except Exception as e:
                 logging.debug(f"Failed to setAutoDarkModeOverride: {e}")
 
         # Navigate
         driver.get(url)
-        time.sleep(5)  # Basic wait for DOM. Tweak as needed or switch to explicit waits.
+        time.sleep(
+            5
+        )  # Basic wait for DOM. Tweak as needed or switch to explicit waits.
 
         # Remove popups
         if popup_xpath:
@@ -2468,14 +2589,16 @@ def capture_screenshot_and_har(
         #    _save_har_logs(driver, har_output_path)
 
         # Post-process final
-        success = _finalize_screenshot(partial_screenshot, output_path, name, invert, dark)
+        success = _finalize_screenshot(
+            partial_screenshot, output_path, name, invert, dark
+        )
 
     except TimeoutException as e:
-        logging.warning(f"[capture_screenshot_and_har] Timeout error for {url}")
+        logging.warning(f"[capture_screenshot_and_har] Timeout error for {clean_url}")
     except WebDriverException as e:
-        logging.warning(f"[capture_screenshot_and_har] WebDriver error for {url}")
+        logging.warning(f"[capture_screenshot_and_har] WebDriver error for {clean_url}")
     except Exception as e:
-        logging.error(f"[capture_screenshot_and_har] Unexpected error: {url} {e}")
+        logging.error(f"[capture_screenshot_and_har] Unexpected error: {clean_url} {e}")
     finally:
         # Gracefully close the driver
         if driver:
@@ -2586,6 +2709,7 @@ def _capture_danger_mode(
     original_window = None
     new_tab_handle = None
 
+    clean_url = sanitize_url(url)
     try:
         driver = webdriver.Chrome(options=danger_options)
         driver.set_page_load_timeout(timeout)
@@ -2599,16 +2723,18 @@ def _capture_danger_mode(
         all_tabs = driver.window_handles
         new_tab_handle = all_tabs[-1]  # the newly opened blank
         driver.switch_to.window(new_tab_handle)
-        logging.debug("trying %s", url)
+        logging.debug("trying %s", clean_url)
         driver.get(url)
-        logging.debug("success, screenshotting %s", url)
+        logging.debug("success, screenshotting %s", clean_url)
         _send_input_event()
         time.sleep(3)
 
         # Attempt dark mode if desired
         if dark and not invert:
             try:
-                driver.execute_cdp_cmd("Emulation.setAutoDarkModeOverride", {"enabled": True})
+                driver.execute_cdp_cmd(
+                    "Emulation.setAutoDarkModeOverride", {"enabled": True}
+                )
             except Exception as e:
                 logging.debug(f"[danger_mode] setAutoDarkModeOverride failed: {e}")
         time.sleep(5)
@@ -2635,7 +2761,7 @@ def _capture_danger_mode(
 
     except TimeoutException:
         # print("timeout1")
-        logging.warning(f"[danger_mode] Timeout while loading page: {url}")
+        logging.warning(f"[danger_mode] Timeout while loading page: {clean_url}")
         return False
     except Exception as e:
         logging.error("[danger_mode] Unexpected error: %s", e)
@@ -2654,7 +2780,9 @@ def _capture_danger_mode(
             try:
                 driver.switch_to.window(original_window)
             except Exception as ex:
-                logging.debug(f"Could not switch to original window in danger mode: {ex}")
+                logging.debug(
+                    f"Could not switch to original window in danger mode: {ex}"
+                )
 
         # DO NOT do driver.quit() in Danger mode: that kills the user's entire Chrome
         driver = None
