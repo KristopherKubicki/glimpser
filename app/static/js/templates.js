@@ -731,6 +731,33 @@ export function templateMatchesSearch(template, searchQuery) {
   return name.includes(searchQuery) || groups.includes(searchQuery);
 }
 
+export function virtualizeElements(container, elements, batch = 20) {
+  if (!container) return;
+  let index = 0;
+  const sentinel = document.createElement("div");
+  sentinel.className = "scroll-sentinel";
+  container.appendChild(sentinel);
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) renderBatch();
+    });
+  });
+
+  function renderBatch() {
+    const slice = elements.slice(index, index + batch);
+    slice.forEach((el) => container.insertBefore(el, sentinel));
+    index += slice.length;
+    if (index >= elements.length) {
+      observer.disconnect();
+      sentinel.remove();
+    }
+  }
+
+  observer.observe(sentinel);
+  renderBatch();
+}
+
 export async function loadTemplates() {
   const searchInput = document.getElementById("search-input");
   const selectedGroup = getSelectedGroup();
@@ -808,6 +835,7 @@ export async function loadTemplates() {
     let hasTemplates = false;
     let templateCount = 0;
     let firstTemplateName = null;
+    const cards = [];
     Object.entries(templates).forEach(([name, template], index) => {
       if (
         templateBelongsToGroup(template, selectedGroup) &&
@@ -843,7 +871,6 @@ export async function loadTemplates() {
             index,
             mobileView,
           );
-          templateList.appendChild(templateDiv);
 
           void templateDiv.offsetWidth;
           setTimeout(() => {
@@ -854,6 +881,7 @@ export async function loadTemplates() {
           const video = templateDiv.querySelector("video");
           observer.observe(video);
           attachVideoHover(video, name);
+          cards.push(templateDiv);
         } else if (isCaptionsPage) {
           const templateDiv = document.createElement("div");
           templateDiv.classList.add("templateDiv");
@@ -873,6 +901,10 @@ export async function loadTemplates() {
         }
       }
     });
+
+    if (isIndexPage && cards.length) {
+      virtualizeElements(templateList, cards);
+    }
 
     if (!hasTemplates) {
       const msg = document.createElement("div");
