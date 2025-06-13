@@ -188,30 +188,39 @@
         const source = new EventSource(url);
         const known = new Set();
         const addRow = (cam) => {
-          const key = `${cam.ip}-${cam.protocol}-${cam.port}`;
+          const key = cam.ip ? `${cam.ip}-${cam.protocol}-${cam.port}` : cam.url;
           if (known.has(key)) return;
           known.add(key);
           results.push(cam);
           const tr = document.createElement("tr");
-          const url = cam.url || `${cam.protocol}://${cam.ip}:${cam.port}`;
+          let url = cam.url || `${cam.protocol}://${cam.ip}:${cam.port}`;
           const existing = existingMap[url];
           const action = existing
             ? `<a href="/templates/${existing}" class="btn btn-primary" title="View this camera">View</a>`
             : `<form action="/discover/add" method="post">
-                            <input type="hidden" name="ip" value="${cam.ip}">
-                            <input type="hidden" name="protocol" value="${cam.protocol}">
-                            <input type="hidden" name="port" value="${cam.port}">
+                            ${cam.ip ? `<input type="hidden" name="ip" value="${cam.ip}">` : ""}
+                            ${cam.protocol ? `<input type="hidden" name="protocol" value="${cam.protocol}">` : ""}
+                            ${cam.port ? `<input type="hidden" name="port" value="${cam.port}">` : ""}
                             ${cam.url ? `<input type="hidden" name="url" value="${cam.url}">` : ""}
-                            <input type="hidden" name="name" value="${cam.ip}">
+                            <input type="hidden" name="name" value="${cam.name || cam.ip}">
                             <button type="submit" title="Add this camera">Add</button>
                         </form>`;
-          const info = renderInfo(cam.info);
+          let protocol = cam.protocol;
+          let port = cam.port;
+          if (!cam.ip && cam.url) {
+            try {
+              const p = new URL(cam.url);
+              protocol = protocol || p.protocol.replace(":", "");
+              port = port || p.port || (p.protocol === "https:" ? "443" : "80");
+            } catch {}
+          }
+          const info = renderInfo(cam.info || { name: cam.name, category: cam.category, notes: cam.notes });
           tr.innerHTML = `
-                    <td>${cam.ip}</td>
-                    <td>${cam.protocol}</td>
-                    <td>${cam.port}</td>
-                    <td>${cam.info.mac || ""}</td>
-                    <td>${cam.info.manufacturer || ""}</td>
+                    <td>${cam.ip || ""}</td>
+                    <td>${protocol || ""}</td>
+                    <td>${port || ""}</td>
+                    <td>${(cam.info && cam.info.mac) || ""}</td>
+                    <td>${(cam.info && cam.info.manufacturer) || ""}</td>
                     <td><svg class="camera-icon" width="12" height="12" aria-hidden="true"><use href="${iconUrl}#camera"></use></svg>
                     ${info ? `<span class="info-icon" title="${info}">ℹ️</span>` : ""}</td>
                     <td>${action}</td>`;
