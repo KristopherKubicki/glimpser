@@ -135,8 +135,8 @@ object_tokens=None, clip_model=None) -%}
       <span id="url-status" class="url-status" title="URL test result"></span>
     </div>
     <div class="form-row double-row">
-      <label for="frequency" title="How often to check the URL"
-        >Frequency (minutes):</label
+      <label for="frequency" class="sr-only" title="How often to check the URL"
+        >Frequency</label
       >
       <input
         type="number"
@@ -149,8 +149,8 @@ object_tokens=None, clip_model=None) -%}
         list="frequency-options"
         class="short-input"
         required
-        placeholder="30"
-        title="Enter how often to check the URL (in minutes)"
+        placeholder="Minutes"
+        title="How often to check the URL (minutes)"
       />
       <!-- suggestions only; users may enter any value -->
       <datalist id="frequency-options">
@@ -161,8 +161,11 @@ object_tokens=None, clip_model=None) -%}
         <option value="360"></option>
         <option value="1440"></option>
       </datalist>
-      <label for="timeout" title="Maximum time to wait for a response"
-        >Timeout (seconds):</label
+      <label
+        for="timeout"
+        class="sr-only"
+        title="Maximum time to wait for a response"
+        >Timeout</label
       >
       <input
         type="number"
@@ -175,8 +178,8 @@ object_tokens=None, clip_model=None) -%}
         list="timeout-options"
         class="short-input"
         required
-        placeholder="10"
-        title="Enter the maximum time to wait for a response (in seconds)"
+        placeholder="Seconds"
+        title="Maximum wait time (seconds)"
       />
       <datalist id="timeout-options">
         <option value="5"></option>
@@ -192,6 +195,11 @@ object_tokens=None, clip_model=None) -%}
       name="notes"
       value="{{ template.notes if template else '' }}"
     />
+    <div class="form-row">
+      <label for="groups" title="Select an existing group">Group:</label>
+      <!-- prettier-ignore -->
+      <select id="groups" name="groups" class="sm-select" title="Choose a group"></select>
+    </div>
     <details class="advanced-settings">
       <summary title="Show additional fields">Advanced Options</summary>
       <div class="form-row double-row">
@@ -290,7 +298,7 @@ object_tokens=None, clip_model=None) -%}
           title="Enter proxy server address (optional)"
         />
       </div>
-      <div class="form-row">
+      <div class="form-row hidden">
         <label for="auth_username" title="Username for camera authentication"
           >Username:</label
         >
@@ -301,9 +309,10 @@ object_tokens=None, clip_model=None) -%}
           value="{{ template.auth_username if template else '' }}"
           placeholder="user"
           title="Camera username"
+          disabled
         />
       </div>
-      <div class="form-row">
+      <div class="form-row hidden">
         <label for="auth_password" title="Password for camera authentication"
           >Password:</label
         >
@@ -314,12 +323,8 @@ object_tokens=None, clip_model=None) -%}
           value="{{ template.auth_password if template else '' }}"
           placeholder="pass"
           title="Camera password"
+          disabled
         />
-      </div>
-      <div class="form-row">
-        <label for="groups" title="Select an existing group">Group:</label>
-        <!-- prettier-ignore -->
-        <select id="groups" name="groups" class="sm-select" title="Choose a group"></select>
       </div>
       <div class="form-row hidden">
         <label for="rollback_frames" title="Number of frames to rollback"
