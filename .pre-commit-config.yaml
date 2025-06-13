@@ -38,7 +38,7 @@ repos:
         entry: mypy --config-file=mypy.ini
         language: system
         types: [python]
-        stages: [push]
+        stages: [pre-push]
 
 # ─── JAVASCRIPT / CSS ──────────────────────────────────────────────────────────
   - repo: local
@@ -48,18 +48,18 @@ repos:
         entry: npm run lint:js
         language: system
         pass_filenames: false
-        stages: [commit]
+        stages: [pre-commit]
 
       - id: format-js
         name: format js write
         entry: npm run format:js:write
         language: system
         pass_filenames: false
-        stages: [commit]
+        stages: [pre-commit]
 
       - id: lint-css
         name: lint css
         entry: npm run lint:css
         language: system
         pass_filenames: false
-        stages: [commit]
+        stages: [pre-commit]
