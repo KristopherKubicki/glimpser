@@ -4,6 +4,7 @@ export function initTabs() {
     const contents = document.querySelectorAll(".tab-content");
     const addContainer = document.getElementById("add-setting-container");
     const storageKey = `lastTab:${window.location.pathname}`;
+    const persist = window.location.pathname !== "/captions";
     if (!tabs.length) return;
 
     tabs.forEach((tab) => {
@@ -14,10 +15,12 @@ export function initTabs() {
         contents.forEach((c) => c.classList.remove("active"));
         tab.classList.add("active");
         document.getElementById(target)?.classList.add("active");
-        try {
-          localStorage.setItem(storageKey, target);
-        } catch {
-          /* ignore */
+        if (persist) {
+          try {
+            localStorage.setItem(storageKey, target);
+          } catch {
+            /* ignore */
+          }
         }
         if (addContainer) {
           if (target === "Other-tab") {
@@ -30,7 +33,8 @@ export function initTabs() {
     });
 
     const params = new URLSearchParams(window.location.search);
-    const tab = params.get("tab") || localStorage.getItem(storageKey);
+    const tab =
+      persist && (params.get("tab") || localStorage.getItem(storageKey));
     if (tab) {
       const btn = document.querySelector(`.tab-link[data-tab="${tab}"]`);
       btn?.click();
