@@ -2459,3 +2459,20 @@ details > summary {
 .loading-spinner.bouncy {
   animation: bounce-ball 0.6s ease-in-out infinite;
 }
+
+@keyframes shake-no {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+.loading-spinner.shake {
+  animation: shake-no 0.4s ease-in-out infinite;
+}

@@ -1,4 +1,4 @@
-import { showSpinner, hideSpinner } from "./video.js";
+import { showSpinner, hideSpinner, showErrorIndicator } from "./video.js";
 
 export function initTilePlayer() {
   const video = document.getElementById("live-video");
@@ -75,7 +75,10 @@ export function initTilePlayer() {
       const res = await fetch(url, { signal: abortCtl.signal });
       clearTimeout(timer);
       hideSpinner(video);
-      if (!res.ok) return;
+      if (!res.ok) {
+        showErrorIndicator(video);
+        return;
+      }
       const blob = await res.blob();
       const objUrl = URL.createObjectURL(blob);
       const pos = video.currentTime;
@@ -97,6 +100,7 @@ export function initTilePlayer() {
     } catch (_) {
       hideSpinner(video);
       hideBounce();
+      showErrorIndicator(video);
     }
   }
 
