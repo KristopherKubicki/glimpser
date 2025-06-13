@@ -355,6 +355,10 @@ template_form %} {% block content %}
 ></script>
 <script
   type="module"
+  src="{{ url_for('static', filename='js/capture_status.js') }}"
+></script>
+<script
+  type="module"
   src="{{ url_for('static', filename='js/tabs.js') }}"
 ></script>
 <script>

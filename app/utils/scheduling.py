@@ -1494,6 +1494,15 @@ def get_feed_status():
             job = active_jobs.get(name)
             capturing = bool(job and job.is_alive())
 
+        next_capture = None
+        if frequency and last_shot:
+            try:
+                shot_dt = datetime.datetime.strptime(last_shot, "%Y-%m-%d %H:%M:%S")
+                next_dt = shot_dt + datetime.timedelta(minutes=frequency)
+                next_capture = next_dt.isoformat() + "Z"
+            except Exception:
+                pass
+
         feeds.append(
             {
                 "name": name,
@@ -1514,6 +1523,8 @@ def get_feed_status():
                 "danger": danger,
                 "danger_reason": danger_reason,
                 "capturing": capturing,
+                "next_capture_time": next_capture,
+                "frequency": frequency,
             }
         )
 

@@ -190,7 +190,9 @@
           data-value="{{ '1' if feed.capturing else '0' }}"
         >
           <span
-            class="capture-dot{% if feed.capturing %} active countdown{% endif %}"
+            class="capture-dot countdown{% if feed.capturing %} active{% endif %}"
+            data-next="{{ feed.next_capture_time or '' }}"
+            data-frequency="{{ feed.frequency }}"
           ></span>
         </td>
         <td
