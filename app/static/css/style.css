@@ -2275,6 +2275,21 @@ details > summary {
   background-color: gray;
 }
 
+.capture-dot.countdown::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: conic-gradient(
+    dodgerblue var(--capture-angle, 0deg),
+    transparent 0deg
+  );
+  mask: radial-gradient(farthest-side, transparent 55%, #000 56%);
+}
+
 .capture-dot.active {
   background-color: dodgerblue;
 }
