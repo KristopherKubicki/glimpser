@@ -136,7 +136,7 @@ class TestGetSystemMetrics(unittest.TestCase):
                 "cpu_usage": 1.234,
                 "memory_usage": 2.345,
                 "thread_count": 5,
-                "top_threads": [{"id": 123, "cpu": 10.0}],
+                "top_threads": [{"id": 123, "name": "Thread-1", "cpu": 10.0}],
                 "start_time": time.time() - 3661,
             }
         )
@@ -158,7 +158,9 @@ class TestGetSystemMetrics(unittest.TestCase):
         self.assertTrue(metrics["gpu_support"])
         self.assertTrue(metrics["ffmpeg_gpu_enabled"])
         self.assertTrue(metrics["danger_mode"])
-        self.assertEqual(metrics["top_threads"], [{"id": 123, "cpu": 10.0}])
+        self.assertEqual(
+            metrics["top_threads"], [{"id": 123, "name": "Thread-1", "cpu": 10.0}]
+        )
 
 
 class TestOfflineJobQueue(unittest.TestCase):

@@ -73,7 +73,14 @@
   </li>
   <li title="Top threads by CPU usage">
     <span class="metric-label">Top Threads:</span>
-    <span id="thread-cpu-list">{{ metrics.top_threads }}</span>
+    <ul id="thread-cpu-list" class="thread-list">
+      {% for t in metrics.top_threads %}
+      <li>
+        <span class="thread-name">{{ t.name }}</span>
+        <span class="thread-cpu">{{ t.cpu }}%</span>
+      </li>
+      {% endfor %}
+    </ul>
   </li>
   <li title="System uptime">
     <span class="metric-label">Uptime:</span>

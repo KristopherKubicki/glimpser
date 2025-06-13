@@ -44,9 +44,19 @@ export function updatePerformanceMetrics() {
 
       const cpuList = document.getElementById("thread-cpu-list");
       if (cpuList) {
-        cpuList.textContent = (metrics.top_threads || [])
-          .map((t) => `${t.id} (${t.cpu}%)`)
-          .join(", ");
+        cpuList.innerHTML = "";
+        (metrics.top_threads || []).forEach((t) => {
+          const li = document.createElement("li");
+          const nameSpan = document.createElement("span");
+          nameSpan.className = "thread-name";
+          nameSpan.textContent = t.name;
+          const cpuSpan = document.createElement("span");
+          cpuSpan.className = "thread-cpu";
+          cpuSpan.textContent = `${t.cpu}%`;
+          li.appendChild(nameSpan);
+          li.appendChild(cpuSpan);
+          cpuList.appendChild(li);
+        });
       }
 
       const uptimeVal = document.getElementById("uptime-value");
