@@ -12,7 +12,9 @@ class TestInitDb(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.db_path = os.path.join(self.temp_dir.name, "test.db")
-        self.env_patch = patch.dict(os.environ, {"GLIMPSER_DATABASE_PATH": self.db_path})
+        self.env_patch = patch.dict(
+            os.environ, {"GLIMPSER_DATABASE_PATH": self.db_path}
+        )
         self.env_patch.start()
 
         import app.config as config

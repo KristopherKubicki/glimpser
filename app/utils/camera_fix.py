@@ -31,7 +31,9 @@ def _check_xpath(content: bytes, xpath: str) -> bool:
         return False
 
 
-def check_camera_template(url: str, xpaths: List[str], timeout: int = 5) -> Dict[str, Any]:
+def check_camera_template(
+    url: str, xpaths: List[str], timeout: int = 5
+) -> Dict[str, Any]:
     """Validate ``url`` and ``xpaths``.
 
     Parameters

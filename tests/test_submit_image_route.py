@@ -21,7 +21,9 @@ class TestSubmitImageRoute(unittest.TestCase):
         self.login_patch = patch("app.routes.login_required", lambda x: x)
         self.sc_patch = patch("app.routes.SCREENSHOT_DIRECTORY", self.sshot_dir)
         self.tpl_patch = patch("app.routes.template_manager.get_template")
-        self.update_patch = patch("app.routes.template_manager.update_last_screenshot_time")
+        self.update_patch = patch(
+            "app.routes.template_manager.update_last_screenshot_time"
+        )
         self.ts_patch = patch("app.routes.screenshots.add_timestamp")
         self.login_patch.start()
         self.sc_patch.start()

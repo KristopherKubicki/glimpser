@@ -67,7 +67,9 @@ class TestInstallationAndFirstUse(unittest.TestCase):
     def test_root_route(self):
         """Test the root route of the application"""
         response = self.client.get("/")
-        self.assertEqual(response.status_code, 302)  # will be a redirect because of no auth
+        self.assertEqual(
+            response.status_code, 302
+        )  # will be a redirect because of no auth
         self.assertTrue("/login" in response.text)
 
 

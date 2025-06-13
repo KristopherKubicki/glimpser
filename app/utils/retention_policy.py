@@ -2,8 +2,8 @@
 
 import logging
 import os
-import time
 import shutil
+import time
 
 from app.config import (
     CLIPS_DIRECTORY,

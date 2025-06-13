@@ -39,16 +39,16 @@ class TestARPTable(unittest.TestCase):
 
     @patch("subprocess.check_output")
     def test_get_arp_output_linux(self, mock_check_output):
-        mock_check_output.return_value = b"192.168.0.1 dev eth0 lladdr 00:11:22:33:44:55 REACHABLE"
+        mock_check_output.return_value = (
+            b"192.168.0.1 dev eth0 lladdr 00:11:22:33:44:55 REACHABLE"
+        )
         ip_address = "192.168.0.1"
         result = get_arp_output(ip_address, timeout=5)
         self.assertIn(b"REACHABLE", result)
 
     @patch("subprocess.check_output")
     def test_get_arp_output_windows(self, mock_check_output):
-        mock_check_output.return_value = (
-            b"Internet Address      Physical Address      Type\n192.168.0.1          00-11-22-33-44-55     dynamic"
-        )
+        mock_check_output.return_value = b"Internet Address      Physical Address      Type\n192.168.0.1          00-11-22-33-44-55     dynamic"
         ip_address = "192.168.0.1"
         result = get_arp_output(ip_address, timeout=5)
         self.assertIn(b"dynamic", result)

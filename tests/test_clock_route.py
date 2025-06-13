@@ -18,7 +18,9 @@ class TestClockRoute(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.db_path = os.path.join(self.temp_dir.name, "test.db")
 
-        self.env_patch = patch.dict(os.environ, {"GLIMPSER_DATABASE_PATH": self.db_path})
+        self.env_patch = patch.dict(
+            os.environ, {"GLIMPSER_DATABASE_PATH": self.db_path}
+        )
         self.env_patch.start()
 
         importlib.reload(config)
@@ -37,7 +39,9 @@ class TestClockRoute(unittest.TestCase):
         )
         conn.commit()
         conn.close()
-        self.app = app.create_app(enable_watchdog=False, schedule=False, log_cache=False)
+        self.app = app.create_app(
+            enable_watchdog=False, schedule=False, log_cache=False
+        )
         self.client = self.app.test_client()
         self.app_context = self.app.app_context()
         self.app_context.push()

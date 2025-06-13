@@ -12,13 +12,17 @@ from app.utils.db import ensure_column
 
 class TestEnsureColumn(unittest.TestCase):
     def setUp(self):
-        self.engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+        self.engine = create_engine(
+            "sqlite:///:memory:", connect_args={"check_same_thread": False}
+        )
         with self.engine.begin() as conn:
             conn.execute(text("CREATE TABLE test_table (id INTEGER PRIMARY KEY)"))
 
     def get_columns(self):
         with self.engine.connect() as conn:
-            return [row[1] for row in conn.execute(text("PRAGMA table_info(test_table)"))]
+            return [
+                row[1] for row in conn.execute(text("PRAGMA table_info(test_table)"))
+            ]
 
     def test_adds_missing_column(self):
         with patch("app.utils.db.engine", self.engine):

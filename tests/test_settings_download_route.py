@@ -2,7 +2,7 @@ import os
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
 
 from flask import Flask
 

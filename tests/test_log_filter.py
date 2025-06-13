@@ -92,7 +92,9 @@ class TestLogFiltering(unittest.TestCase):
             [
                 l
                 for l in self.logs
-                if datetime.datetime(2023, 1, 2) <= l["timestamp"] <= datetime.datetime(2023, 1, 4, 23, 59, 59)
+                if datetime.datetime(2023, 1, 2)
+                <= l["timestamp"]
+                <= datetime.datetime(2023, 1, 4, 23, 59, 59)
             ],
             key=lambda x: x["timestamp"],
             reverse=True,

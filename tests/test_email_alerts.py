@@ -76,7 +76,9 @@ class TestEmailAlerts(unittest.TestCase):
     def test_email_alert_wrapper(self):
         with patch("app.utils.email_alerts.send_email_alert") as mock_send:
             email_alert("Test", "Details")
-            mock_send.assert_called_once_with("Glimpser Alert: Test", "Event Type: Test\n\nDetails:\nDetails")
+            mock_send.assert_called_once_with(
+                "Glimpser Alert: Test", "Event Type: Test\n\nDetails:\nDetails"
+            )
 
 
 if __name__ == "__main__":
