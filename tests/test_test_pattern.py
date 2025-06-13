@@ -1,4 +1,7 @@
 import datetime
+import hashlib
+import io
+import json
 import math
 import os
 import tempfile
@@ -13,6 +16,7 @@ from app.utils.test_pattern import (
     _format_hex_time,
     _format_roman_time,
     _to_braille,
+    encode_jpeg_with_metadata,
     generate_test_pattern,
     save_test_pattern,
 )
@@ -100,6 +104,17 @@ class TestTestPattern(unittest.TestCase):
             for y in range(y_start, y_start + 30)
         ]
         self.assertIn((160, 160, 160), region)
+
+    def test_jpeg_metadata(self):
+        img = generate_test_pattern(width=50, height=50)
+        data = encode_jpeg_with_metadata(img)
+        with Image.open(io.BytesIO(data)) as im:
+            comment = im.info.get("comment")
+        self.assertIsNotNone(comment)
+        meta = json.loads(comment.decode())
+        expected_hash = hashlib.sha256(img.tobytes()).hexdigest()[:8]
+        self.assertEqual(meta["st2110_21_hash"], expected_hash)
+        self.assertIn("smpte2086", meta)
 
 
 class TestTimeFormatHelpers(unittest.TestCase):

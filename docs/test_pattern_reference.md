@@ -24,3 +24,5 @@ The pattern now also includes:
 - **Super-white and super-black patches** on the left and right edges.
 - **Grayscale staircase** spanning the width under the bars.
 - **Concentric zone plate** behind the bullseye to expose aliasing.
+- **HDR metadata** (SMPTE ST 2086) embedded in each JPEG header for HDR auto-switching.
+- **ST 2110-21 alignment hash** marking frames for packet timing tests.

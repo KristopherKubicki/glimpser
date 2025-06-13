@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import datetime
+import hashlib
+import io
+import json
 import math
 import os
 import time
@@ -31,6 +34,20 @@ BRAILLE_DIGITS = {
 
 BRAILLE_RADIUS = 3
 BRAILLE_SPACING = 3
+
+
+# Static HDR metadata for SMPTE ST 2086. Embedded in JPEG headers so HDR
+# monitors can auto-switch and EDID quirks become visible.
+ST2086_METADATA = {
+    "display_primaries": [
+        [0.708, 0.292],
+        [0.170, 0.797],
+        [0.131, 0.046],
+    ],
+    "white_point": [0.3127, 0.329],
+    "luminance_min": 0.001,
+    "luminance_max": 1000,
+}
 
 
 def _to_braille(text: str) -> str:
@@ -646,3 +663,15 @@ def save_test_pattern(path: str, **kwargs) -> None:
     img = generate_test_pattern(**kwargs)
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     img.save(path, "PNG")
+
+
+def encode_jpeg_with_metadata(img: Image.Image) -> bytes:
+    """Return JPEG bytes with ST 2086 metadata and ST 2110-21 hash."""
+
+    comment_data = {
+        "smpte2086": ST2086_METADATA,
+        "st2110_21_hash": hashlib.sha256(img.tobytes()).hexdigest()[:8],
+    }
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", comment=json.dumps(comment_data).encode("utf-8"))
+    return buf.getvalue()
