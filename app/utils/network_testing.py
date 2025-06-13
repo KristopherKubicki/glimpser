@@ -1,10 +1,18 @@
 import json
+import threading
 import time
 
 from selenium.webdriver.common.by import By
 
 
-def network_idle_condition(driver, url, timeout=30, idle_time=0.25, stealth=False):
+def network_idle_condition(
+    driver,
+    url,
+    timeout=30,
+    idle_time=0.25,
+    stealth=False,
+    stop_event: threading.Event | None = None,
+):
     """
     Returns a function that can be used as a condition for WebDriverWait.
     It checks if the network has been idle for a specified amount of time.
@@ -21,20 +29,37 @@ def network_idle_condition(driver, url, timeout=30, idle_time=0.25, stealth=Fals
     end_time = time.time() + timeout
     not_moving = 0
     while time.time() < end_time:
+        if stop_event and stop_event.is_set():
+            return False, lstatus
         if not_moving > 5:
             break
 
         logs = driver.get_log("performance")
-        events = [log for log in logs if "Network.response" in log["message"] or "Network.request" in log["message"]]
+        events = [
+            log
+            for log in logs
+            if "Network.response" in log["message"]
+            or "Network.request" in log["message"]
+        ]
         for gevent in events:
             try:
                 levent = json.loads(gevent.get("message"))
             except json.JSONDecodeError:
                 # Skip malformed log entries instead of raising an exception
                 continue
-            lurl = levent.get("message", {}).get("params", {}).get("response", {}).get("url")
+            lurl = (
+                levent.get("message", {})
+                .get("params", {})
+                .get("response", {})
+                .get("url")
+            )
             if lurl == gurl:
-                lstatus = levent.get("message", {}).get("params", {}).get("response", {}).get("status")
+                lstatus = (
+                    levent.get("message", {})
+                    .get("params", {})
+                    .get("response", {})
+                    .get("status")
+                )
 
                 # Treat any 4xx or 5xx response as a failure so the caller can
                 # bail out early on server errors.
@@ -44,14 +69,19 @@ def network_idle_condition(driver, url, timeout=30, idle_time=0.25, stealth=Fals
             not_moving += 1
         else:
             not_moving = 0
-        time.sleep(idle_time)
+        if stop_event:
+            stop_event.wait(idle_time)
+        else:
+            time.sleep(idle_time)
 
     if stealth:
         return False, lstatus
     return True, lstatus
 
 
-def check_network_errors(driver, url, timeout=30):
+def check_network_errors(
+    driver, url, timeout=30, stop_event: threading.Event | None = None
+):
     """
     Check for network errors during page load.
 
@@ -67,18 +97,26 @@ def check_network_errors(driver, url, timeout=30):
         logs = driver.get_log("browser")
         for log in logs:
             if log["level"] == "SEVERE":
-                if "Failed to load resource" in log["message"] or "NetworkError" in log["message"]:
+                if (
+                    "Failed to load resource" in log["message"]
+                    or "NetworkError" in log["message"]
+                ):
                     errors.append(log["message"])
 
         if errors:
             return True, errors
 
-        time.sleep(0.5)
+        if stop_event:
+            stop_event.wait(0.5)
+        else:
+            time.sleep(0.5)
 
     return False, errors
 
 
-def wait_for_element(driver, selector, timeout=10):
+def wait_for_element(
+    driver, selector, timeout=10, stop_event: threading.Event | None = None
+):
     """
     Wait for an element to be present on the page.
 
@@ -92,6 +130,9 @@ def wait_for_element(driver, selector, timeout=10):
         try:
             element = driver.find_element(By.CSS_SELECTOR, selector)
             return element
-        except:
-            time.sleep(0.5)
+        except Exception:
+            if stop_event:
+                stop_event.wait(0.5)
+            else:
+                time.sleep(0.5)
     return None

@@ -3,6 +3,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import json
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -62,7 +63,9 @@ class TestNetworkTestingUtils(unittest.TestCase):
         driver = DummyDriver(performance_logs=[[log]])
         gen = self._time_gen()
         with patch("time.time", side_effect=gen), patch("time.sleep"):
-            result, status = network_idle_condition(driver, "http://ex", timeout=0.1, idle_time=0)
+            result, status = network_idle_condition(
+                driver, "http://ex", timeout=0.1, idle_time=0
+            )
         self.assertTrue(result)
         self.assertEqual(status, 200)
 
@@ -80,7 +83,9 @@ class TestNetworkTestingUtils(unittest.TestCase):
         driver = DummyDriver(performance_logs=[[log]])
         gen = self._time_gen()
         with patch("time.time", side_effect=gen), patch("time.sleep"):
-            result, status = network_idle_condition(driver, "http://ex", timeout=0.1, idle_time=0)
+            result, status = network_idle_condition(
+                driver, "http://ex", timeout=0.1, idle_time=0
+            )
         self.assertFalse(result)
         self.assertEqual(status, 404)
 
@@ -98,7 +103,9 @@ class TestNetworkTestingUtils(unittest.TestCase):
         driver = DummyDriver(performance_logs=[[log]])
         gen = self._time_gen()
         with patch("time.time", side_effect=gen), patch("time.sleep"):
-            result, status = network_idle_condition(driver, "http://ex", timeout=0.1, idle_time=0)
+            result, status = network_idle_condition(
+                driver, "http://ex", timeout=0.1, idle_time=0
+            )
         self.assertFalse(result)
         self.assertEqual(status, 500)
 
@@ -106,7 +113,9 @@ class TestNetworkTestingUtils(unittest.TestCase):
         driver = DummyDriver()
         gen = self._time_gen(step=0.2)
         with patch("time.time", side_effect=gen), patch("time.sleep"):
-            result, status = network_idle_condition(driver, "http://ex", timeout=1, idle_time=0, stealth=True)
+            result, status = network_idle_condition(
+                driver, "http://ex", timeout=1, idle_time=0, stealth=True
+            )
         self.assertFalse(result)
         self.assertEqual(status, 800)
 
@@ -115,9 +124,22 @@ class TestNetworkTestingUtils(unittest.TestCase):
         driver = DummyDriver(performance_logs=[[bad]])
         gen = self._time_gen(step=0.2)
         with patch("time.time", side_effect=gen), patch("time.sleep"):
-            result, status = network_idle_condition(driver, "http://ex", timeout=0.5, idle_time=0)
+            result, status = network_idle_condition(
+                driver, "http://ex", timeout=0.5, idle_time=0
+            )
         self.assertTrue(result)
         self.assertEqual(status, 800)
+
+    def test_network_idle_condition_stop_event(self):
+        driver = DummyDriver()
+        ev = threading.Event()
+        ev.set()
+        gen = self._time_gen()
+        with patch("time.time", side_effect=gen), patch("time.sleep"):
+            result, status = network_idle_condition(
+                driver, "http://ex", timeout=1, idle_time=0.1, stop_event=ev
+            )
+        self.assertFalse(result)
 
     def test_check_network_errors_no_error(self):
         driver = DummyDriver(browser_logs=[[{"level": "INFO", "message": "ok"}]])
@@ -128,7 +150,9 @@ class TestNetworkTestingUtils(unittest.TestCase):
         self.assertEqual(errors, [])
 
     def test_check_network_errors_detects_error(self):
-        driver = DummyDriver(browser_logs=[[{"level": "SEVERE", "message": "Failed to load resource"}]])
+        driver = DummyDriver(
+            browser_logs=[[{"level": "SEVERE", "message": "Failed to load resource"}]]
+        )
         gen = self._time_gen()
         with patch("time.time", side_effect=gen), patch("time.sleep"):
             result, errors = check_network_errors(driver, "http://ex", timeout=0.1)
