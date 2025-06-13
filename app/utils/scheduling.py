@@ -1183,6 +1183,7 @@ metrics_thread = None
 log_caching_thread = None
 thread_cpu_times = {}
 last_thread_sample = time.time()
+child_procs = []
 
 
 def ffmpeg_version() -> str:
@@ -1220,8 +1221,14 @@ def collect_system_metrics():
     # Prime psutil's CPU measurement to avoid blocking on the first call
     psutil.cpu_percent(interval=None)
     proc = psutil.Process()
-    global thread_cpu_times, last_thread_sample
+    global thread_cpu_times, last_thread_sample, child_procs
     proc.cpu_percent(interval=None)
+    child_procs = proc.children(recursive=True)
+    for child in child_procs:
+        try:
+            child.cpu_percent(interval=None)
+        except Exception:
+            continue
     while not stop_event.is_set():
         start = time.time()
         # Non-blocking call since we primed above
@@ -1235,9 +1242,21 @@ def collect_system_metrics():
         for tid, ttime in current.items():
             prev = thread_cpu_times.get(tid, ttime)
             cpu = ((ttime - prev) / interval) * 100 / psutil.cpu_count()
-            usages.append({"id": tid, "cpu": round(cpu, 1)})
+            name = next(
+                (t.name for t in threading.enumerate() if t.ident == tid),
+                f"Thread {tid}",
+            )
+            usages.append({"id": tid, "name": name, "cpu": round(cpu, 1)})
         thread_cpu_times = current
         last_thread_sample = start
+        for child in proc.children(recursive=True):
+            try:
+                cpu = child.cpu_percent(interval=None)
+                name = os.path.basename(child.name())
+                if cpu:
+                    usages.append({"id": child.pid, "name": name, "cpu": round(cpu, 1)})
+            except Exception:
+                continue
         usages.sort(key=lambda x: x["cpu"], reverse=True)
         system_metrics["top_threads"] = usages[:5]
         time.sleep(5)  # Collect metrics every 5 seconds

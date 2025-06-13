@@ -132,6 +132,10 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn('id="memory-sparkline"', html)
         self.assertIn('id="disk-sparkline"', html)
 
+    def test_status_tab_thread_list(self):
+        html = Path("app/templates/_status_tab.html").read_text(encoding="utf-8")
+        self.assertIn('<ul id="thread-cpu-list"', html)
+
 
 if __name__ == "__main__":
     unittest.main()

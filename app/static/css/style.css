@@ -1916,7 +1916,6 @@ details > summary {
   height: 100%;
 }
 
-
 .captions-table td:first-child {
   white-space: nowrap;
   width: 12rem;
@@ -2204,7 +2203,6 @@ details > summary {
   text-align: center;
 }
 
-
 .capture-col {
   width: 2.5rem;
   text-align: center;
@@ -2285,6 +2283,17 @@ details > summary {
 
 #thread-cpu-list {
   font-family: monospace;
+}
+
+.thread-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.thread-list li {
+  display: flex;
+  justify-content: space-between;
 }
 
 .metric-bar {
