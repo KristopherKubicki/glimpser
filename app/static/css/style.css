@@ -1592,6 +1592,23 @@ input[type="submit"]:hover {
   width: clamp(200px, 50vw, 600px);
 }
 
+#tile-drag-handle {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 15px;
+  height: 100%;
+  cursor: ew-resize;
+  touch-action: none;
+  display: none;
+}
+
+@media (min-width: 768px) {
+  #tile-drag-handle {
+    display: block;
+  }
+}
+
 @media (max-width: 767px) {
   #grid-width-slider {
     width: 100%;
