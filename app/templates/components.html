@@ -131,7 +131,7 @@ object_tokens=None, clip_model=None, clip_gpu=False) -%}
           value="{{ template.url if template else '' }}"
           required
           pattern="https?://.+"
-          placeholder="https://example.com/video"
+          placeholder="{{ url_for('test_pattern_mjpg', _external=True) }}"
           title="Enter the URL to monitor"
         />
         <span id="url-status" class="url-status" title="URL test result"></span>
