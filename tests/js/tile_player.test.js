@@ -74,3 +74,17 @@ test("fallback to nav camera dropdown", () => {
   const src = document.querySelector("#live-video source").src;
   expect(src).toMatch(/\/last_teaser\?group=foo$/);
 });
+
+test("all group uses last_video clip", () => {
+  document.body.innerHTML = `
+    <video id="live-video"><source></source></video>
+    <select id="camera-selector"><option>All</option></select>
+  `;
+
+  window.templateDetails = { cam1: {}, cam2: {} };
+
+  init();
+  changeGroup("all");
+  const src = document.querySelector("#live-video source").src;
+  expect(src).toMatch(/\/last_video\/cam1$/);
+});
