@@ -213,7 +213,8 @@ Locally attached USB webcams (for example, Logitech devices) will appear under
 
 Remote sources such as **GOES16**, **ZoomEarth**, and **Doppler** can be added
 manually, but they are not discovered automatically because they are hosted
-outside the local network.
+outside the local network. Selecting **internet** in the subnet field loads a
+curated list of public feeds including `time.gov` and other reference cameras.
 
 When creating a new template you can now supply just the camera's base
 address (for example `http://192.168.1.10`). If the device speaks ONVIF,

@@ -21,11 +21,13 @@ class TestDiscoverSubnetsEndpoint(unittest.TestCase):
     def tearDown(self):
         self.login_patch.stop()
 
-    @patch("app.routes.camera_discovery._local_subnets", return_value=["192.168.0.0/24"])
+    @patch(
+        "app.routes.camera_discovery._local_subnets", return_value=["192.168.0.0/24"]
+    )
     def test_returns_subnets(self, mock_subnets):
         resp = self.client.get("/discover/subnets")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.get_json(), ["192.168.0.0/24"])
+        self.assertEqual(resp.get_json(), ["192.168.0.0/24", "internet"])
 
 
 if __name__ == "__main__":
