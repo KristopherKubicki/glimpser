@@ -27,15 +27,19 @@ export function initUrlTester() {
     const defaultSrc = preview
       ? preview.dataset.placeholder || preview.src
       : "";
+    const setStatus = (cls) => {
+      status.textContent = "";
+      status.className = "url-status" + (cls ? ` ${cls}` : "");
+    };
+
     const check = async () => {
       const url = input.value.trim();
-      status.textContent = "";
-      status.className = "url-status";
+      setStatus("");
       if (preview) preview.src = url || defaultSrc;
       if (!url) return;
       controller?.abort();
       controller = new AbortController();
-      status.textContent = "…";
+      setStatus("pending");
       try {
         const res = await fetch(
           `/templates/test_url?url=${encodeURIComponent(url)}`,
@@ -45,23 +49,23 @@ export function initUrlTester() {
         );
         const data = await res.json();
         if (res.ok && data.ok) {
-          status.textContent = "✓";
-          status.classList.add("ok");
+          setStatus("ok");
         } else {
-          status.textContent = "✗";
-          status.classList.add("bad");
+          setStatus("bad");
         }
         sendTelemetry("url_test", { url, ok: data.ok });
       } catch {
         if (controller.signal.aborted) return;
-        status.textContent = "✗";
-        status.classList.add("bad");
+        setStatus("bad");
         sendTelemetry("url_test", { url, ok: false });
       }
     };
 
     toggleDisabled();
-    input.addEventListener("input", toggleDisabled);
+    input.addEventListener("input", () => {
+      toggleDisabled();
+      setStatus(input.value.trim() ? "pending" : "");
+    });
     input.addEventListener("blur", check);
     input.addEventListener("change", () => {
       check();

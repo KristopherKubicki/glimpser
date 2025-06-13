@@ -29,7 +29,7 @@ describe("url_test", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(fetch).toHaveBeenCalledTimes(2);
     const status = document.getElementById("url-status");
-    expect(status.textContent).toBe("✓");
+    expect(status.textContent).toBe("");
     expect(status.classList.contains("ok")).toBe(true);
     const preview = document.getElementById("url-preview");
     expect(preview.src).toContain("http://example.com");
