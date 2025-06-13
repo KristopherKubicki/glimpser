@@ -42,20 +42,20 @@ export function updatePerformanceMetrics() {
       const threadCount = document.getElementById("thread-count");
       if (threadCount) threadCount.textContent = metrics.thread_count;
 
-      const cpuList = document.getElementById("thread-cpu-list");
-      if (cpuList) {
-        cpuList.innerHTML = "";
+      const threadTable = document.getElementById("thread-table-body");
+      if (threadTable) {
+        threadTable.innerHTML = "";
         (metrics.top_threads || []).forEach((t) => {
-          const li = document.createElement("li");
-          const nameSpan = document.createElement("span");
-          nameSpan.className = "thread-name";
-          nameSpan.textContent = t.name;
-          const cpuSpan = document.createElement("span");
-          cpuSpan.className = "thread-cpu";
-          cpuSpan.textContent = `${t.cpu}%`;
-          li.appendChild(nameSpan);
-          li.appendChild(cpuSpan);
-          cpuList.appendChild(li);
+          const row = document.createElement("tr");
+          const nameCell = document.createElement("td");
+          nameCell.className = "thread-name";
+          nameCell.textContent = t.name;
+          const cpuCell = document.createElement("td");
+          cpuCell.className = "thread-cpu";
+          cpuCell.textContent = `${t.cpu}%`;
+          row.appendChild(nameCell);
+          row.appendChild(cpuCell);
+          threadTable.appendChild(row);
         });
       }
 

@@ -2343,19 +2343,28 @@ details > summary {
   margin-left: 0.25rem;
 }
 
-#thread-cpu-list {
-  font-family: monospace;
-}
-
-.thread-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.thread-list li {
+.metrics-container {
   display: flex;
-  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.thread-table {
+  border-collapse: collapse;
+}
+
+.thread-table th,
+.thread-table td {
+  padding: 0 0.25rem;
+  border: 1px solid var(--table-border-color);
+}
+
+.thread-table th {
+  background-color: var(--table-header-bg-color);
+}
+
+#thread-table-body {
+  font-family: monospace;
 }
 
 .metric-bar {

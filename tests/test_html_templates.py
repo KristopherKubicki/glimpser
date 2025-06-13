@@ -134,7 +134,7 @@ class TestHtmlTemplates(unittest.TestCase):
 
     def test_status_tab_thread_list(self):
         html = Path("app/templates/_status_tab.html").read_text(encoding="utf-8")
-        self.assertIn('<ul id="thread-cpu-list"', html)
+        self.assertIn('<table id="thread-table"', html)
 
 
 if __name__ == "__main__":
