@@ -1646,10 +1646,26 @@ def init_routes(app: Flask) -> None:
         danger_cameras = sorted(
             [name for name, t in templates.items() if t.get("danger")]
         )
+
+        chrome_path = get_chrome_path()
+        shortcut_opts = [
+            str(p) for p in LINUX_PATHS if p.exists() and os.access(p, os.W_OK)
+        ]
+        danger_info = {
+            "browser": os.path.basename(chrome_path) if chrome_path else "N/A",
+            "path": chrome_path or "N/A",
+            "version": (get_chrome_version(chrome_path) if chrome_path else "N/A"),
+            "shortcut": str(first_shortcut_path() or "N/A"),
+            "patched": not shortcuts_need_patch(),
+            "running": is_chrome_debug_port_open("127.0.0.1", 9222),
+        }
+
         return render_template(
             "danger.html",
             enabled=current,
             danger_cameras=danger_cameras,
+            danger_info=danger_info,
+            shortcut_options=shortcut_opts,
             page_title="Danger Mode",
         )
 

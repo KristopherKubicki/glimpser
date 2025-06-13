@@ -1,21 +1,20 @@
-{% extends 'base.html' %}
-{% block content %}
+{% extends 'base.html' %} {% block content %}
 <main class="container danger-page">
   <h2>Danger Mode</h2>
   <p class="page-tip">
     For a full walkthrough see the
-    <a href="../docs/danger_mode.md" target="_blank">Danger Mode documentation</a>.
-    Use the button below if Chrome was not launched with the debugging flag.
+    <a href="../docs/danger_mode.md" target="_blank"
+      >Danger Mode documentation</a
+    >. Use the button below if Chrome was not launched with the debugging flag.
   </p>
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <div class="flash-messages">
-      {% for category, message in messages %}
-      <div class="alert alert-{{ category }}">{{ message }}</div>
-      {% endfor %}
-    </div>
-    {% endif %}
-  {% endwith %}
+  {% with messages = get_flashed_messages(with_categories=true) %} {% if
+  messages %}
+  <div class="flash-messages">
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %} {% endwith %}
 
   <section>
     <h3>What is it?</h3>
@@ -50,7 +49,11 @@
     <ul>
       {% for camera in danger_cameras %}
       <li>
-        <a href="{{ url_for('template_details', template_name=camera) }}" title="Open {{ camera }} details">{{ camera }}</a>
+        <a
+          href="{{ url_for('template_details', template_name=camera) }}"
+          title="Open {{ camera }} details"
+          >{{ camera }}</a
+        >
       </li>
       {% endfor %}
     </ul>
@@ -64,7 +67,12 @@
         id="danger-checkbox"
         type="checkbox"
         name="enabled"
-        {% if enabled %}checked{% endif %}
+        {%
+        if
+        enabled
+        %}checked{%
+        endif
+        %}
         title="Enable or disable danger mode"
       />
       <span class="slider round"></span>
@@ -80,6 +88,20 @@
       Danger Mode to use.
     </p>
     <form method="post">
+      <label for="shortcut-path" class="sr-only">Chrome shortcut</label>
+      <input
+        id="shortcut-path"
+        name="shortcut_path"
+        type="text"
+        list="shortcut-options"
+        value="{{ danger_info.shortcut if danger_info.shortcut != 'N/A' else (shortcut_options[0] if shortcut_options else '') }}"
+        placeholder="/usr/share/applications/google-chrome.desktop"
+      />
+      <datalist id="shortcut-options">
+        {% for opt in shortcut_options %}
+        <option value="{{ opt }}"></option>
+        {% endfor %}
+      </datalist>
       <input type="hidden" name="action" value="update_shortcut" />
       <button type="submit" title="Patch shortcuts for Danger mode">
         Patch Chrome Shortcuts
@@ -87,7 +109,5 @@
     </form>
   </section>
 </main>
-  {% from 'components.html' import confirm_modal %}
-  {{ confirm_modal('danger') }}
+{% from 'components.html' import confirm_modal %} {{ confirm_modal('danger') }}
 {% endblock %}
-
