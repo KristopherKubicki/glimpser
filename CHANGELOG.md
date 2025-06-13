@@ -132,6 +132,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Live video errors now fall back to the last screenshot so the live view never
   appears blank.
+- Fixed timezone handling so feed status timestamps no longer show "in the future".
 
 [Unreleased]: https://github.com/KristopherKubicki/glimpser/compare/v0.2.7...HEAD
 [0.2.7]: https://github.com/KristopherKubicki/glimpser/releases/tag/v0.2.7
