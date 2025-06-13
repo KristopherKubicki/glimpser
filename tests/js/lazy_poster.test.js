@@ -43,6 +43,7 @@ test("poster loads when video becomes visible", async () => {
   const video = document.querySelector("video");
   expect(video.dataset.poster).toBe("/last_screenshot/cam1");
   expect(video.poster).toBe("");
+  await Promise.resolve();
   cb([{ target: video, isIntersecting: true }]);
   expect(video.poster.endsWith("/last_screenshot/cam1")).toBe(true);
 });
