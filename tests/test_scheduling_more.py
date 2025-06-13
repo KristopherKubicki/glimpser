@@ -102,6 +102,21 @@ class TestRunWithTimeout(unittest.TestCase):
             run_with_timeout(lambda: None, timeout=1)
             mock_proc.assert_not_called()
 
+    @patch("app.utils.scheduling.psutil.cpu_percent", return_value=10)
+    @patch("app.utils.scheduling.is_system_online", return_value=True)
+    def test_process_title_set(self, _online, _cpu):
+        def my_job(name):
+            return name
+
+        with patch("app.utils.scheduling.multiprocessing.Process") as mock_proc:
+            run_with_timeout(my_job, args=("cam1",), timeout=1)
+            mock_proc.assert_called_once()
+            _, kwargs = mock_proc.call_args
+            self.assertEqual(kwargs["name"], "glimpser my_job:cam1")
+
+        scheduling.job_backoff_until.clear()
+        scheduling.job_failures.clear()
+
 
 class TestAddMotionAndCaption(unittest.TestCase):
     def test_image_updated_with_caption_and_motion(self):
