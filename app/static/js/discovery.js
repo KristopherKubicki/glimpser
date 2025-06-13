@@ -44,7 +44,9 @@ export function initDiscoveryToggle() {
         if (!confirmStop) return;
         try {
           const data = await fetchJson("/toggle_discovery", { method: "POST" });
-          statusSpan.textContent = formatStatus(data);
+          const text = formatStatus(data);
+          statusSpan.textContent = text;
+          if (statusIcon) statusIcon.title = text;
           setStatusClass(data.status);
           stopBtn.style.display =
             data.status === "running" ? "inline-block" : "none";
@@ -59,7 +61,9 @@ export function initDiscoveryToggle() {
     const refreshStatus = () =>
       fetchJson("/discovery_status")
         .then((data) => {
-          statusSpan.textContent = formatStatus(data);
+          const text = formatStatus(data);
+          statusSpan.textContent = text;
+          if (statusIcon) statusIcon.title = text;
           setStatusClass(data.status);
           if (stopBtn) {
             stopBtn.style.display =
