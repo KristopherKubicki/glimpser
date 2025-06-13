@@ -55,6 +55,7 @@ function createTemplateCard(name, template, index, mobile) {
       </div>
     </a>
     <a href='${template.url}' target='_blank' class='open-url-link' title='Open monitored page' aria-label='Open monitored page'>↗</a>
+    <button class='delete-camera-btn advanced-only' onclick="window.confirmDeleteCamera('${name}')" title='Delete this camera' aria-label='Delete camera'>✖</button>
   `;
   return div;
 }
@@ -1189,3 +1190,35 @@ export function setupBrowserOptions() {
     updateBrowserOptions();
   });
 }
+
+export function confirmDeleteCamera(name) {
+  const modal = document.getElementById("delete-camera-modal");
+  const msg = document.getElementById("delete-camera-modal-message");
+  const confirmBtn = document.getElementById("delete-camera-confirm");
+  const cancelBtn = document.getElementById("delete-camera-cancel");
+  const closeBtn = document.getElementById("delete-camera-close");
+  if (!modal || !msg || !confirmBtn) return;
+  msg.textContent = `Delete camera ${name}?`;
+  modal.style.display = "block";
+  const hide = () => {
+    modal.style.display = "none";
+  };
+  const onConfirm = () => {
+    hide();
+    fetch("/templates", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    })
+      .then((resp) => resp.json())
+      .then(() => {
+        document.querySelector(`.templateDiv[data-name='${name}']`)?.remove();
+      })
+      .catch((err) => console.error("Error:", err));
+  };
+  confirmBtn.addEventListener("click", onConfirm, { once: true });
+  cancelBtn?.addEventListener("click", hide, { once: true });
+  closeBtn?.addEventListener("click", hide, { once: true });
+}
+
+window.confirmDeleteCamera = confirmDeleteCamera;
