@@ -2168,7 +2168,19 @@ details > summary {
   text-align: center;
 }
 
+.time-col {
+  width: 5rem;
+  text-align: center;
+}
+
+.videos-col,
+.llm-col {
+  width: 3rem;
+  text-align: center;
+}
+
 .capture-dot {
+  position: relative;
   display: inline-block;
   width: 12px;
   height: 12px;
@@ -2178,6 +2190,28 @@ details > summary {
 
 .capture-dot.active {
   background-color: dodgerblue;
+}
+
+.capture-dot.active.countdown::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid dodgerblue;
+  border-top-color: transparent;
+  animation: capture-spin 1s linear infinite;
+}
+
+@keyframes capture-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .unsaved-icon {
