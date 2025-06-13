@@ -100,6 +100,19 @@ class TestTestPattern(unittest.TestCase):
         ]
         self.assertIn((160, 160, 160), region)
 
+    def test_qr_code_overlay(self):
+        stub = Image.new("RGBA", (12, 12), (255, 255, 255, 255))
+        with (
+            unittest.mock.patch(
+                "app.utils.test_pattern._generate_qr_code", return_value=stub
+            ),
+            unittest.mock.patch("app.utils.test_pattern.time.time", return_value=0),
+        ):
+            img = generate_test_pattern(width=200, height=100)
+        x = 200 - stub.width - 10 + stub.width // 2
+        y = 100 - stub.height - 10 + stub.height // 2
+        self.assertEqual(img.getpixel((x, y)), (204, 204, 204))
+
 
 class TestTimeFormatHelpers(unittest.TestCase):
     def test_time_format_helpers(self):
