@@ -271,12 +271,22 @@ template_form %} {% block content %}
           ></span>
         </li>
       </ul>
-      <button
-        type="submit"
-        name="action"
-        value="update_shortcut"
-        title="Update Chrome shortcuts for Danger mode"
-      >
+      <label for="shortcut-path" class="sr-only">Chrome shortcut</label>
+      <input
+        id="shortcut-path"
+        name="shortcut_path"
+        type="text"
+        list="shortcut-options"
+        value="{{ danger_info.shortcut if danger_info.shortcut != 'N/A' else (shortcut_options[0] if shortcut_options else '') }}"
+        placeholder="/usr/share/applications/google-chrome.desktop"
+      />
+      <datalist id="shortcut-options">
+        {% for opt in shortcut_options %}
+        <option value="{{ opt }}"></option>
+        {% endfor %}
+      </datalist>
+      <!-- prettier-ignore -->
+      <button id="update-shortcut-btn" type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode" {% if danger_info.shortcut == 'N/A' %}disabled{% endif %}>
         Update Chrome Shortcut
       </button>
       {% endcall %} {% call card('Navigation Logo') %}

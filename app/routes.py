@@ -370,6 +370,7 @@ from app.utils.validators import (
     validate_update_data,
 )
 from scripts.update_chrome_shortcut import (
+    LINUX_PATHS,
     first_shortcut_path,
     shortcuts_need_patch,
     update_chrome_shortcuts_info,
@@ -1624,7 +1625,9 @@ def init_routes(app: Flask) -> None:
         if request.method == "POST":
             action = request.form.get("action")
             if action == "update_shortcut":
-                paths, msg = update_chrome_shortcuts_info()
+                path_val = request.form.get("shortcut_path")
+                path = Path(path_val) if path_val else None
+                paths, msg = update_chrome_shortcuts_info(path)
                 if paths:
                     joined = ", ".join(str(p) for p in paths)
                     flash(
@@ -3551,7 +3554,9 @@ def init_routes(app: Flask) -> None:
                 send_sms_alert("Test SMS from Glimpser")
                 flash("SMS test triggered. Check logs for results.", "info")
             elif action == "update_shortcut":
-                paths, msg = update_chrome_shortcuts_info()
+                path_val = request.form.get("shortcut_path")
+                path = Path(path_val) if path_val else None
+                paths, msg = update_chrome_shortcuts_info(path)
                 if paths:
                     joined = ", ".join(str(p) for p in paths)
                     flash(
@@ -3643,6 +3648,9 @@ def init_routes(app: Flask) -> None:
         cost_summary = template_manager.group_cost_summary(cost_summary, top=10)
 
         chrome_path = get_chrome_path()
+        shortcut_opts = [
+            str(p) for p in LINUX_PATHS if p.exists() and os.access(p, os.W_OK)
+        ]
         danger_info = {
             "browser": os.path.basename(chrome_path) if chrome_path else "N/A",
             "path": chrome_path or "N/A",
@@ -3672,6 +3680,7 @@ def init_routes(app: Flask) -> None:
             total_tokens=total_tokens,
             total_cost=total_cost,
             danger_info=danger_info,
+            shortcut_options=shortcut_opts,
             choices=SETTINGS_CHOICES,
             boolean_fields=validators.BOOLEAN_SETTINGS,
             danger_enabled=danger_enabled,
