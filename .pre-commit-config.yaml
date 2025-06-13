@@ -1,9 +1,81 @@
+minimum_pre_commit_version: "3.6.0"
+# All hooks must be local to allow offline usage
+
+# ─── PYTHON ────────────────────────────────────────────────────────────────────
+# NOTE: hooks run in the order they appear – isort before black is critical.
 repos:
-  - repo: https://github.com/psf/black
-    rev: 24.4.2
+  - repo: local
     hooks:
+      # 1️⃣  Sort imports **first** – with Black-compatible style
+      - id: isort
+        name: isort (black-profile)
+        entry: isort --profile=black --filter-files
+        language: system
+        types: [python]
+
+  - repo: local
+    hooks:
+      # 2️⃣  Let Black format everything after isort touched the imports
       - id: black
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.2.0
+        name: black
+        entry: black --line-length 88
+        language: system
+        types: [python]
+
+  - repo: local
     hooks:
+      # 3️⃣  Flake8 only checks; it should never re-write files
       - id: flake8
+        name: flake8
+        entry: flake8 --config=.flake8
+        language: system
+        types: [python]
+
+  - repo: local
+    hooks:
+      # 4️⃣  mypy is expensive – run it only when you push (or manually)
+      - id: mypy
+        name: mypy (push only)
+        entry: mypy --config-file=mypy.ini
+        language: system
+        types: [python]
+        stages: [pre-push]
+
+  # ─── JAVASCRIPT / CSS ──────────────────────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: lint-js
+        name: lint js
+        entry: npm run lint:js
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: format-js
+        name: format js write
+        entry: npm run format:js:write
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: lint-css
+        name: lint css
+        entry: npm run lint:css
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+  - repo: local
+    hooks:
+      - id: check-exclude-docs
+        name: docs exclude list in sync
+        entry: python scripts/check_exclude_docs.py
+        language: system
+        pass_filenames: false
+
+  - repo: local
+    hooks:
+      - id: detect-secrets
+        name: detect secrets
+        entry: detect-secrets-hook
+        language: system

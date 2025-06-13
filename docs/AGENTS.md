@@ -1,0 +1,2 @@
+- The project uses `exclude_docs`; keep it in sync with `mkdocs.yml`.
+- Keep navigation entries updated directly in `mkdocs.yml`.

@@ -1,0 +1,58 @@
+import logging
+import time
+from typing import Dict
+from urllib.parse import urlparse
+
+
+class ColorFormatter(logging.Formatter):
+    """Add ANSI colors to log level names for console output."""
+
+    COLORS = {
+        logging.DEBUG: "\033[90m",
+        logging.INFO: "\033[96m",
+        logging.WARNING: "\033[93m",
+        logging.ERROR: "\033[91m",
+        logging.CRITICAL: "\033[95m",
+    }
+    RESET = "\033[0m"
+
+    def format(self, record: logging.LogRecord) -> str:
+        level_color = self.COLORS.get(record.levelno, "")
+        record.levelname = f"{level_color}{record.levelname}{self.RESET}"
+        return super().format(record)
+
+
+class RateLimitFilter(logging.Filter):
+    """Filter that suppresses duplicate log messages for a period of time."""
+
+    def __init__(self, interval: float = 60.0):
+        super().__init__()
+        self.interval = interval
+        self.last_emit: Dict[str, float] = {}
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        now = time.monotonic()
+        last_time = self.last_emit.get(message, 0.0)
+        if now - last_time < self.interval:
+            return False
+        self.last_emit[message] = now
+        return True
+
+
+def sanitize_url(url: str) -> str:
+    """Return *url* stripped of any embedded credentials."""
+
+    if not url:
+        return url
+    try:
+        parts = urlparse(url)
+        if parts.username or parts.password:
+            netloc = parts.hostname or ""
+            if parts.port:
+                netloc += f":{parts.port}"
+            parts = parts._replace(netloc=netloc)
+            return parts.geturl()
+    except Exception:
+        pass
+    return url

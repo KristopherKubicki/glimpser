@@ -1,12 +1,11 @@
-import unittest
-import socket
-import sys
 import os
-from unittest.mock import patch, MagicMock
+import sys
+import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.utils.screenshots import parse_url, is_address_reachable, get_arp_output
+from app.utils.screenshots import get_arp_output, is_address_reachable, parse_url
 
 
 class TestURLParsing(unittest.TestCase):

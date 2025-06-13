@@ -1,12 +1,12 @@
-import unittest
+import datetime
+import importlib
+import json
+import os
 import random
 import string
-import datetime
-import json
-from unittest.mock import patch
 import tempfile
-import os
-import importlib
+import unittest
+from unittest.mock import patch
 
 import app.config as config
 import app.utils.db as db
@@ -38,13 +38,16 @@ class TestFuzzUpdateSummary(unittest.TestCase):
                     for i in range(num_templates)
                 }
 
-                with patch(
-                    "app.utils.scheduling.get_templates_sorted_by_last_caption_time",
-                    return_value=list(templates.items()),
-                ), patch(
-                    "app.utils.scheduling.summarize",
-                    return_value="".join(
-                        random.choices(string.ascii_letters + string.digits, k=50)
+                with (
+                    patch(
+                        "app.utils.scheduling.get_templates_sorted_by_last_caption_time",
+                        return_value=list(templates.items()),
+                    ),
+                    patch(
+                        "app.utils.scheduling.summarize",
+                        return_value="".join(
+                            random.choices(string.ascii_letters + string.digits, k=50)
+                        ),
                     ),
                 ):
                     try:
@@ -130,12 +133,15 @@ class TestFuzzUpdateSummary(unittest.TestCase):
                     for i in range(num_templates)
                 }
 
-                with patch(
-                    "app.utils.scheduling.get_templates_sorted_by_last_caption_time",
-                    return_value=list(templates.items()),
-                ), patch(
-                    "app.utils.scheduling.summarize",
-                    side_effect=lambda *a, **k: self.random_summary(),
+                with (
+                    patch(
+                        "app.utils.scheduling.get_templates_sorted_by_last_caption_time",
+                        return_value=list(templates.items()),
+                    ),
+                    patch(
+                        "app.utils.scheduling.summarize",
+                        side_effect=lambda *a, **k: self.random_summary(),
+                    ),
                 ):
                     try:
                         scheduling.update_summary()

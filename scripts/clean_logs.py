@@ -1,8 +1,8 @@
 """Utility to condense repeated log messages."""
 
+import sys
 from collections import Counter
 from typing import Iterable
-import sys
 
 
 def _read_lines(file: Iterable[str]) -> list[str]:

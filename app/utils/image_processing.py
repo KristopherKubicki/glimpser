@@ -3,8 +3,9 @@
 import base64
 import datetime
 import io
-import os
 import logging
+import os
+import re
 
 import requests
 from PIL import Image
@@ -12,11 +13,26 @@ from PIL import Image
 from app.config import CHATGPT_KEY, LLM_CAPTION_PROMPT, LLM_MODEL_VERSION
 from app.utils import llm_cache
 
+HEADER_PREFIX_RE = re.compile(r"^(caption|title|summary):\s*", re.IGNORECASE)
+
+
+def clean_caption(text: str) -> str:
+    """Return caption text without header prefixes or Markdown markers."""
+
+    if not text:
+        return ""
+    cleaned = text.replace("**", "").strip()
+    cleaned = HEADER_PREFIX_RE.sub("", cleaned)
+    return cleaned.strip()
+
+
 last_429_error_time = None
 
 
 class ChatGPTImageComparison:
-    def __init__(self):
+    """Helper for caption prompts using the ChatGPT vision API."""
+
+    def __init__(self) -> None:
         self.api_key = CHATGPT_KEY
         self.headers = {"Authorization": f"Bearer {self.api_key}"}
         self.url = "https://api.openai.com/v1/chat/completions"
@@ -26,6 +42,9 @@ class ChatGPTImageComparison:
     ):
 
         global last_429_error_time
+
+        if not self.api_key:
+            return None, 0
         # Check if a 429 error occurred in the last 30 minutes
         if last_429_error_time and (
             datetime.datetime.now() - last_429_error_time
@@ -100,9 +119,10 @@ class ChatGPTImageComparison:
         # Process the response
         # For demonstration, we'll just return the text response
         try:
-            response_text = (
+            raw_text = (
                 result["choices"][0]["message"]["content"].replace("\n\n", "\t").strip()
             )
+            response_text = clean_caption(raw_text)
             ltokens = result["usage"]["total_tokens"]
             logging.info(
                 " total tokens $%0.5f images: %d %s",
@@ -128,13 +148,14 @@ def chatgpt_compare(prompt, image_paths, template_name=None):
 
     cached = llm_cache.get(prompt, image_paths)
     if cached is not None:
-        result = cached.get("response")
+        result = clean_caption(cached.get("response"))
         tokens = cached.get("tokens", 0)
     else:
         chatgpt_comparison = ChatGPTImageComparison()
         result, tokens = chatgpt_comparison.compare_images(prompt, image_paths)
         if result:
             llm_cache.store(prompt, result, tokens, image_paths)
+            result = clean_caption(result)
 
     if template_name and tokens:
         try:

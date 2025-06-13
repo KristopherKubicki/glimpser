@@ -2,14 +2,18 @@
 
 import os
 
-from app.config import SCREENSHOT_DIRECTORY
-from .template_manager import get_screenshots_for_template
-from .image_processing import ChatGPTImageComparison
 import app.utils.image_processing as img_proc
+from app.config import CHATGPT_KEY, SCREENSHOT_DIRECTORY
+
+from .image_processing import ChatGPTImageComparison
+from .template_manager import get_screenshots_for_template
 
 
 def generate_prompt(template_name: str, num_images: int = 3) -> str:
     """Return a suggested caption prompt for ``template_name``."""
+
+    if not CHATGPT_KEY:
+        return ""
 
     screenshots = get_screenshots_for_template(template_name)[:num_images]
     if not screenshots:

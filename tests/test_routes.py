@@ -1,16 +1,19 @@
 # tests/test_routes.py
 
-import unittest
 import os
 import sys
+import unittest
+from unittest import mock
 from unittest.mock import patch
+
 from flask import Flask
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.routes import init_routes
-from app.models import Summary
 from types import SimpleNamespace
+
+from app.models import Summary
+from app.routes import init_routes
 
 
 class TestRoutes(unittest.TestCase):
@@ -19,7 +22,7 @@ class TestRoutes(unittest.TestCase):
             os.path.abspath(os.path.dirname(__file__)), "../app/templates"
         )
         self.app = Flask(__name__, template_folder=template_dir)
-        self.app.config["SECRET_KEY"] = "my_secret_key"
+        self.app.config["SECRET_KEY"] = "my_secret_key"  # pragma: allowlist secret
         init_routes(self.app)
         self.client = self.app.test_client()
 
@@ -142,7 +145,10 @@ class TestRoutes(unittest.TestCase):
 
         response = self.client.post(
             "/login",
-            data={"username": "testuser", "password": "testpassword"},
+            data={
+                "username": "testuser",
+                "password": "testpassword",  # pragma: allowlist secret
+            },
         )
         self.assertEqual(response.status_code, 302)
         self.assertIn("/", response.headers["Location"])
@@ -183,7 +189,11 @@ class TestRoutes(unittest.TestCase):
         mock_session_local.return_value = DummySession()
 
         response = self.client.post(
-            "/login", data={"username": "testuser", "password": "wrongpassword"}
+            "/login",
+            data={
+                "username": "testuser",
+                "password": "wrongpassword",  # pragma: allowlist secret
+            },
         )
         self.assertEqual(response.status_code, 200)
         mock_render_template.assert_called_with("login.html", page_title="Login")
@@ -298,7 +308,10 @@ class TestRoutes(unittest.TestCase):
             "captions.html",
             template_details=mock_get_templates.return_value,
             lcaptions=[],
+            latest_caption="",
             page_title="Captions",
+            cost_start=None,
+            cost_end=None,
         )
 
     @patch("app.routes.SessionLocal")
@@ -427,9 +440,14 @@ class TestRoutes(unittest.TestCase):
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.camera_discovery.discover_cameras")
+    @patch("app.routes.template_manager.get_templates")
     @patch("app.routes.render_template")
     def test_discover_route(
-        self, mock_render_template, mock_discover, mock_session_local
+        self,
+        mock_render_template,
+        mock_get_templates,
+        mock_discover,
+        mock_session_local,
     ):
         mock_discover.return_value = [
             {"ip": "1.2.3.4", "protocol": "rtsp", "port": 554, "info": {}}
@@ -451,6 +469,7 @@ class TestRoutes(unittest.TestCase):
                 pass
 
         mock_session_local.return_value = DummySession()
+        mock_get_templates.return_value = {}
 
         with self.client.session_transaction() as sess:
             sess["user_id"] = 1
@@ -458,7 +477,13 @@ class TestRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mock_discover.assert_not_called()
         mock_render_template.assert_called_with(
-            "discover.html", cameras=[], page_title="Discover Cameras"
+            "discover.html",
+            cameras=[],
+            existing_urls={},
+            object_tokens=mock.ANY,
+            clip_model=mock.ANY,
+            clip_gpu=mock.ANY,
+            page_title="Discover Cameras",
         )
 
     @patch("app.routes.SessionLocal")

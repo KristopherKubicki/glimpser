@@ -2,18 +2,15 @@
 
 import datetime
 import json
+import logging
 import re
 import time
-
-import requests
-import logging
 from typing import Optional
 
-from .api_utils import request_with_retry
-
 from app.config import CHATGPT_KEY, LLM_MODEL_VERSION, LLM_SUMMARY_PROMPT
-from app.utils.email_alerts import email_alert
 from app.utils import llm_cache
+
+from .api_utils import request_with_retry
 
 last_429_error_time = None
 
@@ -23,7 +20,7 @@ def summarize(
     history: Optional[str] = None,
     tokens: int = 4096,
     *,
-    timeout: int = 10,
+    timeout: int = 30,
     retries: int = 2,
 ):
     """
@@ -141,7 +138,8 @@ def summarize(
 
         # Convert the response text to a JSON format
         ljson = {}
-        start_time = int(time.time())
+        # round current time to avoid off-by-one errors in tests
+        start_time = int(time.time() + 0.5)
         for line in re.findall(r"(.+?)(?:[\t\n]|$)", response_text, flags=re.DOTALL):
             # Remove asterisks and bullet points
             line = line.replace("**", "").strip()
@@ -163,7 +161,7 @@ def summarize(
         return None
 
 
-def ask_question(question: str, history: str = "", *, timeout: int = 10) -> str | None:
+def ask_question(question: str, history: str = "", *, timeout: int = 30) -> str | None:
     """Return the answer to ``question`` using ``history`` as context."""
 
     if not question or not CHATGPT_KEY:

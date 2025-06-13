@@ -1,8 +1,9 @@
 #!env/bin/python3
 #  build_windows.py
 
-import PyInstaller.__main__
 import os
+
+import PyInstaller.__main__
 
 # Ensure we're in the correct directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))

@@ -1,10 +1,11 @@
 import os
-import sys
 import shutil
+import sys
 import unittest
+from unittest.mock import patch
+
 from flask import Flask
 from PIL import Image
-from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -61,11 +62,59 @@ class TestStreamPngRoute(unittest.TestCase):
                 raise FileNotFoundError
             return orig_getmtime(path)
 
-        with patch("glob.glob", side_effect=fake_glob), patch(
-            "os.path.getmtime", side_effect=fake_getmtime
+        with (
+            patch("glob.glob", side_effect=fake_glob),
+            patch("os.path.getmtime", side_effect=fake_getmtime),
         ):
             resp = self.client.get("/stream.png")
         self.assertEqual(resp.status_code, 200)
+
+    def test_camera_parameter(self):
+        self.mock_tpl.return_value = {
+            "cam1": {"name": "cam1", "groups": "g1"},
+            "cam2": {"name": "cam2", "groups": "g2"},
+        }
+        img_dir1 = os.path.join(self.repo_root, self.sshot_dir, "cam1")
+        img1 = os.path.join(img_dir1, "shot.png")
+        Image.new("RGB", (1, 1)).save(img1)
+        os.symlink(img1, os.path.join(img_dir1, "latest_camera.png"))
+
+        img_dir2 = os.path.join(self.repo_root, self.sshot_dir, "cam2")
+        os.makedirs(img_dir2, exist_ok=True)
+        img2 = os.path.join(img_dir2, "shot.png")
+        Image.new("RGB", (1, 1)).save(img2)
+        os.symlink(img2, os.path.join(img_dir2, "latest_camera.png"))
+
+        resp = self.client.get("/stream.png?camera=cam1")
+        with open(img1, "rb") as f:
+            self.assertEqual(resp.data, f.read())
+
+    def test_group_parameter(self):
+        self.mock_tpl.return_value = {"cam1": {"name": "cam1", "groups": "g1"}}
+        img_dir1 = os.path.join(self.repo_root, self.sshot_dir, "cam1")
+        img1 = os.path.join(img_dir1, "shot.png")
+        Image.new("RGB", (1, 1)).save(img1)
+        os.symlink(img1, os.path.join(img_dir1, "latest_camera.png"))
+        group_link = os.path.join(
+            self.repo_root, self.sshot_dir, "g1_latest_camera.png"
+        )
+        os.symlink(img1, group_link)
+
+        resp = self.client.get("/stream.png?group=g1")
+        with open(img1, "rb") as f:
+            self.assertEqual(resp.data, f.read())
+
+    def test_skips_invalid_png(self):
+        self.mock_tpl.return_value = {"cam1": {"name": "cam1"}}
+        img_dir = os.path.join(self.repo_root, self.sshot_dir, "cam1")
+        invalid = os.path.join(img_dir, "cam1_bad.png")
+        with open(invalid, "wb") as fh:
+            fh.write(b"not an image")
+        valid = os.path.join(img_dir, "cam1_good.png")
+        Image.new("RGB", (1, 1)).save(valid)
+        resp = self.client.get("/stream.png")
+        self.assertEqual(resp.status_code, 200)
+        self.assertGreater(len(resp.data), 0)
 
 
 if __name__ == "__main__":  # pragma: no cover

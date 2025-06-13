@@ -1,8 +1,8 @@
+import importlib
 import os
 import sqlite3
 import sys
 import tempfile
-import importlib
 import unittest
 from unittest.mock import patch
 
@@ -29,8 +29,8 @@ class TestSettingsRoute(unittest.TestCase):
         # Reload modules so they pick up the new environment
         import app
         import app.config as config
-        import app.utils.db as db
         import app.routes as routes
+        import app.utils.db as db
 
         importlib.reload(config)
         importlib.reload(db)
@@ -45,7 +45,9 @@ class TestSettingsRoute(unittest.TestCase):
         conn.commit()
         conn.close()
 
-        self.app = app.create_app(enable_watchdog=False, schedule=False)
+        self.app = app.create_app(
+            enable_watchdog=False, schedule=False, log_cache=False
+        )
         self.client = self.app.test_client()
         self.app_context = self.app.app_context()
         self.app_context.push()
@@ -53,17 +55,23 @@ class TestSettingsRoute(unittest.TestCase):
         # Avoid restarting the interpreter during tests
         self.restart_patch = patch("app.routes.restart_server")
         self.restart_patch.start()
+        self.chrome_patch = patch("app.routes.get_chrome_version", return_value=120)
+        self.shortcut_patch = patch("app.routes.first_shortcut_path", return_value=None)
+        self.chrome_patch.start()
+        self.shortcut_patch.start()
 
     def tearDown(self):
         self.restart_patch.stop()
         self.app_context.pop()
         self.env_patch.stop()
+        self.chrome_patch.stop()
+        self.shortcut_patch.stop()
 
         # Reload modules back to default environment
         import app
         import app.config as config
-        import app.utils.db as db
         import app.routes as routes
+        import app.utils.db as db
 
         importlib.reload(config)
         importlib.reload(db)
@@ -80,8 +88,9 @@ class TestSettingsRoute(unittest.TestCase):
         return row[0] if row else None
 
     def test_add_and_delete_setting(self):
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
         ):
             response = self.client.post(
                 "/settings",
@@ -91,8 +100,9 @@ class TestSettingsRoute(unittest.TestCase):
         self.assertIn("/settings", response.headers["Location"])
         self.assertEqual(self._get_value("TEST"), "1")
 
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
         ):
             response = self.client.post(
                 "/settings", data={"action": "delete", "name_to_delete": "TEST"}
@@ -110,10 +120,11 @@ class TestSettingsRoute(unittest.TestCase):
             "EMAIL_SMTP_PORT": "587",
             "EMAIL_USE_TLS": "True",
             "EMAIL_USERNAME": "user",
-            "EMAIL_PASSWORD": "pass",
+            "EMAIL_PASSWORD": "pass",  # pragma: allowlist secret
         }
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
         ):
             response = self.client.post("/settings", data=payload)
         self.assertEqual(response.status_code, 302)
@@ -127,8 +138,9 @@ class TestSettingsRoute(unittest.TestCase):
         conn.commit()
         conn.close()
 
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
         ):
             response = self.client.post("/settings", data={"action": "backup"})
         self.assertEqual(response.status_code, 302)
@@ -145,8 +157,9 @@ class TestSettingsRoute(unittest.TestCase):
         with open(upload_path, "w") as f:
             json.dump(config, f)
 
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
         ):
             with open(upload_path, "rb") as file_data:
                 response = self.client.post(
@@ -161,11 +174,55 @@ class TestSettingsRoute(unittest.TestCase):
         """Downloading settings should not crash when no backup exists."""
         if os.path.exists(self.backup_path):
             os.remove(self.backup_path)
-        with patch("app.routes.session", {"user_id": 1}), patch(
-            "app.routes.login_required", lambda x: x
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
         ):
             response = self.client.post("/settings", data={"action": "download"})
+        self.assertEqual(response.status_code, 200)
+
+    def test_notification_tests(self):
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
+            patch("app.routes.send_sms_alert") as mock_sms,
+            patch("app.routes.send_email_alert") as mock_email,
+        ):
+            response = self.client.post("/settings", data={"action": "test_sms"})
+            self.assertEqual(response.status_code, 302)
+            mock_sms.assert_called_once()
+            response = self.client.post("/settings", data={"action": "test_email"})
+            self.assertEqual(response.status_code, 302)
+            mock_email.assert_called_once()
+
+    def test_default_save_flashes_success(self):
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("INSERT INTO settings (name, value) VALUES (?, ?)", ("FOO", "A"))
+        conn.commit()
+        conn.close()
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
+        ):
+            response = self.client.post("/settings", data={"FOO": "B"})
         self.assertEqual(response.status_code, 302)
+        self.assertEqual(self._get_value("FOO"), "B")
+        with self.client.session_transaction() as sess:
+            flashes = sess.get("_flashes", [])
+        self.assertIn(("success", "Settings updated successfully"), flashes)
+
+    def test_notification_toggle(self):
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
+        ):
+            response = self.client.post(
+                "/settings",
+                data={"SMS_ENABLED": "True", "CAP_ENABLED": "False"},
+            )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self._get_value("SMS_ENABLED"), "True")
+        self.assertEqual(self._get_value("CAP_ENABLED"), "False")
 
 
 if __name__ == "__main__":

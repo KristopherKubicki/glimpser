@@ -56,7 +56,9 @@ def screenshot_server(tmp_path):
             return self
 
         def first(self):
-            return SimpleNamespace(id=1, username="admin", password_hash="hash")
+            return SimpleNamespace(
+                id=1, username="admin", password_hash="hash"  # pragma: allowlist secret
+            )
 
     class DummySession:
         def query(self, model):
@@ -81,7 +83,7 @@ def screenshot_server(tmp_path):
     for p in patches:
         p.start()
 
-    app = create_app(enable_watchdog=False, schedule=False)
+    app = create_app(enable_watchdog=False, schedule=False, log_cache=False)
     server = ServerThread(app)
     server.start()
     url = f"http://127.0.0.1:{server.port}"
@@ -96,7 +98,7 @@ def test_take_screenshot_route(screenshot_server):
     session = requests.Session()
     resp = session.post(
         f"{base_url}/login",
-        data={"username": "admin", "password": "pw"},
+        data={"username": "admin", "password": "pw"},  # pragma: allowlist secret
         allow_redirects=False,
     )
     assert resp.status_code == 302

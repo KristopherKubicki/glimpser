@@ -1,15 +1,15 @@
-import sys
-import os
-import unittest
-from unittest.mock import patch, MagicMock
-import tempfile
 import logging
+import os
+import sys
+import tempfile
+import unittest
 from unittest import mock
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import main
 import app.config as config
+import main
 
 
 class TestMain(unittest.TestCase):
@@ -144,15 +144,162 @@ class TestMain(unittest.TestCase):
 
         args.no_crawlers = True
 
+        args.no_log_cache = False
         main.create_application(args)
         mock_create_app.assert_called_with(
-            enable_watchdog=False, schedule=False, crawlers=False
+            enable_watchdog=False,
+            schedule=False,
+            crawlers=False,
+            log_cache=True,
+        )
+
+    @patch("main.create_app")
+    def test_create_application_no_log_cache_flag(self, mock_create_app):
+        args = MagicMock()
+        args.db_path = config.DATABASE_PATH
+        args.host = config.HOST
+        args.port = config.PORT
+        args.log_path = config.LOGGING_PATH
+        args.log_level = config.LOG_LEVEL
+        args.console_log = False
+        args.debug = False
+        args.screenshot_dir = config.SCREENSHOT_DIRECTORY
+        args.video_dir = config.VIDEO_DIRECTORY
+        args.summaries_dir = config.SUMMARIES_DIRECTORY
+        args.no_scheduler = False
+        args.no_watchdog = False
+        args.no_crawlers = False
+        args.no_log_cache = True
+
+        main.create_application(args)
+        mock_create_app.assert_called_with(
+            enable_watchdog=True,
+            schedule=True,
+            crawlers=True,
+            log_cache=False,
         )
 
     @patch("logging.info")
     def test_display_startup_tips(self, mock_info):
         main.display_startup_tips()
         mock_info.assert_any_call("Startup Tips")
+
+    @patch("logging.warning")
+    def test_display_startup_tips_warns_on_local_host(self, mock_warn):
+        with (
+            patch.object(config, "HOST", "127.0.0.1"),
+            patch.object(config, "SESSION_COOKIE_SECURE", False),
+        ):
+            main.display_startup_tips()
+        mock_warn.assert_any_call(
+            "HOST %s is only reachable locally; remote clients may not connect.",
+            "127.0.0.1",
+        )
+
+    @patch("logging.warning")
+    @patch("main.get_system_metrics")
+    @patch("logging.info")
+    def test_display_startup_info(self, mock_info, mock_metrics, mock_warn):
+        mock_metrics.return_value = {
+            "cpu_usage": 0,
+            "memory_usage": 0,
+            "disk_usage": 0,
+            "open_files": 0,
+            "thread_count": 1,
+            "uptime": "0h 0m 0s",
+            "ffmpeg_version": "test",
+            "machine_hwaccel": False,
+            "ffmpeg_hwaccel": False,
+            "ffmpeg_gpu_support": False,
+            "hwaccel_enabled": False,
+            "gpu_support": False,
+            "ffmpeg_gpu_enabled": False,
+            "danger_mode": False,
+        }
+        args = MagicMock()
+        args.no_scheduler = False
+        args.no_watchdog = False
+        main.display_startup_info(args)
+        mock_info.assert_any_call("Startup Configuration")
+        mock_info.assert_any_call("System Metrics")
+        mock_warn.assert_not_called()
+
+    @patch("logging.warning")
+    @patch("main.get_system_metrics")
+    def test_display_startup_warns_on_missing_ffmpeg_support(
+        self, mock_metrics, mock_warn
+    ):
+        mock_metrics.return_value = {
+            "cpu_usage": 0,
+            "memory_usage": 0,
+            "disk_usage": 0,
+            "open_files": 0,
+            "thread_count": 1,
+            "uptime": "0h 0m 0s",
+            "ffmpeg_version": "test",
+            "machine_hwaccel": True,
+            "ffmpeg_hwaccel": False,
+            "ffmpeg_gpu_support": False,
+            "hwaccel_enabled": False,
+            "gpu_support": True,
+            "ffmpeg_gpu_enabled": False,
+            "danger_mode": False,
+        }
+        args = MagicMock()
+        args.no_scheduler = False
+        args.no_watchdog = False
+        main.display_startup_info(args)
+        mock_warn.assert_any_call(
+            "GPU hardware detected but ffmpeg lacks hardware acceleration support."
+        )
+
+    def test_enforce_domain_host_setup_config(self):
+        args = MagicMock()
+        args.db_path = os.path.join(self.temp_dir, "db.sqlite")
+        args.host = "localhost"
+        args.port = 8080
+        args.log_path = os.path.join(self.temp_dir, "log.txt")
+        args.debug = False
+        args.screenshot_dir = os.path.join(self.temp_dir, "screenshots")
+        args.video_dir = os.path.join(self.temp_dir, "videos")
+        args.summaries_dir = os.path.join(self.temp_dir, "summaries")
+
+        old_enforce = config.ENFORCE_DOMAIN_IN_HOST
+        config.ENFORCE_DOMAIN_IN_HOST = True
+        with self.assertRaises(ValueError):
+            main.setup_config(args)
+        config.ENFORCE_DOMAIN_IN_HOST = old_enforce
+
+    def test_cli_help_text(self):
+        text = main.get_cli_help()
+        self.assertIn("--db-path", text)
+
+    @patch("main.create_app")
+    @patch("main.ensure_directories")
+    @patch("main.generate_credentials_if_needed")
+    def test_enforce_domain_host_create_application(
+        self, mock_generate, mock_ensure, mock_create_app
+    ):
+        args = MagicMock()
+        args.db_path = os.path.join(self.temp_dir, "db.sqlite")
+        args.host = "localhost"
+        args.port = 8080
+        args.log_path = os.path.join(self.temp_dir, "log.txt")
+        args.log_level = "INFO"
+        args.console_log = False
+        args.debug = False
+        args.screenshot_dir = os.path.join(self.temp_dir, "screenshots")
+        args.video_dir = os.path.join(self.temp_dir, "videos")
+        args.summaries_dir = os.path.join(self.temp_dir, "summaries")
+        args.no_scheduler = True
+        args.no_watchdog = True
+        args.no_crawlers = True
+
+        old_enforce = config.ENFORCE_DOMAIN_IN_HOST
+        config.ENFORCE_DOMAIN_IN_HOST = True
+        with self.assertRaises(ValueError):
+            main.create_application(args)
+        config.ENFORCE_DOMAIN_IN_HOST = old_enforce
 
 
 if __name__ == "__main__":

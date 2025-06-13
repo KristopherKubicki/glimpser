@@ -1,24 +1,24 @@
-# tests/test_image_processing.py
+# Integration tests for image processing utilities and ChatGPT comparison
 
-import unittest
+import datetime
 import os
 import sys
 import tempfile
-import numpy as np
+import unittest
+from unittest.mock import MagicMock, patch
+
 from PIL import Image
-from unittest.mock import patch, MagicMock
-import datetime
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from app.utils.image_processing import ChatGPTImageComparison, chatgpt_compare
 from app.utils.screenshots import (
     add_timestamp,
-    remove_background,
-    find_bounding_box,
     adjust_bbox_to_aspect_ratio,
+    find_bounding_box,
     is_mostly_blank,
+    remove_background,
 )
-from app.utils.image_processing import ChatGPTImageComparison
 
 
 class TestImageProcessing(unittest.TestCase):
@@ -107,16 +107,16 @@ class TestImageProcessing(unittest.TestCase):
 
 class TestChatGPTImageComparison(unittest.TestCase):
     @patch("app.utils.image_processing.requests.post")
+    @patch("app.utils.image_processing.CHATGPT_KEY", "k")
     def test_compare_images(self, mock_post):
         # Create a ChatGPTImageComparison instance
         comparison = ChatGPTImageComparison()
 
         # Create temporary image files
-        with tempfile.NamedTemporaryFile(
-            suffix=".png", delete=False
-        ) as temp_file1, tempfile.NamedTemporaryFile(
-            suffix=".png", delete=False
-        ) as temp_file2:
+        with (
+            tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file1,
+            tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file2,
+        ):
             image1_path = temp_file1.name
             image2_path = temp_file2.name
 
@@ -182,6 +182,55 @@ class TestChatGPTImageComparison(unittest.TestCase):
             # Clean up temporary files
             os.remove(image1_path)
             os.remove(image2_path)
+
+
+class TestChatGPTCompareIntegration(unittest.TestCase):
+    @patch("app.utils.image_processing.os.path.exists", return_value=True)
+    @patch("app.utils.image_processing.CHATGPT_KEY", "k")
+    @patch("app.utils.template_manager.record_llm_usage")
+    @patch("app.utils.llm_cache.store")
+    @patch("app.utils.llm_cache.get")
+    @patch.object(ChatGPTImageComparison, "compare_images")
+    def test_chatgpt_compare_uses_cache(
+        self, mock_compare, mock_get, mock_store, mock_record, mock_exists
+    ):
+        mock_get.return_value = {"response": "cached", "tokens": 3}
+        result = chatgpt_compare("Prompt", ["img.png"], template_name="cam1")
+        self.assertEqual(result, "cached")
+        mock_compare.assert_not_called()
+        mock_store.assert_not_called()
+        mock_record.assert_called_once_with("cam1", 3)
+
+    @patch("app.utils.image_processing.os.path.exists", return_value=True)
+    @patch("app.utils.image_processing.CHATGPT_KEY", "k")
+    @patch("app.utils.template_manager.record_llm_usage")
+    @patch("app.utils.llm_cache.store")
+    @patch("app.utils.llm_cache.get", return_value=None)
+    @patch.object(ChatGPTImageComparison, "compare_images")
+    def test_chatgpt_compare_calls_api(
+        self, mock_compare, mock_get, mock_store, mock_record, mock_exists
+    ):
+        mock_compare.return_value = ("result", 5)
+        result = chatgpt_compare("Prompt", ["img.png"], template_name="cam1")
+        self.assertEqual(result, "result")
+        mock_compare.assert_called_once()
+        mock_store.assert_called_once_with("Prompt", "result", 5, ["img.png"])
+        mock_record.assert_called_once_with("cam1", 5)
+
+
+class TestCleanCaption(unittest.TestCase):
+    def test_clean_caption_removes_headers_and_formatting(self):
+        from app.utils.image_processing import clean_caption
+
+        self.assertEqual(
+            clean_caption("Caption: **A bird**"),
+            "A bird",
+        )
+
+    def test_clean_caption_handles_title(self):
+        from app.utils.image_processing import clean_caption
+
+        self.assertEqual(clean_caption("Title: **Scene**"), "Scene")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
+import importlib
 import os
 import sys
-import importlib
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -18,8 +18,8 @@ class TestInitDb(unittest.TestCase):
         self.env_patch.start()
 
         import app.config as config
-        import app.utils.db as db
         import app.models as models
+        import app.utils.db as db
 
         importlib.reload(config)
         importlib.reload(db)
@@ -31,8 +31,8 @@ class TestInitDb(unittest.TestCase):
     def tearDown(self):
         self.env_patch.stop()
         import app.config as config
-        import app.utils.db as db
         import app.models as models
+        import app.utils.db as db
 
         importlib.reload(config)
         importlib.reload(db)

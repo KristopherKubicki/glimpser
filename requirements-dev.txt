@@ -1,0 +1,13 @@
+# Additional developer dependencies
+pre-commit>=3.6
+flake8>=7.2
+black>=25.1
+mypy>=1.16
+isort>=5.13
+pytest>=8.3,<8.5
+coverage>=7.5
+pylint>=3.1
+pyinstaller>=6.6
+mkdocs>=1.6
+pytest-socket>=0.7
+detect-secrets>=1.4

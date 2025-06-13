@@ -1,6 +1,7 @@
-import unittest
 import os
 import sys
+import unittest
+
 from flask import Flask
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

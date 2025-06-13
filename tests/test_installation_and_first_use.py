@@ -1,16 +1,18 @@
-import unittest
 import os
+import shutil
 import sys
 import tempfile
-import shutil
+import unittest
+
 from flask import Flask
 
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app import create_app
-import app.config as config
 from importlib import reload
+
+import app.config as config
+from app import create_app
 from app.utils import db
 from app.utils.template_manager import TemplateManager
 
@@ -32,7 +34,7 @@ class TestInstallationAndFirstUse(unittest.TestCase):
         config.SUMMARIES_DIRECTORY = os.path.join(self.temp_dir, "summaries")
 
         # Create the Flask test client
-        self.app = create_app(enable_watchdog=False, schedule=False)
+        self.app = create_app(enable_watchdog=False, schedule=False, log_cache=False)
         self.client = self.app.test_client()
 
     def tearDown(self):

@@ -5,6 +5,14 @@ files are rotated when they grow too large or when their creation date exceeds
 `MAX_COMPRESSED_VIDEO_AGE` days. FFmpeg stdout and stderr are logged to aid
 troubleshooting.
 
+The pipeline below summarizes this process:
+
+![Video Archiver Pipeline](images/video_archiver_pipeline.svg)
+
+Concatenation now uses FFmpeg's **concat demuxer** with `-c copy` so that
+existing segments are joined without re-encoding. This keeps the CPU overhead
+low and preserves the original image quality.
+
 Errors encountered during compilation are logged with the camera name so that
 failures can be diagnosed easily.
 
@@ -18,8 +26,15 @@ prevents crashes due to `FileNotFoundError` when gathering timestamps.
 
 When segments are concatenated, the resulting `in_process.mp4` is checked to
 ensure its modification time is recent. A stale timestamp triggers a warning
-and the operation is aborted so corrupted videos do not linger.
+and the operation is aborted so corrupted videos do not linger. The
+concatenation now uses FFmpeg's `concat` demuxer with `-c copy` so existing
+segments are merged without re-encoding.
 
 Videos automatically rotate into a `final_*.mp4` once roughly 600 frames
 (about 24 seconds) accumulate. A small tolerance in the duration check prevents
 rounding errors from delaying rotation.
+
+Frames are streamed to FFmpeg via `image2pipe`, which avoids writing
+intermediate PNG files. The resize filter runs before encoding and temporary
+segments are concatenated with the `concat` demuxer using `-c copy` so the
+encoded H.264 streams are preserved.

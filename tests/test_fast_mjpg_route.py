@@ -1,10 +1,11 @@
 import os
-import sys
 import shutil
+import sys
 import unittest
+from unittest.mock import patch
+
 from flask import Flask
 from PIL import Image
-from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

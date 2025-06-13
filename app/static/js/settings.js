@@ -30,3 +30,18 @@ export function initSettingsSearch() {
     input.addEventListener("input", filterRows);
   });
 }
+
+export function initShortcutPath() {
+  document.addEventListener("DOMContentLoaded", () => {
+    const input = document.getElementById("shortcut-path");
+    const btn = document.getElementById("update-shortcut-btn");
+    if (!input || !btn) return;
+
+    const toggle = () => {
+      btn.disabled = !input.value.trim();
+    };
+
+    input.addEventListener("input", toggle);
+    toggle();
+  });
+}

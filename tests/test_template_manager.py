@@ -1,20 +1,20 @@
-import sys
 import os
-import unittest
+import sys
 import tempfile
-from unittest.mock import patch, MagicMock
+import unittest
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.utils.template_manager import (
-    TemplateManager,
     Template,
-    mark_offline,
-    update_last_screenshot_time,
-    set_capture_failed,
+    TemplateManager,
     get_storage_usage,
     get_storage_usage_bytes,
     get_templates,
+    mark_offline,
+    set_capture_failed,
+    update_last_screenshot_time,
 )
 from app.utils.validators import validate_template_name
 
@@ -347,9 +347,10 @@ class TestStorageUsage(unittest.TestCase):
             with open(os.path.join(vid_dir, "cam1", "cam1.mp4"), "wb") as f:
                 f.write(b"0" * 2048)
 
-            with patch(
-                "app.utils.template_manager.SCREENSHOT_DIRECTORY", sshot_dir
-            ), patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir):
+            with (
+                patch("app.utils.template_manager.SCREENSHOT_DIRECTORY", sshot_dir),
+                patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir),
+            ):
                 result = get_storage_usage("cam1")
                 self.assertEqual(result, "3.0 KB")
 
@@ -366,10 +367,13 @@ class TestStorageUsage(unittest.TestCase):
             with open(os.path.join(vid_dir, "cam1", "cam1.mp4"), "wb") as f:
                 f.write(b"0" * 2048)
 
-            with patch(
-                "app.utils.template_manager.SCREENSHOT_DIRECTORY",
-                sshot_dir,
-            ), patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir):
+            with (
+                patch(
+                    "app.utils.template_manager.SCREENSHOT_DIRECTORY",
+                    sshot_dir,
+                ),
+                patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir),
+            ):
                 result = get_storage_usage_bytes("cam1")
                 self.assertEqual(result, 3072)
 

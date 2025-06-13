@@ -1,6 +1,9 @@
 import logging
 import time
+
 import requests
+
+from .logging_utils import sanitize_url
 
 
 def send_http_callback(
@@ -41,7 +44,7 @@ def send_http_callback(
     while True:
         try:
             requests.post(url, json=data, timeout=timeout, headers=headers)
-            logging.info("HTTP callback sent to %s", url)
+            logging.info("HTTP callback sent to %s", sanitize_url(url))
             break
         except Exception as exc:
             logging.error("HTTP callback error: %s", exc)

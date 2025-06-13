@@ -7,3 +7,12 @@ title: Glimpser
 version: "0.2.7"
 date-released: 2024-08-07
 url: https://github.com/KristopherKubicki/glimpser
+repository-code: https://github.com/KristopherKubicki/glimpser
+license: MIT
+keywords:
+  - real-time monitoring
+  - image processing
+  - open source
+abstract: >-
+  Glimpser captures, analyzes, and summarizes live data from cameras,
+  dashboards, and video streams using advanced image processing and AI.

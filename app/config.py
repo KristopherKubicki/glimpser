@@ -1,14 +1,17 @@
 # config.py
 
-import os
+import argparse
 import json
 import logging
-import argparse
+import os
+import re
+import shutil
 import sqlite3
-from pathlib import Path
+import subprocess
 from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
 
-from dotenv import load_dotenv, find_dotenv
+from dotenv import find_dotenv, load_dotenv
 
 _DOTENV_LOADED = False
 
@@ -211,12 +214,14 @@ def sync_version(pkg_version: str) -> None:
         session.close()
 
 
-SCHEDULER_API_ENABLED = True
+SCHEDULER_API_ENABLED = get_setting("SCHEDULER_API_ENABLED", "True") == "True"
 
 # be careful when mounting network devices
 SCREENSHOT_DIRECTORY = "data/screenshots/"
 VIDEO_DIRECTORY = "data/video/"
+CLIPS_DIRECTORY = "data/clips/"
 SUMMARIES_DIRECTORY = "data/summaries/"
+DOCS_DIRECTORY = "docs"
 
 # Load settings from the database
 UA = get_setting(
@@ -236,6 +241,7 @@ NAME = get_setting("NAME", "glimpser")
 NAV_ICON = get_setting("NAV_ICON", "img/glimpser_small.png")
 HOST = get_setting("HOST", "0.0.0.0")
 PORT = int(get_setting("PORT", 8082))
+ENFORCE_DOMAIN_IN_HOST = get_setting("ENFORCE_DOMAIN_IN_HOST", "False") == "True"
 DEBUG = get_setting("DEBUG", "False") == "True"
 # Provide a separate attribute for runtime checks
 DEBUG_MODE = DEBUG
@@ -252,11 +258,14 @@ MAX_IN_PROCESS_VIDEO_SIZE = int(
 
 LOG_LEVEL = get_setting("LOG_LEVEL", "WARN")
 FLASK_LOG_LEVEL = get_setting("FLASK_LOG_LEVEL", LOG_LEVEL)
+LOG_RATE_LIMIT_SEC = int(get_setting("LOG_RATE_LIMIT_SEC", 60))
+LOG_COLOR = get_setting("LOG_COLOR", "True") == "True"
 
 # Session security settings
 SESSION_COOKIE_SECURE = get_setting("SESSION_COOKIE_SECURE", "True") == "True"
 SESSION_COOKIE_HTTPONLY = get_setting("SESSION_COOKIE_HTTPONLY", "True") == "True"
 SESSION_TIMEOUT_MINUTES = int(get_setting("SESSION_TIMEOUT_MINUTES", 30))
+AUTO_LOGIN_DAYS = int(get_setting("AUTO_LOGIN_DAYS", 30))
 
 # Clock configuration
 CLOCK_OVERLAY = get_setting("CLOCK_OVERLAY", "False") == "True"
@@ -301,15 +310,77 @@ LLM_CAPTION_PROMPT = get_setting(
 # FFMPEG/FFPROBE path settings
 FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
 FFPROBE_PATH = get_setting("FFPROBE_PATH", "ffprobe")
-# Enable GPU acceleration if supported (e.g. "auto", "cuda", etc.)
-FFMPEG_HWACCEL = get_setting("FFMPEG_HWACCEL", "False")
+
+
+def _machine_supports_hwaccel() -> bool:
+    """Return ``True`` if GPU devices appear to be available."""
+
+    return os.path.exists("/dev/dri") or shutil.which("nvidia-smi") is not None
+
+
+def _ffmpeg_supports_hwaccel() -> bool:
+    """Return ``True`` if ``ffmpeg`` lists any hardware acceleration methods."""
+
+    try:
+        output = subprocess.check_output(
+            [FFMPEG_PATH, "-hwaccels"], stderr=subprocess.STDOUT, timeout=2
+        ).decode()
+        lines = [l.strip() for l in output.splitlines() if l.strip()]
+        return len(lines) > 1
+    except Exception:
+        return False
+
+
+def _detect_best_encoder() -> str:
+    """Return the best hardware encoder ``ffmpeg`` supports.
+
+    The detection checks for common GPU encoder names and returns the
+    corresponding ``-hwaccel`` flag. ``"false"`` is returned when no supported
+    encoder is found or ``ffmpeg`` is missing.
+    """
+
+    try:
+        encoders = subprocess.check_output(
+            [FFMPEG_PATH, "-encoders", "-hide_banner"],
+            stderr=subprocess.STDOUT,
+            timeout=2,
+        ).decode()
+    except Exception:
+        return "false"
+
+    mappings = [
+        ("h264_nvenc", "cuda"),
+        ("h264_vaapi", "vaapi"),
+        ("h264_qsv", "qsv"),
+        ("h264_v4l2m2m", "v4l2m2m"),
+    ]
+    for codec, accel in mappings:
+        if re.search(codec, encoders):
+            return accel
+    return "false"
+
+
+# Enable GPU acceleration by default. "auto" lets ffmpeg pick the best
+# available method and falls back to software when no GPU is present.
+_hwaccel_cfg = get_setting("FFMPEG_HWACCEL", "auto")
+if _hwaccel_cfg.lower() == "auto":
+    FFMPEG_HWACCEL = _detect_best_encoder()
+else:
+    FFMPEG_HWACCEL = _hwaccel_cfg
+
 # Number of threads FFmpeg should use when encoding/decoding
-FFMPEG_THREADS = int(get_setting("FFMPEG_THREADS", 5))
+FFMPEG_THREADS = int(get_setting("FFMPEG_THREADS", max(1, (os.cpu_count() or 1) // 2)))
 
 # CLIP model used for object filtering in scheduling
 CLIP_MODEL_NAME = get_setting(
     "CLIP_MODEL_NAME",
     "openai/clip-vit-base-patch32",
+)
+
+# Path to ONNX model used for object filtering
+CLIP_MODEL_PATH = get_setting(
+    "CLIP_MODEL_PATH",
+    "models/clip-vit-b-32.onnx",
 )
 
 
@@ -338,10 +409,30 @@ LIVE_FALLBACK_FPS = int(get_setting("LIVE_FALLBACK_FPS", 1))
 # not wasted.
 LIVE_MAX_FAILURES = int(get_setting("LIVE_MAX_FAILURES", 10))
 
+# Maximum seconds to wait between live stream restarts when ffmpeg exits
+# without producing any output. The delay increases exponentially on each
+# consecutive failure up to this limit.
+LIVE_MAX_RETRY_DELAY = int(get_setting("LIVE_MAX_RETRY_DELAY", 30))
+
 # Duration of the caption chyron scroll in seconds. Set to 0 to disable
 # the chyron entirely. When enabled, the same value controls how long
 # the banner remains visible after a caption arrives.
 CHYRON_SPEED = int(get_setting("CHYRON_SPEED", 0))
+
+# Length in seconds returned by the `/clip/<template>` endpoint.
+DEFAULT_CLIP_DURATION = int(get_setting("DEFAULT_CLIP_DURATION", 120))
+
+# Maximum age in minutes before temporary ``clip.mp4`` files are purged.
+
+# Minutes over which initial crawler jobs are staggered at startup to
+# avoid CPU spikes when many templates are scheduled.
+CRAWLER_STARTUP_SPREAD = int(get_setting("CRAWLER_STARTUP_SPREAD", 10))
+
+MAX_CLIP_AGE_MINUTES = int(get_setting("MAX_CLIP_AGE_MINUTES", 5))
+
+# Skip clip pre-rendering when the number of cameras exceeds this limit.
+# Set to 0 to always refresh clips regardless of count.
+CLIP_REFRESH_MAX_CAMERAS = int(get_setting("CLIP_REFRESH_MAX_CAMERAS", 10))
 
 # Whether the System Performance icon in the navigation bar should remain
 # visible even when the application reports healthy status. When set to
@@ -356,6 +447,8 @@ HEALTH_STATUS_ALWAYS_VISIBLE = (
 WATCHDOG_FAILURE_THRESHOLD = int(get_setting("WATCHDOG_FAILURE_THRESHOLD", 3))
 WATCHDOG_RESTART_COOLDOWN = int(get_setting("WATCHDOG_RESTART_COOLDOWN", 900))
 WATCHDOG_MAX_FILE_HANDLES = int(get_setting("WATCHDOG_MAX_FILE_HANDLES", 1000))
+WATCHDOG_CPU_THRESHOLD = int(get_setting("WATCHDOG_CPU_THRESHOLD", 80))
+WATCHDOG_MEMORY_THRESHOLD = int(get_setting("WATCHDOG_MEMORY_THRESHOLD", 80))
 
 # Background discovery runs on a schedule when enabled.  Set this
 # to ``True`` to run an hourly scan automatically.
@@ -363,29 +456,46 @@ DISCOVERY_AUTOSTART = get_setting("DISCOVERY_AUTOSTART", "False") == "True"
 
 # Email settings
 EMAIL_ENABLED = get_setting("EMAIL_ENABLED", "False")
-EMAIL_SENDER = get_setting("EMAIL_SENDER", "your-email@example.com")
-EMAIL_RECIPIENTS = get_setting(
-    "EMAIL_RECIPIENTS", "recipient1@example.com,recipient2@example.com"
-)
-EMAIL_SMTP_SERVER = get_setting("EMAIL_SMTP_SERVER", "smtp.example.com")
+EMAIL_SENDER = get_setting("EMAIL_SENDER", "")
+EMAIL_RECIPIENTS = get_setting("EMAIL_RECIPIENTS", "")
+EMAIL_SMTP_SERVER = get_setting("EMAIL_SMTP_SERVER", "")
 EMAIL_SMTP_PORT = get_setting("EMAIL_SMTP_PORT", "587")
+EMAIL_SMTP_TIMEOUT = int(get_setting("EMAIL_SMTP_TIMEOUT", "5"))
 EMAIL_USE_TLS = get_setting("EMAIL_USE_TLS", "True")
-EMAIL_USERNAME = get_setting("EMAIL_USERNAME", "your-username")
+EMAIL_USERNAME = get_setting("EMAIL_USERNAME", "")
 EMAIL_PASSWORD = get_setting("EMAIL_PASSWORD", "")
 
 
 # SMS/Twilio settings
+SMS_ENABLED = get_setting("SMS_ENABLED", "False")
 TWILIO_SID = get_setting("TWILIO_SID", "")
 TWILIO_TOKEN = get_setting("TWILIO_TOKEN", "")
 TWILIO_NUMBER = get_setting("TWILIO_NUMBER", "")
+TWILIO_FROM_NUMBER = get_setting("TWILIO_FROM_NUMBER", "")
+
+# Web Push settings
+VAPID_PUBLIC_KEY = get_setting("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = get_setting("VAPID_PRIVATE_KEY", "")
 
 # Common Alerting Protocol settings
+CAP_ENABLED = get_setting("CAP_ENABLED", "False")
 CAP_ENDPOINT = get_setting("CAP_ENDPOINT", "")
-CAP_SENDER = get_setting("CAP_SENDER", "glimpser@example.com")
+CAP_SENDER = get_setting("CAP_SENDER", "")
 
 # MCP settings
 MCP_SERVER_COMMAND = get_setting("MCP_SERVER_COMMAND", "")
 MCP_SERVER_URL = get_setting("MCP_SERVER_URL", "")
+
+# When ``True`` the ``/robots.txt`` route allows search engine indexing.
+# ``False`` (the default) disallows all crawlers.
+ALLOW_BOTS = get_setting("ALLOW_BOTS", "False") == "True"
+
+# Branch to auto-update from when new releases are available. "None" disables
+# automatic updates. Values other than "Main" or "Staging" revert to "None".
+AUTO_UPDATE_BRANCH = get_setting("AUTO_UPDATE_BRANCH", "None")
+if AUTO_UPDATE_BRANCH not in {"None", "Main", "Staging"}:
+    logging.warning("Invalid AUTO_UPDATE_BRANCH %s", AUTO_UPDATE_BRANCH)
+    AUTO_UPDATE_BRANCH = "None"
 
 # Settings that should never be displayed in the UI
 SENSITIVE_SETTINGS = [

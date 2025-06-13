@@ -1,34 +1,62 @@
 import { initTemplates } from "./templates.js";
-import { initVideoControls } from "./video.js";
+import { initVideoControls, initVisibilityHandler } from "./video.js";
 import { initSchedulerToggle } from "./scheduler.js";
-import { initDiscoveryToggle } from "./discovery.js";
+import {
+  initDiscoveryToggle,
+  initSubnetInput,
+  initDiscoveryTable,
+} from "./discovery.js";
 import { initNav } from "./nav.js";
 import { initFormValidation, initAddSettingValidation } from "./form.js";
 import { initFooterFade } from "./footer.js";
 import { initOffline } from "./offline.js";
+import { initNotifications } from "./notifications.js";
 import { initDangerToggle } from "./danger.js";
 import { initIndexTime } from "./time.js";
 import { initWelcome } from "./welcome.js";
 import { initTooltips } from "./tooltips.js";
 import { initCaptions } from "./captions.js";
-import { initSettingsSearch } from "./settings.js";
+import { initSettingsSearch, initShortcutPath } from "./settings.js";
 import { initTabs } from "./tabs.js";
 import { initThemeToggle } from "./theme.js";
+import { initControlsDropdown } from "./controls.js";
+import { initAutocomplete } from "./autocomplete.js";
+import { initCosts } from "./costs.js";
+import { initAdvanced } from "./advanced.js";
+import { initKeyVisibility } from "./key_visibility.js";
+import { initCliHelp } from "./cli_help.js";
+import { initNetworkBanner } from "./network_banner.js";
+import { initUnsavedIndicator } from "./unsaved.js";
+import { initVideoZoom } from "./zoom.js";
 
 initTemplates();
 initVideoControls();
+initVisibilityHandler();
 initSchedulerToggle();
 initDiscoveryToggle();
+initSubnetInput();
+initDiscoveryTable();
 initNav();
 initFormValidation();
 initAddSettingValidation();
 initFooterFade();
 initOffline();
+initNotifications();
 initDangerToggle();
 initIndexTime();
 initWelcome();
 initTooltips();
 initCaptions();
 initSettingsSearch();
+initShortcutPath();
 initTabs();
 initThemeToggle();
+initNetworkBanner();
+initControlsDropdown();
+initAutocomplete();
+initCosts();
+initAdvanced();
+initKeyVisibility();
+initUnsavedIndicator();
+initCliHelp();
+initVideoZoom();

@@ -1,101 +1,360 @@
+# flake8: noqa
 import csv
+import fcntl
 import glob
 import hashlib
 import inspect
-from sqlalchemy import inspect as sa_inspect
 import io
 import json
 import logging
+import math
 import os
+import queue
+import random
 import re
+import shutil
+import sqlite3
+import struct
+import subprocess
 import sys
 import tempfile
+import textwrap
 import time
+import typing
 import uuid
+from collections import deque
 from datetime import datetime, timedelta
-
-from functools import wraps
+from functools import lru_cache, wraps
+from ipaddress import ip_network
+from pathlib import Path
 from threading import Lock, Thread
-import queue
+from urllib.parse import urlparse
 
+import psutil
+import requests
+from dateutil import tz
 from flask import (
+    Flask,
+    Response,
     abort,
-    jsonify,
+    current_app,
     flash,
+    jsonify,
+    make_response,
     redirect,
     render_template,
     request,
     send_file,
     send_from_directory,
     session,
-    url_for,
-    Response,
-    make_response,
     stream_with_context,
-    Flask,
+    url_for,
 )
-
 from PIL import Image, ImageDraw, ImageFont
-import textwrap
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
-import sqlite3
+from werkzeug.http import http_date
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
-from ipaddress import ip_network
-import subprocess
-from urllib.parse import urlparse
-import struct
-import random
 
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
 import app.config as config
 from app.config import (
     API_KEY,
-    SCREENSHOT_DIRECTORY,
-    VIDEO_DIRECTORY,
-    VERSION,
     BACKUP_PATH,
-    backup_config,
-    restore_config,
-    SENSITIVE_SETTINGS,
     CHYRON_SPEED,
-    NAV_ICON,
-    HEALTH_STATUS_ALWAYS_VISIBLE,
-    CLOCK_OVERLAY,
+    CLIP_MODEL_NAME,
+    CLIPS_DIRECTORY,
     CLOCK_DIGITAL,
     CLOCK_NAVBAR,
+    CLOCK_OVERLAY,
+    DOCS_DIRECTORY,
+    HEALTH_STATUS_ALWAYS_VISIBLE,
+    NAV_ICON,
+    SCREENSHOT_DIRECTORY,
+    SENSITIVE_SETTINGS,
+    VERSION,
+    VIDEO_DIRECTORY,
+    backup_config,
+    restore_config,
 )
-from app.models import User, Summary
+from app.models import PushSubscription, Summary, User
 from app.utils import (
-    scheduling,
-    template_manager,
-    video_archiver,
-    screenshots,
     camera_discovery,
-    prompt_optimizer,
     camera_fix,
+    limit_rate,
+    prompt_optimizer,
+    scheduling,
+    screenshots,
+    template_manager,
+    test_pattern,
+    video_archiver,
 )
-
 from app.utils.llm import ask_question
-from app.utils.settings_tooltips import SETTINGS_TOOLTIPS, SETTINGS_GROUPS
-
-from app.utils.settings_tooltips import (
-    SETTINGS_TOOLTIPS,
-    SETTINGS_GROUPS,
-    SETTINGS_CHOICES,
-)
-
+from app.utils.network import is_system_online
 from app.utils.screenshots import (
-    is_chrome_debug_port_open,
-    check_user_activity,
     capture_frame_from_stream,
+    check_user_activity,
+    is_chrome_debug_port_open,
 )
-from app.utils.db import SessionLocal, engine
-from sqlalchemy.exc import OperationalError, SQLAlchemyError
+from app.utils.settings_tooltips import (
+    EMAIL_FIELDS,
+    LOCKED_SETTINGS,
+    NUMERIC_FIELDS,
+    SETTINGS_CHOICES,
+    SETTINGS_GROUPS,
+    SETTINGS_PLACEHOLDERS,
+    SETTINGS_TOOLTIPS,
+)
+
+try:
+    import onnxruntime as ort
+except Exception:  # pragma: no cover - optional dependency
+    ort = None
+
+
+@lru_cache(maxsize=1)
+def clip_gpu_available() -> bool:
+    """Return True when ONNXRuntime can use CUDA."""
+    if ort is None:
+        return False
+    providers = getattr(ort, "get_available_providers", lambda: [])()
+    return "CUDAExecutionProvider" in providers
+
+
+# Names of settings that store file paths.
+FILE_LOCATION_NAMES = [
+    "DATABASE_PATH",
+    "LOGGING_PATH",
+    "BACKUP_PATH",
+    "SCREENSHOT_DIRECTORY",
+    "VIDEO_DIRECTORY",
+    "SUMMARIES_DIRECTORY",
+]
+
 import sqlite3
-from typing import Any, Callable, Generator, Iterable, Optional, List, Dict
+from typing import Any, Callable, Dict, Generator, List, Optional
+
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
+
+from app.utils.db import SessionLocal, engine
+
+# Clip caching constants
+CACHE_TTL_SEC = 120
+SEGMENT_SEC = 10
+
+
+FFMPEG = config.FFMPEG_PATH  # shortcut
+
+
+# ---------- tiny helpers ----------------------------------------------------
+@lru_cache(maxsize=256)
+def _duration(p: str) -> float:
+    out = subprocess.check_output(
+        [
+            FFMPEG.replace("ffmpeg", "ffprobe"),
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            p,
+        ]
+    )
+    return float(out.strip())
+
+
+@lru_cache(maxsize=256)
+def _probe(p: str, key: str):
+    out = subprocess.check_output(
+        [
+            FFMPEG.replace("ffmpeg", "ffprobe"),
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            f"stream={key}",
+            "-of",
+            "json",
+            p,
+        ]
+    )
+    return json.loads(out)["streams"][0][key]
+
+
+# ---------- main ------------------------------------------------------------
+def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
+    out_tmp = out.with_suffix(".tmp.mp4")
+    ramroot = Path(tempfile.mkdtemp(dir=Path("/dev/shm")))
+    fixed: list[Path] = []
+
+    # 1) finalise any in-process clip → RAM
+    for p in parts:
+        if p.name.startswith("final_"):
+            fixed.append(p)
+            continue
+        dst = ramroot / f"{p.stem}_fix.mp4"
+        try:
+            subprocess.run(
+                [
+                    FFMPEG,
+                    "-loglevel",
+                    "quiet",
+                    "-i",
+                    p,
+                    "-c",
+                    "copy",
+                    "-movflags",
+                    "+faststart",
+                    "-y",
+                    dst,
+                ],
+                check=True,
+                timeout=10,
+            )
+            fixed.append(dst)
+        except subprocess.SubprocessError as e:
+            logging.warning("skip broken %s (%s)", p, e)
+
+    if not fixed:
+        shutil.rmtree(ramroot)
+        return False
+
+    fixed.sort(key=os.path.getmtime)  # oldest → newest
+    total = sum(_duration(p) for p in fixed)
+
+    # 2) create FRONT-pad if needed
+    if total < clip_len:
+        miss = clip_len - total  # seconds to pad
+        ref = fixed[-1]  # last clip for geometry/fps
+        first_clip = fixed[0]
+        w, h = _probe(ref, "width"), _probe(ref, "height")
+        fps = eval(_probe(ref, "r_frame_rate"))
+        pad = ramroot / "pad_black.mp4"
+
+        # extract first frame from earliest clip for overlay
+        first_frame = ramroot / "first_frame.jpg"
+        try:
+            subprocess.run(
+                [
+                    FFMPEG,
+                    "-loglevel",
+                    "quiet",
+                    "-i",
+                    first_clip,
+                    "-vframes",
+                    "1",
+                    "-q:v",
+                    "2",
+                    "-y",
+                    first_frame,
+                ],
+                check=True,
+                timeout=20,
+            )
+        except subprocess.TimeoutExpired:
+            logging.error("FFmpeg frame extraction timed out after 20s")
+            return False
+        except (
+            subprocess.SubprocessError
+        ) as exc:  # pragma: no cover - ffmpeg errors logged
+            logging.error("FFmpeg frame extraction failed: %s", exc, exc_info=True)
+            return False
+
+        # create pad using the frame with a fading black overlay
+        try:
+            subprocess.run(
+                [
+                    FFMPEG,
+                    "-loglevel",
+                    "quiet",
+                    "-loop",
+                    "1",
+                    "-i",
+                    first_frame,
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    f"color=c=black@0.9:s={w}x{h}:r={fps}",
+                    "-filter_complex",
+                    f"[1:v]format=rgba,fade=t=out:st=0:d={miss}:alpha=1[ov];[0:v][ov]overlay",
+                    "-t",
+                    f"{miss:.3f}",
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-preset",
+                    "ultrafast",
+                    "-movflags",
+                    "+faststart",
+                    "-y",
+                    pad,
+                ],
+                check=True,
+                timeout=30,
+            )
+        except subprocess.TimeoutExpired:
+            logging.error("FFmpeg pad generation timed out after 30s")
+            return False
+        except (
+            subprocess.SubprocessError
+        ) as exc:  # pragma: no cover - ffmpeg errors logged
+            logging.error("FFmpeg pad generation failed: %s", exc, exc_info=True)
+            return False
+        concat_parts = [pad] + fixed  # pad FIRST
+    else:
+        concat_parts = fixed
+
+    # 3) concat, trim to exactly clip_len, fix timestamps
+    concat_payload = (
+        "\n".join(f"file 'file:{p.as_posix()}'" for p in concat_parts).encode() + b"\n"
+    )
+
+    total_duration = sum(_duration(p) for p in concat_parts)
+    start_offset = max(0.0, total_duration - clip_len)
+
+    cmd = [
+        FFMPEG,
+        "-loglevel",
+        "warning",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-protocol_whitelist",
+        "file,pipe",
+        "-i",
+        "pipe:0",
+        "-ss",
+        f"{start_offset:.3f}",  # trim from start when overlength
+        "-t",
+        str(clip_len),  # force exact 120 s
+        "-c",
+        "copy",
+        "-reset_timestamps",
+        "1",  # PTS starts at 0  ➜ scrub-bar fine
+        "-movflags",
+        "+faststart",
+        "-y",
+        out_tmp,
+    ]
+
+    try:
+        subprocess.run(cmd, input=concat_payload, timeout=30, check=True)
+        out_tmp.rename(out)
+        return True
+    except subprocess.SubprocessError as exc:
+        logging.error("FFmpeg concat failed: %s", exc, exc_info=True)
+        out_tmp.unlink(missing_ok=True)
+        return False
+    finally:
+        shutil.rmtree(ramroot, ignore_errors=True)
+
 
 try:
     COMMIT_HASH = (
@@ -107,12 +366,29 @@ except Exception:
     COMMIT_HASH = "unknown"
 NODE_ENV = os.getenv("NODE_ENV", "development")
 
+from app.utils import validators
+from app.utils.email_alerts import send_email_alert
+from app.utils.profiling import get_latency_stats, profile_route
+
 # from app.models.log import Log
 from app.utils.scheduling import log_cache, log_cache_lock
-from app.utils.validators import validate_template_name, validate_update_data
-from app.utils.profiling import profile_route, get_latency_stats
+from app.utils.screenshots import (
+    check_user_activity,
+    get_chrome_path,
+    get_chrome_version,
+    is_chrome_debug_port_open,
+    load_font,
+)
+from app.utils.sms_alerts import send_sms_alert
+from app.utils.validators import (
+    validate_setting,
+    validate_template_name,
+    validate_update_data,
+)
 from scripts.update_chrome_shortcut import (
-    update_chrome_shortcuts,
+    LINUX_PATHS,
+    first_shortcut_path,
+    shortcuts_need_patch,
     update_chrome_shortcuts_info,
 )
 
@@ -126,12 +402,18 @@ def restart_server() -> None:
         time.sleep(1)  # 1-second delay
         os.execv(sys.executable, [sys.executable] + sys.argv)
 
-    # Start the delayed restart in a separate thread
-    restart_thread = Thread(target=delayed_restart)
+    # Start the delayed restart in a daemon thread so the response returns
+    restart_thread = Thread(target=delayed_restart, daemon=True)
     restart_thread.start()
 
 
 class TemplateName:
+    """Validated wrapper for template names.
+
+    Ensures that only names passing ``validate_template_name`` are
+    accepted when referencing templates in routes.
+    """
+
     def __init__(self, name: str):
         if not self.validate(name):
             raise ValueError(f"Invalid template name: {name}")
@@ -222,9 +504,12 @@ def login_required(f: Callable) -> Callable:
                 return redirect(url_for("login", next=request.url))
 
             # Refresh expiry so the timeout is based on inactivity
-            session["expiry"] = (
-                datetime.now() + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
-            ).strftime("%Y-%m-%d %H:%M:%S")
+            timeout = (
+                timedelta(days=config.AUTO_LOGIN_DAYS)
+                if session.get("remember")
+                else timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
+            )
+            session["expiry"] = (datetime.now() + timeout).strftime("%Y-%m-%d %H:%M:%S")
 
             db_session = SessionLocal()
             try:
@@ -251,11 +536,23 @@ def login_required(f: Callable) -> Callable:
             if api_key:
                 return jsonify({"error": "Invalid API key"}), 401
             else:
+                # For Server-Sent Events endpoints, return an SSE-formatted
+                # authentication error so the client can handle it without
+                # interpreting an HTML login page. This avoids the browser
+                # warning: "EventSource's response has a MIME type
+                # ('text/html') that is not 'text/event-stream'."
+                if "text/event-stream" in request.headers.get("Accept", ""):
+                    message = 'data: {"error": "unauthorized"}\n\n'
+                    return Response(message, status=401, mimetype="text/event-stream")
+
                 # When no session cookie is present the user might have cookies
                 # disabled or the SESSION_COOKIE_SECURE flag could block the
                 # cookie over HTTP. Provide a hint and log for easier debugging
                 if "session" not in request.cookies:
-                    flash("Login requires cookies. Check browser settings.", "error")
+                    flash(
+                        "Login requires cookies. Check browser settings.",
+                        "error",
+                    )
                     logging.debug("Missing session cookie from %s", request.remote_addr)
                 return redirect(url_for("login", next=request.url))
 
@@ -342,15 +639,56 @@ def get_all_settings() -> List[Dict[str, Any]]:
                 re.findall(r"^[A-Z_]+?$", sl["name"])
                 and sl["name"] not in SENSITIVE_SETTINGS
             ):
-                lsettings_list.append({"name": sl["name"], "value": sl["value"]})
-
+                value = sl["value"]
+                if isinstance(value, str) and validators.is_bool_string(value):
+                    value = (
+                        "True"
+                        if value.strip().lower() in {"true", "on", "yes", "y", "t"}
+                        else "False"
+                    )
+                lsettings_list.append({"name": sl["name"], "value": value})
         return lsettings_list
     finally:
         session.close()
 
 
-def update_setting(name: str, value: str) -> bool:
-    """Persist a configuration ``name`` and ``value`` to the database."""
+def file_location_metrics(
+    settings_list: List[Dict[str, Any]],
+) -> Dict[str, Dict[str, Any]]:
+    """Return existence and disk free percent for file location settings."""
+
+    metrics = {}
+    for item in settings_list:
+        path = os.path.expanduser(os.path.expandvars(str(item["value"])))
+        exists = os.path.exists(path)
+        free_pct = None
+        if exists:
+            try:
+                # psutil.disk_usage works for both files and directories. If
+                # the path is a file that doesn't exist yet, fall back to its
+                # parent directory so we can still report disk capacity.
+                target = path if os.path.isdir(path) else os.path.dirname(path)
+                usage = psutil.disk_usage(target)
+                free_pct = round(100 * usage.free / usage.total, 1)
+            except Exception:
+                free_pct = None
+        metrics[item["name"]] = {"exists": exists, "free_pct": free_pct}
+
+    return metrics
+
+
+def update_setting(name: str, value: str, restart: bool = True) -> bool:
+    """Persist a configuration ``name`` and ``value`` to the database.
+
+    Parameters
+    ----------
+    name : str
+        Setting name.
+    value : str
+        New setting value.
+    restart : bool, optional
+        Restart the server after updating the setting. Defaults to ``True``.
+    """
 
     name = name.replace("'", "")[:32]
     value = value.replace("'", "")[:1024]
@@ -362,7 +700,8 @@ def update_setting(name: str, value: str) -> bool:
     delta = False
     try:
         existing_setting = session.execute(
-            text("SELECT value FROM settings WHERE name = :name"), {"name": name}
+            text("SELECT value FROM settings WHERE name = :name"),
+            {"name": name},
         ).fetchone()
         if existing_setting:
             if existing_setting[0] != value:
@@ -391,7 +730,7 @@ def update_setting(name: str, value: str) -> bool:
     finally:
         session.close()
 
-    if delta is True:
+    if delta is True and restart:
         # Trigger server restart
         # is there a way to do this on a delay?
         restart_server()
@@ -399,8 +738,20 @@ def update_setting(name: str, value: str) -> bool:
     return True
 
 
-def generate_video_stream(video_path: str) -> Generator[bytes, None, None]:
-    """Yield video data from ``video_path`` in chunks indefinitely."""
+def generate_video_stream(
+    video_path: str, *, reopen_delay: float = 0.1
+) -> Generator[bytes, None, None]:
+    """Yield video data from ``video_path`` in chunks indefinitely.
+
+    Parameters
+    ----------
+    video_path : str
+        Path to the video file to stream.
+    reopen_delay : float, optional
+        Time to wait after reaching the end of the file before reopening it.
+        This prevents tight loops from consuming CPU when the file ends.
+        Defaults to ``0.1`` seconds.
+    """
 
     # The video preview on the UI expects an infinite generator. Read the
     # file in 1MB increments and loop back to the beginning once no more
@@ -421,6 +772,7 @@ def generate_video_stream(video_path: str) -> Generator[bytes, None, None]:
 
         # Immediately loop back and stream again so the client sees a
         # seamless loop without gaps.
+        time.sleep(reopen_delay)
         logging.debug("Restarting video stream")
 
 
@@ -449,7 +801,9 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
                     failures = 0
                 else:
                     logging.error(
-                        "Failed to fetch image from %s (HTTP %s)", url, resp.status_code
+                        "Failed to fetch image from %s (HTTP %s)",
+                        url,
+                        resp.status_code,
                     )
                     failures += 1
             except GeneratorExit:
@@ -499,27 +853,39 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
     failures = 0
     last_log = 0.0
     while True:
-        process = subprocess.Popen(
-            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        chunk_yielded = False
-
+        process: subprocess.Popen | None = None
         try:
-            while True:
-                chunk = process.stdout.read(1024 * 1024)
-                if not chunk:
-                    break
-                yield chunk
-                chunk_yielded = True
-                if process.poll() is not None:
-                    break
+            process = subprocess.Popen(
+                command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            chunk_yielded = False
+
+            try:
+                while True:
+                    try:
+                        chunk = process.stdout.read(1024 * 1024)
+                    except BrokenPipeError:
+                        raise GeneratorExit
+                    if not chunk:
+                        break
+                    yield chunk
+                    chunk_yielded = True
+                    if process.poll() is not None:
+                        break
+            except GeneratorExit:
+                if process:
+                    process.kill()
+                    process.wait(timeout=1)
+                return
+            finally:
+                if process:
+                    process.kill()
+                    process.wait(timeout=1)
         except GeneratorExit:
-            process.kill()
-            process.wait(timeout=1)
+            if process:
+                process.kill()
+                process.wait(timeout=1)
             return
-        finally:
-            process.kill()
-            process.wait(timeout=1)
 
         if process.returncode == 0:
             return
@@ -529,7 +895,8 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
             failures += 1
             if failures >= config.LIVE_MAX_FAILURES:
                 logging.error(
-                    "ffmpeg failed %s times without output, giving up", failures
+                    "ffmpeg failed %s times without output, giving up",
+                    failures,
                 )
                 return
             if now - last_log > 10:
@@ -546,7 +913,10 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
                 logging.warning("ffmpeg exited with %s, retrying", process.returncode)
                 last_log = now
 
-        time.sleep(2)
+        # Exponential backoff keeps the server from hammering the camera URL
+        # when ffmpeg repeatedly fails. The delay tops out at 30 seconds.
+        delay = 2 if failures == 0 else min(2**failures, 30)
+        time.sleep(delay)
 
 
 login_attempts = {}
@@ -554,6 +924,7 @@ last_shot = None
 last_time = None
 active_groups = []
 rtsp_sessions = {}
+active_log_streams: dict[tuple[int, str, str], bool] = {}
 
 
 def get_active_groups() -> List[str]:
@@ -578,7 +949,9 @@ def get_active_groups() -> List[str]:
 
 
 def resize_and_pad(
-    img: Image.Image, size: tuple[int, int], color: tuple[int, int, int] = (0, 0, 0)
+    img: Image.Image,
+    size: tuple[int, int],
+    color: tuple[int, int, int] = (0, 0, 0),
 ) -> Image.Image:
     """Resize ``img`` to fit ``size`` while preserving aspect ratio."""
 
@@ -617,6 +990,45 @@ def _placeholder_screenshot() -> io.BytesIO:
     return buf
 
 
+def _overlay_stream_timestamp(frame: bytes) -> bytes:
+    """Return ``frame`` with a live timestamp overlay."""
+    try:
+        with Image.open(io.BytesIO(frame)) as img:
+            img = img.convert("RGB")
+            draw = ImageDraw.Draw(img)
+            zone = tz.gettz(config.TZ) or tz.UTC
+            timestamp = datetime.now(zone).strftime("%H:%M:%S")
+            text = f"\u25cf {timestamp}"
+            font_size = max(10, int(img.height * 0.03))
+            font = load_font(font_size)
+            padding = 4
+            bbox = draw.textbbox((0, 0), text, font=font, stroke_width=1)
+            text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
+            x = img.width - text_w - padding
+            y = img.height - int(font_size * 3.5)
+            background = Image.new(
+                "RGBA",
+                (text_w + padding * 2, text_h + padding * 2),
+                (0, 0, 0, 128),
+            )
+            img.paste(background, (x - padding, y - padding), background)
+            draw.text(
+                (x, y),
+                text,
+                font=font,
+                fill=(255, 255, 255, 255),
+                stroke_width=1,
+                stroke_fill=(0, 0, 0, 255),
+            )
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG")
+            return buf.getvalue()
+    except Exception as exc:  # pragma: no cover - overlay failures are noncritical
+        logging.debug("Stream timestamp overlay failed: %s", exc)
+        return frame
+
+
 lock = Lock()
 
 
@@ -628,6 +1040,20 @@ def generate(
     session_id: Optional[str] = None,
 ) -> Generator[bytes, None, None]:
     """Yield MJPEG or RTP frames from the latest screenshot files."""
+
+    placeholder_jpeg: Optional[bytes] = None
+
+    def _placeholder_frame() -> bytes:
+        nonlocal placeholder_jpeg
+        if placeholder_jpeg is None:
+            buf = _placeholder_screenshot()
+            with Image.open(buf) as img:
+                img = resize_and_pad(img, (1280, 720))
+                tmp = io.BytesIO()
+                img.save(tmp, format="JPEG")
+                placeholder_jpeg = tmp.getvalue()
+        return placeholder_jpeg
+
     # Treat explicit "all" values as no filter
     if group == "all":
         group = None
@@ -677,7 +1103,8 @@ def generate(
                                 frame = buffer.getvalue()
                         else:
                             logging.error(
-                                "Failed to open last shot %s: invalid image", last_shot
+                                "Failed to open last shot %s: invalid image",
+                                last_shot,
                             )
                             try:
                                 os.remove(last_shot)
@@ -794,7 +1221,10 @@ def generate(
                         except Exception:
                             pass
 
+        if not frame:
+            frame = _placeholder_frame()
         if frame:
+            frame = _overlay_stream_timestamp(frame)
             if rtsp:
                 if session_id and session_id in rtsp_sessions:
                     session = rtsp_sessions[session_id]
@@ -862,24 +1292,39 @@ def generate_fast_mjpg(camera: str) -> Generator[bytes, None, None]:
             time.sleep(delay - elapsed)
 
 
-def generate_caption_loop() -> Generator[bytes, None, None]:
-    """Yield MJPEG frames showing the most recent caption."""
+def generate_caption_loop(
+    *, group: Optional[str] = None, camera: Optional[str] = None
+) -> Generator[bytes, None, None]:
+    """Yield MJPEG frames showing the most recent caption.
+
+    When ``camera`` or ``group`` is provided, the generator filters templates
+    to those sources before selecting the newest caption. This mirrors the
+    behavior of ``/stream.png`` and other endpoints.
+    """
 
     boundary = b"frame"
+    if group == "all":
+        group = None
+    if camera == "all":
+        camera = None
     while True:
-        session_db = SessionLocal()
         caption = "No captions available"
-        try:
-            rec = session_db.query(Summary).order_by(Summary.timestamp.desc()).first()
-            if rec:
-                try:
-                    data = json.loads(rec.content)
-                    if data:
-                        caption = next(iter(data.values()))
-                except Exception:
-                    caption = rec.content
-        finally:
-            session_db.close()
+        templates = template_manager.get_templates()
+        newest_time = None
+        for name, tpl in templates.items():
+            if camera and name != camera:
+                continue
+            if group:
+                if group not in [g.strip() for g in tpl.get("groups", "").split(",")]:
+                    continue
+            ts_str = tpl.get("last_caption_time")
+            try:
+                ts = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S") if ts_str else None
+            except Exception:
+                ts = None
+            if ts and (newest_time is None or ts > newest_time):
+                newest_time = ts
+                caption = tpl.get("last_caption", "") or "No captions available"
 
         img = Image.new("RGB", (1280, 720), "black")
         draw = ImageDraw.Draw(img)
@@ -934,6 +1379,14 @@ def init_routes(app: Flask) -> None:
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Cache-Control"] = "no-store"
         return response
+
+    @app.before_request
+    def enforce_host_domain():
+        """Block requests missing a domain when enforcement is enabled."""
+        if config.ENFORCE_DOMAIN_IN_HOST:
+            host = request.headers.get("Host", "")
+            if "." not in host:
+                abort(403)
 
     @app.context_processor
     def inject_footer_data():
@@ -1057,19 +1510,59 @@ def init_routes(app: Flask) -> None:
         port_open = is_chrome_debug_port_open("127.0.0.1", 9222)
         idle = not check_user_activity(timeout=1)
         enabled = config.get_setting("DANGER_MODE", "True") == "True"
+        browser_path = get_chrome_path()
+        patched = not shortcuts_need_patch()
         return jsonify(
             {
                 "port_open": port_open,
                 "idle": idle,
                 "enabled": enabled,
                 "ready": port_open and idle and enabled,
+                "browser": (os.path.basename(browser_path) if browser_path else None),
+                "path": browser_path,
+                "version": (get_chrome_version(browser_path) if browser_path else None),
+                "shortcut": str(first_shortcut_path() or ""),
+                "patched": patched,
             }
         )
 
     @app.route("/captions_status")
     @login_required
     def captions_status():
-        """Return the newest global summary and its timestamp."""
+        """Return the most recent caption and timestamp.
+
+        If a ``group`` query parameter is provided, the newest caption from
+        templates in that group is returned. Otherwise the latest global summary
+        is used.
+        """
+
+        group = request.args.get("group")
+        if group and group != "all":
+            templates = template_manager.get_templates()
+            latest_time = None
+            caption = ""
+            for name, tmpl in templates.items():
+                groups = [g.strip() for g in tmpl.get("groups", "").split(",")]
+                if group not in groups:
+                    continue
+                t = tmpl.get("last_caption_time")
+                if not t:
+                    continue
+                try:
+                    dt = datetime.strptime(t, "%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    continue
+                if not latest_time or dt > latest_time:
+                    latest_time = dt
+                    caption = tmpl.get("last_caption", "")
+            if latest_time:
+                return jsonify(
+                    {
+                        "caption": caption,
+                        "timestamp": latest_time.strftime("%Y-%m-%d %H:%M:%S"),
+                    }
+                )
+
         caption = ""
         timestamp = ""
         session_db = SessionLocal()
@@ -1101,6 +1594,20 @@ def init_routes(app: Flask) -> None:
         """Return cached background discovery status."""
         return jsonify(scheduling.get_discovery_status())
 
+    @app.route("/network_status")
+    @login_required
+    def network_status():
+        """Return current network connectivity status."""
+        return jsonify({"online": is_system_online()})
+
+    @app.route("/discover/subnets")
+    @login_required
+    def discover_subnets():
+        """Return local IPv4 subnets as strings."""
+        nets = [str(n) for n in camera_discovery._local_subnets()]
+        nets.append("internet")
+        return jsonify(nets)
+
     @app.route("/toggle_discovery", methods=["POST"])
     @login_required
     @profile_route("/toggle_discovery")
@@ -1110,10 +1617,10 @@ def init_routes(app: Flask) -> None:
             job = scheduling.scheduler.get_job("background_discovery")
             if job:
                 scheduling.stop_discovery()
-                update_setting("DISCOVERY_AUTOSTART", "False")
+                update_setting("DISCOVERY_AUTOSTART", "False", restart=False)
                 return jsonify({"status": "stopped"})
             scheduling.schedule_discovery()
-            update_setting("DISCOVERY_AUTOSTART", "True")
+            update_setting("DISCOVERY_AUTOSTART", "True", restart=False)
             return jsonify({"status": "running"})
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
@@ -1137,7 +1644,9 @@ def init_routes(app: Flask) -> None:
         if request.method == "POST":
             action = request.form.get("action")
             if action == "update_shortcut":
-                paths, msg = update_chrome_shortcuts_info()
+                path_val = request.form.get("shortcut_path")
+                path = Path(path_val) if path_val else None
+                paths, msg = update_chrome_shortcuts_info(path)
                 if paths:
                     joined = ", ".join(str(p) for p in paths)
                     flash(
@@ -1156,10 +1665,26 @@ def init_routes(app: Flask) -> None:
         danger_cameras = sorted(
             [name for name, t in templates.items() if t.get("danger")]
         )
+
+        chrome_path = get_chrome_path()
+        shortcut_opts = [
+            str(p) for p in LINUX_PATHS if p.exists() and os.access(p, os.W_OK)
+        ]
+        danger_info = {
+            "browser": os.path.basename(chrome_path) if chrome_path else "N/A",
+            "path": chrome_path or "N/A",
+            "version": (get_chrome_version(chrome_path) if chrome_path else "N/A"),
+            "shortcut": str(first_shortcut_path() or "N/A"),
+            "patched": not shortcuts_need_patch(),
+            "running": is_chrome_debug_port_open("127.0.0.1", 9222),
+        }
+
         return render_template(
             "danger.html",
             enabled=current,
             danger_cameras=danger_cameras,
+            danger_info=danger_info,
+            shortcut_options=shortcut_opts,
             page_title="Danger Mode",
         )
 
@@ -1173,25 +1698,25 @@ def init_routes(app: Flask) -> None:
                     "path": "/health",
                     "method": "GET",
                     "description": "Check the health status of the API",
-                    "authentication_required": False,
+                    "authentication_required": True,
                 },
                 {
                     "path": "/danger_status",
                     "method": "GET",
                     "description": "Check if Danger mode is ready",
-                    "authentication_required": False,
+                    "authentication_required": True,
                 },
                 {
                     "path": "/captions_status",
                     "method": "GET",
                     "description": "Get the most recent caption and timestamp",
-                    "authentication_required": False,
+                    "authentication_required": True,
                 },
                 {
                     "path": "/discovery_status",
                     "method": "GET",
                     "description": "Check background discovery status",
-                    "authentication_required": False,
+                    "authentication_required": True,
                 },
                 {
                     "path": "/api/discover",
@@ -1269,6 +1794,7 @@ def init_routes(app: Flask) -> None:
         if request.method == "POST":
             username = (request.form.get("username") or "").strip()
             password = (request.form.get("password") or "").strip()
+            remember = request.form.get("remember") == "on"
             if not username or not password:
                 flash("Username and password are required", "error")
                 return render_template("login.html", page_title="Login"), 400
@@ -1281,9 +1807,19 @@ def init_routes(app: Flask) -> None:
 
             if user and check_password_hash(user.password_hash, password):
                 session["user_id"] = user.id
-                session["expiry"] = (
-                    now + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
-                ).strftime("%Y-%m-%d %H:%M:%S")
+                if remember:
+                    current_app.permanent_session_lifetime = timedelta(
+                        days=config.AUTO_LOGIN_DAYS
+                    )
+                    session["remember"] = True
+                    timeout = timedelta(days=config.AUTO_LOGIN_DAYS)
+                else:
+                    current_app.permanent_session_lifetime = timedelta(
+                        minutes=config.SESSION_TIMEOUT_MINUTES
+                    )
+                    session.pop("remember", None)
+                    timeout = timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
+                session["expiry"] = (now + timeout).strftime("%Y-%m-%d %H:%M:%S")
                 session.permanent = True
                 login_attempts.pop(
                     ip_address, None
@@ -1293,7 +1829,10 @@ def init_routes(app: Flask) -> None:
             else:
                 # Record the failed attempt
                 if ip_address not in login_attempts:
-                    login_attempts[ip_address] = {"attempts": 1, "locked_until": now}
+                    login_attempts[ip_address] = {
+                        "attempts": 1,
+                        "locked_until": now,
+                    }
                 else:
                     login_attempts[ip_address]["attempts"] += 1
 
@@ -1349,18 +1888,51 @@ def init_routes(app: Flask) -> None:
     def help_page():
         return render_template("help.html", page_title="Help")
 
+    @app.route("/docs/<string:filename>")
+    @login_required
+    def docs_file(filename: str):
+        """Serve Markdown documentation files from the repository."""
+        if not allowed_filename(filename):
+            abort(404)
+
+        docs_path = os.path.join(
+            os.path.dirname(os.path.join(__file__)),
+            "..",
+            DOCS_DIRECTORY,
+        )
+        full_path = os.path.join(docs_path, filename)
+        if not os.path.exists(full_path):
+            abort(404)
+
+        return send_from_directory(docs_path, filename)
+
+    @app.route("/cli_help")
+    @login_required
+    def cli_help():
+        """Return CLI help text."""
+        from app.utils.cli import cli_help_text
+
+        return Response(cli_help_text(), mimetype="text/plain")
+
     @app.route("/settings_help")
     @login_required
     def settings_help():
         """Redirect old help route to the main settings page."""
         return redirect(url_for("settings"))
 
+    @app.route("/offline")
+    @login_required
+    def offline_page():
+        """Render a fallback page when offline."""
+        return render_template("offline.html", page_title="Offline")
+
     @app.route("/logout")
     @login_required
     def logout():
         session.pop("user_id", None)
         flash("You have been logged out successfully.", "success")
-        return redirect(url_for("login"))
+        # add query flag so client can clear persistent credentials
+        return redirect(url_for("login", logout="1"))
 
     @app.route("/")
     @login_required
@@ -1368,7 +1940,9 @@ def init_routes(app: Flask) -> None:
         """Render the index page with available templates."""
         template_details = template_manager.get_templates()
         return render_template(
-            "index.html", template_details=template_details, page_title="Dashboard"
+            "index.html",
+            template_details=template_details,
+            page_title="Dashboard",
         )
 
     @app.route("/group/<string:group_name>")
@@ -1382,7 +1956,9 @@ def init_routes(app: Flask) -> None:
         if group_name not in groups:
             abort(404)
         return render_template(
-            "group.html", group_name=group_name, page_title=f"Group – {group_name}"
+            "group.html",
+            group_name=group_name,
+            page_title=f"Group – {group_name}",
         )
 
     def get_active_templates():
@@ -1406,7 +1982,7 @@ def init_routes(app: Flask) -> None:
         Endpoint to receive and process an image submitted by a remote service or camera.
         """
         raw_name = template_name
-        template_name = validate_template_name(template_name)
+        template_name = validate_template_name(str(template_name))
         if template_name is None:
             logging.warning("Unable to serve screenshot for %s", raw_name)
             resp = send_file(_placeholder_screenshot(), mimetype="image/png")
@@ -1418,14 +1994,22 @@ def init_routes(app: Flask) -> None:
         # or ``{}`` when the name is not present.
         details = template_manager.get_template(template_name)
         if not details:
-            return jsonify({"status": "error", "message": "Template not found"}), 404
+            return (
+                jsonify({"status": "error", "message": "Template not found"}),
+                404,
+            )
         # Prefer the name from the database (it may contain canonical casing)
         template_name = details.get("name", template_name)
 
         # Check if the request has the file part
         if "file" not in request.files:
             return (
-                jsonify({"status": "error", "message": "No file part in the request"}),
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": "No file part in the request",
+                    }
+                ),
                 400,
             )
 
@@ -1433,7 +2017,10 @@ def init_routes(app: Flask) -> None:
 
         # If the user does not select a file, the browser submits an empty file without a filename
         if file.filename == "":
-            return jsonify({"status": "error", "message": "No selected file"}), 400
+            return (
+                jsonify({"status": "error", "message": "No selected file"}),
+                400,
+            )
 
         if file and allowed_filename(file.filename):
             # Generate a unique timestamped filename
@@ -1456,16 +2043,56 @@ def init_routes(app: Flask) -> None:
 
             return (
                 jsonify(
-                    {"status": "success", "message": "Image submitted successfully"}
+                    {
+                        "status": "success",
+                        "message": "Image submitted successfully",
+                    }
                 ),
                 200,
             )
         else:
-            return jsonify({"status": "error", "message": "Invalid file format"}), 400
+            return (
+                jsonify({"status": "error", "message": "Invalid file format"}),
+                400,
+            )
 
     @app.route("/stream.png")
     @login_required
     def stream_png():
+
+        group = request.args.get("group")
+        camera = request.args.get("camera")
+        if group == "all":
+            group = None
+        if camera == "all":
+            camera = None
+
+        if camera:
+            camera = validate_template_name(camera)
+            if camera is None:
+                abort(400, "Invalid camera name")
+            cam_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "..",
+                SCREENSHOT_DIRECTORY,
+                camera,
+                "latest_camera.png",
+            )
+            if os.path.exists(cam_path) and screenshots._is_valid_png(cam_path):
+                return send_file(cam_path)
+            abort(404)
+
+        if group:
+            group = secure_filename(group)
+            group_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "..",
+                SCREENSHOT_DIRECTORY,
+                f"{group}_latest_camera.png",
+            )
+            if os.path.exists(group_path) and screenshots._is_valid_png(group_path):
+                return send_file(group_path)
+            abort(404)
 
         latest_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -1522,6 +2149,8 @@ def init_routes(app: Flask) -> None:
                 except OSError:
                     # File might have been removed between glob and stat
                     continue
+                if not screenshots._is_valid_png(f):
+                    continue
                 files_with_mtime.append((f, mtime))
             if not files_with_mtime:
                 continue
@@ -1539,12 +2168,22 @@ def init_routes(app: Flask) -> None:
         last_time = time.time()
         last_shot = most_recent_file
 
-        if os.path.exists(most_recent_file):
+        if os.path.exists(most_recent_file) and screenshots._is_valid_png(
+            most_recent_file
+        ):
             return send_file(most_recent_file)
-        if last_file and os.path.exists(last_file):
+        if (
+            last_file
+            and os.path.exists(last_file)
+            and screenshots._is_valid_png(last_file)
+        ):
             last_shot = last_file
             return send_file(last_file)  # better than nothing
-        if last_shot and os.path.exists(last_shot):
+        if (
+            last_shot
+            and os.path.exists(last_shot)
+            and screenshots._is_valid_png(last_shot)
+        ):
             return send_file(last_shot)
         abort(404)
 
@@ -1560,6 +2199,7 @@ def init_routes(app: Flask) -> None:
             "TEARDOWN",
         ],
     )
+    @login_required
     def handle_rtsp():
 
         session_id = request.headers.get("Session", str(uuid.uuid4()))
@@ -1659,7 +2299,22 @@ def init_routes(app: Flask) -> None:
 
         return "Method Not Allowed", 405
 
+    @app.route("/test.mjpg", methods=["GET"])
+    @login_required
+    def test_mjpg():
+        group = request.args.get("group")
+        camera = request.args.get("camera")
+        if group == "all":
+            group = None
+        if camera == "all":
+            camera = None
+        return Response(
+            generate(group=group, camera=camera, filename="latest_camera.png"),
+            mimetype="multipart/x-mixed-replace; boundary=frame",
+        )
+
     @app.route("/stream.mjpg", methods=["GET"])
+    @login_required
     def stream_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
@@ -1673,6 +2328,7 @@ def init_routes(app: Flask) -> None:
         )
 
     @app.route("/motion.mjpg", methods=["GET"])
+    @login_required
     def motion_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
@@ -1686,6 +2342,7 @@ def init_routes(app: Flask) -> None:
         )
 
     @app.route("/caption.mjpg", methods=["GET"])
+    @login_required
     def caption_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
@@ -1700,13 +2357,17 @@ def init_routes(app: Flask) -> None:
         )
 
     @app.route("/internal_caption.mjpg", methods=["GET"])
+    @login_required
     def internal_caption_mjpg():
+        group = request.args.get("group")
+        camera = request.args.get("camera")
         return Response(
-            generate_caption_loop(),
+            generate_caption_loop(group=group, camera=camera),
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
 
     @app.route("/motion_caption.mjpg", methods=["GET"])
+    @login_required
     def motion_caption_mjpg():
         group = request.args.get("group")
         camera = request.args.get("camera")
@@ -1717,6 +2378,29 @@ def init_routes(app: Flask) -> None:
         logging.debug("last motion caption")
         return Response(
             generate(group=group, camera=camera, filename="last_motion_caption.png"),
+            mimetype="multipart/x-mixed-replace; boundary=frame",
+        )
+
+    @app.route("/test_pattern.mjpg", methods=["GET"])
+    @login_required
+    def test_pattern_mjpg():
+        spinner_frames = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+        index = 0
+
+        def generate_pattern():
+            nonlocal index
+            boundary = b"frame"
+            while True:
+                spinner = spinner_frames[index % len(spinner_frames)]
+                img = test_pattern.generate_test_pattern(spinner=spinner)
+                frame = test_pattern.encode_jpeg_with_metadata(img)
+                yield b"--" + boundary + b"\r\n"
+                yield b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
+                index += 1
+                time.sleep(1.0)
+
+        return Response(
+            generate_pattern(),
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
 
@@ -1742,7 +2426,8 @@ def init_routes(app: Flask) -> None:
         ):
             abort(400, "Invalid session or session not in PLAYING state")
         return Response(
-            generate(rtsp=True, session_id=session_id), mimetype="application/x-rtp"
+            generate(rtsp=True, session_id=session_id),
+            mimetype="application/x-rtp",
         )
 
     @app.route("/stream.mp4")
@@ -1896,9 +2581,12 @@ def init_routes(app: Flask) -> None:
     @app.route("/captions")
     @login_required
     def captions():
+        cost_start = request.args.get("cost_start")
+        cost_end = request.args.get("cost_end")
 
         # Load recent summaries from the database and convert timestamps to ISO
         entries = []
+        latest_caption = ""
         try:
             session_db = SessionLocal()
             try:
@@ -1914,7 +2602,7 @@ def init_routes(app: Flask) -> None:
                         for ts, text in data.items():
                             try:
                                 dt = datetime.utcfromtimestamp(int(ts))
-                                iso_ts = dt.strftime("%Y-%m-%d %H:%M:%S")
+                                iso_ts = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
                             except Exception:
                                 iso_ts = ts
                             entries.append({iso_ts: text})
@@ -1924,6 +2612,12 @@ def init_routes(app: Flask) -> None:
                 session_db.close()
         except Exception:
             entries = []
+
+        if entries:
+            try:
+                latest_caption = next(iter(entries[0].values()))
+            except Exception:
+                latest_caption = ""
 
         # Get templates and calculate next capture time
         templates = template_manager.get_templates()
@@ -1956,7 +2650,9 @@ def init_routes(app: Flask) -> None:
                 template_manager.get_llm_response_count(name)
             )
             templates[name]["llm_cost_estimate"] = (
-                template_manager.get_llm_cost_estimate(name)
+                template_manager.get_llm_cost_estimate(
+                    name, start_date=cost_start, end_date=cost_end
+                )
             )
 
         # Get a list of active cameras (with updates within the last 1 day)
@@ -1964,7 +2660,10 @@ def init_routes(app: Flask) -> None:
             "captions.html",
             template_details=templates,
             lcaptions=entries,
+            latest_caption=latest_caption,
             page_title="Captions",
+            cost_start=cost_start,
+            cost_end=cost_end,
         )
 
     @app.route("/download_captions_tsv")
@@ -2110,7 +2809,10 @@ def init_routes(app: Flask) -> None:
             if answer:
                 ts2 = ts + 1
                 session_db.add(
-                    Summary(timestamp=ts2, content=json.dumps({ts2: f"A: {answer}"}))
+                    Summary(
+                        timestamp=ts2,
+                        content=json.dumps({ts2: f"A: {answer}"}),
+                    )
                 )
             session_db.commit()
         finally:
@@ -2158,7 +2860,7 @@ def init_routes(app: Flask) -> None:
         Serve the latest frame for a specific camera.
         """
         raw_name = template_name
-        template_name = validate_template_name(template_name)
+        template_name = validate_template_name(str(template_name))
         if template_name is None:
             logging.warning("Unable to serve screenshot for %s", raw_name)
             resp = send_file(_placeholder_screenshot(), mimetype="image/png")
@@ -2169,7 +2871,7 @@ def init_routes(app: Flask) -> None:
             os.path.dirname(os.path.join(__file__)),
             "..",
             SCREENSHOT_DIRECTORY,
-            template_name,
+            str(template_name),
         )
         if not os.path.exists(path):
             abort(404)
@@ -2211,7 +2913,7 @@ def init_routes(app: Flask) -> None:
     def serve_video(template_name: TemplateName):
         """Return the latest MP4 for ``template_name`` if available."""
 
-        template_name = validate_template_name(template_name)
+        template_name = validate_template_name(str(template_name))
         if template_name is None:
             abort(404)
 
@@ -2220,7 +2922,7 @@ def init_routes(app: Flask) -> None:
             os.path.dirname(os.path.join(__file__)),
             "..",
             VIDEO_DIRECTORY,
-            template_name,
+            str(template_name),
         )
         if not os.path.exists(path):
             abort(404)
@@ -2239,6 +2941,137 @@ def init_routes(app: Flask) -> None:
 
         abort(404)
 
+    def _send_clip_or_last(path: Path, template: str):
+        """Return the clip file or fall back to ``last_video``."""
+
+        try:
+            return send_file(path, conditional=True)
+        except FileNotFoundError:
+            logging.warning("Missing clip %s; using last_video", template)
+            resp = serve_video(template)
+            resp.headers["X-Clip-Status"] = "waiting"
+            return resp
+
+    def _system_is_busy() -> bool:
+        """Return ``True`` when system metrics exceed safe thresholds."""
+
+        metrics = scheduling.get_system_metrics()
+        return (
+            metrics.get("cpu_usage", 0) >= config.WATCHDOG_CPU_THRESHOLD
+            or metrics.get("memory_usage", 0) >= config.WATCHDOG_MEMORY_THRESHOLD
+            or metrics.get("thread_count", 0) >= 100
+        )
+
+    @app.route("/clip/<string:template_name>")
+    @login_required
+    def serve_clip(template_name: TemplateName):
+        """Return a short clip built from recent footage."""
+
+        template_name = validate_template_name(str(template_name))
+        if template_name is None:
+            abort(404)
+
+        duration = (
+            request.args.get("duration", type=int) or config.DEFAULT_CLIP_DURATION
+        )
+        if duration <= 0:
+            abort(400, "Invalid duration")
+
+        root = (
+            Path(__file__).resolve().parent
+            / ".."
+            / VIDEO_DIRECTORY
+            / str(template_name)
+        ).resolve()
+        if not root.is_dir():
+            abort(404)
+
+        if _system_is_busy():
+            logging.warning("System busy; serving last_video for %s", template_name)
+            resp = serve_video(template_name)
+            resp.headers["X-Degraded-Service"] = "busy"
+            return resp
+
+        clip_root = Path(CLIPS_DIRECTORY)
+        clip_root.mkdir(parents=True, exist_ok=True)
+        clip_path = clip_root / f"{template_name}.mp4"
+
+        in_process = root / "in_process.mp4"
+        sources = list(root.glob("final_*.mp4"))
+        if in_process.exists():
+            sources.append(in_process)
+
+        newest_src = max(
+            sources,
+            key=lambda p: p.stat().st_mtime,
+            default=None,
+        )
+
+        if (
+            clip_path.exists()
+            and newest_src
+            and clip_path.stat().st_mtime > newest_src.stat().st_mtime
+            and (time.time() - clip_path.stat().st_mtime) < CACHE_TTL_SEC
+        ):
+            resp = _send_clip_or_last(clip_path, template_name)
+            resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
+            resp.headers["Expires"] = http_date(time.time() + CACHE_TTL_SEC)
+            return resp
+
+        parts: list[Path] = []
+        in_process_len = 0
+        if in_process.exists():
+            in_process_len = int(
+                video_archiver.get_video_duration(in_process.as_posix()) or 0
+            )
+
+        remaining = duration - in_process_len
+        if remaining > 0:
+            final_parts = [
+                p
+                for p in sorted(
+                    root.glob("final_*.mp4"),
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
+                )
+                if p.stat().st_size > 0
+            ]
+            total = 0
+            for part in final_parts:
+                parts.insert(0, part)
+                total += SEGMENT_SEC
+                if total >= remaining:
+                    break
+
+        if in_process.exists():
+            parts.append(in_process)
+
+        lock_path = root / ".clip.lock"
+        with lock_path.open("w") as lock_fd:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            if (
+                clip_path.exists()
+                and newest_src
+                and clip_path.stat().st_mtime > newest_src.stat().st_mtime
+            ):
+                resp = _send_clip_or_last(clip_path, template_name)
+                resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
+                resp.headers["Expires"] = http_date(time.time() + CACHE_TTL_SEC)
+                return resp
+
+            if not parts:
+                video_archiver.create_blank_video(duration, clip_path.as_posix())
+            elif not _concat_copy(clip_path, parts, duration):
+                video_archiver.create_blank_video(duration, clip_path.as_posix())
+
+        if clip_path.exists():
+            resp = _send_clip_or_last(clip_path, template_name)
+            resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
+            resp.headers["Expires"] = http_date(time.time() + CACHE_TTL_SEC)
+            return resp
+
+        abort(500, "Could not create clip")
+
     @app.route("/last_screenshot/<string:template_name>")
     @login_required
     def serve_screenshot(template_name: TemplateName):
@@ -2247,7 +3080,7 @@ def init_routes(app: Flask) -> None:
         """
 
         raw_name = template_name
-        template_name = validate_template_name(template_name)
+        template_name = validate_template_name(str(template_name))
         if template_name is None:
             logging.warning("Unable to serve screenshot for %s", raw_name)
             resp = send_file(_placeholder_screenshot(), mimetype="image/png")
@@ -2273,7 +3106,7 @@ def init_routes(app: Flask) -> None:
             os.path.dirname(os.path.join(__file__)),
             "..",
             SCREENSHOT_DIRECTORY,
-            template_name,
+            str(template_name),
         )
         if not os.path.exists(path):
             logging.warning("Unable to serve screenshot for %s", template_name)
@@ -2297,6 +3130,7 @@ def init_routes(app: Flask) -> None:
 
     @app.route("/compile_teaser", methods=["POST"])
     @login_required
+    @limit_rate(30)
     def take_compile():
         video_archiver.compile_to_teaser()
         return jsonify({"status": "success", "message": "Compilation taken"})
@@ -2308,7 +3142,7 @@ def init_routes(app: Flask) -> None:
         Endpoint to upload a screenshot manually.
         """
 
-        template_name = validate_template_name(template_name)
+        template_name = validate_template_name(str(template_name))
         if template_name is None:
             abort(404)
 
@@ -2319,7 +3153,7 @@ def init_routes(app: Flask) -> None:
             )
 
         image_file = request.files["image_file"]
-        if image_file.filename == "":
+        if (image_file.filename or "") == "":
             return (
                 jsonify({"status": "error", "message": "No image file provided"}),
                 400,
@@ -2330,9 +3164,8 @@ def init_routes(app: Flask) -> None:
         if templates.get(template_name) is None:
             abort(404)
 
-        if not allowed_filename(
-            image_file.filename
-        ) or not image_file.filename.lower().endswith(".png"):
+        filename = image_file.filename or ""
+        if not allowed_filename(filename) or not filename.lower().endswith(".png"):
             return (
                 jsonify({"status": "error", "message": "Invalid file name"}),
                 400,
@@ -2348,7 +3181,9 @@ def init_routes(app: Flask) -> None:
                 )
 
             scheduling.update_camera(
-                template_name, templates.get(template_name), image_file=temp_file.name
+                template_name,
+                templates.get(template_name),
+                image_file=temp_file.name,
             )
 
         # Clean up the temporary file
@@ -2356,8 +3191,60 @@ def init_routes(app: Flask) -> None:
             os.unlink(temp_file.name)
 
         return jsonify(
-            {"status": "success", "message": f"Screenshot for {template_name} uploaded"}
+            {
+                "status": "success",
+                "message": f"Screenshot for {template_name} uploaded",
+            }
         )
+
+    @app.route("/upload_nav_icon", methods=["POST"])
+    @login_required
+    def upload_nav_icon():
+        """Upload or choose a navigation logo."""
+
+        choice = request.form.get("logo_choice")
+        if choice in {"img/glimpser_small.png", "img/glimpser.png"}:
+            update_setting("NAV_ICON", choice)
+            flash("Navigation logo updated", "success")
+            return redirect(url_for("settings"))
+
+        if "logo_file" not in request.files:
+            flash("No logo file provided", "error")
+            return redirect(url_for("settings")), 400
+
+        logo_file = request.files["logo_file"]
+        if logo_file.filename == "":
+            flash("No logo file provided", "error")
+            return redirect(url_for("settings")), 400
+
+        if not allowed_filename(
+            logo_file.filename
+        ) or not logo_file.filename.lower().endswith(".png"):
+            flash("Invalid file name", "error")
+            return redirect(url_for("settings")), 400
+
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            logo_file.save(temp_file.name)
+            try:
+                img = Image.open(temp_file.name)
+                w, h = img.size
+                if h == 0 or not 2 <= w / h <= 10:
+                    os.unlink(temp_file.name)
+                    flash("Invalid aspect ratio", "error")
+                    return redirect(url_for("settings")), 400
+            except Exception:
+                os.unlink(temp_file.name)
+                flash("Invalid image file", "error")
+                return redirect(url_for("settings")), 400
+
+            dest_dir = os.path.join(app.static_folder, "img")
+            os.makedirs(dest_dir, exist_ok=True)
+            dest_name = secure_filename(logo_file.filename)
+            dest_path = os.path.join(dest_dir, dest_name)
+            shutil.move(temp_file.name, dest_path)
+            update_setting("NAV_ICON", f"img/{dest_name}")
+        flash("Navigation logo uploaded", "success")
+        return redirect(url_for("settings"))
 
     @app.route("/take_screenshot/<string:template_name>", methods=["POST", "GET"])
     @login_required
@@ -2365,7 +3252,7 @@ def init_routes(app: Flask) -> None:
         """
         Endpoint to trigger screenshot capture manually.
         """
-        template_name = validate_template_name(template_name)
+        template_name = validate_template_name(str(template_name))
         if template_name is None:
             abort(404)
 
@@ -2383,14 +3270,17 @@ def init_routes(app: Flask) -> None:
             template_name, templates.get(template_name), motion=motion_flag
         )
         return jsonify(
-            {"status": "success", "message": f"Screenshot for {template_name} taken"}
+            {
+                "status": "success",
+                "message": f"Screenshot for {template_name} taken",
+            }
         )
 
     @app.route("/update_video/<string:template_name>", methods=["POST"])
     @login_required
     def update_video(template_name: TemplateName):
         """Endpoint to trigger screenshot capture manually."""
-        template_name = validate_template_name(template_name)
+        template_name = validate_template_name(str(template_name))
         if template_name is None:
             abort(404)
 
@@ -2402,14 +3292,14 @@ def init_routes(app: Flask) -> None:
             os.path.dirname(os.path.join(__file__)),
             "..",
             SCREENSHOT_DIRECTORY,
-            template_name,
+            str(template_name),
         )
 
         video_path = os.path.join(
             os.path.dirname(os.path.join(__file__)),
             "..",
             VIDEO_DIRECTORY,
-            template_name,
+            str(template_name),
         )
 
         if os.path.exists(camera_path) and os.path.exists(video_path):
@@ -2421,12 +3311,40 @@ def init_routes(app: Flask) -> None:
                 }
             )
 
+    @app.route("/record/<string:template_name>", methods=["POST"])
+    @login_required
+    def record_high_speed(template_name: TemplateName):
+        """Capture frames rapidly for a short duration."""
+
+        template_name = validate_template_name(str(template_name))
+        if template_name is None:
+            abort(404)
+
+        templates = template_manager.get_templates()
+        template = templates.get(template_name)
+        if template is None:
+            abort(404)
+
+        duration = int(request.args.get("duration", 20))
+
+        def _record() -> None:
+            end = time.time() + duration
+            while time.time() < end:
+                try:
+                    scheduling.update_camera(template_name, template)
+                except Exception:
+                    logging.exception("High-speed capture failed: %s", template_name)
+                time.sleep(0.2)
+
+        Thread(target=_record, daemon=True).start()
+        return jsonify({"status": "started"})
+
     @app.route("/templates", methods=["GET", "POST", "DELETE"])
     @login_required
     def manage_templates():
         if request.method == "POST":
-            data = request.json
-            template_name = validate_template_name(data["name"])
+            data = request.get_json(silent=True) or {}
+            template_name = validate_template_name(str(data.get("name", "")))
             if template_name is None:
                 abort(404)
             url = data.get("url", "")
@@ -2461,8 +3379,8 @@ def init_routes(app: Flask) -> None:
             return jsonify(filtered_templates)
 
         elif request.method == "DELETE":
-            data = request.json
-            template_name = validate_template_name(data["name"])
+            data = request.get_json(silent=True) or {}
+            template_name = validate_template_name(str(data.get("name", "")))
             if template_name is None:
                 abort(404)
             if template_manager.delete_template(template_name):
@@ -2476,7 +3394,7 @@ def init_routes(app: Flask) -> None:
     @app.route("/templates/<string:template_name>")
     @login_required
     def template_details(template_name: TemplateName):
-        template_name = validate_template_name(template_name)
+        template_name = validate_template_name(str(template_name))
         if template_name is None:
             abort(404)
 
@@ -2486,12 +3404,16 @@ def init_routes(app: Flask) -> None:
             abort(404)  # Template not found
         lscreenshots = template_manager.get_screenshots_for_template(template_name)
         lvideos = template_manager.get_videos_for_template(template_name)
+        object_tokens = ["person", "car", "dog", "cat", "truck", "bus", "bicycle"]
         return render_template(
             "template_details.html",
             template_name=template_name,
             template_details=template_details,
             screenshots=lscreenshots,
             videos=lvideos,
+            object_tokens=object_tokens,
+            clip_model=CLIP_MODEL_NAME,
+            clip_gpu=clip_gpu_available(),
             page_title="Camera Details",
         )
 
@@ -2500,7 +3422,7 @@ def init_routes(app: Flask) -> None:
     def list_screenshots(name: TemplateName):
         """Return a JSON list of screenshot files for ``name``."""
 
-        template_name = validate_template_name(name)
+        template_name = validate_template_name(str(name))
         if template_name is None:
             abort(404)
 
@@ -2512,7 +3434,7 @@ def init_routes(app: Flask) -> None:
     def generate_prompt_route(template_name: TemplateName):
         """Return a suggested caption prompt for ``template_name``."""
 
-        template_name = validate_template_name(template_name)
+        template_name = validate_template_name(str(template_name))
         if template_name is None:
             abort(404)
 
@@ -2524,7 +3446,7 @@ def init_routes(app: Flask) -> None:
     def suggest_fix_route(template_name: TemplateName):
         """Return diagnostic info and replacement URL suggestions."""
 
-        template_name = validate_template_name(template_name)
+        template_name = validate_template_name(str(template_name))
         if template_name is None:
             abort(404)
 
@@ -2533,14 +3455,17 @@ def init_routes(app: Flask) -> None:
             abort(404)
 
         url = details.get("url", "")
-        xpaths = [details.get("popup_xpath", ""), details.get("dedicated_xpath", "")]
+        xpaths = [
+            details.get("popup_xpath", ""),
+            details.get("dedicated_xpath", ""),
+        ]
         info = camera_fix.check_camera_template(url, xpaths)
         return jsonify(info)
 
     @app.route("/screenshots/<string:name>/<string:filename>")
     @login_required
     def uploaded_file(name: TemplateName, filename: str):
-        template_name = validate_template_name(name)
+        template_name = validate_template_name(str(name))
         if template_name is None or not allowed_filename(filename):
             abort(404)
 
@@ -2548,7 +3473,7 @@ def init_routes(app: Flask) -> None:
             os.path.dirname(os.path.join(__file__)),
             "..",
             SCREENSHOT_DIRECTORY,
-            template_name,
+            str(template_name),
         )
 
         if not os.path.exists(path):
@@ -2577,7 +3502,7 @@ def init_routes(app: Flask) -> None:
     def list_videos(name: TemplateName):
         """Return a JSON list of video files for ``name``."""
 
-        template_name = validate_template_name(name)
+        template_name = validate_template_name(str(name))
         if template_name is None:
             abort(404)
 
@@ -2587,7 +3512,7 @@ def init_routes(app: Flask) -> None:
     @app.route("/videos/<string:name>/<string:filename>")
     @login_required
     def view_video(name: TemplateName, filename: str):
-        template_name = validate_template_name(name)
+        template_name = validate_template_name(str(name))
         if template_name is None or not allowed_filename(filename):
             abort(404)
 
@@ -2595,7 +3520,7 @@ def init_routes(app: Flask) -> None:
             os.path.dirname(os.path.join(__file__)),
             "..",
             VIDEO_DIRECTORY,
-            template_name,
+            str(template_name),
         )
 
         if not os.path.exists(path):
@@ -2617,6 +3542,7 @@ def init_routes(app: Flask) -> None:
                 "EMAIL_USERNAME",
                 "EMAIL_PASSWORD",
             ]
+            notification_settings = ["SMS_ENABLED", "CAP_ENABLED"]
             action = request.form.get("action")
             if action == "add":
                 new_name = (request.form.get("new_name") or "").strip()
@@ -2630,7 +3556,11 @@ def init_routes(app: Flask) -> None:
                         "error",
                     )
                     return redirect(url_for("settings")), 400
-                update_setting(new_name, new_value)
+                sanitized = validate_setting(new_name, new_value)
+                if sanitized is None:
+                    flash(f"Invalid value for {new_name}", "error")
+                    return redirect(url_for("settings")), 400
+                update_setting(new_name, sanitized)
             elif action == "delete":
                 name_to_delete = request.form.get("name_to_delete")
                 if name_to_delete:
@@ -2639,21 +3569,35 @@ def init_routes(app: Flask) -> None:
                 for setting in email_settings:
                     value = request.form.get(setting)
                     if value is not None:
-                        update_setting(setting, value)
+                        sanitized = validate_setting(setting, value)
+                        if sanitized is None:
+                            flash(f"Invalid value for {setting}", "error")
+                            return redirect(url_for("settings")), 400
+                        update_setting(setting, sanitized)
             elif action == "backup":
                 if backup_config():
                     flash("Configuration backed up successfully", "success")
                 else:
                     flash("Failed to backup configuration", "error")
             elif action == "download":
-                if os.path.exists(BACKUP_PATH):
-                    return send_file(
-                        BACKUP_PATH,
-                        as_attachment=True,
-                        download_name="config_backup.json",
-                    )
-                else:
-                    flash("No backup file found", "error")
+
+                def generate() -> typing.Generator[bytes, None, None]:
+                    """Stream the configuration JSON after triggering a backup."""
+                    yield b""
+                    backup_config()
+                    if os.path.exists(BACKUP_PATH):
+                        with open(BACKUP_PATH, "rb") as f:
+                            for chunk in iter(lambda: f.read(8192), b""):
+                                yield chunk
+
+                headers = {
+                    "Content-Disposition": "attachment; filename=config_backup.json"
+                }
+                return Response(
+                    stream_with_context(generate()),
+                    mimetype="application/json",
+                    headers=headers,
+                )
             elif action == "upload":
                 if "file" not in request.files:
                     flash("No file part", "error")
@@ -2667,8 +3611,19 @@ def init_routes(app: Flask) -> None:
                         flash("Configuration restored successfully", "success")
                     else:
                         flash("Invalid file type", "error")
+            elif action == "test_email":
+                send_email_alert(
+                    "Glimpser Test Email",
+                    "This is a test email from Glimpser.",
+                )
+                flash("Email test triggered. Check logs for results.", "info")
+            elif action == "test_sms":
+                send_sms_alert("Test SMS from Glimpser")
+                flash("SMS test triggered. Check logs for results.", "info")
             elif action == "update_shortcut":
-                paths = update_chrome_shortcuts()
+                path_val = request.form.get("shortcut_path")
+                path = Path(path_val) if path_val else None
+                paths, msg = update_chrome_shortcuts_info(path)
                 if paths:
                     joined = ", ".join(str(p) for p in paths)
                     flash(
@@ -2676,19 +3631,19 @@ def init_routes(app: Flask) -> None:
                         "success",
                     )
                 else:
-                    flash("Failed to update shortcuts", "error")
+                    flash(f"Failed to update shortcuts: {msg}", "error")
             else:
                 current = {s["name"]: s["value"] for s in get_all_settings()}
                 bool_settings = {
-                    n for n, v in current.items() if v in ["True", "False"]
+                    n for n, v in current.items() if validators.is_bool_string(v)
                 }
                 for name in bool_settings:
                     if name in email_settings:
                         continue
                     new_val = (
                         "True"
-                        if request.form.get(name)
-                        in ["True", "on", "1", "t", "y", "yes"]
+                        if str(request.form.get(name, "")).lower()
+                        in {"true", "on", "1", "t", "y", "yes"}
                         else "False"
                     )
                     update_setting(name, new_val)
@@ -2707,15 +3662,23 @@ def init_routes(app: Flask) -> None:
                     ):
                         continue
 
-                    if name in SETTINGS_CHOICES:
-                        update_setting(name, value)
+                    sanitized = validate_setting(name, value)
+                    if sanitized is None:
+                        flash(f"Invalid value for {name}", "error")
                         continue
 
-                    update_setting(name, value)
+                    if name in SETTINGS_CHOICES:
+                        update_setting(name, sanitized)
+                        continue
+
+                    update_setting(name, sanitized)
+            flash("Settings updated successfully", "success")
             return redirect(url_for("settings"))
 
         settings = get_all_settings()
-        grouped_settings = {group: [] for group in SETTINGS_GROUPS}
+        grouped_settings: Dict[str, List[Dict[str, Any]]] = {
+            group: [] for group in SETTINGS_GROUPS
+        }
         grouped_settings["Other"] = []
         for setting in settings:
             placed = False
@@ -2727,17 +3690,81 @@ def init_routes(app: Flask) -> None:
             if not placed:
                 grouped_settings["Other"].append(setting)
 
+        if "Advanced" in grouped_settings:
+            grouped_settings["Advanced"].extend(grouped_settings.get("Other", []))
+        else:
+            grouped_settings["Advanced"] = grouped_settings.get("Other", [])
+        grouped_settings.pop("Other", None)
+
+        # Remove empty groups to avoid blank headings in the UI
+        grouped_settings = {g: items for g, items in grouped_settings.items() if items}
+
+        collapsed_groups = {
+            "Capture",
+            "Admin",
+            "Advanced",
+        }
+        file_location_items = [s for s in settings if s["name"] in FILE_LOCATION_NAMES]
+        file_info = file_location_metrics(file_location_items)
+
         metrics = scheduling.get_system_metrics()
         feeds = scheduling.get_feed_status()
         last_summary = scheduling.get_last_summary_time()
+        danger_enabled = config.get_setting("DANGER_MODE", "True") == "True"
+        cost_summary, total_tokens, total_cost, total_calls = (
+            template_manager.get_llm_cost_summary()
+        )
+        cost_summary = template_manager.group_cost_summary(cost_summary, top=10)
+
+        chrome_path = get_chrome_path()
+        shortcut_opts = [
+            str(p) for p in LINUX_PATHS if p.exists() and os.access(p, os.W_OK)
+        ]
+        danger_info = {
+            "browser": os.path.basename(chrome_path) if chrome_path else "N/A",
+            "path": chrome_path or "N/A",
+            "version": (get_chrome_version(chrome_path) if chrome_path else "N/A"),
+            "shortcut": str(first_shortcut_path() or "N/A"),
+            "patched": not shortcuts_need_patch(),
+            "running": is_chrome_debug_port_open("127.0.0.1", 9222),
+        }
+
+        last_backup = None
+        if os.path.exists(BACKUP_PATH):
+            ts = datetime.fromtimestamp(os.path.getmtime(BACKUP_PATH))
+            last_backup = ts.strftime("%Y-%m-%d %H:%M:%S")
+
+        templates = template_manager.get_templates()
+        existing_urls = {t.get("url"): n for n, t in templates.items() if t.get("url")}
+
+        tooltips = dict(SETTINGS_TOOLTIPS)
+        if not metrics.get("ffmpeg_gpu_support"):
+            tooltips["FFMPEG_HWACCEL"] = "Hardware acceleration not available"
+
         return render_template(
             "settings.html",
             grouped_settings=grouped_settings,
-            tooltips=SETTINGS_TOOLTIPS,
+            collapsed_groups=collapsed_groups,
+            tooltips=tooltips,
             metrics=metrics,
             feeds=feeds,
             last_summary=last_summary,
+            cost_summary=cost_summary,
+            total_tokens=total_tokens,
+            total_cost=total_cost,
+            total_calls=total_calls,
+            danger_info=danger_info,
+            shortcut_options=shortcut_opts,
             choices=SETTINGS_CHOICES,
+            boolean_fields=validators.BOOLEAN_SETTINGS,
+            danger_enabled=danger_enabled,
+            numeric_fields=NUMERIC_FIELDS,
+            email_fields=EMAIL_FIELDS,
+            locked_settings=LOCKED_SETTINGS,
+            file_info=file_info,
+            existing_urls=existing_urls,
+            placeholders=SETTINGS_PLACEHOLDERS,
+            last_backup=last_backup,
             page_title="Settings",
         )
 
@@ -2752,7 +3779,7 @@ def init_routes(app: Flask) -> None:
     @app.route("/update_template/<string:template_name>", methods=["POST"])
     @login_required
     def update_template(template_name: TemplateName):
-        template_name = validate_template_name(template_name)
+        template_name = validate_template_name(str(template_name))
         if template_name is None:
             abort(404)
 
@@ -2842,8 +3869,21 @@ def init_routes(app: Flask) -> None:
     @app.route("/discover", methods=["GET"])
     @login_required
     def discover_cameras_route():
+        templates = template_manager.get_templates()
+        existing_urls = {}
+        for name, t in templates.items():
+            url = t.get("url")
+            if url:
+                existing_urls[url] = name
+        object_tokens = ["person", "car", "dog", "cat", "truck", "bus", "bicycle"]
         return render_template(
-            "discover.html", cameras=[], page_title="Discover Cameras"
+            "discover.html",
+            cameras=[],
+            existing_urls=existing_urls,
+            object_tokens=object_tokens,
+            clip_model=CLIP_MODEL_NAME,
+            clip_gpu=clip_gpu_available(),
+            page_title="Discover Cameras",
         )
 
     @app.route("/discover/scan", methods=["POST"])
@@ -2851,6 +3891,10 @@ def init_routes(app: Flask) -> None:
     def discover_cameras_scan():
         cidr = request.form.get("cidr") if request.form else request.args.get("cidr")
         nets = None
+        if cidr and cidr.lower() == "internet":
+            from app.utils.internet_cameras import INTERNET_CAMERAS
+
+            return jsonify(INTERNET_CAMERAS)
         if cidr:
             try:
                 nets = [ip_network(cidr, strict=False)]
@@ -2865,6 +3909,31 @@ def init_routes(app: Flask) -> None:
         def generate():
             cidr = request.args.get("cidr")
             nets = None
+            if cidr and cidr.lower() == "internet":
+                from app.utils.internet_cameras import INTERNET_CAMERAS
+
+                yield (
+                    "data: "
+                    + json.dumps(
+                        {"total": 1, "subnets": ["internet"], "stages": ["internet"]}
+                    )
+                    + "\n\n"
+                )
+                yield (
+                    "data: "
+                    + json.dumps(
+                        {
+                            "stage": "internet",
+                            "count": len(INTERNET_CAMERAS),
+                            "cameras": INTERNET_CAMERAS,
+                            "progress": 100,
+                            "eta": 0,
+                        }
+                    )
+                    + "\n\n"
+                )
+                yield 'data: {"done": true}\n\n'
+                return
             if cidr:
                 try:
                     nets = [ip_network(cidr, strict=False)]
@@ -2906,10 +3975,15 @@ def init_routes(app: Flask) -> None:
                 )
 
             def run():
-                camera_discovery.discover_cameras(
-                    progress_callback=progress, subnets=nets
-                )
-                q.put({"done": True})
+                try:
+                    camera_discovery.discover_cameras(
+                        progress_callback=progress, subnets=nets
+                    )
+                except Exception as e:  # pragma: no cover - network
+                    logging.exception("discovery scan failed: %s", e)
+                    q.put({"error": str(e)})
+                finally:
+                    q.put({"done": True})
 
             thread = Thread(target=run, daemon=True)
             thread.start()
@@ -2921,6 +3995,15 @@ def init_routes(app: Flask) -> None:
                     break
 
         return Response(stream_with_context(generate()), mimetype="text/event-stream")
+
+    @app.route("/telemetry", methods=["POST"])
+    @login_required
+    def collect_telemetry():
+        """Collect lightweight UI events for diagnostics."""
+        data = request.get_json(force=True)
+        telemetry_events.append({"ts": int(time.time()), "data": data})
+        logging.info("telemetry: %s", data)
+        return jsonify({"status": "ok"})
 
     @app.route("/discover/add", methods=["POST"])
     @login_required
@@ -2938,6 +4021,25 @@ def init_routes(app: Flask) -> None:
         }
         template_manager.save_template(name, template)
         return jsonify({"status": "success"})
+
+    @app.route("/templates/test_url")
+    @login_required
+    def test_template_url() -> Response:
+        """Return JSON indicating whether the given URL is reachable."""
+
+        url = request.args.get("url") or ""
+        url = validators.validate_url(url)
+        if not url:
+            return jsonify({"ok": False, "error": "invalid"}), 400
+
+        try:
+            resp = requests.head(url, timeout=5)
+            ok = resp.status_code < 400
+        except Exception as exc:  # pragma: no cover - network
+            logging.warning("url check failed: %s", exc)
+            return jsonify({"ok": False, "error": "unreachable"}), 400
+
+        return jsonify({"ok": ok, "status": resp.status_code})
 
     @app.route("/discover/export", methods=["POST"])
     @login_required
@@ -2979,13 +4081,47 @@ def init_routes(app: Flask) -> None:
     @app.route("/status")
     @login_required
     def status():
-        """Redirect to the System Status tab under Settings for consistency."""
+        """Redirect to the Status tab under Settings for consistency."""
         return redirect(url_for("settings", tab="status-tab"))
 
     @app.route("/logs")
     @login_required
     def logs():
         return render_template("logs.html", page_title="Logs")
+
+    @app.route("/cost_summary")
+    @login_required
+    def cost_summary_page():
+        templates = template_manager.get_templates()
+        costs = {
+            name: template_manager.get_llm_cost_estimate(name) for name in templates
+        }
+        start_time = int(scheduling.system_metrics.get("start_time", time.time()))
+        return render_template(
+            "cost_summary.html",
+            costs=costs,
+            start_time=start_time,
+            page_title="LLM Cost Summary",
+        )
+
+    @app.route("/api/llm_cost_summary")
+    @login_required
+    def api_llm_cost_summary():
+        start = request.args.get("start")
+        end = request.args.get("end")
+        group = request.args.get("group")
+        summary, _, _, _ = template_manager.get_llm_cost_summary(
+            start_date=start, end_date=end, group=group
+        )
+        costs = {
+            entry["name"]: {
+                "tokens": entry["tokens"],
+                "cost": entry["cost"],
+                "calls": entry.get("calls", 0),
+            }
+            for entry in summary
+        }
+        return jsonify(costs)
 
     @app.route("/stream_logs")
     @login_required
@@ -2997,30 +4133,82 @@ def init_routes(app: Flask) -> None:
         end_date = request.args.get("end_date")
         search = request.args.get("search")
 
+        user_id = session.get("user_id", 0)
+        combo = (int(user_id), level or "", search or "")
+        if combo in active_log_streams:
+            # avoid spawning duplicate streams for the same parameters
+            return Response(
+                "event: duplicate\ndata: {}\n\n",
+                mimetype="text/event-stream",
+            )
+        active_log_streams[combo] = True
+
         def generate():
-            while True:
-                # Get query parameters for filtering logs
+            try:
+                while True:
+                    # Read and filter logs from memory
+                    logs = read_logs_from_memory(
+                        level=level,
+                        source=source,
+                        start_date=start_date,
+                        end_date=end_date,
+                        search=search,
+                    )
 
-                # Read and filter logs from memory
-                logs = read_logs_from_memory(
-                    level=level,
-                    source=source,
-                    start_date=start_date,
-                    end_date=end_date,
-                    search=search,
-                )
+                    # Limit the number of logs sent to improve performance
+                    logs = logs[:50]
 
-                # Limit the number of logs sent to improve performance
-                logs = logs[:50]
+                    yield f"data: {json.dumps(logs, default=str)}\n\n"
+                    time.sleep(1)  # Send updates every second
+            finally:
+                active_log_streams.pop(combo, None)
 
-                yield f"data: {json.dumps(logs, default=str)}\n\n"
-                time.sleep(1)  # Send updates every second
+        return Response(
+            stream_with_context(generate()),
+            mimetype="text/event-stream",
+        )
 
-        return Response(generate(), mimetype="text/event-stream")
+    @app.route("/search_suggestions")
+    @login_required
+    def search_suggestions():
+        """Return autocomplete suggestions for the search box."""
+
+        query = request.args.get("q", "").lower()
+        templates = template_manager.get_templates()
+        names = [t.get("name", "") for t in templates.values()]
+        groups = get_active_groups()
+
+        docs_path = Path(__file__).resolve().parent.parent / "docs"
+        doc_names = [
+            f.stem for f in docs_path.glob("*.md") if f.name.lower() != "readme.md"
+        ]
+
+        suggestions: list[str] = []
+        for item in names + groups + doc_names:
+            if query and query not in item.lower():
+                continue
+            if item not in suggestions:
+                suggestions.append(item)
+            if len(suggestions) >= 10:
+                break
+
+        return jsonify(suggestions)
 
     @app.route("/sw.js")
     def service_worker():
         response = make_response(app.send_static_file("sw.js"))
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+    @app.route("/robots.txt")
+    def robots_txt():
+        """Return ``robots.txt`` rules based on ``ALLOW_BOTS`` setting."""
+        rules = ["User-agent: *"]
+        if config.ALLOW_BOTS:
+            rules.append("Allow: /")
+        else:
+            rules.append("Disallow: /")
+        response = Response("\n".join(rules) + "\n", mimetype="text/plain")
         response.headers["Cache-Control"] = "no-cache"
         return response
 
@@ -3047,10 +4235,86 @@ def init_routes(app: Flask) -> None:
     @profile_route("/scheduler_status")
     def get_scheduler_status():
         return jsonify(
-            {"status": "running" if scheduling.scheduler.running else "stopped"}
+            {"status": ("running" if scheduling.scheduler.running else "stopped")}
         )
 
     @app.route("/profiling")
     @login_required
     def profiling_data():
         return jsonify(get_latency_stats())
+
+    notifications = []
+    MAX_NOTIFICATIONS = 100
+
+    telemetry_events = deque(maxlen=1000)
+
+    @app.route("/send_notification", methods=["POST"])
+    @login_required
+    def send_notification():
+        data = request.get_json(force=True)
+        notifications.append(
+            {
+                "title": data.get("title", "Notification"),
+                "body": data.get("body", ""),
+            }
+        )
+        if len(notifications) > MAX_NOTIFICATIONS:
+            notifications.pop(0)
+        return jsonify({"status": "queued"})
+
+    @app.route("/register_push", methods=["POST"])
+    @login_required
+    def register_push():
+        sub = request.get_json(force=True)
+        session_db = SessionLocal()
+        try:
+            existing = (
+                session_db.query(PushSubscription)
+                .filter_by(endpoint=sub.get("endpoint"), user_id=session["user_id"])
+                .first()
+            )
+            if not existing:
+                session_db.add(
+                    PushSubscription(
+                        user_id=session["user_id"],
+                        endpoint=sub.get("endpoint"),
+                        auth=sub.get("keys", {}).get("auth"),
+                        p256dh=sub.get("keys", {}).get("p256dh"),
+                        created_at=int(time.time()),
+                    )
+                )
+                session_db.commit()
+            return jsonify({"status": "registered"})
+        finally:
+            session_db.close()
+
+    @app.route("/unregister_push", methods=["POST"])
+    @login_required
+    def unregister_push():
+        sub = request.get_json(force=True)
+        session_db = SessionLocal()
+        try:
+            existing = (
+                session_db.query(PushSubscription)
+                .filter_by(endpoint=sub.get("endpoint"), user_id=session["user_id"])
+                .first()
+            )
+            if existing:
+                session_db.delete(existing)
+                session_db.commit()
+            return jsonify({"status": "deleted"})
+        finally:
+            session_db.close()
+
+    @app.route("/stream_notifications")
+    @login_required
+    def stream_notifications():
+        def generate(last=len(notifications)):
+            while True:
+                if last < len(notifications):
+                    data = notifications[last]
+                    last += 1
+                    yield f"data: {json.dumps(data)}\n\n"
+                time.sleep(1)
+
+        return Response(stream_with_context(generate()), mimetype="text/event-stream")

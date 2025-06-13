@@ -1,0 +1,59 @@
+{% call card('LLM Cost Summary') %}
+<div id="cost-controls">
+  <label for="cost-group">Group:</label>
+  <select id="cost-group" title="Filter by group"></select>
+  <label for="cost-range" class="ml-4">Days:</label>
+  <input
+    type="range"
+    id="cost-range"
+    min="1"
+    max="30"
+    value="7"
+    title="Number of days"
+  />
+  <span id="cost-range-label">7 days</span>
+  <label for="cost-top" class="ml-4">Top:</label>
+  <input
+    type="range"
+    id="cost-top"
+    min="5"
+    max="50"
+    value="10"
+    title="Number of top templates"
+  />
+  <span id="cost-top-label">Top 10</span>
+</div>
+<canvas id="costChart" width="250" height="250"></canvas>
+<table id="cost-table" class="cost-table">
+  <thead>
+    <tr>
+      <th class="sortable">Template</th>
+      <th class="sortable" data-type="number">Calls</th>
+      <th class="sortable" data-type="number">Tokens</th>
+      <th class="sortable" data-type="number">Cost</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for entry in cost_summary %}
+    <tr>
+      <td>{{ entry.name }}</td>
+      <td>{{ entry.calls }}</td>
+      <td>{{ entry.tokens }}</td>
+      <td>{{ entry.cost }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <th>Total</th>
+      <th>{{ total_calls }}</th>
+      <th>{{ total_tokens }}</th>
+      <th>{{ total_cost }}</th>
+    </tr>
+  </tfoot>
+</table>
+<script id="cost-data" type="application/json">
+  {{ cost_summary | tojson }}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endcall %}

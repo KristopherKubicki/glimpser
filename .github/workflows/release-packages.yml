@@ -43,13 +43,14 @@ jobs:
         run: |
           python scripts/generate_release_badges.py
       - name: Publish to PyPI
-        if: env.PYPI_API_TOKEN != ''
+        if: startsWith(github.ref, 'refs/tags/v') && env.PYPI_API_TOKEN != ''
         env:
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ env.PYPI_API_TOKEN }}
       - name: Upload Debian package
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
@@ -72,7 +73,30 @@ jobs:
       - name: Build Windows executable
         run: python build_windows.py
       - name: Upload Windows executable
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           files: dist/Glimpser.exe
+
+  build_macos:
+    runs-on: macos-latest
+    needs: build_debian
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip && pip install pyinstaller
+      - name: Build macOS executable
+        run: python build_macos.py
+      - name: Upload macOS archive
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: dist/Glimpser
