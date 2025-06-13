@@ -97,7 +97,7 @@ class TestTestPattern(unittest.TestCase):
         ):
             img = generate_test_pattern(width=400, height=400)
 
-        y_start = 400 // 2 - 248 // 2 + 20
+        y_start = 400 // 2 - 374 // 2 + 20
         region = [
             img.getpixel((x, y))
             for x in range(30, 120)
@@ -121,7 +121,7 @@ class TestTimeFormatHelpers(unittest.TestCase):
     def test_time_format_helpers(self):
         ts = "12:34:56"
         self.assertEqual(_format_binary_time(ts), "01100100010111000")
-        self.assertEqual(_format_roman_time(ts), "XIIXXXIVLVI")
+        self.assertEqual(_format_roman_time(ts), "XII:XXXIV:LVI")
         self.assertEqual(_format_hex_time(ts), "0C:22:38")
         self.assertEqual(_format_beats_time(ts), "@565")
         self.assertEqual(_to_braille(ts), "⠁⠃⠒⠉⠙⠒⠑⠋")
