@@ -30,6 +30,20 @@ export function initTilePlayer() {
     spinner.classList.remove("bouncy", "visible");
   }
 
+  let shakeTimer;
+  function showShake() {
+    if (!spinner) return;
+    spinner.textContent = "\u25CF";
+    spinner.classList.add("shake", "visible");
+    clearTimeout(shakeTimer);
+    shakeTimer = setTimeout(hideShake, 1200);
+  }
+
+  function hideShake() {
+    if (!spinner) return;
+    spinner.classList.remove("shake", "visible");
+  }
+
   async function loadHdClip() {
     const url = video.dataset.hdSrc;
     if (!url) return;
@@ -41,7 +55,10 @@ export function initTilePlayer() {
       const res = await fetch(url, { signal: abortCtl.signal });
       clearTimeout(timer);
       hideSpinner(video);
-      if (!res.ok) return;
+      if (!res.ok) {
+        if (res.status === 404) showShake();
+        return;
+      }
       const blob = await res.blob();
       const objUrl = URL.createObjectURL(blob);
       const pos = video.currentTime;
@@ -63,6 +80,7 @@ export function initTilePlayer() {
     } catch (_) {
       hideSpinner(video);
       hideBounce();
+      hideShake();
     }
   }
 

@@ -57,3 +57,21 @@ test("group change updates video src", () => {
   expect(src).toMatch(/\/last_teaser\?group=kitchen$/);
   expect(hd).toMatch(/\/stream.mp4\?group=kitchen$/);
 });
+
+test("shake spinner on missing clip", async () => {
+  document.body.innerHTML = `<video id="live-video"><source></source></video>`;
+  window.templateDetails = { cam1: {} };
+  jest.useFakeTimers();
+
+  global.fetch = jest.fn(() =>
+    Promise.resolve({ ok: false, status: 404 }),
+  );
+
+  init();
+  await Promise.resolve();
+  await Promise.resolve();
+  const spinner = document.querySelector(".loading-spinner");
+  expect(spinner.classList.contains("shake")).toBe(true);
+  jest.runAllTimers();
+  expect(spinner.classList.contains("shake")).toBe(false);
+});

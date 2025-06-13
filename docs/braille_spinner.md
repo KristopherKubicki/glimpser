@@ -20,3 +20,8 @@ pattern to indicate reduced quality.
 If `/clip` hasn't finished rendering yet the server adds an
 `X-Clip-Status: waiting` header. The braille glyph becomes a bouncing dot in the
 corner so you know the HD version is still processing.
+
+When a clip is missing altogether the request returns **404**.
+The spinner briefly shakes side to side to signal that no footage
+is available. The effect lasts about a second so it doesn't clutter
+the interface.
