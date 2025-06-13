@@ -97,9 +97,9 @@ def _to_roman(num: int) -> str:
 
 
 def _format_roman_time(timestamp: str) -> str:
-    """Return the timestamp represented with Roman numerals without colons."""
+    """Return the timestamp represented with Roman numerals separated by colons."""
     h, m, s = map(int, timestamp.split(":"))
-    return f"{_to_roman(h)}{_to_roman(m)}{_to_roman(s)}"
+    return f"{_to_roman(h)}:{_to_roman(m)}:{_to_roman(s)}"
 
 
 def _format_binary_time(timestamp: str) -> str:
@@ -499,9 +499,9 @@ def generate_test_pattern(
     formats = [
         time_simple,
         _to_braille(time_simple),
+        _format_roman_time(time_simple),
         _format_binary_time(time_simple),
         tz_text,
-        _format_roman_time(time_simple),
         beats_time,
         hex_time,
     ]
@@ -509,8 +509,8 @@ def generate_test_pattern(
     fonts = [
         font_right,
         font_braille,
-        font_binary,
         font_right,
+        font_binary,
         font_right,
         font_right,
         font_right,
@@ -548,8 +548,8 @@ def generate_test_pattern(
     line_heights = [
         font_right.size,
         font_braille.size,
-        font_binary.size,
         font_right.size,
+        font_binary.size,
         font_right.size,
         font_right.size,
         font_right.size,
@@ -590,7 +590,8 @@ def generate_test_pattern(
         font=font_right,
     )
     current_y = y_start
-    timezone_idx = 3
+    timezone_idx = 4
+    roman_idx = 2
     for idx, parts in enumerate(segments):
         x = x_start
         y = current_y
@@ -620,6 +621,30 @@ def generate_test_pattern(
                 (x + seg3_max - _braille_text_width(parts[2]), y),
                 parts[2],
                 fill=clock_color,
+            )
+            current_y += line_heights[idx] + spacing_y
+            if idx in {1, timezone_idx}:
+                current_y += extra_gap
+        elif idx == roman_idx:
+            draw.text(
+                (x + seg1_max - draw.textlength(parts[0], font=font), y),
+                parts[0],
+                fill=clock_color,
+                font=font,
+            )
+            x += seg1_max + colon_gap
+            draw.text(
+                (x + seg2_max - draw.textlength(parts[1], font=font), y),
+                parts[1],
+                fill=clock_color,
+                font=font,
+            )
+            x += seg2_max + colon_gap
+            draw.text(
+                (x + seg3_max - draw.textlength(parts[2], font=font), y),
+                parts[2],
+                fill=clock_color,
+                font=font,
             )
             current_y += line_heights[idx] + spacing_y
             if idx in {1, timezone_idx}:
