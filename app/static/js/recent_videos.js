@@ -9,7 +9,7 @@ export function initRecentVideosModal(list, camera) {
   items.sort((a, b) => collator.compare(a, b));
   if (lastIndex !== -1) items.push("last_video.mp4");
 
-  let index = 0;
+  let index = items.length - 1;
   const video = document.getElementById("live-video");
   const source = video?.querySelector("source");
   const prev = document.getElementById("prev-clip-btn");
