@@ -26,7 +26,10 @@ class TestGetVideosForTemplate(unittest.TestCase):
 
     def test_numeric_sort_descending(self):
         videos = get_videos_for_template("cam1")
-        self.assertEqual(videos, ["final_10.mp4", "final_2.mp4", "final_1.mp4"])
+        self.assertEqual(
+            videos,
+            ["final_10.mp4", "final_2.mp4", "final_1.mp4", "last_video.mp4"],
+        )
 
 
 if __name__ == "__main__":

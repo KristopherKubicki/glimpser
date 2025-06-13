@@ -588,6 +588,8 @@ def get_videos_for_template(name: str):
         return int(match.group(1)) if match else -1
 
     sorted_videos = sorted(videos, key=_sort_key, reverse=True)
+    if "last_video.mp4" not in sorted_videos:
+        sorted_videos.append("last_video.mp4")
     return sorted_videos[:10]
 
 
