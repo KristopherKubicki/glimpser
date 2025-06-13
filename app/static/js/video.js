@@ -361,15 +361,18 @@ export function setupVideoControls() {
 
   const container = video.closest(".video-container");
   const controls = container?.querySelector(".video-controls");
+  const navButtons = container?.querySelectorAll(".clip-nav");
   let fadeTimeout;
   let autoplayTimeout;
 
   const showControls = () => {
     if (controls) controls.classList.remove("fade-out");
+    navButtons?.forEach((btn) => btn.classList.remove("fade-out"));
     clearTimeout(fadeTimeout);
     clearTimeout(autoplayTimeout);
     fadeTimeout = setTimeout(() => {
       if (controls) controls.classList.add("fade-out");
+      navButtons?.forEach((btn) => btn.classList.add("fade-out"));
     }, 3000);
     autoplayTimeout = setTimeout(() => {
       video.playbackRate = 0.5;
