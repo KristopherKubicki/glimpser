@@ -38,13 +38,17 @@ export function initTilePlayer() {
     spinner.classList.remove("bouncy", "visible");
   }
 
-  function playMjpg(group) {
-    if (!group) return;
+  const LIVE_CLASS = "live-mode";
+
+  function playMjpg(target, isCamera = false) {
+    if (!target) return;
     showSpinner(video);
     image.onload = () => hideSpinner(video);
     video.style.display = "none";
     image.style.display = "block";
-    image.src = `/stream.mjpg?group=${encodeURIComponent(group)}&time=${Date.now()}`;
+    const param = isCamera ? "camera" : "group";
+    image.src = `/stream.mjpg?${param}=${encodeURIComponent(target)}&time=${Date.now()}`;
+    if (container) container.classList.add(LIVE_CLASS);
   }
 
   function scheduleLive(group) {
@@ -111,6 +115,7 @@ export function initTilePlayer() {
     current = name;
     video.style.display = "block";
     image.style.display = "none";
+    if (container) container.classList.remove(LIVE_CLASS);
 
     if (name === "All") {
       const first = Object.keys(window.templateDetails || {})[0];
@@ -146,6 +151,17 @@ export function initTilePlayer() {
     } else {
       if (source) source.src = `/last_video/${name}`;
       video.setAttribute("data-hd-src", `/clip/${name}`);
+      video.addEventListener(
+        "ended",
+        () => {
+          showSpinner(video);
+          image.addEventListener("load", () => hideSpinner(video), {
+            once: true,
+          });
+          playMjpg(name, true);
+        },
+        { once: true },
+      );
     }
 
     video.load();
@@ -158,6 +174,16 @@ export function initTilePlayer() {
   }
 
   play(current);
+
+  if (container) {
+    const reset = () => {
+      if (container.classList.contains(LIVE_CLASS)) {
+        play(current);
+      }
+    };
+    container.addEventListener("mousedown", reset);
+    container.addEventListener("touchstart", reset);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", initTilePlayer);

@@ -11,6 +11,10 @@
   overflow: hidden;
 }
 
+.video-container.live-mode {
+  border: 2px solid #4ade80;
+}
+
 .clip-nav {
   position: absolute;
   top: 50%;
