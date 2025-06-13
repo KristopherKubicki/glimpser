@@ -14,8 +14,6 @@ selenium==4.33.0
 SQLAlchemy==2.0.41
 pywebpush==2.0.3
 onnxruntime-gpu==1.18.0
-transformers>=4.40.0
-tokenizers>=0.15.0
 undetected-chromedriver==3.5.5
 webdriver-manager==4.0.2
 Werkzeug==3.1.3
