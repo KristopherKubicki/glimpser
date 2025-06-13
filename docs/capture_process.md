@@ -39,7 +39,10 @@ The general flow of the capture process is as follows:
 9. **Post-Processing**: Apply any necessary post-processing steps, such as adding timestamps or applying dark mode.
 10. **Result Handling**: Return the success status of the capture process.
 
-![Collection Waterfall](images/collection_waterfall.svg)
+The waterfall diagram below shows how captured data moves from the initial
+source through processing and finally to visualization.
+
+![Collection Waterfall Diagram](images/collection_waterfall.svg)
 
 ## Content-Specific Capture Methods
 
