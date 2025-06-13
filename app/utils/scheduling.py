@@ -25,14 +25,25 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     setproctitle = None
 import numpy as np
-import onnxruntime as ort
+
+try:  # prefer ONNX for lightweight deployments
+    import onnxruntime as ort
+except Exception:  # pragma: no cover - optional dependency
+    ort = None
+
+try:  # fall back to PyTorch when ONNXRuntime isn't installed
+    from transformers import CLIPModel, CLIPProcessor
+except Exception:  # pragma: no cover - optional dependency
+    from transformers import CLIPProcessor
+
+    CLIPModel = None
+    # PyTorch is heavy, so we only import the model when available
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
 from flask_apscheduler import APScheduler
 from PIL import Image, ImageDraw
-from transformers import CLIPProcessor
 
 from app.config import (
     AUTO_UPDATE_BRANCH,
@@ -93,7 +104,7 @@ from .validators import validate_template_name
 
 logging.getLogger("apscheduler").setLevel(logging.WARNING)
 
-clip_processor, clip_session = None, None
+clip_processor, clip_session, clip_model = None, None, None
 
 # Track currently running jobs to avoid launching duplicates.
 active_jobs: dict[str, multiprocessing.Process] = {}
@@ -609,10 +620,16 @@ def update_camera(name, template, image_file=None, motion=False):
         # run the object detect AFTER the motion detetor
         if allow is True and object_filter and object_confidence is not None:
 
-            global clip_session, clip_processor
+            global clip_session, clip_processor, clip_model
 
-            if clip_session is None:
+            # Prefer the lightweight ONNX backend when available
+            use_onnx = ort is not None
+
+            if use_onnx and clip_session is None:
                 clip_session = ort.InferenceSession(CLIP_MODEL_PATH)
+
+            if not use_onnx and clip_model is None and CLIPModel is not None:
+                clip_model = CLIPModel.from_pretrained(CLIP_MODEL_NAME)
 
             if clip_processor is None:
                 clip_processor = CLIPProcessor.from_pretrained(CLIP_MODEL_NAME)
@@ -621,23 +638,30 @@ def update_camera(name, template, image_file=None, motion=False):
             latest_image_path = os.path.join(directory, png_files[-1])
             image = Image.open(latest_image_path)
 
-            # Process the image and text
             inputs = clip_processor(
-                text=[object_filter], images=image, return_tensors="np", padding=True
+                text=[object_filter],
+                images=image,
+                return_tensors="np" if use_onnx else "pt",
+                padding=True,
             )
 
-            # Run the ONNX model
-            outputs = clip_session.run(
-                None,
-                {
-                    "input_ids": inputs["input_ids"],
-                    "attention_mask": inputs["attention_mask"],
-                    "pixel_values": inputs["pixel_values"],
-                },
-            )
-            logits = outputs[0]
-            exp = np.exp(logits)
-            probs = exp / exp.sum(axis=1, keepdims=True)
+            if use_onnx:
+                outputs = clip_session.run(
+                    None,
+                    {
+                        "input_ids": inputs["input_ids"],
+                        "attention_mask": inputs["attention_mask"],
+                        "pixel_values": inputs["pixel_values"],
+                    },
+                )
+                logits = outputs[0]
+                exp = np.exp(logits)
+                probs = exp / exp.sum(axis=1, keepdims=True)
+            elif clip_model is not None:
+                outputs = clip_model(**inputs)
+                probs = outputs.logits_per_image.softmax(dim=1).detach().cpu().numpy()
+            else:
+                probs = np.array([[0.0]])
 
             # Check if the object is detected with confidence higher than the threshold
             if probs[0, 0] >= object_confidence:
