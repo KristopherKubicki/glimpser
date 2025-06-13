@@ -15,9 +15,10 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    ```sh
    pip install -e ".[dev]"
    ```
-3. Install the `pre-commit` tool and set up the Git hooks:
+3. Install the `pre-commit` tool and its helper hooks, then set up the Git hooks.
+   The hooks in this project are all local so they work without network access:
    ```sh
-   pip install pre-commit
+   pip install pre-commit isort detect-secrets
    pre-commit install
    ```
 4. Copy the provided example environment file and update the values. Important
@@ -33,6 +34,7 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    ```
 
 ## Understanding the Architecture
+
 Before diving into new features, read
 [Architecture Overview](architecture_overview.md). It describes how Flask routes,
 background jobs and utility modules cooperate. The "Data Flow from Camera to UI"
@@ -42,10 +44,12 @@ to the web interface.
 ## Running Tests
 
 The project uses `pytest` for testing and `flake8` for linting. After activating your environment, run:
+
 ```sh
 flake8
 pytest
 ```
+
 Running the full test suite helps ensure that your changes do not introduce regressions.
 
 ## Contribution Workflow
@@ -66,6 +70,7 @@ For more details, see [CONTRIBUTING.md](https://github.com/KristopherKubicki/gli
 - Configuration defaults are defined in `app/config.py`.
 
 When adding new features, include corresponding tests under the `tests/` directory.
+
 - Utilities for network testing now have dedicated tests in `tests/test_network_testing_utils.py`.
 - Configuration lookup logic is verified by `tests/test_config_get_setting.py`.
 - Scheduler helpers are tested in `tests/test_scheduling_more.py`.
