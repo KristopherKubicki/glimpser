@@ -130,8 +130,8 @@
   <div class="wizard-step" title="Form to add a new camera">
     {{ template_form( 'add-template-form', '/templates',
     preview_src='/test_pattern.mjpg?pattern=geometric',
-    preview_id='url-preview', object_tokens=object_tokens, clip_model=clip_model
-    ) }}
+    preview_id='url-preview', object_tokens=object_tokens,
+    clip_model=clip_model, clip_gpu=clip_gpu ) }}
   </div>
   {% endcall %}
 </div>

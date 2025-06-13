@@ -81,7 +81,7 @@ confirm='Confirm', cancel='Cancel') -%}
 </div>
 {%- endmacro %} {%- macro template_form(form_id, action, template=None,
 preview_src=None, preview_id=None, include_name=True, submit_label='Submit',
-object_tokens=None, clip_model=None) -%}
+object_tokens=None, clip_model=None, clip_gpu=False) -%}
 <div class="edit-template-container">
   {% if preview_src or preview_id %}
   <div class="edit-template-preview">
@@ -205,15 +205,23 @@ object_tokens=None, clip_model=None) -%}
           title="Filter for specific objects using {{ clip_model }}"
           >Object Filter:</label
         >
-        <input
-          type="text"
-          id="object_filter"
-          name="object_filter"
-          value="{{ template.object_filter if template else '' }}"
-          placeholder="person,car"
-          list="object-filter-options"
-          title="Enter object types to filter (e.g., 'person,car')"
-        />
+        <div class="object-filter-container">
+          <input
+            type="text"
+            id="object_filter"
+            name="object_filter"
+            value="{{ template.object_filter if template else '' }}"
+            placeholder="person,car"
+            list="object-filter-options"
+            title="Enter object types to filter (e.g., 'person,car')"
+          />
+          <span
+            id="object-gpu-status"
+            class="status-dot {{ 'ok' if clip_gpu else 'error' }}"
+            title="{{ 'GPU detection enabled' if clip_gpu else 'GPU detection disabled' }}"
+            aria-label="{{ 'GPU detection enabled' if clip_gpu else 'GPU detection disabled' }}"
+          ></span>
+        </div>
         <label
           for="object_confidence"
           title="Minimum confidence for object detection"
