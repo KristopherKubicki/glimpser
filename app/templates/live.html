@@ -29,13 +29,7 @@
                 <button id="full-screen" title='fullscreen' aria-label="Toggle fullscreen"><i class="fas fa-expand"></i></button>
                 <button id="toggle-details" title="Show details" aria-label="Toggle details"><i class="fas fa-info-circle"></i></button>
 
-    <select id="video-source" onchange="changeVideoSource()">
-        <option value="png" title="View a series of PNG images">PNG Stream</option>
-	<!-- <option value="m3u8" title="View an HLS (HTTP Live Streaming) video stream">M3U8 Stream</option> -->
-        <option value="loop" title="Loop through available video clips">Loop Videos</option>
-        <option value="mp4" title="View an MP4 video stream">MP4 Stream</option>
-        <option value="live" title="View the direct live stream">Live Video</option>
-        <option value="motion" title="View motion-detected frames">Motion</option>
+    <select id="video-source" onchange="changeVideoSource()" hidden>
         <option value="mjpg" selected title="View an MJPEG (Motion JPEG) stream">MJPG</option>
     </select>
 
@@ -274,16 +268,6 @@
 
 
         function computeVideoUrl(cameraName, source) {
-            if (source === 'mp4' || source === 'loop') {
-                if (cameraName.startsWith('group-')) {
-                    const groupName = cameraName.split('group-')[1];
-                    return `/stream.mp4?group=${encodeURIComponent(groupName)}`;
-                } else if (cameraName === 'All') {
-                    return '/stream.mp4';
-                }
-                return '/last_video/' + cameraName;
-            }
-
             if (source === 'live') {
                 if (cameraName.startsWith('group-') || cameraName === 'All') {
                     const groupCams = cameraName === 'All'
@@ -473,7 +457,7 @@ function changeCamera() {
 
             if (
                 preloadedCamera === currentCamera &&
-                ['mp4', 'live', 'loop'].includes(source) &&
+                ['live'].includes(source) &&
                 preloadVideo.src
             ) {
                 video.style.display = 'block';
@@ -491,14 +475,8 @@ function changeCamera() {
                 case 'm3u8':
                     playM3U8();
                     break;
-                case 'loop':
-                    playLoop();
-                    break;
                 case 'png':
                     playPNG();
-                    break;
-                case 'mp4':
-                    playMP4();
                     break;
                 case 'live':
                     playLive();

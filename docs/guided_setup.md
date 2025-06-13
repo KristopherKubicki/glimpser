@@ -12,7 +12,7 @@ Navigate to the template's detail page and review the caption prompt. Use **Sugg
 
 ## Step 3: Start Monitoring
 
-Return to the **Live** page and select your camera. The page shows an MJPG stream by default. Choose **Live Video** for real-time playback. If no data appears, you will see an error message suggesting you check the URL or network connection.
+Return to the **Live** page and select your camera. The page now always displays an MJPG stream of recent frames. If no data appears, check the URL or network connection.
 
 Status messages at the top of the page confirm when templates save successfully or when a capture starts. Use these cues to verify your actions.
 
