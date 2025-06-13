@@ -70,6 +70,7 @@ export function initUrlTester() {
     };
 
     toggleDisabled();
+
     if (!input.value && defaultUrl) {
       input.value = defaultUrl;
       toggleDisabled();
@@ -77,6 +78,9 @@ export function initUrlTester() {
         check();
       }, 1000);
     }
+
+    check();
+
     input.addEventListener("input", () => {
       toggleDisabled();
       setStatus(input.value.trim() ? "pending" : "");
