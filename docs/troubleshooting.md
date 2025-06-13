@@ -223,14 +223,9 @@ source. That could cause extra network requests and confusing behavior.
 
 ### Problem: Loop video or the "All" camera shows `Format error`
 
-This typically happens when Glimpser cannot locate a recent MP4 clip for a
-camera. The player attempts to load the file and the browser reports a *Format
-error* because the response is missing or invalid.
-
-**Solution:**
-- Ensure the `compile_to_teaser` job is running so group videos are generated.
-- When a clip fails to load, the live player now skips to the next camera
-  instead of stalling on the error message.
+Older versions supported looping archived videos. That code has been removed, so
+this error should no longer appear. If you still see it, clear your browser
+cache to ensure the latest JavaScript is loaded.
 
 ## 12. Layout Issues
 
