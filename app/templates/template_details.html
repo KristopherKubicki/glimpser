@@ -16,6 +16,7 @@ template_form %} {% block content %}
   role="region"
   aria-label="Live video feed"
 >
+  <span id="record-indicator" class="record-dot" aria-hidden="true"></span>
   <button
     id="prev-clip-btn"
     class="clip-nav prev"
@@ -91,6 +92,18 @@ template_form %} {% block content %}
       .catch((error) =>
         console.error("Error taking instant screenshot:", error),
       );
+  }
+
+  function recordHighSpeed(templateName) {
+    const indicator = document.getElementById("record-indicator");
+    const container = document.querySelector(".video-container");
+    indicator.style.display = "block";
+    container.classList.add("recording");
+    fetch(`/record/${templateName}`, { method: "POST" });
+    setTimeout(() => {
+      indicator.style.display = "none";
+      container.classList.remove("recording");
+    }, 20000);
   }
 </script>
 <details title="Edit the details of this template" class="hidden">
@@ -411,6 +424,12 @@ template_form %} {% block content %}
   </button>
   <button onclick="openModal('captures-modal')" title="Show recent screenshots">
     Recent Captures
+  </button>
+  <button
+    onclick="recordHighSpeed('{{ template_name }}')"
+    title="Record 20 second clip"
+  >
+    Record 20s
   </button>
   <button onclick="openModal('edit-template-modal')" title="Edit this template">
     Edit Template
