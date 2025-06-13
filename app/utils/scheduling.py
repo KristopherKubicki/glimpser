@@ -607,18 +607,14 @@ def update_camera(name, template, image_file=None, motion=False):
 
             # at least once a day.
             #  maybe at least once per every 8 frames
-            #  no more frequent than hourly
-            ldelta = 24
-            if int(template.get("frequency", 30)) <= 30:
-                ldelta = 8
-            if int(template.get("frequency", 30)) <= 5:
-                ldelta = 3
-
-            if (
-                template.get("livecaption", "") or ""
-            ) == "true":  # spending extra money...
-                lfreq = int(template.get("frequency", 30))
-                ldelta = max(1, lfreq / 7)
+            # Force a caption if the last one is too old. The interval is
+            # derived from the feed's capture frequency (in minutes) so that
+            # faster feeds caption more often while slower ones still caption at
+            # least once per day. Approximately every three capture cycles,
+            # capped between 1 and 24 hours.
+            lfreq = int(template.get("frequency", 30))
+            capture_interval_hours = lfreq / 60.0
+            ldelta = min(24, max(1, capture_interval_hours * 3))
 
             try:
                 last_caption_time = datetime.datetime.strptime(

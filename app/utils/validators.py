@@ -239,7 +239,6 @@ def validate_update_data(data: dict) -> dict:
         "headless",
         "stealth",
         "browser",
-        "livecaption",
         "danger",
     ]:
         sanitized[key] = _to_bool(data.get(key, False))

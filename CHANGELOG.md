@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   comparison implementation
 - Pinned numpy below version 2.0 due to compatibility issues
 - Removed nodriver and its screenshot helper
+- Removed the unused `livecaption` option and simplified forced caption timing
 - Updated default VERSION to 0.2.7 for footer display
 - The footer name now links to https://glimpser.net
 - Bulk tools menu is expanded by default on the captions page

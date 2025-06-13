@@ -31,7 +31,6 @@ class TestClipModelSetting(unittest.TestCase):
                 "notes": "",
                 "frequency": 30,
                 "motion": 0,
-                "livecaption": "false",
             }
 
             class DummySession:
@@ -105,7 +104,6 @@ class TestClipModelSetting(unittest.TestCase):
                 "notes": "",
                 "frequency": 30,
                 "motion": 0,
-                "livecaption": "false",
             }
 
             class DummyProcessor:

@@ -72,7 +72,6 @@ class Template(db.Base):
     headless = Column(Boolean, default=True)
     stealth = Column(Boolean, default=False)
     browser = Column(Boolean, default=False)
-    livecaption = Column(Boolean, default=False)
     danger = Column(Boolean, default=False)
     motion = Column(Float, default=0.2)
     rollback_frames = Column(Integer, default=0)

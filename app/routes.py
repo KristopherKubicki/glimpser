@@ -3757,8 +3757,6 @@ def init_routes(app: Flask) -> None:
                 in ["true", "1", "t", "y", "yes", "on"],
                 "browser": request.form.get("browser", "false").lower()
                 in ["true", "1", "t", "y", "yes", "on"],
-                "livecaption": request.form.get("livecaption", "false").lower()
-                in ["true", "1", "t", "y", "yes", "on"],
                 "danger": request.form.get("danger", "false").lower()
                 in ["true", "1", "t", "y", "yes", "on"],
             }
