@@ -31,6 +31,8 @@ nav:
       - Docs Build Workflow: docs_build.md
       - CodeQL Security Scanning: codeql.md
       - Dependency Review: dependency_review.md
+      - OWASP Dependency Check: dependency_check.md
+      - Software Bill of Materials: sbom.md
       - EthicalCheck Workflow: ethicalcheck.md
       - FAQ: faq.md
       - Getting Started: getting_started.md
