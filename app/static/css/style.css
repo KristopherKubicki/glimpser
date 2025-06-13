@@ -1234,6 +1234,15 @@ body.advanced-enabled .settings-table input[data-locked] {
   cursor: pointer;
 }
 
+.object-filter-container {
+  display: flex;
+  align-items: center;
+}
+
+.object-filter-container .status-dot {
+  margin-left: 0.5rem;
+}
+
 #delete-btn {
   padding: 10px 20px;
   background-color: #e74c3c;

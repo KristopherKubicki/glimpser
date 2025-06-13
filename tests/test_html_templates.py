@@ -123,6 +123,10 @@ class TestHtmlTemplates(unittest.TestCase):
         components = Path("app/templates/components.html").read_text(encoding="utf-8")
         self.assertIn('<select id="groups"', components)
 
+    def test_object_filter_gpu_icon_present(self):
+        components = Path("app/templates/components.html").read_text(encoding="utf-8")
+        self.assertIn("object-gpu-status", components)
+
     def test_status_tab_has_sparklines(self):
         html = Path("app/templates/_status_tab.html").read_text(encoding="utf-8")
         self.assertIn('id="memory-sparkline"', html)

@@ -108,6 +108,21 @@ from app.utils.settings_tooltips import (
     SETTINGS_TOOLTIPS,
 )
 
+try:
+    import onnxruntime as ort
+except Exception:  # pragma: no cover - optional dependency
+    ort = None
+
+
+@lru_cache(maxsize=1)
+def clip_gpu_available() -> bool:
+    """Return True when ONNXRuntime can use CUDA."""
+    if ort is None:
+        return False
+    providers = getattr(ort, "get_available_providers", lambda: [])()
+    return "CUDAExecutionProvider" in providers
+
+
 # Names of settings that store file paths.
 FILE_LOCATION_NAMES = [
     "DATABASE_PATH",
@@ -3367,6 +3382,7 @@ def init_routes(app: Flask) -> None:
             videos=lvideos,
             object_tokens=object_tokens,
             clip_model=CLIP_MODEL_NAME,
+            clip_gpu=clip_gpu_available(),
             page_title="Camera Details",
         )
 
@@ -3827,6 +3843,7 @@ def init_routes(app: Flask) -> None:
             existing_urls=existing_urls,
             object_tokens=object_tokens,
             clip_model=CLIP_MODEL_NAME,
+            clip_gpu=clip_gpu_available(),
             page_title="Discover Cameras",
         )
 
