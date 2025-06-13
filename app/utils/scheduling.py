@@ -652,7 +652,8 @@ def update_camera(name, template, image_file=None, motion=False):
                     },
                 )
                 logits = outputs[0]
-                exp = np.exp(logits)
+                logits_max = logits.max(axis=1, keepdims=True)
+                exp = np.exp(logits - logits_max)
                 probs = exp / exp.sum(axis=1, keepdims=True)
             else:
                 # Skip detection when onnxruntime is unavailable
