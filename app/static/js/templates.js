@@ -339,14 +339,15 @@ export function initTemplates() {
 export async function loadGroups() {
   const groupDropdown = document.getElementById("group-dropdown");
   const groupsSelect = document.getElementById("groups");
+  const groupDatalist = document.getElementById("group-options");
   if (!groupDropdown && !groupsSelect) return;
   if (groupDropdown) {
     groupDropdown.innerHTML = '<option value="all">Loading groups...</option>';
     groupDropdown.disabled = true;
   }
   if (groupsSelect) {
-    groupsSelect.innerHTML = '<option value="">Loading...</option>';
     groupsSelect.disabled = true;
+    if (groupDatalist) groupDatalist.innerHTML = "";
   }
 
   try {
@@ -355,8 +356,8 @@ export async function loadGroups() {
     if (groupDropdown) {
       groupDropdown.innerHTML = '<option value="all">All Groups</option>';
     }
-    if (groupsSelect) {
-      groupsSelect.innerHTML = '<option value="">Select a group</option>';
+    if (groupsSelect && groupDatalist) {
+      groupDatalist.innerHTML = "";
     }
     groups.forEach((group) => {
       if (groupDropdown) {
@@ -365,11 +366,10 @@ export async function loadGroups() {
         option.textContent = group;
         groupDropdown.appendChild(option);
       }
-      if (groupsSelect) {
+      if (groupsSelect && groupDatalist) {
         const option = document.createElement("option");
         option.value = group;
-        option.textContent = group;
-        groupsSelect.appendChild(option);
+        groupDatalist.appendChild(option);
       }
     });
   } catch (error) {
@@ -377,8 +377,8 @@ export async function loadGroups() {
     if (groupDropdown) {
       groupDropdown.innerHTML = '<option value="all">All Groups</option>';
     }
-    if (groupsSelect) {
-      groupsSelect.innerHTML = '<option value="">Select a group</option>';
+    if (groupsSelect && groupDatalist) {
+      groupDatalist.innerHTML = "";
     }
   } finally {
     if (groupDropdown) groupDropdown.disabled = false;
