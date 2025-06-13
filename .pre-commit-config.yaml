@@ -63,3 +63,11 @@ repos:
         language: system
         pass_filenames: false
         stages: [pre-commit]
+
+  - repo: local
+    hooks:
+      - id: check-exclude-docs
+        name: docs exclude list in sync
+        entry: python scripts/check_exclude_docs.py
+        language: system
+        pass_filenames: false
