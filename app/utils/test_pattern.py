@@ -202,7 +202,7 @@ def generate_test_pattern(
                 draw.line([(0, y), (width, y)], fill=(r, g, b))
                 break
 
-    # SMPTE-like color bars
+    # SMPTE color bars: full intensity row followed by 75 % row
     bars = [
         (255, 255, 255),
         (255, 255, 0),
@@ -212,14 +212,35 @@ def generate_test_pattern(
         (255, 0, 0),
         (0, 0, 255),
     ]
-    bar_h = height // 6
+    bar_h = height // 16
+    bars_total = bar_h * 2
     bar_w = width // len(bars)
     for i, color in enumerate(bars):
         draw.rectangle([i * bar_w, 0, (i + 1) * bar_w, bar_h], fill=color)
+    for i, color in enumerate(bars):
+        shade = tuple(int(c * 0.75) for c in color)
+        draw.rectangle([i * bar_w, bar_h, (i + 1) * bar_w, bars_total], fill=shade)
+
+    # grayscale staircase under the bars
+    step_h = max(4, bar_h // 3)
+    num_steps = len(range(0, 256, 12))
+    step_w = width // num_steps
+    for idx, val in enumerate(range(0, 256, 12)):
+        x0 = idx * step_w
+        draw.rectangle(
+            [x0, bars_total, x0 + step_w, bars_total + step_h],
+            fill=(val, val, val),
+        )
+
+    # super-white and super-black patches on edges
+    patch = 8
+    y_patch = bars_total + step_h + 2
+    draw.rectangle([0, y_patch, patch, y_patch + patch], fill=(255, 255, 255))
+    draw.rectangle([width - patch, y_patch, width, y_patch + patch], fill=(0, 0, 0))
 
     # subtle synthwave sunrise near the horizon
     sun_r = min(width, height) // 10
-    horizon_y = height - bar_h - sun_r
+    horizon_y = height - bars_total - step_h - sun_r
     sun_cx = width // 4
     shimmer = 1 + 0.05 * math.sin(time.time() * 2)
     for r in range(sun_r, 0, -2):
@@ -339,8 +360,22 @@ def generate_test_pattern(
         draw.line((0, center_y + offset, width, center_y + offset), fill=color)
 
     # interlaced lines for moire effect
-    for y in range(bar_h, height, 4):
+    for y in range(bars_total + step_h, height, 4):
         draw.line((0, y, width, y), fill=(30, 30, 30))
+
+    # concentric zone-plate in the centre
+    zone_radius = min(width, height) // 3
+    for r in range(zone_radius, 0, -1):
+        shade = int(127.5 * (1 + math.sin(r * r * 0.05)))
+        draw.ellipse(
+            (
+                center_x - r,
+                center_y - r,
+                center_x + r,
+                center_y + r,
+            ),
+            outline=(shade, shade, shade),
+        )
 
     # wedge calibration dots around the bullseye
     wedge_radius = min(width, height) * 0.4
@@ -518,7 +553,9 @@ def generate_test_pattern(
             if idx == 1:
                 current_y += extra_gap
     if camera_name:
-        draw.text((10, bar_h + 10), camera_name, fill="white", font=font_small)
+        draw.text(
+            (10, bars_total + step_h + 10), camera_name, fill="white", font=font_small
+        )
 
     if logo_path and os.path.exists(logo_path):
         with Image.open(logo_path).convert("RGBA") as logo:

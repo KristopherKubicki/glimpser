@@ -17,3 +17,10 @@ The test pattern includes calibration checks for panel accuracy and HDR tone map
 - **Date overlay** appears on the left aligned with the standard clock.
 - **Braille spinner** in the corner updates once per second during streaming.
 - **Mini color bars** in the top-left align with a reduced checker patch and grayscale swatch.
+
+The pattern now also includes:
+
+- **Full-width SMPTE bars** with a 100 % row above a 75 % row for vectorscope calibration.
+- **Super-white and super-black patches** on the left and right edges.
+- **Grayscale staircase** spanning the width under the bars.
+- **Concentric zone plate** behind the bullseye to expose aliasing.
