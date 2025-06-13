@@ -56,6 +56,10 @@ This guide provides a high-level look at Glimpser's core components and how they
                      Utility Functions ----> Scheduler Jobs / Background Tasks
 ```
 
+The diagram below provides a visual version of the component flow:
+
+![Component Flow](images/architecture_overview.svg)
+
 - Routes handle incoming API or web requests.
 - Models define the database schema.
 - Utility functions perform processing and are called by both routes and scheduled jobs.
