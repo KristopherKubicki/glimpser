@@ -8,6 +8,7 @@ from app.utils.template_manager import (
     get_llm_cost_summary,
     group_cost_summary,
 )
+from unittest.mock import patch
 
 
 class TestLLMCostSummary(unittest.TestCase):
@@ -42,6 +43,18 @@ class TestLLMCostSummary(unittest.TestCase):
         grouped = group_cost_summary(summary, top=10)
         self.assertEqual(len(grouped), 10)
         self.assertEqual(grouped[-1]["name"], "Other")
+
+    @patch("app.utils.template_manager.TemplateManager.get_templates")
+    def test_summary_filtered_by_group(self, mock_get_templates):
+        mock_get_templates.return_value = {
+            "cam1": {"groups": "a"},
+            "cam2": {"groups": "b"},
+        }
+        with open(LLM_USAGE_PATH, "w") as f:
+            json.dump({"cam1": 100, "cam2": 200}, f)
+        summary, tokens, cost, calls = get_llm_cost_summary(group="a")
+        self.assertEqual(len(summary), 1)
+        self.assertEqual(summary[0]["name"], "cam1")
 
 
 if __name__ == "__main__":

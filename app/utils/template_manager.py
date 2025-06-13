@@ -787,9 +787,15 @@ def get_llm_cost_estimate(
 
 
 def get_llm_cost_summary(
-    start_date: str | None = None, end_date: str | None = None
+    start_date: str | None = None,
+    end_date: str | None = None,
+    group: str | None = None,
 ) -> tuple[list[dict[str, object]], int, str, int]:
-    """Return LLM usage totals and overall cost within an optional date range."""
+    """Return LLM usage totals and overall cost within an optional date range.
+
+    When ``group`` is provided, only templates belonging to that group are
+    included in the summary.
+    """
 
     try:
         with open(LLM_USAGE_PATH, "r") as f:
@@ -802,7 +808,18 @@ def get_llm_cost_summary(
     total_calls = 0
     sd = datetime.fromisoformat(start_date).date() if start_date else None
     ed = datetime.fromisoformat(end_date).date() if end_date else None
+
+    allowed_names: set[str] | None = None
+    if group:
+        tmpl = TemplateManager().get_templates()
+        allowed_names = {
+            name
+            for name, details in tmpl.items()
+            if group in [g.strip() for g in details.get("groups", "").split(",")]
+        }
     for name in sorted(data):
+        if allowed_names is not None and name not in allowed_names:
+            continue
         entry = data.get(name, 0)
         tokens = 0
         calls = 0

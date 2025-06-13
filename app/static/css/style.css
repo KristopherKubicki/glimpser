@@ -1869,6 +1869,15 @@ body.advanced-enabled .advanced-only {
   border: 1px solid var(--table-border-color);
 }
 
+#costChart {
+  padding: 0.5rem;
+}
+
+#cost-range {
+  vertical-align: middle;
+  margin: 0 0.5rem;
+}
+
 .captions-table th,
 .camera-table th,
 .settings-table th,
@@ -1915,7 +1924,6 @@ details > summary {
 .camera-table .caption-box {
   height: 100%;
 }
-
 
 .captions-table td:first-child {
   white-space: nowrap;
@@ -2203,7 +2211,6 @@ details > summary {
   width: 4rem;
   text-align: center;
 }
-
 
 .capture-col {
   width: 2.5rem;

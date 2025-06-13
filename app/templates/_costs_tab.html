@@ -1,9 +1,17 @@
 {% call card('LLM Cost Summary') %}
 <div id="cost-controls">
-  <label for="cost-start">From:</label>
-  <input type="date" id="cost-start" title="Start date" />
-  <label for="cost-end">To:</label>
-  <input type="date" id="cost-end" title="End date" />
+  <label for="cost-group">Group:</label>
+  <select id="cost-group" title="Filter by group"></select>
+  <label for="cost-range" class="ml-4">Days:</label>
+  <input
+    type="range"
+    id="cost-range"
+    min="1"
+    max="30"
+    value="7"
+    title="Number of days"
+  />
+  <span id="cost-range-label">7 days</span>
   <label for="cost-top" class="ml-4">Top:</label>
   <input
     type="range"
