@@ -329,7 +329,9 @@ If shutdown is interrupted it can leave background threads running.
 
 ### Problem: "pynput not available" or "failed to acquire X connection"
 
-This happens when Glimpser cannot open an X display. The logs may show
+This happens when Glimpser cannot open an X display. The optional
+`pynput` package enables activity detection; when missing, the
+application simply logs the failure and continues. The logs may show
 `Maximum number of clients reached` or `Can't connect to display`.
 
 **Solution:**
