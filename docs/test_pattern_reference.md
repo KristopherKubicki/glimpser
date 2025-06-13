@@ -13,7 +13,7 @@ The test pattern includes calibration checks for panel accuracy and HDR tone map
 - **Skin‑tone chip** around CIE ab ≈ (20, 15) confirms natural faces.
 - **Synthwave sunrise** with a small horizon line and trees for visual flair.
 - **Moon phase display** rises opposite the sun in a smaller arc.
-- **Swatch Internet Time** (@beats) joins the stacked clocks for a fun extra.
+- **Timezone label** replaces Swatch Internet Time in the stacked clocks.
 - **Analog second hand** in the bullseye extends to the outer dots for easy reading.
 - **Date overlay** appears on the left aligned with the standard clock.
 - **Braille spinner** in the corner updates once per second during streaming.

@@ -545,7 +545,6 @@ def generate_test_pattern(
         _format_roman_time(time_simple),
         _to_braille(time_simple),
         _format_binary_time(time_simple),
-        beats_time,
         tz_text,
     ]
 
@@ -554,7 +553,6 @@ def generate_test_pattern(
         font_right,
         font_braille,
         font_binary,
-        font_right,
         font_right,
     ]
     segments = [t.replace("\u2812", ":").split(":") for t in formats]
@@ -580,10 +578,10 @@ def generate_test_pattern(
     )
     seg3_max = seg2_max
 
-    beats_w = draw.textlength(beats_time, font=font_right)
+    tz_w = draw.textlength(tz_text, font=font_right)
     total_w = max(
         seg1_max + colon_gap + seg2_max + colon_gap + seg3_max,
-        beats_w,
+        tz_w,
     )
     x_start = width - total_w - 30
 
@@ -592,7 +590,6 @@ def generate_test_pattern(
         font_right.size,
         font_braille.size,
         font_binary.size,
-        font_right.size,
         font_right.size,
     ]
     spacing_y = 22
@@ -636,7 +633,7 @@ def generate_test_pattern(
     x_date += space_w
     draw.text((x_date, y_start), beats_time, fill=clock_color, font=font_right)
     current_y = y_start
-    timezone_idx = 5
+    timezone_idx = 4
     roman_idx = 1
     for idx, parts in enumerate(segments):
         x = x_start
@@ -669,7 +666,7 @@ def generate_test_pattern(
                 fill=clock_color,
             )
             current_y += line_heights[idx] + spacing_y
-            if idx in {1, timezone_idx}:
+            if idx == timezone_idx:
                 current_y += extra_gap
         elif idx == roman_idx:
             draw.text(
@@ -693,7 +690,7 @@ def generate_test_pattern(
                 font=font,
             )
             current_y += line_heights[idx] + spacing_y
-            if idx in {1, timezone_idx}:
+            if idx == timezone_idx:
                 current_y += extra_gap
         elif len(parts) == 1:
             draw.text(
@@ -703,7 +700,7 @@ def generate_test_pattern(
                 font=font,
             )
             current_y += line_heights[idx] + spacing_y
-            if idx in {1, timezone_idx}:
+            if idx == timezone_idx:
                 current_y += extra_gap
         else:
             draw.text(
@@ -731,7 +728,7 @@ def generate_test_pattern(
                 font=font,
             )
             current_y += line_heights[idx] + spacing_y
-            if idx in {1, timezone_idx}:
+            if idx == timezone_idx:
                 current_y += extra_gap
     if camera_name:
         draw.text(
