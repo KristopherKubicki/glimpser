@@ -4079,8 +4079,9 @@ def init_routes(app: Flask) -> None:
     def api_llm_cost_summary():
         start = request.args.get("start")
         end = request.args.get("end")
+        group = request.args.get("group")
         summary, _, _, _ = template_manager.get_llm_cost_summary(
-            start_date=start, end_date=end
+            start_date=start, end_date=end, group=group
         )
         costs = {
             entry["name"]: {

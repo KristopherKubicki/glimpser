@@ -1,8 +1,8 @@
 import { jest } from "@jest/globals";
 
 document.body.innerHTML = `
-  <input id="cost-start" type="date">
-  <input id="cost-end" type="date">
+  <select id="cost-group"></select>
+  <input id="cost-range" type="range" value="7">
   <input id="cost-top" type="range" value="10">
   <span id="cost-top-label"></span>
   <table id="cost-table"><tbody></tbody></table>
@@ -21,7 +21,8 @@ beforeAll(async () => {
 
 global.fetch = jest.fn(() =>
   Promise.resolve({
-    json: () => Promise.resolve({ cam1: { cost: "$1.00", tokens: 1, calls: 1 } }),
+    json: () =>
+      Promise.resolve({ cam1: { cost: "$1.00", tokens: 1, calls: 1 } }),
   }),
 );
 
@@ -29,15 +30,26 @@ global.Chart = jest.fn(function () {
   this.update = jest.fn();
 });
 
-test("date picker triggers fetch", async () => {
+test("range slider triggers fetch", async () => {
   initCosts();
   document.dispatchEvent(new Event("DOMContentLoaded"));
   await Promise.resolve();
   expect(fetch).toHaveBeenCalledTimes(1);
-  const start = document.getElementById("cost-start");
+  const range = document.getElementById("cost-range");
   fetch.mockClear();
-  start.value = "2023-01-01";
-  start.dispatchEvent(new Event("change"));
+  range.dispatchEvent(new Event("input"));
+  await Promise.resolve();
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+test("group dropdown triggers fetch", async () => {
+  initCosts();
+  document.dispatchEvent(new Event("DOMContentLoaded"));
+  await Promise.resolve();
+  fetch.mockClear();
+  const select = document.getElementById("cost-group");
+  select.value = "cam1";
+  select.dispatchEvent(new Event("change"));
   await Promise.resolve();
   expect(fetch).toHaveBeenCalledTimes(1);
 });

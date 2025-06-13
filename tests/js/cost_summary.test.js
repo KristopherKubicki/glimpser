@@ -1,8 +1,8 @@
 import { jest } from "@jest/globals";
 
 document.body.innerHTML = `
-  <input id="start-date" type="date">
-  <input id="end-date" type="date">
+  <select id="cost-group"></select>
+  <input id="cost-range" type="range" value="7">
   <button id="since-restart"></button>
   <button id="load-cost"></button>
   <table id="cost-table"><tbody></tbody></table>
@@ -26,13 +26,13 @@ global.Chart = jest.fn(function () {
 });
 
 describe("cost summary", () => {
-  test("since restart fills start date", async () => {
+  test("since restart adjusts slider", async () => {
     initCostSummary(0);
     document.dispatchEvent(new Event("DOMContentLoaded"));
     const btn = document.getElementById("since-restart");
     btn.click();
     await Promise.resolve();
-    const start = document.getElementById("start-date");
-    expect(start.value).toBe("1970-01-01");
+    const range = document.getElementById("cost-range");
+    expect(parseInt(range.value, 10)).toBeGreaterThan(0);
   });
 });

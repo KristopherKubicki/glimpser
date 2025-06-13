@@ -1884,6 +1884,15 @@ body.advanced-enabled .advanced-only {
   border: 1px solid var(--table-border-color);
 }
 
+#costChart {
+  padding: 0.5rem;
+}
+
+#cost-range {
+  vertical-align: middle;
+  margin: 0 0.5rem;
+}
+
 .captions-table th,
 .camera-table th,
 .settings-table th,
