@@ -1,4 +1,7 @@
 import datetime
+import hashlib
+import io
+import json
 import math
 import os
 import tempfile
@@ -10,8 +13,10 @@ from PIL import Image
 from app.utils.test_pattern import (
     _format_beats_time,
     _format_binary_time,
+    _format_hex_time,
     _format_roman_time,
     _to_braille,
+    encode_jpeg_with_metadata,
     generate_test_pattern,
     save_test_pattern,
 )
@@ -100,6 +105,7 @@ class TestTestPattern(unittest.TestCase):
         ]
         self.assertIn((160, 160, 160), region)
 
+
     def test_qr_code_overlay(self):
         stub = Image.new("RGBA", (12, 12), (255, 255, 255, 255))
         with (
@@ -113,12 +119,24 @@ class TestTestPattern(unittest.TestCase):
         y = 100 - stub.height - 10 + stub.height // 2
         self.assertEqual(img.getpixel((x, y)), (204, 204, 204))
 
+    def test_jpeg_metadata(self):
+        img = generate_test_pattern(width=50, height=50)
+        data = encode_jpeg_with_metadata(img)
+        with Image.open(io.BytesIO(data)) as im:
+            comment = im.info.get("comment")
+        self.assertIsNotNone(comment)
+        meta = json.loads(comment.decode())
+        expected_hash = hashlib.sha256(img.tobytes()).hexdigest()[:8]
+        self.assertEqual(meta["st2110_21_hash"], expected_hash)
+        self.assertIn("smpte2086", meta)
+
 
 class TestTimeFormatHelpers(unittest.TestCase):
     def test_time_format_helpers(self):
         ts = "12:34:56"
-        self.assertEqual(_format_binary_time(ts), "01100:100010:111000")
-        self.assertEqual(_format_roman_time(ts), "XII:XXXIV:LVI")
+        self.assertEqual(_format_binary_time(ts), "01100100010111000")
+        self.assertEqual(_format_roman_time(ts), "XIIXXXIVLVI")
+        self.assertEqual(_format_hex_time(ts), "0C:22:38")
         self.assertEqual(_format_beats_time(ts), "@565")
         self.assertEqual(_to_braille(ts), "⠁⠃⠒⠉⠙⠒⠑⠋")
 

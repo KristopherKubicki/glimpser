@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import datetime
+import hashlib
+import io
+import json
 import math
 import os
 import subprocess
@@ -48,6 +51,20 @@ BRAILLE_RADIUS = 3
 BRAILLE_SPACING = 3
 
 
+# Static HDR metadata for SMPTE ST 2086. Embedded in JPEG headers so HDR
+# monitors can auto-switch and EDID quirks become visible.
+ST2086_METADATA = {
+    "display_primaries": [
+        [0.708, 0.292],
+        [0.170, 0.797],
+        [0.131, 0.046],
+    ],
+    "white_point": [0.3127, 0.329],
+    "luminance_min": 0.001,
+    "luminance_max": 1000,
+}
+
+
 def _to_braille(text: str) -> str:
     """Return the supplied text with digits converted to Braille patterns."""
     return "".join(BRAILLE_DIGITS.get(ch, ch) for ch in text)
@@ -80,15 +97,21 @@ def _to_roman(num: int) -> str:
 
 
 def _format_roman_time(timestamp: str) -> str:
-    """Return the timestamp represented with Roman numerals."""
+    """Return the timestamp represented with Roman numerals without colons."""
     h, m, s = map(int, timestamp.split(":"))
-    return f"{_to_roman(h)}:{_to_roman(m)}:{_to_roman(s)}"
+    return f"{_to_roman(h)}{_to_roman(m)}{_to_roman(s)}"
 
 
 def _format_binary_time(timestamp: str) -> str:
-    """Return the timestamp in binary notation."""
+    """Return the timestamp in binary notation without colons."""
     h, m, s = map(int, timestamp.split(":"))
-    return f"{h:05b}:{m:06b}:{s:06b}"
+    return f"{h:05b}{m:06b}{s:06b}"
+
+
+def _format_hex_time(timestamp: str) -> str:
+    """Return the timestamp in hexadecimal notation."""
+    h, m, s = map(int, timestamp.split(":"))
+    return f"{h:02X}:{m:02X}:{s:02X}"
 
 
 def _format_beats_time(timestamp: str) -> str:
@@ -472,26 +495,29 @@ def generate_test_pattern(
     font_braille = load_font(30)
     time_simple = timestamp
     beats_time = _format_beats_time(time_simple)
+    hex_time = _format_hex_time(time_simple)
     formats = [
         time_simple,
-        _format_binary_time(time_simple),
-        _format_roman_time(time_simple),
         _to_braille(time_simple),
+        _format_binary_time(time_simple),
         tz_text,
+        _format_roman_time(time_simple),
         beats_time,
+        hex_time,
     ]
 
     fonts = [
         font_right,
+        font_braille,
         font_binary,
         font_right,
-        font_braille,
+        font_right,
         font_right,
         font_right,
     ]
     segments = [t.replace("\u2812", ":").split(":") for t in formats]
 
-    braille_idx = 3
+    braille_idx = 1
 
     roman_w1, roman_w2, roman_w3, colon_w_std = _roman_segment_widths(font_right)
     colon_w = max(
@@ -513,14 +539,18 @@ def generate_test_pattern(
     seg3_max = seg2_max
 
     beats_w = draw.textlength(beats_time, font=font_right)
-    total_w = max(seg1_max + colon_gap + seg2_max + colon_gap + seg3_max, beats_w)
+    hex_w = draw.textlength(hex_time, font=font_right)
+    total_w = max(
+        seg1_max + colon_gap + seg2_max + colon_gap + seg3_max, beats_w, hex_w
+    )
     x_start = width - total_w - 30
 
     line_heights = [
         font_right.size,
+        font_braille.size,
         font_binary.size,
         font_right.size,
-        font_braille.size,
+        font_right.size,
         font_right.size,
         font_right.size,
     ]
@@ -560,7 +590,7 @@ def generate_test_pattern(
         font=font_right,
     )
     current_y = y_start
-    timezone_idx = 4
+    timezone_idx = 3
     for idx, parts in enumerate(segments):
         x = x_start
         y = current_y
@@ -672,3 +702,15 @@ def save_test_pattern(path: str, **kwargs) -> None:
     img = generate_test_pattern(**kwargs)
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     img.save(path, "PNG")
+
+
+def encode_jpeg_with_metadata(img: Image.Image) -> bytes:
+    """Return JPEG bytes with ST 2086 metadata and ST 2110-21 hash."""
+
+    comment_data = {
+        "smpte2086": ST2086_METADATA,
+        "st2110_21_hash": hashlib.sha256(img.tobytes()).hexdigest()[:8],
+    }
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", comment=json.dumps(comment_data).encode("utf-8"))
+    return buf.getvalue()
