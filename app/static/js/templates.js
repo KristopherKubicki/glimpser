@@ -67,6 +67,7 @@ export function setCaptionsVisibility(value) {
   captionsVisible = value;
   localStorage.setItem("showCaptions", value.toString());
   applyCaptionVisibility(parseFloat(slider?.value || "0"));
+  updateTableLayout(parseFloat(slider?.value || "0"));
 }
 
 export function applyCaptionVisibility(width) {
@@ -88,6 +89,20 @@ export function applyCaptionVisibility(width) {
         : "Show caption overlays"
       : "Increase tile size to enable captions";
   }
+}
+
+function updateTableLayout(width) {
+  const rows = document.querySelectorAll("#camera-table .camera-row");
+  rows.forEach((row) => {
+    const preview = row.querySelector(".templateDiv");
+    if (!preview) return;
+    const height = preview.offsetHeight;
+    row.style.height = `${height}px`;
+    const caption = row.querySelector(".last-caption");
+    if (caption) {
+      caption.classList.toggle("hidden", width < 150);
+    }
+  });
 }
 
 export function initTemplates() {
@@ -184,6 +199,7 @@ export function initTemplates() {
         captionsVisible = !captionsVisible;
         localStorage.setItem("showCaptions", captionsVisible.toString());
         applyCaptionVisibility(parseFloat(slider?.value || "0"));
+        updateTableLayout(parseFloat(slider?.value || "0"));
       });
       setTimeout(() => {
         captionToggle.classList.add("flash-caption");
@@ -243,6 +259,7 @@ export function initTemplates() {
           `${timestampFontSize}px`,
         );
         applyCaptionVisibility(value);
+        updateTableLayout(value);
       };
 
       slider.addEventListener("input", handleSlider);
@@ -312,6 +329,7 @@ export function initTemplates() {
     updateHumanizedTimes();
     setInterval(updateHumanizedTimes, 60000);
     applyCaptionVisibility(parseFloat(slider?.value || "0"));
+    updateTableLayout(parseFloat(slider?.value || "0"));
   });
 
   window.showStructuredInput = showStructuredInput;
@@ -951,6 +969,7 @@ export async function loadTemplates() {
     updateStatusCounts();
     applyStatusFilter();
     applyCaptionVisibility(parseFloat(sliderElement?.value || "0"));
+    updateTableLayout(parseFloat(sliderElement?.value || "0"));
   } catch (error) {
     console.error("Error loading templates:", error);
     const errorMsg =

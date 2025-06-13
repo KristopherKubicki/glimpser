@@ -1781,7 +1781,7 @@ body.advanced-enabled .advanced-only {
 }
 
 .caption-box .last-caption {
-  max-height: 6rem;
+  flex: 1;
   overflow-y: auto;
   white-space: pre-wrap;
 }
@@ -1815,6 +1815,8 @@ body.advanced-enabled .advanced-only {
 }
 
 .chat-response .last-caption {
+  flex: 1;
+  overflow-y: auto;
   background-color: var(--form-bg-color);
   padding: 0.5rem;
   border-radius: 4px;
@@ -1905,6 +1907,13 @@ details > summary {
 .cost-table tr:hover {
   background-color: var(--table-hover-bg-color);
 }
+.camera-table .camera-row {
+  height: var(--grid-item-height);
+}
+.camera-table .caption-box {
+  height: 100%;
+}
+
 
 .captions-table td:first-child {
   white-space: nowrap;
