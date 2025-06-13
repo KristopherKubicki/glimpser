@@ -22,6 +22,8 @@ The primary application script accepts the following options:
 | `--screenshot-dir` | Directory for storing screenshots.                               |
 | `--video-dir`      | Directory for storing video files.                               |
 | `--summaries-dir`  | **Deprecated:** summaries are now stored in the database.        |
+The background scheduler orchestrates all recurring jobs. It creates teaser clips, archives screenshots, refreshes clip previews, cleans up old files, processes queued offline jobs, collects system metrics and checks for application updates. Use `--no-scheduler` to disable every scheduled task or `--no-crawlers` when only camera captures should be skipped.
+
 
 ## generate_credentials.py
 
