@@ -1123,6 +1123,14 @@ a {
   align-items: center;
 }
 
+.double-row {
+  grid-template-columns: auto 1fr auto 1fr;
+}
+
+.sm-select {
+  width: 8rem;
+}
+
 .short-input {
   width: 6rem;
 }
@@ -1277,7 +1285,8 @@ body.advanced-enabled .settings-table input[data-locked] {
 }
 
 @media (max-width: 600px) {
-  .form-row {
+  .form-row,
+  .double-row {
     grid-template-columns: 1fr;
   }
 }

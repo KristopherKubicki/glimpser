@@ -134,7 +134,7 @@ object_tokens=None, clip_model=None) -%}
       />
       <span id="url-status" class="url-status" title="URL test result"></span>
     </div>
-    <div class="form-row">
+    <div class="form-row double-row">
       <label for="frequency" title="How often to check the URL"
         >Frequency (minutes):</label
       >
@@ -152,6 +152,7 @@ object_tokens=None, clip_model=None) -%}
         placeholder="30"
         title="Enter how often to check the URL (in minutes)"
       />
+      <!-- suggestions only; users may enter any value -->
       <datalist id="frequency-options">
         <option value="5"></option>
         <option value="15"></option>
@@ -160,8 +161,6 @@ object_tokens=None, clip_model=None) -%}
         <option value="360"></option>
         <option value="1440"></option>
       </datalist>
-    </div>
-    <div class="form-row">
       <label for="timeout" title="Maximum time to wait for a response"
         >Timeout (seconds):</label
       >
@@ -187,20 +186,15 @@ object_tokens=None, clip_model=None) -%}
         <option value="45"></option>
       </datalist>
     </div>
-    <div class="form-row">
-      <label for="notes" title="Additional notes">Notes:</label>
-      <textarea
-        id="notes"
-        name="notes"
-        placeholder="Optional notes"
-        title="Enter any additional notes or comments"
-      >
-{{ template.notes if template else '' }}</textarea
-      >
-    </div>
+    <input
+      type="hidden"
+      id="notes"
+      name="notes"
+      value="{{ template.notes if template else '' }}"
+    />
     <details class="advanced-settings">
       <summary title="Show additional fields">Advanced Options</summary>
-      <div class="form-row">
+      <div class="form-row double-row">
         <label
           for="object_filter"
           title="Filter for specific objects using {{ clip_model }}"
@@ -215,13 +209,6 @@ object_tokens=None, clip_model=None) -%}
           list="object-filter-options"
           title="Enter object types to filter (e.g., 'person,car')"
         />
-        <datalist id="object-filter-options">
-          {% for token in object_tokens or [] %}
-          <option value="{{ token }}"></option>
-          {% endfor %}
-        </datalist>
-      </div>
-      <div class="form-row">
         <label
           for="object_confidence"
           title="Minimum confidence for object detection"
@@ -240,7 +227,12 @@ object_tokens=None, clip_model=None) -%}
           title="Enter the minimum confidence level for object detection (0-1)"
         />
       </div>
-      <div class="form-row">
+      <datalist id="object-filter-options">
+        {% for token in object_tokens or [] %}
+        <option value="{{ token }}"></option>
+        {% endfor %}
+      </datalist>
+      <div class="form-row double-row">
         <label for="popup_xpath">Popup XPath:</label>
         <div class="xpath-input-container">
           <input
@@ -257,8 +249,6 @@ object_tokens=None, clip_model=None) -%}
             Structured
           </button>
         </div>
-      </div>
-      <div class="form-row">
         <label for="dedicated_xpath">Dedicated XPath:</label>
         <div class="xpath-input-container">
           <input
@@ -328,7 +318,8 @@ object_tokens=None, clip_model=None) -%}
       </div>
       <div class="form-row">
         <label for="groups" title="Select an existing group">Group:</label>
-        <select id="groups" name="groups" title="Choose a group"></select>
+        <!-- prettier-ignore -->
+        <select id="groups" name="groups" class="sm-select" title="Choose a group"></select>
       </div>
       <div class="form-row hidden">
         <label for="rollback_frames" title="Number of frames to rollback"
