@@ -8,12 +8,27 @@ import io
 import json
 import math
 import os
+import subprocess
 import time
 import subprocess
 from typing import Optional
 
 from dateutil import tz
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont
+
+try:
+    import qrcode  # type: ignore
+except Exception:  # pragma: no cover
+    qrcode = None
+
+try:
+    COMMIT_HASH = (
+        subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+        .decode()
+        .strip()
+    )
+except Exception:  # pragma: no cover
+    COMMIT_HASH = "unknown"
 
 from app import config
 
@@ -83,9 +98,9 @@ def _to_roman(num: int) -> str:
 
 
 def _format_roman_time(timestamp: str) -> str:
-    """Return the timestamp represented with Roman numerals without colons."""
+    """Return the timestamp represented with Roman numerals separated by colons."""
     h, m, s = map(int, timestamp.split(":"))
-    return f"{_to_roman(h)}{_to_roman(m)}{_to_roman(s)}"
+    return f"{_to_roman(h)}:{_to_roman(m)}:{_to_roman(s)}"
 
 
 def _format_binary_time(timestamp: str) -> str:
@@ -168,6 +183,14 @@ def _braille_text_width(
     return len(text) * (char_w + spacing) - spacing
 
 
+def _moon_phase(date: datetime.date) -> float:
+    """Return the fractional moon phase (0=new, 0.5=full)."""
+    diff = date - datetime.date(2001, 1, 1)
+    days = diff.days + diff.seconds / 86400
+    lunations = 0.20439731 + days * 0.03386319269
+    return lunations % 1
+
+
 FONT_CANDIDATES = [
     "DejaVuSansMono.ttf",
     "DejaVuSans-Bold.ttf",
@@ -194,7 +217,6 @@ def load_font(size: int) -> ImageFont.FreeTypeFont:
         return ImageFont.truetype(path, size)
     except OSError:
         return font
-
 
 def _generate_bit_matrix(data: str, size: int = 16) -> list[list[bool]]:
     """Return a simple bit matrix derived from ``data``."""
@@ -232,6 +254,16 @@ def _draw_pulsing_matrix(
                     fill=(shade, shade, shade),
                 )
 
+def _generate_qr_code(data: str, size: int) -> Image.Image:
+    """Return a QR code image for ``data`` scaled to ``size`` pixels."""
+    if qrcode is None:
+        raise RuntimeError("qrcode module not available")
+
+    qr = qrcode.QRCode(border=0, box_size=1)
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="white", back_color="black").convert("RGBA")
+    return img.resize((size, size), Image.NEAREST)
 
 def generate_test_pattern(
     width: int = 1280,
@@ -330,6 +362,43 @@ def generate_test_pattern(
             ],
             fill=(80, 0, 80),
         )
+
+    # moon opposite the sun showing current phase
+    moon_r = sun_r // 2
+    moon_cx = width * 3 // 4
+    phase = _moon_phase(datetime.datetime.now().date())
+    moon_color = (220, 220, 255)
+    for r in range(moon_r, 0, -2):
+        ratio = r / moon_r
+        color = (
+            int(moon_color[0] * ratio),
+            int(moon_color[1] * ratio),
+            int(moon_color[2] * ratio),
+        )
+        draw.arc(
+            [moon_cx - r, horizon_y - r, moon_cx + r, horizon_y + r],
+            start=180,
+            end=360,
+            fill=color,
+            width=2,
+        )
+    if phase < 0.5:
+        offset = moon_r * (1 - 2 * phase)
+        bbox = [
+            moon_cx - moon_r + offset,
+            horizon_y - moon_r,
+            moon_cx + moon_r + offset,
+            horizon_y + moon_r,
+        ]
+    else:
+        offset = moon_r * (2 * phase - 1)
+        bbox = [
+            moon_cx - moon_r - offset,
+            horizon_y - moon_r,
+            moon_cx + moon_r - offset,
+            horizon_y + moon_r,
+        ]
+    draw.ellipse(bbox, fill=(20, 20, 40))
 
     # drifting clouds subtly obscure the sun
     cloud_layer = Image.new("RGBA", (width, height))
@@ -510,9 +579,9 @@ def generate_test_pattern(
     formats = [
         time_simple,
         _to_braille(time_simple),
+        _format_roman_time(time_simple),
         _format_binary_time(time_simple),
         tz_text,
-        _format_roman_time(time_simple),
         beats_time,
         hex_time,
     ]
@@ -520,8 +589,8 @@ def generate_test_pattern(
     fonts = [
         font_right,
         font_braille,
-        font_binary,
         font_right,
+        font_binary,
         font_right,
         font_right,
         font_right,
@@ -559,8 +628,8 @@ def generate_test_pattern(
     line_heights = [
         font_right.size,
         font_braille.size,
-        font_binary.size,
         font_right.size,
+        font_binary.size,
         font_right.size,
         font_right.size,
         font_right.size,
@@ -601,7 +670,8 @@ def generate_test_pattern(
         font=font_right,
     )
     current_y = y_start
-    timezone_idx = 3
+    timezone_idx = 4
+    roman_idx = 2
     for idx, parts in enumerate(segments):
         x = x_start
         y = current_y
@@ -631,6 +701,30 @@ def generate_test_pattern(
                 (x + seg3_max - _braille_text_width(parts[2]), y),
                 parts[2],
                 fill=clock_color,
+            )
+            current_y += line_heights[idx] + spacing_y
+            if idx in {1, timezone_idx}:
+                current_y += extra_gap
+        elif idx == roman_idx:
+            draw.text(
+                (x + seg1_max - draw.textlength(parts[0], font=font), y),
+                parts[0],
+                fill=clock_color,
+                font=font,
+            )
+            x += seg1_max + colon_gap
+            draw.text(
+                (x + seg2_max - draw.textlength(parts[1], font=font), y),
+                parts[1],
+                fill=clock_color,
+                font=font,
+            )
+            x += seg2_max + colon_gap
+            draw.text(
+                (x + seg3_max - draw.textlength(parts[2], font=font), y),
+                parts[2],
+                fill=clock_color,
+                font=font,
             )
             current_y += line_heights[idx] + spacing_y
             if idx in {1, timezone_idx}:
@@ -678,21 +772,17 @@ def generate_test_pattern(
             (10, bars_total + step_h + 10), camera_name, fill="white", font=font_small
         )
 
-    # pulsing QR-style code with the time and commit hash
+    qr_size = min(width, height) // 8
+    qr_payload = f"{timestamp}-{COMMIT_HASH}"
     try:
-        commit_hash = (
-            subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
-            .decode()
-            .strip()
+        qr_img = _generate_qr_code(qr_payload, qr_size)
+        pulse = 0.8 + 0.2 * math.sin(time.time() * 2)
+        qr_img = ImageEnhance.Brightness(qr_img).enhance(pulse)
+        img.alpha_composite(
+            qr_img, (width - qr_img.width - 10, height - qr_img.height - 10)
         )
     except Exception:
-        commit_hash = "unknown"
-    qr_data = f"{timestamp}-{commit_hash}"
-    matrix = _generate_bit_matrix(qr_data)
-    qr_scale = max(2, width // 160)
-    qr_size = len(matrix) * qr_scale
-    qr_pos = (width - qr_size - 10, height - qr_size - 10)
-    _draw_pulsing_matrix(img, matrix, qr_pos, scale=qr_scale)
+        pass
 
     # redraw the second hand above overlays
     h, m, s = map(int, datetime.datetime.now().strftime("%H:%M:%S").split(":"))

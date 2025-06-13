@@ -33,6 +33,7 @@ function hideScrubTooltip() {
 let prefetchQueue = [];
 let processing = false;
 let queueDelay = 1000;
+let failStreak = 0;
 const spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 function showSpinner(video) {
@@ -73,6 +74,16 @@ export function setQueueDelay(ms) {
   queueDelay = ms;
 }
 
+function adjustDelay(success) {
+  failStreak = success
+    ? Math.max(0, failStreak - 1)
+    : Math.min(failStreak + 1, 5);
+  queueDelay = 1000 * (failStreak + 1);
+  if (!success && prefetchQueue.length > failStreak + 1) {
+    prefetchQueue = prefetchQueue.slice(0, failStreak + 1);
+  }
+}
+
 export function enqueueClip(video) {
   if (!video.dataset.hdSrc || video.dataset.hdLoaded === "true") return;
   if (prefetchQueue.includes(video)) return;
@@ -97,12 +108,22 @@ function processQueue() {
   if (src) {
     src.src = vid.dataset.hdSrc;
     vid.dataset.hdLoaded = "true";
-    vid.addEventListener("canplay", () => hideSpinner(vid), { once: true });
+    const start =
+      performance && performance.now ? performance.now() : Date.now();
+    vid.addEventListener(
+      "canplay",
+      () => {
+        hideSpinner(vid);
+        adjustDelay(performance.now() - start < 3000);
+      },
+      { once: true },
+    );
     vid.addEventListener(
       "error",
       () => {
         hideSpinner(vid);
         showErrorIndicator(vid);
+        adjustDelay(false);
       },
       { once: true },
     );
