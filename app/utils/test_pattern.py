@@ -250,15 +250,15 @@ def generate_test_pattern(
     cloud_layer = Image.new("RGBA", (width, height))
     cloud_draw = ImageDraw.Draw(cloud_layer)
     offset = int(time.time() * 10) % (width + sun_r) - sun_r // 2
-    base_y = horizon_y - sun_r - 20
+    base_y = horizon_y - sun_r // 2
     c_rx = sun_r // 2
-    c_ry = sun_r // 3
+    c_ry = sun_r // 4
     for i in range(5):
         cx = (offset + i * c_rx * 2) % (width + sun_r) - c_rx
         cy = base_y - (i % 3) * (sun_r // 6)
         cloud_draw.ellipse(
             [cx, cy, cx + c_rx * 2, cy + c_ry],
-            fill=(255, 255, 255, 40),
+            fill=(0, 0, 0, 40),
         )
     img = Image.alpha_composite(img, cloud_layer)
     draw = ImageDraw.Draw(img)
