@@ -2193,6 +2193,10 @@ details > summary {
   margin-left: 0.25rem;
 }
 
+#thread-cpu-list {
+  font-family: monospace;
+}
+
 .metric-bar {
   width: 6rem;
   height: 0.6rem;
