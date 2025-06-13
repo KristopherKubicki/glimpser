@@ -963,7 +963,7 @@ nav a.active {
   /* Adjust slider for mobile */
   #speed-slider {
     writing-mode: bt-lr;
-    -webkit-appearance: slider-vertical;
+    appearance: slider-vertical;
     width: 30px;
     height: 120px;
     margin: 0 10px; /* Space left and right of the vertical slider */
@@ -1916,7 +1916,6 @@ details > summary {
   height: 100%;
 }
 
-
 .captions-table td:first-child {
   white-space: nowrap;
   width: 12rem;
@@ -2203,7 +2202,6 @@ details > summary {
   width: 4rem;
   text-align: center;
 }
-
 
 .capture-col {
   width: 2.5rem;
