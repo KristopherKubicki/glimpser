@@ -1736,6 +1736,14 @@ body.advanced-enabled .advanced-only {
   white-space: pre-wrap;
 }
 
+.field-toggle {
+  @apply inline-flex gap-2 my-2;
+}
+
+.field-toggle label {
+  @apply flex items-center gap-1 cursor-pointer;
+}
+
 .chat-box {
   display: flex;
   flex-wrap: wrap;

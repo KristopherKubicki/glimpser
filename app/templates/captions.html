@@ -53,13 +53,22 @@ template_controls %} {% block content %}
     </select>
     {% endcall %}
 
-    <h2>Camera Notes</h2>
+    <div class="field-toggle">
+      <label>
+        <input type="radio" name="caption-field" value="caption" checked />
+        Caption
+      </label>
+      <label>
+        <input type="radio" name="caption-field" value="prompt" /> Prompt
+      </label>
+    </div>
+
     <div id="template-list">
       <table id="camera-table" class="camera-table">
         <thead>
           <tr>
             <th class="sortable" data-type="string">Camera</th>
-            <th>Caption</th>
+            <th class="sortable view-header" data-type="string">Caption</th>
           </tr>
         </thead>
         <tbody>
@@ -114,7 +123,8 @@ template_controls %} {% block content %}
                       class="notes-textarea"
                       placeholder="Edit caption prompt"
                     >
-{{ template_details[camera]['notes'] }}</textarea>
+{{ template_details[camera]['notes'] }}</textarea
+                    >
                     <button
                       class="update-button"
                       data-template="{{ camera }}"
