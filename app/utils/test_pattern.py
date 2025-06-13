@@ -8,11 +8,26 @@ import io
 import json
 import math
 import os
+import subprocess
 import time
 from typing import Optional
 
 from dateutil import tz
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont
+
+try:
+    import qrcode  # type: ignore
+except Exception:  # pragma: no cover
+    qrcode = None
+
+try:
+    COMMIT_HASH = (
+        subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+        .decode()
+        .strip()
+    )
+except Exception:  # pragma: no cover
+    COMMIT_HASH = "unknown"
 
 from app import config
 
@@ -193,6 +208,18 @@ def load_font(size: int) -> ImageFont.FreeTypeFont:
         return ImageFont.truetype(path, size)
     except OSError:
         return font
+
+
+def _generate_qr_code(data: str, size: int) -> Image.Image:
+    """Return a QR code image for ``data`` scaled to ``size`` pixels."""
+    if qrcode is None:
+        raise RuntimeError("qrcode module not available")
+
+    qr = qrcode.QRCode(border=0, box_size=1)
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="white", back_color="black").convert("RGBA")
+    return img.resize((size, size), Image.NEAREST)
 
 
 def generate_test_pattern(
@@ -639,6 +666,18 @@ def generate_test_pattern(
         draw.text(
             (10, bars_total + step_h + 10), camera_name, fill="white", font=font_small
         )
+
+    qr_size = min(width, height) // 8
+    qr_payload = f"{timestamp}-{COMMIT_HASH}"
+    try:
+        qr_img = _generate_qr_code(qr_payload, qr_size)
+        pulse = 0.8 + 0.2 * math.sin(time.time() * 2)
+        qr_img = ImageEnhance.Brightness(qr_img).enhance(pulse)
+        img.alpha_composite(
+            qr_img, (width - qr_img.width - 10, height - qr_img.height - 10)
+        )
+    except Exception:
+        pass
 
     # redraw the second hand above overlays
     h, m, s = map(int, datetime.datetime.now().strftime("%H:%M:%S").split(":"))
