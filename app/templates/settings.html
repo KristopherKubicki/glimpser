@@ -110,12 +110,13 @@ template_form %} {% block content %}
               {% if setting.name in boolean_fields %}
               <label class="switch">
                 <!-- prettier-ignore -->
-                <input
+                    <input
                     type="checkbox"
                     name="{{ setting.name }}"
                     value="True"
                     {% if setting.value == 'True' %}checked{% endif %}
                     data-boolean
+                    {% if setting.name == 'DISCOVERY_AUTOSTART' %}data-ignore-unsaved{% endif %}
                     {% if setting.name in locked_settings %}disabled data-locked{% endif %}
                     {% if setting.name == 'FFMPEG_HWACCEL' and not metrics.ffmpeg_gpu_support %}disabled data-unavailable{% endif %}
                   />
