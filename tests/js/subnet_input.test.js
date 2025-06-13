@@ -11,7 +11,9 @@ beforeEach(() => {
   document.body.innerHTML =
     '<input id="cidr-input"><datalist id="cidr-options"></datalist>';
   global.fetch = jest.fn(() =>
-    Promise.resolve({ json: () => Promise.resolve(["192.168.0.0/24"]) }),
+    Promise.resolve({
+      json: () => Promise.resolve(["192.168.0.0/24", "internet"]),
+    }),
   );
   HTMLInputElement.prototype.setCustomValidity = jest.fn();
 });
@@ -23,8 +25,9 @@ test("populates subnet options", async () => {
   await Promise.resolve();
   expect(fetch).toHaveBeenCalledWith("/discover/subnets");
   const options = document.querySelectorAll("#cidr-options option");
-  expect(options).toHaveLength(1);
+  expect(options).toHaveLength(2);
   expect(options[0].value).toBe("192.168.0.0/24");
+  expect(options[1].value).toBe("internet");
 });
 
 test("validates CIDR input", async () => {

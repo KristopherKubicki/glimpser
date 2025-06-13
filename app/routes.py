@@ -1586,8 +1586,9 @@ def init_routes(app: Flask) -> None:
     @login_required
     def discover_subnets():
         """Return local IPv4 subnets as strings."""
-        nets = camera_discovery._local_subnets()
-        return jsonify([str(n) for n in nets])
+        nets = [str(n) for n in camera_discovery._local_subnets()]
+        nets.append("internet")
+        return jsonify(nets)
 
     @app.route("/toggle_discovery", methods=["POST"])
     @login_required
@@ -3834,6 +3835,10 @@ def init_routes(app: Flask) -> None:
     def discover_cameras_scan():
         cidr = request.form.get("cidr") if request.form else request.args.get("cidr")
         nets = None
+        if cidr and cidr.lower() == "internet":
+            from app.utils.internet_cameras import INTERNET_CAMERAS
+
+            return jsonify(INTERNET_CAMERAS)
         if cidr:
             try:
                 nets = [ip_network(cidr, strict=False)]
@@ -3848,6 +3853,31 @@ def init_routes(app: Flask) -> None:
         def generate():
             cidr = request.args.get("cidr")
             nets = None
+            if cidr and cidr.lower() == "internet":
+                from app.utils.internet_cameras import INTERNET_CAMERAS
+
+                yield (
+                    "data: "
+                    + json.dumps(
+                        {"total": 1, "subnets": ["internet"], "stages": ["internet"]}
+                    )
+                    + "\n\n"
+                )
+                yield (
+                    "data: "
+                    + json.dumps(
+                        {
+                            "stage": "internet",
+                            "count": len(INTERNET_CAMERAS),
+                            "cameras": INTERNET_CAMERAS,
+                            "progress": 100,
+                            "eta": 0,
+                        }
+                    )
+                    + "\n\n"
+                )
+                yield 'data: {"done": true}\n\n'
+                return
             if cidr:
                 try:
                     nets = [ip_network(cidr, strict=False)]
