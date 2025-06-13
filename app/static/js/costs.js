@@ -24,12 +24,16 @@ export function initCosts() {
     if (!dataEl) return;
     const range = document.getElementById("cost-range");
     const label = document.getElementById("cost-range-label");
+    const topSlider = document.getElementById("cost-top");
+    const topLabel = document.getElementById("cost-top-label");
     const tbody = document.querySelector("#cost-table tbody");
     const ctx = document.getElementById("costChart");
     let chart;
+    let rowsData = [];
 
-    const render = (rows) => {
-      const limit = rows.length > 10 ? rows.length - 9 : 0;
+    const render = (rows = rowsData) => {
+      const top = topSlider ? parseInt(topSlider.value, 10) : 10;
+      const limit = rows.length > top ? rows.length - (top - 1) : 0;
       const grouped =
         limit > 0 ? groupSmallValues(rows, limit) : groupSmallValues(rows, 0);
       tbody.innerHTML = "";
@@ -50,13 +54,18 @@ export function initCosts() {
         chart.data = chartData;
         chart.update();
       } else {
-        chart = new Chart(ctx, { type: "pie", data: chartData });
+        chart = new Chart(ctx, {
+          type: "pie",
+          data: chartData,
+          options: { plugins: { legend: { display: false } } },
+        });
       }
     };
 
     const fetchData = async () => {
       if (!range) {
-        render(JSON.parse(dataEl.textContent));
+        rowsData = JSON.parse(dataEl.textContent);
+        render();
         return;
       }
       const days = parseInt(range.value, 10);
@@ -73,13 +82,19 @@ export function initCosts() {
         tokens: info.tokens,
         cost: parseFloat(info.cost.replace("$", "")),
       }));
-      render(rows);
+      rowsData = rows;
+      render();
     };
 
     range?.addEventListener("input", () => {
       if (label) label.textContent = `Last ${range.value} days`;
     });
     range?.addEventListener("change", fetchData);
+
+    topSlider?.addEventListener("input", () => {
+      if (topLabel) topLabel.textContent = `Top ${topSlider.value}`;
+      render();
+    });
 
     setupTableSorting("cost-table");
     fetchData();
@@ -131,7 +146,11 @@ export function initCostSummary(startTime) {
         chart.data = chartData;
         chart.update();
       } else {
-        chart = new Chart(ctx, { type: "pie", data: chartData });
+        chart = new Chart(ctx, {
+          type: "pie",
+          data: chartData,
+          options: { plugins: { legend: { display: false } } },
+        });
       }
     };
 
