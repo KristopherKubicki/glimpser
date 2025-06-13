@@ -167,6 +167,14 @@ def _braille_text_width(
     return len(text) * (char_w + spacing) - spacing
 
 
+def _moon_phase(date: datetime.date) -> float:
+    """Return the fractional moon phase (0=new, 0.5=full)."""
+    diff = date - datetime.date(2001, 1, 1)
+    days = diff.days + diff.seconds / 86400
+    lunations = 0.20439731 + days * 0.03386319269
+    return lunations % 1
+
+
 FONT_CANDIDATES = [
     "DejaVuSansMono.ttf",
     "DejaVuSans-Bold.ttf",
@@ -292,6 +300,43 @@ def generate_test_pattern(
             ],
             fill=(80, 0, 80),
         )
+
+    # moon opposite the sun showing current phase
+    moon_r = sun_r // 2
+    moon_cx = width * 3 // 4
+    phase = _moon_phase(datetime.datetime.now().date())
+    moon_color = (220, 220, 255)
+    for r in range(moon_r, 0, -2):
+        ratio = r / moon_r
+        color = (
+            int(moon_color[0] * ratio),
+            int(moon_color[1] * ratio),
+            int(moon_color[2] * ratio),
+        )
+        draw.arc(
+            [moon_cx - r, horizon_y - r, moon_cx + r, horizon_y + r],
+            start=180,
+            end=360,
+            fill=color,
+            width=2,
+        )
+    if phase < 0.5:
+        offset = moon_r * (1 - 2 * phase)
+        bbox = [
+            moon_cx - moon_r + offset,
+            horizon_y - moon_r,
+            moon_cx + moon_r + offset,
+            horizon_y + moon_r,
+        ]
+    else:
+        offset = moon_r * (2 * phase - 1)
+        bbox = [
+            moon_cx - moon_r - offset,
+            horizon_y - moon_r,
+            moon_cx + moon_r - offset,
+            horizon_y + moon_r,
+        ]
+    draw.ellipse(bbox, fill=(20, 20, 40))
 
     # drifting clouds subtly obscure the sun
     cloud_layer = Image.new("RGBA", (width, height))
