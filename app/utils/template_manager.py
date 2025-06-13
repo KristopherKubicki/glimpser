@@ -788,7 +788,7 @@ def get_llm_cost_estimate(
 
 def get_llm_cost_summary(
     start_date: str | None = None, end_date: str | None = None
-) -> tuple[list[dict[str, object]], int, str]:
+) -> tuple[list[dict[str, object]], int, str, int]:
     """Return LLM usage totals and overall cost within an optional date range."""
 
     try:
@@ -799,11 +799,13 @@ def get_llm_cost_summary(
 
     summary = []
     total_tokens = 0
+    total_calls = 0
     sd = datetime.fromisoformat(start_date).date() if start_date else None
     ed = datetime.fromisoformat(end_date).date() if end_date else None
     for name in sorted(data):
         entry = data.get(name, 0)
         tokens = 0
+        calls = 0
         if isinstance(entry, dict) and "entries" in entry:
             entries = entry.get("entries", [])
             for e in entries:
@@ -817,23 +819,36 @@ def get_llm_cost_summary(
                     continue
                 try:
                     tokens += int(e.get("tokens", 0))
+                    calls += 1
                 except Exception:
                     continue
             if not start_date and not end_date:
                 tokens = entry.get("total", tokens)
+                calls = len(entries)
         else:
             if isinstance(entry, list):
                 tokens = sum(int(t) for t in entry)
+                calls = len(entry)
             elif isinstance(entry, dict):
                 tokens = int(entry.get("total", 0))
+                calls = len(entry.get("entries", []))
             elif isinstance(entry, int):
                 tokens = entry
+                calls = 1 if entry > 0 else 0
         total_tokens += tokens
+        total_calls += calls
         cost = tokens * LLM_COST_PER_TOKEN
-        summary.append({"name": name, "tokens": tokens, "cost": f"${cost:.3f}"})
+        summary.append(
+            {
+                "name": name,
+                "tokens": tokens,
+                "cost": f"${cost:.3f}",
+                "calls": calls,
+            }
+        )
 
     total_cost = total_tokens * LLM_COST_PER_TOKEN
-    return summary, total_tokens, f"${total_cost:.3f}"
+    return summary, total_tokens, f"${total_cost:.3f}", total_calls
 
 
 def group_cost_summary(
@@ -854,7 +869,15 @@ def group_cost_summary(
     keep = rows[: top - 1]
     other_tokens = sum(r.get("tokens", 0) for r in rows[top - 1 :])
     other_cost = sum(_cost_val(r) for r in rows[top - 1 :])
-    keep.append({"name": "Other", "tokens": other_tokens, "cost": f"${other_cost:.3f}"})
+    other_calls = sum(r.get("calls", 0) for r in rows[top - 1 :])
+    keep.append(
+        {
+            "name": "Other",
+            "tokens": other_tokens,
+            "cost": f"${other_cost:.3f}",
+            "calls": other_calls,
+        }
+    )
     return keep
 
 

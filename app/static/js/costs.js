@@ -10,9 +10,10 @@ export function groupSmallValues(rows, limit = 15) {
     (acc, r) => {
       acc.tokens += r.tokens;
       acc.cost += r.cost;
+      acc.calls += r.calls ?? 0;
       return acc;
     },
-    { name: "Other", tokens: 0, cost: 0 },
+    { name: "Other", tokens: 0, cost: 0, calls: 0 },
   );
   const remaining = sorted.slice(limit).sort((a, b) => b.cost - a.cost);
   return [...remaining, other];
@@ -22,8 +23,8 @@ export function initCosts() {
   document.addEventListener("DOMContentLoaded", () => {
     const dataEl = document.getElementById("cost-data");
     if (!dataEl) return;
-    const range = document.getElementById("cost-range");
-    const label = document.getElementById("cost-range-label");
+    const startInput = document.getElementById("cost-start");
+    const endInput = document.getElementById("cost-end");
     const topSlider = document.getElementById("cost-top");
     const topLabel = document.getElementById("cost-top-label");
     const tbody = document.querySelector("#cost-table tbody");
@@ -39,13 +40,13 @@ export function initCosts() {
       tbody.innerHTML = "";
       for (const row of grouped) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${row.name}</td><td data-value="${row.tokens}">${row.tokens}</td><td data-value="${row.cost}">$${row.cost.toFixed(2)}</td>`;
+        tr.innerHTML = `<td>${row.name}</td><td data-value="${row.calls}">${row.calls}</td><td data-value="${row.tokens}">${row.tokens}</td><td data-value="${row.cost}">$${row.cost.toFixed(2)}</td>`;
         tbody.appendChild(tr);
       }
       if (!ctx) return;
       const labels = grouped.map((r) => r.name);
       const values = grouped.map((r) => r.cost);
-      const bg = labels.map((_, i) => `hsl(${(i * 60) % 360},70%,60%)`);
+      const bg = labels.map((_, i) => `hsl(${(i * 60) % 360},40%,45%)`);
       const chartData = {
         labels,
         datasets: [{ data: values, backgroundColor: bg }],
@@ -66,22 +67,22 @@ export function initCosts() {
     };
 
     const fetchData = async () => {
-      if (!range) {
+      if (!startInput || !endInput) {
         rowsData = JSON.parse(dataEl.textContent);
         render();
         return;
       }
-      const days = parseInt(range.value, 10);
-      const end = new Date().toISOString().slice(0, 10);
-      const start = new Date(Date.now() - days * 86400000)
-        .toISOString()
-        .slice(0, 10);
-      const resp = await fetch(
-        `/api/llm_cost_summary?start=${start}&end=${end}`,
-      );
+      const params = [];
+      if (startInput.value) params.push(`start=${startInput.value}`);
+      if (endInput.value) params.push(`end=${endInput.value}`);
+      const url = params.length
+        ? `/api/llm_cost_summary?${params.join("&")}`
+        : "/api/llm_cost_summary";
+      const resp = await fetch(url);
       const data = await resp.json();
       const rows = Object.entries(data).map(([name, info]) => ({
         name,
+        calls: info.calls ?? 0,
         tokens: info.tokens,
         cost: parseFloat(info.cost.replace("$", "")),
       }));
@@ -89,10 +90,8 @@ export function initCosts() {
       render();
     };
 
-    range?.addEventListener("input", () => {
-      if (label) label.textContent = `Last ${range.value} days`;
-    });
-    range?.addEventListener("change", fetchData);
+    startInput?.addEventListener("change", fetchData);
+    endInput?.addEventListener("change", fetchData);
 
     topSlider?.addEventListener("input", () => {
       if (topLabel) topLabel.textContent = `Top ${topSlider.value}`;
@@ -100,6 +99,12 @@ export function initCosts() {
     });
 
     setupTableSorting("cost-table");
+    if (startInput && endInput) {
+      const today = new Date();
+      endInput.value = today.toISOString().slice(0, 10);
+      const start = new Date(Date.now() - 7 * 86400000);
+      startInput.value = start.toISOString().slice(0, 10);
+    }
     fetchData();
   });
 }
@@ -134,7 +139,7 @@ export function initCostSummary(startTime) {
       const grouped = groupSmallValues(rows);
       const labels = grouped.map((r) => r.name);
       const values = grouped.map((r) => r.cost);
-      const bg = labels.map((_, i) => `hsl(${(i * 60) % 360},70%,60%)`);
+      const bg = labels.map((_, i) => `hsl(${(i * 60) % 360},40%,45%)`);
       const chartData = {
         labels,
         datasets: [
