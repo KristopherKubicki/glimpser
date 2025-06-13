@@ -117,6 +117,7 @@ template_form %} {% block content %}
                     {% if setting.value == 'True' %}checked{% endif %}
                     data-boolean
                     {% if setting.name in locked_settings %}disabled data-locked{% endif %}
+                    {% if setting.name == 'FFMPEG_HWACCEL' and not metrics.ffmpeg_gpu_support %}disabled data-unavailable{% endif %}
                   />
                 <span class="slider round"></span>
               </label>

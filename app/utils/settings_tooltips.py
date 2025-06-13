@@ -24,6 +24,7 @@ SETTINGS_TOOLTIPS = {
     "MAX_IN_PROCESS_VIDEO_SIZE": "Temporary video size cap",
     "LOG_LEVEL": "Python logging level",
     "FFMPEG_PATH": "Location of the FFmpeg binary",
+    "FFMPEG_HWACCEL": "Enable ffmpeg hardware acceleration when supported",
     "FFMPEG_THREADS": "Threads for video processing",
     "LIVE_FALLBACK_FPS": "Frame rate for still image streams",
     "LIVE_MAX_FAILURES": "Max retries for live streams",
