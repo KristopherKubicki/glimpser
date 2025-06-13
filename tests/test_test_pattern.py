@@ -61,6 +61,25 @@ class TestTestPattern(unittest.TestCase):
         end_y = min(img.height - 1, end_y)
         self.assertEqual(img.getpixel((end_x, end_y)), (255, 255, 255))
 
+    def test_date_overlay(self):
+        class FixedDatetime(datetime.datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return cls(2020, 1, 1, 12, 0, 0)
+
+        with unittest.mock.patch(
+            "app.utils.test_pattern.datetime.datetime", FixedDatetime
+        ):
+            img = generate_test_pattern(width=400, height=400)
+
+        y_start = 400 // 2 - 248 // 2 + 20
+        region = [
+            img.getpixel((x, y))
+            for x in range(30, 120)
+            for y in range(y_start, y_start + 30)
+        ]
+        self.assertIn((160, 160, 160), region)
+
 
 class TestTimeFormatHelpers(unittest.TestCase):
     def test_time_format_helpers(self):

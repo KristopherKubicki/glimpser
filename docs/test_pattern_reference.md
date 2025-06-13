@@ -14,5 +14,6 @@ The test pattern includes calibration checks for panel accuracy and HDR tone map
 - **Synthwave sunrise** with a small horizon line and trees for visual flair.
 - **Swatch Internet Time** (@beats) joins the stacked clocks for a fun extra.
 - **Analog second hand** in the bullseye extends to the outer dots for easy reading.
+- **Date overlay** appears on the left aligned with the standard clock.
 - **Braille spinner** in the corner updates once per second during streaming.
 - **Mini color bars** in the top-left align with a reduced checker patch and grayscale swatch.

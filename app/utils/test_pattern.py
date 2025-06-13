@@ -375,7 +375,9 @@ def generate_test_pattern(
 
     # overlay spinner if provided
     font_small = load_font(20)
-    timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+    now = datetime.datetime.now()
+    timestamp = now.strftime("%H:%M:%S")
+    date_text = now.strftime("%Y-%m-%d")
 
     if spinner:
         sw = _braille_text_width(spinner)
@@ -442,6 +444,7 @@ def generate_test_pattern(
 
     # lighten the stacked clocks so they distract less from the pattern
     clock_color = (160, 160, 160)
+    draw.text((30, y_start), date_text, fill=clock_color, font=font_right)
     current_y = y_start
     for idx, parts in enumerate(segments):
         x = x_start
