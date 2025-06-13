@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -16,7 +17,9 @@ class TestClipModelSetting(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             cam_dir = os.path.join(tmp, "cam1")
             os.makedirs(cam_dir)
-            Image.new("RGB", (10, 10)).save(os.path.join(cam_dir, "cam1_20240101000000.png"))
+            Image.new("RGB", (10, 10)).save(
+                os.path.join(cam_dir, "cam1_20240101000000.png")
+            )
 
             template = {
                 "name": "cam1",
@@ -30,28 +33,14 @@ class TestClipModelSetting(unittest.TestCase):
                 "livecaption": "false",
             }
 
-            class DummyLogits:
-                def softmax(self, dim):
-                    class Prob:
-                        def __getitem__(self, idx):
-                            return 1.0
-
-                    return Prob()
-
-            class DummyOutput:
-                def __init__(self):
-                    self.logits_per_image = DummyLogits()
-
-            class DummyModel:
+            class DummySession:
                 calls = []
 
-                @classmethod
-                def from_pretrained(cls, name):
-                    cls.calls.append(name)
-                    return cls()
+                def __init__(self, path):
+                    DummySession.calls.append(path)
 
-                def __call__(self, **inputs):
-                    return DummyOutput()
+                def run(self, *_args, **_kwargs):
+                    return [np.array([[1.0]])]
 
             class DummyProcessor:
                 calls = []
@@ -67,6 +56,7 @@ class TestClipModelSetting(unittest.TestCase):
             with (
                 patch("app.utils.scheduling.SCREENSHOT_DIRECTORY", tmp),
                 patch("app.utils.scheduling.CLIP_MODEL_NAME", "custom-model"),
+                patch("app.utils.scheduling.CLIP_MODEL_PATH", "custom-model"),
                 patch("app.utils.scheduling.capture_or_download", return_value=True),
                 patch("app.utils.scheduling.add_timestamp"),
                 patch("app.utils.scheduling.remove_background"),
@@ -79,13 +69,17 @@ class TestClipModelSetting(unittest.TestCase):
                 patch("os.symlink"),
                 patch("os.rename"),
                 patch("os.unlink"),
-                patch("app.utils.scheduling.CLIPModel", DummyModel) as mock_model_class,
-                patch("app.utils.scheduling.CLIPProcessor", DummyProcessor) as mock_processor_class,
+                patch(
+                    "app.utils.scheduling.ort.InferenceSession", DummySession
+                ) as mock_sess_class,
+                patch(
+                    "app.utils.scheduling.CLIPProcessor", DummyProcessor
+                ) as mock_processor_class,
             ):
-                scheduling.clip_model = None
+                scheduling.clip_session = None
                 scheduling.clip_processor = None
                 scheduling.update_camera("cam1", template)
-                self.assertEqual(DummyModel.calls, ["custom-model"])
+                self.assertEqual(DummySession.calls, ["custom-model"])
                 self.assertEqual(DummyProcessor.calls, ["custom-model"])
 
 
