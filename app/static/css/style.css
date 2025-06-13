@@ -1454,6 +1454,7 @@ video.hover-video[data-timestamp]::after {
   color: var(--form-text-color);
   border: 1px solid var(--table-border-color);
   padding-right: 2rem;
+  box-sizing: border-box;
 }
 
 .update-button {
@@ -1463,6 +1464,11 @@ video.hover-video[data-timestamp]::after {
   width: auto;
   padding: 4px;
   margin-top: 0;
+  display: none;
+}
+
+.chat-prompt:focus-within .update-button {
+  display: inline-block;
 }
 
 /* Footer Styles */

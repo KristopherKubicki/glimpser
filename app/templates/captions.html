@@ -116,7 +116,7 @@ template_controls %} {% block content %}
               <form id="form-{{ camera }}" class="notes-form caption-box">
                 <div class="chat-box">
                   <div class="chat-prompt">
-                    <label for="notes-{{ camera }}">Prompt</label>
+                    <label for="notes-{{ camera }}" class="sr-only">Prompt</label>
                     <textarea
                       id="notes-{{ camera }}"
                       class="notes-textarea"
@@ -132,13 +132,13 @@ template_controls %} {% block content %}
                     >
                       <svg width="16" height="16" aria-hidden="true">
                         <use
-                          href="{{ url_for('static', filename='icons/sprite.svg') }}#login"
+                          href="{{ url_for('static', filename='icons/sprite.svg') }}#send"
                         />
                       </svg>
                     </button>
                   </div>
                   <div class="chat-response">
-                    <label id="last-caption-label-{{ camera }}"
+                    <label id="last-caption-label-{{ camera }}" class="sr-only"
                       >Last caption</label
                     >
                     <div
