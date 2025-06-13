@@ -1,6 +1,11 @@
 import { jest } from "@jest/globals";
 
-document.body.innerHTML = `<form><input id="url" data-default-url="http://example.com/test"><span id="url-status"></span><img id="url-preview"><input type="submit"></form>`;
+const formHtml =
+  '<form><input id="url" data-default-url="http://example.com/test"><span id="url-status"></span><img id="url-preview"><input type="submit"></form>';
+
+beforeEach(() => {
+  document.body.innerHTML = formHtml;
+});
 
 let initUrlTester;
 
