@@ -19,6 +19,17 @@ export function initNav() {
     const cameraDropdown = document.getElementById("nav-camera-dropdown");
     const currentGroup = window.currentGroup || null;
     const currentCamera = window.currentCamera || null;
+    const liveLink = document.getElementById("live");
+
+    if (liveLink) {
+      if (currentCamera) {
+        liveLink.href = `/live?camera=${encodeURIComponent(currentCamera)}`;
+      } else if (currentGroup && currentGroup !== "all") {
+        liveLink.href = `/live?group=${encodeURIComponent(currentGroup)}`;
+      } else {
+        liveLink.href = "/live";
+      }
+    }
     const menuToggle = document.getElementById("menu-toggle");
 
     if (nav && menuToggle) {

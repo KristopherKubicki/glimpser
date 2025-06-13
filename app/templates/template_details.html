@@ -537,7 +537,9 @@ template_form %} {% block content %}
   window.recentVideos = {{ videos|tojson }};
   document.addEventListener("DOMContentLoaded", () => {
     const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
-    const list = (window.recentVideos || []).sort((a, b) => collator.compare(b, a));
+    const list = (window.recentVideos || []).sort((a, b) =>
+      collator.compare(a, b),
+    );
     if (!list.length) return;
     let index = 0;
     const video = document.getElementById("live-video");
