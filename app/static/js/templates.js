@@ -256,6 +256,7 @@ export function initTemplates() {
         });
       } else {
         handleSlider();
+        setupTileResizeDrag(slider);
       }
     }
 
@@ -435,6 +436,50 @@ export function computeBorderColor(ageMinutes, isError) {
   }
   const alpha = Math.pow(0.5, step);
   return `rgba(${base[0]}, ${base[1]}, ${base[2]}, ${alpha})`;
+}
+
+export function setupTileResizeDrag(slider) {
+  if (!slider) return;
+  const handle = document.createElement("div");
+  handle.id = "tile-drag-handle";
+  document.body.appendChild(handle);
+
+  let startX = 0;
+  let startVal = 0;
+
+  const onMove = (e) => {
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const dx = clientX - startX;
+    const { width } = slider.getBoundingClientRect();
+    const range = parseFloat(slider.max) - parseFloat(slider.min);
+    const delta = (dx / width) * range;
+    const value = Math.min(
+      parseFloat(slider.max),
+      Math.max(parseFloat(slider.min), startVal + delta),
+    );
+    slider.value = value.toString();
+    slider.dispatchEvent(new Event("input"));
+  };
+
+  const endDrag = () => {
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("touchmove", onMove);
+    document.removeEventListener("mouseup", endDrag);
+    document.removeEventListener("touchend", endDrag);
+  };
+
+  const startDrag = (e) => {
+    startX = e.touches ? e.touches[0].clientX : e.clientX;
+    startVal = parseFloat(slider.value);
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("touchmove", onMove);
+    document.addEventListener("mouseup", endDrag);
+    document.addEventListener("touchend", endDrag);
+    e.preventDefault();
+  };
+
+  handle.addEventListener("mousedown", startDrag);
+  handle.addEventListener("touchstart", startDrag);
 }
 
 function attachVideoHover(video, name) {
