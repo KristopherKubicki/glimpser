@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -43,7 +44,9 @@ def _parse_cli_args():
     parser = argparse.ArgumentParser(description="Glimpser configuration")
     parser.add_argument("--db-path", help="Path to the SQLite database file")
     parser.add_argument("--log-path", help="Path to the log file")
-    parser.add_argument("--backup-path", help="Path to the configuration backup JSON file")
+    parser.add_argument(
+        "--backup-path", help="Path to the configuration backup JSON file"
+    )
     return parser.parse_args()
 
 
@@ -53,10 +56,14 @@ _cli_args = _parse_cli_args() if __name__ == "__main__" else None
 _BASE_DIR = Path(__file__).resolve().parent.parent
 
 DATABASE_PATH = (
-    _cli_args.db_path if _cli_args and _cli_args.db_path else os.getenv("GLIMPSER_DATABASE_PATH", "data/glimpser.db")
+    _cli_args.db_path
+    if _cli_args and _cli_args.db_path
+    else os.getenv("GLIMPSER_DATABASE_PATH", "data/glimpser.db")
 )
 LOGGING_PATH = (
-    _cli_args.log_path if _cli_args and _cli_args.log_path else os.getenv("GLIMPSER_LOGGING_PATH", "logs/glimpser.log")
+    _cli_args.log_path
+    if _cli_args and _cli_args.log_path
+    else os.getenv("GLIMPSER_LOGGING_PATH", "logs/glimpser.log")
 )
 
 # Ensure paths remain valid if the working directory changes.
@@ -67,9 +74,13 @@ LOGGING_PATH = str(_log_rel if _log_rel.is_absolute() else _BASE_DIR / _log_rel)
 # Ensure the backup file lives inside the project directory unless an absolute
 # path is provided. This avoids errors when the working directory changes.
 _backup_env = os.getenv("GLIMPSER_BACKUP_PATH", "data/config_backup.json")
-_backup_raw = _cli_args.backup_path if _cli_args and _cli_args.backup_path else _backup_env
+_backup_raw = (
+    _cli_args.backup_path if _cli_args and _cli_args.backup_path else _backup_env
+)
 _backup_path = Path(_backup_raw)
-BACKUP_PATH = str(_backup_path if _backup_path.is_absolute() else _BASE_DIR / _backup_path)
+BACKUP_PATH = str(
+    _backup_path if _backup_path.is_absolute() else _BASE_DIR / _backup_path
+)
 
 # ``SessionLocal`` and ``_engine`` are created lazily and cached so repeated
 # imports or function calls don't open additional connections.  Tests may patch
@@ -159,7 +170,9 @@ def restore_config():
         try:
             for name, value in config_dict.items():
                 session.execute(
-                    text("INSERT OR REPLACE INTO settings (name, value) VALUES (:name, :value)"),
+                    text(
+                        "INSERT OR REPLACE INTO settings (name, value) VALUES (:name, :value)"
+                    ),
                     {"name": name, "value": value},
                 )
             session.commit()
@@ -206,6 +219,7 @@ SCHEDULER_API_ENABLED = get_setting("SCHEDULER_API_ENABLED", "True") == "True"
 # be careful when mounting network devices
 SCREENSHOT_DIRECTORY = "data/screenshots/"
 VIDEO_DIRECTORY = "data/video/"
+CLIPS_DIRECTORY = "data/clips/"
 SUMMARIES_DIRECTORY = "data/summaries/"
 DOCS_DIRECTORY = "docs"
 
@@ -238,10 +252,14 @@ MAX_RAW_DATA_SIZE = int(get_setting("MAX_RAW_DATA_SIZE", 500 * 1024 * 1024))  # 
 MAX_IMAGE_RETENTION_AGE = int(get_setting("MAX_IMAGE_RETENTION_AGE", 8))
 MAX_VIDEO_RETENTION_AGE = int(get_setting("MAX_VIDEO_RETENTION_AGE", 365))
 MAX_COMPRESSED_VIDEO_AGE = int(get_setting("MAX_COMPRESSED_VIDEO_AGE", 7))  # days
-MAX_IN_PROCESS_VIDEO_SIZE = int(get_setting("MAX_IN_PROCESS_VIDEO_SIZE", 100 * 1024 * 1024))  # 100 MB
+MAX_IN_PROCESS_VIDEO_SIZE = int(
+    get_setting("MAX_IN_PROCESS_VIDEO_SIZE", 100 * 1024 * 1024)
+)  # 100 MB
 
 LOG_LEVEL = get_setting("LOG_LEVEL", "WARN")
 FLASK_LOG_LEVEL = get_setting("FLASK_LOG_LEVEL", LOG_LEVEL)
+LOG_RATE_LIMIT_SEC = int(get_setting("LOG_RATE_LIMIT_SEC", 60))
+LOG_COLOR = get_setting("LOG_COLOR", "True") == "True"
 
 # Session security settings
 SESSION_COOKIE_SECURE = get_setting("SESSION_COOKIE_SECURE", "True") == "True"
@@ -304,20 +322,49 @@ def _ffmpeg_supports_hwaccel() -> bool:
     """Return ``True`` if ``ffmpeg`` lists any hardware acceleration methods."""
 
     try:
-        output = subprocess.check_output([FFMPEG_PATH, "-hwaccels"], stderr=subprocess.STDOUT, timeout=2).decode()
+        output = subprocess.check_output(
+            [FFMPEG_PATH, "-hwaccels"], stderr=subprocess.STDOUT, timeout=2
+        ).decode()
         lines = [l.strip() for l in output.splitlines() if l.strip()]
         return len(lines) > 1
     except Exception:
         return False
 
 
-# Enable GPU acceleration if supported (e.g. "auto", "cuda", etc.)
+def _detect_best_encoder() -> str:
+    """Return the best hardware encoder ``ffmpeg`` supports.
+
+    The detection checks for common GPU encoder names and returns the
+    corresponding ``-hwaccel`` flag. ``"false"`` is returned when no supported
+    encoder is found or ``ffmpeg`` is missing.
+    """
+
+    try:
+        encoders = subprocess.check_output(
+            [FFMPEG_PATH, "-encoders", "-hide_banner"],
+            stderr=subprocess.STDOUT,
+            timeout=2,
+        ).decode()
+    except Exception:
+        return "false"
+
+    mappings = [
+        ("h264_nvenc", "cuda"),
+        ("h264_vaapi", "vaapi"),
+        ("h264_qsv", "qsv"),
+        ("h264_v4l2m2m", "v4l2m2m"),
+    ]
+    for codec, accel in mappings:
+        if re.search(codec, encoders):
+            return accel
+    return "false"
+
+
+# Enable GPU acceleration by default. "auto" lets ffmpeg pick the best
+# available method and falls back to software when no GPU is present.
 _hwaccel_cfg = get_setting("FFMPEG_HWACCEL", "auto")
 if _hwaccel_cfg.lower() == "auto":
-    if _machine_supports_hwaccel() and _ffmpeg_supports_hwaccel():
-        FFMPEG_HWACCEL = "auto"
-    else:
-        FFMPEG_HWACCEL = "False"
+    FFMPEG_HWACCEL = _detect_best_encoder()
 else:
     FFMPEG_HWACCEL = _hwaccel_cfg
 
@@ -328,6 +375,12 @@ FFMPEG_THREADS = int(get_setting("FFMPEG_THREADS", max(1, (os.cpu_count() or 1) 
 CLIP_MODEL_NAME = get_setting(
     "CLIP_MODEL_NAME",
     "openai/clip-vit-base-patch32",
+)
+
+# Path to ONNX model used for object filtering
+CLIP_MODEL_PATH = get_setting(
+    "CLIP_MODEL_PATH",
+    "models/clip-vit-b-32.onnx",
 )
 
 
@@ -370,13 +423,24 @@ CHYRON_SPEED = int(get_setting("CHYRON_SPEED", 0))
 DEFAULT_CLIP_DURATION = int(get_setting("DEFAULT_CLIP_DURATION", 120))
 
 # Maximum age in minutes before temporary ``clip.mp4`` files are purged.
+
+# Minutes over which initial crawler jobs are staggered at startup to
+# avoid CPU spikes when many templates are scheduled.
+CRAWLER_STARTUP_SPREAD = int(get_setting("CRAWLER_STARTUP_SPREAD", 10))
+
 MAX_CLIP_AGE_MINUTES = int(get_setting("MAX_CLIP_AGE_MINUTES", 5))
+
+# Skip clip pre-rendering when the number of cameras exceeds this limit.
+# Set to 0 to always refresh clips regardless of count.
+CLIP_REFRESH_MAX_CAMERAS = int(get_setting("CLIP_REFRESH_MAX_CAMERAS", 10))
 
 # Whether the System Performance icon in the navigation bar should remain
 # visible even when the application reports healthy status. When set to
 # ``False`` the icon hides itself if all metrics look nominal to reduce
 # clutter. Set ``True`` to keep it visible at all times.
-HEALTH_STATUS_ALWAYS_VISIBLE = get_setting("HEALTH_STATUS_ALWAYS_VISIBLE", "False") == "True"
+HEALTH_STATUS_ALWAYS_VISIBLE = (
+    get_setting("HEALTH_STATUS_ALWAYS_VISIBLE", "False") == "True"
+)
 
 # Watchdog configuration values. These control how aggressively the
 # watchdog restarts the application when health checks fail.
@@ -396,11 +460,10 @@ EMAIL_SENDER = get_setting("EMAIL_SENDER", "")
 EMAIL_RECIPIENTS = get_setting("EMAIL_RECIPIENTS", "")
 EMAIL_SMTP_SERVER = get_setting("EMAIL_SMTP_SERVER", "")
 EMAIL_SMTP_PORT = get_setting("EMAIL_SMTP_PORT", "587")
-EMAIL_SMTP_TIMEOUT = int(get_setting("EMAIL_SMTP_TIMEOUT", 10))
+EMAIL_SMTP_TIMEOUT = int(get_setting("EMAIL_SMTP_TIMEOUT", "5"))
 EMAIL_USE_TLS = get_setting("EMAIL_USE_TLS", "True")
 EMAIL_USERNAME = get_setting("EMAIL_USERNAME", "")
 EMAIL_PASSWORD = get_setting("EMAIL_PASSWORD", "")
-EMAIL_SMTP_TIMEOUT = int(get_setting("EMAIL_SMTP_TIMEOUT", "5"))
 
 
 # SMS/Twilio settings
@@ -426,6 +489,13 @@ MCP_SERVER_URL = get_setting("MCP_SERVER_URL", "")
 # When ``True`` the ``/robots.txt`` route allows search engine indexing.
 # ``False`` (the default) disallows all crawlers.
 ALLOW_BOTS = get_setting("ALLOW_BOTS", "False") == "True"
+
+# Branch to auto-update from when new releases are available. "None" disables
+# automatic updates. Values other than "Main" or "Staging" revert to "None".
+AUTO_UPDATE_BRANCH = get_setting("AUTO_UPDATE_BRANCH", "None")
+if AUTO_UPDATE_BRANCH not in {"None", "Main", "Staging"}:
+    logging.warning("Invalid AUTO_UPDATE_BRANCH %s", AUTO_UPDATE_BRANCH)
+    AUTO_UPDATE_BRANCH = "None"
 
 # Settings that should never be displayed in the UI
 SENSITIVE_SETTINGS = [

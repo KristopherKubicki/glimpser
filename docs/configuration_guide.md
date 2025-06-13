@@ -74,6 +74,9 @@ user table in sync.
 
 - `SCREENSHOT_DIRECTORY` – directory for raw screenshots (default `data/screenshots/`)
 - `VIDEO_DIRECTORY` – directory for recorded videos (default `data/video/`)
+- `CLIPS_DIRECTORY` – directory used to cache short clips (default `data/clips/`)
+- `CLIP_REFRESH_MAX_CAMERAS` – skip clip pre-rendering when more than this many
+  cameras exist (default `10`, use `0` to disable the check)
 - `SUMMARIES_DIRECTORY` – **deprecated**; summaries are now stored in the database.
 
   Older deployments may still reference this path but it is no longer used.
@@ -175,13 +178,18 @@ Additional variables control AI behaviour and external tools:
   [LLM Prompt Settings](llm_prompts.md) for examples and usage.
 - `FFMPEG_PATH` – path to the `ffmpeg` binary (default `ffmpeg`)
 - `FFPROBE_PATH` – path to the `ffprobe` binary (default `ffprobe`)
-- `FFMPEG_HWACCEL` – hardware acceleration mode for ffmpeg (default `auto`)
+- `FFMPEG_HWACCEL` – hardware acceleration mode for ffmpeg (default `auto`).
+  When set to `auto` Glimpser inspects available encoders and enables the first
+  supported GPU method (`cuda`, `vaapi`, `qsv`, `v4l2m2m`) or falls back to
+  software when none are detected.
 - When hardware acceleration is enabled and Chrome supports OpenGL, Glimpser
   automatically launches Chrome with `--use-gl=egl` for improved GPU use.
 - `FFMPEG_THREADS` – number of threads ffmpeg uses when encoding (default half the CPU cores)
+- `CRAWLER_STARTUP_SPREAD` – minutes to stagger initial crawler runs at startup (default `10`)
 - `CLIP_MODEL_NAME` – CLIP model used for object filtering (default `openai/clip-vit-base-patch32`)
   Example: `openai/clip-vit-large-patch14`
   This setting is read-only until Advanced Options are enabled.
+- `CLIP_MODEL_PATH` – path to the ONNX model used for object filtering (default `models/clip-vit-b-32.onnx`). The runtime automatically selects CUDA or CPU providers when available. `onnxruntime` is now the default dependency. Install `onnxruntime-gpu` to enable CUDA acceleration.
 - `SCHEDULER_API_ENABLED` – toggle the APScheduler REST API (default `True`)
 
 Refer to the code comments in `app/config.py` for full details on each setting.

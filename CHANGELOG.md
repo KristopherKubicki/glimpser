@@ -43,10 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved screenshot reliability
 - Enhanced camera list UI and video player controls
 - Updated package requirements and cleaned up imports
-- Added CPU builds of JAX 0.6.1 and Flax 0.2.0
+- Removed the JAX and Flax dependencies
 - Removed the `scikit-image` dependency in favor of a lightweight image
   comparison implementation
-- Bumped numpy to 1.26.0
+- Pinned numpy below version 2.0 due to compatibility issues
 - Removed nodriver and its screenshot helper
 - Updated default VERSION to 0.2.7 for footer display
 - The footer name now links to https://glimpser.net
@@ -132,6 +132,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Live video errors now fall back to the last screenshot so the live view never
   appears blank.
+- Fixed timezone handling so feed status timestamps no longer show "in the future".
 
 [Unreleased]: https://github.com/KristopherKubicki/glimpser/compare/v0.2.7...HEAD
 [0.2.7]: https://github.com/KristopherKubicki/glimpser/releases/tag/v0.2.7

@@ -2,7 +2,7 @@ import os
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
 
 from flask import Flask
 
@@ -28,17 +28,17 @@ class TestSettingsDownloadRoute(unittest.TestCase):
         self.path_patch.stop()
         self.temp_dir.cleanup()
 
-    @patch("app.routes.send_file")
+    @patch("app.routes.open", new_callable=mock_open, read_data=b"{}")
     @patch("app.routes.backup_config", return_value=True)
     @patch("app.routes.os.path.exists", return_value=True)
-    def test_download_triggers_backup(self, mock_exists, mock_backup, mock_send):
+    def test_download_triggers_backup(self, mock_exists, mock_backup, mock_file):
         resp = self.client.post("/settings", data={"action": "download"})
         self.assertEqual(resp.status_code, 200)
+        resp.get_data()  # trigger generator
         mock_backup.assert_called_once()
-        mock_send.assert_called_once_with(
-            self.backup_path,
-            as_attachment=True,
-            download_name="config_backup.json",
+        self.assertEqual(
+            resp.headers.get("Content-Disposition"),
+            "attachment; filename=config_backup.json",
         )
 
 

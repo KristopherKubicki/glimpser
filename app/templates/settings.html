@@ -14,7 +14,7 @@ template_form %} {% block content %}
     <button
       type="button"
       class="tab-link{% if loop.first %} active{% endif %}"
-      data-tab="{{ 'management-tab' if group == 'Credentials & Management' else group|replace(' ', '-') ~ '-tab' }}"
+      data-tab="{{ 'management-tab' if group == 'Admin' else group|replace(' ', '-') ~ '-tab' }}"
       title="Open {{ group }} tab"
     >
       {{ group }}
@@ -32,9 +32,9 @@ template_form %} {% block content %}
       type="button"
       class="tab-link"
       data-tab="status-tab"
-      title="Open System Status tab"
+      title="Open Status tab"
     >
-      System Status
+      Status
     </button>
     <button
       type="button"
@@ -88,7 +88,7 @@ template_form %} {% block content %}
     </datalist>
     {% endfor %} {% for group, items in grouped_settings.items() %}
     <div
-      id="{{ 'management-tab' if group == 'Credentials & Management' else group|replace(' ', '-') ~ '-tab' }}"
+      id="{{ 'management-tab' if group == 'Admin' else group|replace(' ', '-') ~ '-tab' }}"
       class="tab-content{% if loop.first %} active{% endif %}"
     >
       {% call card(group) %}
@@ -110,25 +110,35 @@ template_form %} {% block content %}
               {% if setting.name in boolean_fields %}
               <label class="switch">
                 <!-- prettier-ignore -->
-                <input
+                    <input
                     type="checkbox"
                     name="{{ setting.name }}"
                     value="True"
                     {% if setting.value == 'True' %}checked{% endif %}
                     data-boolean
+                    {% if setting.name == 'DISCOVERY_AUTOSTART' %}data-ignore-unsaved{% endif %}
                     {% if setting.name in locked_settings %}disabled data-locked{% endif %}
+                    {% if setting.name == 'FFMPEG_HWACCEL' and not metrics.ffmpeg_gpu_support %}disabled data-unavailable{% endif %}
                   />
                 <span class="slider round"></span>
               </label>
-              {% elif 'KEY' in setting.name %}
-              {% set sprite = url_for('static', filename='icons/sprite.svg') %}
+              {% elif 'KEY' in setting.name %} {% set sprite = url_for('static',
+              filename='icons/sprite.svg') %}
               <input
                 id="{{ setting.name }}"
                 type="password"
                 name="{{ setting.name }}"
                 value="{{ setting.value }}"
                 title="Edit value for {{ setting.name }}"
-                {% if setting.name in locked_settings %}disabled data-locked{% endif %}
+                {%
+                if
+                setting.name
+                in
+                locked_settings
+                %}disabled
+                data-locked{%
+                endif
+                %}
               />
               <button
                 type="button"
@@ -194,8 +204,8 @@ template_form %} {% block content %}
           {% endfor %}
         </tbody>
       </table>
-      {% endcall %} {% if group == 'Credentials & Management' %} {% call
-      card('Configuration Management') %}
+      {% endcall %} {% if group == 'Admin' %} {% call card('Configuration
+      Management') %}
       <div class="checkbox-row">
         <span>Advanced Options</span>
         <label class="switch" title="Toggle advanced options">
@@ -263,12 +273,22 @@ template_form %} {% block content %}
           ></span>
         </li>
       </ul>
-      <button
-        type="submit"
-        name="action"
-        value="update_shortcut"
-        title="Update Chrome shortcuts for Danger mode"
-      >
+      <label for="shortcut-path" class="sr-only">Chrome shortcut</label>
+      <input
+        id="shortcut-path"
+        name="shortcut_path"
+        type="text"
+        list="shortcut-options"
+        value="{{ danger_info.shortcut if danger_info.shortcut != 'N/A' else (shortcut_options[0] if shortcut_options else '') }}"
+        placeholder="/usr/share/applications/google-chrome.desktop"
+      />
+      <datalist id="shortcut-options">
+        {% for opt in shortcut_options %}
+        <option value="{{ opt }}"></option>
+        {% endfor %}
+      </datalist>
+      <!-- prettier-ignore -->
+      <button id="update-shortcut-btn" type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode" {% if danger_info.shortcut == 'N/A' %}disabled{% endif %}>
         Update Chrome Shortcut
       </button>
       {% endcall %} {% call card('Navigation Logo') %}
@@ -277,27 +297,26 @@ template_form %} {% block content %}
         alt="Current navigation logo"
         class="logo-preview"
       />
-      <form
-        action="{{ url_for('upload_nav_icon') }}"
-        method="post"
-        enctype="multipart/form-data"
+      <label for="logo-choice" class="sr-only">Built-in logo</label>
+      <select
+        name="logo_choice"
+        id="logo-choice"
+        form="nav-logo-form"
+        title="Upload your own PNG image. Select the default option to restore the original logo."
       >
-        <label for="logo-choice" class="sr-only">Built-in logo</label>
-        <select
-          name="logo_choice"
-          id="logo-choice"
-          title="Upload your own PNG image. Select the default option to restore the original logo."
-        >
-          <option value="img/glimpser_small.png">Default</option>
-        </select>
-        <input
-          type="file"
-          name="logo_file"
-          accept="image/png"
-          title="Upload custom logo"
-        />
-        <button type="submit" title="Update navigation logo">Save Logo</button>
-      </form>
+        <option value="img/glimpser_small.png">Default Small</option>
+        <option value="img/glimpser.png">Default Large</option>
+      </select>
+      <input
+        type="file"
+        name="logo_file"
+        accept="image/png"
+        form="nav-logo-form"
+        title="Upload custom logo"
+      />
+      <button type="submit" form="nav-logo-form" title="Update navigation logo">
+        Save Logo
+      </button>
       {% endcall %}
       <input
         type="hidden"
@@ -321,12 +340,22 @@ template_form %} {% block content %}
     </div>
     {% endif %} {% endfor %}
   </form>
+  <form
+    id="nav-logo-form"
+    action="{{ url_for('upload_nav_icon') }}"
+    method="post"
+    enctype="multipart/form-data"
+  ></form>
   {{ confirm_modal('delete-setting', 'Delete this setting?', 'Delete', 'Cancel')
   }}
 </main>
 <script
   type="module"
   src="{{ url_for('static', filename='js/performance.js') }}"
+></script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/capture_status.js') }}"
 ></script>
 <script
   type="module"

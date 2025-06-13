@@ -54,7 +54,7 @@ class TestScreenshotsExtras(unittest.TestCase):
         self.assertFalse(ss.check_if_modified(url, headers))
 
     def test_auth_helpers(self):
-        url = "http://user:pass@example.com"
+        url = "http://user:pass@example.com"  # pragma: allowlist secret
         basic = ss.get_auth(url)
         digest = ss.get_digest_auth(url)
         self.assertEqual(basic.username, "user")
@@ -74,10 +74,26 @@ class TestScreenshotsExtras(unittest.TestCase):
     def test_browser_selection(self):
         url = "http://example.com"
         with patch.object(ss, "is_enhanced", return_value=False):
-            self.assertTrue(ss.should_use_lightweight_browser(url, None, None, False, False, False, False))
-            self.assertFalse(ss.should_use_lightweight_browser(url, None, None, True, False, False, False))
-            self.assertTrue(ss.should_use_phantom_browser(url, None, None, False, False, False, False))
-            self.assertFalse(ss.should_use_phantom_browser(url, None, None, False, True, False, False))
+            self.assertTrue(
+                ss.should_use_lightweight_browser(
+                    url, None, None, False, False, False, False
+                )
+            )
+            self.assertFalse(
+                ss.should_use_lightweight_browser(
+                    url, None, None, True, False, False, False
+                )
+            )
+            self.assertTrue(
+                ss.should_use_phantom_browser(
+                    url, None, None, False, False, False, False
+                )
+            )
+            self.assertFalse(
+                ss.should_use_phantom_browser(
+                    url, None, None, False, True, False, False
+                )
+            )
 
 
 if __name__ == "__main__":

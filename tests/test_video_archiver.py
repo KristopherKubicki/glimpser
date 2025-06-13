@@ -59,7 +59,9 @@ class TestVideoArchiver(unittest.TestCase):
     @patch("app.utils.video_archiver.get_templates")
     @patch("app.utils.video_archiver.get_video_duration")
     @patch("app.utils.video_archiver.compile_videos")
-    def test_compile_to_teaser(self, mock_compile_videos, mock_get_video_duration, mock_get_templates):
+    def test_compile_to_teaser(
+        self, mock_compile_videos, mock_get_video_duration, mock_get_templates
+    ):
         mock_get_templates.return_value = {
             "camera1": {"groups": "group1,group2"},
             "camera2": {"groups": "group2,group3"},
@@ -93,6 +95,21 @@ class TestVideoArchiver(unittest.TestCase):
             ):
                 result = compile_videos(temp_file.name, "output.mp4")
         self.assertTrue(result)
+
+    @patch("subprocess.run")
+    def test_compile_videos_missing_input(self, mock_subprocess_run):
+        result = compile_videos("missing.txt", "out.mp4")
+        self.assertFalse(result)
+
+    @patch("app.utils.video_archiver.compile_videos")
+    def test_compile_to_teaser_no_dir(self, mock_compile):
+        with (
+            patch("os.path.isdir", return_value=False),
+            patch("os.makedirs"),
+        ):
+            res = compile_to_teaser()
+        mock_compile.assert_not_called()
+        self.assertFalse(res)
 
     @patch("subprocess.run")
     @patch("os.path.exists")
@@ -129,7 +146,9 @@ class TestVideoArchiver(unittest.TestCase):
 
     @patch("app.utils.video_archiver.get_video_duration")
     @patch("subprocess.run")
-    def test_concatenate_videos_retry(self, mock_subprocess_run, mock_get_video_duration):
+    def test_concatenate_videos_retry(
+        self, mock_subprocess_run, mock_get_video_duration
+    ):
         mock_get_video_duration.return_value = 10
         mock_subprocess_run.side_effect = [
             RuntimeError("Resource temporarily unavailable"),
@@ -153,7 +172,9 @@ class TestVideoArchiver(unittest.TestCase):
     @patch("app.utils.video_archiver.logging.warning")
     @patch("app.utils.video_archiver.get_video_duration")
     @patch("subprocess.run")
-    def test_concatenate_videos_stale_timestamp(self, mock_subprocess_run, mock_get_video_duration, mock_warning):
+    def test_concatenate_videos_stale_timestamp(
+        self, mock_subprocess_run, mock_get_video_duration, mock_warning
+    ):
         mock_get_video_duration.return_value = 10
         mock_subprocess_run.return_value.returncode = 0
         with (
@@ -176,7 +197,9 @@ class TestVideoArchiver(unittest.TestCase):
             patch("os.path.getsize", return_value=100),
             patch("os.rename") as mock_rename,
         ):
-            status = handle_concat_error(Exception("Invalid data found"), "temp.mp4", "in_process.mp4")
+            status = handle_concat_error(
+                Exception("Invalid data found"), "temp.mp4", "in_process.mp4"
+            )
             mock_rename.assert_called_once_with("temp.mp4", "in_process.mp4")
             self.assertEqual(status, ConcatStatus.RECOVERED)
 
@@ -196,7 +219,9 @@ class TestVideoArchiver(unittest.TestCase):
             patch("os.path.getsize", return_value=100),
             patch("os.rename") as mock_rename,
         ):
-            status = handle_concat_error(Exception("Some fatal error"), "temp.mp4", "in_process.mp4")
+            status = handle_concat_error(
+                Exception("Some fatal error"), "temp.mp4", "in_process.mp4"
+            )
             mock_rename.assert_called_once_with("temp.mp4", "in_process.mp4")
             self.assertEqual(status, ConcatStatus.FATAL)
 
@@ -237,7 +262,9 @@ class TestVideoArchiver(unittest.TestCase):
     @patch("app.utils.video_archiver.pipe_ffmpeg_frames")
     @patch("app.utils.video_archiver.Image.open")
     @patch("glob.glob")
-    def test_compile_to_video_ignores_blank_frames(self, mock_glob, mock_open, mock_pipe):
+    def test_compile_to_video_ignores_blank_frames(
+        self, mock_glob, mock_open, mock_pipe
+    ):
         mock_glob.return_value = ["shot_blank.png", "shot_2.png"]
 
         captured_lines = []

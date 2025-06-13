@@ -11,11 +11,7 @@ from PIL import Image
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.utils.scheduling import (
-    find_closest_image,
-    scheduler,
-    start_log_caching,
-)
+from app.utils.scheduling import find_closest_image, scheduler, start_log_caching
 
 
 class TestScheduler(unittest.TestCase):
@@ -134,7 +130,9 @@ class TestScheduler(unittest.TestCase):
                 Image.new("RGB", (1, 1)).save(os.path.join(tmp, filename))
 
             last_caption_time = datetime(2023, 1, 1, 0, 10, 0)
-            result = find_closest_image(tmp, last_caption_time, max_time_diff=timedelta(seconds=60))
+            result = find_closest_image(
+                tmp, last_caption_time, max_time_diff=timedelta(seconds=60)
+            )
             self.assertIsNone(result)
 
     """
@@ -154,6 +152,15 @@ class TestScheduler(unittest.TestCase):
             schedule_crawlers()
             # Ensure no jobs are scheduled when templates are empty
             mock_add_job.assert_not_called()
+
+    def test_calculate_optimal_offsets_unique(self):
+        templates = {
+            'a': {'name': 'a', 'frequency': 30},
+            'b': {'name': 'b', 'frequency': 30},
+            'c': {'name': 'c', 'frequency': 60},
+        }
+        offsets = scheduling.calculate_optimal_offsets(templates, 10)
+        self.assertEqual(len(set(offsets.values())), len(templates))
     """
 
 

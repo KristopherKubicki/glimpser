@@ -102,6 +102,21 @@ class TestRunWithTimeout(unittest.TestCase):
             run_with_timeout(lambda: None, timeout=1)
             mock_proc.assert_not_called()
 
+    @patch("app.utils.scheduling.psutil.cpu_percent", return_value=10)
+    @patch("app.utils.scheduling.is_system_online", return_value=True)
+    def test_process_title_set(self, _online, _cpu):
+        def my_job(name):
+            return name
+
+        with patch("app.utils.scheduling.multiprocessing.Process") as mock_proc:
+            run_with_timeout(my_job, args=("cam1",), timeout=1)
+            mock_proc.assert_called_once()
+            _, kwargs = mock_proc.call_args
+            self.assertEqual(kwargs["name"], "glimpser my_job:cam1")
+
+        scheduling.job_backoff_until.clear()
+        scheduling.job_failures.clear()
+
 
 class TestAddMotionAndCaption(unittest.TestCase):
     def test_image_updated_with_caption_and_motion(self):
@@ -136,6 +151,7 @@ class TestGetSystemMetrics(unittest.TestCase):
                 "cpu_usage": 1.234,
                 "memory_usage": 2.345,
                 "thread_count": 5,
+                "top_threads": [{"id": 123, "name": "Thread-1", "cpu": 10.0}],
                 "start_time": time.time() - 3661,
             }
         )
@@ -152,10 +168,14 @@ class TestGetSystemMetrics(unittest.TestCase):
         self.assertEqual(metrics["ffmpeg_path"], "/usr/bin/ffmpeg")
         self.assertTrue(metrics["machine_hwaccel"])
         self.assertTrue(metrics["ffmpeg_hwaccel"])
+        self.assertTrue(metrics["ffmpeg_gpu_support"])
         self.assertTrue(metrics["hwaccel_enabled"])
         self.assertTrue(metrics["gpu_support"])
         self.assertTrue(metrics["ffmpeg_gpu_enabled"])
         self.assertTrue(metrics["danger_mode"])
+        self.assertEqual(
+            metrics["top_threads"], [{"id": 123, "name": "Thread-1", "cpu": 10.0}]
+        )
 
 
 class TestOfflineJobQueue(unittest.TestCase):
@@ -165,7 +185,9 @@ class TestOfflineJobQueue(unittest.TestCase):
     @patch("app.utils.scheduling.multiprocessing.Process")
     @patch("app.utils.scheduling.SessionLocal")
     @patch("app.utils.scheduling.is_system_online", return_value=False)
-    def test_queue_created_when_offline(self, _online, mock_session_local, mock_process):
+    def test_queue_created_when_offline(
+        self, _online, mock_session_local, mock_process
+    ):
         class DummySession:
             def __init__(self):
                 self.added = []

@@ -121,12 +121,19 @@
       </tbody>
     </table>
   </div>
-  {% endcall %} {% call card('Add Camera') %}
+  {% endcall %} {% call card('Add Camera
+  <span
+    class="info-icon"
+    title="Enter the camera or dashboard URL and tab out to verify it works. The live preview updates automatically. Use Advanced Options for XPaths, callbacks and credentials."
+    >ℹ️</span
+  >' | safe) %}
   <div class="wizard-step" title="Form to add a new camera">
-    {{ template_form( 'add-template-form', '/templates',
-    preview_src='/test_pattern.mjpg?pattern=geometric',
-    preview_id='url-preview', object_tokens=object_tokens, clip_model=clip_model
-    ) }}
+    {{ template_form( 'add-template-form', '/templates', template={'url':
+    url_for('test_pattern_mjpg', _external=True)},
+    preview_src=url_for('test_pattern_mjpg', pattern='geometric'),
+    preview_id='url-preview', object_tokens=object_tokens,
+    clip_model=clip_model, clip_gpu=clip_gpu,
+    default_url=url_for('test_pattern_mjpg', _external=True) ) }}
   </div>
   {% endcall %}
 </div>
@@ -183,30 +190,39 @@
         const source = new EventSource(url);
         const known = new Set();
         const addRow = (cam) => {
-          const key = `${cam.ip}-${cam.protocol}-${cam.port}`;
+          const key = cam.ip ? `${cam.ip}-${cam.protocol}-${cam.port}` : cam.url;
           if (known.has(key)) return;
           known.add(key);
           results.push(cam);
           const tr = document.createElement("tr");
-          const url = cam.url || `${cam.protocol}://${cam.ip}:${cam.port}`;
+          let url = cam.url || `${cam.protocol}://${cam.ip}:${cam.port}`;
           const existing = existingMap[url];
           const action = existing
             ? `<a href="/templates/${existing}" class="btn btn-primary" title="View this camera">View</a>`
             : `<form action="/discover/add" method="post">
-                            <input type="hidden" name="ip" value="${cam.ip}">
-                            <input type="hidden" name="protocol" value="${cam.protocol}">
-                            <input type="hidden" name="port" value="${cam.port}">
+                            ${cam.ip ? `<input type="hidden" name="ip" value="${cam.ip}">` : ""}
+                            ${cam.protocol ? `<input type="hidden" name="protocol" value="${cam.protocol}">` : ""}
+                            ${cam.port ? `<input type="hidden" name="port" value="${cam.port}">` : ""}
                             ${cam.url ? `<input type="hidden" name="url" value="${cam.url}">` : ""}
-                            <input type="hidden" name="name" value="${cam.ip}">
+                            <input type="hidden" name="name" value="${cam.name || cam.ip}">
                             <button type="submit" title="Add this camera">Add</button>
                         </form>`;
-          const info = renderInfo(cam.info);
+          let protocol = cam.protocol;
+          let port = cam.port;
+          if (!cam.ip && cam.url) {
+            try {
+              const p = new URL(cam.url);
+              protocol = protocol || p.protocol.replace(":", "");
+              port = port || p.port || (p.protocol === "https:" ? "443" : "80");
+            } catch {}
+          }
+          const info = renderInfo(cam.info || { name: cam.name, category: cam.category, notes: cam.notes });
           tr.innerHTML = `
-                    <td>${cam.ip}</td>
-                    <td>${cam.protocol}</td>
-                    <td>${cam.port}</td>
-                    <td>${cam.info.mac || ""}</td>
-                    <td>${cam.info.manufacturer || ""}</td>
+                    <td>${cam.ip || ""}</td>
+                    <td>${protocol || ""}</td>
+                    <td>${port || ""}</td>
+                    <td>${(cam.info && cam.info.mac) || ""}</td>
+                    <td>${(cam.info && cam.info.manufacturer) || ""}</td>
                     <td><svg class="camera-icon" width="12" height="12" aria-hidden="true"><use href="${iconUrl}#camera"></use></svg>
                     ${info ? `<span class="info-icon" title="${info}">ℹ️</span>` : ""}</td>
                     <td>${action}</td>`;

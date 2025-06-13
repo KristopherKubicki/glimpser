@@ -3,11 +3,33 @@
 from __future__ import annotations
 
 import datetime
+import hashlib
+import io
+import json
 import math
 import os
+import subprocess
+import time
 from typing import Optional
 
-from PIL import Image, ImageDraw, ImageFont
+from dateutil import tz
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont
+
+try:
+    import qrcode  # type: ignore
+except Exception:  # pragma: no cover
+    qrcode = None
+
+try:
+    COMMIT_HASH = (
+        subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+        .decode()
+        .strip()
+    )
+except Exception:  # pragma: no cover
+    COMMIT_HASH = "unknown"
+
+from app import config
 
 # Mapping of ASCII digits to their Braille equivalents. Used to display the
 # timestamp in Braille on the generated test pattern.
@@ -23,6 +45,23 @@ BRAILLE_DIGITS = {
     "8": "\u2813",
     "9": "\u280a",
     ":": "\u2812",
+}
+
+BRAILLE_RADIUS = 3
+BRAILLE_SPACING = 3
+
+
+# Static HDR metadata for SMPTE ST 2086. Embedded in JPEG headers so HDR
+# monitors can auto-switch and EDID quirks become visible.
+ST2086_METADATA = {
+    "display_primaries": [
+        [0.708, 0.292],
+        [0.170, 0.797],
+        [0.131, 0.046],
+    ],
+    "white_point": [0.3127, 0.329],
+    "luminance_min": 0.001,
+    "luminance_max": 1000,
 }
 
 
@@ -58,15 +97,97 @@ def _to_roman(num: int) -> str:
 
 
 def _format_roman_time(timestamp: str) -> str:
-    """Return the timestamp represented with Roman numerals."""
+    """Return the timestamp represented with Roman numerals separated by colons."""
     h, m, s = map(int, timestamp.split(":"))
     return f"{_to_roman(h)}:{_to_roman(m)}:{_to_roman(s)}"
 
 
 def _format_binary_time(timestamp: str) -> str:
-    """Return the timestamp in binary notation."""
+    """Return the timestamp in binary notation without colons."""
     h, m, s = map(int, timestamp.split(":"))
-    return f"{h:05b}:{m:06b}:{s:06b}"
+    return f"{h:05b}{m:06b}{s:06b}"
+
+
+def _format_hex_time(timestamp: str) -> str:
+    """Return the timestamp in hexadecimal notation."""
+    h, m, s = map(int, timestamp.split(":"))
+    return f"{h:02X}:{m:02X}:{s:02X}"
+
+
+def _format_beats_time(timestamp: str) -> str:
+    """Return the time in Swatch Internet Time (".beats")."""
+    h, m, s = map(int, timestamp.split(":"))
+    total_seconds = h * 3600 + m * 60 + s
+    beats = int(((total_seconds + 3600) % 86400) / 86.4)
+    return f"@{beats:03d}"
+
+
+def _roman_segment_widths(font: ImageFont.FreeTypeFont) -> tuple[int, int, int, int]:
+    """Return maximum segment widths for Roman numeral timestamps."""
+    dummy = Image.new("RGB", (1, 1))
+    d = ImageDraw.Draw(dummy)
+    hours = [_to_roman(i) for i in range(24)]
+    mins = [_to_roman(i) for i in range(60)]
+    seg1 = max(d.textlength(h, font=font) for h in hours)
+    seg2 = max(d.textlength(m, font=font) for m in mins)
+    seg3 = seg2
+    colon_w = d.textlength(":", font=font)
+    return seg1, seg2, seg3, colon_w
+
+
+def _draw_braille_text(
+    draw: ImageDraw.ImageDraw,
+    pos: tuple[int, int],
+    text: str,
+    radius: int = BRAILLE_RADIUS,
+    spacing: int = BRAILLE_SPACING,
+    fill: str = "white",
+) -> int:
+    """Draw ``text`` using simple braille dots and return its width."""
+
+    def _dots(bits: int) -> list[tuple[int, int]]:
+        mapping = {
+            0: (0, 0),
+            1: (0, 1),
+            2: (0, 2),
+            3: (1, 0),
+            4: (1, 1),
+            5: (1, 2),
+        }
+        return [mapping[i] for i in range(6) if bits & (1 << i)]
+
+    x, y = pos
+    char_w = 2 * radius + spacing
+    for ch in _to_braille(text):
+        bits = ord(ch) - 0x2800
+        for cx, cy in _dots(bits):
+            draw.ellipse(
+                (
+                    x + cx * char_w - radius,
+                    y + cy * (radius * 2 + spacing) - radius,
+                    x + cx * char_w + radius,
+                    y + cy * (radius * 2 + spacing) + radius,
+                ),
+                fill=fill,
+            )
+        x += char_w + spacing
+    return x - pos[0]
+
+
+def _braille_text_width(
+    text: str, radius: int = BRAILLE_RADIUS, spacing: int = BRAILLE_SPACING
+) -> int:
+    """Return the width of ``text`` when drawn with :func:`_draw_braille_text`."""
+    char_w = 2 * radius + spacing
+    return len(text) * (char_w + spacing) - spacing
+
+
+def _moon_phase(date: datetime.date) -> float:
+    """Return the fractional moon phase (0=new, 0.5=full)."""
+    diff = date - datetime.date(2001, 1, 1)
+    days = diff.days + diff.seconds / 86400
+    lunations = 0.20439731 + days * 0.03386319269
+    return lunations % 1
 
 
 FONT_CANDIDATES = [
@@ -82,10 +203,31 @@ def load_font(size: int) -> ImageFont.FreeTypeFont:
     """Return a TrueType font for overlays."""
     for name in FONT_CANDIDATES:
         try:
-            return ImageFont.truetype(name, size)
+            font = ImageFont.truetype(name, size)
+            if font.getmask("\u2801").getbbox():
+                return font
         except OSError:
             continue
-    return ImageFont.load_default()
+    font = ImageFont.load_default()
+    if font.getmask("\u2801").getbbox():
+        return font
+    try:
+        path = os.path.join(os.path.dirname(ImageFont.__file__), "DejaVuSansMono.ttf")
+        return ImageFont.truetype(path, size)
+    except OSError:
+        return font
+
+
+def _generate_qr_code(data: str, size: int) -> Image.Image:
+    """Return a QR code image for ``data`` scaled to ``size`` pixels."""
+    if qrcode is None:
+        raise RuntimeError("qrcode module not available")
+
+    qr = qrcode.QRCode(border=0, box_size=1)
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="white", back_color="black").convert("RGBA")
+    return img.resize((size, size), Image.NEAREST)
 
 
 def generate_test_pattern(
@@ -93,10 +235,16 @@ def generate_test_pattern(
     height: int = 720,
     logo_path: Optional[str] = None,
     camera_name: str | None = None,
+    variant: str = "color",
+    spinner: str | None = None,
 ) -> Image.Image:
-    """Return a PIL image with a broadcast-style test pattern and calibration aids."""
+    """Return a PIL image with calibration aids.
+    ``spinner`` overlays a simple spinner glyph on the pattern.
+    """
 
     img = Image.new("RGB", (width, height))
+
+    img = Image.new("RGBA", (width, height))
     draw = ImageDraw.Draw(img)
 
     # background gradient with three stops for smoother transitions
@@ -115,7 +263,7 @@ def generate_test_pattern(
                 draw.line([(0, y), (width, y)], fill=(r, g, b))
                 break
 
-    # SMPTE-like color bars
+    # SMPTE color bars: full intensity row followed by 75 % row
     bars = [
         (255, 255, 255),
         (255, 255, 0),
@@ -125,10 +273,125 @@ def generate_test_pattern(
         (255, 0, 0),
         (0, 0, 255),
     ]
-    bar_h = height // 6
+    bar_h = height // 16
+    bars_total = bar_h * 2
     bar_w = width // len(bars)
     for i, color in enumerate(bars):
         draw.rectangle([i * bar_w, 0, (i + 1) * bar_w, bar_h], fill=color)
+    for i, color in enumerate(bars):
+        shade = tuple(int(c * 0.75) for c in color)
+        draw.rectangle([i * bar_w, bar_h, (i + 1) * bar_w, bars_total], fill=shade)
+
+    # grayscale staircase under the bars
+    step_h = max(4, bar_h // 3)
+    num_steps = len(range(0, 256, 12))
+    step_w = width // num_steps
+    for idx, val in enumerate(range(0, 256, 12)):
+        x0 = idx * step_w
+        draw.rectangle(
+            [x0, bars_total, x0 + step_w, bars_total + step_h],
+            fill=(val, val, val),
+        )
+
+    # super-white and super-black patches on edges
+    patch = 8
+    y_patch = bars_total + step_h + 2
+    draw.rectangle([0, y_patch, patch, y_patch + patch], fill=(255, 255, 255))
+    draw.rectangle([width - patch, y_patch, width, y_patch + patch], fill=(0, 0, 0))
+
+    # subtle synthwave sunrise near the horizon
+    sun_r = min(width, height) // 10
+    horizon_y = height - bars_total - step_h - sun_r
+    sun_cx = width // 4
+    shimmer = 1 + 0.05 * math.sin(time.time() * 2)
+    for r in range(sun_r, 0, -2):
+        ratio = r / sun_r
+        color = (
+            int(min(255, 255 * ratio * shimmer)),
+            int(min(255, (80 + 100 * (1 - ratio)) * shimmer)),
+            int(min(255, (150 + 50 * ratio) * shimmer)),
+        )
+        draw.arc(
+            [sun_cx - r, horizon_y - r, sun_cx + r, horizon_y + r],
+            start=180,
+            end=360,
+            fill=color,
+            width=2,
+        )
+    draw.line([(0, horizon_y), (width, horizon_y)], fill=(80, 0, 80))
+    for x_off in range(-sun_r, sun_r + 1, sun_r // 4):
+        draw.line(
+            [
+                (sun_cx + x_off, horizon_y),
+                (sun_cx + x_off, horizon_y - 5),
+            ],
+            fill=(80, 0, 80),
+        )
+
+    # moon opposite the sun showing current phase
+    moon_r = sun_r // 2
+    moon_cx = width * 3 // 4
+    phase = _moon_phase(datetime.datetime.now().date())
+    moon_color = (220, 220, 255)
+    for r in range(moon_r, 0, -2):
+        ratio = r / moon_r
+        color = (
+            int(moon_color[0] * ratio),
+            int(moon_color[1] * ratio),
+            int(moon_color[2] * ratio),
+        )
+        draw.arc(
+            [moon_cx - r, horizon_y - r, moon_cx + r, horizon_y + r],
+            start=180,
+            end=360,
+            fill=color,
+            width=2,
+        )
+    if phase < 0.5:
+        offset = moon_r * (1 - 2 * phase)
+        bbox = [
+            moon_cx - moon_r + offset,
+            horizon_y - moon_r,
+            moon_cx + moon_r + offset,
+            horizon_y + moon_r,
+        ]
+    else:
+        offset = moon_r * (2 * phase - 1)
+        bbox = [
+            moon_cx - moon_r - offset,
+            horizon_y - moon_r,
+            moon_cx + moon_r - offset,
+            horizon_y + moon_r,
+        ]
+    draw.ellipse(bbox, fill=(20, 20, 40))
+
+    # drifting clouds subtly obscure the sun
+    cloud_layer = Image.new("RGBA", (width, height))
+    cloud_draw = ImageDraw.Draw(cloud_layer)
+    offset = int(time.time() * 10) % (width + sun_r) - sun_r // 2
+    base_y = horizon_y - sun_r // 2
+    c_rx = sun_r // 2
+    c_ry = sun_r // 4
+    for i in range(5):
+        cx = (offset + i * c_rx * 2) % (width + sun_r) - c_rx
+        cy = base_y - (i % 3) * (sun_r // 6)
+        cloud_draw.ellipse(
+            [cx, cy, cx + c_rx * 2, cy + c_ry],
+            fill=(0, 0, 0, 40),
+        )
+    img = Image.alpha_composite(img, cloud_layer)
+    draw = ImageDraw.Draw(img)
+
+    # label the sunrise with the running version
+    font_version = load_font(18)
+    version_text = f"glimpser v{config.VERSION}"
+    text_w = draw.textlength(version_text, font=font_version)
+    draw.text(
+        (sun_cx - text_w // 2, horizon_y + 10),
+        version_text,
+        fill=(160, 160, 160),
+        font=font_version,
+    )
 
     # miniature SMPTE bars and wide-gamut Rec.2020 bars
     mini_709 = [
@@ -152,60 +415,67 @@ def generate_test_pattern(
     mini_w = max(2, width // 100)
     mini_h = bar_h // 4
     font_tiny = load_font(8)
-    x_start = width - mini_w * (len(mini_709) + len(mini_2020)) - 10 - 50
-    y_start = 2 + 10
+    x_start = 10
+    y_start = 10
+    mini_total_w = mini_w * (len(mini_709) + len(mini_2020))
     for color, label in mini_709 + mini_2020:
-        draw.rectangle([x_start, y_start, x_start + mini_w, y_start + mini_h], fill=color)
+        draw.rectangle(
+            [x_start, y_start, x_start + mini_w, y_start + mini_h], fill=color
+        )
         text_color = "white" if sum(color) < 382 else "black"
         draw.text((x_start + 1, y_start + 1), label, fill=text_color, font=font_tiny)
         x_start += mini_w
 
-    # checker pattern limited to the bottom-right quadrant
-    sq = 20
-    y0 = height - bar_h
-    x0 = width * 3 // 4
-    for y in range(y0, height, sq):
-        for x in range(x0, width, sq):
-            fill = (255, 255, 255) if (x // sq + y // sq) % 2 == 0 else (0, 0, 0)
+    # smaller checkerboard aligned with the mini bars
+    sq = max(10, mini_w)
+    pat_w = mini_total_w
+    pat_h = sq * 4
+    x0 = 10
+    y0 = y_start + mini_h + 5
+    for y in range(y0, y0 + pat_h, sq):
+        for x in range(x0, x0 + pat_w, sq):
+            fill = (
+                (255, 255, 255)
+                if ((x - x0) // sq + (y - y0) // sq) % 2 == 0
+                else (0, 0, 0)
+            )
             draw.rectangle([x, y, x + sq - 1, y + sq - 1], fill=fill)
 
-    # grayscale blocks for exposure checking
-    block_w = width // 20
-    block_h = bar_h // 3
-    for i in range(6):
-        shade = int(255 * i / 5)
+    # grayscale swatch matching checker height
+    block_w = mini_w
+    block_h = pat_h // 4
+    start_x = x0 + pat_w + 5
+    for i in range(4):
+        shade = int(255 * i / 3)
         draw.rectangle(
-            [i * block_w + 10, y0 - block_h - 5, (i + 1) * block_w + 10, y0 - 5],
+            [
+                start_x,
+                y0 + i * block_h,
+                start_x + block_w,
+                y0 + (i + 1) * block_h,
+            ],
             fill=(shade, shade, shade),
         )
 
-    # fine lines for sharpness tests around center
+    # fine lines for sharpness tests around center fade outward
     center_x = width // 2
     center_y = height // 2
-    for offset in range(-20, 25, 5):
-        draw.line(
-            (center_x + offset, bar_h, center_x + offset, height - bar_h),
-            fill="white",
-        )
-        draw.line(
-            (0, center_y + offset, width, center_y + offset),
-            fill="white",
-        )
+    max_off = 20
+    for offset in range(-max_off, max_off + 1, 5):
+        shade = int(255 - (abs(offset) / max_off) * 155)
+        alpha = int(200 - (abs(offset) / max_off) * 200)
+        color = (shade, shade, shade, alpha)
+        draw.line((center_x + offset, 0, center_x + offset, height), fill=color)
+        draw.line((0, center_y + offset, width, center_y + offset), fill=color)
 
     # interlaced lines for moire effect
-    for y in range(bar_h, height, 4):
+    for y in range(bars_total + step_h, height, 4):
         draw.line((0, y, width, y), fill=(30, 30, 30))
 
-    # wedge calibration dots around the bullseye
-    radius = min(width, height) * 0.4
-    for angle in range(0, 360, 30):
-        a = math.radians(angle)
-        x = center_x + radius * math.cos(a)
-        y = center_y + radius * math.sin(a)
-        draw.ellipse((x - 3, y - 3, x + 3, y + 3), fill="white")
-
-    # central bullseye target
-    for r in range(60, 0, -20):
+    # concentric zone-plate in the centre
+    zone_radius = min(width, height) // 3
+    for r in range(zone_radius, 0, -1):
+        shade = int(127.5 * (1 + math.sin(r * r * 0.05)))
         draw.ellipse(
             (
                 center_x - r,
@@ -213,40 +483,277 @@ def generate_test_pattern(
                 center_x + r,
                 center_y + r,
             ),
-            outline="white",
+            outline=(shade, shade, shade),
+        )
+
+    # wedge calibration dots around the bullseye
+    wedge_radius = min(width, height) * 0.4
+    for angle in range(0, 360, 30):
+        a = math.radians(angle)
+        x = center_x + wedge_radius * math.cos(a)
+        y = center_y + wedge_radius * math.sin(a)
+        draw.ellipse((x - 3, y - 3, x + 3, y + 3), fill="white")
+
+    # central bullseye target with fading rings
+    for idx, r in enumerate(range(60, 0, -20)):
+        shade = 255 - idx * 60
+        color = (shade, shade, shade)
+        draw.ellipse(
+            (
+                center_x - r,
+                center_y - r,
+                center_x + r,
+                center_y + r,
+            ),
+            outline=color,
             width=2,
         )
 
-    # time and mystic text
-    font_large = load_font(32)
+    # add a simple second hand so the bullseye doubles as a clock face
+    h, m, s = map(int, datetime.datetime.now().strftime("%H:%M:%S").split(":"))
+    angle = math.radians((s / 60) * 360 - 90)
+    hand_len = wedge_radius
+    end_x = center_x + hand_len * math.cos(angle)
+    end_y = center_y + hand_len * math.sin(angle)
+    draw.line((center_x, center_y, end_x, end_y), fill="white", width=2)
+
+    # overlay spinner if provided
     font_small = load_font(20)
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    tb = draw.textbbox((0, 0), timestamp, font=font_large)
-    tw, th = tb[2] - tb[0], tb[3] - tb[1]
-    draw.rectangle(
-        [width // 2 - tw // 2 - 4, bar_h + 4, width // 2 + tw // 2 + 4, bar_h + th + 8],
-        fill=(0, 0, 0),
+    now = datetime.datetime.now()
+    timestamp = now.strftime("%H:%M:%S")
+    date_text = now.strftime("%Y-%m-%d")
+    zone = tz.gettz(config.TZ) or tz.UTC
+    tz_text = now.astimezone(zone).tzname() or config.TZ
+
+    if spinner:
+        sw = _braille_text_width(spinner)
+        _draw_braille_text(draw, (width - sw - 30, 20), spinner)
+
+    # stable reference patch for tests
+    patch_x = width // 2 + 6
+    patch_y = height // 2 + 3
+    draw.point((patch_x, patch_y), fill=(118, 118, 118))
+
+    # multiple time codes stacked on the right side
+    font_right = load_font(26)
+    font_binary = load_font(22)
+    font_braille = load_font(30)
+    time_simple = timestamp
+    beats_time = _format_beats_time(time_simple)
+    formats = [
+        time_simple,
+        _format_roman_time(time_simple),
+        _to_braille(time_simple),
+        _format_binary_time(time_simple),
+        tz_text,
+    ]
+
+    fonts = [
+        font_right,
+        font_right,
+        font_braille,
+        font_binary,
+        font_right,
+    ]
+    segments = [t.replace("\u2812", ":").split(":") for t in formats]
+
+    braille_idx = 2
+
+    roman_w1, roman_w2, roman_w3, colon_w_std = _roman_segment_widths(font_right)
+    colon_w = max(
+        colon_w_std, draw.textlength(":", font=font_binary), _braille_text_width(":")
     )
-    draw.text((width // 2 - tw // 2, bar_h + 6), timestamp, fill="white", font=font_large)
+    colon_gap = colon_w + 2
+    seg1_max = max(
+        draw.textlength("23", font=font_right),
+        draw.textlength("10111", font=font_binary),
+        roman_w1,
+        _braille_text_width("00"),
+    )
+    seg2_max = max(
+        draw.textlength("59", font=font_right),
+        draw.textlength("111011", font=font_binary),
+        roman_w2,
+        _braille_text_width("00"),
+    )
+    seg3_max = seg2_max
 
-    mystic = "Seek the unseen"
-    mb = draw.textbbox((0, 0), mystic, font=font_small)
-    mw, mh = mb[2] - mb[0], mb[3] - mb[1]
-    draw.text((width // 2 - mw // 2, bar_h + th + 14), mystic, fill="white", font=font_small)
+    tz_w = draw.textlength(tz_text, font=font_right)
+    total_w = max(
+        seg1_max + colon_gap + seg2_max + colon_gap + seg3_max,
+        tz_w,
+    )
+    x_start = width - total_w - 30
 
-    # timestamp repeated near the vertical center on the right side
-    font_right = load_font(24)
-    rb = draw.textbbox((0, 0), timestamp, font=font_right)
-    rw, rh = rb[2] - rb[0], rb[3] - rb[1]
+    line_heights = [
+        font_right.size,
+        font_right.size,
+        font_braille.size,
+        font_binary.size,
+        font_right.size,
+    ]
+    spacing_y = 22
+    extra_gap = 30
+    total_h = sum(line_heights) + spacing_y * (len(line_heights) - 1) + extra_gap * 2
+    y_start = height // 2 - total_h // 2 + 20
+
+    # lighten the stacked clocks so they distract less from the pattern
+    clock_color = (160, 160, 160)
+    date_parts = date_text.split("-")
+    date_seg1 = draw.textlength("0000", font=font_right)
+    date_seg = draw.textlength("00", font=font_right)
+    x_date = 30
     draw.text(
-        (width - rw - 10, height // 2 - rh // 2),
-        timestamp,
-        fill="white",
+        (x_date + date_seg1 - draw.textlength(date_parts[0], font=font_right), y_start),
+        date_parts[0],
+        fill=clock_color,
         font=font_right,
     )
-
+    x_date += date_seg1
+    draw.text((x_date, y_start), "-", fill=clock_color, font=font_right)
+    x_date += colon_gap
+    draw.text(
+        (x_date + date_seg - draw.textlength(date_parts[1], font=font_right), y_start),
+        date_parts[1],
+        fill=clock_color,
+        font=font_right,
+    )
+    x_date += date_seg
+    draw.text((x_date, y_start), "-", fill=clock_color, font=font_right)
+    x_date += colon_gap
+    draw.text(
+        (x_date + date_seg - draw.textlength(date_parts[2], font=font_right), y_start),
+        date_parts[2],
+        fill=clock_color,
+        font=font_right,
+    )
+    x_date += date_seg
+    space_w = draw.textlength(" ", font=font_right)
+    draw.text((x_date, y_start), " ", fill=clock_color, font=font_right)
+    x_date += space_w
+    draw.text((x_date, y_start), beats_time, fill=clock_color, font=font_right)
+    current_y = y_start
+    timezone_idx = 4
+    roman_idx = 1
+    for idx, parts in enumerate(segments):
+        x = x_start
+        y = current_y
+        font = fonts[idx]
+        if idx == braille_idx:
+            x -= _braille_text_width("0")
+            _draw_braille_text(
+                draw,
+                (x + seg1_max - _braille_text_width(parts[0]), y),
+                parts[0],
+                fill=clock_color,
+            )
+            x += seg1_max
+            _draw_braille_text(draw, (x, y), ":", fill=clock_color)
+            x += colon_gap
+            _draw_braille_text(
+                draw,
+                (x + seg2_max - _braille_text_width(parts[1]), y),
+                parts[1],
+                fill=clock_color,
+            )
+            x += seg2_max
+            _draw_braille_text(draw, (x, y), ":", fill=clock_color)
+            x += colon_gap
+            _draw_braille_text(
+                draw,
+                (x + seg3_max - _braille_text_width(parts[2]), y),
+                parts[2],
+                fill=clock_color,
+            )
+            current_y += line_heights[idx] + spacing_y
+            if idx == timezone_idx:
+                current_y += extra_gap
+        elif idx == roman_idx:
+            draw.text(
+                (x + seg1_max - draw.textlength(parts[0], font=font), y),
+                parts[0],
+                fill=clock_color,
+                font=font,
+            )
+            x += seg1_max + colon_gap
+            draw.text(
+                (x + seg2_max - draw.textlength(parts[1], font=font), y),
+                parts[1],
+                fill=clock_color,
+                font=font,
+            )
+            x += seg2_max + colon_gap
+            draw.text(
+                (x + seg3_max - draw.textlength(parts[2], font=font), y),
+                parts[2],
+                fill=clock_color,
+                font=font,
+            )
+            current_y += line_heights[idx] + spacing_y
+            if idx == timezone_idx:
+                current_y += extra_gap
+        elif len(parts) == 1:
+            draw.text(
+                (x + total_w - draw.textlength(parts[0], font=font), y),
+                parts[0],
+                fill=clock_color,
+                font=font,
+            )
+            current_y += line_heights[idx] + spacing_y
+            if idx == timezone_idx:
+                current_y += extra_gap
+        else:
+            draw.text(
+                (x + seg1_max - draw.textlength(parts[0], font=font), y),
+                parts[0],
+                fill=clock_color,
+                font=font,
+            )
+            x += seg1_max
+            draw.text((x, y), ":", fill=clock_color, font=font)
+            x += colon_gap
+            draw.text(
+                (x + seg2_max - draw.textlength(parts[1], font=font), y),
+                parts[1],
+                fill=clock_color,
+                font=font,
+            )
+            x += seg2_max
+            draw.text((x, y), ":", fill=clock_color, font=font)
+            x += colon_gap
+            draw.text(
+                (x + seg3_max - draw.textlength(parts[2], font=font), y),
+                parts[2],
+                fill=clock_color,
+                font=font,
+            )
+            current_y += line_heights[idx] + spacing_y
+            if idx == timezone_idx:
+                current_y += extra_gap
     if camera_name:
-        draw.text((10, bar_h + 10), camera_name, fill="white", font=font_small)
+        draw.text(
+            (10, bars_total + step_h + 10), camera_name, fill="white", font=font_small
+        )
+
+    qr_size = min(width, height) // 8
+    qr_payload = f"{timestamp}-{COMMIT_HASH}"
+    try:
+        qr_img = _generate_qr_code(qr_payload, qr_size)
+        pulse = 0.8 + 0.2 * math.sin(time.time() * 2)
+        qr_img = ImageEnhance.Brightness(qr_img).enhance(pulse)
+        img.alpha_composite(
+            qr_img, (width - qr_img.width - 10, height - qr_img.height - 10)
+        )
+    except Exception:
+        pass
+
+    # redraw the second hand above overlays
+    h, m, s = map(int, datetime.datetime.now().strftime("%H:%M:%S").split(":"))
+    angle = math.radians((s / 60) * 360 - 90)
+    hand_len = wedge_radius
+    end_x = center_x + hand_len * math.cos(angle)
+    end_y = center_y + hand_len * math.sin(angle)
+    draw.line((center_x, center_y, end_x, end_y), fill="white", width=2)
 
     if logo_path and os.path.exists(logo_path):
         with Image.open(logo_path).convert("RGBA") as logo:
@@ -254,206 +761,7 @@ def generate_test_pattern(
             logo = logo.resize((int(logo.width * scale), int(logo.height * scale)))
             img.paste(logo, (width - logo.width - 10, height - logo.height - 10), logo)
 
-    return img
-
-
-def generate_indian_head_test_pattern(
-    width: int = 1280,
-    height: int = 720,
-    spinner: str | None = None,
-) -> Image.Image:
-    """Return a grayscale Indian Head-style test pattern with extras."""
-
-    img = Image.new("RGB", (width, height), "gray")
-    draw = ImageDraw.Draw(img)
-
-    # Mosaic background inspired by the former geometric pattern
-    tri_w = width // 10
-    tri_h = height // 10
-    colors = [(30, 30, 30), (80, 80, 80)]
-
-    for row in range(5):
-        for col in range(10):
-            x = col * tri_w // 2
-            y = row * tri_h
-            color = colors[(row + col) % 2]
-            points = [(x, y), (x + tri_w // 2, y + tri_h), (x + tri_w, y)]
-            draw.polygon(points, fill=color)
-
-    # miniature SMPTE bars and wide-gamut Rec.2020 bars in the upper right
-    mini_709 = [
-        ((191, 191, 191), "W"),
-        ((191, 191, 0), "Y"),
-        ((0, 191, 191), "C"),
-        ((0, 191, 0), "G"),
-        ((191, 0, 191), "M"),
-        ((191, 0, 0), "R"),
-        ((0, 0, 191), "B"),
-        ((0, 0, 0), "K"),
-    ]
-    mini_2020 = [
-        ((255, 0, 0), "R"),
-        ((0, 255, 0), "G"),
-        ((0, 0, 255), "B"),
-        ((0, 255, 255), "C"),
-        ((255, 0, 255), "M"),
-        ((255, 255, 0), "Y"),
-    ]
-    bar_h = height // 6
-    mini_w = max(2, width // 100)
-    mini_h = bar_h // 4
-    font_tiny = load_font(8)
-    x_start = width - mini_w * (len(mini_709) + len(mini_2020)) - 10 - 50
-    y_start = 2 + 10
-    for color, label in mini_709 + mini_2020:
-        draw.rectangle([x_start, y_start, x_start + mini_w, y_start + mini_h], fill=color)
-        text_color = "white" if sum(color) < 382 else "black"
-        draw.text((x_start + 1, y_start + 1), label, fill=text_color, font=font_tiny)
-        x_start += mini_w
-
-    draw.line((width // 2, 0, width // 2, height), fill="black", width=3)
-    draw.line((0, height // 2, width, height // 2), fill="black", width=3)
-
-    for scale in (0.4, 0.6, 0.8):
-        radius = int(min(width, height) * scale / 2)
-        bbox = (
-            width // 2 - radius,
-            height // 2 - radius,
-            width // 2 + radius,
-            height // 2 + radius,
-        )
-        draw.ellipse(bbox, outline="black", width=3)
-
-    font = load_font(int(height * 0.05))
-
-    # Display the current time in several numeral systems near the right center
-    timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-    font_small = load_font(int(height * 0.04))
-    h, m, s = timestamp.split(":")
-    lines = [
-        f"{h}:{m}:{s}",
-        f"{_to_braille(h)}:{_to_braille(m)}:{_to_braille(s)}",
-        f"{_to_roman(int(h))}:{_to_roman(int(m))}:{_to_roman(int(s))}",
-        f"{int(h):05b}:{int(m):06b}:{int(s):06b}",
-    ]
-
-    hours = [h, _to_braille(h), _to_roman(int(h)), f"{int(h):05b}"]
-    mins = [m, _to_braille(m), _to_roman(int(m)), f"{int(m):06b}"]
-    secs = [s, _to_braille(s), _to_roman(int(s)), f"{int(s):06b}"]
-    parts = list(zip(hours, mins, secs))
-
-    colon_w = draw.textlength(":", font=font_small)
-    hours_w = [draw.textlength(text, font=font_small) for text in hours]
-    mins_w = [draw.textlength(text, font=font_small) for text in mins]
-    secs_w = [draw.textlength(text, font=font_small) for text in secs]
-    max_min_w = max(mins_w)
-    max_sec_w = max(secs_w)
-    colon_x2 = width - 10 - max_sec_w
-    colon_x1 = colon_x2 - colon_w - max_min_w
-
-    metrics = [draw.textbbox((0, 0), line, font=font_small) for line in lines]
-    heights = [m[3] - m[1] for m in metrics]
-    spacing = 8
-    total_height = sum(heights) + spacing * (len(lines) - 1)
-    y = height // 2 - total_height // 2
-    for (h_part, m_part, s_part), hgt, hw in zip(parts, heights, hours_w):
-        line = f"{h_part}:{m_part}:{s_part}"
-        x = colon_x1 - hw
-        draw.text((x, y), line, fill="white", font=font_small)
-        y += hgt + spacing
-
-    # Optional spinner overlay for fun
-    if spinner:
-        sb = draw.textbbox((0, 0), spinner, font=font)
-        sw, sh = sb[2] - sb[0], sb[3] - sb[1]
-        draw.text((width - sw - 10, 10), spinner, fill="white", font=font)
-
-    # Extra calibration graphics
-    cx, cy = width // 2, height // 2
-    draw.line((cx, 0, cx, height), fill="white")
-    draw.line((0, cy, width, cy), fill="white")
-    for frac in (0.45, 0.30, 0.15):
-        r = int(height * frac / 2)
-        draw.ellipse((cx - r, cy - r, cx + r, cy + r), outline="white")
-
-    grad_y = height - 50
-    step_w = width // 44
-    for i in range(11):
-        shade = round(i * 255 / 10)
-        draw.rectangle(
-            (10 + i * step_w, grad_y, 10 + (i + 1) * step_w - 1, grad_y + 20),
-            fill=(shade, shade, shade),
-        )
-
-    ramp_w = step_w * 51
-    ramp_y = grad_y - 30
-    for i in range(ramp_w):
-        shade = round(i * 255 / (ramp_w - 1))
-        draw.line((10 + i, ramp_y, 10 + i, ramp_y + 10), fill=(shade, shade, shade))
-    patch_w = ramp_w // 51
-    for i in range(51):
-        shade = round(i * 255 / 50)
-        bg = (240, 240, 240) if shade < 128 else (15, 15, 15)
-        left = 10 + i * patch_w
-        draw.rectangle((left, ramp_y + 12, left + patch_w - 1, ramp_y + 22), fill=bg)
-        inner_left = left + 2
-        inner_right = left + patch_w - 3
-        if inner_right >= inner_left:
-            draw.rectangle(
-                (inner_left, ramp_y + 14, inner_right, ramp_y + 20),
-                fill=(shade, shade, shade),
-            )
-
-    cb_x = width - 22
-    cb_y = height - 22
-    for yy in range(cb_y, cb_y + 20):
-        for xx in range(cb_x, cb_x + 20):
-            color = (255, 255, 255) if (xx + yy) % 2 == 0 else (0, 0, 0)
-            draw.point((xx, yy), fill=color)
-
-    wedge_x = 10
-    wedge_y = bar_h + 10
-    for freq in range(1, 11):
-        for x in range(20):
-            col = 255 if (x // freq) % 2 == 0 else 0
-            draw.line((wedge_x + x, wedge_y, wedge_x + x, wedge_y + 20), fill=(col, col, col))
-        wedge_x += 22
-    wedge_x = 10
-    wedge_y += 24
-    for freq in range(1, 11):
-        for y in range(20):
-            col = 255 if (y // freq) % 2 == 0 else 0
-            draw.line((wedge_x, wedge_y + y, wedge_x + 20, wedge_y + y), fill=(col, col, col))
-        wedge_x += 22
-
-    target_y = ramp_y - 40
-    intensities = [125, 200, 255]
-    for i, val in enumerate(intensities):
-        left = 10 + i * 24
-        draw.rectangle((left, target_y, left + 20, target_y + 20), fill=(val, val, val))
-
-    draw.rectangle((width - 70, 10, width - 20, 40), fill=(118, 118, 118))
-    draw.rectangle((width - 70, 50, width - 20, 80), fill=(215, 170, 150))
-
-    grid_color = (13, 13, 13)
-    for x in range(0, width, 100):
-        draw.line((x, 0, x, height - 1), fill=grid_color)
-    for y in range(0, height, 100):
-        draw.line((0, y, width - 1, y), fill=grid_color)
-
-    return img
-
-
-def generate_geometric_test_pattern(
-    width: int = 1280,
-    height: int = 720,
-    tiles: int = 10,
-    spinner: str | None = None,
-) -> Image.Image:
-    """Legacy wrapper that now returns the unified test pattern."""
-
-    # `tiles` is ignored but kept for backward compatibility
-    return generate_indian_head_test_pattern(width=width, height=height, spinner=spinner)
+    return img.convert("RGB")
 
 
 def save_test_pattern(path: str, **kwargs) -> None:
@@ -462,3 +770,15 @@ def save_test_pattern(path: str, **kwargs) -> None:
     img = generate_test_pattern(**kwargs)
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     img.save(path, "PNG")
+
+
+def encode_jpeg_with_metadata(img: Image.Image) -> bytes:
+    """Return JPEG bytes with ST 2086 metadata and ST 2110-21 hash."""
+
+    comment_data = {
+        "smpte2086": ST2086_METADATA,
+        "st2110_21_hash": hashlib.sha256(img.tobytes()).hexdigest()[:8],
+    }
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", comment=json.dumps(comment_data).encode("utf-8"))
+    return buf.getvalue()

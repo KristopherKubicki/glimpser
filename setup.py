@@ -10,7 +10,7 @@ setup(
     name="glimpser",
     version="0.2.7",
     author="Kristopher Kubicki",
-    author_email="kristopher@glimser.net",
+    author_email="kristopher@glimpser.net",
     description="A real-time monitoring application for capturing and analyzing live data from various sources",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -35,6 +35,7 @@ setup(
         "console_scripts": [
             "glimpser=main:main",
             "glimpser-clear=main:clear_console_cli",
+            "glimpser-dashboard=app.utils.console_dashboard:main",
         ],
     },
 )

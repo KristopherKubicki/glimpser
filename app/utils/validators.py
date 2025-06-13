@@ -103,7 +103,9 @@ def validate_template_name(template_name: str):
     if template_name is None or not isinstance(template_name, str):
         return None
 
-    allowed_chars = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.")
+    allowed_chars = set(
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-."
+    )
     if not all(char in allowed_chars for char in template_name):
         return None
 
@@ -260,6 +262,7 @@ INTEGER_RANGES = {
     "WATCHDOG_FAILURE_THRESHOLD": (1, None),
     "WATCHDOG_RESTART_COOLDOWN": (1, None),
     "WATCHDOG_MAX_FILE_HANDLES": (1, None),
+    "CRAWLER_STARTUP_SPREAD": (0, None),
     "SESSION_TIMEOUT_MINUTES": (1, None),
 }
 
@@ -311,10 +314,16 @@ def validate_setting(name: str, value: str) -> str | None:
         return None
 
     if key == "FFMPEG_HWACCEL":
-        return "auto" if val.lower() in {"true", "1", "t", "y", "yes", "on", "auto"} else "False"
+        return (
+            "auto"
+            if val.lower() in {"true", "1", "t", "y", "yes", "on", "auto"}
+            else "False"
+        )
 
     if key in BOOLEAN_SETTINGS:
-        return "True" if val.lower() in {"true", "1", "t", "y", "yes", "on"} else "False"
+        return (
+            "True" if val.lower() in {"true", "1", "t", "y", "yes", "on"} else "False"
+        )
 
     if key in INTEGER_RANGES:
         try:

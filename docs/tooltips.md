@@ -36,7 +36,7 @@ These tooltips aim to make the interface self‑explanatory and easier to naviga
 
 Interactive forms now include additional tooltips:
 
-- **Add Camera** – explains each field on the Discover tab and the "Structured" XPath buttons.
+- **Add Camera** – describes each field on the Discover tab and the "Structured" XPath buttons. A short helper paragraph guides you to test the URL and open the Advanced Options section.
 - **URL tester** – a tooltip shows "checking" then "valid" or "invalid" next to the URL field.
 - **Template Details** – buttons like "Suggest Prompt" and "Suggest Fix" describe their actions.
 - **Template toolbar** – quick actions appear at the bottom-left of the details page and fade out when idle.
@@ -45,7 +45,7 @@ Interactive forms now include additional tooltips:
 - **Live video player** – tooltip now refreshes with the full caption as it updates.
 - **Group selector** – choose a group on the live page. Selecting one reveals a second dropdown for cameras and syncs with the navigation bar.
 - **Info icon** – toggles camera metadata on the live page.
-- **Feed status indicators** – on the System Status page, red or yellow dots display a tooltip with offline time and the latest log message.
+- **Feed status indicators** – on the Status page, red or yellow dots display a tooltip with offline time and the latest log message.
 - **Camera type icons** – small symbols next to each feed name show whether the capture runs in a full browser, headless mode, or uses stealth.
 - **Chat modal controls** – the close icon and submit button now describe their actions.
 - **Help page tabs** – each tab button explains what information the section contains.
@@ -53,6 +53,8 @@ Interactive forms now include additional tooltips:
 - **Cost dashboards** – date selectors, the Load buttons and range slider include titles.
 - **LLM_PROMPT settings** – tooltips explain that the caption and summary prompts
   support `$datetime` and can span multiple lines.
+- **Settings table** – every configuration row now includes a short tooltip summarizing
+  the variable's purpose.
 
 ## Dynamic Tooltips
 

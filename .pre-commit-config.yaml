@@ -1,4 +1,5 @@
 minimum_pre_commit_version: "3.6.0"
+# All hooks must be local to allow offline usage
 
 # ─── PYTHON ────────────────────────────────────────────────────────────────────
 # NOTE: hooks run in the order they appear – isort before black is critical.
@@ -17,7 +18,7 @@ repos:
       # 2️⃣  Let Black format everything after isort touched the imports
       - id: black
         name: black
-        entry: black --line-length 120
+        entry: black --line-length 88
         language: system
         types: [python]
 
@@ -38,9 +39,9 @@ repos:
         entry: mypy --config-file=mypy.ini
         language: system
         types: [python]
-        stages: [push]
+        stages: [pre-push]
 
-# ─── JAVASCRIPT / CSS ──────────────────────────────────────────────────────────
+  # ─── JAVASCRIPT / CSS ──────────────────────────────────────────────────────────
   - repo: local
     hooks:
       - id: lint-js
@@ -48,18 +49,33 @@ repos:
         entry: npm run lint:js
         language: system
         pass_filenames: false
-        stages: [commit]
+        stages: [pre-commit]
 
       - id: format-js
         name: format js write
         entry: npm run format:js:write
         language: system
         pass_filenames: false
-        stages: [commit]
+        stages: [pre-commit]
 
       - id: lint-css
         name: lint css
         entry: npm run lint:css
         language: system
         pass_filenames: false
-        stages: [commit]
+        stages: [pre-commit]
+
+  - repo: local
+    hooks:
+      - id: check-exclude-docs
+        name: docs exclude list in sync
+        entry: python scripts/check_exclude_docs.py
+        language: system
+        pass_filenames: false
+
+  - repo: local
+    hooks:
+      - id: detect-secrets
+        name: detect secrets
+        entry: detect-secrets-hook
+        language: system

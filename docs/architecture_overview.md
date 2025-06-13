@@ -42,6 +42,7 @@ This guide provides a high-level look at Glimpser's core components and how they
 
 - Uses APScheduler to run periodic tasks.
 - Jobs include crawler scheduling, video archiving, discovery and summarization.
+- Additional tasks refresh clips, process queued offline jobs, clean up old data, collect system metrics and check for updates.
 - Tasks run asynchronously so functions like `schedule_discovery` and `schedule_summarization` never block the caller.
 - Background components start in a low-priority thread so Flask can serve requests immediately.
 - Exposes a `GracefulAPScheduler` instance used by the Flask app.
@@ -55,6 +56,10 @@ This guide provides a high-level look at Glimpser's core components and how they
                            v                           v
                      Utility Functions ----> Scheduler Jobs / Background Tasks
 ```
+
+The diagram below provides a visual version of the component flow:
+
+![Component Flow](images/architecture_overview.svg)
 
 - Routes handle incoming API or web requests.
 - Models define the database schema.

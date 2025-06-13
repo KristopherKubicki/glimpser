@@ -31,6 +31,8 @@ nav:
       - Docs Build Workflow: docs_build.md
       - CodeQL Security Scanning: codeql.md
       - Dependency Review: dependency_review.md
+      - OWASP Dependency Check: dependency_check.md
+      - Software Bill of Materials: sbom.md
       - EthicalCheck Workflow: ethicalcheck.md
       - FAQ: faq.md
       - Getting Started: getting_started.md
@@ -47,6 +49,7 @@ nav:
       - Search Autocomplete: search_autocomplete.md
       - Recommendations: recommendations.md
       - Release Workflow: release_workflow.md
+      - Automatic Update: auto_update.md
       - Settings Page: settings_page.md
       - Clock Settings: clock_settings.md
       - Braille Loading Spinner: braille_spinner.md
@@ -62,13 +65,17 @@ nav:
       - Troubleshooting: troubleshooting.md
       - Log Cleaner: log_cleaner.md
       - Video Archiver: video_archiver.md
+      - Video and Image Endpoints: video_image_endpoints.md
       - Dashboard Border Legend: border_legend.md
       - Caption Overlay Toggle: caption_overlay_toggle.md
+      - Caption or Prompt Toggle: caption_prompt_toggle.md
+      - Caption Prefix Issue: caption_prefix.md
       - Captions Chatbot: chatbot.md
       - Continuous Integration Checks: ci_checks.md
       - Jog-Shuttle Control: jog_shuttle.md
       - Live All Playback: live_all.md
       - Live View Scrubbing: live_scrub.md
+      - Clip Navigation: clip_navigation.md
       - LLM Prompt Settings: llm_prompts.md
       - MCP Integration: mcp_integration.md
       - In-App Onboarding: onboarding.md
@@ -77,3 +84,7 @@ nav:
       - UI Component Guide: style_guide.md
       - Navigation Logo: navigation_logo.md
       - Governance: governance.md
+      - Rotate Button: rotate_button.md
+      - Speed Slider: speed_slider.md
+      - Size Audit: size_audit.md
+      - Template Edit Preview: edit_template_preview.md

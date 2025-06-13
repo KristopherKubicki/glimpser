@@ -20,6 +20,10 @@ Refer to [developer_guide.md](developer_guide.md) for setting up your environmen
 Recent tests cover screenshot capture helpers, database initialization through
 `TemplateManager`, and mocked OpenAI interactions.
 
+All tests run with `pytest-socket` active, preventing any outbound network
+requests. If a scenario truly requires network access call
+`pytest_socket.enable_socket()` within that test.
+
 ## End-to-End Tests
 
 The `tests/test_e2e_web.py` module contains browser-based scenarios powered by

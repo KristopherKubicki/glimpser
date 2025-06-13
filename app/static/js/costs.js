@@ -1,16 +1,19 @@
-import { setupTableSorting } from "./templates.js";
+import { setupTableSorting, loadGroups } from "./templates.js";
 
 export function groupSmallValues(rows, limit = 15) {
-  if (rows.length <= limit) return rows;
+  if (limit <= 0 || rows.length <= limit) {
+    return [...rows].sort((a, b) => b.cost - a.cost);
+  }
   const sorted = [...rows].sort((a, b) => a.cost - b.cost);
   const bottom = sorted.slice(0, limit);
   const other = bottom.reduce(
     (acc, r) => {
       acc.tokens += r.tokens;
       acc.cost += r.cost;
+      acc.calls += r.calls ?? 0;
       return acc;
     },
-    { name: "Other", tokens: 0, cost: 0 },
+    { name: "Other", tokens: 0, cost: 0, calls: 0 },
   );
   const remaining = sorted.slice(limit).sort((a, b) => b.cost - a.cost);
   return [...remaining, other];
@@ -20,24 +23,31 @@ export function initCosts() {
   document.addEventListener("DOMContentLoaded", () => {
     const dataEl = document.getElementById("cost-data");
     if (!dataEl) return;
-    const range = document.getElementById("cost-range");
-    const label = document.getElementById("cost-range-label");
+    const rangeInput = document.getElementById("cost-range");
+    const rangeLabel = document.getElementById("cost-range-label");
+    const groupSelect = document.getElementById("cost-group");
+    const topSlider = document.getElementById("cost-top");
+    const topLabel = document.getElementById("cost-top-label");
     const tbody = document.querySelector("#cost-table tbody");
     const ctx = document.getElementById("costChart");
     let chart;
+    let rowsData = [];
 
-    const render = (rows) => {
+    const render = (rows = rowsData) => {
+      const top = topSlider ? parseInt(topSlider.value, 10) : 10;
+      const limit = rows.length > top ? rows.length - (top - 1) : 0;
+      const grouped =
+        limit > 0 ? groupSmallValues(rows, limit) : groupSmallValues(rows, 0);
       tbody.innerHTML = "";
-      for (const row of rows) {
+      for (const row of grouped) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${row.name}</td><td data-value="${row.tokens}">${row.tokens}</td><td data-value="${row.cost}">$${row.cost.toFixed(2)}</td>`;
+        tr.innerHTML = `<td>${row.name}</td><td data-value="${row.calls}">${row.calls}</td><td data-value="${row.tokens}">${row.tokens}</td><td data-value="${row.cost}">$${row.cost.toFixed(2)}</td>`;
         tbody.appendChild(tr);
       }
       if (!ctx) return;
-      const grouped = groupSmallValues(rows);
       const labels = grouped.map((r) => r.name);
       const values = grouped.map((r) => r.cost);
-      const bg = labels.map((_, i) => `hsl(${(i * 60) % 360},70%,60%)`);
+      const bg = labels.map((_, i) => `hsl(${(i * 60) % 360},40%,45%)`);
       const chartData = {
         labels,
         datasets: [{ data: values, backgroundColor: bg }],
@@ -46,51 +56,79 @@ export function initCosts() {
         chart.data = chartData;
         chart.update();
       } else {
-        chart = new Chart(ctx, { type: "pie", data: chartData });
+        chart = new Chart(ctx, {
+          type: "pie",
+          data: chartData,
+          options: {
+            responsive: false,
+            plugins: { legend: { display: false } },
+          },
+        });
       }
     };
 
     const fetchData = async () => {
-      if (!range) {
-        render(JSON.parse(dataEl.textContent));
+      if (!rangeInput) {
+        rowsData = JSON.parse(dataEl.textContent);
+        render();
         return;
       }
-      const days = parseInt(range.value, 10);
-      const end = new Date().toISOString().slice(0, 10);
-      const start = new Date(Date.now() - days * 86400000)
-        .toISOString()
-        .slice(0, 10);
-      const resp = await fetch(
-        `/api/llm_cost_summary?start=${start}&end=${end}`,
-      );
+      const params = [];
+      if (rangeInput) {
+        const days = parseInt(rangeInput.value, 10);
+        const end = new Date();
+        const start = new Date(Date.now() - days * 86400000);
+        params.push(`start=${start.toISOString().slice(0, 10)}`);
+        params.push(`end=${end.toISOString().slice(0, 10)}`);
+      }
+      if (groupSelect && groupSelect.value && groupSelect.value !== "all") {
+        params.push(`group=${groupSelect.value}`);
+      }
+      const url = params.length
+        ? `/api/llm_cost_summary?${params.join("&")}`
+        : "/api/llm_cost_summary";
+      const resp = await fetch(url);
       const data = await resp.json();
       const rows = Object.entries(data).map(([name, info]) => ({
         name,
+        calls: info.calls ?? 0,
         tokens: info.tokens,
         cost: parseFloat(info.cost.replace("$", "")),
       }));
-      render(rows);
+      rowsData = rows;
+      render();
     };
 
-    range?.addEventListener("input", () => {
-      if (label) label.textContent = `Last ${range.value} days`;
+    rangeInput?.addEventListener("input", () => {
+      if (rangeLabel) rangeLabel.textContent = `${rangeInput.value} days`;
+      fetchData();
     });
-    range?.addEventListener("change", fetchData);
+    groupSelect?.addEventListener("change", fetchData);
+
+    topSlider?.addEventListener("input", () => {
+      if (topLabel) topLabel.textContent = `Top ${topSlider.value}`;
+      render();
+    });
 
     setupTableSorting("cost-table");
+    loadGroups();
+    if (rangeInput && rangeLabel) {
+      rangeLabel.textContent = `${rangeInput.value} days`;
+    }
     fetchData();
   });
 }
 
 export function initCostSummary(startTime) {
   document.addEventListener("DOMContentLoaded", () => {
-    const startInput = document.getElementById("start-date");
-    const endInput = document.getElementById("end-date");
+    const rangeInput = document.getElementById("cost-range");
+    const rangeLabel = document.getElementById("cost-range-label");
+    const groupSelect = document.getElementById("cost-group");
     const loadBtn = document.getElementById("load-cost");
     const sinceBtn = document.getElementById("since-restart");
     const tbody = document.querySelector("#cost-table tbody");
     const ctx = document.getElementById("costChart");
-    if (!startInput || !endInput || !loadBtn || !tbody) return;
+    if (!rangeInput || !loadBtn || !tbody) return;
     let chart;
 
     const render = (data) => {
@@ -112,7 +150,7 @@ export function initCostSummary(startTime) {
       const grouped = groupSmallValues(rows);
       const labels = grouped.map((r) => r.name);
       const values = grouped.map((r) => r.cost);
-      const bg = labels.map((_, i) => `hsl(${(i * 60) % 360},70%,60%)`);
+      const bg = labels.map((_, i) => `hsl(${(i * 60) % 360},40%,45%)`);
       const chartData = {
         labels,
         datasets: [
@@ -127,25 +165,48 @@ export function initCostSummary(startTime) {
         chart.data = chartData;
         chart.update();
       } else {
-        chart = new Chart(ctx, { type: "pie", data: chartData });
+        chart = new Chart(ctx, {
+          type: "pie",
+          data: chartData,
+          options: {
+            responsive: false,
+            plugins: { legend: { display: false } },
+          },
+        });
       }
     };
 
     const loadData = async () => {
-      const s = startInput.value;
-      const e = endInput.value;
-      const resp = await fetch(`/api/llm_cost_summary?start=${s}&end=${e}`);
+      const days = parseInt(rangeInput.value, 10);
+      const end = new Date();
+      const start = new Date(Date.now() - days * 86400000);
+      const params = [
+        `start=${start.toISOString().slice(0, 10)}`,
+        `end=${end.toISOString().slice(0, 10)}`,
+      ];
+      if (groupSelect && groupSelect.value && groupSelect.value !== "all") {
+        params.push(`group=${groupSelect.value}`);
+      }
+      const resp = await fetch(`/api/llm_cost_summary?${params.join("&")}`);
       const data = await resp.json();
       render(data);
     };
 
     loadBtn.addEventListener("click", loadData);
+    rangeInput.addEventListener("input", () => {
+      if (rangeLabel) rangeLabel.textContent = `${rangeInput.value} days`;
+    });
+    groupSelect?.addEventListener("change", loadData);
     sinceBtn?.addEventListener("click", () => {
       const dt = new Date(startTime * 1000);
-      startInput.value = dt.toISOString().slice(0, 10);
+      const diff = Math.ceil((Date.now() - dt.getTime()) / 86400000);
+      rangeInput.value = String(diff);
+      if (rangeLabel) rangeLabel.textContent = `${rangeInput.value} days`;
       loadData();
     });
 
+    loadGroups();
+    if (rangeLabel) rangeLabel.textContent = `${rangeInput.value} days`;
     loadData();
   });
 }

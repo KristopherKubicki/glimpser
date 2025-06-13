@@ -11,7 +11,6 @@ export function initTooltips() {
 
       const x = e.pageX ?? e.clientX;
       const y = e.pageY ?? e.clientY;
-
       let left = x + offset;
       if (left + tooltipWidth > window.innerWidth) {
         left = x - tooltipWidth - offset;

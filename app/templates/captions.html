@@ -34,7 +34,7 @@ template_controls %} {% block content %}
 
   <div class="tabs">
     <button class="tab-link active" data-tab="prompts-tab">Prompts</button>
-    <button class="tab-link" data-tab="history-tab">History</button>
+    <button class="tab-link" data-tab="history-tab">Summaries</button>
     <button class="tab-link" data-tab="bulk-tab">Bulk Tools</button>
   </div>
 
@@ -51,15 +51,23 @@ template_controls %} {% block content %}
       <option value="error_desc">Error ↓</option>
       <option value="error_asc">Error ↑</option>
     </select>
+    <div class="field-toggle">
+      <label>
+        <input type="radio" name="caption-field" value="caption" checked />
+        Caption
+      </label>
+      <label>
+        <input type="radio" name="caption-field" value="prompt" /> Prompt
+      </label>
+    </div>
     {% endcall %}
 
-    <h2>Camera Notes</h2>
     <div id="template-list">
       <table id="camera-table" class="camera-table">
         <thead>
           <tr>
             <th class="sortable" data-type="string">Camera</th>
-            <th>Caption</th>
+            <th class="sortable view-header" data-type="string">Caption</th>
           </tr>
         </thead>
         <tbody>
@@ -108,13 +116,14 @@ template_controls %} {% block content %}
               <form id="form-{{ camera }}" class="notes-form caption-box">
                 <div class="chat-box">
                   <div class="chat-prompt">
-                    <label for="notes-{{ camera }}">Prompt</label>
+                    <label for="notes-{{ camera }}" class="sr-only">Prompt</label>
                     <textarea
                       id="notes-{{ camera }}"
                       class="notes-textarea"
                       placeholder="Edit caption prompt"
                     >
-{{ template_details[camera]['notes'] }}</textarea>
+{{ template_details[camera]['notes'] }}</textarea
+                    >
                     <button
                       class="update-button"
                       data-template="{{ camera }}"
@@ -123,13 +132,13 @@ template_controls %} {% block content %}
                     >
                       <svg width="16" height="16" aria-hidden="true">
                         <use
-                          href="{{ url_for('static', filename='icons/sprite.svg') }}#login"
+                          href="{{ url_for('static', filename='icons/sprite.svg') }}#send"
                         />
                       </svg>
                     </button>
                   </div>
                   <div class="chat-response">
-                    <label id="last-caption-label-{{ camera }}"
+                    <label id="last-caption-label-{{ camera }}" class="sr-only"
                       >Last caption</label
                     >
                     <div

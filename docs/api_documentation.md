@@ -133,7 +133,7 @@ Several other routes provide streaming functionality:
 - **GET /last_video/<template_name>** – Download the most recent MP4 for the given template. Returns a 404 response if no video is available.
 - **GET /last_screenshot/<template_name>** – Retrieve the latest screenshot for a template.
 - **GET /last_teaser** – Returns the teaser video compiled from recent footage. Accepts an optional `group` query parameter to retrieve a group-specific teaser, e.g. `/last_teaser?group=frontdoor`.
-- **GET /clip/<template_name>** – Concatenate the active `in_process.mp4` with recent finalized segments. If the in‑progress video is shorter than the requested `duration` (default `DEFAULT_CLIP_DURATION`) older finalized clips are prepended. When no footage exists the server falls back to a blank video. Subsequent requests reuse the cached clip for speed. Responses include `Cache-Control: public, max-age=120` so browsers retain the clip for two minutes.
+- **GET /clip/<template_name>** – Concatenate the active `in_process.mp4` with recent finalized segments. If the in‑progress video is shorter than the requested `duration` (default `DEFAULT_CLIP_DURATION`) older finalized clips are prepended. When no footage exists the server falls back to a blank video. Subsequent requests reuse the cached clip stored under `CLIPS_DIRECTORY` for speed. Responses include `Cache-Control: public, max-age=120` so browsers retain the clip for two minutes.
 - **GET /test.rtsp** – Basic RTSP endpoint that serves MJPEG frames when used with `/rtsp_stream`. Send periodic `GET_PARAMETER` requests to keep the session alive.
 - **GET /test.mjpg** – MJPEG view of the test frame. Supports optional `camera` and `group` query parameters.
 - **GET /test_pattern.mjpg** – Streams a generated test pattern with a small
@@ -154,17 +154,17 @@ Example response:
 { "status": "success", "message": "Screenshot for camera1 taken" }
 ```
 
-### 7. View System Status
+### 7. View Status
 
 **GET /status**
 
-Redirects to the _System Status_ tab on the Settings page which displays metrics such as CPU, memory, and disk usage along with open file count, thread count, and uptime. These metrics are gathered in a background thread (see `app/utils/scheduling.py`).
+Redirects to the _Status_ tab on the Settings page which displays metrics such as CPU, memory, and disk usage along with open file count, thread count, and uptime. These metrics are gathered in a background thread (see `app/utils/scheduling.py`).
 
 ### 8. Stream Logs
 
 **GET /stream_logs**
 
-Streams log records via Server-Sent Events. Optional query parameters `level`, `source`, `start_date`, `end_date`, and `search` allow filtering. The `/logs` page and _System Status_ tab use this endpoint for the live log viewer.
+Streams log records via Server-Sent Events. Optional query parameters `level`, `source`, `start_date`, `end_date`, and `search` allow filtering. The `/logs` page and _Status_ tab use this endpoint for the live log viewer.
 
 To reduce load during rapid typing, identical `level`/`search` combinations are ignored if a stream for the same user is already active.
 

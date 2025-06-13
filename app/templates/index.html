@@ -46,5 +46,6 @@
     <button id="welcome-ok" title="Dismiss this guide">Got it!</button>
   </div>
 </div>
-
-{% endblock %}
+{% from 'components.html' import confirm_modal %} {{
+confirm_modal('delete-camera', 'Delete this camera?', 'Delete', 'Cancel') }} {%
+endblock %}

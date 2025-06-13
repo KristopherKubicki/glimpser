@@ -3,17 +3,25 @@ content %}
 <h1>LLM Cost Summary</h1>
 {% call card('Select Range') %}
 <form id="cost-form" class="cost-form">
-  <label for="start-date">From:</label>
-  <input type="date" id="start-date" name="start" title="Select start date" />
-  <label for="end-date">To:</label>
-  <input type="date" id="end-date" name="end" title="Select end date" />
+  <label for="cost-group">Group:</label>
+  <select id="cost-group" title="Filter by group"></select>
+  <label for="cost-range" class="ml-4">Days:</label>
+  <input
+    type="range"
+    id="cost-range"
+    min="1"
+    max="30"
+    value="7"
+    title="Number of days"
+  />
+  <span id="cost-range-label">7 days</span>
   <button type="button" id="since-restart" title="Use start time from restart">
     Since Last Restart
   </button>
   <button type="button" id="load-cost" title="Load cost data">Load</button>
 </form>
 {% endcall %}
-<canvas id="costChart" width="400" height="300"></canvas>
+<canvas id="costChart" width="250" height="250"></canvas>
 <table id="cost-table" class="cost-table">
   <thead>
     <tr>

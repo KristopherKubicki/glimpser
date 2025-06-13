@@ -24,7 +24,7 @@ beforeEach(() => {
   }));
 });
 
-test("mobile view renders simplified cards", async () => {
+test("mobile view displays preview video", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: true,
     headers: { get: () => "application/json" },
@@ -36,5 +36,7 @@ test("mobile view renders simplified cards", async () => {
 
   await loadTemplates();
 
-  expect(document.querySelectorAll(".mobile-card").length).toBe(1);
+  const card = document.querySelector(".mobile-card");
+  expect(card).not.toBeNull();
+  expect(card.querySelector("video")).not.toBeNull();
 });

@@ -126,9 +126,9 @@ def live_server_with_user(tmp_path_factory):
     args = argparse.Namespace(
         db_path=db_path,
         username="e2e",
-        password="secret",
+        password="secret",  # pragma: allowlist secret
         update_password=False,
-        secret_key="secretkey",
+        secret_key="secretkey",  # pragma: allowlist secret
         update_key=False,
     )
     generate_credentials.generate_credentials(args)
@@ -173,8 +173,6 @@ def test_login_and_redirect(live_server_with_user, browser):
     browser.find_element(By.ID, "search-input")
     browser.get(f"{live_server_with_user}/live")
     video = browser.find_element(By.ID, "live-video")
-    selector = browser.find_element(By.ID, "camera-selector")
     slider = browser.find_element(By.ID, "speed-slider")
     assert video is not None
-    assert selector is not None
     assert slider is not None

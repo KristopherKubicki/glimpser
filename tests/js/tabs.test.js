@@ -38,4 +38,16 @@ describe("tabs", () => {
       true,
     );
   });
+
+  test("captions page does not persist", () => {
+    Object.defineProperty(window, "location", {
+      writable: true,
+      configurable: true,
+      value: { pathname: "/captions", search: "" },
+    });
+    initTabs();
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+    document.querySelector('[data-tab="two"]').click();
+    expect(localStorage.getItem("lastTab:/captions")).toBeNull();
+  });
 });

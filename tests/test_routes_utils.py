@@ -55,7 +55,7 @@ if "PIL" not in sys.modules:
 
 if "app.config" not in sys.modules:
     config_mock = types.ModuleType("app.config")
-    config_mock.API_KEY = "dummy"
+    config_mock.API_KEY = "dummy"  # pragma: allowlist secret
     config_mock.SCREENSHOT_DIRECTORY = ""
     config_mock.USER_NAME = ""
     config_mock.USER_PASSWORD_HASH = ""
@@ -130,7 +130,9 @@ class TestRoutesUtils(unittest.TestCase):
 
             # Expired timestamp -> invalid
             expired_time = str(int(time.time()) - 1)
-            expired_digest = hashlib.sha256(f"{constant_key}{expired_time}".encode()).hexdigest()
+            expired_digest = hashlib.sha256(
+                f"{constant_key}{expired_time}".encode()
+            ).hexdigest()
             expired_value = f"{expired_digest}.{expired_time}"
             self.assertFalse(is_hash_valid(expired_value))
 

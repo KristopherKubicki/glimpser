@@ -39,6 +39,15 @@ class TestRetentionPolicy(unittest.TestCase):
             remaining_files = os.listdir(temp_dir)
             self.assertEqual(set(remaining_files), {"file3.txt", "file4.txt"})
 
+    def test_delete_old_files_removes_directories(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dir_path = os.path.join(temp_dir, "old")
+            os.makedirs(dir_path)
+
+            delete_old_files([dir_path], max_age=0, max_size=0, minimum=0)
+
+            self.assertFalse(os.path.exists(dir_path))
+
     def test_get_files_sorted_by_creation_time(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             file_paths = []
@@ -59,7 +68,9 @@ class TestRetentionPolicy(unittest.TestCase):
     @patch("app.utils.retention_policy.os.listdir")
     @patch("app.utils.retention_policy.get_files_sorted_by_creation_time")
     @patch("app.utils.retention_policy.delete_old_files")
-    def test_retention_cleanup_invokes_deletion(self, mock_delete, mock_get_files, mock_listdir):
+    def test_retention_cleanup_invokes_deletion(
+        self, mock_delete, mock_get_files, mock_listdir
+    ):
         mock_listdir.side_effect = [["cam1"], ["cam1"], ["cam1"]]
         mock_get_files.return_value = ["f1", "f2"]
 
@@ -105,17 +116,17 @@ class TestRetentionPolicy(unittest.TestCase):
             )
 
     def test_cleanup_clips_removes_expired(self):
-        with tempfile.TemporaryDirectory() as video_dir:
-            cam_dir = os.path.join(video_dir, "cam1")
+        with tempfile.TemporaryDirectory() as clip_dir:
+            cam_dir = os.path.join(clip_dir, "cam1")
             os.makedirs(cam_dir)
-            clip = os.path.join(cam_dir, "clip.mp4")
+            clip = os.path.join(clip_dir, "cam1.mp4")
             with open(clip, "w"):
                 pass
             old = time.time() - 600
             os.utime(clip, (old, old))
 
             with (
-                patch.object(retention_policy, "VIDEO_DIRECTORY", video_dir),
+                patch.object(retention_policy, "CLIPS_DIRECTORY", clip_dir),
                 patch(
                     "app.utils.retention_policy.check_user_activity",
                     return_value=False,
@@ -126,14 +137,14 @@ class TestRetentionPolicy(unittest.TestCase):
             self.assertFalse(os.path.exists(clip))
 
     def test_cleanup_clips_keeps_recent(self):
-        with tempfile.TemporaryDirectory() as video_dir:
-            cam_dir = os.path.join(video_dir, "cam1")
+        with tempfile.TemporaryDirectory() as clip_dir:
+            cam_dir = os.path.join(clip_dir, "cam1")
             os.makedirs(cam_dir)
-            clip = os.path.join(cam_dir, "clip.mp4")
+            clip = os.path.join(clip_dir, "cam1.mp4")
             with open(clip, "w"):
                 pass
             with (
-                patch.object(retention_policy, "VIDEO_DIRECTORY", video_dir),
+                patch.object(retention_policy, "CLIPS_DIRECTORY", clip_dir),
                 patch(
                     "app.utils.retention_policy.check_user_activity",
                     return_value=False,

@@ -16,6 +16,23 @@ template_form %} {% block content %}
   role="region"
   aria-label="Live video feed"
 >
+  <span id="record-indicator" class="record-dot" aria-hidden="true"></span>
+  <button
+    id="prev-clip-btn"
+    class="clip-nav prev"
+    title="Previous clip"
+    aria-label="Previous clip"
+  >
+    &#9664;
+  </button>
+  <button
+    id="next-clip-btn"
+    class="clip-nav next"
+    title="Next clip"
+    aria-label="Next clip"
+  >
+    &#9654;
+  </button>
   <video
     id="live-video"
     controls
@@ -76,6 +93,18 @@ template_form %} {% block content %}
         console.error("Error taking instant screenshot:", error),
       );
   }
+
+  function recordHighSpeed(templateName) {
+    const indicator = document.getElementById("record-indicator");
+    const container = document.querySelector(".video-container");
+    indicator.style.display = "block";
+    container.classList.add("recording");
+    fetch(`/record/${templateName}`, { method: "POST" });
+    setTimeout(() => {
+      indicator.style.display = "none";
+      container.classList.remove("recording");
+    }, 20000);
+  }
 </script>
 <details title="Edit the details of this template" class="hidden">
   <summary>Edit Template</summary>
@@ -85,7 +114,7 @@ template_form %} {% block content %}
     template=template_details, preview_src='/stream.mjpg?camera=' ~
     template_name, preview_id='mini-live-preview', include_name=False,
     submit_label='Update Template', object_tokens=object_tokens,
-    clip_model=clip_model ) }}
+    clip_model=clip_model, clip_gpu=clip_gpu ) }}
   </div>
   <div id="delete-template" class="form-actions">
     <button
@@ -358,14 +387,33 @@ template_form %} {% block content %}
     });
     if (!currentlyVisible) {
       target.style.display = "block";
+      if (id === "videos-modal") {
+        const live = document.getElementById("live-video");
+        if (live) {
+          live.dataset.resumeOnClose = live.paused ? "false" : "true";
+          live.pause();
+        }
+      }
       document.querySelector(".template-actions")?.classList.remove("fade-out");
     } else {
+      if (id === "videos-modal") {
+        const live = document.getElementById("live-video");
+        if (live && live.dataset.resumeOnClose === "true") {
+          live.play().catch(() => {});
+        }
+      }
       document.querySelector(".template-actions")?.classList.remove("fade-out");
     }
   }
 
   function closeGenericModal(id) {
     document.getElementById(id).style.display = "none";
+    if (id === "videos-modal") {
+      const live = document.getElementById("live-video");
+      if (live && live.dataset.resumeOnClose === "true") {
+        live.play().catch(() => {});
+      }
+    }
     document.querySelector(".template-actions")?.classList.remove("fade-out");
   }
 </script>
@@ -376,6 +424,12 @@ template_form %} {% block content %}
   </button>
   <button onclick="openModal('captures-modal')" title="Show recent screenshots">
     Recent Captures
+  </button>
+  <button
+    onclick="recordHighSpeed('{{ template_name }}')"
+    title="Record 20 second clip"
+  >
+    Record 20s
   </button>
   <button onclick="openModal('edit-template-modal')" title="Edit this template">
     Edit Template
@@ -442,14 +496,27 @@ template_form %} {% block content %}
     <div class="videos-grid">
       {% for video in videos %}
       <div class="video">
+        {% if video == 'last_video.mp4' %}
+        <video
+          src="/last_video/{{template_name}}"
+          data-file="last_video.mp4"
+          height="200"
+          autoplay
+          loop
+          muted
+          title="Recent video capture: last"
+        ></video>
+        {% else %}
         <video
           src="/videos/{{template_name}}/{{video}}"
+          data-file="{{ video }}"
           height="200"
           autoplay
           loop
           muted
           title="Recent video capture: {{video}}"
         ></video>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
@@ -494,7 +561,16 @@ template_form %} {% block content %}
     {{ template_form( 'edit-template-form', '/update_template/' ~ template_name,
     template=template_details, preview_src='/stream.mjpg?camera=' ~
     template_name, preview_id='mini-live-preview', include_name=False,
-    submit_label='Save', object_tokens=object_tokens, clip_model=clip_model ) }}
+    submit_label='Save', object_tokens=object_tokens, clip_model=clip_model,
+    clip_gpu=clip_gpu ) }}
   </div>
 </div>
+
+<script>
+  window.recentVideos = {{ videos|tojson }};
+</script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/recent_videos.js') }}"
+></script>
 {% endblock %}

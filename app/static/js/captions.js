@@ -191,6 +191,37 @@ export function initCaptions() {
       });
     });
 
+    const radios = document.querySelectorAll("input[name='caption-field']");
+    const header = document.querySelector("#camera-table th.view-header");
+    const rows = document.querySelectorAll("#camera-table tbody tr");
+
+    const applyView = (view) => {
+      if (header) header.textContent = view === "prompt" ? "Prompt" : "Caption";
+      rows.forEach((row) => {
+        const prompt = row.querySelector(".chat-prompt");
+        const response = row.querySelector(".chat-response");
+        const cell = row.cells[1];
+        if (!cell) return;
+        if (prompt) prompt.classList.toggle("hidden", view !== "prompt");
+        if (response) response.classList.toggle("hidden", view !== "caption");
+        const val =
+          view === "prompt"
+            ? prompt?.querySelector("textarea")?.value || ""
+            : response?.querySelector(".last-caption")?.textContent || "";
+        cell.dataset.value = val.toLowerCase();
+      });
+      localStorage.setItem("captionView", view);
+    };
+
+    radios.forEach((r) => {
+      r.addEventListener("change", () => applyView(r.value));
+    });
+    const stored = localStorage.getItem("captionView") || "caption";
+    radios.forEach((r) => {
+      r.checked = r.value === stored;
+    });
+    applyView(stored);
+
     const page = document.querySelector(".captions-page");
     const latest = page?.dataset.latestCaption || "";
     const chyron = document.getElementById("caption-chyron");

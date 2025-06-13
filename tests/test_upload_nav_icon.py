@@ -16,7 +16,7 @@ class TestUploadNavIcon(unittest.TestCase):
         self.static_dir = os.path.join(self.repo_root, "test_static")
         os.makedirs(os.path.join(self.static_dir, "img"), exist_ok=True)
         self.app = Flask(__name__, static_folder=self.static_dir)
-        self.app.config["SECRET_KEY"] = "test"
+        self.app.config["SECRET_KEY"] = "test"  # pragma: allowlist secret
         self.login_patch = patch("app.routes.login_required", lambda x: x)
         self.update_patch = patch("app.routes.update_setting")
         self.login_patch.start()
@@ -34,7 +34,9 @@ class TestUploadNavIcon(unittest.TestCase):
         Image.new("RGB", (150, 22)).save(img_bytes, format="PNG")
         img_bytes.seek(0)
         data = {"logo_file": (img_bytes, "logo.png")}
-        resp = self.client.post("/upload_nav_icon", data=data, content_type="multipart/form-data")
+        resp = self.client.post(
+            "/upload_nav_icon", data=data, content_type="multipart/form-data"
+        )
         self.assertEqual(resp.status_code, 302)
         saved = os.path.join(self.static_dir, "img", "logo.png")
         self.assertTrue(os.path.exists(saved))

@@ -3,15 +3,71 @@
 .video-container {
   max-width: 100vw;
   width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
   max-height: 92vh;
   position: relative;
   /* Hide scroll bars for a cleaner live view */
   overflow: hidden;
 }
 
+.video-container.live-mode {
+  border: 2px solid #4ade80;
+}
+
+.clip-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0.25rem 0.5rem;
+  font-size: 1.5rem;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.4);
+  border: none;
+  cursor: pointer;
+  z-index: 5;
+  transition:
+    background 0.2s,
+    transform 0.2s,
+    opacity 0.3s;
+}
+
+.clip-nav.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.clip-nav.clicked {
+  transform: translateY(-50%) scale(0.9);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.clip-nav.go-live {
+  background: rgba(0, 128, 0, 0.6);
+}
+
+.clip-nav.prev {
+  left: 0.5rem;
+}
+
+.clip-nav.next {
+  right: 0.5rem;
+}
+
+.clip-nav:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .video-container.full-height {
-  height: 92vh;
+  height: auto;
   max-height: 92vh;
+}
+
+@media (min-width: 768px) {
+  .video-container.full-height {
+    height: 92vh;
+  }
 }
 #live-video,
 #live-image {
@@ -154,4 +210,20 @@
   #rotate-video {
     display: inline-block;
   }
+}
+
+/* Hide volume controls since clips currently have no audio */
+video::-webkit-media-controls-mute-button,
+video::-webkit-media-controls-volume-slider,
+video::-webkit-media-controls-volume-control-container {
+  display: none;
+}
+
+video::-moz-volume-control {
+  display: none;
+}
+
+#volume-bar,
+#mute {
+  display: none;
 }

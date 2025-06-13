@@ -1,5 +1,5 @@
 import { initTemplates } from "./templates.js";
-import { initVideoControls } from "./video.js";
+import { initVideoControls, initVisibilityHandler } from "./video.js";
 import { initSchedulerToggle } from "./scheduler.js";
 import {
   initDiscoveryToggle,
@@ -16,7 +16,7 @@ import { initIndexTime } from "./time.js";
 import { initWelcome } from "./welcome.js";
 import { initTooltips } from "./tooltips.js";
 import { initCaptions } from "./captions.js";
-import { initSettingsSearch } from "./settings.js";
+import { initSettingsSearch, initShortcutPath } from "./settings.js";
 import { initTabs } from "./tabs.js";
 import { initThemeToggle } from "./theme.js";
 import { initControlsDropdown } from "./controls.js";
@@ -27,9 +27,11 @@ import { initKeyVisibility } from "./key_visibility.js";
 import { initCliHelp } from "./cli_help.js";
 import { initNetworkBanner } from "./network_banner.js";
 import { initUnsavedIndicator } from "./unsaved.js";
+import { initVideoZoom } from "./zoom.js";
 
 initTemplates();
 initVideoControls();
+initVisibilityHandler();
 initSchedulerToggle();
 initDiscoveryToggle();
 initSubnetInput();
@@ -46,6 +48,7 @@ initWelcome();
 initTooltips();
 initCaptions();
 initSettingsSearch();
+initShortcutPath();
 initTabs();
 initThemeToggle();
 initNetworkBanner();
@@ -56,3 +59,4 @@ initAdvanced();
 initKeyVisibility();
 initUnsavedIndicator();
 initCliHelp();
+initVideoZoom();

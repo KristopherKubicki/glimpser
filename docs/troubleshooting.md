@@ -49,7 +49,8 @@ This guide addresses common issues that users might encounter while using Glimps
 - Reduce the number of concurrent data sources
 - Increase the refresh interval for less critical sources
 - Check the `MAX_WORKERS` setting and adjust if necessary
-- Open the _System Status_ tab under Settings to watch CPU and memory usage in real time
+- Increase `CRAWLER_STARTUP_SPREAD` to stagger camera startup more gently
+- Open the _Status_ tab under Settings to watch CPU and memory usage in real time
 
 ### Problem: Out of memory errors
 
@@ -186,7 +187,7 @@ Remember to always include relevant log files, error messages, and your Glimpser
 
 ## 9. Logging and Debugging Tips
 
-Glimpser writes logs to the console and exposes them via the _System Status_ tab. If something goes wrong:
+Glimpser writes logs to the console and exposes them via the _Status_ tab. If something goes wrong:
 
 - Use the **System Monitoring and Logs** guide to access live logs.
 - Increase the `LOG_LEVEL` or `FLASK_LOG_LEVEL` environment variable to `DEBUG` for more details.
@@ -248,6 +249,15 @@ source. That could cause extra network requests and confusing behavior.
 - Update to the latest version.
 - The player now destroys any active HLS or looping handlers before starting the
   new stream, so switching sources cleanly stops the old one.
+
+### Problem: Cameras keep loading after leaving the dashboard
+
+Thumbnail players could keep downloading clips after you navigate away.
+
+**Solution:**
+
+- Update to the latest version.
+- Background preloading now stops when the tab loses focus.
 
 ### Problem: Loop video or the "All" camera shows `Format error`
 
@@ -319,7 +329,9 @@ If shutdown is interrupted it can leave background threads running.
 
 ### Problem: "pynput not available" or "failed to acquire X connection"
 
-This happens when Glimpser cannot open an X display. The logs may show
+This happens when Glimpser cannot open an X display. The optional
+`pynput` package enables activity detection; when missing, the
+application simply logs the failure and continues. The logs may show
 `Maximum number of clients reached` or `Can't connect to display`.
 
 **Solution:**

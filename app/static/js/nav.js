@@ -19,6 +19,17 @@ export function initNav() {
     const cameraDropdown = document.getElementById("nav-camera-dropdown");
     const currentGroup = window.currentGroup || null;
     const currentCamera = window.currentCamera || null;
+    const liveLink = document.getElementById("live");
+
+    if (liveLink) {
+      if (currentCamera) {
+        liveLink.href = `/live?camera=${encodeURIComponent(currentCamera)}`;
+      } else if (currentGroup && currentGroup !== "all") {
+        liveLink.href = `/live?group=${encodeURIComponent(currentGroup)}`;
+      } else {
+        liveLink.href = "/live";
+      }
+    }
     const menuToggle = document.getElementById("menu-toggle");
 
     if (nav && menuToggle) {
@@ -62,12 +73,8 @@ export function initNav() {
           if (cameraDropdown && currentCamera) {
             cameraDropdown.value = currentCamera;
           }
-          const grpSelector = document.getElementById("group-selector");
-          if (grpSelector) {
-            grpSelector.value = currentGroup;
-            if (typeof window.updateCameraOptions === "function") {
-              window.updateCameraOptions(currentGroup);
-            }
+          if (typeof window.updateCameraOptions === "function") {
+            window.updateCameraOptions(currentGroup);
           }
         }
       } catch (error) {
@@ -122,13 +129,9 @@ export function initNav() {
           window.location.pathname.startsWith("/live") &&
           typeof window.changeGroup === "function"
         ) {
-          const grpSelector = document.getElementById("group-selector");
-          if (grpSelector) {
-            grpSelector.value = selected;
-            window.changeGroup();
-            loadNavCameras(selected);
-            return;
-          }
+          window.changeGroup(selected);
+          loadNavCameras(selected);
+          return;
         }
         if (selected === "all") {
           window.location.href = "/live";
@@ -142,6 +145,8 @@ export function initNav() {
 
     if (cameraDropdown) {
       cameraDropdown.addEventListener("change", () => {
+        // Avoid navigation when adjusting the live view
+        if (window.location.pathname.startsWith("/live")) return;
         if (cameraDropdown.value) {
           window.location.href = `/templates/${encodeURIComponent(
             cameraDropdown.value,
@@ -157,7 +162,7 @@ export function initNav() {
         if (!data) return;
         if (data.status === "healthy") {
           healthStatus.style.color = "green";
-          healthStatus.title = "System Status: Healthy\n\n";
+          healthStatus.title = "Status: Healthy\n\n";
           if (!healthAlwaysVisible) {
             healthStatus.style.display = "none";
           } else {
@@ -166,7 +171,7 @@ export function initNav() {
         } else {
           healthStatus.style.display = "flex";
           healthStatus.style.color = "red";
-          healthStatus.title = "System Status: Degraded\n\n";
+          healthStatus.title = "Status: Degraded\n\n";
         }
         healthStatus.title +=
           `CPU: ${data.metrics.cpu_usage}%\n` +
@@ -404,7 +409,11 @@ export function initNav() {
         const next = (idx + delta + opts.length) % opts.length;
         const cam = opts[next].value;
         cameraDropdown.value = cam;
-        window.location.href = `/templates/${encodeURIComponent(cam)}`;
+        if (window.location.pathname.startsWith("/live")) {
+          cameraDropdown.dispatchEvent(new Event("change"));
+        } else {
+          window.location.href = `/templates/${encodeURIComponent(cam)}`;
+        }
       };
 
       document.addEventListener("keydown", (e) => {

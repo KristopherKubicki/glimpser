@@ -7,6 +7,7 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [Configuration Guide](configuration_guide.md)
 - [Command Line Reference](command_line.md)
 - [Video Archiver](video_archiver.md)
+- [Video and Image Endpoints](video_image_endpoints.md)
 - [Dashboard Live Button](live_all.md)
 - [Live View Scrubbing](live_scrub.md)
 - [Search Bar Autocomplete](search_autocomplete.md)

@@ -2,15 +2,17 @@
 
 This guide explains how to check Glimpser's health metrics and view live logs.
 
+![System Monitoring Flow](images/system_monitoring_flow.svg)
+
 ## System Status Endpoint
 
 **GET /status**
 
-This endpoint now redirects to the _System Status_ tab on the Settings page. The tab shows current system metrics and includes the live log viewer. Metrics are collected in a background thread. See `app/utils/scheduling.py` for implementation details. Raw values can also be retrieved programmatically from the `/health` endpoint. The metrics list and feed dashboard are grouped into separate cards for a cleaner layout. CPU, memory, and disk usage display small progress bars for a quick visual indicator. Metrics refresh automatically every few seconds.
+This endpoint now redirects to the _Status_ tab on the Settings page. The tab shows current system metrics and includes the live log viewer. Metrics are collected in a background thread. See `app/utils/scheduling.py` for implementation details. Raw values can also be retrieved programmatically from the `/health` endpoint. The metrics list and feed dashboard are grouped into separate cards for a cleaner layout. CPU, memory, and disk usage display small progress bars for a quick visual indicator with tiny trend lines showing recent changes. Metrics refresh automatically every few seconds.
 
 ### Feed Dashboard
 
-Below the system metrics the page lists each configured feed with a color-coded indicator. Hovering over a red or yellow dot now shows a short tooltip describing the issue, including when the feed went offline and the most recent related log entry if available. A new **Capturing** column highlights feeds that are actively capturing.
+Below the system metrics the page lists each configured feed with a color-coded indicator. Hovering over a red or yellow dot now shows a short tooltip describing the issue, including when the feed went offline and the most recent related log entry if available. The **Capturing** and **Status** columns now appear directly after the feed name so mobile browsers show them first. The capturing icon uses a small countdown spinner whenever a job is running.
 
 - **Green** – the feed is updating on schedule.
 - **Yellow** – the last capture is behind its configured frequency.
@@ -22,11 +24,11 @@ Below the system metrics the page lists each configured feed with a color-coded 
   is closed. Rows for disabled feeds are slightly greyed out.
 
 The dashboard also shows when the most recent system summary was generated. The
-same table appears on the _System Status_ tab under Settings so you can review
+same table appears on the _Status_ tab under Settings so you can review
 usage metrics without leaving the configuration interface.
 
 Additional KPI columns track the number of screenshots, videos, total storage
-used, LLM responses, and estimated LLM cost for each feed. Costs now display three decimal places.
+used, LLM counts, and estimated LLM cost for each feed. Costs now display three decimal places.
 
 The header row stays visible while scrolling so column names are always accessible.
 
@@ -40,10 +42,12 @@ name, last image time, last caption time, any KPI column, or status.
 - **Disk Usage** – percentage of disk space used on the main volume
 - **Open Files** – number of file descriptors opened by the process
 - **Thread Count** – active thread count for the application
+- **Top Threads** – stacked list of thread and child process names sorted by CPU usage (includes `ffmpeg` when active)
 - **Uptime** – elapsed time since the app started
 - **FFmpeg Version** – version string and path to the ffmpeg binary
 - **Machine HW Accel** – whether GPU devices are detected
 - **FFmpeg HW Accel** – whether ffmpeg supports hardware acceleration
+- **FFmpeg GPU Support** – whether ffmpeg lists available hwaccel methods
 - **HW Accel Enabled** – if hardware acceleration is configured
 - **FFmpeg GPU Enabled** – whether ffmpeg is currently using GPU acceleration
 - **Danger Mode Enabled** – whether the DANGER_MODE setting is on
@@ -52,11 +56,15 @@ Boolean metrics now display a green dot when enabled and a red dot when
 disabled to make the status easier to scan. GPU acceleration uses a yellow dot
 when hardware is available but not currently active.
 
+If the system detects GPU hardware but `ffmpeg` lacks hardware acceleration
+support, a warning is printed during startup. Ensure your `ffmpeg` binary is
+built with the necessary drivers when this appears.
+
 ## Streaming Logs
 
 **GET /stream_logs**
 
-This endpoint delivers log entries using Server‑Sent Events. Optional query parameters allow filtering by level, source, date range, and text search. The `/logs` page and the _System Status_ tab consume this endpoint to display updates in real time.
+This endpoint delivers log entries using Server‑Sent Events. Optional query parameters allow filtering by level, source, date range, and text search. The `/logs` page and the _Status_ tab consume this endpoint to display updates in real time.
 
 To filter logs by level and message text, you could request:
 
@@ -66,7 +74,7 @@ To filter logs by level and message text, you could request:
 
 ## Using the Live Log Viewer
 
-1. Open the _System Status_ tab under Settings or navigate to `/logs` after logging in.
+1. Open the _Status_ tab under Settings or navigate to `/logs` after logging in.
 2. Use the search box and dropdowns to filter log output.
 3. Hover over each field for a tooltip explaining the filter.
 4. Results update automatically via `/stream_logs`.
@@ -75,7 +83,7 @@ To filter logs by level and message text, you could request:
 
 The log viewer reads log lines from memory, ensuring minimal disk overhead.
 
-The _System Status_ tab also appears as a **System Status** camera under Discover.
+The _Status_ tab also appears as a **System Status** camera under Discover.
 Adding it lets Glimpser capture periodic screenshots of its own health metrics.
 An accompanying **Internal Caption** camera shows `/internal_caption.mjpg` so you
 can monitor recent caption text without leaving the dashboard.
@@ -94,14 +102,14 @@ after a caption, changes to
 yellow for the next five minutes and turns red once thirty minutes have passed
 without an update.
 You can toggle the chyron from the **Captions** page using the button in the
-History tab.
+Summaries tab.
 Opening the Captions page now also restarts the scrolling banner when
 `CHYRON_SPEED` is set above zero.
 
 ## System Performance Icon
 
 The System Performance icon in the navigation bar provides quick access to the
-_System Status_ tab. When all metrics look healthy the icon now hides to reduce
+_Status_ tab. When all metrics look healthy the icon now hides to reduce
 clutter. Set the `HEALTH_STATUS_ALWAYS_VISIBLE` option to `True` if you prefer
 to keep it shown at all times.
 

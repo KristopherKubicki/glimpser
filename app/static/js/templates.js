@@ -14,19 +14,49 @@ function safePlay(el) {
   }
 }
 
-function createMobileCard(name, template, index) {
+function createTemplateCard(name, template, index, mobile) {
+  const lastScreenshotTime =
+    template.last_screenshot_time || NO_TIMESTAMP_PLACEHOLDER;
+  const humanizedTimestamp =
+    lastScreenshotTime === NO_TIMESTAMP_PLACEHOLDER
+      ? NO_TIMESTAMP_PLACEHOLDER
+      : timeAgo(lastScreenshotTime);
+  const lastScreenshotDate = new Date(lastScreenshotTime);
+  const ageMinutes = (Date.now() - lastScreenshotDate.getTime()) / 60000;
+  const videoContainerClass = "video-container";
+  const errorClass = template.capture_failed
+    ? "template-error"
+    : "recent-screenshot";
+  const borderColor = computeBorderColor(ageMinutes, template.capture_failed);
+
   const div = document.createElement("div");
-  div.classList.add("templateDiv", "mobile-card");
+  div.classList.add("templateDiv");
+  if (mobile) div.classList.add("mobile-card");
+  div.style.opacity = "0";
+  div.style.transform = "translateY(20px)";
+  div.style.transition = "opacity 0.5s ease, transform 0.5s ease";
+
   div.dataset.name = name;
   div.dataset.index = index.toString();
   div.dataset.last = template.last_screenshot_time || "";
   div.dataset.next = template.next_screenshot_time || "";
   div.dataset.error = template.capture_failed ? "1" : "0";
-  const link = document.createElement("a");
-  link.href = `/templates/${name}`;
-  link.textContent = name;
-  link.className = "mobile-link";
-  div.appendChild(link);
+
+  div.innerHTML = `
+    <a href='/templates/${name}'>
+      <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
+        <div class="camera-name">${name}</div>
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <video data-name="${name}" data-poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback data-hd-src="/clip/${name}" loading="lazy">
+          <source src="/last_video/${name}" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <div class="caption-overlay">${template.last_caption || ""}</div>
+      </div>
+    </a>
+    <a href='${template.url}' target='_blank' class='open-url-link' title='Open monitored page' aria-label='Open monitored page'>↗</a>
+    <button class='delete-camera-btn advanced-only' onclick="window.confirmDeleteCamera('${name}')" title='Delete this camera' aria-label='Delete camera'>✖</button>
+  `;
   return div;
 }
 
@@ -37,6 +67,7 @@ export function setCaptionsVisibility(value) {
   captionsVisible = value;
   localStorage.setItem("showCaptions", value.toString());
   applyCaptionVisibility(parseFloat(slider?.value || "0"));
+  updateTableLayout(parseFloat(slider?.value || "0"));
 }
 
 export function applyCaptionVisibility(width) {
@@ -58,6 +89,20 @@ export function applyCaptionVisibility(width) {
         : "Show caption overlays"
       : "Increase tile size to enable captions";
   }
+}
+
+function updateTableLayout(width) {
+  const rows = document.querySelectorAll("#camera-table .camera-row");
+  rows.forEach((row) => {
+    const preview = row.querySelector(".templateDiv");
+    if (!preview) return;
+    const height = preview.offsetHeight;
+    row.style.height = `${height}px`;
+    const caption = row.querySelector(".last-caption");
+    if (caption) {
+      caption.classList.toggle("hidden", width < 150);
+    }
+  });
 }
 
 export function initTemplates() {
@@ -154,6 +199,7 @@ export function initTemplates() {
         captionsVisible = !captionsVisible;
         localStorage.setItem("showCaptions", captionsVisible.toString());
         applyCaptionVisibility(parseFloat(slider?.value || "0"));
+        updateTableLayout(parseFloat(slider?.value || "0"));
       });
       setTimeout(() => {
         captionToggle.classList.add("flash-caption");
@@ -213,6 +259,7 @@ export function initTemplates() {
           `${timestampFontSize}px`,
         );
         applyCaptionVisibility(value);
+        updateTableLayout(value);
       };
 
       slider.addEventListener("input", handleSlider);
@@ -227,6 +274,7 @@ export function initTemplates() {
         });
       } else {
         handleSlider();
+        setupTileResizeDrag(slider);
       }
     }
 
@@ -281,6 +329,7 @@ export function initTemplates() {
     updateHumanizedTimes();
     setInterval(updateHumanizedTimes, 60000);
     applyCaptionVisibility(parseFloat(slider?.value || "0"));
+    updateTableLayout(parseFloat(slider?.value || "0"));
   });
 
   window.showStructuredInput = showStructuredInput;
@@ -290,14 +339,15 @@ export function initTemplates() {
 export async function loadGroups() {
   const groupDropdown = document.getElementById("group-dropdown");
   const groupsSelect = document.getElementById("groups");
+  const groupDatalist = document.getElementById("group-options");
   if (!groupDropdown && !groupsSelect) return;
   if (groupDropdown) {
     groupDropdown.innerHTML = '<option value="all">Loading groups...</option>';
     groupDropdown.disabled = true;
   }
   if (groupsSelect) {
-    groupsSelect.innerHTML = '<option value="">Loading...</option>';
     groupsSelect.disabled = true;
+    if (groupDatalist) groupDatalist.innerHTML = "";
   }
 
   try {
@@ -306,8 +356,8 @@ export async function loadGroups() {
     if (groupDropdown) {
       groupDropdown.innerHTML = '<option value="all">All Groups</option>';
     }
-    if (groupsSelect) {
-      groupsSelect.innerHTML = '<option value="">Select a group</option>';
+    if (groupsSelect && groupDatalist) {
+      groupDatalist.innerHTML = "";
     }
     groups.forEach((group) => {
       if (groupDropdown) {
@@ -316,11 +366,10 @@ export async function loadGroups() {
         option.textContent = group;
         groupDropdown.appendChild(option);
       }
-      if (groupsSelect) {
+      if (groupsSelect && groupDatalist) {
         const option = document.createElement("option");
         option.value = group;
-        option.textContent = group;
-        groupsSelect.appendChild(option);
+        groupDatalist.appendChild(option);
       }
     });
   } catch (error) {
@@ -328,8 +377,8 @@ export async function loadGroups() {
     if (groupDropdown) {
       groupDropdown.innerHTML = '<option value="all">All Groups</option>';
     }
-    if (groupsSelect) {
-      groupsSelect.innerHTML = '<option value="">Select a group</option>';
+    if (groupsSelect && groupDatalist) {
+      groupDatalist.innerHTML = "";
     }
   } finally {
     if (groupDropdown) groupDropdown.disabled = false;
@@ -355,8 +404,10 @@ export function timeAgo(dateString) {
     dateString instanceof Date
       ? dateString.toISOString()
       : dateString.includes("T")
-        ? dateString
-        : dateString.replace(" ", "T");
+        ? /Z$|[+-]\d{2}:?\d{2}$/.test(dateString)
+          ? dateString
+          : `${dateString}Z`
+        : `${dateString.replace(" ", "T")}Z`;
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) return "just now";
   const diffInSeconds = Math.floor((now - parsed) / 1000);
@@ -383,7 +434,11 @@ export function formatExactTime(dateString) {
     dateString instanceof Date
       ? dateString
       : new Date(
-          dateString.includes("T") ? dateString : dateString.replace(" ", "T"),
+          dateString.includes("T")
+            ? /Z$|[+-]\d{2}:?\d{2}$/.test(dateString)
+              ? dateString
+              : `${dateString}Z`
+            : `${dateString.replace(" ", "T")}Z`,
         );
   return date.toString();
 }
@@ -400,6 +455,102 @@ export function computeBorderColor(ageMinutes, isError) {
   }
   const alpha = Math.pow(0.5, step);
   return `rgba(${base[0]}, ${base[1]}, ${base[2]}, ${alpha})`;
+}
+
+export function setupTileResizeDrag(slider) {
+  if (!slider) return;
+  const handle = document.createElement("div");
+  handle.id = "tile-drag-handle";
+  document.body.appendChild(handle);
+
+  let startX = 0;
+  let startVal = 0;
+
+  const onMove = (e) => {
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const dx = clientX - startX;
+    const { width } = slider.getBoundingClientRect();
+    const range = parseFloat(slider.max) - parseFloat(slider.min);
+    const delta = (dx / width) * range;
+    const value = Math.min(
+      parseFloat(slider.max),
+      Math.max(parseFloat(slider.min), startVal + delta),
+    );
+    slider.value = value.toString();
+    slider.dispatchEvent(new Event("input"));
+  };
+
+  const endDrag = () => {
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("touchmove", onMove);
+    document.removeEventListener("mouseup", endDrag);
+    document.removeEventListener("touchend", endDrag);
+  };
+
+  const startDrag = (e) => {
+    startX = e.touches ? e.touches[0].clientX : e.clientX;
+    startVal = parseFloat(slider.value);
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("touchmove", onMove);
+    document.addEventListener("mouseup", endDrag);
+    document.addEventListener("touchend", endDrag);
+    e.preventDefault();
+  };
+
+  handle.addEventListener("mousedown", startDrag);
+  handle.addEventListener("touchstart", startDrag);
+}
+
+function attachVideoHover(video, name) {
+  const scrub = (e) => {
+    const rect = video.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    const clamped = Math.max(0, Math.min(1, ratio));
+    if (!Number.isNaN(video.duration)) {
+      video.currentTime = video.duration * clamped;
+    }
+  };
+
+  let resetTimeout;
+  let dwellTimeout;
+
+  video.addEventListener("mouseenter", (e) => {
+    clearTimeout(resetTimeout);
+    clearTimeout(dwellTimeout);
+    video.style.display = "block";
+    dwellTimeout = setTimeout(() => {
+      const tiles = document.querySelectorAll(".templateDiv").length;
+      const width = video.getBoundingClientRect().width;
+      if (tiles <= 8 && width >= 200) {
+        enqueueClip(video);
+      }
+    }, 300);
+    if (video.readyState === 0) {
+      video.load();
+    }
+    video.pause();
+    if (video.readyState >= 1) {
+      scrub(e);
+    } else {
+      const onLoad = () => {
+        scrub(e);
+        video.removeEventListener("loadedmetadata", onLoad);
+      };
+      video.addEventListener("loadedmetadata", onLoad);
+    }
+  });
+
+  video.addEventListener("mousemove", scrub);
+
+  video.addEventListener("mouseleave", () => {
+    clearTimeout(dwellTimeout);
+    resetTimeout = setTimeout(() => {
+      video.pause();
+      video.currentTime = 0;
+      video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
+      video.load();
+    }, 1000);
+  });
 }
 
 export function updateGridLayout() {
@@ -599,6 +750,33 @@ export function templateMatchesSearch(template, searchQuery) {
   return name.includes(searchQuery) || groups.includes(searchQuery);
 }
 
+export function virtualizeElements(container, elements, batch = 20) {
+  if (!container) return;
+  let index = 0;
+  const sentinel = document.createElement("div");
+  sentinel.className = "scroll-sentinel";
+  container.appendChild(sentinel);
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) renderBatch();
+    });
+  });
+
+  function renderBatch() {
+    const slice = elements.slice(index, index + batch);
+    slice.forEach((el) => container.insertBefore(el, sentinel));
+    index += slice.length;
+    if (index >= elements.length) {
+      observer.disconnect();
+      sentinel.remove();
+    }
+  }
+
+  observer.observe(sentinel);
+  renderBatch();
+}
+
 export async function loadTemplates() {
   const searchInput = document.getElementById("search-input");
   const selectedGroup = getSelectedGroup();
@@ -659,7 +837,9 @@ export async function loadTemplates() {
         entries.forEach((entry) => {
           const video = entry.target;
           if (entry.isIntersecting) {
-            enqueueClip(video);
+            if (!video.poster && video.dataset.poster) {
+              video.poster = video.dataset.poster;
+            }
             if (isMobile()) {
               safePlay(video);
             }
@@ -674,6 +854,7 @@ export async function loadTemplates() {
     let hasTemplates = false;
     let templateCount = 0;
     let firstTemplateName = null;
+    const cards = [];
     Object.entries(templates).forEach(([name, template], index) => {
       if (
         templateBelongsToGroup(template, selectedGroup) &&
@@ -702,93 +883,24 @@ export async function loadTemplates() {
         );
 
         if (isIndexPage) {
-          let templateDiv;
-          if (isMobile()) {
-            templateDiv = createMobileCard(name, template, index);
-            templateList.appendChild(templateDiv);
-          } else {
-            templateDiv = document.createElement("div");
-            templateDiv.classList.add("templateDiv");
-            templateDiv.style.opacity = "0";
-            templateDiv.style.transform = "translateY(20px)";
-            templateDiv.style.transition =
-              "opacity 0.5s ease, transform 0.5s ease";
+          const mobileView = isMobile();
+          const templateDiv = createTemplateCard(
+            name,
+            template,
+            index,
+            mobileView,
+          );
 
-            templateDiv.dataset.name = name;
-            templateDiv.dataset.index = index.toString();
-            templateDiv.dataset.last = template.last_screenshot_time || "";
-            templateDiv.dataset.next = template.next_screenshot_time || "";
-            templateDiv.dataset.error = template.capture_failed ? "1" : "0";
+          void templateDiv.offsetWidth;
+          setTimeout(() => {
+            templateDiv.style.opacity = "1";
+            templateDiv.style.transform = "translateY(0)";
+          }, index * 100);
 
-            templateDiv.innerHTML = `
-              <a href='/templates/${name}'>
-                <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
-                  <div class="camera-name">${name}</div>
-                  <div class="loading-spinner" aria-hidden="true"></div>
-                  <video data-name="${name}" poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback data-hd-src="/clip/${name}">
-                    <source src="/last_video/${name}" type="video/mp4">
-                    Your browser does not support the video tag.
-                  </video>
-                  <div class="caption-overlay">${template.last_caption || ""}</div>
-                </div>
-              </a>
-              <a href='${template.url}' target='_blank' class='open-url-link' title='Open monitored page' aria-label='Open monitored page'>↗</a>
-            `;
-            templateList.appendChild(templateDiv);
-
-            void templateDiv.offsetWidth;
-            setTimeout(() => {
-              templateDiv.style.opacity = "1";
-              templateDiv.style.transform = "translateY(0)";
-            }, index * 100);
-
-            const video = templateDiv.querySelector("video");
-            observer.observe(video);
-
-            // Update frame based on cursor position over the tile.
-            const scrub = (e) => {
-              const rect = video.getBoundingClientRect();
-              const ratio = (e.clientX - rect.left) / rect.width;
-              const clamped = Math.max(0, Math.min(1, ratio));
-              if (!Number.isNaN(video.duration)) {
-                video.currentTime = video.duration * clamped;
-              }
-            };
-
-            let resetTimeout;
-
-            video.addEventListener("mouseenter", (e) => {
-              clearTimeout(resetTimeout);
-              video.style.display = "block";
-              // Load metadata on first hover so currentTime can be set
-              if (video.readyState === 0) {
-                video.load();
-              }
-              video.pause();
-              if (video.readyState >= 1) {
-                scrub(e);
-              } else {
-                const onLoad = () => {
-                  scrub(e);
-                  video.removeEventListener("loadedmetadata", onLoad);
-                };
-                video.addEventListener("loadedmetadata", onLoad);
-              }
-            });
-
-            video.addEventListener("mousemove", scrub);
-
-            video.addEventListener("mouseleave", () => {
-              resetTimeout = setTimeout(() => {
-                video.pause();
-                video.currentTime = 0;
-                //video.style.display = "none";
-                // Reset to the poster image on hover exit
-                video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
-                video.load();
-              }, 1000); // restore screenshot a bit after leaving
-            });
-          }
+          const video = templateDiv.querySelector("video");
+          observer.observe(video);
+          attachVideoHover(video, name);
+          cards.push(templateDiv);
         } else if (isCaptionsPage) {
           const templateDiv = document.createElement("div");
           templateDiv.classList.add("templateDiv");
@@ -808,6 +920,10 @@ export async function loadTemplates() {
         }
       }
     });
+
+    if (isIndexPage && cards.length) {
+      virtualizeElements(templateList, cards);
+    }
 
     if (!hasTemplates) {
       const msg = document.createElement("div");
@@ -853,6 +969,7 @@ export async function loadTemplates() {
     updateStatusCounts();
     applyStatusFilter();
     applyCaptionVisibility(parseFloat(sliderElement?.value || "0"));
+    updateTableLayout(parseFloat(sliderElement?.value || "0"));
   } catch (error) {
     console.error("Error loading templates:", error);
     const errorMsg =
@@ -1124,3 +1241,35 @@ export function setupBrowserOptions() {
     updateBrowserOptions();
   });
 }
+
+export function confirmDeleteCamera(name) {
+  const modal = document.getElementById("delete-camera-modal");
+  const msg = document.getElementById("delete-camera-modal-message");
+  const confirmBtn = document.getElementById("delete-camera-confirm");
+  const cancelBtn = document.getElementById("delete-camera-cancel");
+  const closeBtn = document.getElementById("delete-camera-close");
+  if (!modal || !msg || !confirmBtn) return;
+  msg.textContent = `Delete camera ${name}?`;
+  modal.style.display = "block";
+  const hide = () => {
+    modal.style.display = "none";
+  };
+  const onConfirm = () => {
+    hide();
+    fetch("/templates", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    })
+      .then((resp) => resp.json())
+      .then(() => {
+        document.querySelector(`.templateDiv[data-name='${name}']`)?.remove();
+      })
+      .catch((err) => console.error("Error:", err));
+  };
+  confirmBtn.addEventListener("click", onConfirm, { once: true });
+  cancelBtn?.addEventListener("click", hide, { once: true });
+  closeBtn?.addEventListener("click", hide, { once: true });
+}
+
+window.confirmDeleteCamera = confirmDeleteCamera;

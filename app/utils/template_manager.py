@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import re
 import shutil
 from datetime import datetime
 
@@ -32,7 +33,9 @@ def is_snapshot_url(url: str) -> bool:
     if not url:
         return False
     url = url.lower()
-    return url.endswith((".jpg", ".jpeg", ".png")) or "snapshot" in url or "picture" in url
+    return (
+        url.endswith((".jpg", ".jpeg", ".png")) or "snapshot" in url or "picture" in url
+    )
 
 
 class Template(db.Base):
@@ -161,7 +164,11 @@ class TemplateManager:
 
         session = self.get_session()
         try:
-            templates = session.query(Template).order_by(Template.last_caption_time.desc()).all()
+            templates = (
+                session.query(Template)
+                .order_by(Template.last_caption_time.desc())
+                .all()
+            )
             result = []
             for template in templates:
                 if template.name is None or template.name == "":
@@ -233,17 +240,29 @@ class TemplateManager:
                             value = int(value)
                         elif key in ["frequency", "timeout"]:
                             if value == "":
-                                value = default_frequency if key == "frequency" else default_timeout
+                                value = (
+                                    default_frequency
+                                    if key == "frequency"
+                                    else default_timeout
+                                )
 
                             value = int(value)
                             if key == "frequency" and value > 525600:
                                 value = 525600
-                            if key == "frequency" and value < 0.01:  # that's less than 1 fps...
+                            if (
+                                key == "frequency" and value < 0.01
+                            ):  # that's less than 1 fps...
                                 value = 0.01
 
-                            if key == "timeout" and value >= float(details.get("frequency", template.frequency)) * 60:
+                            if (
+                                key == "timeout"
+                                and value
+                                >= float(details.get("frequency", template.frequency))
+                                * 60
+                            ):
                                 value = (
-                                    int(details.get("frequency", template.frequency)) * 60
+                                    int(details.get("frequency", template.frequency))
+                                    * 60
                                 )  # adjust the timeout down
                             if key == "timeout" and value < 1:
                                 value = 1
@@ -252,8 +271,12 @@ class TemplateManager:
                             if value == "":
                                 value = 0.5
                             value = float(value)
-                            if details.get("object_filter", template.object_filter) and (value < 0 or value > 1):
-                                raise ValueError("Object confidence must be between 0 and 1")
+                            if details.get(
+                                "object_filter", template.object_filter
+                            ) and (value < 0 or value > 1):
+                                raise ValueError(
+                                    "Object confidence must be between 0 and 1"
+                                )
                         elif key in ["popup_xpath", "dedicated_xpath"]:
                             if value and not value.startswith("//"):
                                 raise ValueError(f"{key} must start with '//'")
@@ -514,13 +537,18 @@ def get_screenshots_for_template(name: str) -> list:
     screenshots = [
         f
         for f in os.listdir(os.path.join(SCREENSHOT_DIRECTORY, name))
-        if f.startswith(name) and f.endswith(".png") and ".tmp" not in f and ".partial" not in f
+        if f.startswith(name)
+        and f.endswith(".png")
+        and ".tmp" not in f
+        and ".partial" not in f
     ]
 
     try:
         sorted_screenshots = sorted(
             screenshots,
-            key=lambda x: datetime.strptime(x[len(name) + 1 : -4].replace("_blank", ""), "%Y%m%d%H%M%S"),
+            key=lambda x: datetime.strptime(
+                x[len(name) + 1 : -4].replace("_blank", ""), "%Y%m%d%H%M%S"
+            ),
             reverse=True,
         )
     except Exception as e:
@@ -554,10 +582,14 @@ def get_videos_for_template(name: str):
         for f in os.listdir(os.path.join(VIDEO_DIRECTORY, name))
         if (f.startswith(name) or f.startswith("final_")) and f.endswith(".mp4")
     ]
-    sorted_videos = sorted(
-        videos,
-        reverse=True,
-    )
+
+    def _sort_key(filename: str) -> int:
+        match = re.search(r"(\d+)(?=\.mp4$)", filename)
+        return int(match.group(1)) if match else -1
+
+    sorted_videos = sorted(videos, key=_sort_key, reverse=True)
+    if "last_video.mp4" not in sorted_videos:
+        sorted_videos.append("last_video.mp4")
     return sorted_videos[:10]
 
 
@@ -669,7 +701,9 @@ def record_llm_usage(name: str, tokens: int) -> None:
     elif not isinstance(entry, dict):
         entry = {"total": 0, "entries": []}
 
-    entry["entries"].append({"time": datetime.utcnow().strftime("%Y-%m-%d"), "tokens": int(tokens)})
+    entry["entries"].append(
+        {"time": datetime.utcnow().strftime("%Y-%m-%d"), "tokens": int(tokens)}
+    )
     entry["total"] += int(tokens)
     data[name] = entry
 
@@ -712,7 +746,9 @@ def get_llm_response_count(name: str) -> int:
     return 0
 
 
-def get_llm_cost_estimate(name: str, start_date: str | None = None, end_date: str | None = None) -> str:
+def get_llm_cost_estimate(
+    name: str, start_date: str | None = None, end_date: str | None = None
+) -> str:
     """Estimate LLM cost for ``name`` within an optional date range."""
 
     name = validate_template_name(name)
@@ -751,9 +787,15 @@ def get_llm_cost_estimate(name: str, start_date: str | None = None, end_date: st
 
 
 def get_llm_cost_summary(
-    start_date: str | None = None, end_date: str | None = None
-) -> tuple[list[dict[str, object]], int, str]:
-    """Return LLM usage totals and overall cost within an optional date range."""
+    start_date: str | None = None,
+    end_date: str | None = None,
+    group: str | None = None,
+) -> tuple[list[dict[str, object]], int, str, int]:
+    """Return LLM usage totals and overall cost within an optional date range.
+
+    When ``group`` is provided, only templates belonging to that group are
+    included in the summary.
+    """
 
     try:
         with open(LLM_USAGE_PATH, "r") as f:
@@ -763,11 +805,24 @@ def get_llm_cost_summary(
 
     summary = []
     total_tokens = 0
+    total_calls = 0
     sd = datetime.fromisoformat(start_date).date() if start_date else None
     ed = datetime.fromisoformat(end_date).date() if end_date else None
+
+    allowed_names: set[str] | None = None
+    if group:
+        tmpl = TemplateManager().get_templates()
+        allowed_names = {
+            name
+            for name, details in tmpl.items()
+            if group in [g.strip() for g in details.get("groups", "").split(",")]
+        }
     for name in sorted(data):
+        if allowed_names is not None and name not in allowed_names:
+            continue
         entry = data.get(name, 0)
         tokens = 0
+        calls = 0
         if isinstance(entry, dict) and "entries" in entry:
             entries = entry.get("entries", [])
             for e in entries:
@@ -781,23 +836,66 @@ def get_llm_cost_summary(
                     continue
                 try:
                     tokens += int(e.get("tokens", 0))
+                    calls += 1
                 except Exception:
                     continue
             if not start_date and not end_date:
                 tokens = entry.get("total", tokens)
+                calls = len(entries)
         else:
             if isinstance(entry, list):
                 tokens = sum(int(t) for t in entry)
+                calls = len(entry)
             elif isinstance(entry, dict):
                 tokens = int(entry.get("total", 0))
+                calls = len(entry.get("entries", []))
             elif isinstance(entry, int):
                 tokens = entry
+                calls = 1 if entry > 0 else 0
         total_tokens += tokens
+        total_calls += calls
         cost = tokens * LLM_COST_PER_TOKEN
-        summary.append({"name": name, "tokens": tokens, "cost": f"${cost:.3f}"})
+        summary.append(
+            {
+                "name": name,
+                "tokens": tokens,
+                "cost": f"${cost:.3f}",
+                "calls": calls,
+            }
+        )
 
     total_cost = total_tokens * LLM_COST_PER_TOKEN
-    return summary, total_tokens, f"${total_cost:.3f}"
+    return summary, total_tokens, f"${total_cost:.3f}", total_calls
+
+
+def group_cost_summary(
+    summary: list[dict[str, object]], top: int = 10
+) -> list[dict[str, object]]:
+    """Return ``summary`` sorted by cost with smaller entries grouped."""
+
+    def _cost_val(entry: dict[str, object]) -> float:
+        try:
+            return float(str(entry.get("cost", "$0")).replace("$", ""))
+        except Exception:
+            return 0.0
+
+    rows = sorted(summary, key=_cost_val, reverse=True)
+    if len(rows) <= top:
+        return rows
+
+    keep = rows[: top - 1]
+    other_tokens = sum(r.get("tokens", 0) for r in rows[top - 1 :])
+    other_cost = sum(_cost_val(r) for r in rows[top - 1 :])
+    other_calls = sum(r.get("calls", 0) for r in rows[top - 1 :])
+    keep.append(
+        {
+            "name": "Other",
+            "tokens": other_tokens,
+            "cost": f"${other_cost:.3f}",
+            "calls": other_calls,
+        }
+    )
+    return keep
 
 
 def update_last_screenshot_time(name: str) -> None:
@@ -811,7 +909,9 @@ def update_last_screenshot_time(name: str) -> None:
     try:
         template = session.query(Template).filter_by(name=name).first()
         if template:
-            template.last_screenshot_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            template.last_screenshot_time = datetime.utcnow().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
             template.offline_since = ""
             template.capture_failed = False
             session.commit()

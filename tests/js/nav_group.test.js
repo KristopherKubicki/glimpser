@@ -50,4 +50,14 @@ describe("nav group dropdown", () => {
     dd.dispatchEvent(new Event("change"));
     expect(window.location.href).toBe("/live");
   });
+
+  test("live page uses changeGroup", () => {
+    window.changeGroup = jest.fn();
+    const dd = setup();
+    window.location.pathname = "/live";
+    dd.value = "kitchen";
+    dd.dispatchEvent(new Event("change"));
+    expect(window.changeGroup).toHaveBeenCalled();
+    expect(window.location.href).toBe("");
+  });
 });

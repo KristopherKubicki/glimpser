@@ -77,6 +77,16 @@
       stroke-linejoin="round"
     />
   </symbol>
+  <symbol id="send" viewBox="0 0 24 24">
+    <path
+      d="M10 8l4 4-4 4"
+      stroke="currentColor"
+      stroke-width="2"
+      fill="none"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </symbol>
   <symbol id="lock" viewBox="0 0 24 24">
     <rect
       x="3"

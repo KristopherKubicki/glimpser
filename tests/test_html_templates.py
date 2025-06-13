@@ -119,9 +119,23 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn('min="0"', components)
         self.assertIn('datalist id="object-filter-options"', components)
 
-    def test_groups_field_is_select(self):
+    def test_groups_field_has_datalist(self):
         components = Path("app/templates/components.html").read_text(encoding="utf-8")
-        self.assertIn('<select id="groups"', components)
+        self.assertIn('id="groups"', components)
+        self.assertIn('datalist id="group-options"', components)
+
+    def test_object_filter_gpu_icon_present(self):
+        components = Path("app/templates/components.html").read_text(encoding="utf-8")
+        self.assertIn("object-gpu-status", components)
+
+    def test_status_tab_has_sparklines(self):
+        html = Path("app/templates/_status_tab.html").read_text(encoding="utf-8")
+        self.assertIn('id="memory-sparkline"', html)
+        self.assertIn('id="disk-sparkline"', html)
+
+    def test_status_tab_thread_list(self):
+        html = Path("app/templates/_status_tab.html").read_text(encoding="utf-8")
+        self.assertIn('<table id="thread-table"', html)
 
 
 if __name__ == "__main__":

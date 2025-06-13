@@ -33,6 +33,7 @@ function hideScrubTooltip() {
 let prefetchQueue = [];
 let processing = false;
 let queueDelay = 1000;
+let failStreak = 0;
 const spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 function showSpinner(video) {
@@ -57,8 +58,30 @@ function hideSpinner(video) {
   spinner.classList.remove("visible");
 }
 
+function showErrorIndicator(video) {
+  const spinner = video.parentElement?.querySelector(".loading-spinner");
+  if (!spinner) return;
+  spinner.textContent = "⠿";
+  spinner.classList.add("shake", "visible");
+  clearTimeout(spinner.errorTimeoutId);
+  spinner.errorTimeoutId = setTimeout(() => {
+    spinner.classList.remove("shake", "visible");
+    spinner.textContent = "";
+  }, 2000);
+}
+
 export function setQueueDelay(ms) {
   queueDelay = ms;
+}
+
+function adjustDelay(success) {
+  failStreak = success
+    ? Math.max(0, failStreak - 1)
+    : Math.min(failStreak + 1, 5);
+  queueDelay = 1000 * (failStreak + 1);
+  if (!success && prefetchQueue.length > failStreak + 1) {
+    prefetchQueue = prefetchQueue.slice(0, failStreak + 1);
+  }
 }
 
 export function enqueueClip(video) {
@@ -67,6 +90,11 @@ export function enqueueClip(video) {
   prefetchQueue.push(video);
   showSpinner(video);
   if (!processing) processQueue();
+}
+
+export function clearPrefetchQueue() {
+  prefetchQueue = [];
+  processing = false;
 }
 
 function processQueue() {
@@ -80,8 +108,25 @@ function processQueue() {
   if (src) {
     src.src = vid.dataset.hdSrc;
     vid.dataset.hdLoaded = "true";
-    vid.addEventListener("canplay", () => hideSpinner(vid), { once: true });
-    vid.addEventListener("error", () => hideSpinner(vid), { once: true });
+    const start =
+      performance && performance.now ? performance.now() : Date.now();
+    vid.addEventListener(
+      "canplay",
+      () => {
+        hideSpinner(vid);
+        adjustDelay(performance.now() - start < 3000);
+      },
+      { once: true },
+    );
+    vid.addEventListener(
+      "error",
+      () => {
+        hideSpinner(vid);
+        showErrorIndicator(vid);
+        adjustDelay(false);
+      },
+      { once: true },
+    );
     vid.load();
   }
   setTimeout(processQueue, queueDelay);
@@ -190,6 +235,15 @@ export function updateVideoSources() {
     const timestamp = new Date().getTime();
     video.querySelector("source").src = `/clip/${name}?t=${timestamp}`;
     video.poster = `/last_screenshot/${name}?t=${timestamp}`;
+  });
+}
+
+export function initVisibilityHandler() {
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      document.querySelectorAll("video").forEach((v) => v.pause());
+      clearPrefetchQueue();
+    }
   });
 }
 
@@ -307,15 +361,18 @@ export function setupVideoControls() {
 
   const container = video.closest(".video-container");
   const controls = container?.querySelector(".video-controls");
+  const navButtons = container?.querySelectorAll(".clip-nav");
   let fadeTimeout;
   let autoplayTimeout;
 
   const showControls = () => {
     if (controls) controls.classList.remove("fade-out");
+    navButtons?.forEach((btn) => btn.classList.remove("fade-out"));
     clearTimeout(fadeTimeout);
     clearTimeout(autoplayTimeout);
     fadeTimeout = setTimeout(() => {
       if (controls) controls.classList.add("fade-out");
+      navButtons?.forEach((btn) => btn.classList.add("fade-out"));
     }, 3000);
     autoplayTimeout = setTimeout(() => {
       video.playbackRate = 0.5;
@@ -521,3 +578,5 @@ export function startCasting() {
 // expose queue functions for other modules
 window.enqueueClip = enqueueClip;
 window.setQueueDelay = setQueueDelay;
+window.clearPrefetchQueue = clearPrefetchQueue;
+export { showSpinner, hideSpinner, showErrorIndicator };
