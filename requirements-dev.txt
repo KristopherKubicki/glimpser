@@ -11,5 +11,4 @@ pyinstaller>=6.14.1
 mkdocs>=1.6
 pytest-socket>=0.7
 detect-secrets>=1.4
-#PyInstaller==5.13.0
-safety=>3.0.0 # >3 requires account? 
+pip-audit>=2.7
