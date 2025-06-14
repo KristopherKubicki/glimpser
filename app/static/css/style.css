@@ -1871,6 +1871,20 @@ body.advanced-enabled .advanced-only {
   border-radius: 4px;
 }
 
+.chat-response .last-caption.ellipsis {
+  overflow: hidden;
+  position: relative;
+}
+
+.chat-response .last-caption.ellipsis::after {
+  content: "\2026"; /* ellipsis */
+  position: absolute;
+  right: 0.25rem;
+  bottom: 0.25rem;
+  background: var(--form-bg-color);
+  padding-left: 0.25rem;
+}
+
 .chat-box label {
   font-weight: 600;
 }
