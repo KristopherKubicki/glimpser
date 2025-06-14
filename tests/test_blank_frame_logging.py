@@ -27,8 +27,9 @@ class TestBlankFrameLogging(unittest.TestCase):
                 patch("app.utils.scheduling.os.rename"),
                 patch("app.utils.scheduling.os.unlink"),
                 patch("app.utils.scheduling.get_cached_status_code", return_value=404),
-            ), self.assertLogs(level="INFO") as logs:
-                scheduling.update_camera("cam1", template)
+            ):
+                with self.assertLogs(level="INFO") as logs:
+                    scheduling.update_camera("cam1", template)
 
             joined = "\n".join(logs.output)
             self.assertIn("Skipping blank frame for motion detection", joined)
