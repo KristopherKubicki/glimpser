@@ -53,12 +53,36 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 from .network import is_system_online
 
-try:
-    from pynput import keyboard, mouse
-except Exception as e:  # pragma: no cover - optional dependency
-    mouse = None
-    keyboard = None
-    logging.warning("pynput not available: %s", e)
+keyboard = None
+mouse = None
+
+
+def _safe_import_pynput() -> None:
+    """Import pynput if an X server is available."""
+
+    global keyboard, mouse
+
+    if keyboard is not None and mouse is not None:
+        # Already attempted
+        return
+
+    if not os.environ.get("DISPLAY"):
+        logging.debug("Skipping pynput import: no DISPLAY set")
+        return
+
+    try:
+        from pynput import keyboard as _keyboard
+        from pynput import mouse as _mouse
+
+        keyboard = _keyboard
+        mouse = _mouse
+    except Exception as e:  # pragma: no cover - optional dependency
+        mouse = None
+        keyboard = None
+        logging.warning("pynput not available: %s", e)
+
+
+_safe_import_pynput()
 
 
 import app.config as config
@@ -404,6 +428,7 @@ def idle_seconds_loginctl() -> int:
 
 # Function to detect user activity
 def check_user_activity(timeout=10):
+    _safe_import_pynput()
 
     global user_active
     user_active = False
@@ -481,6 +506,7 @@ def check_user_activity(timeout=10):
 
 def _send_input_event():
     """Move the mouse slightly to generate an input event."""
+    _safe_import_pynput()
     if mouse is None:
         return
     try:
