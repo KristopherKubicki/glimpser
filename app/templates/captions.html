@@ -116,7 +116,8 @@ template_controls %} {% block content %}
               <form id="form-{{ camera }}" class="notes-form caption-box">
                 <div class="chat-box">
                   <div class="chat-prompt">
-                    <label for="notes-{{ camera }}" class="sr-only">Prompt</label>
+                    <!-- prettier-ignore -->
+                    <label class="sr-only" for="notes-{{ camera }}">Prompt</label>
                     <textarea
                       id="notes-{{ camera }}"
                       class="notes-textarea"
@@ -143,7 +144,7 @@ template_controls %} {% block content %}
                     >
                     <div
                       id="last-caption-{{ camera }}"
-                      class="last-caption"
+                      class="last-caption ellipsis"
                       aria-labelledby="last-caption-label-{{ camera }}"
                     >
                       {{ template_details[camera]['last_caption'] }}

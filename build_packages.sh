@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Exit on error
-set -e
+# Exit on error and undefined variables, fail on pipeline errors
+set -euo pipefail
 
 # Function to check if a command exists
 command_exists() {
