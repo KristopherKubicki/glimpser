@@ -1,5 +1,6 @@
 # flake8: noqa
 import csv
+import email.utils
 import fcntl
 import glob
 import hashlib
@@ -820,6 +821,26 @@ def check_url_accessible(url: str) -> bool:
         return False
 
 
+def parse_cache_delay(headers: typing.Mapping[str, str]) -> float:
+    """Return the time-to-live from HTTP cache headers."""
+
+    cc = headers.get("Cache-Control", "")
+    m = re.search(r"max-age=(\d+)", cc)
+    if m:
+        try:
+            return float(m.group(1))
+        except ValueError:
+            pass
+    expires = headers.get("Expires")
+    if expires:
+        try:
+            dt = email.utils.parsedate_to_datetime(expires)
+            return max(0.0, dt.timestamp() - time.time())
+        except Exception:
+            pass
+    return 0.0
+
+
 def generate_live_stream(url: str) -> Generator[bytes, None, None]:
     """Yield video data directly from a remote URL using ``ffmpeg``.
 
@@ -837,12 +858,22 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
         session = screenshots.http_session()
         failures = 0
         base_delay = 1 / max(config.LIVE_FALLBACK_FPS, 1)
+        last_hash = b""
+
         while True:
             try:
                 resp = session.get(url, timeout=5, stream=True)
                 if resp.status_code == 200:
-                    yield resp.content
-                    failures = 0
+                    data = resp.content
+                    digest = hashlib.sha256(data).digest()
+                    unchanged = digest == last_hash
+                    last_hash = digest
+                    yield data
+                    if unchanged:
+                        failures = min(failures + 1, 5)
+                    else:
+                        failures = 0
+                    delay = max(base_delay, parse_cache_delay(resp.headers))
                 else:
                     logging.error(
                         "Failed to fetch image from %s (HTTP %s)",
@@ -850,14 +881,15 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
                         resp.status_code,
                     )
                     failures += 1
+                    delay = base_delay * (2**failures)
             except GeneratorExit:
                 break
             except Exception as e:
                 logging.error("Error fetching image from %s: %s", url, e)
                 failures += 1
+                delay = base_delay * (2**failures)
 
-            delay = min(base_delay * (2**failures), 30)
-            time.sleep(delay)
+            time.sleep(min(delay, config.LIVE_MAX_RETRY_DELAY))
         return
 
     command = [config.FFMPEG_PATH]
