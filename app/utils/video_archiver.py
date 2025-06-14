@@ -6,11 +6,12 @@ import logging
 import os
 import subprocess
 import tempfile
+import textwrap
 import time
 from enum import Enum, auto
 
 from filelock import FileLock
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 from app.config import (
     FFMPEG_HWACCEL,
@@ -886,3 +887,98 @@ def archive_screenshots():
             compile_to_video(camera_path, video_path)
         except Exception as e:
             logging.exception("Failed to compile video for camera %s", camera_name)
+
+
+def compile_caption_story(
+    image_paths: list[str],
+    captions: list[str],
+    output_file: str,
+    *,
+    durations: list[int] | None = None,
+    default_duration: int = 3,
+) -> bool:
+    """Create a short video from ``image_paths`` with caption overlays.
+
+    Parameters
+    ----------
+    image_paths : list[str]
+        Ordered list of screenshot paths.
+    captions : list[str]
+        Captions matching each image.
+    output_file : str
+        Path where the MP4 will be written.
+    durations : list[int], optional
+        Per-frame durations in seconds. ``default_duration`` is used when not
+        provided or the list length does not match ``image_paths``.
+    default_duration : int, optional
+        Seconds to display each image when ``durations`` is ``None``.
+
+    Returns
+    -------
+    bool
+        ``True`` when ``output_file`` exists.
+    """
+
+    if not image_paths or len(image_paths) != len(captions):
+        return False
+
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        frame_paths: list[str] = []
+        for idx, (img_path, text) in enumerate(zip(image_paths, captions)):
+            if not os.path.exists(img_path):
+                continue
+            try:
+                with Image.open(img_path).convert("RGB") as img:
+                    draw = ImageDraw.Draw(img)
+                    font = ImageFont.load_default()
+                    wrapped = textwrap.fill(text, width=40)
+                    bbox = draw.textbbox((0, 0), wrapped, font=font)
+                    w = bbox[2] - bbox[0]
+                    h = bbox[3] - bbox[1]
+                    x = (img.width - w) // 2
+                    y = img.height - h - 20
+                    draw.rectangle([x - 5, y - 5, x + w + 5, y + h + 5], fill="black")
+                    draw.text((x, y), wrapped, fill="white", font=font)
+                    frame_path = os.path.join(tmpdir, f"frame_{idx:03d}.png")
+                    img.save(frame_path)
+                    frame_paths.append(frame_path)
+            except Exception:
+                continue
+        if not frame_paths:
+            return False
+
+        list_file = os.path.join(tmpdir, "frames.txt")
+        with open(list_file, "w", encoding="utf-8") as f:
+            for i, fp in enumerate(frame_paths):
+                f.write(f"file '{fp}'\n")
+                dur = default_duration
+                if durations and len(durations) == len(frame_paths):
+                    dur = durations[i]
+                f.write(f"duration {dur}\n")
+            f.write(f"file '{frame_paths[-1]}'\n")
+
+        command = [
+            FFMPEG_PATH,
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            list_file,
+            "-vf",
+            "fps=25,format=yuv420p",
+            "-movflags",
+            "+faststart",
+            "-y",
+            os.path.abspath(output_file),
+        ]
+
+        try:
+            run_ffmpeg(command, timeout=60)
+        except Exception as exc:  # pragma: no cover - ffmpeg errors logged
+            logging.error("Failed to create story video: %s", exc)
+            return False
+
+    return os.path.exists(output_file)

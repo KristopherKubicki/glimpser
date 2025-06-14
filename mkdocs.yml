@@ -66,6 +66,7 @@ nav:
       - Log Cleaner: log_cleaner.md
       - Video Archiver: video_archiver.md
       - Video and Image Endpoints: video_image_endpoints.md
+      - Caption Story Video Endpoint: caption_story_video.md
       - Dashboard Border Legend: border_legend.md
       - Caption Overlay Toggle: caption_overlay_toggle.md
       - Caption or Prompt Toggle: caption_prompt_toggle.md
