@@ -2,9 +2,9 @@ name: Dependency Scan (OWASP Dependency-Check)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "staging" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "staging" ]
   schedule:
     - cron: '0 6 * * 0'   # every Sunday 06:00 UTC
 

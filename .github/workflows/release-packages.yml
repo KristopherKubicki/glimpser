@@ -2,11 +2,11 @@ name: Build Release Packages
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
     tags:
       - "v*"
   pull_request:
-    branches: [main]
+    branches: [main, staging]
   workflow_dispatch:
 
 jobs:
