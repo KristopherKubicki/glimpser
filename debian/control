@@ -8,9 +8,11 @@ Build-Depends:
   python3-all,
   python3-pytest,
   python3-filelock,
+  python3-yaml,
   xvfb      # if you prefer the xvfb route
 Depends: ${python3:Depends}, ${misc:Depends},
-         python3-filelock
+         python3-filelock,
+         python3-yaml         # ← NEW
 Standards-Version: 3.9.8
 Homepage: https://github.com/KristopherKubicki/glimpser
 
