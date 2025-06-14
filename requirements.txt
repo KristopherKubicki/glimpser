@@ -22,3 +22,4 @@ pynput==1.8.1
 python-dateutil
 python-dotenv
 setproctitle==1.3.3
+filelock>=3.12
