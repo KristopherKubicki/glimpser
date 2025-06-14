@@ -1352,6 +1352,10 @@ def generate_fast_mjpg(camera: str) -> Generator[bytes, None, None]:
         "latest_camera.png",
     )
 
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            last_frame = f.read()
+
     while True:
         start = time.time()
         try:
@@ -1365,8 +1369,9 @@ def generate_fast_mjpg(camera: str) -> Generator[bytes, None, None]:
             failures += 1
 
         if last_frame:
+            frame = _overlay_stream_timestamp(last_frame)
             yield b"--" + boundary + b"\r\n"
-            yield b"Content-Type: image/png\r\n\r\n" + last_frame + b"\r\n"
+            yield b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
 
         delay = min(0.1 * (2**failures), 5)
         elapsed = time.time() - start

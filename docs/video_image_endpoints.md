@@ -23,7 +23,8 @@ Continuous MJPEG feed of the newest screenshot. Optional `camera` or `group` par
 
 ### GET `/fast_stream.mjpg`
 
-Similar to `/stream.mjpg` but captures a fresh frame as quickly as possible. Requires a `camera` parameter. The `/live` page uses this endpoint for near real-time streaming.
+Similar to `/stream.mjpg` but it immediately serves the most recent screenshot and captures a fresh frame as quickly as possible. Each frame includes a small clock overlay so you know the stream is active. Requires a `camera` parameter. The `/live` page uses this endpoint for near real-time streaming.
+Frames are encoded as JPEG even though the underlying screenshots are stored in PNG format.
 
 ### GET `/motion.mjpg`
 

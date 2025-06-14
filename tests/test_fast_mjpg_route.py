@@ -47,6 +47,17 @@ class TestFastMjpgRoute(unittest.TestCase):
         resp = self.client.get("/fast_stream.mjpg?camera=cam1")
         self.assertEqual(resp.status_code, 200)
 
+    def test_uses_existing_frame_initially(self):
+        self.mock_tpl.return_value = {"name": "cam1", "url": "http://example.com"}
+        img_path = os.path.join(
+            self.repo_root, self.sshot_dir, "cam1", "latest_camera.png"
+        )
+        Image.new("RGB", (1, 1)).save(img_path)
+        self.mock_update.side_effect = Exception("fail")
+        resp = self.client.get("/fast_stream.mjpg?camera=cam1")
+        data = next(resp.response) + next(resp.response)
+        self.assertIn(b"Content-Type: image/jpeg", data)
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
