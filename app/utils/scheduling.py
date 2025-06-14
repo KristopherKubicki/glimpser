@@ -1259,13 +1259,16 @@ def collect_system_metrics():
         for child in proc.children(recursive=True):
             try:
                 cpu = child.cpu_percent(interval=None)
-                name = os.path.basename(child.name())
+                cmd = child.cmdline()
+                name = (
+                    os.path.basename(cmd[0]) if cmd else os.path.basename(child.name())
+                )
                 if cpu:
                     usages.append({"id": child.pid, "name": name, "cpu": round(cpu, 1)})
             except Exception:
                 continue
         usages.sort(key=lambda x: x["cpu"], reverse=True)
-        system_metrics["top_threads"] = usages[:5]
+        system_metrics["top_threads"] = usages[:10]
         time.sleep(5)  # Collect metrics every 5 seconds
 
 
