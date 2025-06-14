@@ -112,63 +112,19 @@ export function initTilePlayer() {
     }
   }
 
+  // Switch the UI to live MJPEG playback immediately. Archived clips are
+  // skipped entirely so the image element always shows the current stream.
   function play(name) {
     if (!name) return;
     current = name;
-    video.style.display = "block";
-    image.style.display = "none";
-    if (container) container.classList.remove(LIVE_CLASS);
-
-    if (name === "All") {
-      const first = Object.keys(window.templateDetails || {})[0];
-      if (first && source) source.src = `/last_video/${first}`;
-      video.setAttribute("data-hd-src", "/stream.mp4");
-      video.addEventListener(
-        "ended",
-        () => {
-          showSpinner(video);
-          image.addEventListener("load", () => hideSpinner(video), {
-            once: true,
-          });
-          playMjpg("all");
-        },
-        { once: true },
-      );
-    } else if (name.startsWith("group-")) {
-      const raw = name.slice(6);
-      const group = encodeURIComponent(raw);
-      if (source) source.src = `/last_teaser?group=${group}`;
-      video.setAttribute("data-hd-src", `/stream.mp4?group=${group}`);
-      video.addEventListener(
-        "ended",
-        () => {
-          showSpinner(video);
-          image.addEventListener("load", () => hideSpinner(video), {
-            once: true,
-          });
-          playMjpg(raw);
-        },
-        { once: true },
-      );
-    } else {
-      if (source) source.src = `/last_video/${name}`;
-      video.setAttribute("data-hd-src", `/clip/${name}`);
-      video.addEventListener(
-        "ended",
-        () => {
-          showSpinner(video);
-          image.addEventListener("load", () => hideSpinner(video), {
-            once: true,
-          });
-          playMjpg(name, true);
-        },
-        { once: true },
-      );
-    }
-
-    video.load();
     hideBounce();
-    loadHdClip();
+    if (name === "All") {
+      playMjpg("all");
+    } else if (name.startsWith("group-")) {
+      playMjpg(name.slice(6));
+    } else {
+      playMjpg(name, true);
+    }
   }
 
   if (camSelect) {
