@@ -21,6 +21,11 @@ Mark critical items with ⚠️ and resolved items with ✔️.
 The time is \$datetime UTC."
 ```
 
+The default prompt now aims for a five‑minute narration. It instructs the model
+to write around sixty short lines, each starting with the camera name in square
+brackets such as `[cam1]`. Stand‑alone `[pause]` lines mark brief silences so
+the output works as a caption script when paired with video clips.
+
 ## LLM_CAPTION_PROMPT
 
 `LLM_CAPTION_PROMPT` controls how image captions are generated. It requests a short headline and a brief explanation, replying with `UNREADABLE` if the frame lacks useful detail.
