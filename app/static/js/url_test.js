@@ -79,8 +79,6 @@ export function initUrlTester() {
       }, 1000);
     }
 
-    check();
-
     input.addEventListener("input", () => {
       toggleDisabled();
       setStatus(input.value.trim() ? "pending" : "");
