@@ -106,6 +106,7 @@ from .screenshots import (
     capture_or_download,
     cas_error,
     check_user_activity,
+    get_cached_status_code,
     is_chrome_debug_port_open,
     is_mostly_blank,
     load_font,
@@ -553,9 +554,11 @@ def update_camera(name, template, image_file=None, motion=False):
         try:
             with Image.open(latest_image_path) as img:
                 if is_mostly_blank(img):
+                    status = get_cached_status_code(url)
                     logging.info(
-                        "Skipping blank frame for motion detection: %s",
+                        "Skipping blank frame for motion detection: %s (HTTP status: %s)",
                         latest_image_path,
+                        status if status is not None else "unknown",
                     )
                     return
         except Exception as e:
