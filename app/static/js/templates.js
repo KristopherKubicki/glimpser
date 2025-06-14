@@ -91,7 +91,7 @@ export function applyCaptionVisibility(width) {
   }
 }
 
-function updateTableLayout(width) {
+export function updateTableLayout(width) {
   const rows = document.querySelectorAll("#camera-table .camera-row");
   rows.forEach((row) => {
     const preview = row.querySelector(".templateDiv");
@@ -99,9 +99,13 @@ function updateTableLayout(width) {
     const height = preview.offsetHeight;
     row.style.height = `${height}px`;
     const caption = row.querySelector(".last-caption");
-    if (caption) {
-      caption.classList.toggle("hidden", width < 150);
-    }
+    const prompt = row.querySelector(".chat-prompt textarea");
+    if (!caption || !prompt) return;
+    caption.classList.toggle("hidden", width < 150);
+    const available = height - prompt.offsetHeight - 10;
+    const needsClamp = available < caption.scrollHeight;
+    caption.style.maxHeight = needsClamp ? `${Math.max(available, 0)}px` : "";
+    caption.classList.toggle("ellipsis", needsClamp);
   });
 }
 
