@@ -12,3 +12,4 @@ mkdocs>=1.6
 pytest-socket>=0.7
 detect-secrets>=1.4
 pip-audit>=2.7
+setuptools>=78.1.1
