@@ -7,8 +7,6 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from app.utils.retention_policy import get_files_sorted_by_creation_time
 from app.utils.screenshots import (
     get_arp_output,

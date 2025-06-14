@@ -3,8 +3,6 @@ import sys
 import time
 from unittest.mock import patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from app import create_app

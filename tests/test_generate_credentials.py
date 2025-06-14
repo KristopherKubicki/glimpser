@@ -6,8 +6,6 @@ import tempfile
 import unittest
 from unittest.mock import call, patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 import app.config as config  # noqa: E402
 import generate_credentials  # noqa: E402
 

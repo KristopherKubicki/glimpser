@@ -3,8 +3,6 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from scripts import check_exclude_docs  # noqa: E402
 
 

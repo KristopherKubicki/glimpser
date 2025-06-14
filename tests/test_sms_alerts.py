@@ -3,8 +3,6 @@ import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from app.utils.sms_alerts import send_sms_alert, sms_alert
 
 
