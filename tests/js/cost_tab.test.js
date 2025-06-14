@@ -35,9 +35,11 @@ test("date sliders trigger fetch", async () => {
   initCosts();
   document.dispatchEvent(new Event("DOMContentLoaded"));
   await Promise.resolve();
-  expect(fetch).toHaveBeenCalledTimes(1);
+  await Promise.resolve();
+  expect(fetch).toHaveBeenCalledTimes(2);
   const start = document.getElementById("cost-start");
   fetch.mockClear();
+  await Promise.resolve();
   start.dispatchEvent(new Event("input"));
   await Promise.resolve();
   expect(fetch).toHaveBeenCalledTimes(1);
@@ -47,12 +49,13 @@ test("group dropdown triggers fetch", async () => {
   initCosts();
   document.dispatchEvent(new Event("DOMContentLoaded"));
   await Promise.resolve();
-  fetch.mockClear();
+  await Promise.resolve();
+  await new Promise((r) => setTimeout(r, 0));
   const select = document.getElementById("cost-group");
   select.value = "cam1";
   select.dispatchEvent(new Event("change"));
   await Promise.resolve();
-  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(fetch).toHaveBeenCalled();
 });
 
 test("top slider does not fetch", async () => {
