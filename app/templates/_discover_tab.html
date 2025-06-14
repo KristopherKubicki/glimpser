@@ -166,6 +166,11 @@
     };
 
     let results = [];
+    const updateExportState = () => {
+      if (exportJson) exportJson.disabled = results.length === 0;
+      if (exportCsv) exportCsv.disabled = results.length === 0;
+    };
+    updateExportState();
 
     if (button) {
       button.addEventListener("click", async () => {
@@ -183,6 +188,7 @@
         progress.value = 0;
         body.innerHTML = "";
         results = [];
+        updateExportState();
         const cidr = document.getElementById("cidr-input").value.trim();
         const url = cidr
           ? `/discover/scan_stream?cidr=${encodeURIComponent(cidr)}`
@@ -194,6 +200,7 @@
           if (known.has(key)) return;
           known.add(key);
           results.push(cam);
+          updateExportState();
           const tr = document.createElement("tr");
           let url = cam.url || `${cam.protocol}://${cam.ip}:${cam.port}`;
           const existing = existingMap[url];
