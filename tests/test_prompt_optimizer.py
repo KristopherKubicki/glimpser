@@ -54,6 +54,37 @@ class TestPromptOptimizer(unittest.TestCase):
         self.assertEqual(img_proc.LLM_CAPTION_PROMPT, original)
         mock_compare.assert_not_called()
 
+    @patch("app.utils.prompt_optimizer.ask_question", return_value="Better")
+    @patch("app.utils.prompt_optimizer.get_templates")
+    @patch("app.utils.prompt_optimizer.CHATGPT_KEY", "k")
+    def test_audit_prompts(self, mock_get, mock_ask):
+        mock_get.return_value = {"cam1": {"notes": "old"}}
+
+        result = prompt_optimizer.audit_prompts()
+
+        self.assertEqual(result, {"cam1": "Better"})
+        mock_ask.assert_called_once()
+
+    @patch("app.utils.prompt_optimizer.ask_question")
+    @patch("app.utils.prompt_optimizer.get_templates")
+    @patch("app.utils.prompt_optimizer.CHATGPT_KEY", "")
+    def test_audit_prompts_no_key(self, mock_get, mock_ask):
+        result = prompt_optimizer.audit_prompts()
+
+        self.assertEqual(result, {})
+        mock_ask.assert_not_called()
+
+    @patch("app.utils.prompt_optimizer.ask_question")
+    @patch("app.utils.prompt_optimizer.get_templates")
+    @patch("app.utils.prompt_optimizer.CHATGPT_KEY", "k")
+    def test_audit_prompts_no_notes(self, mock_get, mock_ask):
+        mock_get.return_value = {"cam1": {"notes": ""}}
+
+        result = prompt_optimizer.audit_prompts()
+
+        self.assertEqual(result, {})
+        mock_ask.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

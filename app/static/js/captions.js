@@ -230,6 +230,17 @@ export function initCaptions() {
       window.dispatchEvent(new CustomEvent("showChyron", { detail: latest }));
     }
 
+    document
+      .getElementById("audit-prompts-btn")
+      ?.addEventListener("click", async () => {
+        const resp = await fetch("/audit_prompts", { method: "POST" });
+        const data = await resp.json();
+        Object.entries(data).forEach(([name, prompt]) => {
+          const el = document.getElementById(`notes-${name}`);
+          if (el) el.value = prompt;
+        });
+      });
+
     setupLiveHistoryUpdates();
   };
   if (document.readyState === "loading") {

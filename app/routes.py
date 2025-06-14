@@ -3536,6 +3536,14 @@ def init_routes(app: Flask) -> None:
         prompt = prompt_optimizer.generate_prompt(template_name)
         return jsonify({"prompt": prompt})
 
+    @app.route("/audit_prompts", methods=["POST"])
+    @login_required
+    def audit_prompts_route():
+        """Return suggested improvements for all caption prompts."""
+
+        suggestions = prompt_optimizer.audit_prompts()
+        return jsonify(suggestions)
+
     @app.route("/suggest_fix/<string:template_name>", methods=["POST"])
     @login_required
     def suggest_fix_route(template_name: TemplateName):
