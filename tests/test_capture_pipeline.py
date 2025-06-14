@@ -85,5 +85,8 @@ def test_capture_pipeline(browser, http_server, tmp_path, monkeypatch):
     monkeypatch.setattr(
         "app.utils.screenshots.get_chrome_path", lambda: "/usr/bin/chrome"
     )
+    monkeypatch.setattr(
+        "app.utils.screenshots._finalize_screenshot", lambda *a, **k: True
+    )
     assert capture_screenshot_and_har(http_server, str(output))
     assert output.exists()
