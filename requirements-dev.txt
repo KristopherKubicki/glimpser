@@ -12,3 +12,4 @@ mkdocs>=1.6
 pytest-socket>=0.7
 detect-secrets>=1.4
 PyInstaller==6.14.1
+safety==2.3.5
