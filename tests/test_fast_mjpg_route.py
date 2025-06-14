@@ -27,7 +27,9 @@ class TestFastMjpgRoute(unittest.TestCase):
         self.mock_update = self.update_patch.start()
 
         def create_frame(name, template):
-            img_path = os.path.join(self.repo_root, self.sshot_dir, name, "latest_camera.png")
+            img_path = os.path.join(
+                self.repo_root, self.sshot_dir, name, "latest_camera.png"
+            )
             Image.new("RGB", (1, 1)).save(img_path)
 
         self.mock_update.side_effect = create_frame

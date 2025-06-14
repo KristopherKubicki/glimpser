@@ -33,7 +33,9 @@ class TestLLM(unittest.TestCase):
             result = summarize("Test prompt")
 
         ts = int(start + 0.5)
-        expected_result = json.dumps({ts: "Mock summary", ts + 5: "With multiple lines"})
+        expected_result = json.dumps(
+            {ts: "Mock summary", ts + 5: "With multiple lines"}
+        )
         self.assertEqual(json.loads(result), json.loads(expected_result))
 
         # Verify that the API was called with the correct parameters

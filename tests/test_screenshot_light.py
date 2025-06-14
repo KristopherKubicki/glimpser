@@ -57,7 +57,9 @@ class TestScreenshotLight(unittest.TestCase):
             ),
             patch("app.utils.screenshots.subprocess.run") as mock_run,
             patch("app.utils.screenshots.os.path.exists", return_value=True),
-            patch("app.utils.screenshots._is_valid_png", return_value=True) as mock_valid,
+            patch(
+                "app.utils.screenshots._is_valid_png", return_value=True
+            ) as mock_valid,
             patch("app.utils.screenshots.Image.open") as mock_open,
             patch("app.utils.screenshots.is_mostly_blank", return_value=False),
             patch("app.utils.screenshots.remove_background", return_value=mock_image),

@@ -37,7 +37,9 @@ class TestPushAlerts(unittest.TestCase):
         with (
             patch("app.utils.push_alerts.VAPID_PRIVATE_KEY", "priv"),
             patch("app.utils.push_alerts.VAPID_PUBLIC_KEY", "pub"),
-            patch("app.utils.push_alerts.SessionLocal", return_value=session) as mock_sess,
+            patch(
+                "app.utils.push_alerts.SessionLocal", return_value=session
+            ) as mock_sess,
             patch("app.utils.push_alerts.webpush") as mock_webpush,
         ):
             send_push_alert("T", "B")

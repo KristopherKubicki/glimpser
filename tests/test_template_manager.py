@@ -187,7 +187,9 @@ class TestTemplateManager(unittest.TestCase):
 
         mock_session_instance.add.reset_mock()
 
-        result = self.template_manager.save_template("test_template2", {"frequency": 1, "timeout": 120})
+        result = self.template_manager.save_template(
+            "test_template2", {"frequency": 1, "timeout": 120}
+        )
         self.assertFalse(result)
         self.assertEqual(mock_session_instance.commit.call_count, 1)
 
@@ -292,7 +294,9 @@ class TestOfflineHandling(unittest.TestCase):
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
         template = Template(name="cam1")
-        mock_sess.query.return_value.filter_by.return_value.first.return_value = template
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = (
+            template
+        )
 
         mark_offline("cam1")
 
@@ -304,7 +308,9 @@ class TestOfflineHandling(unittest.TestCase):
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
         template = Template(name="cam1", offline_since="yesterday")
-        mock_sess.query.return_value.filter_by.return_value.first.return_value = template
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = (
+            template
+        )
 
         update_last_screenshot_time("cam1")
 
@@ -317,7 +323,9 @@ class TestOfflineHandling(unittest.TestCase):
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
         template = Template(name="cam1")
-        mock_sess.query.return_value.filter_by.return_value.first.return_value = template
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = (
+            template
+        )
 
         set_capture_failed("cam1", True)
 
@@ -412,7 +420,9 @@ class TestSchedulerUpdates(unittest.TestCase):
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
         template = Template(name="cam1", frequency=1)
-        mock_sess.query.return_value.filter_by.return_value.first.return_value = template
+        mock_sess.query.return_value.filter_by.return_value.first.return_value = (
+            template
+        )
 
         manager = TemplateManager()
         result = manager.save_template("cam1", {"frequency": 2})

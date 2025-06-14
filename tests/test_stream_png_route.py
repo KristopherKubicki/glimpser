@@ -95,7 +95,9 @@ class TestStreamPngRoute(unittest.TestCase):
         img1 = os.path.join(img_dir1, "shot.png")
         Image.new("RGB", (1, 1)).save(img1)
         os.symlink(img1, os.path.join(img_dir1, "latest_camera.png"))
-        group_link = os.path.join(self.repo_root, self.sshot_dir, "g1_latest_camera.png")
+        group_link = os.path.join(
+            self.repo_root, self.sshot_dir, "g1_latest_camera.png"
+        )
         os.symlink(img1, group_link)
 
         resp = self.client.get("/stream.png?group=g1")

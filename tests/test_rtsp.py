@@ -70,7 +70,9 @@ class TestRTSP(unittest.TestCase):
         fake_frame = b"JPEGDATA"
         rtp_header = b"\x80\x60\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01"
 
-        def fake_generate(group=None, filename="latest_camera.png", rtsp=False, session_id=None):
+        def fake_generate(
+            group=None, filename="latest_camera.png", rtsp=False, session_id=None
+        ):
             def gen():
                 if rtsp:
                     yield rtp_header + fake_frame

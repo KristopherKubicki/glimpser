@@ -26,7 +26,9 @@ class TestVersionSync(unittest.TestCase):
         conn.execute(
             "CREATE TABLE settings (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL, value TEXT NOT NULL)"
         )
-        conn.execute("INSERT INTO settings (name, value) VALUES (?, ?)", ("VERSION", "0.1"))
+        conn.execute(
+            "INSERT INTO settings (name, value) VALUES (?, ?)", ("VERSION", "0.1")
+        )
         conn.commit()
         conn.close()
 
@@ -36,7 +38,9 @@ class TestVersionSync(unittest.TestCase):
 
     def _get_version(self):
         conn = sqlite3.connect(self.db_path)
-        val = conn.execute("SELECT value FROM settings WHERE name='VERSION'").fetchone()[0]
+        val = conn.execute(
+            "SELECT value FROM settings WHERE name='VERSION'"
+        ).fetchone()[0]
         conn.close()
         return val
 

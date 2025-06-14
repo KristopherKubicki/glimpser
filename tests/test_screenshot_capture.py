@@ -32,7 +32,9 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
     @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
     @patch("app.utils.screenshots.is_system_online", return_value=True)
-    def test_capture_screenshot_success(self, mock_online, mock_path, mock_version, mock_launch, mock_finalize):
+    def test_capture_screenshot_success(
+        self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
+    ):
         mock_driver = MagicMock()
         mock_launch.return_value = mock_driver
         mock_driver.get.return_value = None
@@ -50,7 +52,9 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
     @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
     @patch("app.utils.screenshots.is_system_online", return_value=True)
-    def test_capture_screenshot_with_popup(self, mock_online, mock_path, mock_version, mock_launch, mock_finalize):
+    def test_capture_screenshot_with_popup(
+        self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
+    ):
         mock_driver = MagicMock()
         mock_launch.return_value = mock_driver
         mock_driver.get.return_value = None
@@ -58,7 +62,9 @@ class TestScreenshotCapture(unittest.TestCase):
         mock_driver.find_elements.return_value = [MagicMock()]
 
         # Call the function with a popup_xpath
-        result = capture_screenshot_and_har("http://example.com", self.output_path, popup_xpath="//div[@class='popup']")
+        result = capture_screenshot_and_har(
+            "http://example.com", self.output_path, popup_xpath="//div[@class='popup']"
+        )
 
         self.assertTrue(result)
         mock_driver.find_elements.assert_called_once()
@@ -104,7 +110,9 @@ class TestScreenshotCapture(unittest.TestCase):
             return True
 
         mock_driver.save_screenshot.side_effect = fake_save
-        mock_placeholder.side_effect = lambda path, name: Image.new("RGB", (1, 1)).save(path)
+        mock_placeholder.side_effect = lambda path, name: Image.new("RGB", (1, 1)).save(
+            path
+        )
 
         result = capture_screenshot_and_har("http://example.com", self.output_path)
 
@@ -120,16 +128,22 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
     @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
     @patch("app.utils.screenshots.is_system_online", return_value=True)
-    def test_capture_screenshot_with_dark_mode(self, mock_online, mock_path, mock_version, mock_launch, mock_finalize):
+    def test_capture_screenshot_with_dark_mode(
+        self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
+    ):
         mock_driver = MagicMock()
         mock_launch.return_value = mock_driver
         mock_driver.get.return_value = None
         mock_driver.save_screenshot.return_value = True
 
-        result = capture_screenshot_and_har("http://example.com", self.output_path, dark=True)
+        result = capture_screenshot_and_har(
+            "http://example.com", self.output_path, dark=True
+        )
 
         self.assertTrue(result)
-        mock_driver.execute_cdp_cmd.assert_called_with("Emulation.setAutoDarkModeOverride", {"enabled": True})
+        mock_driver.execute_cdp_cmd.assert_called_with(
+            "Emulation.setAutoDarkModeOverride", {"enabled": True}
+        )
         mock_finalize.assert_called_once()
 
     @patch("app.utils.screenshots.http_session")

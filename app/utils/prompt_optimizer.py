@@ -25,7 +25,11 @@ def generate_prompt(template_name: str, num_images: int = 3) -> str:
         SCREENSHOT_DIRECTORY,
         template_name,
     )
-    image_paths = [os.path.join(base, shot) for shot in screenshots if os.path.exists(os.path.join(base, shot))]
+    image_paths = [
+        os.path.join(base, shot)
+        for shot in screenshots
+        if os.path.exists(os.path.join(base, shot))
+    ]
     if not image_paths:
         return ""
 

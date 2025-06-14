@@ -24,7 +24,7 @@ You can find a summary of the documentation structure in [docs/README.md](docs/R
 Read a high-level [Architecture Overview](docs/architecture_overview.md) to understand how the pieces fit together.
 See [OpenSSF Scorecard](docs/scorecard.md) for details on the security badge.
 
-![Glimpser August 2024](https://github.com/user-attachments/assets/44ddcbd5-31f1-4ff9-954a-954a85479dc0)
+![Glimpser June 2025](https://github.com/user-attachments/assets/ea3e094e-1fc5-447b-87f8-9772c9086e5f)
 
 ## Features
 

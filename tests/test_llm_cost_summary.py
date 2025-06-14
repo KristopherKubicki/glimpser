@@ -1,6 +1,7 @@
 import json
 import os
 import unittest
+from unittest.mock import patch
 
 from app.utils.template_manager import (
     LLM_COST_PER_TOKEN,
@@ -8,7 +9,6 @@ from app.utils.template_manager import (
     get_llm_cost_summary,
     group_cost_summary,
 )
-from unittest.mock import patch
 
 
 class TestLLMCostSummary(unittest.TestCase):
