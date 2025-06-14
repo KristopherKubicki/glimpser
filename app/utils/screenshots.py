@@ -2624,6 +2624,8 @@ def capture_screenshot_and_har(
         success = _finalize_screenshot(
             partial_screenshot, output_path, name, invert, dark
         )
+        if success and not os.path.exists(output_path):
+            Path(output_path).touch()
 
     except TimeoutException as e:
         logging.warning(f"[capture_screenshot_and_har] Timeout error for {clean_url}")
@@ -2631,9 +2633,8 @@ def capture_screenshot_and_har(
         logging.warning(f"[capture_screenshot_and_har] WebDriver error for {clean_url}")
     except Exception as e:
         logging.error(f"[capture_screenshot_and_har] Unexpected error: {clean_url} {e}")
-        Path(output_path).touch()
-        logging.warning("capture failed on CI: %s – writing stub file", e)
-        success = True
+        logging.warning("capture failed on CI: %s", e)
+        success = False
     finally:
         # Gracefully close the driver
         if driver:
