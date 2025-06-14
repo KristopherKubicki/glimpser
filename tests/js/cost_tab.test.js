@@ -2,7 +2,8 @@ import { jest } from "@jest/globals";
 
 document.body.innerHTML = `
   <select id="cost-group"></select>
-  <input id="cost-range" type="range" value="7">
+  <input id="cost-start" type="range" value="150">
+  <input id="cost-end" type="range" value="180">
   <input id="cost-top" type="range" value="10">
   <span id="cost-top-label"></span>
   <table id="cost-table"><tbody></tbody></table>
@@ -30,14 +31,14 @@ global.Chart = jest.fn(function () {
   this.update = jest.fn();
 });
 
-test("range slider triggers fetch", async () => {
+test("date sliders trigger fetch", async () => {
   initCosts();
   document.dispatchEvent(new Event("DOMContentLoaded"));
   await Promise.resolve();
   expect(fetch).toHaveBeenCalledTimes(1);
-  const range = document.getElementById("cost-range");
+  const start = document.getElementById("cost-start");
   fetch.mockClear();
-  range.dispatchEvent(new Event("input"));
+  start.dispatchEvent(new Event("input"));
   await Promise.resolve();
   expect(fetch).toHaveBeenCalledTimes(1);
 });

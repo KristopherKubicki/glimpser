@@ -23,8 +23,10 @@ export function initCosts() {
   document.addEventListener("DOMContentLoaded", () => {
     const dataEl = document.getElementById("cost-data");
     if (!dataEl) return;
-    const rangeInput = document.getElementById("cost-range");
-    const rangeLabel = document.getElementById("cost-range-label");
+    const startSlider = document.getElementById("cost-start");
+    const endSlider = document.getElementById("cost-end");
+    const startLabel = document.getElementById("cost-start-label");
+    const endLabel = document.getElementById("cost-end-label");
     const groupSelect = document.getElementById("cost-group");
     const topSlider = document.getElementById("cost-top");
     const topLabel = document.getElementById("cost-top-label");
@@ -67,20 +69,26 @@ export function initCosts() {
       }
     };
 
+    const base = new Date();
+    base.setMonth(base.getMonth() - 6);
+
+    const toDate = (val) => {
+      const d = new Date(base.getTime());
+      d.setDate(base.getDate() + parseInt(val, 10));
+      return d;
+    };
+
     const fetchData = async () => {
-      if (!rangeInput) {
+      if (!startSlider || !endSlider) {
         rowsData = JSON.parse(dataEl.textContent);
         render();
         return;
       }
       const params = [];
-      if (rangeInput) {
-        const days = parseInt(rangeInput.value, 10);
-        const end = new Date();
-        const start = new Date(Date.now() - days * 86400000);
-        params.push(`start=${start.toISOString().slice(0, 10)}`);
-        params.push(`end=${end.toISOString().slice(0, 10)}`);
-      }
+      const start = toDate(startSlider.value);
+      const end = toDate(endSlider.value);
+      params.push(`start=${start.toISOString().slice(0, 10)}`);
+      params.push(`end=${end.toISOString().slice(0, 10)}`);
       if (groupSelect && groupSelect.value && groupSelect.value !== "all") {
         params.push(`group=${groupSelect.value}`);
       }
@@ -99,8 +107,28 @@ export function initCosts() {
       render();
     };
 
-    rangeInput?.addEventListener("input", () => {
-      if (rangeLabel) rangeLabel.textContent = `${rangeInput.value} days`;
+    const updateLabels = () => {
+      if (startLabel)
+        startLabel.textContent = toDate(startSlider.value)
+          .toISOString()
+          .slice(0, 10);
+      if (endLabel)
+        endLabel.textContent = toDate(endSlider.value)
+          .toISOString()
+          .slice(0, 10);
+    };
+    startSlider?.addEventListener("input", () => {
+      if (parseInt(startSlider.value, 10) > parseInt(endSlider.value, 10)) {
+        startSlider.value = endSlider.value;
+      }
+      updateLabels();
+      fetchData();
+    });
+    endSlider?.addEventListener("input", () => {
+      if (parseInt(endSlider.value, 10) < parseInt(startSlider.value, 10)) {
+        endSlider.value = startSlider.value;
+      }
+      updateLabels();
       fetchData();
     });
     groupSelect?.addEventListener("change", fetchData);
@@ -112,8 +140,8 @@ export function initCosts() {
 
     setupTableSorting("cost-table");
     loadGroups();
-    if (rangeInput && rangeLabel) {
-      rangeLabel.textContent = `${rangeInput.value} days`;
+    if (startSlider && endSlider) {
+      updateLabels();
     }
     fetchData();
   });
@@ -121,14 +149,16 @@ export function initCosts() {
 
 export function initCostSummary(startTime) {
   document.addEventListener("DOMContentLoaded", () => {
-    const rangeInput = document.getElementById("cost-range");
-    const rangeLabel = document.getElementById("cost-range-label");
+    const startSlider = document.getElementById("cost-start");
+    const endSlider = document.getElementById("cost-end");
+    const startLabel = document.getElementById("cost-start-label");
+    const endLabel = document.getElementById("cost-end-label");
     const groupSelect = document.getElementById("cost-group");
     const loadBtn = document.getElementById("load-cost");
     const sinceBtn = document.getElementById("since-restart");
     const tbody = document.querySelector("#cost-table tbody");
     const ctx = document.getElementById("costChart");
-    if (!rangeInput || !loadBtn || !tbody) return;
+    if (!startSlider || !endSlider || !loadBtn || !tbody) return;
     let chart;
 
     const render = (data) => {
@@ -176,10 +206,18 @@ export function initCostSummary(startTime) {
       }
     };
 
+    const base = new Date();
+    base.setMonth(base.getMonth() - 6);
+
+    const toDate = (val) => {
+      const d = new Date(base.getTime());
+      d.setDate(base.getDate() + parseInt(val, 10));
+      return d;
+    };
+
     const loadData = async () => {
-      const days = parseInt(rangeInput.value, 10);
-      const end = new Date();
-      const start = new Date(Date.now() - days * 86400000);
+      const start = toDate(startSlider.value);
+      const end = toDate(endSlider.value);
       const params = [
         `start=${start.toISOString().slice(0, 10)}`,
         `end=${end.toISOString().slice(0, 10)}`,
@@ -192,21 +230,45 @@ export function initCostSummary(startTime) {
       render(data);
     };
 
+    const updateLabels = () => {
+      if (startLabel)
+        startLabel.textContent = toDate(startSlider.value)
+          .toISOString()
+          .slice(0, 10);
+      if (endLabel)
+        endLabel.textContent = toDate(endSlider.value)
+          .toISOString()
+          .slice(0, 10);
+    };
+
     loadBtn.addEventListener("click", loadData);
-    rangeInput.addEventListener("input", () => {
-      if (rangeLabel) rangeLabel.textContent = `${rangeInput.value} days`;
+    startSlider.addEventListener("input", () => {
+      if (parseInt(startSlider.value, 10) > parseInt(endSlider.value, 10)) {
+        startSlider.value = endSlider.value;
+      }
+      updateLabels();
+    });
+    endSlider.addEventListener("input", () => {
+      if (parseInt(endSlider.value, 10) < parseInt(startSlider.value, 10)) {
+        endSlider.value = startSlider.value;
+      }
+      updateLabels();
     });
     groupSelect?.addEventListener("change", loadData);
     sinceBtn?.addEventListener("click", () => {
       const dt = new Date(startTime * 1000);
       const diff = Math.ceil((Date.now() - dt.getTime()) / 86400000);
-      rangeInput.value = String(diff);
-      if (rangeLabel) rangeLabel.textContent = `${rangeInput.value} days`;
+      const val = Math.min(diff, 180);
+      startSlider.value = String(0);
+      endSlider.value = String(val);
+      updateLabels();
       loadData();
     });
 
     loadGroups();
-    if (rangeLabel) rangeLabel.textContent = `${rangeInput.value} days`;
+    if (startSlider && endSlider) {
+      updateLabels();
+    }
     loadData();
   });
 }

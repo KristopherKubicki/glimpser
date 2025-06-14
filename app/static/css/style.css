@@ -1921,7 +1921,8 @@ body.advanced-enabled .advanced-only {
   padding: 0.5rem;
 }
 
-#cost-range {
+#cost-start,
+#cost-end {
   vertical-align: middle;
   margin: 0 0.5rem;
 }
