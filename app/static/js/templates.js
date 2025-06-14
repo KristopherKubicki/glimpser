@@ -337,7 +337,10 @@ export function initTemplates() {
 }
 
 export async function loadGroups() {
-  const groupDropdown = document.getElementById("group-dropdown");
+  // Support group selection in multiple pages
+  const groupDropdown =
+    document.getElementById("group-dropdown") ||
+    document.getElementById("cost-group");
   const groupsSelect = document.getElementById("groups");
   const groupDatalist = document.getElementById("group-options");
   if (!groupDropdown && !groupsSelect) return;
