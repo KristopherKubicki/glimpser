@@ -2,16 +2,26 @@
 <div id="cost-controls">
   <label for="cost-group">Group:</label>
   <select id="cost-group" title="Filter by group"></select>
-  <label for="cost-range" class="ml-4">Days:</label>
+  <label for="cost-start" class="ml-4">Start:</label>
   <input
     type="range"
-    id="cost-range"
-    min="1"
-    max="30"
-    value="7"
-    title="Number of days"
+    id="cost-start"
+    min="0"
+    max="180"
+    value="150"
+    title="Start date"
   />
-  <span id="cost-range-label">7 days</span>
+  <span id="cost-start-label"></span>
+  <label for="cost-end" class="ml-4">End:</label>
+  <input
+    type="range"
+    id="cost-end"
+    min="0"
+    max="180"
+    value="180"
+    title="End date"
+  />
+  <span id="cost-end-label"></span>
   <label for="cost-top" class="ml-4">Top:</label>
   <input
     type="range"

@@ -2,7 +2,8 @@ import { jest } from "@jest/globals";
 
 document.body.innerHTML = `
   <select id="cost-group"></select>
-  <input id="cost-range" type="range" value="7">
+  <input id="cost-start" type="range" value="150">
+  <input id="cost-end" type="range" value="180">
   <button id="since-restart"></button>
   <button id="load-cost"></button>
   <table id="cost-table"><tbody></tbody></table>
@@ -32,7 +33,7 @@ describe("cost summary", () => {
     const btn = document.getElementById("since-restart");
     btn.click();
     await Promise.resolve();
-    const range = document.getElementById("cost-range");
-    expect(parseInt(range.value, 10)).toBeGreaterThan(0);
+    const end = document.getElementById("cost-end");
+    expect(parseInt(end.value, 10)).toBeGreaterThan(0);
   });
 });

@@ -1,10 +1,7 @@
 import os
+import socket
 import sys
 import unittest
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-import socket
 
 from app.utils.validators import MAX_WORKERS_MAX, validate_setting
 

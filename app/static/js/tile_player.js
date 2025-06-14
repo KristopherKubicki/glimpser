@@ -3,6 +3,7 @@ import { showSpinner, hideSpinner, showErrorIndicator } from "./video.js";
 export function initTilePlayer() {
   const video = document.getElementById("live-video");
   if (!video) return;
+  video.addEventListener("contextmenu", (e) => e.preventDefault());
   const source = video.querySelector("source");
   const camSelect =
     document.getElementById("camera-selector") ||
@@ -47,7 +48,8 @@ export function initTilePlayer() {
     video.style.display = "none";
     image.style.display = "block";
     const param = isCamera ? "camera" : "group";
-    image.src = `/stream.mjpg?${param}=${encodeURIComponent(target)}&time=${Date.now()}`;
+    const route = isCamera ? "/fast_stream.mjpg" : "/stream.mjpg";
+    image.src = `${route}?${param}=${encodeURIComponent(target)}&time=${Date.now()}`;
     if (container) container.classList.add(LIVE_CLASS);
   }
 

@@ -42,7 +42,7 @@ name, last image time, last caption time, any KPI column, or status.
 - **Disk Usage** – percentage of disk space used on the main volume
 - **Open Files** – number of file descriptors opened by the process
 - **Thread Count** – active thread count for the application
-- **Top Threads** – stacked list of thread and child process names sorted by CPU usage (includes `ffmpeg` when active)
+- **Top Threads** – top 10 threads and child processes sorted by CPU usage (includes `ffmpeg` when active)
 - **Uptime** – elapsed time since the app started
 - **FFmpeg Version** – version string and path to the ffmpeg binary
 - **Machine HW Accel** – whether GPU devices are detected

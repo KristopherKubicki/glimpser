@@ -11,6 +11,7 @@ Stream the current MP4 for a camera or group. Pass `camera` or `group` as query 
 ### GET `/live_video`
 
 Stream a camera directly from its configured URL. Provide `camera` as a query parameter. The server automatically restarts the underlying FFmpeg process if it exits unexpectedly.
+It now performs a quick HEAD request first and skips launching `ffmpeg` when the camera is unreachable.
 
 ### GET `/stream.m3u8`
 
@@ -22,7 +23,7 @@ Continuous MJPEG feed of the newest screenshot. Optional `camera` or `group` par
 
 ### GET `/fast_stream.mjpg`
 
-Similar to `/stream.mjpg` but captures a fresh frame as quickly as possible. Requires a `camera` parameter.
+Similar to `/stream.mjpg` but captures a fresh frame as quickly as possible. Requires a `camera` parameter. The `/live` page uses this endpoint for near real-time streaming.
 
 ### GET `/motion.mjpg`
 

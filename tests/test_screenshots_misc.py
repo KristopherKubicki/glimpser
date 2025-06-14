@@ -1,12 +1,9 @@
 import os
 import sys
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, sentinel
 
 from requests.structures import CaseInsensitiveDict
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from unittest.mock import patch, sentinel
 
 import app.utils.screenshots as ss
 

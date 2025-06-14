@@ -16,6 +16,7 @@ When system metrics exceed safe thresholds the `/clip` endpoint now falls
 back to `/last_video` immediately. The response includes an
 `X-Degraded-Service: busy` header and the spinner switches to a dotted
 pattern to indicate reduced quality.
+Clips are cached for two minutes and the service worker reuses them during that period to avoid re-rendering.
 
 If `/clip` hasn't finished rendering yet the server adds an
 `X-Clip-Status: waiting` header. The braille glyph becomes a bouncing dot in the

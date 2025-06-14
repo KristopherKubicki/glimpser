@@ -30,6 +30,14 @@ export function initDiscoveryToggle() {
       } else if (Number.isFinite(d.age) && d.status !== "none") {
         text += ` (${minutes(d.age)} ago)`;
       }
+      if (
+        !d.running &&
+        Array.isArray(d.results) &&
+        d.results.length === 0 &&
+        d.status !== "none"
+      ) {
+        text += ", no cameras found";
+      }
       if (d.next_run_in) {
         text += `, next in ${minutes(d.next_run_in)}`;
       }

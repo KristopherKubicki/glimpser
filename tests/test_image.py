@@ -5,8 +5,6 @@ import unittest
 
 from PIL import Image
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from app.utils.retention_policy import delete_old_files
 from app.utils.screenshots import add_timestamp, is_mostly_blank, remove_background
 

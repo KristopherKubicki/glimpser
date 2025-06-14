@@ -8,8 +8,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import mock_open, patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from app import config
 from app.utils import camera_discovery
 

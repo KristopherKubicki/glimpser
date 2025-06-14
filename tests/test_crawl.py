@@ -3,8 +3,6 @@ import sys
 import unittest
 from unittest.mock import patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from app.utils.screenshots import get_arp_output, is_address_reachable, parse_url
 
 

@@ -143,6 +143,7 @@ from app.utils.db import SessionLocal, engine
 
 # Clip caching constants
 CACHE_TTL_SEC = 120
+PNG_TTL_SEC = 1
 SEGMENT_SEC = 10
 
 
@@ -184,6 +185,39 @@ def _probe(p: str, key: str):
         ]
     )
     return json.loads(out)["streams"][0][key]
+
+
+def send_conditional_file(
+    source: Path | str | io.BytesIO, cache_seconds: int = 0, mimetype: str | None = None
+) -> Response:
+    """Return a file or buffer with ETag and caching headers."""
+
+    if isinstance(source, (str, os.PathLike)):
+        if mimetype:
+            resp = send_file(source, conditional=True, mimetype=mimetype)
+        else:
+            resp = send_file(source, conditional=True)
+        stat = os.stat(source)
+        mtime = int(stat.st_mtime)
+        size = stat.st_size
+    else:
+        if mimetype:
+            resp = send_file(
+                source, conditional=True, mimetype=mimetype, download_name="buffer"
+            )
+        else:
+            resp = send_file(source, conditional=True, download_name="buffer")
+        source.seek(0, os.SEEK_END)
+        size = source.tell()
+        source.seek(0)
+        mtime = int(time.time())
+
+    etag = f"{mtime}-{size}"
+    resp.set_etag(etag)
+    resp.headers["Cache-Control"] = f"public, max-age={cache_seconds}"
+    resp.headers["Expires"] = http_date(time.time() + cache_seconds)
+    resp.make_conditional(request)
+    return resp
 
 
 # ---------- main ------------------------------------------------------------
@@ -776,6 +810,16 @@ def generate_video_stream(
         logging.debug("Restarting video stream")
 
 
+def check_url_accessible(url: str) -> bool:
+    """Return ``True`` if the URL responds to a HEAD request."""
+    try:
+        resp = requests.head(url, timeout=5)
+        return resp.ok
+    except Exception as exc:  # pragma: no cover
+        logging.error("Connectivity check failed for %s: %s", url, exc)
+        return False
+
+
 def generate_live_stream(url: str) -> Generator[bytes, None, None]:
     """Yield video data directly from a remote URL using ``ffmpeg``.
 
@@ -853,6 +897,12 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
     failures = 0
     last_log = 0.0
     while True:
+        if parsed.scheme in ("http", "https") and not check_url_accessible(url):
+            failures += 1
+            delay = 2 if failures == 0 else min(2**failures, 30)
+            time.sleep(delay)
+            continue
+
         process: subprocess.Popen | None = None
         try:
             process = subprocess.Popen(
@@ -1985,7 +2035,11 @@ def init_routes(app: Flask) -> None:
         template_name = validate_template_name(str(template_name))
         if template_name is None:
             logging.warning("Unable to serve screenshot for %s", raw_name)
-            resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+            resp = send_conditional_file(
+                _placeholder_screenshot(),
+                cache_seconds=PNG_TTL_SEC,
+                mimetype="image/png",
+            )
             resp.status_code = 404
             return resp
 
@@ -2079,7 +2133,7 @@ def init_routes(app: Flask) -> None:
                 "latest_camera.png",
             )
             if os.path.exists(cam_path) and screenshots._is_valid_png(cam_path):
-                return send_file(cam_path)
+                return send_conditional_file(cam_path, PNG_TTL_SEC)
             abort(404)
 
         if group:
@@ -2091,7 +2145,7 @@ def init_routes(app: Flask) -> None:
                 f"{group}_latest_camera.png",
             )
             if os.path.exists(group_path) and screenshots._is_valid_png(group_path):
-                return send_file(group_path)
+                return send_conditional_file(group_path, PNG_TTL_SEC)
             abort(404)
 
         latest_path = os.path.join(
@@ -2102,7 +2156,7 @@ def init_routes(app: Flask) -> None:
         )
         if os.path.exists(latest_path):
             if screenshots._is_valid_png(latest_path):
-                return send_file(latest_path)
+                return send_conditional_file(latest_path, PNG_TTL_SEC)
             logging.warning("Invalid latest camera image removed: %s", latest_path)
             try:
                 os.remove(latest_path)
@@ -2117,7 +2171,7 @@ def init_routes(app: Flask) -> None:
             and last_shot
             and os.path.exists(last_shot)
         ):
-            return send_file(last_shot)
+            return send_conditional_file(last_shot, PNG_TTL_SEC)
 
         templates = template_manager.get_templates()
         sorted_templates = sorted(
@@ -2162,7 +2216,7 @@ def init_routes(app: Flask) -> None:
         if most_recent_file is None:
             if last_shot and os.path.exists(last_shot):
                 # Fall back to the previously served screenshot
-                return send_file(last_shot)
+                return send_conditional_file(last_shot, PNG_TTL_SEC)
             abort(404)
 
         last_time = time.time()
@@ -2171,20 +2225,20 @@ def init_routes(app: Flask) -> None:
         if os.path.exists(most_recent_file) and screenshots._is_valid_png(
             most_recent_file
         ):
-            return send_file(most_recent_file)
+            return send_conditional_file(most_recent_file, PNG_TTL_SEC)
         if (
             last_file
             and os.path.exists(last_file)
             and screenshots._is_valid_png(last_file)
         ):
             last_shot = last_file
-            return send_file(last_file)  # better than nothing
+            return send_conditional_file(last_file, PNG_TTL_SEC)  # better than nothing
         if (
             last_shot
             and os.path.exists(last_shot)
             and screenshots._is_valid_png(last_shot)
         ):
-            return send_file(last_shot)
+            return send_conditional_file(last_shot, PNG_TTL_SEC)
         abort(404)
 
     @app.route(
@@ -2863,7 +2917,11 @@ def init_routes(app: Flask) -> None:
         template_name = validate_template_name(str(template_name))
         if template_name is None:
             logging.warning("Unable to serve screenshot for %s", raw_name)
-            resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+            resp = send_conditional_file(
+                _placeholder_screenshot(),
+                cache_seconds=PNG_TTL_SEC,
+                mimetype="image/png",
+            )
             resp.status_code = 404
             return resp
 
@@ -2882,7 +2940,7 @@ def init_routes(app: Flask) -> None:
         )
 
         if latest_file:
-            return send_file(os.path.join(path, latest_file), mimetype="image/png")
+            return send_conditional_file(os.path.join(path, latest_file), PNG_TTL_SEC)
 
         abort(404)
 
@@ -2945,7 +3003,7 @@ def init_routes(app: Flask) -> None:
         """Return the clip file or fall back to ``last_video``."""
 
         try:
-            return send_file(path, conditional=True)
+            return send_conditional_file(path, CACHE_TTL_SEC)
         except FileNotFoundError:
             logging.warning("Missing clip %s; using last_video", template)
             resp = serve_video(template)
@@ -3013,10 +3071,7 @@ def init_routes(app: Flask) -> None:
             and clip_path.stat().st_mtime > newest_src.stat().st_mtime
             and (time.time() - clip_path.stat().st_mtime) < CACHE_TTL_SEC
         ):
-            resp = _send_clip_or_last(clip_path, template_name)
-            resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
-            resp.headers["Expires"] = http_date(time.time() + CACHE_TTL_SEC)
-            return resp
+            return _send_clip_or_last(clip_path, template_name)
 
         parts: list[Path] = []
         in_process_len = 0
@@ -3054,10 +3109,7 @@ def init_routes(app: Flask) -> None:
                 and newest_src
                 and clip_path.stat().st_mtime > newest_src.stat().st_mtime
             ):
-                resp = _send_clip_or_last(clip_path, template_name)
-                resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
-                resp.headers["Expires"] = http_date(time.time() + CACHE_TTL_SEC)
-                return resp
+                return _send_clip_or_last(clip_path, template_name)
 
             if not parts:
                 video_archiver.create_blank_video(duration, clip_path.as_posix())
@@ -3065,10 +3117,7 @@ def init_routes(app: Flask) -> None:
                 video_archiver.create_blank_video(duration, clip_path.as_posix())
 
         if clip_path.exists():
-            resp = _send_clip_or_last(clip_path, template_name)
-            resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
-            resp.headers["Expires"] = http_date(time.time() + CACHE_TTL_SEC)
-            return resp
+            return _send_clip_or_last(clip_path, template_name)
 
         abort(500, "Could not create clip")
 
@@ -3083,7 +3132,11 @@ def init_routes(app: Flask) -> None:
         template_name = validate_template_name(str(template_name))
         if template_name is None:
             logging.warning("Unable to serve screenshot for %s", raw_name)
-            resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+            resp = send_conditional_file(
+                _placeholder_screenshot(),
+                cache_seconds=PNG_TTL_SEC,
+                mimetype="image/png",
+            )
             resp.status_code = 404
             return resp
 
@@ -3095,9 +3148,13 @@ def init_routes(app: Flask) -> None:
                 "%s_latest_camera.png" % group_camera,
             )
             if os.path.exists(path):
-                return send_file(path)
+                return send_conditional_file(path, PNG_TTL_SEC)
             logging.warning("Unable to serve screenshot for %s", template_name)
-            resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+            resp = send_conditional_file(
+                _placeholder_screenshot(),
+                cache_seconds=PNG_TTL_SEC,
+                mimetype="image/png",
+            )
             resp.status_code = 404
             return resp
 
@@ -3110,7 +3167,11 @@ def init_routes(app: Flask) -> None:
         )
         if not os.path.exists(path):
             logging.warning("Unable to serve screenshot for %s", template_name)
-            resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+            resp = send_conditional_file(
+                _placeholder_screenshot(),
+                cache_seconds=PNG_TTL_SEC,
+                mimetype="image/png",
+            )
             resp.status_code = 404
             return resp
 
@@ -3119,12 +3180,14 @@ def init_routes(app: Flask) -> None:
         for shot in lfiles:
             try:
                 if os.path.getsize(shot) > 0 and screenshots._is_valid_png(shot):
-                    return send_file(shot)
+                    return send_conditional_file(shot, PNG_TTL_SEC)
             except OSError:
                 continue
 
         logging.warning("Unable to serve screenshot for %s", template_name)
-        resp = send_file(_placeholder_screenshot(), mimetype="image/png")
+        resp = send_conditional_file(
+            _placeholder_screenshot(), cache_seconds=PNG_TTL_SEC, mimetype="image/png"
+        )
         resp.status_code = 404
         return resp
 

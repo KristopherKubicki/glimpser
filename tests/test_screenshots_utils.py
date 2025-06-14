@@ -5,8 +5,6 @@ import tempfile
 import time
 import unittest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from app.utils.screenshots import cleanup_old_tempdirs, run_cmd
 
 

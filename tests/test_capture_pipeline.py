@@ -7,8 +7,6 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from app.utils.screenshots import capture_screenshot_and_har
 
 try:
@@ -84,6 +82,9 @@ def test_capture_pipeline(browser, http_server, tmp_path, monkeypatch):
     monkeypatch.setattr("app.utils.screenshots.get_chrome_version", lambda p: 120)
     monkeypatch.setattr(
         "app.utils.screenshots.get_chrome_path", lambda: "/usr/bin/chrome"
+    )
+    monkeypatch.setattr(
+        "app.utils.screenshots._finalize_screenshot", lambda *a, **k: True
     )
     assert capture_screenshot_and_har(http_server, str(output))
     assert output.exists()

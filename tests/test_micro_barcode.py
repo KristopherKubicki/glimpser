@@ -4,8 +4,6 @@ import tempfile
 
 from PIL import Image
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from app.utils.qrcode_overlay import add_micro_barcode, generate_micro_barcode
 
 
