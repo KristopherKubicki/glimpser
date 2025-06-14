@@ -423,6 +423,7 @@ from app.utils.validators import (
 from scripts.update_chrome_shortcut import (
     LINUX_PATHS,
     first_shortcut_path,
+    shortcut_exec_line,
     shortcuts_need_patch,
     update_chrome_shortcuts_info,
 )
@@ -1604,6 +1605,7 @@ def init_routes(app: Flask) -> None:
                 "path": browser_path,
                 "version": (get_chrome_version(browser_path) if browser_path else None),
                 "shortcut": str(first_shortcut_path() or ""),
+                "exec_line": shortcut_exec_line(first_shortcut_path()) or "",
                 "patched": patched,
             }
         )
@@ -1757,6 +1759,7 @@ def init_routes(app: Flask) -> None:
             "path": chrome_path or "N/A",
             "version": (get_chrome_version(chrome_path) if chrome_path else "N/A"),
             "shortcut": str(first_shortcut_path() or "N/A"),
+            "exec_line": shortcut_exec_line(first_shortcut_path()) or "N/A",
             "patched": not shortcuts_need_patch(),
             "running": is_chrome_debug_port_open("127.0.0.1", 9222),
         }
@@ -3820,6 +3823,7 @@ def init_routes(app: Flask) -> None:
             "path": chrome_path or "N/A",
             "version": (get_chrome_version(chrome_path) if chrome_path else "N/A"),
             "shortcut": str(first_shortcut_path() or "N/A"),
+            "exec_line": shortcut_exec_line(first_shortcut_path()) or "N/A",
             "patched": not shortcuts_need_patch(),
             "running": is_chrome_debug_port_open("127.0.0.1", 9222),
         }

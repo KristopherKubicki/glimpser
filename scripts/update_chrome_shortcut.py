@@ -168,5 +168,26 @@ def first_shortcut_path() -> Path | None:
     return None
 
 
+def shortcut_exec_line(path: Path | None) -> str | None:
+    """Return the Exec command for the given shortcut."""
+    if path is None or not path.exists():
+        return None
+    if os.name == "nt" and win32com is not None and path.suffix.lower() == ".lnk":
+        shell = win32com.client.Dispatch("WScript.Shell")
+        sc = shell.CreateShortcut(str(path))
+        target = sc.TargetPath or ""
+        args = sc.Arguments or ""
+        cmd = f"{target} {args}".strip()
+        return cmd or None
+
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("Exec="):
+                return line[len("Exec=") :].strip()
+    except Exception:
+        return None
+    return None
+
+
 if __name__ == "__main__":  # pragma: no cover - manual usage
     sys.exit(0 if update_chrome_shortcuts() else 1)

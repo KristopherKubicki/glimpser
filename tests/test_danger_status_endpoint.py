@@ -21,12 +21,20 @@ class TestDangerStatusEndpoint(unittest.TestCase):
 
     @patch("app.routes.get_chrome_version", return_value=120)
     @patch("app.routes.first_shortcut_path", return_value="/tmp/Chrome.lnk")
+    @patch("app.routes.shortcut_exec_line", return_value="/usr/bin/chrome --flag")
     @patch("app.routes.get_chrome_path", return_value="/usr/bin/chrome")
     @patch("app.routes.shortcuts_need_patch", return_value=False)
     @patch("app.routes.is_chrome_debug_port_open", return_value=True)
     @patch("app.routes.check_user_activity", return_value=False)
     def test_danger_ready(
-        self, mock_idle, mock_port, mock_patch, mock_path, mock_shortcut, mock_ver
+        self,
+        mock_idle,
+        mock_port,
+        mock_patch,
+        mock_path,
+        mock_exec,
+        mock_shortcut,
+        mock_ver,
     ):
         resp = self.client.get("/danger_status")
         self.assertEqual(resp.status_code, 200)
@@ -41,18 +49,27 @@ class TestDangerStatusEndpoint(unittest.TestCase):
                 "path": "/usr/bin/chrome",
                 "version": 120,
                 "shortcut": "/tmp/Chrome.lnk",
+                "exec_line": "/usr/bin/chrome --flag",
                 "patched": True,
             },
         )
 
     @patch("app.routes.get_chrome_version", return_value=120)
     @patch("app.routes.first_shortcut_path", return_value="/tmp/Chrome.lnk")
+    @patch("app.routes.shortcut_exec_line", return_value="/usr/bin/chrome --flag")
     @patch("app.routes.get_chrome_path", return_value="/usr/bin/chrome")
     @patch("app.routes.shortcuts_need_patch", return_value=False)
     @patch("app.routes.is_chrome_debug_port_open", return_value=False)
     @patch("app.routes.check_user_activity", return_value=False)
     def test_danger_port_closed(
-        self, mock_idle, mock_port, mock_patch, mock_path, mock_shortcut, mock_ver
+        self,
+        mock_idle,
+        mock_port,
+        mock_patch,
+        mock_path,
+        mock_exec,
+        mock_shortcut,
+        mock_ver,
     ):
         """Should report not ready when the debug port is closed."""
         resp = self.client.get("/danger_status")
@@ -68,18 +85,27 @@ class TestDangerStatusEndpoint(unittest.TestCase):
                 "path": "/usr/bin/chrome",
                 "version": 120,
                 "shortcut": "/tmp/Chrome.lnk",
+                "exec_line": "/usr/bin/chrome --flag",
                 "patched": True,
             },
         )
 
     @patch("app.routes.get_chrome_version", return_value=120)
     @patch("app.routes.first_shortcut_path", return_value="/tmp/Chrome.lnk")
+    @patch("app.routes.shortcut_exec_line", return_value="/usr/bin/chrome --flag")
     @patch("app.routes.get_chrome_path", return_value="/usr/bin/chrome")
     @patch("app.routes.shortcuts_need_patch", return_value=False)
     @patch("app.routes.is_chrome_debug_port_open", return_value=True)
     @patch("app.routes.check_user_activity", return_value=True)
     def test_danger_user_active(
-        self, mock_idle, mock_port, mock_patch, mock_path, mock_shortcut, mock_ver
+        self,
+        mock_idle,
+        mock_port,
+        mock_patch,
+        mock_path,
+        mock_exec,
+        mock_shortcut,
+        mock_ver,
     ):
         """Should report not ready when user activity is detected."""
         resp = self.client.get("/danger_status")
@@ -95,6 +121,7 @@ class TestDangerStatusEndpoint(unittest.TestCase):
                 "path": "/usr/bin/chrome",
                 "version": 120,
                 "shortcut": "/tmp/Chrome.lnk",
+                "exec_line": "/usr/bin/chrome --flag",
                 "patched": True,
             },
         )

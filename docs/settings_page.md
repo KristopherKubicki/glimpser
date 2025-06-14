@@ -8,7 +8,7 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Current Settings** – edit existing values. Delete actions appear when advanced options are enabled using the toggle under the **Management** tab. Tabs switch between setting groups and the Management tab holds backup and offline options.
 - **Configuration Management** – backup, download, and upload the JSON configuration file.
 - **Admin** – buttons are organized into cards for a cleaner layout.
-- **Danger Mode** – shows the detected browser path, Chrome version, and the first shortcut found. Green and red dots indicate if shortcuts are patched and if the debugging port is open. A link beside the heading opens the [Danger Mode documentation](danger_mode.md). You can also update Chrome shortcuts from here.
+- **Danger Mode** – shows the detected browser path, Chrome version, and the first shortcut found. The exact `Exec` line is displayed so you can confirm the debugging flag is present. Green and red dots indicate if shortcuts are patched and if the debugging port is open. A link beside the heading opens the [Danger Mode documentation](danger_mode.md). You can also update Chrome shortcuts from here.
 - **Offline Preview** – cached snapshots are automatically enabled.
 - **Settings Reference** – expand the table to read explanations for each setting.
 - **Column Search** – click a header to filter rows by that column.
