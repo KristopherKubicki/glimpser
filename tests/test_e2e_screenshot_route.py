@@ -22,7 +22,6 @@ def _has_network() -> bool:
 if os.environ.get("SKIP_E2E") == "1" or not _has_network():
     pytest.skip("E2E tests disabled due to no network", allow_module_level=True)
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app import create_app
 

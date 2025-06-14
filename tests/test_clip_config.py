@@ -8,8 +8,6 @@ from unittest.mock import patch
 import numpy as np
 from PIL import Image
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 import app.utils.scheduling as scheduling
 
 

@@ -3,18 +3,16 @@ import shutil
 import sys
 import tempfile
 import unittest
+from importlib import reload
 
 from flask import Flask
-
-# Add the parent directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from importlib import reload
 
 import app.config as config
 from app import create_app
 from app.utils import db
 from app.utils.template_manager import TemplateManager
+
+# Add the parent directory to the Python path
 
 
 class TestInstallationAndFirstUse(unittest.TestCase):

@@ -1,11 +1,14 @@
 import os
 import sys
+from pathlib import Path
 
 import pytest
 import pytest_socket
 from apscheduler.schedulers.background import BackgroundScheduler
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from app.utils.scheduling import scheduler
 

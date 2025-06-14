@@ -8,10 +8,9 @@ import time
 import unittest
 from unittest.mock import MagicMock, patch
 
-# Add the parent directory to the Python path to import the app module
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from app.utils.llm import summarize
+
+# Add the parent directory to the Python path to import the app module
 
 
 class TestLLM(unittest.TestCase):
