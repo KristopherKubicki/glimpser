@@ -11,6 +11,7 @@ Stream the current MP4 for a camera or group. Pass `camera` or `group` as query 
 ### GET `/live_video`
 
 Stream a camera directly from its configured URL. Provide `camera` as a query parameter. The server automatically restarts the underlying FFmpeg process if it exits unexpectedly.
+It now performs a quick HEAD request first and skips launching `ffmpeg` when the camera is unreachable.
 
 ### GET `/stream.m3u8`
 

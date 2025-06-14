@@ -776,6 +776,16 @@ def generate_video_stream(
         logging.debug("Restarting video stream")
 
 
+def check_url_accessible(url: str) -> bool:
+    """Return ``True`` if the URL responds to a HEAD request."""
+    try:
+        resp = requests.head(url, timeout=5)
+        return resp.ok
+    except Exception as exc:  # pragma: no cover
+        logging.error("Connectivity check failed for %s: %s", url, exc)
+        return False
+
+
 def generate_live_stream(url: str) -> Generator[bytes, None, None]:
     """Yield video data directly from a remote URL using ``ffmpeg``.
 
@@ -853,6 +863,12 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
     failures = 0
     last_log = 0.0
     while True:
+        if parsed.scheme in ("http", "https") and not check_url_accessible(url):
+            failures += 1
+            delay = 2 if failures == 0 else min(2**failures, 30)
+            time.sleep(delay)
+            continue
+
         process: subprocess.Popen | None = None
         try:
             process = subprocess.Popen(
