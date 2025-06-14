@@ -7,7 +7,7 @@ document.body.innerHTML = `
 `;
 
 let loadTemplates;
-let cb;
+let cbs;
 
 beforeAll(async () => {
   const mod = await import("../../app/static/js/templates.js");
@@ -15,9 +15,10 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  cbs = [];
   window.IntersectionObserver = class {
     constructor(fn) {
-      cb = fn;
+      cbs.push(fn);
     }
     observe() {}
     unobserve() {}
@@ -44,6 +45,6 @@ test("poster loads when video becomes visible", async () => {
   expect(video.dataset.poster).toBe("/last_screenshot/cam1");
   expect(video.poster).toBe("");
   await Promise.resolve();
-  cb([{ target: video, isIntersecting: true }]);
+  cbs[0]([{ target: video, isIntersecting: true }]);
   expect(video.poster.endsWith("/last_screenshot/cam1")).toBe(true);
 });

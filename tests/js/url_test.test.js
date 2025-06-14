@@ -28,6 +28,15 @@ describe("url_test", () => {
     global.fetch = jest.fn(() => responses.shift());
     initUrlTester();
     document.dispatchEvent(new Event("DOMContentLoaded"));
+    await Promise.resolve();
+    await Promise.resolve();
+    fetch.mockClear();
+    global.fetch.mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ ok: true }),
+      }),
+    );
     const input = document.getElementById("url");
     input.value = "http://example.com";
     input.dispatchEvent(new Event("change"));
