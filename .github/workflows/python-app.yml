@@ -61,8 +61,8 @@ jobs:
       run: npm run format:js
     - name: Run JavaScript tests with coverage
       run: npm test -- --coverage
-    - name: Safety check
-      run: safety check
+    - name: Run pip-audit
+      run: pip-audit
     - name: Lint CSS
       run: npm run lint:css
     - name: Lint with flake8
