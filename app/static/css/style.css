@@ -1451,14 +1451,20 @@ video.hover-video[data-timestamp]::after {
 
 .notes-textarea {
   width: 100%;
-  height: 60px;
   margin-top: 5px;
-  resize: vertical;
+  resize: none;
   background-color: var(--form-bg-color);
   color: var(--form-text-color);
   border: 1px solid var(--table-border-color);
   padding-right: 2rem;
   box-sizing: border-box;
+  max-height: 4rem;
+  overflow: hidden;
+  transition: max-height 0.2s ease;
+}
+
+.camera-row:hover .notes-textarea {
+  max-height: none;
 }
 
 .update-button {
@@ -1831,8 +1837,14 @@ body.advanced-enabled .advanced-only {
 
 .caption-box .last-caption {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
   white-space: pre-wrap;
+  max-height: 4rem;
+  transition: max-height 0.2s ease;
+}
+
+.camera-row:hover .caption-box .last-caption {
+  max-height: none;
 }
 
 .field-toggle {
@@ -1851,7 +1863,7 @@ body.advanced-enabled .advanced-only {
 .chat-box {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .chat-prompt,
@@ -1865,10 +1877,16 @@ body.advanced-enabled .advanced-only {
 
 .chat-response .last-caption {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
   background-color: var(--form-bg-color);
   padding: 0.5rem;
   border-radius: 4px;
+  max-height: 4rem;
+  transition: max-height 0.2s ease;
+}
+
+.camera-row:hover .chat-response .last-caption {
+  max-height: none;
 }
 
 .chat-response .last-caption.ellipsis {
