@@ -236,6 +236,9 @@ snapshot image rather than a true video stream.
 - Some cameras reject ffmpeg if it does not send browser-style headers. The
   live stream now includes the configured `UA`, `referer` and `origin` headers.
   Adjust these settings if your camera expects a specific user agent.
+- The server now checks connectivity with a HEAD request before starting
+  `ffmpeg`. When the camera is offline the live view waits and retries
+  instead of immediately spawning a process that will fail.
 - When ffmpeg repeatedly fails, the server now waits progressively longer
   between restart attempts to reduce log noise.
 
