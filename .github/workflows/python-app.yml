@@ -74,7 +74,7 @@ jobs:
     - name: Type check with mypy
       run: mypy .
     - name: Install pre-commit hooks
-        pre-commit install-hooks
+      run: pre-commit install-hooks
     - name: Run pre-commit
       run: pre-commit run --all-files
     - name: Test with coverage
