@@ -3,6 +3,7 @@ import { showSpinner, hideSpinner, showErrorIndicator } from "./video.js";
 export function initTilePlayer() {
   const video = document.getElementById("live-video");
   if (!video) return;
+  video.addEventListener("contextmenu", (e) => e.preventDefault());
   const source = video.querySelector("source");
   const camSelect =
     document.getElementById("camera-selector") ||
