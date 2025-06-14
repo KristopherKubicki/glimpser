@@ -25,7 +25,7 @@ All form elements now use unique IDs across tabs to avoid browser warnings.
   small progress bar indicating remaining disk space.
 - **Interface** – UI-related options like the navigation logo now live on their own tab.
 
-Hover over a setting name to see a tooltip with its explanation.
+Hover over a setting name to see a tooltip with a detailed explanation.
 Boolean values are displayed as toggle switches to avoid typing errors.
 
 ### Dynamic Feedback
