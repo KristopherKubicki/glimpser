@@ -103,7 +103,7 @@ template_controls %} {% block content %}
                     loop
                     muted
                     preload="none"
-                    poster="/last_screenshot/{{ camera }}"
+                    data-poster="/last_screenshot/{{ camera }}"
                     data-hd-src="/clip/{{ camera }}"
                   >
                     <source src="/last_video/{{ camera }}" type="video/mp4" />

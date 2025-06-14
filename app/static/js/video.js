@@ -395,6 +395,9 @@ export function setupStatusPageVideoHover() {
       entries.forEach((entry) => {
         const vid = entry.target;
         if (entry.isIntersecting) {
+          if (!vid.poster && vid.dataset.poster) {
+            vid.poster = vid.dataset.poster;
+          }
           enqueueClip(vid);
         }
       });
@@ -478,6 +481,9 @@ export function setupCaptionsPageVideoHover() {
       entries.forEach((entry) => {
         const vid = entry.target;
         if (entry.isIntersecting) {
+          if (!vid.poster && vid.dataset.poster) {
+            vid.poster = vid.dataset.poster;
+          }
           enqueueClip(vid);
         }
       });
