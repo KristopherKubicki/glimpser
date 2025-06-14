@@ -973,7 +973,7 @@ function playMJPG() {
     image.src = `/stream.mjpg?group=all&time=${ts}`;
   } else {
     // URL for individual cameras
-    image.src = `/stream.mjpg?camera=${encodeURIComponent(currentCamera)}&time=${ts}`;
+    image.src = `/fast_stream.mjpg?camera=${encodeURIComponent(currentCamera)}&time=${ts}`;
   }
 }
 
