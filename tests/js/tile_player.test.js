@@ -88,3 +88,17 @@ test("all group uses last_video clip", () => {
   const src = document.querySelector("#live-video source").src;
   expect(src).toMatch(/\/last_video\/cam1$/);
 });
+
+test("context menu is suppressed", () => {
+  document.body.innerHTML = `
+    <video id="live-video"><source></source></video>
+  `;
+
+  window.templateDetails = { cam1: {} };
+
+  init();
+  const video = document.getElementById("live-video");
+  const event = new Event("contextmenu", { bubbles: true, cancelable: true });
+  video.dispatchEvent(event);
+  expect(event.defaultPrevented).toBe(true);
+});
