@@ -139,7 +139,6 @@ export function initCosts() {
     });
 
     setupTableSorting("cost-table");
-    loadGroups();
     if (startSlider && endSlider) {
       updateLabels();
     }
