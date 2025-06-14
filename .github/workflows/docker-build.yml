@@ -1,14 +1,13 @@
 name: Docker Build
 
 on:
-  workflow_run:
-    workflows: ["Python application"]
-    types:
-      - completed
+  push:
+    branches: ["main", "staging"]
+  pull_request:
+    branches: ["main", "staging"]
 
 jobs:
   build:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
