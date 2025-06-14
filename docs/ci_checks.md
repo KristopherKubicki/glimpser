@@ -1,6 +1,8 @@
 # Continuous Integration Checks
 
 Glimpser runs automated quality checks on every push and pull request.
+The workflows trigger when commits land on the `main` or `staging` branches
+and on pull requests targeting those branches.
 The workflow located at `.github/workflows/python-app.yml` performs the
 following tasks:
 
