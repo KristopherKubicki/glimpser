@@ -11,3 +11,6 @@ required-version = "25.1.0"
 python_version = "3.11"
 ignore_missing_imports = true
 check_untyped_defs = true
+
+[tool.pytest.ini_options]
+norecursedirs = ["debian"]
