@@ -31,15 +31,16 @@ repos:
         language: system
         types: [python]
 
-  - repo: local
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.16.0
     hooks:
-      # 4️⃣  mypy is expensive – run it only when you push (or manually)
       - id: mypy
-        name: mypy (push only)
-        entry: mypy --config-file=mypy.ini
-        language: system
-        types: [python]
-        stages: [pre-push]
+        additional_dependencies:
+          - sqlalchemy2-stubs
+          - types-requests
+        args:
+          - --install-types
+          - --non-interactive
 
   # ─── JAVASCRIPT / CSS ──────────────────────────────────────────────────────────
   - repo: local
