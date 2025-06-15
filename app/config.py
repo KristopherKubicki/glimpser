@@ -13,6 +13,8 @@ from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
 
+_SKIP_DB_INIT = os.getenv("GLIMPSER_SKIP_DB_INIT") == "1"
+
 _DOTENV_LOADED = False
 
 
@@ -96,7 +98,29 @@ def _get_session():
     callable is used.  Otherwise the engine and sessionmaker are created on
     first use and cached so repeated imports don't create multiple engines.
     """
+
     global _engine, SessionLocal
+
+    if _SKIP_DB_INIT:
+
+        class _DummyResult:
+            def fetchone(self):
+                return None
+
+            def fetchall(self):
+                return []
+
+        class _DummySession:
+            def execute(self, *args, **kwargs):
+                return _DummyResult()
+
+            def commit(self):
+                pass
+
+            def close(self):
+                pass
+
+        return _DummySession()
 
     if SessionLocal is not None:
         return SessionLocal()
