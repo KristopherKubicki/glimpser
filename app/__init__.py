@@ -9,6 +9,7 @@ from datetime import timedelta
 
 import psutil
 from flask import Flask
+from flask_babel import Babel
 
 from app.config import (
     DISCOVERY_AUTOSTART,
@@ -38,6 +39,9 @@ from app.utils.scheduling import (
 )
 from app.utils.sms_alerts import sms_alert
 from app.utils.video_archiver import archive_screenshots, compile_to_teaser
+
+# Initialize the translation library. The instance is bound in ``create_app``.
+babel = Babel()
 
 # needed for the llava compare
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -87,6 +91,7 @@ def create_app(
     from app.config import (
         API_KEY,
         CLIPS_DIRECTORY,
+        LANG,
         MAX_WORKERS,
         SCHEDULER_API_ENABLED,
         SCREENSHOT_DIRECTORY,
@@ -108,6 +113,11 @@ def create_app(
     # Set up logging using the configured level
     log_level = getattr(logging, str(LOG_LEVEL).upper(), logging.WARN)
     app.logger.setLevel(log_level)
+
+    # Configure translations
+    app.config["BABEL_DEFAULT_LOCALE"] = LANG
+    app.config["BABEL_TRANSLATION_DIRECTORIES"] = "translations"
+    babel.init_app(app)
 
     # Ensure required directories exist
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)

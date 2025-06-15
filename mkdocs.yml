@@ -41,6 +41,7 @@ nav:
       - HTTP Callbacks: http_callbacks.md
       - Installation Guide: installation.md
       - Integration Guide: integration_guide.md
+      - Internationalization: internationalization.md
       - Nginx HTTP/2 Push: nginx_http2_push.md
       - Offline Fonts: offline_fonts.md
       - Offline Preview: offline_preview.md

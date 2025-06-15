@@ -1,36 +1,39 @@
 {% extends 'base.html' %} {% from 'components.html' import card %} {% block
 content %}
 <main class="container help-page">
-  <h2 class="page-title">Glimpser Help</h2>
+  <h2 class="page-title">{{ _('Glimpser Help') }}</h2>
   <div class="tabs">
     <button
       class="tab-link active"
       data-tab="basics-tab"
-      title="Overview of key features"
+      title="{{ _('Overview of key features') }}"
     >
-      Basics
+      {{ _('Basics') }}
     </button>
-    <button class="tab-link" data-tab="usage-tab" title="How to use Glimpser">
-      Usage
+    <button class="tab-link" data-tab="usage-tab" title="{{ _('How to use Glimpser') }}">
+      {{ _('Usage') }}
     </button>
     <button
       class="tab-link"
       data-tab="advanced-tab"
-      title="Advanced options and offline access"
+      title="{{ _('Advanced options and offline access') }}"
     >
-      Advanced
+      {{ _('Advanced') }}
     </button>
-    <button class="tab-link" data-tab="support-tab" title="Help resources">
-      Support
+    <button class="tab-link" data-tab="support-tab" title="{{ _('Help resources') }}">
+      {{ _('Support') }}
     </button>
   </div>
 
   <div id="basics-tab" class="tab-content active">
     {% call card('Getting Started') %}
     <p>
-      Glimpser monitors webpages and cameras. To begin, open
-      <strong>Settings</strong> and choose the <strong>Discover</strong> tab.
-      Fill in the Add Camera form and click <em>Submit</em>.
+      {{ _('Glimpser monitors webpages and cameras. To begin, open') }}
+      <strong>{{ _('Settings') }}</strong>
+      {{ _('and choose the') }}
+      <strong>{{ _('Discover') }}</strong>
+      {{ _('tab. Fill in the Add Camera form and click') }}
+      <em>{{ _('Submit') }}</em>.
     </p>
     {% endcall %} {% call card('Example: time.gov Template') %}
     <p>Follow these steps to create a time.gov template.</p>
@@ -70,8 +73,8 @@ content %}
       Control Glimpser from the command line. Run
       <code>glimpser --help</code> to list all commands.
     </p>
-    <button id="load-cli-help" class="btn" title="Show CLI help output">
-      Show CLI Help
+    <button id="load-cli-help" class="btn" title="{{ _('Show CLI help output') }}">
+      {{ _('Show CLI Help') }}
     </button>
     <pre id="cli-help" class="cli-help hidden" aria-live="polite"></pre>
     {% endcall %}
