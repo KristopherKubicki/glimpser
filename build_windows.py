@@ -25,14 +25,24 @@ ARGS = [
     "--hidden-import=yt_dlp",  # Include hidden import yt_dlp
     "--hidden-import=pdf2image",  # Include hidden import pdf2image
     "--hidden-import=pyvirtualdisplay",  # Include hidden import pyvirtualdisplay
+    "--exclude-module=urllib3.contrib.emscripten",  # Skip optional module
+    "--exclude-module=curl_cffi",  # Skip optional module
     "--icon=app/static/favicon.ico",  # Path to the icon file
 ]
 
 
 def build() -> None:
     """Invoke PyInstaller with Windows settings."""
+    prev = os.environ.get("GLIMPSER_SKIP_DB_INIT")
+    os.environ["GLIMPSER_SKIP_DB_INIT"] = "1"
     os.chdir(Path(__file__).resolve().parent)
-    PyInstaller.__main__.run(ARGS)
+    try:
+        PyInstaller.__main__.run(ARGS)
+    finally:
+        if prev is None:
+            os.environ.pop("GLIMPSER_SKIP_DB_INIT", None)
+        else:
+            os.environ["GLIMPSER_SKIP_DB_INIT"] = prev
 
 
 def main() -> None:
