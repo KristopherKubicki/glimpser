@@ -59,6 +59,7 @@ nav:
       - Telemetry: telemetry.md
       - Testing: testing.md
       - Test Pattern Reference: test_pattern_reference.md
+      - Satellite Map Utility: satellite_map.md
       - Tooltips: tooltips.md
       - SEO Metadata: seo_metadata.md
       - Robots.txt Endpoint: robots_txt.md
