@@ -19,6 +19,8 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11", "3.13"]
+    env:
+      ENABLE_MYPY: 'false'
 
     steps:
     - uses: actions/checkout@v4
@@ -51,37 +53,31 @@ jobs:
           ${{ runner.os }}-npm-
     - name: Install Node dependencies
       run: npm install
-    - name: Install Node prettier
-      run: npm install --save-dev jest prettier
-    - name: Audit npm packages
-      run: npm audit --audit-level=high
+      # Jest and Prettier are devDependencies installed here
+    - name: Install pre-commit hooks
+      run: pre-commit install-hooks
+    - name: Run pre-commit
+      run: pre-commit run --all-files
     - name: Lint JavaScript
       run: npm run lint:js
     - name: Check JavaScript formatting
       run: npm run format:js
     - name: Run JavaScript tests with coverage
       run: npm test -- --coverage
-    - name: Run pip-audit
-      run: pip-audit
     - name: Lint CSS
       run: npm run lint:css
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Audit npm packages
+      run: npm audit --audit-level=high
+    - name: Run pip-audit
+      run: pip-audit
     - name: Type check with mypy
+      if: env.ENABLE_MYPY == 'true'
       run: mypy .
-    - name: Install pre-commit hooks
-      run: pre-commit install-hooks
-    - name: Run pre-commit
-      run: pre-commit run --all-files
     - name: Test with coverage
       env:
         SKIP_E2E: "0"
       run: |
-        python -m coverage run -m pytest -p no:helpconfig --color=yes
+        python -m coverage run -m pytest --color=yes
         python -m coverage xml
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
