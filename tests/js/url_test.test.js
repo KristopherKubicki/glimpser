@@ -5,6 +5,12 @@ const formHtml =
 
 beforeEach(() => {
   document.body.innerHTML = formHtml;
+  jest.useFakeTimers();
+});
+
+afterEach(() => {
+  jest.runOnlyPendingTimers();
+  jest.useRealTimers();
 });
 
 let initUrlTester;
@@ -28,10 +34,13 @@ describe("url_test", () => {
     global.fetch = jest.fn(() => responses.shift());
     initUrlTester();
     document.dispatchEvent(new Event("DOMContentLoaded"));
+    jest.clearAllTimers();
     const input = document.getElementById("url");
     input.value = "http://example.com";
     input.dispatchEvent(new Event("change"));
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    jest.runAllTimers();
+    await Promise.resolve();
+    await Promise.resolve();
     expect(fetch).toHaveBeenCalledTimes(2);
     const status = document.getElementById("url-status");
     expect(status.textContent).toBe("");
@@ -48,17 +57,19 @@ describe("url_test", () => {
     global.fetch = jest.fn(() => res);
     initUrlTester();
     document.dispatchEvent(new Event("DOMContentLoaded"));
+    jest.clearAllTimers();
     const input = document.getElementById("url");
     const submit = document.querySelector("input[type='submit']");
     input.value = "http://example.com";
     input.dispatchEvent(new Event("paste"));
-    await new Promise((r) => setTimeout(r, 0));
+    jest.runAllTimers();
+    await Promise.resolve();
+    await Promise.resolve();
     expect(fetch).toHaveBeenCalled();
     expect(submit.disabled).toBe(false);
   });
 
   test("auto populates default url", async () => {
-    jest.useFakeTimers();
     const res = Promise.resolve({
       ok: true,
       json: () => Promise.resolve({ ok: true }),
