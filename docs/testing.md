@@ -24,6 +24,10 @@ All tests run with `pytest-socket` active, preventing any outbound network
 requests. If a scenario truly requires network access call
 `pytest_socket.enable_socket()` within that test.
 
+Pytest ignores the Debian packaging directory. Running `build_packages.sh`
+creates a copy of the app under `debian/glimpser`, but `norecursedirs`
+prevents those files from being collected as tests.
+
 ## End-to-End Tests
 
 The `tests/test_e2e_web.py` module contains browser-based scenarios powered by
