@@ -233,7 +233,7 @@ TZ = get_setting("TZ", "UTC")
 try:
     _PKG_VERSION = version("glimpser")
 except PackageNotFoundError:
-    _PKG_VERSION = "0.2.7"
+    _PKG_VERSION = "0.2.8"
 sync_version(_PKG_VERSION)
 # Default to the package version if not overridden in the database
 VERSION = get_setting("VERSION", _PKG_VERSION)

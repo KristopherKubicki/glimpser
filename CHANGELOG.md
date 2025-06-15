@@ -77,6 +77,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build details are hidden on small screens to avoid clutter.
 - Sanitized log messages in the UI to prevent XSS vulnerabilities
 
+## [0.2.8] - 2025-06-03
+
+### Changed
+
+- Bumped package version in setup.py to 0.2.8.
+
 ## [0.2.7] - 2025-06-02
 
 ### Changed
@@ -134,7 +140,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   appears blank.
 - Fixed timezone handling so feed status timestamps no longer show "in the future".
 
-[Unreleased]: https://github.com/KristopherKubicki/glimpser/compare/v0.2.7...HEAD
+[Unreleased]: https://github.com/KristopherKubicki/glimpser/compare/v0.2.8...HEAD
+[0.2.8]: https://github.com/KristopherKubicki/glimpser/releases/tag/v0.2.8
 [0.2.7]: https://github.com/KristopherKubicki/glimpser/releases/tag/v0.2.7
 [0.2.6]: https://github.com/KristopherKubicki/glimpser/releases/tag/v0.2.6
 [0.2.5]: https://github.com/KristopherKubicki/glimpser/releases/tag/v0.2.5
