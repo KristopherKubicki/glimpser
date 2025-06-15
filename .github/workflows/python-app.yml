@@ -51,6 +51,7 @@ jobs:
           ${{ runner.os }}-npm-
     - name: Install Node dependencies
       run: npm install
+      # Jest and Prettier are devDependencies installed here
     - name: Install pre-commit hooks
       run: pre-commit install-hooks
     - name: Run pre-commit
