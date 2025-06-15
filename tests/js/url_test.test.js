@@ -21,23 +21,19 @@ beforeAll(async () => {
 
 describe("url_test", () => {
   test("shows status after fetch", async () => {
-    const responses = [
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ ok: true }),
-      }),
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ status: "ok" }),
-      }),
-    ];
-    global.fetch = jest.fn(() => responses.shift());
+    const res = Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    });
+    global.fetch = jest.fn(() => res);
     initUrlTester();
     document.dispatchEvent(new Event("DOMContentLoaded"));
     jest.clearAllTimers();
     const input = document.getElementById("url");
     input.value = "http://example.com";
-    input.dispatchEvent(new Event("change"));
+    input.dispatchEvent(new Event("input"));
+    jest.advanceTimersByTime(500);
+    await Promise.resolve();
     jest.runAllTimers();
     await Promise.resolve();
     await Promise.resolve();
@@ -82,5 +78,27 @@ describe("url_test", () => {
     const input = document.getElementById("url");
     expect(input.value).toBe("http://example.com/test");
     expect(fetch).toHaveBeenCalled();
+  });
+
+  test("shows tooltip on error", async () => {
+    const res = Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ ok: false, status: 404 }),
+    });
+    global.fetch = jest.fn(() => res);
+    initUrlTester();
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+    jest.clearAllTimers();
+    const input = document.getElementById("url");
+    const status = document.getElementById("url-status");
+    input.value = "http://bad";
+    input.dispatchEvent(new Event("input"));
+    jest.advanceTimersByTime(500);
+    await Promise.resolve();
+    jest.runAllTimers();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(status.classList.contains("bad")).toBe(true);
+    expect(status.title).toBe("HTTP 404");
   });
 });
