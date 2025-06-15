@@ -33,13 +33,12 @@ repos:
 
   - repo: local
     hooks:
-      # 4️⃣  mypy is expensive – run it only when you push (or manually)
+      # 4️⃣  Run mypy on changed files
       - id: mypy
-        name: mypy (push only)
-        entry: mypy --config-file=mypy.ini
+        name: mypy
+        entry: mypy --config-file pyproject.toml
         language: system
         types: [python]
-        stages: [pre-push]
 
   # ─── JAVASCRIPT / CSS ──────────────────────────────────────────────────────────
   - repo: local
