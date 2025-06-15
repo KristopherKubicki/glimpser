@@ -8,8 +8,16 @@ export function initTilePlayer() {
   const camSelect =
     document.getElementById("camera-selector") ||
     document.getElementById("nav-camera-dropdown");
-  let current =
-    camSelect?.value || Object.keys(window.templateDetails || {})[0];
+
+  // Ensure the synthetic "All" group exists so playback can default
+  // to cycling through every camera when no specific selection is made.
+  if (!window.templateDetails["All"]) {
+    window.templateDetails["All"] = {
+      groupCameras: Object.keys(window.templateDetails || {}),
+    };
+  }
+
+  let current = camSelect && camSelect.value ? camSelect.value : "All";
 
   let abortCtl;
   let liveTimer;

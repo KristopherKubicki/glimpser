@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
 
-document.body.innerHTML = `
+const html = `
   <select id="cost-group"></select>
   <input id="cost-start" type="range" value="150">
   <input id="cost-end" type="range" value="180">
@@ -10,6 +10,20 @@ document.body.innerHTML = `
   <canvas id="costChart"></canvas>
   <script id="cost-data" type="application/json">[]</script>
 `;
+
+let listeners = [];
+
+beforeEach(() => {
+  document.body.innerHTML = html;
+  listeners.forEach(([e, fn]) => document.removeEventListener(e, fn));
+  listeners = [];
+  const origAdd = document.addEventListener.bind(document);
+  document.addEventListener = (event, fn, opts) => {
+    listeners.push([event, fn]);
+    origAdd(event, fn, opts);
+  };
+  fetch.mockClear();
+});
 
 let initCosts;
 let groupSmallValues;
