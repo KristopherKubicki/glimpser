@@ -529,11 +529,6 @@ def generate_test_pattern(
         sw = _braille_text_width(spinner)
         _draw_braille_text(draw, (width - sw - 30, 20), spinner)
 
-    # stable reference patch for tests
-    patch_x = width // 2 + 6
-    patch_y = height // 2 + 3
-    draw.point((patch_x, patch_y), fill=(118, 118, 118))
-
     # multiple time codes stacked on the right side
     font_right = load_font(26)
     font_binary = load_font(22)
@@ -754,6 +749,11 @@ def generate_test_pattern(
     end_x = center_x + hand_len * math.cos(angle)
     end_y = center_y + hand_len * math.sin(angle)
     draw.line((center_x, center_y, end_x, end_y), fill="white", width=2)
+
+    # stable reference patch for tests – draw last to avoid being overwritten
+    patch_x = width // 2 + 6
+    patch_y = height // 2 + 3
+    draw.point((patch_x, patch_y), fill=(118, 118, 118))
 
     if logo_path and os.path.exists(logo_path):
         with Image.open(logo_path).convert("RGBA") as logo:
