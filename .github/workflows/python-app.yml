@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.13"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     env:
       ENABLE_MYPY: 'false'
 
@@ -40,6 +40,8 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+    - name: Install pylint
+      run: pip install pylint
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
@@ -58,6 +60,9 @@ jobs:
       run: pre-commit install-hooks
     - name: Run pre-commit
       run: pre-commit run --all-files
+    - name: Run pylint
+      run: |
+        pylint $(git ls-files '*.py') --exit-zero
     - name: Lint JavaScript
       run: npm run lint:js
     - name: Check JavaScript formatting
