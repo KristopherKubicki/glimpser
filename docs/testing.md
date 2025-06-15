@@ -21,7 +21,8 @@ Recent tests cover screenshot capture helpers, database initialization through
 `TemplateManager`, and mocked OpenAI interactions.
 
 All tests run with `pytest-socket` active, preventing any outbound network
-requests. If a scenario truly requires network access call
+requests. End-to-end scenarios start a local Flask server so they run entirely
+offline. If a case truly needs internet access call
 `pytest_socket.enable_socket()` within that test.
 
 ## End-to-End Tests
