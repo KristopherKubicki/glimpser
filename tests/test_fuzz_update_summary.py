@@ -65,7 +65,7 @@ class TestFuzzUpdateSummary(unittest.TestCase):
             "groups": ",".join(
                 random.choices(string.ascii_lowercase, k=random.randint(1, 5))
             ),
-            "last_caption_time": f"2023-{random.randint(1,12):02d}-{random.randint(1,28):02d} {random.randint(0,23):02d}:{random.randint(0,59):02d}:{random.randint(0,59):02d}",
+            "last_caption_time": f"2023-{random.randint(1, 12):02d}-{random.randint(1, 28):02d} {random.randint(0, 23):02d}:{random.randint(0, 59):02d}:{random.randint(0, 59):02d}",
             "notes": "".join(
                 random.choices(
                     string.ascii_letters + string.digits + string.punctuation + " ",

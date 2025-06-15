@@ -14,10 +14,10 @@ beforeAll(async () => {
   changeGroup = mod.changeGroup;
 });
 
-test("loads first camera as mjpeg", () => {
+test("defaults to all cameras", () => {
   init();
   const img = document.getElementById("live-image");
-  expect(img.src).toMatch(/\/fast_stream\.mjpg\?camera=cam1&time=\d+$/);
+  expect(img.src).toMatch(/\/stream\.mjpg\?group=all&time=\d+$/);
 });
 
 test("no clip fetch occurs", async () => {

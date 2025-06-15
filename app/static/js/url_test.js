@@ -27,13 +27,21 @@ export function initUrlTester() {
     };
 
     let controller;
+    const debounce = (fn, delay) => {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+      };
+    };
     const defaultSrc = preview
       ? preview.dataset.placeholder || preview.src
       : "";
     const defaultUrl = input.dataset.defaultUrl;
-    const setStatus = (cls) => {
+    const setStatus = (cls, title = "") => {
       status.textContent = "";
       status.className = "url-status" + (cls ? ` ${cls}` : "");
+      status.title = title || "URL test result";
     };
 
     const check = async () => {
@@ -44,7 +52,7 @@ export function initUrlTester() {
       if (!url) return;
       controller?.abort();
       controller = new AbortController();
-      setStatus("pending");
+      setStatus("pending", "Testing...");
       try {
         const res = await fetch(
           `/templates/test_url?url=${encodeURIComponent(url)}`,
@@ -54,20 +62,25 @@ export function initUrlTester() {
         );
         const data = await res.json();
         if (res.ok && data.ok) {
-          setStatus("ok");
+          setStatus("ok", "URL reachable");
           if (submit) submit.disabled = false;
         } else {
-          setStatus("bad");
+          const msg = data.status
+            ? `HTTP ${data.status}`
+            : data.error || "Unreachable";
+          setStatus("bad", msg);
           if (submit) submit.disabled = true;
         }
         sendTelemetry("url_test", { url, ok: data.ok });
       } catch {
         if (controller.signal.aborted) return;
-        setStatus("bad");
+        setStatus("bad", "Unreachable");
         if (submit) submit.disabled = true;
         sendTelemetry("url_test", { url, ok: false });
       }
     };
+
+    const checkDebounced = debounce(check, 500);
 
     toggleDisabled();
 
@@ -79,16 +92,17 @@ export function initUrlTester() {
       }, 1000);
     }
 
-    check();
-
     input.addEventListener("input", () => {
       toggleDisabled();
-      setStatus(input.value.trim() ? "pending" : "");
+      const hasValue = input.value.trim() !== "";
+      setStatus(hasValue ? "pending" : "", hasValue ? "Testing..." : "");
       if (submit) submit.disabled = true;
+      if (hasValue) checkDebounced();
     });
     input.addEventListener("paste", () => {
       setTimeout(() => {
-        check();
+        setStatus("pending", "Testing...");
+        checkDebounced();
       }, 0);
     });
     input.addEventListener("blur", check);

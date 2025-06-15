@@ -1,7 +1,11 @@
 export function sendTelemetry(event, data = {}) {
-  fetch("/telemetry", {
+  if (typeof fetch !== "function") return;
+  const result = fetch("/telemetry", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ event, data }),
-  }).catch(() => {});
+  });
+  if (result && typeof result.catch === "function") {
+    result.catch(() => {});
+  }
 }
