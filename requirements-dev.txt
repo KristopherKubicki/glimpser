@@ -2,7 +2,11 @@
 pre-commit>=3.6
 flake8>=7.2
 black>=25.1
-mypy>=1.16
+# --- static-typing toolchain ---
+mypy==1.16.*          # latest stable, 29 May 2025
+typing_extensions>=4.11
+sqlalchemy2-stubs     # stubs for your DB layer
+types-requests>=2.31  # stubs for requests used in the capture pipeline
 isort>=5.13
 pytest>=8.3,<8.5
 coverage>=7.5
@@ -14,5 +18,4 @@ detect-secrets>=1.4
 pip-audit>=2.7
 setuptools>=78.1.1
 types-python-dateutil>=2.9
-types-requests>=2.31
 Pillow==11.2.1
