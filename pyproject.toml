@@ -7,6 +7,19 @@ line-length = 88
 target-version = ["py311"]
 required-version = "25.1.0"
 
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "node_modules",
+    "env",
+    ".venv",
+]
+
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true
