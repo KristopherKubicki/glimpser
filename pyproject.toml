@@ -44,7 +44,6 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "pyvirtualdisplay==3.0",
     "pywebpush==2.0.3",
-    "scikit-image>=0.25.2",
     "selenium==4.33.0",
     "sqlalchemy==2.0.41",
     "undetected-chromedriver==3.5.5",
