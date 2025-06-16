@@ -13,7 +13,7 @@ pyvirtualdisplay==3.0
 selenium==4.33.0
 SQLAlchemy==2.0.41
 pywebpush==2.0.3
-onnxruntime-gpu~=1.18; sys_platform != "darwin"
+onnxruntime-gpu~=1.20; sys_platform != "darwin"
 onnxruntime~=1.18; sys_platform == "darwin"
 undetected-chromedriver==3.5.5
 webdriver-manager==4.0.2
