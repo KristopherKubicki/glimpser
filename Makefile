@@ -5,8 +5,9 @@ format:
 	prettier --write app/static/js/**/*.js app/static/css/**/*.css
 
 lint:
-	flake8
-	eslint 'app/static/js/**/*.js'
+        flake8
+        ruff check --exit-zero .
+        eslint 'app/static/js/**/*.js'
 
 test:
 	pytest
