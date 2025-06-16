@@ -1,6 +1,7 @@
 # Additional developer dependencies
 pre-commit>=3.6
 flake8>=7.2
+ruff>=0.4
 black>=25.1
 # --- static-typing toolchain ---
 mypy==1.16.*          # latest stable, 29 May 2025

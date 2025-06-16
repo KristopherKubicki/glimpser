@@ -247,6 +247,7 @@ From [Developer Guide](docs/developer_guide.md):
 2. Verify hooks and run linters:
    ```sh
    pre-commit run --all-files
+   ruff check --exit-zero .
    flake8
    ```
 3. Execute the test suites:
