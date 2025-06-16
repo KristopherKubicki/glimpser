@@ -40,7 +40,14 @@ sudo apt-get install -y google-chrome-stable
 
 ### 4. Install FFmpeg
 
-FFmpeg is used for video processing in Glimpser:
+FFmpeg is used for video processing in Glimpser. The CI uses the gpustatic build which you can install with:
+
+```sh
+curl -L https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-n6.1-latest-linux64-gpl-shared-gpu.tar.xz -o ffmpeg.tar.xz
+sudo tar xf ffmpeg.tar.xz -C /usr/local --strip-components=1
+```
+
+Alternatively you can install the distro package:
 
 ```sh
 sudo apt-get install -y ffmpeg

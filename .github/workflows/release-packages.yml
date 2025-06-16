@@ -26,6 +26,10 @@ jobs:
           pip install flake8 ruff pytest pytest-socket
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+      - name: Install ffmpeg (gpustatic)
+        run: |
+          curl -L https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-n6.1-latest-linux64-gpl-shared-gpu.tar.xz -o ffmpeg.tar.xz
+          sudo tar xf ffmpeg.tar.xz -C /usr/local --strip-components=1
       - name: Lint with flake8
         run: |
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
@@ -81,6 +85,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Install ffmpeg (gpustatic)
+        shell: bash
+        run: |
+          curl -L https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-n6.1-latest-win64-gpl-shared-gpu.zip -o ffmpeg.zip
+          7z x ffmpeg.zip -o"$PWD/ffmpeg" -y
+          echo "$PWD/ffmpeg/bin" >> $GITHUB_PATH
       - name: Build Windows executable
         run: python build_windows.py
       - name: Upload Windows executable
@@ -107,6 +117,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Install ffmpeg (gpustatic)
+        run: |
+          curl -L https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-n6.1-latest-macos64-gpl-shared-gpu.tar.xz -o ffmpeg.tar.xz
+          sudo tar xf ffmpeg.tar.xz -C /usr/local --strip-components=1
       - name: Build macOS executable
         run: python build_macos.py
       - name: Upload macOS archive

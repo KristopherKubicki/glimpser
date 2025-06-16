@@ -40,7 +40,7 @@ lib/
 lib64/
 parts/
 sdist/
-var/
+var/*
 wheels/
 pip-wheel-metadata/
 share/python-wheels/
@@ -62,8 +62,9 @@ lib/
 lib64/
 parts/
 sdist/
-var/
+var/*
 wheels/
+!var/awslogs.config
 pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
