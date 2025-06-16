@@ -11,9 +11,7 @@ class TestDangerMode(unittest.TestCase):
     @patch("app.utils.screenshots.check_user_activity")
     @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
     @patch("app.utils.screenshots.is_system_online", return_value=True)
-    def test_danger_port_closed(
-        self, mock_online, mock_path, mock_activity, mock_port
-    ):
+    def test_danger_port_closed(self, mock_online, mock_path, mock_activity, mock_port):
         result = ss.capture_screenshot_and_har(
             "http://example.com", "out.png", danger=True
         )
@@ -24,9 +22,7 @@ class TestDangerMode(unittest.TestCase):
     @patch("app.utils.screenshots.check_user_activity", return_value=True)
     @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
     @patch("app.utils.screenshots.is_system_online", return_value=True)
-    def test_danger_user_active(
-        self, mock_online, mock_path, mock_activity, mock_port
-    ):
+    def test_danger_user_active(self, mock_online, mock_path, mock_activity, mock_port):
         result = ss.capture_screenshot_and_har(
             "http://example.com", "out.png", danger=True
         )
