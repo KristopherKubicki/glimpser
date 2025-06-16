@@ -85,5 +85,5 @@ repos:
     hooks:
       - id: detect-secrets
         name: detect secrets
-        entry: detect-secrets-hook
-        language: system
+        entry: ./detect-secrets-hook
+        language: script

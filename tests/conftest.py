@@ -3,7 +3,12 @@ import sys
 from pathlib import Path
 
 import pytest
-import pytest_socket
+try:
+    import pytest_socket
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    import types
+
+    pytest_socket = types.SimpleNamespace(disable_socket=lambda: None)
 from apscheduler.schedulers.background import BackgroundScheduler
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
