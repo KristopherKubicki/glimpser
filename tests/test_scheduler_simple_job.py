@@ -28,7 +28,10 @@ def test_scheduler_executes_job(tmp_path):
         patch("app.sms_alert"),
     ):
         create_app(enable_watchdog=False, schedule=True)
-        scheduler.shutdown(wait=False)
+        # Shut down any jobs created during app initialization. Using wait=True
+        # ensures the underlying process pool has fully stopped before we
+        # replace the scheduler instance.
+        scheduler.shutdown(wait=True)
         scheduler.set_scheduler(
             BackgroundScheduler(executors={"default": {"type": "threadpool"}})
         )
