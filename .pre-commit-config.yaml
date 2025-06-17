@@ -87,3 +87,12 @@ repos:
         name: detect secrets
         entry: ./detect-secrets-hook
         language: system
+
+  - repo: local
+    hooks:
+      - id: check-yaml-format
+        name: prettier yaml
+        entry: prettier --check '*.yml'
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
