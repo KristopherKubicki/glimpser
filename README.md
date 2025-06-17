@@ -124,7 +124,7 @@ If you cannot log in or see video feeds, double-check that your `.env` file matc
 To install Python packages required for development, run:
 
 ```sh
-pip install -r requirements.txt
+pip install .
 pip install -r requirements-dev.txt
 ```
 
@@ -206,7 +206,7 @@ To set up the project for development:
 3. Install Python dependencies:
 
    ```sh
-   pip install -r requirements.txt
+   pip install .
    pip install -r requirements-dev.txt
    ```
 

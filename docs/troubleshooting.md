@@ -201,7 +201,7 @@ Glimpser writes logs to the console and exposes them via the _Status_ tab. If so
 
 **Solution:**
 
-- Run `pip install -r requirements.txt --upgrade` to update dependencies.
+- Run `pip install . --upgrade` to update dependencies from `pyproject.toml`.
 - Apply any new database migrations as described in the release notes.
 - The `capture_failed` column is added automatically if missing.
 - Clear your browser cache to avoid stale JavaScript files.

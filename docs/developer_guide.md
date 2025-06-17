@@ -14,7 +14,7 @@ ruff check --exit-zero .
    ```
 2. Install Python dependencies:
    ```sh
-   pip install -r requirements.txt
+   pip install .  # installs runtime dependencies from `pyproject.toml`
    pip install -r requirements-dev.txt
    ```
    Browser automation packages used for screenshots are grouped under the
