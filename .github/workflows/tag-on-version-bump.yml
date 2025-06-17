@@ -2,7 +2,7 @@ name: Tag Release
 
 on:
   push:
-    branches: [ "main", "staging" ]
+    branches: ["main", "staging"]
 
 jobs:
   tag_release:
@@ -28,6 +28,16 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Sync version files
+        if: steps.detect.outputs.changed == 'true'
+        run: |
+          python scripts/update_version_files.py
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -am "chore: sync version references"
+            git push
           fi
       - name: Create tag
         if: steps.detect.outputs.changed == 'true'
