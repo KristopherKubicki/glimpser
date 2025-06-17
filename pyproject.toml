@@ -68,7 +68,7 @@ glimpser-dashboard = "app.utils.console_dashboard:main"
 
 [project.optional-dependencies]
 dev = [
-  # Core dev tooling
+  # Core dev tooling - all required for building
   "black>=25.1",
   "coverage>=7.9",
   "flake8>=7.2",
@@ -83,8 +83,10 @@ dev = [
   "pyinstaller>=6.14.1",
   "pylint>=3.3.7",
   "prettier",
+  "pytest-socket", # for offline test passing
   
-  # “Super-human” goodies
+  
+  # “Super-human” goodies, not required for building
   "ruff>=0.4.4",
   "pytest-cov>=6.1",
   "hypothesis>=6.135",
@@ -187,6 +189,7 @@ dev = [
   "py-spy>=0.4",          # sampling profiler
   "commitizen>=3.12",     # conventional commits / changelog
   # safety intentionally NOT included (paid)
+  "pytest-socket", # for offline testing
 ]
 
 agents = [
@@ -201,6 +204,6 @@ agents = [
   "gitleaks",
   "gitlint",
   "vulture",
-  "pytest-socket"
+  "pytest-socket", # for offline coding
 ]
 
