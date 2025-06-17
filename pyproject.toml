@@ -1,111 +1,157 @@
 [project]
-name = "glimpser"
-version = "0.2.7"
-description = "A real-time monitoring application for capturing and analyzing live data from various sources"
+name            = "glimpser"
+version         = "0.2.8"
+description     = "A real-time monitoring application for capturing and analyzing live data from various sources"
 requires-python = ">=3.11"
-readme = "README.md"
+readme          = "README.md"
+
 authors = [
-    {name = "Kristopher Kubicki", email = "kristopher@glimpser.net"},
+  { name = "Kristopher Kubicki", email = "kristopher@glimpser.net" },
 ]
+
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Runtime + “batteries” (unchanged except where noted)
+# ─────────────────────────────────────────────────────────────────────────────
 dependencies = [
-    "alembic==1.16.1",
-    "apscheduler==3.11.0",
-    "black>=25.1.0",
-    "coverage>=7.9.0",
-    "fake-useragent==2.2.0",
-    "flake8>=7.2.0",
-    "flask==3.1.1",
-    "flask-apscheduler==1.13.1",
-    "flask-login==0.6.3",
-    "isort>=6.0.1",
-    "jinja2==3.1.6",
-    "mkdocs>=1.6.1",
-    "mypy>=1.16.0",
-    "numpy>=1.26,<2.0",
-    "pdf2image==1.17.0",
-    "pillow==11.2.1",
-    "pre-commit>=4.2.0",
-    "psutil~=7.0.0",
-    "pyinstaller>=6.14.1",
-    "pylint>=3.3.7",
-    "pynput==1.8.1",
-    "pytest>=8.3,<8.5",
-    "python-dateutil>=2.9.0.post0",
-    "python-dotenv>=1.1.0",
-    "pyvirtualdisplay==3.0",
-    "pywebpush==2.0.3",
-    "selenium==4.33.0",
-    "sqlalchemy==2.0.41",
-    "undetected-chromedriver==3.5.5",
-    "webdriver-manager==4.0.2",
-    "werkzeug==3.1.3",
-    "yt-dlp==2025.5.22",
-    "onnxruntime-gpu~=1.18; sys_platform != 'darwin'",
-    "onnxruntime~=1.18; sys_platform == 'darwin'",
-    "setproctitle==1.3.3",
-    "filelock>=3.12",
-    "PyYAML>=6.0",
+  # ✂︎  your existing runtime libs  ✂︎
+  "alembic==1.16.1",
+  "apscheduler==3.11.0",
+  "fake-useragent==2.2.0",
+  "flask==3.1.1",
+  "flask-apscheduler==1.13.1",
+  "flask-login==0.6.3",
+  "isort>=6.0.1",
+  "jinja2==3.1.6",
+  "mkdocs>=1.6.1",
+  "numpy>=1.26,<2.0",
+  "pdf2image==1.17.0",
+  "pillow==11.2.1",
+  "psutil~=7.0.0",
+  "pyinstaller>=6.14.1",
+  "pylint>=3.3.7",
+  "pynput==1.8.1",
+  "python-dateutil>=2.9.0.post0",
+  "python-dotenv>=1.1.0",
+  "pyvirtualdisplay==3.0",
+  "pywebpush==2.0.3",
+  "selenium==4.33.0",
+  "sqlalchemy==2.0.41",
+  "undetected-chromedriver==3.5.5",
+  "webdriver-manager==4.0.2",
+  "werkzeug==3.1.3",
+  "yt-dlp==2025.5.22",
+  "onnxruntime-gpu~=1.18; sys_platform != 'darwin'",
+  "onnxruntime~=1.18; sys_platform == 'darwin'",
+  "setproctitle==1.3.3",
+  "filelock>=3.12",
+  "PyYAML>=6.0",
+  "uv>=0.6",                       # ← *runtime-only* if you want `uv pip …`
 ]
 
 [project.urls]
 Homepage = "https://github.com/KristopherKubicki/glimpser"
 
 [project.scripts]
-glimpser = "main:main"
-glimpser-clear = "main:clear_console_cli"
+glimpser           = "main:main"
+glimpser-clear     = "main:clear_console_cli"
 glimpser-dashboard = "app.utils.console_dashboard:main"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Build backend remains Hatch
+# ─────────────────────────────────────────────────────────────────────────────
 [build-system]
-requires = ["hatchling"]
+requires      = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app", "scripts"]
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Tooling configuration
+# ─────────────────────────────────────────────────────────────────────────────
 [tool.black]
-line-length = 88
-target-version = ["py311"]
-required-version = "25.1.0"
+line-length       = 88
+target-version    = ["py311"]
+required-version  = "25.1.0"
 
+# Ruff replaces most flake8 / isort / pylint rules, but you can keep the
+# originals for now; just run Ruff first so they have little to flag.
 [tool.ruff]
-line-length = 88
+line-length    = 88
 target-version = "py311"
-exclude = [
-    ".git",
-    "__pycache__",
-    "build",
-    "dist",
-    "node_modules",
-    "env",
-    ".venv",
-]
+exclude = [".git", "__pycache__", "build", "dist", "node_modules", "env", ".venv"]
 
+# Enable Ruff’s equivalents of common Flake8 & Pylint rules + isort style
+extend-select = ["E", "F", "I", "UP", "PL"]     # E=pycodestyle, F=pyflakes, I=isort, UP=pyupgrade, PL=pylint
+
+# MyPy stays as-is
 [tool.mypy]
-python_version = "3.11"
+python_version        = "3.11"
 ignore_missing_imports = true
-check_untyped_defs = true
+check_untyped_defs     = true
 
+# pytest defaults (feel free to tweak)
+[tool.pytest.ini_options]
+addopts = "-ra -q"
+testpaths = ["tests"]
+
+# bandit – basic security scan config
+[tool.bandit]
+skips = ["B101"]  # assert-used
+
+# commitizen – keep Conventional Commits & changelog automation tidy
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.2.7"
+tag_format = "v$version"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dependency groups ─ runtime vs dev
+# ─────────────────────────────────────────────────────────────────────────────
 [dependency-groups]
+
+# Everything here installs with `pip install .[dev]`
 dev = [
-    "black>=25.1",
-    "coverage>=7.5",
-    "flake8>=7.2",
-    "isort>=5.13",
-    "mkdocs>=1.6",
-    "mypy>=1.16",
-    "pre-commit>=3.6",
-    "pyinstaller>=6.6",
-    "pylint>=3.1",
-    "pytest>=8.3,<8.5",
-    "pytest-socket>=0.7",
+  # ✂︎ existing dev deps kept (versions bumped where useful) ✂︎
+  "black>=25.1",
+  "coverage>=7.9",      # keep for standalone HTML reports
+  "flake8>=7.2",
+  "isort>=6.0",         # now mirrors runtime pin
+  "mkdocs>=1.6",
+  "mypy>=1.16",
+  "pre-commit>=4.2",
+  "pyinstaller>=6.14",
+  "pylint>=3.3",
+  "pytest>=8.3,<8.5",
+  "uv>=0.6",
+  
+  "pytest-xdist",
+  "pytest-benchmark",
+  "interrogate",
+  "yamllint",
+  "pip-install-size",
+  "pre-commit-docker",
+  "gitleaks",
+  
+  # ──────── NEW “super-human” goodies ────────
+  "ruff>=0.4.4",          # lightning-fast linter/formatter
+  "pytest-cov>=6.1",      # coverage plugin
+  "hypothesis>=6.135",    # property-based testing
+  "nox>=2025.2",          # session orchestrator (alt: tox 4.x)
+  "bandit>=1.7",          # security lint (FOSS)
+  "py-spy>=0.4",          # sampling profiler
+  "commitizen>=3.12",     # conventional commits / changelog
+  # safety intentionally NOT included (paid)
 ]
+
