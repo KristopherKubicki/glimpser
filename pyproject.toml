@@ -179,6 +179,7 @@ dev = [
   "uv>=0.6",
   "pyinstaller>=6.14.1",
   "pylint>=3.3.7",
+  "pip-audit",
   
   # ──────── NEW “super-human” goodies ────────
   "ruff>=0.4.4",          # lightning-fast linter/formatter
