@@ -1,6 +1,7 @@
 import logging
 import os
 import socket
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 def _get_test_hosts():
@@ -10,15 +11,26 @@ def _get_test_hosts():
 
 def is_system_online(timeout: int = 3) -> bool:
     """Return ``True`` if a network connection can be opened to any test host."""
-    for host in _get_test_hosts():
-        host = host.strip()
-        if not host:
-            continue
+    port = int(os.getenv("ONLINE_TEST_PORT", "443"))
+
+    def try_connect(host: str) -> bool:
         try:
-            socket.create_connection((host, 53), timeout=timeout)
+            socket.create_connection((host, port), timeout=timeout)
             return True
         except OSError as exc:  # pragma: no cover - network depends on environment
             logging.debug("offline check failed for %s: %s", host, exc)
+            return False
+
+    hosts = [h.strip() for h in _get_test_hosts() if h.strip()]
+    if not hosts:
+        logging.warning("offline check failed: no hosts configured")
+        return False
+
+    with ThreadPoolExecutor() as executor:
+        futures = {executor.submit(try_connect, host): host for host in hosts}
+        for future in as_completed(futures):
+            if future.result():
+                return True
 
     logging.warning("offline check failed: all hosts unreachable")
     return False
