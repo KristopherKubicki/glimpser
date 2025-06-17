@@ -5,6 +5,9 @@ on:
     branches: [main, staging]
     tags:
       - "v*"
+  # Also handle releases created from the GitHub UI
+  release:
+    types: [published]
   pull_request:
     branches: [main, staging]
   workflow_dispatch:
