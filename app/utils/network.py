@@ -11,14 +11,24 @@ def _get_test_hosts():
 
 def is_system_online(timeout: int = 3) -> bool:
     """Return ``True`` if a network connection can be opened to any test host."""
-    port = int(os.getenv("ONLINE_TEST_PORT", "443"))
+    default_port = int(os.getenv("ONLINE_TEST_PORT", "443"))
 
-    def try_connect(host: str) -> bool:
+    def parse_target(target: str) -> tuple[str, int]:
+        if ":" in target:
+            host, p = target.rsplit(":", 1)
+            try:
+                return host, int(p)
+            except ValueError:
+                return host, default_port
+        return target, default_port
+
+    def try_connect(target: str) -> bool:
+        host, port = parse_target(target)
         try:
             socket.create_connection((host, port), timeout=timeout)
             return True
         except OSError as exc:  # pragma: no cover - network depends on environment
-            logging.debug("offline check failed for %s: %s", host, exc)
+            logging.debug("offline check failed for %s:%s: %s", host, port, exc)
             return False
 
     hosts = [h.strip() for h in _get_test_hosts() if h.strip()]

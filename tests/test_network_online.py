@@ -48,6 +48,13 @@ class TestIsSystemOnline(unittest.TestCase):
             self.assertFalse(is_system_online(timeout=1))
             mock_conn.assert_called_once_with(("1.1.1.1", 321), timeout=1)
 
+    @patch("socket.create_connection")
+    def test_host_with_inline_port(self, mock_conn):
+        mock_conn.return_value = None
+        with patch.dict(os.environ, {"ONLINE_TEST_HOSTS": "example.com:444"}):
+            self.assertTrue(is_system_online(timeout=1))
+            mock_conn.assert_called_once_with(("example.com", 444), timeout=1)
+
     @patch("app.utils.network.logging.warning")
     @patch("app.utils.network.socket.create_connection", side_effect=OSError("fail"))
     def test_logs_when_all_fail(self, mock_conn, mock_warn):
