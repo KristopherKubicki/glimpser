@@ -34,7 +34,6 @@ dependencies = [
   "flask==3.1.1",
   "flask-apscheduler==1.13.1",
   "flask-login==0.6.3",
-  "isort>=6.0.1",
   "jinja2==3.1.6",
   "numpy>=1.26,<2.0",
   "pdf2image==1.17.0",
