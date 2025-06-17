@@ -155,7 +155,7 @@ skips = ["B101"]  # assert-used
 # commitizen – keep Conventional Commits & changelog automation tidy
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "0.2.7"
+version = "0.2.8"
 tag_format = "v$version"
 
 # ─────────────────────────────────────────────────────────────────────────────
