@@ -104,6 +104,8 @@ instance/
 .web
 templates.json
 screenshots/
+!app/utils/screenshots/
+!app/utils/scheduling/
 data/
 glimpser.log
 .idea
