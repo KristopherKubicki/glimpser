@@ -20,8 +20,8 @@ jobs:
         id: detect
         run: |
           git fetch --tags
-          NEW_VERSION=$(grep -oP '(?<=version=")[^"]+' setup.py)
-          OLD_VERSION=$(git show ${{ github.event.before }}:setup.py 2>/dev/null | grep -oP '(?<=version=")[^"]+' || echo "")
+          NEW_VERSION=$(grep -oP '(?<=^version = ")[^"]+' pyproject.toml)
+          OLD_VERSION=$(git show ${{ github.event.before }}:pyproject.toml 2>/dev/null | grep -oP '(?<=^version = ")[^"]+' || echo "")
           echo "old=$OLD_VERSION" >> "$GITHUB_OUTPUT"
           echo "new=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           if [ "$NEW_VERSION" != "$OLD_VERSION" ]; then
