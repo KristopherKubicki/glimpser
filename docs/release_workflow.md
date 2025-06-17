@@ -11,7 +11,7 @@ The process is split across multiple runners:
 - **macOS** builds a self-contained application with `build_macos.py`.
 
 The Ubuntu job also generates a small `release-badges.md` file that lists
-status badges for the current tag.  This file becomes the body of the GitHub
+status badges for the current tag. This file becomes the body of the GitHub
 release so that each tagged version shows the latest CI status.
 
 Both artifacts are attached to the GitHub release created for the tag. When the
@@ -19,9 +19,11 @@ Both artifacts are attached to the GitHub release created for the tag. When the
 PyPI.
 
 Tags are normally created automatically when the version in `pyproject.toml` is bumped
-on the `main` branch.  The `Tag Release` workflow runs
+on the `main` branch. The `Tag Release` workflow runs
 `scripts/auto_tag_release.py` to create a tag like `v0.2.8` and push it to
-GitHub, which then triggers the build jobs above.
+GitHub, which then triggers the build jobs above. Before tagging, the workflow
+runs `scripts/update_version_files.py` so that `CITATION.cff` and the fallback
+version in `app/config.py` stay aligned with the version from `pyproject.toml`.
 
 Since the tag is pushed by a workflow, the job must grant `workflow: write`
 permissions so that the subsequent release workflow is triggered.
