@@ -119,6 +119,7 @@ The web interface will be available at [http://localhost:8082](http://localhost:
 
 If you cannot log in or see video feeds, double-check that your `.env` file matches the configuration values in the database. Missing `SECRET_KEY` or API credentials often cause startup failures. Refer to [Troubleshooting](docs/troubleshooting.md) for more solutions.
 
+
 ### Developer Dependencies
 
 To install Python packages required for development, run:
@@ -195,46 +196,29 @@ To set up the project for development:
    cd glimpser
    ```
 
-2. Create a virtual environment and activate it:
+2. Create and activate a virtual environment:
 
    ```sh
    python -m venv env
-   source env/bin/activate  # On Windows, use `env\Scripts\activate`
+   source env/bin/activate  # On Windows use `env\Scripts\activate`
    ```
 
-3. Install Python dependencies:
+3. Install Python and JavaScript dependencies:
 
    ```sh
-   pip install .[dev]
+   pip install -e .[dev]
+   npm install
    ```
 
-4. Install developer tooling:
+4. Install Git hooks and additional tooling:
 
    ```sh
-   make setup  # runs scripts/setup_env.sh
+   pre-commit install
+   make setup  # optional helper to configure tools
    ```
 
-5. Run tests:
-   ```sh
-   pytest
-   ```
-6. Run JavaScript tests with coverage:
-   ```sh
-   npm test -- --coverage
-   ```
-7. Use the Makefile for common tasks:
-   ```sh
-   make format   # format code
-   make lint     # run linters
-   make test     # run Python tests
-   make test-js  # run JavaScript tests
-   make precommit
-   ```
-   See [Developer Guide](docs/developer_guide.md) for details.
+5. Verify the codebase and run tests:
 
-### Linting & Testing
-
-From [Developer Guide](docs/developer_guide.md):
 
 1. Install the tooling and Git hooks (or run `make setup`):
    ```sh
@@ -245,15 +229,13 @@ From [Developer Guide](docs/developer_guide.md):
 2. Verify hooks and run linters:
    ```sh
    pre-commit run --all-files
-   ruff check --exit-zero .
    flake8
-   ```
-3. Execute the test suites:
-   ```sh
    pytest
-   npm test
+   npm test -- --coverage
    ```
-   Coverage instructions live in [docs/testing.md](docs/testing.md).
+
+   See [Developer Guide](docs/developer_guide.md) and [Testing](docs/testing.md) for more details.
+
 
 ## Releases
 
