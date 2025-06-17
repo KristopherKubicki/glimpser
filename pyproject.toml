@@ -135,14 +135,8 @@ dev = [
   "pylint>=3.3",
   "pytest>=8.3,<8.5",
   "uv>=0.6",
-  
-  "pytest-xdist",
-  "pytest-benchmark",
-  "interrogate",
-  "yamllint",
-  "pip-install-size",
-  "pre-commit-docker",
-  "gitleaks",
+
+
   
   # ──────── NEW “super-human” goodies ────────
   "ruff>=0.4.4",          # lightning-fast linter/formatter
@@ -153,5 +147,19 @@ dev = [
   "py-spy>=0.4",          # sampling profiler
   "commitizen>=3.12",     # conventional commits / changelog
   # safety intentionally NOT included (paid)
+]
+
+agents = [
+  # various tools for agents to utilize in offline environments
+  "pytest-benchmark",
+  "pytest-xdist",
+  "pytest-benchmark",
+  "interrogate",
+  "yamllint",
+  "pip-install-size",
+  "pre-commit-docker",
+  "gitleaks",
+  "gitlint",
+  "vulture"
 ]
 
