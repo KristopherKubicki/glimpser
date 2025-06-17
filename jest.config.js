@@ -3,6 +3,6 @@
 // treated as ES modules, so the config itself must use ES module syntax.
 export default {
   testEnvironment: 'jsdom',
-  testPathIgnorePatterns: ['/node_modules/', 'tests/playwright/'],
+  testPathIgnorePatterns: ['/node_modules/'],
   setupFiles: ['<rootDir>/tests/js/setup.js'],
 };

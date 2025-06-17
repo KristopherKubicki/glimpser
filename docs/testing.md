@@ -75,16 +75,3 @@ Jest runs in ESM mode because `package.json` declares `"type": "module"`.
 Dynamic imports work without additional configuration.
 
 New tests cover automatic Service Worker registration and template helpers.
-
-## Playwright End‑to‑End Tests
-
-For critical user flows a minimal Playwright setup lives in
-`tests/playwright`. These tests start the development server defined in
-`playwright.config.js` and drive a headless browser. Execute them with:
-
-```sh
-npx playwright test
-```
-
-Playwright is optional, so the Node dependencies are not included in the
-repository. Install them locally to run the tests.
