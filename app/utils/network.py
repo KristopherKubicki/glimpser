@@ -3,6 +3,8 @@ import os
 import socket
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import requests
+
 
 def _get_test_hosts():
     """Return list of hosts to probe for network connectivity."""
@@ -10,8 +12,15 @@ def _get_test_hosts():
 
 
 def is_system_online(timeout: int = 3) -> bool:
-    """Return ``True`` if a network connection can be opened to any test host."""
+    """Return ``True`` if the system can reach any configured test endpoint."""
     default_port = int(os.getenv("ONLINE_TEST_PORT", "443"))
+    urls = [
+        u.strip()
+        for u in os.getenv(
+            "ONLINE_TEST_URLS", "https://connectivitycheck.gstatic.com/generate_204"
+        ).split(",")
+        if u.strip()
+    ]
 
     def parse_target(target: str) -> tuple[str, int]:
         if ":" in target:
@@ -22,6 +31,14 @@ def is_system_online(timeout: int = 3) -> bool:
                 return host, default_port
         return target, default_port
 
+    def check_url(url: str) -> bool:
+        try:
+            resp = requests.head(url, timeout=timeout)
+            return resp.ok
+        except Exception as exc:  # pragma: no cover - network depends on environment
+            logging.debug("offline check failed for %s: %s", url, exc)
+            return False
+
     def try_connect(target: str) -> bool:
         host, port = parse_target(target)
         try:
@@ -31,8 +48,16 @@ def is_system_online(timeout: int = 3) -> bool:
             logging.debug("offline check failed for %s:%s: %s", host, port, exc)
             return False
 
+    # HTTP(S) reachability check similar to Android/iOS captive portal detection
+    if urls:
+        with ThreadPoolExecutor() as executor:
+            futures = {executor.submit(check_url, url): url for url in urls}
+            for future in as_completed(futures):
+                if future.result():
+                    return True
+
     hosts = [h.strip() for h in _get_test_hosts() if h.strip()]
-    if not hosts:
+    if not hosts and not urls:
         logging.warning("offline check failed: no hosts configured")
         return False
 
