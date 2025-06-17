@@ -5,79 +5,77 @@ name: Python application
 
 on:
   push:
-    branches: [ "main", "staging" ]
+    branches: ["main", "staging"]
   pull_request:
-    branches: [ "main", "staging" ]
+    branches: ["main", "staging"]
 
 permissions:
   contents: read
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.11", "3.13"]
     env:
-      ENABLE_MYPY: 'false'
+      ENABLE_MYPY: "false"
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Cache pip
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install .
-        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-    - name: Cache npm
-      uses: actions/cache@v4
-      with:
-        path: ~/.npm
-        key: ${{ runner.os }}-npm-${{ hashFiles('**/package.json') }}
-        restore-keys: |
-          ${{ runner.os }}-npm-
-    - name: Install Node dependencies
-      run: npm install
-      # Jest and Prettier are devDependencies installed here
-    - name: Install pre-commit hooks
-      run: pre-commit install-hooks
-    - name: Run pre-commit
-      run: pre-commit run --all-files
-    - name: Lint JavaScript
-      run: npm run lint:js
-    - name: Check JavaScript formatting
-      run: npm run format:js
-    - name: Run JavaScript tests with coverage
-      run: npm test -- --coverage
-    - name: Lint CSS
-      run: npm run lint:css
-    - name: Audit npm packages
-      run: npm audit --audit-level=high
-    - name: Run pip-audit
-      run: pip-audit
-    - name: Type check with mypy
-      if: env.ENABLE_MYPY == 'true'
-      run: mypy .
-    - name: Test with coverage
-      run: |
-        python -m coverage run -m pytest --color=yes
-        python -m coverage xml
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[dev]"
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+      - name: Install Node dependencies
+        run: npm install
+        # Jest and Prettier are devDependencies installed here
+      - name: Install pre-commit hooks
+        run: pre-commit install-hooks
+      - name: Run pre-commit
+        run: pre-commit run --all-files
+      - name: Lint JavaScript
+        run: npm run lint:js
+      - name: Check JavaScript formatting
+        run: npm run format:js
+      - name: Run JavaScript tests with coverage
+        run: npm test -- --coverage
+      - name: Lint CSS
+        run: npm run lint:css
+      - name: Audit npm packages
+        run: npm audit --audit-level=high
+      - name: Run pip-audit
+        run: pip-audit
+      - name: Type check with mypy
+        if: env.ENABLE_MYPY == 'true'
+        run: mypy .
+      - name: Test with coverage
+        run: |
+          python -m coverage run -m pytest --color=yes
+          python -m coverage xml
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
