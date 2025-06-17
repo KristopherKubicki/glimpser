@@ -11,7 +11,7 @@ following tasks:
 - Lints JavaScript with `eslint` and verifies formatting with `prettier`.
 - Executes `pytest` and `jest` test suites and uploads coverage.
 - Coverage reports allow a small drop (up to 0.5%) before the Codecov check fails.
-- Scans dependencies using `pip safety` and `npm audit`.
+- Scans dependencies using `npm audit`.
 - Caches Python and Node dependencies to speed up builds.
 
 Running `pre-commit run --all-files` locally will execute the same Black,
