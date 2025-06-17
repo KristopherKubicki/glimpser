@@ -18,7 +18,7 @@ Both artifacts are attached to the GitHub release created for the tag. When the
 `PYPI_API_TOKEN` secret is available, Python distributions are also published to
 PyPI.
 
-Tags are normally created automatically when the version in `setup.py` is bumped
+Tags are normally created automatically when the version in `pyproject.toml` is bumped
 on the `main` branch.  The `Tag Release` workflow runs
 `scripts/auto_tag_release.py` to create a tag like `v0.2.7` and push it to
 GitHub, which then triggers the build jobs above.
