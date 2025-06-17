@@ -56,6 +56,20 @@ pip install .
 
 All runtime dependencies, including `psutil`, are defined in `pyproject.toml`.
 
+### Optional Dependencies
+
+Some features rely on additional packages:
+
+- `selenium` and `webdriver-manager` for full browser captures
+- `pdf2image` for converting PDF pages to PNG
+- `yt_dlp` for advanced video downloads
+
+Install them when needed with:
+
+```sh
+pip install selenium webdriver-manager pdf2image yt_dlp
+```
+
 ### 6. (Optional) Configure Environment Variables
 
 Copy `.env.example` to `.env` and adjust values to override defaults:

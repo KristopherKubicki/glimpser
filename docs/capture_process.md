@@ -49,8 +49,8 @@ source through processing and finally to visualization.
 Glimpser uses different methods to capture various types of content:
 
 1. **Images**: Direct download using the `download_image` function.
-2. **PDFs**: Download and convert to image using the `download_pdf` function.
-3. **Video Streams**: Capture a frame using `capture_frame_from_stream` or `capture_frame_with_ytdlp` for more complex video sources.
+2. **PDFs**: Download and convert to image using the `download_pdf` function. This requires the optional `pdf2image` package.
+3. **Video Streams**: Capture a frame using `capture_frame_from_stream` or `capture_frame_with_ytdlp` for more complex video sources. The latter relies on `yt_dlp`.
 4. **Web Pages**: Use either a lightweight browser capture (`capture_screenshot_and_har_light`) or a full browser capture (`capture_screenshot_and_har`) depending on the complexity of the page and capture requirements.
 
 ## Browser-Based Capture
@@ -58,7 +58,7 @@ Glimpser uses different methods to capture various types of content:
 For web pages, Glimpser uses two main approaches:
 
 1. **Lightweight Browser Capture**: Uses `wkhtmltoimage` for simple web pages without complex JavaScript or popup handling requirements. The URL and output path are passed directly to `wkhtmltoimage` without shell quoting.
-2. **Full Browser Capture**: Uses Selenium with Chrome/Chromium for more complex web pages, supporting JavaScript execution, popup handling, and custom selectors. These packages live in the optional `browser` extras and are not required for the default installation.
+2. **Full Browser Capture**: Uses Selenium with Chrome/Chromium for more complex web pages, supporting JavaScript execution, popup handling, and custom selectors. Install `selenium` and `webdriver-manager` to enable this mode.
 
 The choice between these methods depends on factors such as:
 - Presence of popups that need to be handled

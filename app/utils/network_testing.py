@@ -1,8 +1,7 @@
 import json
+import logging
 import threading
 import time
-
-from selenium.webdriver.common.by import By
 
 
 def network_idle_condition(
@@ -125,6 +124,12 @@ def wait_for_element(
     :param timeout: Maximum time to wait for the element.
     :return: The element if found, None otherwise.
     """
+    try:
+        from selenium.webdriver.common.by import By
+    except Exception as exc:
+        logging.warning("Selenium not available: %s", exc)
+        return None
+
     end_time = time.time() + timeout
     while time.time() < end_time:
         try:

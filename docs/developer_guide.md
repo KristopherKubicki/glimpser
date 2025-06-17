@@ -17,9 +17,10 @@ ruff check --exit-zero .
    pip install .  # installs runtime dependencies from `pyproject.toml`
    pip install -r requirements-dev.txt
    ```
-   Browser automation packages used for screenshots are grouped under the
-   optional `browser` extras in `setup.py`. A minimal install only requires
-   `wkhtmltoimage` for lightweight captures.
+   Optional features rely on additional packages such as `selenium`,
+   `webdriver-manager`, `pdf2image`, and `yt_dlp`. Install them when you need
+   browser automation, PDF conversion, or video downloads. A minimal install only
+   requires `wkhtmltoimage` for lightweight captures.
 3. Set up tooling:
    ```sh
    make setup  # installs pre-commit hooks and JS packages

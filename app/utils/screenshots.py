@@ -37,20 +37,12 @@ from typing import Dict
 
 import numpy as np
 import requests
-import yt_dlp as youtube_dl
-from pdf2image import convert_from_path
 from PIL import (
     Image,
     ImageDraw,
     ImageFont,
     ImageOps,
 )
-from selenium import webdriver
-from selenium.common.exceptions import TimeoutException, WebDriverException
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
 
 from .network import is_system_online
 
@@ -84,6 +76,31 @@ def _safe_import_pynput() -> None:
 
 
 _safe_import_pynput()
+
+
+def _import_selenium():
+    """Attempt to import Selenium and related helpers."""
+
+    try:
+        from selenium import webdriver
+        from selenium.common.exceptions import TimeoutException, WebDriverException
+        from selenium.webdriver.chrome.options import Options
+        from selenium.webdriver.chrome.service import Service
+        from selenium.webdriver.common.by import By
+        from webdriver_manager.chrome import ChromeDriverManager
+
+        return (
+            webdriver,
+            TimeoutException,
+            WebDriverException,
+            Options,
+            Service,
+            By,
+            ChromeDriverManager,
+        )
+    except Exception as exc:  # pragma: no cover - optional dependency
+        logging.warning("Selenium not available: %s", exc)
+        return None
 
 
 import app.config as config
@@ -229,6 +246,12 @@ _driver_local = threading.local()
 
 
 def get_driver(opts):
+    selenium_mods = _import_selenium()
+    if selenium_mods is None:
+        logging.error("Selenium is required for browser captures but is missing")
+        return None
+    webdriver, _, _, _, Service, _, ChromeDriverManager = selenium_mods
+
     driver = getattr(_driver_local, "driver", None)
     if driver is None:
         if not is_system_online():
@@ -927,6 +950,12 @@ def download_pdf(
     """
     Attempt to download the first page of a PDF from the URL and convert it to PNG format.
     """
+    try:
+        from pdf2image import convert_from_path
+    except Exception as exc:
+        logging.error("pdf2image not installed: %s", exc)
+        return False
+
     tmp_name = None  # path of the downloaded PDF
     lsuccess = False
 
@@ -1030,6 +1059,8 @@ def download_pdf(
 def is_enhanced(url):
     """Return True if ``yt_dlp`` has a specialized extractor for the URL."""
     try:
+        import yt_dlp as youtube_dl
+
         extractors = youtube_dl.extractor.list_extractors()
     except Exception as e:  # pragma: no cover - defensive
         logging.warning("yt_dlp extractor check failed: %s", e)
@@ -2421,6 +2452,20 @@ def capture_screenshot_and_har(
     Returns True on success, False otherwise.
     """
 
+    selenium_mods = _import_selenium()
+    if selenium_mods is None:
+        logging.error("Selenium is required for full browser capture")
+        return False
+    (
+        webdriver,
+        TimeoutException,
+        WebDriverException,
+        Options,
+        Service,
+        By,
+        ChromeDriverManager,
+    ) = selenium_mods
+
     proxy = validate_proxy(proxy)
 
     # Quick sanity check
@@ -2733,9 +2778,11 @@ def _capture_danger_mode(
 
     Return True if partial_screenshot was created, else False.
     """
-    from selenium import webdriver
-    from selenium.common.exceptions import TimeoutException
-    from selenium.webdriver.common.by import By
+    selenium_mods = _import_selenium()
+    if selenium_mods is None:
+        logging.error("Selenium is required for danger mode captures")
+        return False
+    webdriver, TimeoutException, _, _, _, By, _ = selenium_mods
 
     # This part uses normal Selenium for the attach:
     danger_options = webdriver.ChromeOptions()
@@ -2828,6 +2875,10 @@ def _remove_popup(driver, popup_xpath):
     """
     If there's an annoying overlay or popup, remove it from the DOM by XPATH.
     """
+    selenium_mods = _import_selenium()
+    if selenium_mods is None:
+        return
+    _, _, _, _, _, By, _ = selenium_mods
     try:
         elements = driver.find_elements(By.XPATH, popup_xpath)
         for el in elements:
