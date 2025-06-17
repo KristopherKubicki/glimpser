@@ -3,6 +3,25 @@ import os
 import socket
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import psutil
+
+
+def _has_active_lan() -> bool:
+    """Return ``True`` if any non-loopback interface is up with a valid IPv4 address."""
+
+    stats = psutil.net_if_stats()
+    for iface, addrs in psutil.net_if_addrs().items():
+        if iface == "lo" or not stats.get(iface) or not stats[iface].isup:
+            continue
+        for addr in addrs:
+            if addr.family != socket.AF_INET:
+                continue
+            ip = addr.address
+            if not ip or ip.startswith("127.") or ip.startswith("169.254."):
+                continue
+            return True
+    return False
+
 
 def _get_test_hosts():
     """Return list of hosts to probe for network connectivity."""
@@ -31,6 +50,10 @@ def is_system_online(timeout: int = 3) -> bool:
         for future in as_completed(futures):
             if future.result():
                 return True
+
+    if _has_active_lan():
+        logging.info("offline check fallback: LAN interface active")
+        return True
 
     logging.warning("offline check failed: all hosts unreachable")
     return False
