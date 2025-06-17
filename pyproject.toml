@@ -76,8 +76,6 @@ dev = [
   "mkdocs>=1.6",
   "mypy>=1.16",
   "pre-commit>=4.2",
-  "pyinstaller>=6.14",
-  "pylint>=3.3",
   "pytest>=8.3,<8.5",
   "uv>=0.6",
   "pyinstaller>=6.14.1",
@@ -155,7 +153,7 @@ skips = ["B101"]  # assert-used
 # commitizen – keep Conventional Commits & changelog automation tidy
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "0.2.7"
+version = "0.2.8"
 tag_format = "v$version"
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -173,8 +171,6 @@ dev = [
   "mkdocs>=1.6",
   "mypy>=1.16",
   "pre-commit>=4.2",
-  "pyinstaller>=6.14",
-  "pylint>=3.3",
   "pytest>=8.3,<8.5",
   "uv>=0.6",
   "pyinstaller>=6.14.1",
