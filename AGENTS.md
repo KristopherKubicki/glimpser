@@ -4,6 +4,7 @@ Format code with `black` and/or `prettier`
 Run `flake8` for lint checks.
 Run `pre-commit run --all-files`.
 Run tests with `pytest`.
+Use `pyproject.toml` for dependencies; do not use requirements files.
 Use `npm test` for JavaScript changes.
 Document major changes in `docs/`.
 Summaries must cite changed files.
