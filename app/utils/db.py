@@ -19,6 +19,7 @@ Base = declarative_base()
 
 
 def init_db():
+    """Import models and create database tables."""
     # Import models here so that SQLAlchemy is aware of them before creating
     # tables. This prevents circular import issues at module load time.
     import app.models  # noqa: F401
