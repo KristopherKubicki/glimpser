@@ -1,3 +1,5 @@
+"""Database utilities for initializing the SQLite engine and schema."""
+
 import os
 
 from sqlalchemy import create_engine, text
@@ -19,8 +21,11 @@ Base = declarative_base()
 
 
 def init_db():
-    # Import models here so that SQLAlchemy is aware of them before creating
-    # tables. This prevents circular import issues at module load time.
+    """Create all database tables defined in :mod:`app.models`."""
+
+    # Import models so SQLAlchemy registers them before table creation. This
+    # import is intentionally local to avoid circular dependencies at module
+    # load time.
     import app.models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
