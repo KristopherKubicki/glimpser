@@ -81,7 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Bumped package version in setup.py to 0.2.7.
+- Bumped package version in pyproject.toml to 0.2.7.
 
 ## [0.2.6] - 2025-06-01
 
