@@ -19,8 +19,10 @@ This guide will walk you through the process of setting up Glimpser and running 
 2. Install the required dependencies:
 
    ```
-   pip install -r requirements.txt
+   pip install .
    ```
+
+   The project dependencies are managed in `pyproject.toml`.
 
 3. Run the application:
 
