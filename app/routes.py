@@ -135,7 +135,6 @@ FILE_LOCATION_NAMES = [
     "SUMMARIES_DIRECTORY",
 ]
 
-import sqlite3
 from typing import Any, Callable, Dict, Generator, List, Optional
 
 from sqlalchemy.exc import OperationalError, SQLAlchemyError

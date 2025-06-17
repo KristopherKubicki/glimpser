@@ -120,6 +120,16 @@ The web interface will be available at [http://localhost:8082](http://localhost:
 If you cannot log in or see video feeds, double-check that your `.env` file matches the configuration values in the database. Missing `SECRET_KEY` or API credentials often cause startup failures. Refer to [Troubleshooting](docs/troubleshooting.md) for more solutions.
 
 
+### Developer Dependencies
+
+To install Python packages required for development, run:
+
+```sh
+pip install .[dev]
+```
+
+Then install linters and JavaScript tools with `make setup` (or `scripts/setup_env.sh`).
+
 ## Usage
 
 ### Configuration
@@ -209,6 +219,14 @@ To set up the project for development:
 
 5. Verify the codebase and run tests:
 
+
+1. Install the tooling and Git hooks (or run `make setup`):
+   ```sh
+   pip install .[dev]
+   npm install
+   pre-commit install
+   ```
+2. Verify hooks and run linters:
    ```sh
    pre-commit run --all-files
    flake8
