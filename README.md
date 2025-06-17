@@ -124,8 +124,14 @@ If you cannot log in or see video feeds, double-check that your `.env` file matc
 To install Python packages required for development, run:
 
 ```sh
-pip install .
-pip install -r requirements-dev.txt
+pip install -e .[dev]
+```
+
+For air-gapped or bandwidth-constrained setups, include the optional
+`[agents]` extras to install an offline toolkit:
+
+```sh
+pip install -e .[dev,agents]
 ```
 
 Then install linters and JavaScript tools with `make setup` (or `scripts/setup_env.sh`).
@@ -206,8 +212,7 @@ To set up the project for development:
 3. Install Python dependencies:
 
    ```sh
-   pip install .
-   pip install -r requirements-dev.txt
+   pip install -e .[dev]
    ```
 
 4. Install developer tooling:
@@ -240,7 +245,7 @@ From [Developer Guide](docs/developer_guide.md):
 
 1. Install the tooling and Git hooks (or run `make setup`):
    ```sh
-   pip install -r requirements-dev.txt
+   pip install -e .[dev]
    npm install
    pre-commit install
    ```

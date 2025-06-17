@@ -2,9 +2,6 @@
 # Set up local development environment
 set -e
 
-pip install .
-if [ -f requirements-dev.txt ]; then
-    pip install -r requirements-dev.txt
-fi
+pip install -e .[dev]  # add '[agents]' for offline agent toolkit
 npm install
 pre-commit install

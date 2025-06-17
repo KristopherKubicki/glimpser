@@ -6,7 +6,7 @@ This guide provides tips for extending Glimpser, running tests, and contributing
 
 1. Clone the repository and create a virtual environment:
    ```sh
-ruff check --exit-zero .
+   ruff check --exit-zero .
    git clone https://github.com/KristopherKubicki/glimpser.git
    cd glimpser
    python -m venv env
@@ -14,12 +14,16 @@ ruff check --exit-zero .
    ```
 2. Install Python dependencies:
    ```sh
-   pip install .  # installs runtime dependencies from `pyproject.toml`
-   pip install -r requirements-dev.txt
+   pip install -e .[dev]  # installs runtime and development packages
    ```
    Browser automation packages used for screenshots are grouped under the
    optional `browser` extras in `setup.py`. A minimal install only requires
    `wkhtmltoimage` for lightweight captures.
+   If you plan to work in an offline environment, install the optional
+   `agents` extras as well:
+   ```sh
+   pip install -e .[dev,agents]
+   ```
 3. Set up tooling:
    ```sh
    make setup  # installs pre-commit hooks and JS packages
