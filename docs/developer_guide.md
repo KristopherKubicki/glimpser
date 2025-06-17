@@ -15,6 +15,8 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    ```sh
    pip install -e ".[dev]"
    ```
+   The `dev` extras now include `flake8` for linting so you don't need to
+   install it separately.
 3. Install the `pre-commit` tool and set up the Git hooks:
    ```sh
    pip install pre-commit

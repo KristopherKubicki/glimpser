@@ -5,6 +5,7 @@ import json
 import logging
 import argparse
 import sqlite3
+import secrets
 from pathlib import Path
 from importlib.metadata import PackageNotFoundError, version
 
@@ -265,6 +266,11 @@ CLOCK_NAVBAR = get_setting("CLOCK_NAVBAR", "True") == "True"
 
 # Load settings from the database
 SECRET_KEY = get_setting("SECRET_KEY", "default_secret_key")
+if SECRET_KEY == "default_secret_key":
+    logging.error("SECRET_KEY is using the insecure default; generating a random value")
+    # Generate a random key to avoid predictable sessions. This key will
+    # change on every startup unless the user sets a persistent value.
+    SECRET_KEY = secrets.token_urlsafe(32)
 USER_NAME = get_setting("USER_NAME", "admin")
 USER_PASSWORD_HASH = get_setting("USER_PASSWORD_HASH", "")
 API_KEY = get_setting("API_KEY", "")

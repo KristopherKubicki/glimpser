@@ -48,8 +48,10 @@ updated with `generate_credentials.py` or through the web interface.
 
 - `USER_NAME` – default login name (default `admin`)
 - `USER_PASSWORD_HASH` – hashed password string (empty by default)
-- `SECRET_KEY` – secret key used for session management (default
-  `default_secret_key`)
+- `SECRET_KEY` – secret key used for session management. Leaving the
+  value at its default (`default_secret_key`) causes the server to log
+  an error and generate a random key on startup, which invalidates
+  existing sessions.
 - `API_KEY` – key used to access the API (empty by default)
 - `SSO_TOKEN` – token used for the `/sso` login endpoint (empty by default)
 - `SSO_USERNAME` – username associated with SSO logins (defaults to `USER_NAME`)
