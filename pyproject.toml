@@ -160,6 +160,7 @@ agents = [
   "pre-commit-docker",
   "gitleaks",
   "gitlint",
-  "vulture"
+  "vulture",
+  "pytest-socket"
 ]
 
