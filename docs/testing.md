@@ -25,6 +25,9 @@ All tests run with `pytest-socket` active, preventing any outbound network
 requests. If a scenario truly requires network access call
 `pytest_socket.enable_socket()` within that test.
 
+Even the optional end-to-end tests run with sockets disabled unless they
+explicitly enable them.
+
 Pytest ignores the Debian packaging directory. Running `build_packages.sh`
 creates a copy of the app under `debian/glimpser`, but `norecursedirs`
 prevents those files from being collected as tests.
