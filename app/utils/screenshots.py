@@ -37,20 +37,54 @@ from typing import Dict
 
 import numpy as np
 import requests
-import yt_dlp as youtube_dl
-from pdf2image import convert_from_path
-from PIL import (
-    Image,
-    ImageDraw,
-    ImageFont,
-    ImageOps,
-)
-from selenium import webdriver
-from selenium.common.exceptions import TimeoutException, WebDriverException
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
+
+Image = None
+ImageDraw = None
+ImageFont = None
+ImageOps = None
+
+
+def _ensure_pillow() -> bool:
+    """Import Pillow modules lazily."""
+
+    global Image, ImageDraw, ImageFont, ImageOps
+    if Image is not None:
+        return True
+    try:
+        from PIL import Image as _Image
+        from PIL import ImageDraw as _ImageDraw
+        from PIL import ImageFont as _ImageFont
+        from PIL import ImageOps as _ImageOps
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        logging.error("Pillow not available: %s", exc)
+        return False
+
+    Image = _Image
+    ImageDraw = _ImageDraw
+    ImageFont = _ImageFont
+    ImageOps = _ImageOps
+    return True
+
+
+def _import_yt_dlp():
+    try:
+        import yt_dlp as youtube_dl
+
+        return youtube_dl
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        logging.error("yt_dlp not available: %s", exc)
+        return None
+
+
+def _import_pdf2image():
+    try:
+        from pdf2image import convert_from_path
+
+        return convert_from_path
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        logging.error("pdf2image not available: %s", exc)
+        return None
+
 
 from .network import is_system_online
 
@@ -84,6 +118,9 @@ def _safe_import_pynput() -> None:
 
 
 _safe_import_pynput()
+
+# Ensure Pillow modules are loaded for external callers/tests
+_ensure_pillow()
 
 
 import app.config as config
@@ -214,6 +251,9 @@ def random_user_agent():
 
 def load_font(size):
     """Return a truetype font for overlays."""
+    if not _ensure_pillow():
+        return None
+
     for font_name in FONT_CANDIDATES:
         try:
             return ImageFont.truetype(font_name, size)
@@ -229,6 +269,14 @@ _driver_local = threading.local()
 
 
 def get_driver(opts):
+    try:
+        from selenium import webdriver
+        from selenium.webdriver.chrome.service import Service
+        from webdriver_manager.chrome import ChromeDriverManager
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        logging.error("Selenium not available: %s", exc)
+        return None
+
     driver = getattr(_driver_local, "driver", None)
     if driver is None:
         if not is_system_online():
@@ -260,6 +308,8 @@ def http_session():
 
 
 def _is_valid_png(path):
+    if not _ensure_pillow():
+        return False
     try:
         with Image.open(path) as im:
             im.verify()  # raises if corrupt/zero-byte
@@ -659,6 +709,9 @@ def run_cmd(cmd, timeout):
 
 
 def add_timestamp(image_path, name="unknown", invert=False):
+    if not _ensure_pillow():
+        return
+
     if os.path.exists(image_path):
         with Image.open(
             image_path
@@ -791,6 +844,9 @@ def add_timestamp(image_path, name="unknown", invert=False):
 
 def create_placeholder(image_path, name="unknown"):
     """Generate a simple placeholder image with a timestamp."""
+    if not _ensure_pillow():
+        return
+
     img = Image.new("RGB", (640, 360), color="black")
     draw = ImageDraw.Draw(img)
     font = load_font(20)
@@ -825,6 +881,9 @@ def download_image(
         stealth (bool): Use stealth user agent.
         proxy (str, optional): Proxy to use for the HTTP request.
     """
+
+    if not _ensure_pillow():
+        return False
 
     proxy = validate_proxy(proxy)
     clean_url = sanitize_url(url)
@@ -924,9 +983,13 @@ def download_pdf(
     username=None,
     password=None,
 ):
-    """
-    Attempt to download the first page of a PDF from the URL and convert it to PNG format.
-    """
+    """Download a PDF and save the first page as PNG."""
+    if not _ensure_pillow():
+        return False
+    convert_from_path = _import_pdf2image()
+    if convert_from_path is None:
+        return False
+
     tmp_name = None  # path of the downloaded PDF
     lsuccess = False
 
@@ -1029,6 +1092,9 @@ def download_pdf(
 
 def is_enhanced(url):
     """Return True if ``yt_dlp`` has a specialized extractor for the URL."""
+    youtube_dl = _import_yt_dlp()
+    if youtube_dl is None:
+        return False
     try:
         extractors = youtube_dl.extractor.list_extractors()
     except Exception as e:  # pragma: no cover - defensive
@@ -1845,6 +1911,8 @@ def capture_frame_from_stream(
 
 
 def apply_dark_mode(img, rng=30, txt_rng=120):
+    if not _ensure_pillow():
+        return img
     arr = np.asarray(
         img.convert("RGB")
     ).copy()  # copy to avoid "assignment destination is read-only" errors
@@ -1868,6 +1936,8 @@ def capture_screenshot_and_har_light(
     """
     Capture a screenshot of a URL using wkhtmltoimage (WebKit).
     """
+    if not _ensure_pillow():
+        return False
     proxy = validate_proxy(proxy)
     url = validate_url(url)
     clean_url = sanitize_url(url)
@@ -2421,6 +2491,14 @@ def capture_screenshot_and_har(
     Returns True on success, False otherwise.
     """
 
+    try:
+        from selenium.common.exceptions import TimeoutException, WebDriverException
+        from selenium.webdriver.chrome.options import Options
+        from selenium.webdriver.common.by import By
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        logging.error("Selenium not available: %s", exc)
+        return False
+
     proxy = validate_proxy(proxy)
 
     # Quick sanity check
@@ -2669,6 +2747,8 @@ def _finalize_screenshot(tmp_path, final_path, name, invert, dark):
     Checks if tmp_path exists, does some post-processing, and renames to final_path.
     Returns True on success, False otherwise.
     """
+    if not _ensure_pillow():
+        return False
     if not os.path.exists(tmp_path):
         return False
 
@@ -2733,9 +2813,13 @@ def _capture_danger_mode(
 
     Return True if partial_screenshot was created, else False.
     """
-    from selenium import webdriver
-    from selenium.common.exceptions import TimeoutException
-    from selenium.webdriver.common.by import By
+    try:
+        from selenium import webdriver
+        from selenium.common.exceptions import TimeoutException
+        from selenium.webdriver.common.by import By
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        logging.error("Selenium not available for danger mode: %s", exc)
+        return False
 
     # This part uses normal Selenium for the attach:
     danger_options = webdriver.ChromeOptions()
@@ -2829,6 +2913,11 @@ def _remove_popup(driver, popup_xpath):
     If there's an annoying overlay or popup, remove it from the DOM by XPATH.
     """
     try:
+        from selenium.webdriver.common.by import By
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        logging.error("Selenium not available: %s", exc)
+        return
+    try:
         elements = driver.find_elements(By.XPATH, popup_xpath)
         for el in elements:
             driver.execute_script("arguments[0].remove();", el)
@@ -2873,6 +2962,9 @@ def create_blank_frame(name: str, size=(1280, 720)) -> str:
     str
         Absolute path to the created image.
     """
+
+    if not _ensure_pillow():
+        return ""
 
     output_dir = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(name))
     os.makedirs(output_dir, exist_ok=True)
