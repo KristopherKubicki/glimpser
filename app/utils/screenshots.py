@@ -38,7 +38,7 @@ from typing import Dict
 import numpy as np
 import requests
 import yt_dlp as youtube_dl
-from pdf2image import convert_from_path
+from pdf2image import convert_from_bytes
 from PIL import (
     Image,
     ImageDraw,
@@ -927,7 +927,6 @@ def download_pdf(
     """
     Attempt to download the first page of a PDF from the URL and convert it to PNG format.
     """
-    tmp_name = None  # path of the downloaded PDF
     lsuccess = False
 
     clean_url = sanitize_url(url)
@@ -979,17 +978,8 @@ def download_pdf(
             logging.error(f"Error downloading PDF: HTTP {response.status_code}")
             return False
 
-        # Save PDF to a temp file
-
-        tmpdirname = f"/tmp/glimpser_{name}"
-        os.makedirs(tmpdirname, exist_ok=True)
-        if os.path.exists(tmpdirname):
-            with open(os.path.join(tmpdirname, "file.pdf"), "wb") as tmp:
-                tmp_name = tmp.name
-                tmp.write(response.content)
-
-        # Convert the first page to an image
-        pages = convert_from_path(tmp_name, first_page=1, last_page=1)
+        # Convert the first page to an image directly from the response bytes
+        pages = convert_from_bytes(response.content, first_page=1, last_page=1)
         if not pages:
             logging.error("Error converting PDF to image: No pages found")
             return False
@@ -1017,14 +1007,6 @@ def download_pdf(
         logging.error(f"Error downloading PDF: {e}")
         set_cached_status_code(url, 0)
         return False
-
-    finally:
-        # Always remove leftover PDF, unless you specifically want to keep it
-        if tmp_name and os.path.exists(tmp_name):
-            try:
-                os.remove(tmp_name)
-            except OSError:
-                pass
 
 
 def is_enhanced(url):
