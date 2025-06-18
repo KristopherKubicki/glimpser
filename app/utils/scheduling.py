@@ -1284,7 +1284,11 @@ def start_metrics_collection():
 def get_system_metrics():
     uptime = time.time() - system_metrics["start_time"]
     disk_usage = psutil.disk_usage("/").percent
-    open_files = len(psutil.Process().open_files())
+    process = psutil.Process()
+    if hasattr(process, "num_fds"):
+        open_files = process.num_fds()
+    else:
+        open_files = len(process.open_files())
     ffmpeg_path = shutil.which(FFMPEG_PATH) or FFMPEG_PATH
     ffmpeg_gpu_support = ffmpeg_supports_hwaccel()
     return {

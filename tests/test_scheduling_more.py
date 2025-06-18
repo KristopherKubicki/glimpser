@@ -154,7 +154,11 @@ class TestGetSystemMetrics(unittest.TestCase):
             }
         )
         mock_psutil.disk_usage.return_value = SimpleNamespace(percent=55.5)
-        mock_psutil.Process.return_value.open_files.return_value = [1, 2, 3]
+        process_mock = mock_psutil.Process.return_value
+        if hasattr(process_mock, "num_fds"):
+            process_mock.num_fds.return_value = 3
+        else:
+            process_mock.open_files.return_value = [1, 2, 3]
         metrics = get_system_metrics()
         self.assertEqual(metrics["cpu_usage"], 1.2)
         self.assertEqual(metrics["memory_usage"], 2.3)
