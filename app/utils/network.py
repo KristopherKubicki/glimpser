@@ -1,7 +1,6 @@
 import logging
 import os
 import socket
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 
@@ -49,23 +48,18 @@ def is_system_online(timeout: int = 3) -> bool:
             return False
 
     # HTTP(S) reachability check similar to Android/iOS captive portal detection
-    if urls:
-        with ThreadPoolExecutor() as executor:
-            futures = {executor.submit(check_url, url): url for url in urls}
-            for future in as_completed(futures):
-                if future.result():
-                    return True
+    for url in urls:
+        if check_url(url):
+            return True
 
     hosts = [h.strip() for h in _get_test_hosts() if h.strip()]
     if not hosts and not urls:
         logging.warning("offline check failed: no hosts configured")
         return False
 
-    with ThreadPoolExecutor() as executor:
-        futures = {executor.submit(try_connect, host): host for host in hosts}
-        for future in as_completed(futures):
-            if future.result():
-                return True
+    for host in hosts:
+        if try_connect(host):
+            return True
 
     logging.warning("offline check failed: all hosts unreachable")
     return False
