@@ -1272,7 +1272,8 @@ def collect_system_metrics():
                 continue
         usages.sort(key=lambda x: x["cpu"], reverse=True)
         system_metrics["top_threads"] = usages[:10]
-        time.sleep(5)  # Collect metrics every 5 seconds
+        # Wait up to 5 seconds, exiting sooner if stop_event is set
+        stop_event.wait(5)
 
 
 def start_metrics_collection():
