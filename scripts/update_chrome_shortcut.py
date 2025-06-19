@@ -2,6 +2,12 @@ import os
 import sys
 from pathlib import Path
 
+LINUX_DIRS = [
+    Path("/usr/share/applications"),
+    Path("/usr/local/share/applications"),
+    Path.home() / ".local/share/applications",
+]
+
 try:
     import win32com.client  # type: ignore
 except ImportError:  # pragma: no cover - platform specific
@@ -21,42 +27,72 @@ def _update_shortcut(shortcut: Path, shell) -> bool:
     return False
 
 
+def _update_desktop_file(path: Path) -> bool:
+    """Update Exec line in a .desktop file if needed."""
+    try:
+        lines = path.read_text().splitlines()
+    except OSError:
+        return False
+    for i, line in enumerate(lines):
+        if line.startswith("Exec="):
+            if FLAG in line:
+                return False
+            if "%U" in line:
+                base = line.replace("%U", "").strip()
+                lines[i] = f"{base} {FLAG} %U"
+            else:
+                lines[i] = f"{line} {FLAG}"
+            path.write_text("\n".join(lines) + "\n")
+            return True
+    return False
+
+
 def update_chrome_shortcuts() -> list[Path]:
-    """Update Chrome .lnk files and return paths that were modified."""
-    if os.name != "nt" or win32com is None:
-        print("Shortcut update only supported on Windows with pywin32 installed")
-        return []
+    """Update Chrome shortcuts and return modified paths."""
+    if os.name == "nt" and win32com is not None:
+        shell = win32com.client.Dispatch("WScript.Shell")
+        locations = [
+            Path(os.environ.get("USERPROFILE", "")) / "Desktop",
+            Path(os.environ.get("APPDATA", ""))
+            / "Microsoft"
+            / "Windows"
+            / "Start Menu"
+            / "Programs",
+            Path(os.environ.get("ProgramData", ""))
+            / "Microsoft"
+            / "Windows"
+            / "Start Menu"
+            / "Programs",
+        ]
 
-    shell = win32com.client.Dispatch("WScript.Shell")
-    locations = [
-        Path(os.environ.get("USERPROFILE", "")) / "Desktop",
-        Path(os.environ.get("APPDATA", ""))
-        / "Microsoft"
-        / "Windows"
-        / "Start Menu"
-        / "Programs",
-        Path(os.environ.get("ProgramData", ""))
-        / "Microsoft"
-        / "Windows"
-        / "Start Menu"
-        / "Programs",
-    ]
+        updated: list[Path] = []
+        for loc in locations:
+            if loc.exists():
+                for shortcut in loc.rglob("*.lnk"):
+                    if "chrome" in shortcut.name.lower():
+                        if _update_shortcut(shortcut, shell):
+                            print(f"Updated {shortcut}")
+                            updated.append(shortcut)
+        return updated
 
-    updated: list[Path] = []
-    for loc in locations:
-        if loc.exists():
-            for shortcut in loc.rglob("*.lnk"):
-                if "chrome" in shortcut.name.lower():
-                    if _update_shortcut(shortcut, shell):
-                        print(f"Updated {shortcut}")
-                        updated.append(shortcut)
-    return updated
+    if os.name == "posix":
+        updated = []
+        for directory in LINUX_DIRS:
+            if directory.exists():
+                for entry in directory.glob("*chrome*.desktop"):
+                    if _update_desktop_file(entry):
+                        print(f"Updated {entry}")
+                        updated.append(entry)
+        return updated
+
+    print("Shortcut update only supported on Windows or Linux")
+    return []
 
 
 def update_chrome_shortcuts_info() -> tuple[list[Path], str]:
     """Return updated paths and a message describing the result."""
-    if os.name != "nt" or win32com is None:
-        return [], "Shortcut update only supported on Windows with pywin32 installed"
+    if os.name not in {"nt", "posix"} or (os.name == "nt" and win32com is None):
+        return [], "Shortcut update only supported on Windows or Linux"
 
     paths = update_chrome_shortcuts()
     if paths:
@@ -68,32 +104,44 @@ def update_chrome_shortcuts_info() -> tuple[list[Path], str]:
 
 def shortcuts_need_patch() -> bool:
     """Return True if any Chrome shortcuts are missing the debug flag."""
-    if os.name != "nt" or win32com is None:
+    if os.name == "nt" and win32com is not None:
+        shell = win32com.client.Dispatch("WScript.Shell")
+        locations = [
+            Path(os.environ.get("USERPROFILE", "")) / "Desktop",
+            Path(os.environ.get("APPDATA", ""))
+            / "Microsoft"
+            / "Windows"
+            / "Start Menu"
+            / "Programs",
+            Path(os.environ.get("ProgramData", ""))
+            / "Microsoft"
+            / "Windows"
+            / "Start Menu"
+            / "Programs",
+        ]
+
+        for loc in locations:
+            if loc.exists():
+                for shortcut in loc.rglob("*.lnk"):
+                    if "chrome" in shortcut.name.lower():
+                        sc = shell.CreateShortcut(str(shortcut))
+                        args = sc.Arguments or ""
+                        if FLAG not in args:
+                            return True
         return False
 
-    shell = win32com.client.Dispatch("WScript.Shell")
-    locations = [
-        Path(os.environ.get("USERPROFILE", "")) / "Desktop",
-        Path(os.environ.get("APPDATA", ""))
-        / "Microsoft"
-        / "Windows"
-        / "Start Menu"
-        / "Programs",
-        Path(os.environ.get("ProgramData", ""))
-        / "Microsoft"
-        / "Windows"
-        / "Start Menu"
-        / "Programs",
-    ]
-
-    for loc in locations:
-        if loc.exists():
-            for shortcut in loc.rglob("*.lnk"):
-                if "chrome" in shortcut.name.lower():
-                    sc = shell.CreateShortcut(str(shortcut))
-                    args = sc.Arguments or ""
-                    if FLAG not in args:
+    if os.name == "posix":
+        for directory in LINUX_DIRS:
+            if directory.exists():
+                for entry in directory.glob("*chrome*.desktop"):
+                    try:
+                        text = entry.read_text()
+                    except OSError:
+                        continue
+                    if "Exec=" in text and FLAG not in text:
                         return True
+        return False
+
     return False
 
 

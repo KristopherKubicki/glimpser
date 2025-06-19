@@ -36,3 +36,22 @@ export function initDangerToggle() {
     }
   });
 }
+
+export function initPatchButtonFeedback() {
+  document.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("patch-button");
+    if (!btn) return;
+    const success = document.querySelector(".alert-success");
+    const error = document.querySelector(".alert-error");
+    if (success) {
+      btn.classList.add("button-success");
+      const msg = document.createElement("p");
+      msg.className = "restart-message";
+      msg.textContent =
+        "Restart Chrome completely and open it using the patched shortcut.";
+      btn.after(msg);
+    } else if (error) {
+      btn.classList.add("button-error");
+    }
+  });
+}
