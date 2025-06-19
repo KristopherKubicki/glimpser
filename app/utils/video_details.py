@@ -1,17 +1,22 @@
 import os
 import logging
 from datetime import datetime
+from typing import Optional
 
 
-def get_latest_video_date(directory):
+def get_latest_video_date(directory: str) -> Optional[str]:
+    """Return the most recent video timestamp in ``directory``."""
+
     return get_latest_date(directory, ext="mp4")
 
 
-def get_latest_screenshot_date(directory):
+def get_latest_screenshot_date(directory: str) -> Optional[str]:
+    """Return the most recent screenshot timestamp in ``directory``."""
+
     return get_latest_date(directory, ext="png")
 
 
-def get_latest_file(directory, ext="png"):
+def get_latest_file(directory: str, ext: str = "png") -> Optional[str]:
 
     if not os.path.exists(directory):
         return None
@@ -38,7 +43,7 @@ def get_latest_file(directory, ext="png"):
     return latest_file
 
 
-def get_latest_date(directory, ext="png"):
+def get_latest_date(directory: str, ext: str = "png") -> Optional[str]:
     if not os.path.exists(directory):
         return None
 

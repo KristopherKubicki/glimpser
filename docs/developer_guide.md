@@ -41,9 +41,10 @@ to the web interface.
 
 ## Running Tests
 
-The project uses `pytest` for testing and `flake8` for linting. After activating your environment, run:
+The project uses `black` for formatting, `flake8` for linting, and `mypy` for static type checking. After activating your environment, run:
 ```sh
 flake8
+mypy
 pytest
 ```
 Running the full test suite helps ensure that your changes do not introduce regressions.

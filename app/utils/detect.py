@@ -4,9 +4,12 @@ import numpy as np
 from PIL import Image
 from skimage.metrics import structural_similarity as ssim
 import logging
+from typing import Optional, Tuple
 
 
-def calculate_difference_fast(image_path_a, image_path_b, downsample_size=(100, 100)):
+def calculate_difference_fast(
+    image_path_a: str, image_path_b: str, downsample_size: Tuple[int, int] = (100, 100)
+) -> Optional[float]:
     """
     Calculate the difference between two images using the Structural Similarity Index (SSIM).
 

@@ -122,7 +122,7 @@ def restart_server() -> None:
 
     logging.info("Restarting server...")
 
-    def delayed_restart():
+    def delayed_restart() -> None:
         time.sleep(1)  # 1-second delay
         os.execv(sys.executable, [sys.executable] + sys.argv)
 
@@ -144,14 +144,14 @@ class TemplateName:
             return False
         return True
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self._name
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"TemplateName({self._name!r})"
 
 
-def generate_timed_hash():
+def generate_timed_hash() -> str:
     """Return a short‑lived hash derived from the API key.
 
     The resulting string combines a SHA-256 digest of the API key and an
@@ -180,11 +180,11 @@ def is_hash_valid(timed_hash: str) -> bool:
         return False
 
 
-def login_required(f: Callable) -> Callable:
+def login_required(f: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator enforcing session or API key authentication for routes."""
 
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(*args: Any, **kwargs: Any) -> Any:
         # Check for API key in headers, GET parameters, or POST form data
         api_key = (
             request.headers.get("X-API-Key")
