@@ -135,6 +135,12 @@ class TestHtmlTemplates(unittest.TestCase):
         html = Path("app/templates/_status_tab.html").read_text(encoding="utf-8")
         self.assertIn('<table id="thread-table"', html)
 
+    def test_index_has_control_labels(self):
+        """Dashboard search and slider inputs should have labels."""
+        html = Path("app/templates/components.html").read_text(encoding="utf-8")
+        self.assertIn('label for="search-input"', html)
+        self.assertIn('label for="grid-width-slider"', html)
+
 
 if __name__ == "__main__":
     unittest.main()
