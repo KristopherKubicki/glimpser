@@ -17,10 +17,10 @@ If Chrome is not started with this flag, Danger mode will be unavailable.
 After Chrome updates, shortcuts may revert to their original command line. Two approaches can help keep the debug port enabled:
 
 - **Manual update**: Edit the desktop shortcut each time Chrome updates.
-- **Helper script**: Run `python scripts/update_chrome_shortcut.py` to rewrite the shortcut with the required flag. This can also be triggered from the *Update Chrome Shortcut* button on the Settings page or the *Patch Chrome Shortcuts* button on the Danger page. The page now shows which shortcuts were updated after the patch completes.
+- **Helper script**: Run `python scripts/update_chrome_shortcut.py` to rewrite the shortcut with the required flag. This works on Windows `.lnk` files and on Linux `.desktop` files (such as `/usr/share/applications/google-chrome.desktop`). It can also be triggered from the *Update Chrome Shortcut* button on the Settings page or the *Patch Chrome Shortcuts* button on the Danger page. The page now shows which shortcuts were updated after the patch completes and highlights the button in green on success.
 - **Check script**: Run `python scripts/check_danger_mode.py` to print whether the debug port is detected and if your shortcuts still require patching.
 
-After patching your shortcuts, restart Chrome and open it using the profile you intend to use with Danger mode.
+After patching your shortcuts, completely close Chrome and reopen it using the patched shortcut.
 
 For now, you can store the launch command in a script and double-click it instead of using the original shortcut.
 

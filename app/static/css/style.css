@@ -1191,6 +1191,16 @@ footer.fade-out {
   border-radius: 5px;
 }
 
+.button-success {
+  background-color: #28a745;
+  color: #fff;
+}
+
+.button-error {
+  background-color: #dc3545;
+  color: #fff;
+}
+
 /* Login Page Styles */
 .login-wrapper {
   display: flex;

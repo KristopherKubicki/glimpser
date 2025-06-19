@@ -52,6 +52,21 @@ class TestShortcutsNeedPatch(unittest.TestCase):
             ):
                 self.assertFalse(update_chrome_shortcut.shortcuts_need_patch())
 
+    def test_linux_update(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            share = Path(tmpdir) / "applications"
+            share.mkdir(parents=True)
+            desktop = share / "google-chrome.desktop"
+            desktop.write_text("Exec=/usr/bin/google-chrome %U\n")
+            fake_os = SimpleNamespace(name="posix", environ=os.environ)
+            with patch.object(update_chrome_shortcut, "os", fake_os), patch.object(
+                update_chrome_shortcut, "LINUX_DIRS", [share]
+            ):
+                self.assertTrue(update_chrome_shortcut.shortcuts_need_patch())
+                paths = update_chrome_shortcut.update_chrome_shortcuts()
+                self.assertEqual(paths, [desktop])
+                self.assertIn(update_chrome_shortcut.FLAG, desktop.read_text())
+
 
 if __name__ == "__main__":
     unittest.main()
