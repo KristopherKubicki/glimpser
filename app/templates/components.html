@@ -34,12 +34,14 @@ confirm='Confirm', cancel='Cancel') -%}
 <div id="controls-wrapper">
   <section id="template-controls">
     {{ caller() }}
+    <label for="search-input" class="sr-only">Search</label>
     <input
       type="text"
       id="search-input"
       placeholder="Search cameras"
       title="Enter search terms or docs keywords"
     />
+    <label for="grid-width-slider" class="sr-only">Tile size</label>
     <input
       type="range"
       id="grid-width-slider"
