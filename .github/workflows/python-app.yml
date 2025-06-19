@@ -68,7 +68,7 @@ jobs:
       - name: Audit npm packages
         run: npm audit --audit-level=high
       - name: Audit Python dependencies
-        run: pip-audit pyproject.toml
+        run: pip-audit .
       - name: Type check with mypy
         if: env.ENABLE_MYPY == 'true'
         run: mypy .
