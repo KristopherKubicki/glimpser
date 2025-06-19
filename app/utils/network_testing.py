@@ -1,9 +1,19 @@
 import json
 import time
+from typing import List, Optional, Tuple
+
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
 
 
-def network_idle_condition(driver, url, timeout=30, idle_time=0.25, stealth=False):
+def network_idle_condition(
+    driver: WebDriver,
+    url: str,
+    timeout: int = 30,
+    idle_time: float = 0.25,
+    stealth: bool = False,
+) -> Tuple[bool, int]:
     """
     Returns a function that can be used as a condition for WebDriverWait.
     It checks if the network has been idle for a specified amount of time.
@@ -61,7 +71,9 @@ def network_idle_condition(driver, url, timeout=30, idle_time=0.25, stealth=Fals
     return True, lstatus
 
 
-def check_network_errors(driver, url, timeout=30):
+def check_network_errors(
+    driver: WebDriver, url: str, timeout: int = 30
+) -> Tuple[bool, List[str]]:
     """
     Check for network errors during page load.
 
@@ -91,7 +103,9 @@ def check_network_errors(driver, url, timeout=30):
     return False, errors
 
 
-def wait_for_element(driver, selector, timeout=10):
+def wait_for_element(
+    driver: WebDriver, selector: str, timeout: int = 10
+) -> Optional[WebElement]:
     """
     Wait for an element to be present on the page.
 

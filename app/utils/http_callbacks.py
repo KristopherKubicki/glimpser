@@ -1,17 +1,19 @@
 import logging
 import time
+from typing import Any, Dict, Optional
+
 import requests
 
 
 def send_http_callback(
-    url,
-    event_type,
-    payload,
+    url: str,
+    event_type: str,
+    payload: Dict[str, Any],
     *,
-    timeout=5,
-    headers=None,
-    retries=0,
-):
+    timeout: int = 5,
+    headers: Optional[Dict[str, str]] = None,
+    retries: int = 0,
+) -> None:
     """Send an HTTP POST callback if a URL is provided.
 
     Parameters

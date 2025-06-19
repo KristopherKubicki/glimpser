@@ -3,12 +3,13 @@ import os
 import time
 from functools import wraps
 from threading import Lock
+from typing import Any, Callable, Dict, List
 
 LOG_PATH = "data/latency_log.json"
 _lock = Lock()
 
 
-def _load_log():
+def _load_log() -> List[Dict[str, Any]]:
     if os.path.exists(LOG_PATH):
         try:
             with open(LOG_PATH, "r") as f:
@@ -18,20 +19,22 @@ def _load_log():
     return []
 
 
-def _save_log(entries):
+def _save_log(entries: List[Dict[str, Any]]) -> None:
     os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
     with open(LOG_PATH, "w") as f:
         json.dump(entries, f)
 
 
-def profile_route(name=None):
+def profile_route(
+    name: str | None = None,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator for measuring route execution time."""
 
-    def decorator(func):
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         route_name = name or func.__name__
 
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             start = time.time()
             try:
                 return func(*args, **kwargs)
@@ -53,7 +56,7 @@ def profile_route(name=None):
     return decorator
 
 
-def get_latency_stats():
+def get_latency_stats() -> Dict[str, Dict[str, float | int]]:
     """Return aggregated latency statistics."""
     with _lock:
         data = _load_log()
