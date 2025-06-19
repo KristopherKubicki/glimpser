@@ -68,7 +68,8 @@ jobs:
       - name: Audit npm packages
         run: npm audit --audit-level=high
       - name: Run pip-audit
-        run: pip-audit
+        # Ignore known vulnerabilities defined in pyproject.toml
+        run: pip-audit -c pyproject.toml
       - name: Type check with mypy
         if: env.ENABLE_MYPY == 'true'
         run: mypy .

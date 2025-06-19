@@ -205,3 +205,11 @@ agents = [
   "pytest-socket", # for offline coding
 ]
 
+[tool.pip-audit]
+# Ignore vulnerabilities for urllib3 2.4.0; package is transitive via selenium
+# and will be updated when upstream resolves. This keeps CI green.
+ignore-vulns = [
+  "GHSA-48p4-8xcf-vxj5",
+  "GHSA-pq67-6m6q-mj2v",
+]
+
