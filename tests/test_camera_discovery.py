@@ -619,6 +619,42 @@ class TestCameraDiscovery(unittest.TestCase):
             self.assertEqual(vendor2, "RemoteCo")
             self.assertEqual(mock_get.call_count, 1)
 
+    def test_remote_subnets_parsing(self):
+        with patch.object(config, "REMOTE_SUBNETS", ["10.0.0.0/30", "bad"]):
+            with patch.object(camera_discovery, "logging") as mock_log:
+                nets = camera_discovery._remote_subnets()
+        self.assertIn(ip_network("10.0.0.0/30"), nets)
+        self.assertEqual(len(nets), 1)
+        mock_log.warning.assert_called_once()
+
+    @patch("app.utils.camera_discovery._scan_rtsp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._probe_ssdp", return_value=[])
+    @patch("app.utils.camera_discovery._probe_mdns", return_value=[])
+    @patch("app.utils.camera_discovery._probe_onvif", return_value=[])
+    @patch("app.utils.camera_discovery._local_video_devices", return_value=[])
+    @patch("app.utils.camera_discovery._local_subnets")
+    def test_discover_includes_remote_subnets(
+        self,
+        mock_local_subnets,
+        *_mocks,
+    ):
+        mock_local_subnets.return_value = [ip_network("192.168.1.0/30")]
+        with patch.object(
+            camera_discovery,
+            "_remote_subnets",
+            return_value=[ip_network("10.0.0.0/30")],
+        ):
+            seen = {}
+
+            def fake_rtsp(nets):
+                seen["nets"] = nets
+                return []
+
+            _mocks[-1].side_effect = fake_rtsp  # patch for _scan_rtsp_ports
+            camera_discovery.discover_cameras()
+        self.assertIn(ip_network("192.168.1.0/30"), seen["nets"])
+        self.assertIn(ip_network("10.0.0.0/30"), seen["nets"])
+
     @patch("app.utils.camera_discovery.requests.get")
     def test_remote_vendor_lookup_success(self, mock_get):
         camera_discovery._remote_vendor_lookup.cache_clear()

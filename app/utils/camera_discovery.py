@@ -420,6 +420,20 @@ def _local_subnets(max_prefixlen: int = 24):
     return sorted(subnets, key=lambda n: (n.network_address.packed, n.prefixlen))
 
 
+def _remote_subnets() -> list[ip_network]:
+    """Return networks listed in :data:`app.config.REMOTE_SUBNETS`."""
+
+    from app import config
+
+    nets: list[ip_network] = []
+    for cidr in getattr(config, "REMOTE_SUBNETS", []):
+        try:
+            nets.append(ip_network(cidr, strict=False))
+        except ValueError:
+            logging.warning("invalid REMOTE_SUBNETS entry %s", cidr)
+    return nets
+
+
 def _probe_onvif(timeout=2):
     cameras = []
     message_id = uuid.uuid4()
@@ -928,6 +942,12 @@ def discover_cameras(progress_callback=None, subnets=None):
         except Exception as e:  # pragma: no cover - system dependent
             logging.warning("subnet discovery error: %s", e)
             subnets = []
+    else:
+        subnets = list(subnets)
+
+    for net in _remote_subnets():
+        if net not in subnets:
+            subnets.append(net)
 
     tasks = {
         "onvif": _probe_onvif,

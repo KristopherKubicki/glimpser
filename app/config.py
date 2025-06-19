@@ -478,6 +478,11 @@ WATCHDOG_MEMORY_THRESHOLD = int(get_setting("WATCHDOG_MEMORY_THRESHOLD", 80))
 # to ``True`` to run an hourly scan automatically.
 DISCOVERY_AUTOSTART = get_setting("DISCOVERY_AUTOSTART", "False") == "True"
 
+# Optional additional networks scanned during discovery. Provide a comma or
+# whitespace separated list of CIDR ranges such as "10.0.0.0/24,192.168.50.0/24".
+_REMOTE_SUBNETS_RAW = get_setting("REMOTE_SUBNETS", "")
+REMOTE_SUBNETS = [s for s in re.split(r"[,\s]+", _REMOTE_SUBNETS_RAW) if s]
+
 # Email settings
 EMAIL_ENABLED = get_setting("EMAIL_ENABLED", "False")
 EMAIL_SENDER = get_setting("EMAIL_SENDER", "")

@@ -216,8 +216,9 @@ Locally attached USB webcams (for example, Logitech devices) will appear under
 `/dev/video*`.
 
 Remote sources such as **GOES16**, **ZoomEarth**, and **Doppler** can be added
-manually, but they are not discovered automatically because they are hosted
-outside the local network. Selecting **internet** in the subnet field loads a
+manually. You may also set `REMOTE_SUBNETS` with a comma-separated list of CIDR
+ranges to include additional networks in the scan. These ranges are merged with
+the local interfaces. Selecting **internet** in the subnet field loads a
 curated list of public feeds including `time.gov` and other reference cameras.
 
 When creating a new template you can now supply just the camera's base
@@ -228,4 +229,4 @@ tools like Blue Iris.
 
 ## Future improvements
 
-Discovering cameras on remote networks remains on the roadmap. Authentication for protected feeds has been enhanced – you can now store a username and password with each template, and the capture routines will automatically supply these credentials.
+Scanning remote networks is supported via `REMOTE_SUBNETS`. Authentication for protected feeds has been enhanced – you can now store a username and password with each template, and the capture routines will automatically supply these credentials.
