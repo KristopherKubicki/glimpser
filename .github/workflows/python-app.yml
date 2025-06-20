@@ -67,8 +67,9 @@ jobs:
         run: npm run lint:css
       - name: Audit npm packages
         run: npm audit --audit-level=high
+      # Temporary until Selenium 4.34 is released
       - name: Run pip-audit
-        run: pip-audit
+        run: pip-audit --ignore-vuln GHSA-48p4-8xcf-vxj5 --ignore-vuln GHSA-pq67-6m6q-mj2v
       - name: Type check with mypy
         if: env.ENABLE_MYPY == 'true'
         run: mypy .
