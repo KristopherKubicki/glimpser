@@ -141,6 +141,11 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn('label for="search-input"', html)
         self.assertIn('label for="grid-width-slider"', html)
 
+    def test_grid_presets_present(self):
+        html = Path("app/templates/components.html").read_text(encoding="utf-8")
+        self.assertIn('id="grid-presets"', html)
+        self.assertIn('data-grid="4"', html)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -50,6 +50,12 @@ confirm='Confirm', cancel='Cancel') -%}
       value="360"
       title="Adjust the width of the template grid"
     />
+    <div id="grid-presets">
+      <button type="button" data-grid="1">1×1</button>
+      <button type="button" data-grid="4">2×2</button>
+      <button type="button" data-grid="9">3×3</button>
+      <button type="button" data-grid="16">4×4</button>
+    </div>
     {{ status_legend() }}
     <button
       id="caption-toggle"

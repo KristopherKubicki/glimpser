@@ -279,6 +279,16 @@ export function initTemplates() {
       } else {
         handleSlider();
         setupTileResizeDrag(slider);
+        document
+          .querySelectorAll("#grid-presets button[data-grid]")
+          .forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const tiles = parseInt(btn.dataset.grid, 10);
+              const size = tileSizeForGrid(tiles);
+              slider.value = size.toString();
+              slider.dispatchEvent(new Event("input"));
+            });
+          });
       }
     }
 
@@ -462,6 +472,32 @@ export function computeBorderColor(ageMinutes, isError) {
   }
   const alpha = Math.pow(0.5, step);
   return `rgba(${base[0]}, ${base[1]}, ${base[2]}, ${alpha})`;
+}
+
+export function tileSizeForGrid(total) {
+  const slider = document.getElementById("grid-width-slider");
+  const list = document.getElementById("template-list");
+  if (!slider || !list) return 0;
+  const gap = parseFloat(getComputedStyle(list).gap || "0") || 0;
+  const ASPECT = 9 / 16;
+  const cols = Math.ceil(Math.sqrt(total));
+  const rows = Math.ceil(total / cols);
+  const maxHoriz = Math.floor((window.innerWidth - gap * (cols - 1)) / cols);
+  const headerHeight = document.querySelector("header")?.offsetHeight || 0;
+  const bannerHeight =
+    document.getElementById("network-banner")?.offsetHeight || 0;
+  const footerSpace = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue(
+      "--footer-space",
+    ) || "0",
+  );
+  const availableHeight =
+    window.innerHeight - headerHeight - bannerHeight - footerSpace;
+  const maxVert = Math.floor(
+    (availableHeight - gap * (rows - 1)) / (rows * ASPECT),
+  );
+  const width = Math.min(parseFloat(slider.max), maxHoriz, maxVert);
+  return Math.max(parseFloat(slider.min), width);
 }
 
 export function setupTileResizeDrag(slider) {
