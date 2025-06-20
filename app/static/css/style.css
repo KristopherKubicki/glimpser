@@ -2102,6 +2102,15 @@ details > summary {
   border-radius: 8px;
 }
 
+#hotkeys-modal ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+#hotkeys-modal kbd {
+  font-weight: 700;
+}
+
 .edit-template-modal-content {
   position: relative;
   margin-top: 5vh;
