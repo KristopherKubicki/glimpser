@@ -356,9 +356,6 @@ h2 {
   #template-controls input[type="text"] {
     width: 6rem;
   }
-  #status-legend {
-    display: none;
-  }
   #controls-wrapper {
     font-size: 0.75rem;
   }
@@ -683,6 +680,12 @@ body.high-contrast-mode {
 
 .status-box.error {
   border-color: red;
+}
+
+@media (max-width: 767px) {
+  #status-legend {
+    display: none;
+  }
 }
 
 /* Improve video controls on mobile */
