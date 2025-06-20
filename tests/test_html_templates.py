@@ -104,6 +104,10 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIsNotNone(advanced, "advanced-toggle missing")
         self.assertEqual(advanced.get("type"), "checkbox")
 
+    def test_settings_has_contrast_toggle(self):
+        html = Path("app/templates/settings.html").read_text(encoding="utf-8")
+        self.assertIn('id="contrast-toggle"', html)
+
     def test_captions_prompt_label(self):
         """Captions page prompt textarea should have a visible label."""
         html = Path("app/templates/captions.html").read_text(encoding="utf-8")

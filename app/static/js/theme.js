@@ -34,3 +34,23 @@ export function initThemeToggle() {
     }
   });
 }
+
+export function initContrastToggle() {
+  document.addEventListener("DOMContentLoaded", () => {
+    const toggle = document.getElementById("contrast-toggle");
+    const applyContrast = (mode) => {
+      document.body.classList.toggle("high-contrast-mode", mode === "high");
+    };
+
+    let current = localStorage.getItem("contrast") || "normal";
+    applyContrast(current);
+
+    toggle?.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      current = current === "high" ? "normal" : "high";
+      localStorage.setItem("contrast", current);
+      applyContrast(current);
+    });
+  });
+}

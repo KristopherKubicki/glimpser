@@ -562,6 +562,18 @@ body.dark-mode {
   --table-border-color: #444;
 }
 
+body.high-contrast-mode {
+  --bg-color: #000;
+  --secondary-bg-color: #000;
+  --text-color: #fff;
+  --form-bg-color: #000;
+  --form-text-color: #fff;
+  --table-header-bg-color: #000;
+  --table-row-alt-bg-color: #111;
+  --table-hover-bg-color: #222;
+  --table-border-color: #fff;
+}
+
 .camera-name,
 .timestamp {
   position: absolute;
