@@ -32,6 +32,10 @@ currently covered are:
 2. The login page renders a form containing `username` and `password`
    fields.
 
+Additional lightweight checks live in `tests/test_e2e_fast.py`. These tests
+log in using a dummy user, request the `/health` endpoint and verify the JSON
+payload, then ensure logging out redirects back to the login screen.
+
 Ensure that either **ChromeDriver** or **geckodriver** is installed and
 available on your `PATH`. If Selenium cannot create a browser driver the tests
 will be skipped automatically.
