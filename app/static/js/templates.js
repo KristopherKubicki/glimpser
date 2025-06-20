@@ -796,7 +796,8 @@ export async function loadTemplates() {
 
   const templateList = document.getElementById("template-list");
   const captionsTable = document.getElementById("captions-table");
-  const templateContainer = document.querySelector(".template-container");
+  const templateContainer =
+    document.querySelector(".template-container") || templateList;
   const templateDetails = document
     .getElementById("template-form")
     ?.closest("details");
@@ -805,11 +806,20 @@ export async function loadTemplates() {
   const isCaptionsPage = Boolean(captionsTable && templateContainer);
   const sliderElement = document.getElementById("grid-width-slider");
 
-  if (isIndexPage) {
-    templateList.innerHTML = '<div class="loading">Loading templates...</div>';
-  } else if (isCaptionsPage) {
-    templateContainer.innerHTML =
-      '<div class="loading">Loading templates...</div>';
+  const SKELETON_COUNT = 6;
+  if (isIndexPage || isCaptionsPage) {
+    const container = isIndexPage ? templateList : templateContainer;
+    container.innerHTML = "";
+    for (let i = 0; i < SKELETON_COUNT; i++) {
+      const card = document.createElement("div");
+      card.className = "templateDiv skeleton-card";
+      if (isCaptionsPage) {
+        const line = document.createElement("div");
+        line.className = "skeleton-line";
+        card.appendChild(line);
+      }
+      container.appendChild(card);
+    }
   }
 
   try {
