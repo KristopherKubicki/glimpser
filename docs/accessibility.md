@@ -21,3 +21,5 @@ The user interface now includes additional tooltips and descriptive alt text to 
 - The delete button text color now meets color contrast guidelines.
 - The live player styles moved to `player.css` and the index page uses
   `<section>` elements for clearer structure.
+- A high contrast toggle in the Settings page stores your choice in
+  `localStorage` and applies a `high-contrast-mode` class to the body.
