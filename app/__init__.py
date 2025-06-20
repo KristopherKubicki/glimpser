@@ -267,7 +267,6 @@ def create_app(
     # Send alerts when the application starts
     def _start_background_components() -> None:
         """Initialize scheduler and monitoring in a low priority thread."""
-        backup_config()
 
         if (
             schedule

@@ -1195,18 +1195,28 @@ thread_cpu_times = {}
 last_thread_sample = time.time()
 child_procs = []
 
+# Cache ffmpeg version after the first lookup to avoid repeated subprocess calls.
+FFMPEG_VERSION: str | None = None
+
 
 def ffmpeg_version() -> str:
-    """Return the installed FFmpeg version or 'unavailable'."""
+    """Return the installed FFmpeg version or 'unavailable'.
+
+    The result is cached in ``FFMPEG_VERSION`` after the first lookup.
+    """
+    global FFMPEG_VERSION
+    if FFMPEG_VERSION is not None:
+        return FFMPEG_VERSION
     try:
         output = subprocess.check_output(
             [FFMPEG_PATH, "-version"], stderr=subprocess.STDOUT, timeout=2
         ).decode()
         first = output.splitlines()[0]
         match = re.search(r"ffmpeg version\s+([^\s]+)", first)
-        return match.group(1) if match else first
+        FFMPEG_VERSION = match.group(1) if match else first
     except Exception:
-        return "unavailable"
+        FFMPEG_VERSION = "unavailable"
+    return FFMPEG_VERSION
 
 
 def machine_supports_hwaccel() -> bool:
@@ -1272,7 +1282,8 @@ def collect_system_metrics():
                 continue
         usages.sort(key=lambda x: x["cpu"], reverse=True)
         system_metrics["top_threads"] = usages[:10]
-        time.sleep(5)  # Collect metrics every 5 seconds
+        # Wait up to 5 seconds, exiting sooner if stop_event is set
+        stop_event.wait(5)
 
 
 def start_metrics_collection():
@@ -1290,6 +1301,7 @@ def get_system_metrics():
     else:
         open_files = len(process.open_files())
     ffmpeg_path = shutil.which(FFMPEG_PATH) or FFMPEG_PATH
+    ffmpeg_version_str = ffmpeg_version()
     ffmpeg_gpu_support = ffmpeg_supports_hwaccel()
     return {
         "cpu_usage": round(system_metrics["cpu_usage"], 1),
@@ -1299,7 +1311,7 @@ def get_system_metrics():
         "thread_count": system_metrics["thread_count"],
         "top_threads": system_metrics.get("top_threads", []),
         "uptime": f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s",
-        "ffmpeg_version": ffmpeg_version(),
+        "ffmpeg_version": ffmpeg_version_str,
         "ffmpeg_path": ffmpeg_path,
         "machine_hwaccel": machine_supports_hwaccel(),
         "ffmpeg_hwaccel": ffmpeg_gpu_support,

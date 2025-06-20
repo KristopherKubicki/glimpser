@@ -29,7 +29,7 @@ describe("controls dropdown", () => {
     expect(wrapper.classList.contains("fade-out")).toBe(true);
   });
 
-  test("remains visible on mobile", () => {
+  test("fades out after inactivity on mobile", () => {
     window.matchMedia = jest.fn().mockImplementation(() => ({
       matches: true,
       addListener: jest.fn(),
@@ -38,8 +38,8 @@ describe("controls dropdown", () => {
     const wrapper = document.getElementById("controls-wrapper");
     initControlsDropdown();
     document.dispatchEvent(new Event("DOMContentLoaded"));
-    jest.advanceTimersByTime(5000);
-    expect(wrapper.classList.contains("fade-out")).toBe(false);
+    jest.advanceTimersByTime(3000);
+    expect(wrapper.classList.contains("fade-out")).toBe(true);
   });
 
   test("stays visible when hovered", () => {
@@ -48,6 +48,16 @@ describe("controls dropdown", () => {
     document.dispatchEvent(new Event("DOMContentLoaded"));
     wrapper.dispatchEvent(new Event("mouseenter"));
     jest.advanceTimersByTime(5000);
+    expect(wrapper.classList.contains("fade-out")).toBe(false);
+  });
+
+  test("touchstart shows controls", () => {
+    const wrapper = document.getElementById("controls-wrapper");
+    initControlsDropdown();
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+    jest.advanceTimersByTime(3000);
+    expect(wrapper.classList.contains("fade-out")).toBe(true);
+    document.dispatchEvent(new Event("touchstart"));
     expect(wrapper.classList.contains("fade-out")).toBe(false);
   });
 });

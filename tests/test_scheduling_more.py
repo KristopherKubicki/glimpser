@@ -131,7 +131,7 @@ class TestAddMotionAndCaption(unittest.TestCase):
 
 class TestGetSystemMetrics(unittest.TestCase):
     @patch("app.utils.scheduling.psutil")
-    @patch("app.utils.scheduling.ffmpeg_version", return_value="6.0")
+    @patch.object(scheduling, "FFMPEG_VERSION", "6.0")
     @patch("app.utils.scheduling.machine_supports_hwaccel", return_value=True)
     @patch("app.utils.scheduling.ffmpeg_supports_hwaccel", return_value=True)
     @patch("app.utils.scheduling.shutil.which", return_value="/usr/bin/ffmpeg")
@@ -141,7 +141,6 @@ class TestGetSystemMetrics(unittest.TestCase):
         mock_which,
         mock_ffmpeg_supports,
         mock_machine,
-        mock_version,
         mock_psutil,
     ):
         scheduling.system_metrics.update(
