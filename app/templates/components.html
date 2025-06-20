@@ -14,6 +14,26 @@ confirm='Confirm', cancel='Cancel') -%}
     </button>
   </div>
 </div>
+{%- endmacro %} {%- macro hotkeys_overlay() -%}
+<div
+  id="hotkeys-modal"
+  class="modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labeledby="hotkeys-title"
+>
+  <div class="modal-content">
+    <h2 id="hotkeys-title">Keyboard Shortcuts</h2>
+    <ul class="hotkey-list">
+      <li><kbd>?</kbd> Show this help</li>
+      <li><kbd>Esc</kbd> Close overlays</li>
+      <li><kbd>Space</kbd> or <kbd>k</kbd> Play/Pause</li>
+      <li><kbd>f</kbd> Fullscreen</li>
+      <li><kbd>[</kbd> and <kbd>]</kbd> Adjust speed</li>
+      <li><kbd>←</kbd> and <kbd>→</kbd> Switch cameras</li>
+    </ul>
+  </div>
+</div>
 {%- endmacro %} {% macro status_legend() -%}
 <span id="status-legend">
   <span class="status-item">
