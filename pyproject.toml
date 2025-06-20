@@ -55,7 +55,7 @@ dependencies = [
   "setproctitle==1.3.3",
   "filelock>=3.12",
   "PyYAML>=6.0",
-  "urllib3>=2.5,<3",
+  "urllib3>=2.4,<3",
   "uv>=0.6",                       # ← *runtime-only* if you want `uv pip …`
 ]
 
@@ -141,10 +141,6 @@ extend-select = ["E", "F", "I", "UP", "PL"]     # E=pycodestyle, F=pyflakes, I=i
 python_version        = "3.11"
 ignore_missing_imports = true
 check_untyped_defs     = true
-
-[tool.uv]
-# Force every solve to land on the CVE-fixed version
-override-dependencies = ["urllib3==2.5.0"]
 
 # pytest defaults (feel free to tweak)
 [tool.pytest.ini_options]
