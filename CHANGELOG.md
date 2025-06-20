@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved screenshot reliability
 - Enhanced camera list UI and video player controls
 - Updated package requirements and cleaned up imports
+- Updated urllib3 to 2.5.0 and selenium to 4.34.0
 - Removed the JAX and Flax dependencies
 - Removed the `scikit-image` dependency in favor of a lightweight image
   comparison implementation
