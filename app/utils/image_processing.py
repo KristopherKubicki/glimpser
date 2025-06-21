@@ -6,6 +6,7 @@ import io
 import logging
 import os
 import re
+from typing import List, Optional
 
 import requests
 from PIL import Image
@@ -135,7 +136,15 @@ class ChatGPTImageComparison:
             return None, 0
 
 
-def chatgpt_compare(prompt, image_paths, template_name=None):
+def chatgpt_compare(
+    prompt: str, image_paths: List[str], template_name: Optional[str] = None
+) -> Optional[str]:
+    """Return a caption for images via ChatGPT.
+
+    Cached responses are reused and token usage is recorded when
+    ``template_name`` is provided. Returns ``None`` on API failure or a
+    descriptive message when inputs are invalid.
+    """
 
     # Check if all images exist
     for image in image_paths:
