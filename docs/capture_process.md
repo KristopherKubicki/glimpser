@@ -39,6 +39,8 @@ The general flow of the capture process is as follows:
 9. **Post-Processing**: Apply any necessary post-processing steps, such as adding timestamps or applying dark mode.
 10. **Result Handling**: Return the success status of the capture process.
 
+![Capture Flow Diagram](diagrams/capture_flow.svg)
+
 ## Content-Specific Capture Methods
 
 Glimpser uses different methods to capture various types of content:
@@ -56,6 +58,7 @@ For web pages, Glimpser uses two main approaches:
 2. **Full Browser Capture**: Uses Selenium with Chrome/Chromium for more complex web pages, supporting JavaScript execution, popup handling, and custom selectors.
 
 The choice between these methods depends on factors such as:
+
 - Presence of popups that need to be handled
 - Need for JavaScript execution
 - Requirement for stealth mode
@@ -81,6 +84,7 @@ After capturing the content, Glimpser applies several post-processing steps:
 
    is wrapped and rendered with the same improved font styling to avoid
    overlapping the content.
+
 5. **Micro Barcode Overlay**: A small 1D barcode containing the camera name is placed in the lower-right corner so screenshots can be tracked within the system.
 6. **Image Optimization**: Ensure the captured image is in the correct format and optimized for storage.
 7. **PNG Validation**: Verify the temporary screenshot file before renaming it to avoid leaving corrupt images.

@@ -1,0 +1,81 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="900"
+  height="200"
+  font-family="Arial, sans-serif"
+  font-size="14"
+>
+  <defs>
+    <marker
+      id="arrow"
+      markerWidth="10"
+      markerHeight="10"
+      refX="10"
+      refY="3"
+      orient="auto"
+      markerUnits="strokeWidth"
+    >
+      <path d="M0,0 L0,6 L9,3 z" fill="#333" />
+    </marker>
+    <style>
+      .box {
+        fill: #fff;
+        stroke: #333;
+        stroke-width: 1.5;
+        rx: 4;
+      }
+      .arrow {
+        stroke: #333;
+        stroke-width: 1.5;
+        fill: none;
+        marker-end: url(#arrow);
+      }
+      text {
+        dominant-baseline: middle;
+        text-anchor: middle;
+      }
+    </style>
+  </defs>
+  <!-- Row 1 -->
+  <rect class="box" x="10" y="20" width="100" height="30" />
+  <text x="60" y="35">APScheduler</text>
+
+  <rect class="box" x="130" y="20" width="120" height="30" />
+  <text x="190" y="35">update_camera</text>
+
+  <rect class="box" x="270" y="20" width="160" height="30" />
+  <text x="350" y="35">capture_or_download</text>
+
+  <rect class="box" x="450" y="20" width="220" height="40" />
+  <text x="560" y="40">Post-processing</text>
+  <text x="560" y="55">(video_archiver, overlays)</text>
+
+  <rect class="box" x="690" y="20" width="140" height="30" />
+  <text x="760" y="35">update_summary</text>
+
+  <!-- Row 2 -->
+  <rect class="box" x="350" y="120" width="100" height="30" />
+  <text x="400" y="135">database</text>
+
+  <rect class="box" x="480" y="120" width="170" height="30" />
+  <text x="565" y="135">send_http_callback</text>
+
+  <rect class="box" x="10" y="120" width="110" height="30" />
+  <text x="65" y="135">Flask routes</text>
+
+  <rect class="box" x="150" y="120" width="120" height="30" />
+  <text x="210" y="135">Frontend</text>
+
+  <!-- Arrows row 1 -->
+  <path class="arrow" d="M110,35 H130" />
+  <path class="arrow" d="M250,35 H270" />
+  <path class="arrow" d="M430,35 H450" />
+  <path class="arrow" d="M670,35 H690" />
+  <path class="arrow" d="M760,50 V120 H400" />
+
+  <!-- Arrows row 2 -->
+  <path class="arrow" d="M410,120 V100" />
+  <path class="arrow" d="M450,135 H480" />
+  <path class="arrow" d="M70,120 V70 H190" />
+  <path class="arrow" d="M120,135 H150" />
+</svg>
