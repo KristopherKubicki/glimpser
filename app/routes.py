@@ -3625,6 +3625,7 @@ def init_routes(app: Flask) -> None:
     @app.route("/settings", methods=["GET", "POST"])
     @login_required
     def settings():
+        """Render settings page and handle configuration updates via POST."""
         if request.method == "POST":
             email_settings = [
                 "EMAIL_ENABLED",
