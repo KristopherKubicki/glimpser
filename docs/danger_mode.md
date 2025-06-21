@@ -32,6 +32,10 @@ When Chrome's debug port is open and no user input has been detected for a short
 
 Captures marked as "Danger" in the template editor will use your running Chrome session. Glimpser opens a new tab, performs the capture, and closes the tab when finished. It skips the operation if you become active while the capture is pending.
 
+The diagram below illustrates the typical flow:
+
+![Danger Mode Flow](images/danger_mode_flow.svg)
+
 Be cautious with this feature, as it can interact with your browser while you are away. Ensure you trust the pages being captured.
 
 ## Enabling or Disabling Danger Mode
