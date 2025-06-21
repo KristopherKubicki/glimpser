@@ -64,6 +64,8 @@ updated with `generate_credentials.py` or through the web interface.
   inactivity (default `30`)
 - `AUTO_LOGIN_DAYS` – days the session persists when "Remember me" is checked
   (default `30`)
+- `SKIP_LOGIN_SUBNETS` – comma-separated list of IPv4 or IPv6 subnets allowed
+  to browse non-admin pages without logging in (empty by default)
 
 User accounts are stored in the `users` table. Each record contains the
 `username`, `password_hash`, and an optional `role` that can be used for future

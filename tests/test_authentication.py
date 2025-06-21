@@ -4,6 +4,7 @@ import datetime
 import os
 import time
 import unittest
+from ipaddress import ip_network
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -548,6 +549,30 @@ class TestAuthentication(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.mimetype, "text/event-stream")
         self.assertIn(b'{"error": "unauthorized"}', response.data)
+
+    def test_skip_login_for_allowed_subnet(self):
+        login_attempts = {}
+        with patch(
+            "app.routes.config.SKIP_LOGIN_SUBNETS",
+            [ip_network("127.0.0.0/8")],
+        ):
+            response = self.client.get(
+                "/protected", environ_base={"REMOTE_ADDR": "127.0.0.1"}
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b"Protected Content", response.data)
+
+    def test_admin_requires_login_even_from_allowed_subnet(self):
+        login_attempts = {}
+        with patch(
+            "app.routes.config.SKIP_LOGIN_SUBNETS",
+            [ip_network("127.0.0.0/8")],
+        ):
+            response = self.client.get(
+                "/settings", environ_base={"REMOTE_ADDR": "127.0.0.1"}
+            )
+            self.assertEqual(response.status_code, 302)
+            self.assertIn("/login", response.headers["Location"])
 
 
 if __name__ == "__main__":
