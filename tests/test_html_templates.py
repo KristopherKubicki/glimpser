@@ -4,6 +4,8 @@ import unittest
 from html.parser import HTMLParser
 from pathlib import Path
 
+from jinja2 import Environment, FileSystemLoader
+
 
 class TemplateParser(HTMLParser):
     """Simple HTML parser to capture img tags and form inputs."""
@@ -144,6 +146,26 @@ class TestHtmlTemplates(unittest.TestCase):
         html = Path("app/templates/components.html").read_text(encoding="utf-8")
         self.assertIn('label for="search-input"', html)
         self.assertIn('label for="grid-width-slider"', html)
+
+    def test_settings_row_macro_renders(self):
+        env = Environment(loader=FileSystemLoader("app/templates"))
+        tmpl = env.from_string(
+            '{% from "components.html" import settings_row with context %}{{ settings_row(setting) }}'
+        )
+        context = {
+            "setting": {"name": "TEST_BOOL", "value": "True"},
+            "boolean_fields": {"TEST_BOOL"},
+            "numeric_fields": set(),
+            "choices": {},
+            "placeholders": {},
+            "locked_settings": set(),
+            "tooltips": {},
+            "metrics": {"ffmpeg_gpu_support": True},
+        }
+        html = tmpl.render(**context)
+        self.assertIn("<tr>", html)
+        self.assertIn('name="TEST_BOOL"', html)
+        self.assertIn('type="checkbox"', html)
 
 
 if __name__ == "__main__":
