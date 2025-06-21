@@ -31,6 +31,24 @@ export function initTilePlayer() {
     container.appendChild(spinner);
   }
 
+  const speedSlider = document.getElementById("speed-slider");
+  const speedValue = document.getElementById("speed-value");
+  let refreshSeconds = speedSlider
+    ? Math.max(1, parseInt(speedSlider.value, 10) || 1)
+    : 1;
+
+  function updateSpeedLabel() {
+    if (!speedValue || !speedSlider) return;
+    const secs = Math.max(1, parseInt(speedSlider.value, 10) || 1);
+    refreshSeconds = secs;
+    speedValue.textContent =
+      secs === 60 ? "1fpm" : `${(1 / secs).toFixed(2)}fps`;
+    video.playbackRate = 1 / secs;
+  }
+
+  if (speedSlider) speedSlider.addEventListener("input", updateSpeedLabel);
+  updateSpeedLabel();
+
   const image = document.createElement("img");
   image.id = "live-image";
   image.style.display = "none";

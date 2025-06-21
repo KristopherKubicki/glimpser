@@ -867,9 +867,9 @@ function playLive() {
     };
 
     const slider = document.getElementById("speed-slider");
-    const speed = Math.pow(2, slider.value);
+    const secs = Math.max(1, parseInt(slider.value, 10) || 1);
     liveSwitchFunction();
-    liveSwitchInterval = setInterval(liveSwitchFunction, 10000 / speed);
+    liveSwitchInterval = setInterval(liveSwitchFunction, secs * 1000);
   } else {
     video.src = "/live_video?camera=" + encodeURIComponent(currentCamera);
     video.load();
@@ -889,7 +889,7 @@ function playPNG() {
   video.style.display = "none";
   image.style.display = "block";
   const slider = document.getElementById("speed-slider");
-  const speed = Math.pow(2, slider.value);
+  const secs = Math.max(1, parseInt(slider.value, 10) || 1);
   const seekBar = document.getElementById("seek-bar");
   if (seekBar) {
     seekBar.style.display = "none";
@@ -901,7 +901,7 @@ function playPNG() {
     JSON.stringify({
       ts: Date.now(),
       ctx: "discover",
-      msg: `seekBar:${seekBar},speed:${speed}`,
+      msg: `seekBar:${seekBar},secs:${secs}`,
     }),
   );
   if (currentCamera.startsWith("group-")) {
@@ -919,7 +919,7 @@ function playPNG() {
     };
     refreshGroupPNG();
     clearInterval(pngInterval);
-    pngInterval = setInterval(refreshGroupPNG, 10000 / speed);
+    pngInterval = setInterval(refreshGroupPNG, secs * 1000);
   } else if (currentCamera === "All") {
     // Special handling for the "All" option
     let cameraIndex = 0;
@@ -935,12 +935,12 @@ function playPNG() {
     };
     refreshAllPNG();
     clearInterval(pngInterval);
-    pngInterval = setInterval(refreshAllPNG, 10000 / speed);
+    pngInterval = setInterval(refreshAllPNG, secs * 1000);
   } else {
     // Original behavior for individual cameras
     refreshPNG();
     clearInterval(pngInterval);
-    pngInterval = setInterval(refreshPNG, 10000 / speed);
+    pngInterval = setInterval(refreshPNG, secs * 1000);
   }
 }
 
@@ -1020,21 +1020,22 @@ function changeVideoSource() {
 function updatePlaybackSpeed() {
   const slider = document.getElementById("speed-slider");
   const speedDisplay = document.getElementById("speed-value");
-  const speed = Math.pow(2, slider.value);
+  const secs = Math.max(1, parseInt(slider.value, 10) || 1);
   localStorage.setItem("playbackSpeed", slider.value);
-  video.playbackRate = parseFloat(speed.toFixed(2)); // Ensure the speed is a float with two decimal places
-  speedDisplay.textContent = speed.toFixed(2) + "x"; // Update the text to show two decimal places
+  const fps = 1 / secs;
+  video.playbackRate = fps;
+  speedDisplay.textContent = secs === 60 ? "1fpm" : `${fps.toFixed(2)}fps`;
 
   // Adjust the refresh rate for the PNG stream based on the playback speed
   if (pngInterval) {
     clearInterval(pngInterval);
-    pngInterval = setInterval(refreshPNG, 10000 / speed);
+    pngInterval = setInterval(refreshPNG, secs * 1000);
   }
 
   // Adjust the live group switch interval if active
   if (liveSwitchInterval && liveSwitchFunction) {
     clearInterval(liveSwitchInterval);
-    liveSwitchInterval = setInterval(liveSwitchFunction, 10000 / speed);
+    liveSwitchInterval = setInterval(liveSwitchFunction, secs * 1000);
   }
 
   speedDisplay.classList.add("highlight-speed");
