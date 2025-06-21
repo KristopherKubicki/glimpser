@@ -1,5 +1,4 @@
 import os
-import sys
 import unittest  # noqa: E402
 from unittest.mock import patch  # noqa: E402
 

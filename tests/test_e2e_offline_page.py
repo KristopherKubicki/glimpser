@@ -2,7 +2,6 @@ import argparse
 import importlib
 import os
 import shutil
-import sys
 from threading import Thread
 from unittest.mock import patch
 

@@ -1,6 +1,5 @@
 import os
 import shutil
-import sys
 import threading
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer

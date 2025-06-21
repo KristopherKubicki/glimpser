@@ -1,5 +1,4 @@
 import os
-import sys
 import tempfile
 
 from PIL import Image

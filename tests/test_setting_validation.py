@@ -1,6 +1,5 @@
 import os
 import socket
-import sys
 import unittest
 
 from app.utils.validators import MAX_WORKERS_MAX, validate_setting

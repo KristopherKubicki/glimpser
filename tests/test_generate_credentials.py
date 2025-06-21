@@ -1,7 +1,6 @@
 import argparse
 import os
 import sqlite3
-import sys
 import tempfile
 import unittest
 from unittest.mock import call, patch

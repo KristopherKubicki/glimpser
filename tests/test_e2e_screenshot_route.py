@@ -1,6 +1,5 @@
 import os
 import socket
-import sys
 from threading import Thread
 from types import SimpleNamespace
 from unittest.mock import patch

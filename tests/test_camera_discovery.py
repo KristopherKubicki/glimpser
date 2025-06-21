@@ -1,6 +1,5 @@
 import os
 import socket
-import sys
 import tempfile
 import unittest
 from ipaddress import ip_network
