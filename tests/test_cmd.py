@@ -1,10 +1,9 @@
-#!env/bin/python3
+#!/usr/bin/env python3
 # tests/test_cmd.py
 
 import json
 import os
 import subprocess
-import sys
 import unittest
 from unittest.mock import patch
 

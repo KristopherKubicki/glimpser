@@ -1,4 +1,4 @@
-#!./env/bin/python3
+#!/usr/bin/env python3
 #  main.py
 
 import argparse
@@ -35,7 +35,11 @@ def parse_arguments(arg_list=None):
 
 
 def get_cli_help() -> str:
-    """Return the formatted ``--help`` text."""
+    """Return the formatted CLI help text.
+
+    The output reflects all supported options, including the ``--version``
+    flag added to :func:`app.utils.cli.build_argument_parser`.
+    """
     return cli_help_text()
 
 
@@ -79,6 +83,7 @@ def setup_logging(args=None):
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     color_formatter = ColorFormatter("%(asctime)s - %(levelname)s - %(message)s")
     logger = logging.getLogger()
+    logger.handlers.clear()
     logger.setLevel(getattr(logging, args.log_level if args else config.LOG_LEVEL))
 
     # Ensure log directory exists

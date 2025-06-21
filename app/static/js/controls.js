@@ -3,11 +3,6 @@ export function initControlsDropdown() {
     const wrapper = document.getElementById("controls-wrapper");
     if (!wrapper) return;
 
-    const isMobile = window.matchMedia("(max-width: 767px)").matches;
-    if (isMobile) {
-      return;
-    }
-
     let fadeTimeout;
     const showControls = () => {
       wrapper.classList.remove("fade-out");
@@ -20,7 +15,7 @@ export function initControlsDropdown() {
       clearTimeout(fadeTimeout);
     };
 
-    ["mousemove", "scroll"].forEach((evt) => {
+    ["mousemove", "scroll", "touchstart"].forEach((evt) => {
       document.addEventListener(evt, showControls);
     });
     wrapper.addEventListener("mouseenter", pauseFade);

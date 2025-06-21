@@ -6,6 +6,7 @@ This guide provides tips for extending Glimpser, running tests, and contributing
 
 1. Clone the repository and create a virtual environment:
    ```sh
+   ruff check --exit-zero .
    git clone https://github.com/KristopherKubicki/glimpser.git
    cd glimpser
    python -m venv env
@@ -13,8 +14,7 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    ```
 2. Install Python dependencies:
    ```sh
-   pip install -r requirements.txt
-   pip install -r requirements-dev.txt
+   pip install .[dev]
    ```
    Browser automation packages used for screenshots are grouped under the
    optional `browser` extras in `setup.py`. A minimal install only requires
@@ -49,9 +49,10 @@ to the web interface.
 
 ## Running Tests
 
-The project uses `pytest` for testing and `flake8` for linting. After activating your environment, run:
+The project uses `pytest` for testing and lints Python with `ruff` and `flake8`. After activating your environment, run:
 
 ```sh
+ruff check --exit-zero .
 flake8
 pytest
 ```

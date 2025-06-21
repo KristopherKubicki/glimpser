@@ -5,19 +5,30 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import yaml
-
 MKDOCS_FILE = Path("mkdocs.yml")
 DOCS_LIST_FILE = Path("docs/exclude_docs")
 
 
 def parse_mkdocs_excludes(file: Path = MKDOCS_FILE) -> list[str]:
-    """Return list of excluded docs from mkdocs.yml."""
+    """Return list of excluded docs from mkdocs.yml without PyYAML."""
     if not file.exists():
         raise FileNotFoundError(file)
-    data = yaml.safe_load(file.read_text())
-    value = data.get("exclude_docs", "")
-    return [line.strip() for line in value.splitlines() if line.strip()]
+    lines = file.read_text().splitlines()
+    result: list[str] = []
+    capture = False
+    base_indent = 0
+    for line in lines:
+        stripped = line.strip()
+        if not capture and stripped.startswith("exclude_docs:"):
+            capture = True
+            base_indent = len(line) - len(line.lstrip()) + 2
+            continue
+        if capture:
+            if stripped and (len(line) - len(line.lstrip())) >= base_indent:
+                result.append(stripped)
+            elif stripped:
+                break
+    return result
 
 
 def parse_docs_list(file: Path = DOCS_LIST_FILE) -> list[str]:

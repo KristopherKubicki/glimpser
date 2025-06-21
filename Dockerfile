@@ -28,9 +28,9 @@ RUN CHROME_DRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_
 # Set work directory
 WORKDIR /app
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt gunicorn
+# Install Python dependencies
+COPY pyproject.toml uv.lock ./
+RUN pip install --no-cache-dir . gunicorn
 
 # Copy application code
 COPY . .

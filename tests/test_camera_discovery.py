@@ -1,6 +1,5 @@
 import os
 import socket
-import sys
 import tempfile
 import unittest
 from ipaddress import ip_network
@@ -568,9 +567,10 @@ class TestCameraDiscovery(unittest.TestCase):
         self.assertEqual(cam.get("url"), "rtsp://1.2.3.4:554/")
         self.assertEqual(cam["info"].get("device_type"), "camera")
 
-    @patch("app.utils.camera_discovery.requests.post")
+    @patch("app.utils.camera_discovery.request_with_retry")
     def test_autodetect_onvif_endpoints(self, mock_post):
-        def _side_effect(url, data, timeout=3):
+        def _side_effect(method, url, **kwargs):
+            data = kwargs.get("data", "")
             if "GetCapabilities" in data:
                 xml = "<Envelope><Body><Capabilities><Media><XAddr>http://1.2.3.4/onvif/media_service</XAddr></Media></Capabilities></Body></Envelope>"
             elif "GetProfiles" in data:
@@ -598,7 +598,7 @@ class TestCameraDiscovery(unittest.TestCase):
             )
             self.assertIsNone(camera_discovery._mac_for_ip("10.0.0.8"))
 
-    @patch("app.utils.camera_discovery.requests.get")
+    @patch("app.utils.camera_discovery.request_with_retry")
     def test_mac_manufacturer_cached(self, mock_get):
         with patch.object(camera_discovery, "OUI_MAP", {"001122": "TestCo"}):
             camera_discovery._remote_vendor_lookup.cache_clear()
@@ -606,7 +606,7 @@ class TestCameraDiscovery(unittest.TestCase):
             self.assertEqual(vendor, "TestCo")
             mock_get.assert_not_called()
 
-    @patch("app.utils.camera_discovery.requests.get")
+    @patch("app.utils.camera_discovery.request_with_retry")
     def test_mac_manufacturer_remote_and_cache(self, mock_get):
         resp = SimpleNamespace(status_code=200, json=lambda: {"company": "RemoteCo"})
         mock_get.return_value = resp
@@ -619,7 +619,7 @@ class TestCameraDiscovery(unittest.TestCase):
             self.assertEqual(vendor2, "RemoteCo")
             self.assertEqual(mock_get.call_count, 1)
 
-    @patch("app.utils.camera_discovery.requests.get")
+    @patch("app.utils.camera_discovery.request_with_retry")
     def test_remote_vendor_lookup_success(self, mock_get):
         camera_discovery._remote_vendor_lookup.cache_clear()
         mock_get.return_value = SimpleNamespace(
@@ -628,7 +628,7 @@ class TestCameraDiscovery(unittest.TestCase):
         vendor = camera_discovery._remote_vendor_lookup("00:11:22:33:44:55")
         self.assertEqual(vendor, "AcmeCam")
 
-    @patch("app.utils.camera_discovery.requests.get")
+    @patch("app.utils.camera_discovery.request_with_retry")
     def test_remote_vendor_lookup_failure(self, mock_get):
         camera_discovery._remote_vendor_lookup.cache_clear()
         mock_get.side_effect = Exception("boom")

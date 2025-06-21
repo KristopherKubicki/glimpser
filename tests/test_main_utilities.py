@@ -1,6 +1,5 @@
 import os
 import signal
-import sys
 import unittest
 from unittest.mock import MagicMock, call, patch
 

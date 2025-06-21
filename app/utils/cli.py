@@ -8,7 +8,11 @@ import app.config as config
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
-    """Return the ``argparse`` parser used for the ``glimpser`` CLI."""
+    """Return the ``argparse`` parser used for the ``glimpser`` CLI.
+
+    The parser includes a ``--version`` flag that prints ``config.VERSION`` and
+    exits.
+    """
     parser = argparse.ArgumentParser(description=f"Glimpser {config.VERSION}")
     parser.add_argument(
         "--db-path",
@@ -84,6 +88,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "--summaries-dir",
         default=config.SUMMARIES_DIRECTORY,
         help="Directory for storing summaries",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=config.VERSION,
+        help="Show the application version and exit",
     )
     return parser
 

@@ -1,8 +1,8 @@
+"""Database model for application users."""
+
 from sqlalchemy import Column, Integer, String
 
 from app.utils.db import Base
-
-"""Database model for application users."""
 
 
 class User(Base):

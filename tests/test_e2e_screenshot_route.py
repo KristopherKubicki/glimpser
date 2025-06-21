@@ -1,6 +1,5 @@
 import os
 import socket
-import sys
 from threading import Thread
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -13,7 +12,7 @@ from werkzeug.serving import make_server
 def _has_network() -> bool:
     """Check if outbound network access is available."""
     try:
-        socket.create_connection(("1.1.1.1", 53), timeout=1).close()
+        socket.create_connection(("1.1.1.1", 443), timeout=1).close()
         return True
     except OSError:
         return False

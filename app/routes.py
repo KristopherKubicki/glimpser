@@ -25,6 +25,7 @@ import typing
 import uuid
 from collections import deque
 from datetime import datetime, timedelta
+from fractions import Fraction
 from functools import lru_cache, wraps
 from ipaddress import ip_network
 from pathlib import Path
@@ -135,7 +136,6 @@ FILE_LOCATION_NAMES = [
     "SUMMARIES_DIRECTORY",
 ]
 
-import sqlite3
 from typing import Any, Callable, Dict, Generator, List, Optional
 
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
@@ -149,6 +149,13 @@ SEGMENT_SEC = 10
 
 
 FFMPEG = config.FFMPEG_PATH  # shortcut
+# Limit configuration uploads to 5 MB to avoid excessive memory usage
+MAX_UPLOAD_SIZE = 5 * 1024 * 1024
+
+# Precompiled regular expression for validating filenames. Only letters,
+# numbers, periods, hyphens and underscores are allowed. Using a compiled
+# regex avoids recompiling the pattern on every call to ``allowed_filename``.
+ALLOWED_FILENAME_RE = re.compile(r"^[a-zA-Z0-9\.\-_]+?$")
 
 
 # ---------- tiny helpers ----------------------------------------------------
@@ -223,6 +230,34 @@ def send_conditional_file(
 
 # ---------- main ------------------------------------------------------------
 def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
+    """Assemble a clip from segments using three FFmpeg phases.
+
+    1. Finalize each entry in ``parts`` and copy it to a temporary RAM
+       directory so the container metadata is correct.
+    2. If the combined duration is shorter than ``clip_len`` generate a
+       fading black pad from the first frame and prepend it.
+    3. Concatenate all pieces with FFmpeg, trimming to exactly ``clip_len`` and
+       writing ``out``.
+
+    Parameters
+    ----------
+    out: Path
+        Destination file for the assembled clip.
+    parts: list[Path]
+        Video fragments ordered from oldest to newest.
+    clip_len: int
+        Desired clip length in seconds.
+
+    Returns
+    -------
+    bool
+        ``True`` on success, ``False`` otherwise.
+
+    Side Effects
+    ------------
+    Creates and deletes a temporary directory under ``/dev/shm``.
+    """
+
     out_tmp = out.with_suffix(".tmp.mp4")
     ramroot = Path(tempfile.mkdtemp(dir=Path("/dev/shm")))
     fixed: list[Path] = []
@@ -268,7 +303,12 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
         ref = fixed[-1]  # last clip for geometry/fps
         first_clip = fixed[0]
         w, h = _probe(ref, "width"), _probe(ref, "height")
-        fps = eval(_probe(ref, "r_frame_rate"))
+        fps_str = _probe(ref, "r_frame_rate")
+        try:
+            fps = float(Fraction(fps_str))
+        except (ValueError, ZeroDivisionError):
+            logging.warning("Invalid r_frame_rate %s, defaulting to 1", fps_str)
+            fps = 1.0
         pad = ramroot / "pad_black.mp4"
 
         # extract first frame from earliest clip for overlay
@@ -495,6 +535,17 @@ def is_hash_valid(timed_hash: str) -> bool:
     except ValueError:
         # Incorrectly formatted hash
         return False
+
+
+def is_safe_redirect_url(target: str | None) -> bool:
+    """Return ``True`` when ``target`` is a safe relative URL."""
+
+    if not target:
+        return False
+    if "\n" in target or "\r" in target:
+        return False
+    parsed = urlparse(target)
+    return not parsed.scheme and not parsed.netloc
 
 
 def login_required(f: Callable) -> Callable:
@@ -829,15 +880,15 @@ def parse_cache_delay(headers: typing.Mapping[str, str]) -> float:
     if m:
         try:
             return float(m.group(1))
-        except ValueError:
-            pass
+        except ValueError as exc:
+            logging.warning("Invalid max-age header %s: %s", m.group(1), exc)
     expires = headers.get("Expires")
     if expires:
         try:
             dt = email.utils.parsedate_to_datetime(expires)
             return max(0.0, dt.timestamp() - time.time())
-        except Exception:
-            pass
+        except (TypeError, ValueError) as exc:
+            logging.warning("Invalid Expires header %s: %s", expires, exc)
     return 0.0
 
 
@@ -1190,8 +1241,12 @@ def generate(
                             )
                             try:
                                 os.remove(last_shot)
-                            except OSError:
-                                pass
+                            except OSError as exc:
+                                logging.warning(
+                                    "Failed to remove bad shot %s: %s",
+                                    last_shot,
+                                    exc,
+                                )
                             last_shot = None
                     except Exception as e:
                         logging.error("Failed to open last shot %s: %s", last_shot, e)
@@ -1284,8 +1339,12 @@ def generate(
                                 )
                                 try:
                                     os.remove(most_recent_file)
-                                except OSError:
-                                    pass
+                                except OSError as exc:
+                                    logging.warning(
+                                        "Failed to remove invalid screenshot %s: %s",
+                                        most_recent_file,
+                                        exc,
+                                    )
                                 frame = None
 
                             if frame is not None:
@@ -1300,8 +1359,12 @@ def generate(
                                     f.write(frame)
                                 # Atomically move the temp file into place
                                 os.replace(temp_path, last_path)
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            logging.error(
+                                "Failed to update screenshot cache: %s",
+                                exc,
+                                exc_info=True,
+                            )
 
         if not frame:
             frame = _placeholder_frame()
@@ -1438,8 +1501,7 @@ def allowed_filename(filename: str) -> bool:
     if ".." in filename:
         return False
 
-    if re.findall(r"^[a-zA-Z0-9\.\-_]+?$", filename):
-
+    if ALLOWED_FILENAME_RE.fullmatch(filename):
         return True
 
     return False
@@ -1477,8 +1539,8 @@ def init_routes(app: Flask) -> None:
             from app.utils.github import is_update_available
 
             outdated = is_update_available(str(VERSION))
-        except Exception:
-            pass
+        except Exception as exc:
+            logging.warning("Could not determine update status: %s", exc)
 
         return dict(
             VERSION=VERSION,
@@ -1861,6 +1923,7 @@ def init_routes(app: Flask) -> None:
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
+        next_url = request.args.get("next")
         ip_address = request.remote_addr
         now = datetime.now()
 
@@ -1907,7 +1970,10 @@ def init_routes(app: Flask) -> None:
                     ip_address, None
                 )  # Reset attempts on successful login
                 logging.info("Successful login for %s from %s", username, ip_address)
-                return redirect(url_for("index"))
+                target = (
+                    next_url if is_safe_redirect_url(next_url) else url_for("index")
+                )
+                return redirect(target)
             else:
                 # Record the failed attempt
                 if ip_address not in login_attempts:
@@ -2192,8 +2258,12 @@ def init_routes(app: Flask) -> None:
             logging.warning("Invalid latest camera image removed: %s", latest_path)
             try:
                 os.remove(latest_path)
-            except OSError:
-                pass
+            except OSError as exc:
+                logging.warning(
+                    "Failed to remove invalid latest image %s: %s",
+                    latest_path,
+                    exc,
+                )
 
         global last_time, last_shot
         # implement some simple caching so the server doesn't get crushed
@@ -2692,8 +2762,8 @@ def init_routes(app: Flask) -> None:
                             except Exception:
                                 iso_ts = ts
                             entries.append({iso_ts: text})
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logging.error("Failed to parse captions: %s", exc)
             finally:
                 session_db.close()
         except Exception:
@@ -2862,14 +2932,14 @@ def init_routes(app: Flask) -> None:
                 try:
                     start_ts = int(datetime.fromisoformat(start).timestamp())
                     query = query.filter(Summary.timestamp >= start_ts)
-                except Exception:
-                    pass
+                except (ValueError, TypeError) as exc:
+                    logging.warning("Invalid start parameter %s: %s", start, exc)
             if end:
                 try:
                     end_ts = int(datetime.fromisoformat(end).timestamp())
                     query = query.filter(Summary.timestamp <= end_ts)
-                except Exception:
-                    pass
+                except (ValueError, TypeError) as exc:
+                    logging.warning("Invalid end parameter %s: %s", end, exc)
             records = query.limit(101).all()
             truncated = len(records) > 100
             records = records[:100]
@@ -3626,6 +3696,7 @@ def init_routes(app: Flask) -> None:
     @app.route("/settings", methods=["GET", "POST"])
     @login_required
     def settings():
+        """Render settings page and handle configuration updates via POST."""
         if request.method == "POST":
             email_settings = [
                 "EMAIL_ENABLED",
@@ -3701,9 +3772,18 @@ def init_routes(app: Flask) -> None:
                     if file.filename == "":
                         flash("No selected file", "error")
                     elif file and allowed_file(file.filename):
-                        file.save(BACKUP_PATH)
-                        restore_config()
-                        flash("Configuration restored successfully", "success")
+                        file.stream.seek(0, os.SEEK_END)
+                        size = file.stream.tell()
+                        file.stream.seek(0)
+                        if size > MAX_UPLOAD_SIZE:
+                            flash("File exceeds 5 MB limit", "error")
+                        else:
+                            file.save(BACKUP_PATH)
+                            restore_config()
+                            flash(
+                                "Configuration restored successfully",
+                                "success",
+                            )
                     else:
                         flash("Invalid file type", "error")
             elif action == "test_email":

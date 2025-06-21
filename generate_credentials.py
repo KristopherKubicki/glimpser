@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 # generate_credentials.py
+"""Create or update Glimpser credentials and settings.
+
+Run the script without arguments to interactively set up the initial
+``settings`` and ``users`` tables in the SQLite database. Command-line
+options allow specifying the database path, username, password and secret
+key, or updating only specific values.
+"""
 
 import argparse
 import getpass
@@ -13,7 +20,7 @@ from werkzeug.security import generate_password_hash
 import app.config
 
 
-def upsert_setting(name, value, conn):
+def upsert_setting(name: str, value: str | None, conn: sqlite3.Connection) -> None:
     """Insert or update a setting in the database.
 
     Parameters
@@ -40,7 +47,7 @@ def upsert_setting(name, value, conn):
     conn.commit()
 
 
-def create_settings(conn):
+def create_settings(conn: sqlite3.Connection) -> None:
     """Create the ``settings`` table if it is missing.
 
     Parameters
@@ -60,7 +67,7 @@ def create_settings(conn):
     conn.commit()
 
 
-def create_users(conn):
+def create_users(conn: sqlite3.Connection) -> None:
     """Create the ``users`` table if it is missing.
 
     Parameters
@@ -81,7 +88,9 @@ def create_users(conn):
     conn.commit()
 
 
-def upsert_user(username, password_hash, role, conn):
+def upsert_user(
+    username: str, password_hash: str, role: str, conn: sqlite3.Connection
+) -> None:
     """Insert or update a user record.
 
     Parameters
@@ -107,7 +116,7 @@ def upsert_user(username, password_hash, role, conn):
     conn.commit()
 
 
-def generate_credentials(args):
+def generate_credentials(args: argparse.Namespace | None) -> None:
     """Create or update application credentials and settings.
 
     Parameters

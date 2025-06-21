@@ -1,5 +1,4 @@
 import os
-import sys
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
@@ -7,6 +6,7 @@ from unittest.mock import MagicMock, patch
 from app.utils.template_manager import (
     Template,
     TemplateManager,
+    clear_template_cache,
     get_storage_usage,
     get_storage_usage_bytes,
     get_templates,
@@ -20,6 +20,7 @@ from app.utils.validators import validate_template_name
 class TestTemplateManager(unittest.TestCase):
     def setUp(self):
         self.template_manager = TemplateManager()
+        clear_template_cache()
 
     def tearDown(self):
         # Clean up any resources after each test if needed
@@ -379,6 +380,7 @@ class TestStorageUsage(unittest.TestCase):
 class TestSnapshotDetection(unittest.TestCase):
     @patch("app.utils.template_manager.SessionLocal")
     def test_snapshot_flag_in_get_templates(self, mock_session):
+        clear_template_cache()
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
         mock_query = mock_sess.query.return_value
@@ -395,6 +397,7 @@ class TestSnapshotDetection(unittest.TestCase):
 
     @patch("app.utils.template_manager.SessionLocal")
     def test_snapshot_flag_in_get_template(self, mock_session):
+        clear_template_cache()
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
         mock_query = mock_sess.query.return_value

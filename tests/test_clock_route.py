@@ -1,7 +1,6 @@
 import importlib
 import os
 import sqlite3
-import sys
 import tempfile
 import unittest
 from unittest.mock import patch

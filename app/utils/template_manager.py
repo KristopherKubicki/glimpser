@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 from datetime import datetime
+from functools import lru_cache
 
 from sqlalchemy import Boolean, Column, Float, Integer, String, Text
 from sqlalchemy.orm import validates
@@ -399,6 +400,7 @@ class TemplateManager:
             session.close()
 
 
+@lru_cache(maxsize=1)
 def get_templates():
     """Return all templates enriched with filesystem metadata.
 
@@ -424,6 +426,12 @@ def get_templates():
         details["last_video_time"] = get_latest_video_date(video_path)
         details["snapshot_only"] = is_snapshot_url(details.get("url", ""))
     return templates
+
+
+def clear_template_cache() -> None:
+    """Clear cached template data."""
+
+    get_templates.cache_clear()
 
 
 def get_templates_sorted_by_last_caption_time():

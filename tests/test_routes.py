@@ -1,7 +1,6 @@
 # tests/test_routes.py
 
 import os
-import sys
 import unittest
 from types import SimpleNamespace
 from unittest import mock
@@ -11,6 +10,7 @@ from flask import Flask
 
 from app.models import Summary
 from app.routes import init_routes
+from app.utils.template_manager import clear_template_cache
 
 
 class TestRoutes(unittest.TestCase):
@@ -22,6 +22,7 @@ class TestRoutes(unittest.TestCase):
         self.app.config["SECRET_KEY"] = "my_secret_key"  # pragma: allowlist secret
         init_routes(self.app)
         self.client = self.app.test_client()
+        clear_template_cache()
 
     def test_health_check(self):
         response = self.client.get("/health")

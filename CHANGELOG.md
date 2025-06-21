@@ -77,17 +77,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build details are hidden on small screens to avoid clutter.
 - Sanitized log messages in the UI to prevent XSS vulnerabilities
 
-## [0.2.8] - 2025-06-03
+## [0.2.8] - 2025-06-17
 
 ### Changed
 
-- Bumped package version in setup.py to 0.2.8.
+- Bumped package version in pyproject.toml to 0.2.8.
 
 ## [0.2.7] - 2025-06-02
 
 ### Changed
 
-- Bumped package version in setup.py to 0.2.7.
+- Bumped package version in pyproject.toml to 0.2.7.
 
 ## [0.2.6] - 2025-06-01
 

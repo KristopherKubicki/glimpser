@@ -23,13 +23,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pytest pytest-socket
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          pip install ".[dev]"
       - name: Lint with flake8
         run: |
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Lint with ruff
+        run: ruff check --exit-zero .
       - name: Test with pytest
         run: |
           pytest
@@ -78,7 +78,7 @@ jobs:
         shell: bash
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install .
       - name: Build Windows executable
         run: python build_windows.py
       - name: Upload Windows executable
@@ -104,7 +104,7 @@ jobs:
       - name: Install project requirements
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install .
       - name: Build macOS executable
         run: python build_macos.py
       - name: Upload macOS archive

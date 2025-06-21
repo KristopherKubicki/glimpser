@@ -1,7 +1,6 @@
 import json
 import multiprocessing
 import os
-import sys
 import tempfile
 import time
 import unittest
@@ -131,7 +130,7 @@ class TestAddMotionAndCaption(unittest.TestCase):
 
 class TestGetSystemMetrics(unittest.TestCase):
     @patch("app.utils.scheduling.psutil")
-    @patch("app.utils.scheduling.ffmpeg_version", return_value="6.0")
+    @patch.object(scheduling, "FFMPEG_VERSION", "6.0")
     @patch("app.utils.scheduling.machine_supports_hwaccel", return_value=True)
     @patch("app.utils.scheduling.ffmpeg_supports_hwaccel", return_value=True)
     @patch("app.utils.scheduling.shutil.which", return_value="/usr/bin/ffmpeg")
@@ -141,7 +140,6 @@ class TestGetSystemMetrics(unittest.TestCase):
         mock_which,
         mock_ffmpeg_supports,
         mock_machine,
-        mock_version,
         mock_psutil,
     ):
         scheduling.system_metrics.update(
@@ -154,7 +152,11 @@ class TestGetSystemMetrics(unittest.TestCase):
             }
         )
         mock_psutil.disk_usage.return_value = SimpleNamespace(percent=55.5)
-        mock_psutil.Process.return_value.open_files.return_value = [1, 2, 3]
+        process_mock = mock_psutil.Process.return_value
+        if hasattr(process_mock, "num_fds"):
+            process_mock.num_fds.return_value = 3
+        else:
+            process_mock.open_files.return_value = [1, 2, 3]
         metrics = get_system_metrics()
         self.assertEqual(metrics["cpu_usage"], 1.2)
         self.assertEqual(metrics["memory_usage"], 2.3)

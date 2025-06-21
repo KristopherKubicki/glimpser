@@ -1,7 +1,6 @@
 # tests/test_png_validation.py
 
 import os
-import sys
 import tempfile
 import unittest
 

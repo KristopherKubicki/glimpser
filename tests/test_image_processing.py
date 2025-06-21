@@ -2,7 +2,6 @@
 
 import datetime
 import os
-import sys
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
@@ -104,7 +103,7 @@ class TestImageProcessing(unittest.TestCase):
 
 
 class TestChatGPTImageComparison(unittest.TestCase):
-    @patch("app.utils.image_processing.requests.post")
+    @patch("app.utils.image_processing.request_with_retry")
     @patch("app.utils.image_processing.CHATGPT_KEY", "k")
     def test_compare_images(self, mock_post):
         # Create a ChatGPTImageComparison instance

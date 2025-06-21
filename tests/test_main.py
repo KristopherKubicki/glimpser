@@ -1,6 +1,6 @@
+import io
 import logging
 import os
-import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -271,6 +271,13 @@ class TestMain(unittest.TestCase):
     def test_cli_help_text(self):
         text = main.get_cli_help()
         self.assertIn("--db-path", text)
+
+    def test_cli_version_argument(self):
+        parser = main.build_argument_parser()
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            with self.assertRaises(SystemExit):
+                parser.parse_args(["--version"])
+        self.assertIn(config.VERSION, mock_stdout.getvalue())
 
     @patch("main.create_app")
     @patch("main.ensure_directories")

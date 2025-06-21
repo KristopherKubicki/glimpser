@@ -51,11 +51,10 @@ sudo apt-get install -y ffmpeg
 Install the required Python packages:
 
 ```sh
-pip install -r requirements.txt
+pip install .
 ```
 
-The `requirements.txt` file lists the dependencies, including `numpy` pinned
-below version 2 (>=1.26,<2.0).
+All runtime dependencies, including `psutil`, are defined in `pyproject.toml`.
 
 ### 6. (Optional) Configure Environment Variables
 

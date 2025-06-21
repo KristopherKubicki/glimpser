@@ -1,12 +1,16 @@
-.PHONY: format lint test test-js precommit setup
+.PHONY: format format-yaml lint test test-js precommit setup
 
 format:
-	black .
-	prettier --write app/static/js/**/*.js app/static/css/**/*.css
+        black .
+        prettier --write app/static/js/**/*.js app/static/css/**/*.css
+
+format-yaml:
+        prettier --write '*.yml'
 
 lint:
-	flake8
-	eslint 'app/static/js/**/*.js'
+        flake8
+        ruff check --exit-zero .
+        eslint 'app/static/js/**/*.js'
 
 test:
 	pytest

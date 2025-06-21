@@ -1,6 +1,7 @@
 """Utility for generating optimized caption prompts."""
 
 import os
+from pathlib import Path
 
 import app.utils.image_processing as img_proc
 from app.config import CHATGPT_KEY, SCREENSHOT_DIRECTORY
@@ -19,17 +20,8 @@ def generate_prompt(template_name: str, num_images: int = 3) -> str:
     if not screenshots:
         return ""
 
-    base = os.path.join(
-        os.path.dirname(os.path.join(__file__)),
-        "..",
-        SCREENSHOT_DIRECTORY,
-        template_name,
-    )
-    image_paths = [
-        os.path.join(base, shot)
-        for shot in screenshots
-        if os.path.exists(os.path.join(base, shot))
-    ]
+    base = Path(__file__).resolve().parent.parent / SCREENSHOT_DIRECTORY / template_name
+    image_paths = [str(base / shot) for shot in screenshots if (base / shot).exists()]
     if not image_paths:
         return ""
 

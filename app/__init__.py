@@ -219,10 +219,16 @@ def create_app(
                         cpu_usage > WATCHDOG_CPU_THRESHOLD
                         or mem_usage > WATCHDOG_MEMORY_THRESHOLD
                     ):
-                        open_files = current_process.open_files()
-                        if len(open_files) > max_file_handles:
+                        # psutil exposes num_fds() on POSIX systems. Prefer
+                        # this to avoid fetching the entire open_files list.
+                        if hasattr(current_process, "num_fds"):
+                            open_file_count = current_process.num_fds()
+                        else:
+                            open_file_count = len(current_process.open_files())
+
+                        if open_file_count > max_file_handles:
                             raise Exception(
-                                f"Too many open file handles: {len(open_files)}"
+                                f"Too many open file handles: {open_file_count}"
                             )
 
                 except Exception as e:
@@ -261,7 +267,6 @@ def create_app(
     # Send alerts when the application starts
     def _start_background_components() -> None:
         """Initialize scheduler and monitoring in a low priority thread."""
-        backup_config()
 
         if (
             schedule
