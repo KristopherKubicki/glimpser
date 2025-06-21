@@ -3659,6 +3659,11 @@ def init_routes(app: Flask) -> None:
                 name_to_delete = request.form.get("name_to_delete")
                 if name_to_delete:
                     delete_setting(name_to_delete)
+            elif action == "reset":
+                name_to_reset = request.form.get("name_to_reset")
+                if name_to_reset and hasattr(config, name_to_reset):
+                    default_val = getattr(config, name_to_reset)
+                    update_setting(name_to_reset, str(default_val))
             elif action == "update_email":
                 for setting in email_settings:
                     value = request.form.get(setting)

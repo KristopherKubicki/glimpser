@@ -222,6 +222,27 @@ class TestSettingsRoute(unittest.TestCase):
         self.assertEqual(self._get_value("SMS_ENABLED"), "True")
         self.assertEqual(self._get_value("CAP_ENABLED"), "False")
 
+    def test_reset_setting(self):
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
+        ):
+            self.client.post("/settings", data={"CHYRON_SPEED": "5"})
+        self.assertEqual(self._get_value("CHYRON_SPEED"), "5")
+
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
+        ):
+            response = self.client.post(
+                "/settings",
+                data={"action": "reset", "name_to_reset": "CHYRON_SPEED"},
+            )
+        self.assertEqual(response.status_code, 302)
+        import app.config as config
+
+        self.assertEqual(self._get_value("CHYRON_SPEED"), str(config.CHYRON_SPEED))
+
 
 if __name__ == "__main__":
     unittest.main()

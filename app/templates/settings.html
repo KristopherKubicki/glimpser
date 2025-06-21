@@ -212,6 +212,16 @@ template_form %} {% block content %}
               >
                 Delete
               </button>
+              <button
+                type="submit"
+                name="action"
+                value="reset"
+                title="Reset {{ setting.name }} to default"
+                onclick="document.getElementById('name_to_reset').value='{{ setting.name }}'"
+                class="advanced-only"
+              >
+                Reset
+              </button>
             </td>
           </tr>
           {% endfor %}
@@ -337,6 +347,13 @@ template_form %} {% block content %}
         name="name_to_delete"
         value=""
         title="Name of setting to delete"
+      />
+      <input
+        type="hidden"
+        id="name_to_reset"
+        name="name_to_reset"
+        value=""
+        title="Name of setting to reset"
       />
       {% endif %}
       <button type="submit" title="Save all changes">Save Changes</button>
