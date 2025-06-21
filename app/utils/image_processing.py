@@ -12,6 +12,7 @@ from PIL import Image
 
 from app.config import CHATGPT_KEY, LLM_CAPTION_PROMPT, LLM_MODEL_VERSION
 from app.utils import llm_cache
+from app.utils.api_utils import SESSION as API_SESSION
 from app.utils.api_utils import request_with_retry
 
 HEADER_PREFIX_RE = re.compile(r"^(caption|title|summary):\s*", re.IGNORECASE)
@@ -107,7 +108,12 @@ class ChatGPTImageComparison:
         result = None
         try:
             response = request_with_retry(
-                "POST", self.url, headers=self.headers, json=payload, timeout=30
+                "POST",
+                self.url,
+                headers=self.headers,
+                json=payload,
+                timeout=30,
+                session=API_SESSION,
             )
             if response.status_code == 429:
                 last_429_error_time = datetime.datetime.now()

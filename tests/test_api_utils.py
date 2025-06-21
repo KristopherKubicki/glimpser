@@ -8,7 +8,7 @@ class TestRequestWithRetry(unittest.TestCase):
     def test_success_first_try(self):
         resp = MagicMock()
         with patch(
-            "app.utils.api_utils.requests.request", return_value=resp
+            "app.utils.api_utils.SESSION.request", return_value=resp
         ) as mock_req:
             result = request_with_retry("get", "http://ex")
             self.assertIs(result, resp)
@@ -18,7 +18,7 @@ class TestRequestWithRetry(unittest.TestCase):
         resp = MagicMock()
         with (
             patch(
-                "app.utils.api_utils.requests.request",
+                "app.utils.api_utils.SESSION.request",
                 side_effect=[Exception("fail"), resp],
             ) as mock_req,
             patch("time.sleep") as mock_sleep,
@@ -28,10 +28,26 @@ class TestRequestWithRetry(unittest.TestCase):
             self.assertEqual(mock_req.call_count, 2)
             mock_sleep.assert_called_once()
 
+    def test_custom_session_retry(self):
+        resp = MagicMock()
+        session = MagicMock()
+        session.request.side_effect = [Exception("fail"), resp]
+        with patch("time.sleep") as mock_sleep:
+            result = request_with_retry(
+                "get",
+                "http://ex",
+                retries=1,
+                backoff_factor=0,
+                session=session,
+            )
+        self.assertIs(result, resp)
+        self.assertEqual(session.request.call_count, 2)
+        mock_sleep.assert_called_once()
+
     def test_retry_exhausted_raises(self):
         with (
             patch(
-                "app.utils.api_utils.requests.request", side_effect=Exception("fail")
+                "app.utils.api_utils.SESSION.request", side_effect=Exception("fail")
             ) as mock_req,
             patch("time.sleep"),
         ):

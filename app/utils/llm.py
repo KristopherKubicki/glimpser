@@ -10,6 +10,7 @@ from typing import Optional
 from app.config import CHATGPT_KEY, LLM_MODEL_VERSION, LLM_SUMMARY_PROMPT
 from app.utils import llm_cache
 
+from .api_utils import SESSION as API_SESSION
 from .api_utils import request_with_retry
 
 last_429_error_time = None
@@ -105,6 +106,7 @@ def summarize(
             json=payload,
             timeout=timeout,
             retries=retries,
+            session=API_SESSION,
         )
         if response.status_code == 429:
             last_429_error_time = datetime.datetime.now()
@@ -193,6 +195,7 @@ def ask_question(question: str, history: str = "", *, timeout: int = 30) -> str 
             headers=headers,
             json=payload,
             timeout=timeout,
+            session=API_SESSION,
         )
         result = response.json()
         return (

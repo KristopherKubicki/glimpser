@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 
 import psutil
 
+from app.utils.api_utils import SESSION as API_SESSION
 from app.utils.api_utils import request_with_retry
 
 from .oui_map import OUI_MAP as BUILTIN_OUI_MAP
@@ -129,7 +130,9 @@ def _remote_vendor_lookup(mac: str) -> str | None:
     """Return vendor name for ``mac`` via maclookup API."""
 
     try:  # network access might fail; ignore errors
-        resp = request_with_retry("GET", MAC_VENDOR_API.format(mac), timeout=3)
+        resp = request_with_retry(
+            "GET", MAC_VENDOR_API.format(mac), timeout=3, session=API_SESSION
+        )
         if resp.status_code == 200:
             data = resp.json()
             vendor = data.get("company")
@@ -158,7 +161,9 @@ def _onvif_get_device_info(xaddr: str, timeout: int = 2) -> dict[str, str]:
     )
     info: dict[str, str] = {}
     try:
-        resp = request_with_retry("POST", xaddr, data=body, timeout=timeout)
+        resp = request_with_retry(
+            "POST", xaddr, data=body, timeout=timeout, session=API_SESSION
+        )
         if resp.ok:
             xml = ET.fromstring(resp.content)
             ns = {"tt": "http://www.onvif.org/ver10/schema"}
@@ -208,7 +213,9 @@ def autodetect_onvif_endpoints(url: str, timeout: int = 3) -> dict[str, str]:
     )
     media_addr = None
     try:
-        resp = request_with_retry("POST", xaddr, data=cap_body, timeout=timeout)
+        resp = request_with_retry(
+            "POST", xaddr, data=cap_body, timeout=timeout, session=API_SESSION
+        )
         if resp.ok:
             xml = ET.fromstring(resp.content)
             ns = {"tt": "http://www.onvif.org/ver10/schema"}
@@ -231,7 +238,9 @@ def autodetect_onvif_endpoints(url: str, timeout: int = 3) -> dict[str, str]:
     )
     token = None
     try:
-        resp = request_with_retry("POST", media_addr, data=prof_body, timeout=timeout)
+        resp = request_with_retry(
+            "POST", media_addr, data=prof_body, timeout=timeout, session=API_SESSION
+        )
         if resp.ok:
             xml = ET.fromstring(resp.content)
             ns = {"trt": "http://www.onvif.org/ver10/media/wsdl"}
@@ -260,7 +269,9 @@ def autodetect_onvif_endpoints(url: str, timeout: int = 3) -> dict[str, str]:
         "</s:Envelope>"
     )
     try:
-        resp = request_with_retry("POST", media_addr, data=stream_body, timeout=timeout)
+        resp = request_with_retry(
+            "POST", media_addr, data=stream_body, timeout=timeout, session=API_SESSION
+        )
         if resp.ok:
             xml = ET.fromstring(resp.content)
             ns = {"tt": "http://www.onvif.org/ver10/schema"}
@@ -281,7 +292,9 @@ def autodetect_onvif_endpoints(url: str, timeout: int = 3) -> dict[str, str]:
         "</s:Envelope>"
     )
     try:
-        resp = request_with_retry("POST", media_addr, data=snap_body, timeout=timeout)
+        resp = request_with_retry(
+            "POST", media_addr, data=snap_body, timeout=timeout, session=API_SESSION
+        )
         if resp.ok:
             xml = ET.fromstring(resp.content)
             ns = {"tt": "http://www.onvif.org/ver10/schema"}
