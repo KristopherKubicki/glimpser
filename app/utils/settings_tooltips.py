@@ -1,3 +1,10 @@
+"""Tooltip text and related configuration for the settings interface.
+
+The module exposes ``SETTINGS_TOOLTIPS`` along with helper dictionaries such
+as ``SETTINGS_CHOICES`` and ``SETTINGS_GROUPS`` that organize available options
+on the configuration page.
+"""
+
 import socket
 from zoneinfo import available_timezones
 
