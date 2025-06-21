@@ -18,7 +18,13 @@
   role="region"
   aria-label="Templates"
 ></div>
-<div id="index-time" class="corner-time" title=""></div>
+<div
+  id="index-time"
+  class="corner-time"
+  title=""
+  role="timer"
+  aria-live="polite"
+></div>
 <script type="module">
   import { loadTemplates } from '{{ url_for('static', filename='js/templates.js') }}';
   window.currentGroup = '{{ group_name }}';

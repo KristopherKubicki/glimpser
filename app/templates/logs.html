@@ -1,35 +1,52 @@
-
 <h1>Logs</h1>
 
-    <form id="log-filter-form">
-        <input type="text" id="search-input" name="search" placeholder="Search logs..." title="Search log messages">
-        <select id="level-select" name="level" title="Filter logs by level">
-            <option value="">All Levels</option>
-            <option value="DEBUG">DEBUG</option>
-            <option value="INFO">INFO</option>
-            <option value="WARNING">WARNING</option>
-            <option value="ERROR">ERROR</option>
-            <option value="CRITICAL">CRITICAL</option>
-        </select>
-        <input type="text" name="source" placeholder="Source" title="Filter logs by source">
-        <input type="date" name="start_date" title="Start date filter">
-        <input type="date" name="end_date" title="End date filter">
-        <button type="submit" title="Apply filters">Apply Filters</button>
-    </form>
+<form id="log-filter-form">
+  <input
+    type="text"
+    id="search-input"
+    name="search"
+    placeholder="Search logs..."
+    title="Search log messages"
+  />
+  <select id="level-select" name="level" title="Filter logs by level">
+    <option value="">All Levels</option>
+    <option value="DEBUG">DEBUG</option>
+    <option value="INFO">INFO</option>
+    <option value="WARNING">WARNING</option>
+    <option value="ERROR">ERROR</option>
+    <option value="CRITICAL">CRITICAL</option>
+  </select>
+  <input
+    type="text"
+    name="source"
+    placeholder="Source"
+    title="Filter logs by source"
+  />
+  <input type="date" name="start_date" title="Start date filter" />
+  <input type="date" name="end_date" title="End date filter" />
+  <button type="submit" title="Apply filters">Apply Filters</button>
+</form>
 
-    <table id="log-table">
-        <thead>
-            <tr>
-                <th>Timestamp</th>
-                <th>Level</th>
-                <th>Source</th>
-                <th>Message</th>
-            </tr>
-        </thead>
-        <tbody>
-        </tbody>
-    </table>
+<table id="log-table">
+  <thead>
+    <tr>
+      <th>Timestamp</th>
+      <th>Level</th>
+      <th>Source</th>
+      <th>Message</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
 
-    <div id="log-connection-status" class="hidden"></div>
+<div
+  id="log-connection-status"
+  class="hidden"
+  role="status"
+  aria-live="polite"
+></div>
 
-    <script type="module" src="{{ url_for('static', filename='js/logs.js') }}"></script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/logs.js') }}"
+></script>
