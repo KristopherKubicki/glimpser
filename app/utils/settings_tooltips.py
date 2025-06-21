@@ -165,6 +165,10 @@ SETTINGS_TOOLTIPS = {
         "Remember the user for this many days when the 'stay logged in' option "
         "is selected."
     ),
+    "SKIP_LOGIN_SUBNETS": (
+        "Comma-separated CIDR blocks that can access non-admin pages without "
+        "logging in."
+    ),
     "ALLOW_BOTS": (
         "Allow search engines to index the site. Disable for private " "installations."
     ),
@@ -344,6 +348,7 @@ SETTINGS_GROUPS = {
         "SESSION_COOKIE_SECURE",
         "SESSION_COOKIE_HTTPONLY",
         "SESSION_TIMEOUT_MINUTES",
+        "SKIP_LOGIN_SUBNETS",
     ],
     "Capture": [
         "DATABASE_PATH",

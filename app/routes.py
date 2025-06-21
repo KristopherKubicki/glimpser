@@ -27,7 +27,7 @@ from collections import deque
 from datetime import datetime, timedelta
 from fractions import Fraction
 from functools import lru_cache, wraps
-from ipaddress import ip_network
+from ipaddress import ip_address, ip_network
 from pathlib import Path
 from threading import Lock, Thread
 from urllib.parse import urlparse
@@ -553,6 +553,18 @@ def login_required(f: Callable) -> Callable:
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Allow LAN access without login when configured
+        ip = request.remote_addr
+        try:
+            ip_obj = ip_address(ip) if ip else None
+        except ValueError:
+            ip_obj = None
+        if (
+            ip_obj
+            and any(ip_obj in net for net in config.SKIP_LOGIN_SUBNETS)
+            and not request.path.startswith("/settings")
+        ):
+            return f(*args, **kwargs)
         # Check for API key in headers, GET parameters, or POST form data
         api_key = (
             request.headers.get("X-API-Key")
