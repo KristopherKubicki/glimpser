@@ -46,7 +46,7 @@ The player now switches the `.video-container` to `overflow: auto` when the view
 
 ### I'm unable to log in
 
-Make sure you are using the correct credentials. If you forget your password, you can reset it through the recovery process on the login page.
+Make sure you are using the correct credentials. If you forget your password, you can reset it through the recovery process on the login page. If you have shell access to the server, stop Glimpser and run `generate_credentials.py --update-password` to set a new password from the command line.
 
 ### Where can I get more help?
 

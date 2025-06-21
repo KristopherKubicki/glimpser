@@ -86,6 +86,11 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertEqual(username.get("aria-describedby"), "login-error")
         self.assertEqual(password.get("aria-describedby"), "login-error")
 
+    def test_login_has_recovery_note(self):
+        html = Path("app/templates/login.html").read_text(encoding="utf-8")
+        self.assertIn('id="recovery-note"', html)
+        self.assertIn("generate_credentials.py", html)
+
     def test_discover_add_camera_form_inputs(self):
         html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")
         self.assertIn("template_form(", html)
