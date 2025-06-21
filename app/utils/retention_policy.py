@@ -16,11 +16,16 @@ from app.config import (
 from app.utils.screenshots import check_user_activity
 
 
-def get_files_sorted_by_creation_time(directory):
+def get_files_sorted_by_creation_time(directory: str) -> list[str]:
+    """Return files in ``directory`` ordered from oldest to newest.
+
+    Symlinks are ignored. If ``directory`` does not exist or cannot be read,
+    an empty list is returned.
+    """
+
     if not os.path.isdir(directory):
         return []
 
-    # Get all files with their full path and sort them by creation time in ascending order
     try:
         files = [
             os.path.join(directory, f)
@@ -28,13 +33,29 @@ def get_files_sorted_by_creation_time(directory):
             if not os.path.islink(os.path.join(directory, f))
         ]
         files.sort(key=lambda x: os.path.getctime(x))
-    except Exception as e:
+    except Exception as e:  # pragma: no cover - defensive logging
         logging.warning("file sort error %s", e)
         return []
     return files
 
 
-def delete_old_files(file_list, max_age, max_size, minimum=10):
+def delete_old_files(
+    file_list: list[str], max_age: int, max_size: int, minimum: int = 10
+) -> None:
+    """Remove files exceeding age or size limits.
+
+    Parameters
+    ----------
+    file_list:
+        Files ordered from oldest to newest.
+    max_age:
+        Maximum allowed age in days for a file before deletion.
+    max_size:
+        Total size threshold in bytes. Once exceeded, older files are removed.
+    minimum:
+        Number of newest files to keep regardless of age or size.
+    """
+
     current_time = time.time()
     total_size = 0
 
@@ -104,14 +125,16 @@ def cleanup_clips(max_age_minutes: int = MAX_CLIP_AGE_MINUTES) -> None:
                 logging.warning("Failed to delete %s: %s", clip_path, e)
 
 
-def retention_cleanup():
-    # For each camera, delete old or excess videos
+def retention_cleanup() -> None:
+    """Purge stale videos, screenshots and clips for all cameras."""
+
+    # Clean video files
     for camera_name in os.listdir(VIDEO_DIRECTORY):
         camera_dir = os.path.join(VIDEO_DIRECTORY, camera_name)
         video_files = get_files_sorted_by_creation_time(camera_dir)
         delete_old_files(video_files, MAX_COMPRESSED_VIDEO_AGE, MAX_RAW_DATA_SIZE)
 
-    # For each camera, delete old or excess screenshots
+    # Clean screenshot files
     for camera_name in os.listdir(SCREENSHOT_DIRECTORY):
         camera_dir = os.path.join(SCREENSHOT_DIRECTORY, camera_name)
         image_files = get_files_sorted_by_creation_time(camera_dir)
