@@ -1,3 +1,5 @@
+"""Database model for jobs queued while running offline."""
+
 from sqlalchemy import Column, Integer, String, Text
 
 from app.utils.db import Base
