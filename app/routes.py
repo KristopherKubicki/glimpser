@@ -152,6 +152,11 @@ FFMPEG = config.FFMPEG_PATH  # shortcut
 # Limit configuration uploads to 5 MB to avoid excessive memory usage
 MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 
+# Precompiled regular expression for validating filenames. Only letters,
+# numbers, periods, hyphens and underscores are allowed. Using a compiled
+# regex avoids recompiling the pattern on every call to ``allowed_filename``.
+ALLOWED_FILENAME_RE = re.compile(r"^[a-zA-Z0-9\.\-_]+?$")
+
 
 # ---------- tiny helpers ----------------------------------------------------
 @lru_cache(maxsize=256)
@@ -1496,8 +1501,7 @@ def allowed_filename(filename: str) -> bool:
     if ".." in filename:
         return False
 
-    if re.findall(r"^[a-zA-Z0-9\.\-_]+?$", filename):
-
+    if ALLOWED_FILENAME_RE.fullmatch(filename):
         return True
 
     return False
