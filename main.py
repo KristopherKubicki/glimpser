@@ -35,7 +35,11 @@ def parse_arguments(arg_list=None):
 
 
 def get_cli_help() -> str:
-    """Return the formatted ``--help`` text."""
+    """Return the formatted CLI help text.
+
+    The output reflects all supported options, including the ``--version``
+    flag added to :func:`app.utils.cli.build_argument_parser`.
+    """
     return cli_help_text()
 
 
