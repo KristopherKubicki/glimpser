@@ -156,6 +156,7 @@ MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 # ---------- tiny helpers ----------------------------------------------------
 @lru_cache(maxsize=256)
 def _duration(p: str) -> float:
+    """Return the length of a media file using ``ffprobe``."""
     out = subprocess.check_output(
         [
             FFMPEG.replace("ffmpeg", "ffprobe"),
@@ -173,6 +174,7 @@ def _duration(p: str) -> float:
 
 @lru_cache(maxsize=256)
 def _probe(p: str, key: str):
+    """Return ``key`` metadata from ``ffprobe`` for ``p``."""
     out = subprocess.check_output(
         [
             FFMPEG.replace("ffmpeg", "ffprobe"),
@@ -225,6 +227,8 @@ def send_conditional_file(
 
 # ---------- main ------------------------------------------------------------
 def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
+    """Combine ``parts`` into ``out`` ensuring a fixed duration."""
+
     out_tmp = out.with_suffix(".tmp.mp4")
     ramroot = Path(tempfile.mkdtemp(dir=Path("/dev/shm")))
     fixed: list[Path] = []
