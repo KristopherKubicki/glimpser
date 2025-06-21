@@ -1,3 +1,9 @@
+/**
+ * Toggle advanced mode for the current session.
+ *
+ * The state is persisted in `sessionStorage` as "advanced-enabled" so
+ * user preference survives page reloads until the session ends.
+ */
 export function initAdvanced() {
   document.addEventListener("DOMContentLoaded", () => {
     const toggle = document.getElementById("advanced-toggle");
