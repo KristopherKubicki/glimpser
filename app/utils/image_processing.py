@@ -7,11 +7,11 @@ import logging
 import os
 import re
 
-import requests
 from PIL import Image
 
 from app.config import CHATGPT_KEY, LLM_CAPTION_PROMPT, LLM_MODEL_VERSION
 from app.utils import llm_cache
+from app.utils.api_utils import request_with_retry
 
 HEADER_PREFIX_RE = re.compile(r"^(caption|title|summary):\s*", re.IGNORECASE)
 
@@ -102,10 +102,12 @@ class ChatGPTImageComparison:
             "max_tokens": tokens,  # might even be less
         }
 
-        # Send the request to the API
+        # Send the request to the API with retry logic
         result = None
         try:
-            response = requests.post(self.url, headers=self.headers, json=payload)
+            response = request_with_retry(
+                "POST", self.url, headers=self.headers, json=payload, timeout=30
+            )
             if response.status_code == 429:
                 last_429_error_time = datetime.datetime.now()
                 logging.warning(
