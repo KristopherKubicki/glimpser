@@ -579,6 +579,7 @@ def login_required(f: Callable) -> Callable:
         # Check for valid timed API key
         if timed_key:
             if not is_hash_valid(timed_key):
+                logging.warning("Invalid timed key from %s", ip)
                 return jsonify({"error": "Invalid timed key"}), 401
             return f(*args, **kwargs)
 
@@ -592,6 +593,7 @@ def login_required(f: Callable) -> Callable:
             # data should trigger a logout redirect rather than allowing the
             # request through.
             if not isinstance(session.get("user_id"), int):
+                logging.warning("Malformed session for %s", ip)
                 session.pop("user_id", None)
                 flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
@@ -600,6 +602,11 @@ def login_required(f: Callable) -> Callable:
             if expiry and datetime.now() > datetime.strptime(
                 expiry, "%Y-%m-%d %H:%M:%S"
             ):
+                logging.info(
+                    "Expired session for user %s from %s",
+                    session.get("user_id"),
+                    ip,
+                )
                 session.pop("user_id", None)
                 flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
@@ -625,6 +632,11 @@ def login_required(f: Callable) -> Callable:
                 db_session.close()
 
             if not user:
+                logging.info(
+                    "Session user id %s not found for %s",
+                    session.get("user_id"),
+                    ip,
+                )
                 session.pop("user_id", None)
                 flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
@@ -635,6 +647,7 @@ def login_required(f: Callable) -> Callable:
         # Handle missing or invalid authentication
         else:
             if api_key:
+                logging.warning("Invalid API key from %s", ip)
                 return jsonify({"error": "Invalid API key"}), 401
             else:
                 # For Server-Sent Events endpoints, return an SSE-formatted
@@ -655,6 +668,8 @@ def login_required(f: Callable) -> Callable:
                         "error",
                     )
                     logging.debug("Missing session cookie from %s", request.remote_addr)
+                else:
+                    logging.debug("No valid auth cookie from %s", ip)
                 return redirect(url_for("login", next=request.url))
 
     return decorated_function
@@ -1956,6 +1971,7 @@ def init_routes(app: Flask) -> None:
             password = (request.form.get("password") or "").strip()
             remember = request.form.get("remember") == "on"
             if not username or not password:
+                logging.debug("Login failed: missing credentials from %s", ip_address)
                 flash("Username and password are required", "error")
                 return render_template("login.html", page_title="Login"), 400
 
@@ -2010,8 +2026,23 @@ def init_routes(app: Flask) -> None:
                     login_attempts[ip_address]["locked_until"] = now + timedelta(
                         minutes=1
                     )
-                logging.warning(
-                    "Failed login attempt for %s from %s", username, ip_address
+
+                if not user:
+                    logging.warning(
+                        "Login failed: unknown username '%s' from %s",
+                        username,
+                        ip_address,
+                    )
+                else:
+                    logging.warning(
+                        "Login failed: incorrect password for %s from %s",
+                        username,
+                        ip_address,
+                    )
+                logging.debug(
+                    "Failed login attempt count %s from %s",
+                    login_attempts[ip_address]["attempts"],
+                    ip_address,
                 )
                 flash("Invalid username or password", "error")
         return render_template("login.html", page_title="Login")
