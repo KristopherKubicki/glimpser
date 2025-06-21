@@ -8,6 +8,7 @@ nav:
       - API Documentation: api_documentation.md
       - API Resilience: api_resilience.md
       - Architecture Overview: architecture_overview.md
+      - Sequence Diagrams: sequence_diagrams.md
       - Camera Discovery: camera_discovery.md
       - Camera Fix: camera_fix.md
       - Capture Process: capture_process.md

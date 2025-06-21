@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="300" viewBox="0 0 700 300">
+  <style>
+    .actor { fill: none; stroke: #000; }
+    .text { font-family: sans-serif; font-size: 12px; }
+    .arrow { marker-end: url(#arrow); }
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#000" />
+    </marker>
+  </defs>
+  <!-- Actors -->
+  <line class="actor" x1="80" y1="40" x2="80" y2="260" />
+  <line class="actor" x1="240" y1="40" x2="240" y2="260" />
+  <line class="actor" x1="400" y1="40" x2="400" y2="260" />
+  <line class="actor" x1="560" y1="40" x2="560" y2="260" />
+  <text class="text" x="55" y="30">Scheduler</text>
+  <text class="text" x="210" y="30">Screenshots</text>
+  <text class="text" x="365" y="30">Database</text>
+  <text class="text" x="530" y="30">Summarizer</text>
+
+  <!-- Messages -->
+  <line class="arrow" x1="80" y1="60" x2="240" y2="60" />
+  <text class="text" x="100" y="55">capture job</text>
+
+  <line class="arrow" x1="240" y1="80" x2="240" y2="120" />
+  <text class="text" x="250" y="100">capture_or_download</text>
+
+  <line class="arrow" x1="240" y1="140" x2="400" y2="140" />
+  <text class="text" x="260" y="135">store file path</text>
+
+  <line class="arrow" x1="400" y1="160" x2="560" y2="160" />
+  <text class="text" x="420" y="155">update_summary</text>
+
+  <line class="arrow" x1="560" y1="180" x2="400" y2="180" />
+  <text class="text" x="460" y="175">save text</text>
+
+  <line class="arrow" x1="400" y1="200" x2="80" y2="200" />
+  <text class="text" x="200" y="195">next capture time</text>
+</svg>

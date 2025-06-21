@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300" viewBox="0 0 600 300">
+  <style>
+    .actor { fill: none; stroke: #000; }
+    .text { font-family: sans-serif; font-size: 12px; }
+    .arrow { marker-end: url(#arrow); }
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#000" />
+    </marker>
+  </defs>
+  <!-- Actors -->
+  <line class="actor" x1="100" y1="40" x2="100" y2="260" />
+  <line class="actor" x1="250" y1="40" x2="250" y2="260" />
+  <line class="actor" x1="400" y1="40" x2="400" y2="260" />
+  <text class="text" x="80" y="30">User</text>
+  <text class="text" x="215" y="30">Flask App</text>
+  <text class="text" x="360" y="30">Scheduler</text>
+
+  <!-- Messages -->
+  <line class="arrow" x1="100" y1="60" x2="250" y2="60" />
+  <text class="text" x="120" y="55">run main.py</text>
+
+  <line class="arrow" x1="250" y1="80" x2="250" y2="120" />
+  <text class="text" x="260" y="100">create_app</text>
+
+  <line class="arrow" x1="250" y1="140" x2="400" y2="140" />
+  <text class="text" x="270" y="135">start scheduler</text>
+
+  <line class="arrow" x1="400" y1="160" x2="250" y2="160" />
+  <text class="text" x="305" y="155">jobs scheduled</text>
+
+  <line class="arrow" x1="250" y1="180" x2="250" y2="220" />
+  <text class="text" x="260" y="200">watchdog thread</text>
+
+  <line class="arrow" x1="250" y1="240" x2="100" y2="240" />
+  <text class="text" x="150" y="235">ready</text>
+</svg>
