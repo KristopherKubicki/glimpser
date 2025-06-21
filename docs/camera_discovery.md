@@ -8,7 +8,7 @@ The scheduling call now triggers discovery in a background thread so the UI neve
 The page now polls `/discovery_status` every 30 seconds so the background state
 is always visible, including the remaining time until the next run.
 After all scanning steps finish, Glimpser performs a two-hop traceroute to each
-discovered camera. The previous hop is stored in the ``upstream`` field so you
+discovered camera. The previous hop is stored in the `upstream` field so you
 can see which router or switch connects the device. Each progress message now
 includes a completion percentage and an estimated time remaining so you know how
 long the scan will take.
@@ -31,11 +31,13 @@ def discover_cameras_scan_stream():
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 ```
 
-When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button opens an EventSource to `/discover/scan_stream`. The first message now includes the list of subnets that will be scanned and the full plan of discovery stages. The progress bar is initialized with the total number of stages. Each subsequent message indicates which stage has finished, how many cameras have been found so far, and includes any new cameras discovered during that stage. These cameras appear in the table immediately. A final event with ``{"done": true}`` simply signals completion. Discovery results now display firmware details along with the reported manufacturer and model when available. These fields are pulled from the camera's ONVIF device service. The page also offers buttons to export the table as CSV or JSON.
+When you visit `/discover`, the page loads instantly with an empty list. Clicking the **Discover** button opens an EventSource to `/discover/scan_stream`. The first message now includes the list of subnets that will be scanned and the full plan of discovery stages. The progress bar is initialized with the total number of stages. Each subsequent message indicates which stage has finished, how many cameras have been found so far, and includes any new cameras discovered during that stage. These cameras appear in the table immediately. A final event with `{"done": true}` simply signals completion. Discovery results now display firmware details along with the reported manufacturer and model when available. These fields are pulled from the camera's ONVIF device service. The page also offers buttons to export the table as CSV or JSON.
 
-An optional CIDR can be supplied via the new input field to restrict discovery to a specific Class C network. The value is sent as the ``cidr`` query parameter and parsed by ``discover_cameras()``.
+An optional CIDR can be supplied via the new input field to restrict discovery to a specific Class C network. The value is sent as the `cidr` query parameter and parsed by `discover_cameras()`.
 
 During the scan you will see messages like `Scanning onvif (3 found)...`. The stage name shows which discovery method just finished, while the number in parentheses reflects how many cameras have been detected so far.
+
+![Camera discovery sequence](diagrams/camera_discovery.svg)
 
 ## Camera scanning logic
 
@@ -157,11 +159,11 @@ details such as a camera's name, ONVIF address, or HTTP path instead of showing
 the raw JSON dictionary.
 
 Each camera is now also checked for commonly used service ports. Any detected
-ports are listed in the ``open_ports`` field so you can quickly see which
+ports are listed in the `open_ports` field so you can quickly see which
 services are reachable (for example, 80 for HTTP or 554 for RTSP). This scan
 is lightweight and runs after the main discovery steps finish.
 If a camera responds to ICMP echo requests, Glimpser measures the round-trip
-latency and reports the value in the ``ping_ms`` field. This extra check runs in
+latency and reports the value in the `ping_ms` field. This extra check runs in
 parallel with other metadata gathering so it does not slow down discovery.
 If an HTTP port responds, Glimpser also fetches the web page banner to capture
 the `Server` header, authentication realm, and page title when present. These
@@ -170,9 +172,9 @@ values populate the **Info** column so you can quickly identify each device.
 Each result now tries to classify the kind of hardware discovered. Devices with
 RTSP ports or ONVIF data are labeled as **camera** while models referencing DVR
 or NVR become **nvr**. Routers and switches are recognized when their metadata
-contains those keywords. The detected type appears in the ``device_type`` field.
+contains those keywords. The detected type appears in the `device_type` field.
 
-Discovered entries also include a suggested ``url`` built from the protocol and
+Discovered entries also include a suggested `url` built from the protocol and
 port. This makes the "Add" action work immediately without manual edits.
 
 You can then add a discovered camera to your configuration directly from the Discover tab.
