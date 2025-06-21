@@ -1,3 +1,5 @@
+"""Database model for stored text summaries."""
+
 from sqlalchemy import Column, Integer, Text
 
 from app.utils.db import Base
