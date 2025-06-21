@@ -1,5 +1,5 @@
 {% extends 'base.html' %} {% from 'components.html' import card, confirm_modal,
-template_form %} {% block content %}
+template_form, settings_row with context %} {% block content %}
 <main class="container settings-page">
   {# Help content now appears directly in the table, so the collapsible menu was
   removed #}
@@ -114,107 +114,7 @@ template_form %} {% block content %}
           </tr>
         </thead>
         <tbody>
-          {% for setting in items %}
-          <tr>
-            <td title="{{ tooltips.get(setting.name, '') }}">
-              {{ setting.name }}
-            </td>
-            <td>
-              {% if setting.name in boolean_fields %}
-              <label class="switch">
-                <!-- prettier-ignore -->
-                <input
-                    type="checkbox"
-                    name="{{ setting.name }}"
-                    value="True"
-                    {% if setting.value == 'True' %}checked{% endif %}
-                    data-boolean
-                    {% if setting.name == 'DISCOVERY_AUTOSTART' %}data-ignore-unsaved{% endif %}
-                    {% if setting.name in locked_settings %}disabled data-locked{% endif %}
-                    {% if setting.name == 'FFMPEG_HWACCEL' and not metrics.ffmpeg_gpu_support %}disabled data-unavailable{% endif %}
-                  />
-                <span class="slider round"></span>
-              </label>
-              {% elif 'KEY' in setting.name %} {% set sprite = url_for('static',
-              filename='icons/sprite.svg') %}
-              <input
-                id="{{ setting.name }}"
-                type="password"
-                name="{{ setting.name }}"
-                value="{{ setting.value }}"
-                title="Edit value for {{ setting.name }}"
-                {%
-                if
-                setting.name
-                in
-                locked_settings
-                %}disabled
-                data-locked{%
-                endif
-                %}
-              />
-              <button
-                type="button"
-                class="toggle-key-visibility"
-                data-input="{{ setting.name }}"
-                data-sprite="{{ sprite }}"
-                title="Show key"
-              >
-                <svg width="16" height="16">
-                  <use href="{{ sprite }}#eye" />
-                </svg>
-              </button>
-              {% else %}
-              <input
-                type="{{ 'number' if setting.name in numeric_fields else 'text' }}"
-                name="{{ setting.name }}"
-                value="{{ setting.value }}"
-                title="Edit value for {{ setting.name }}"
-                {%
-                if
-                setting.name
-                in
-                placeholders
-                %}
-                placeholder="{{ placeholders[setting.name] }}"
-                {%
-                endif
-                %}
-                {%
-                if
-                setting.name
-                in
-                choices
-                %}list="{{ setting.name }}-list"
-                {%
-                endif
-                %}
-                {%
-                if
-                setting.name
-                in
-                locked_settings
-                %}disabled
-                data-locked{%
-                endif
-                %}
-              />
-              {% endif %}
-            </td>
-            <td class="advanced-only">
-              <button
-                type="submit"
-                name="action"
-                value="delete"
-                title="Delete {{ setting.name }}"
-                onclick="return confirmDeleteSetting('{{ setting.name }}')"
-                class="advanced-only"
-              >
-                Delete
-              </button>
-            </td>
-          </tr>
-          {% endfor %}
+          {% for setting in items %} {{ settings_row(setting) }} {% endfor %}
         </tbody>
       </table>
       {% endcall %} {% if group == 'Admin' %} {% call card('Configuration
