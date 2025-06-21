@@ -3,6 +3,7 @@
 This guide provides a high-level look at Glimpser's core components and how they interact.
 
 ## Flask Application Initialization (`app/__init__.py`)
+
 - Creates the Flask application instance.
 - Loads configuration values and sets up logging.
 - Initializes routes from `app/routes.py`.
@@ -14,11 +15,13 @@ This guide provides a high-level look at Glimpser's core components and how they
   the check succeeds even when login is required.
 
 ## Configuration Handling (`app/config.py`)
+
 - Loads environment variables and values stored in the database.
 - Exposes settings such as `SECRET_KEY`, database location and retention policy limits.
 - Includes helper functions to back up and restore configuration state.
 
 ## Utility Modules (`app/utils/`)
+
 - Collection of helpers for image processing, database access, notifications and more.
 - Key modules include:
   - `db.py` – SQLAlchemy setup and database initialization.
@@ -28,6 +31,7 @@ This guide provides a high-level look at Glimpser's core components and how they
   - `email_alerts.py`, `sms_alerts.py` and `cap_alerts.py` – sending notifications.
 
 ## Scheduler Jobs (`app/utils/scheduling.py`)
+
 - Uses APScheduler to run periodic tasks.
 - Jobs include crawler scheduling, video archiving, discovery and summarization.
 - Tasks run asynchronously so functions like `schedule_discovery` and `schedule_summarization` never block the caller.
@@ -35,19 +39,15 @@ This guide provides a high-level look at Glimpser's core components and how they
 - Stale crawler jobs are removed when templates are updated.
 
 ## How Components Fit Together
-```
- Client Request ---> Routes (app/routes.py) ----> Models (app/models/) ----> Database
-                           |                           |
-                           v                           v
-                     Utility Functions ----> Scheduler Jobs / Background Tasks
-```
+
+<img src="diagrams/architecture_overview.svg" alt="Architecture overview diagram" width="600" />
 - Routes handle incoming API or web requests.
 - Models define the database schema.
 - Utility functions perform processing and are called by both routes and scheduled jobs.
 - Background tasks run outside request/response cycles to capture data and generate summaries.
 
-
 ## Data Flow from Camera to UI
+
 1. **Camera Source** – Each camera is defined in the database as a template specifying the capture URL and parameters.
 2. **Capture Job** – The scheduler runs `capture_template` jobs that use `screenshots.py` to grab frames or video from the source.
 3. **Database Update** – Captured metadata and any motion events are stored via `db.py` while images are written to `data/screenshots/`.
