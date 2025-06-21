@@ -3885,6 +3885,7 @@ def init_routes(app: Flask) -> None:
         metrics = scheduling.get_system_metrics()
         feeds = scheduling.get_feed_status()
         last_summary = scheduling.get_last_summary_time()
+        log_summary = scheduling.get_or_generate_log_summary()
         danger_enabled = config.get_setting("DANGER_MODE", "True") == "True"
         cost_summary, total_tokens, total_cost, total_calls = (
             template_manager.get_llm_cost_summary()
@@ -3924,6 +3925,7 @@ def init_routes(app: Flask) -> None:
             metrics=metrics,
             feeds=feeds,
             last_summary=last_summary,
+            log_summary=log_summary,
             cost_summary=cost_summary,
             total_tokens=total_tokens,
             total_cost=total_cost,
