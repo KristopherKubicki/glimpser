@@ -585,7 +585,6 @@ def update_camera(name, template, image_file=None, motion=False):
             lsum = True
 
         prev_motion = os.path.join(directory, "last_motion.png")
-        # print(" detected motion", lsum, name, template.get('last_caption'))
 
         allow = motion
 
@@ -597,7 +596,6 @@ def update_camera(name, template, image_file=None, motion=False):
         if (template.get("last_caption", "") or "") == "":
             allow = True
             last_caption_trigger = True
-            # print("allowing from no caption", name)
         if (template.get("last_motion_caption", "") or "") == "":
             allow = True
             last_motion_trigger = True
@@ -619,9 +617,7 @@ def update_camera(name, template, image_file=None, motion=False):
                 ):
                     allow = True
                     last_motion_trigger = True
-                    # print("allowing because of an old caption", name)
             except Exception:
-                # print(" parse exception", e) #n1c
                 pass
 
             # at least once a day.
@@ -724,7 +720,6 @@ def update_camera(name, template, image_file=None, motion=False):
             # Check if the object is detected with confidence higher than the threshold
             if probs[0, 0] >= object_confidence:
                 allow = True
-                # print(f"Object '{object_filter}' detected in {name} with confidence {probs[0, 0]}")
 
         if allow:
 
@@ -795,8 +790,6 @@ def update_camera(name, template, image_file=None, motion=False):
                     lprompt += template["notes"].strip() + "\n---\n"
                 #  use Chatgpt_compare with notes separated for clarity
                 gret = chatgpt_compare(lprompt, image_paths, template_name=name)
-                # print("  oldgpt:", name, template.get('last_caption'))
-                # print("  newgpt:", name, gret)
                 if gret and re.findall(r"(?:sorry|cannot|can not)", gret):
                     template["last_ret"] = gret + "*"
                 elif gret:
