@@ -1,6 +1,6 @@
 # Settings Page Overview
 
-The **Settings** interface lets you manage configuration values stored in the database. Each field includes a tooltip that explains its purpose. A collapsible **Settings Reference** table lists every configuration option with detailed descriptions. Settings are organized into categories with navigation tabs just like the Captions page.
+The **Settings** interface lets you manage configuration values stored in the database. Each field includes a tooltip that explains its purpose. Settings are organized into categories with navigation tabs just like the Captions page.
 
 ## Sections
 
@@ -10,7 +10,6 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Admin** – buttons are organized into cards for a cleaner layout.
 - **Danger Mode** – shows the detected browser path, Chrome version, and the first shortcut found. Green and red dots indicate if shortcuts are patched and if the debugging port is open. A link beside the heading opens the [Danger Mode documentation](danger_mode.md). You can also update Chrome shortcuts from here.
 - **Offline Preview** – cached snapshots are automatically enabled.
-- **Settings Reference** – expand the table to read explanations for each setting.
 - **Column Search** – click a header to filter rows by that column.
 - **Tab headers removed** – the active tab is highlighted, freeing space.
 - **Unsaved Changes Indicator** – a small alert icon appears next to the Save
