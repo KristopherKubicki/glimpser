@@ -166,7 +166,7 @@ template_form %} {% block content %}
               </button>
               {% else %}
               <input
-                type="{{ 'number' if setting.name in numeric_fields else 'text' }}"
+                type="{{ 'number' if setting.name in numeric_fields else ('email' if setting.name in email_fields else 'text') }}"
                 name="{{ setting.name }}"
                 value="{{ setting.value }}"
                 title="Edit value for {{ setting.name }}"

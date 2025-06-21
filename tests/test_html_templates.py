@@ -108,6 +108,10 @@ class TestHtmlTemplates(unittest.TestCase):
         html = Path("app/templates/settings.html").read_text(encoding="utf-8")
         self.assertIn('id="contrast-toggle"', html)
 
+    def test_email_fields_have_email_type(self):
+        html = Path("app/templates/settings.html").read_text(encoding="utf-8")
+        self.assertIn("email_fields", html)
+
     def test_captions_prompt_label(self):
         """Captions page prompt textarea should have a visible label."""
         html = Path("app/templates/captions.html").read_text(encoding="utf-8")
