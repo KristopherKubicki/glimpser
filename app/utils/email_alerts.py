@@ -18,7 +18,7 @@ from app.config import (
 )
 
 
-def send_email_alert(subject, body):
+def send_email_alert(subject: str, body: str) -> None:
     """Send an email to the configured recipients.
 
     Parameters
@@ -58,7 +58,7 @@ def send_email_alert(subject, body):
         logging.error("Error sending email alert: %s", e)
 
 
-def email_alert(event_type, details):
+def email_alert(event_type: str, details: str) -> None:
     """Compose a standard alert email and send it.
 
     Parameters
