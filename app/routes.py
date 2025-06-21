@@ -223,6 +223,22 @@ def send_conditional_file(
     return resp
 
 
+def send_video_with_metadata(path: str) -> Response:
+    """Return a video file with caching headers and ETag."""
+    resp = send_file(path)
+    try:
+        stat = os.stat(path)
+        mtime = int(stat.st_mtime)
+        size = stat.st_size
+    except OSError:
+        mtime = int(time.time())
+        size = 0
+    resp.set_etag(f"{mtime}-{size}")
+    resp.headers["Expires"] = http_date(time.time() + CACHE_TTL_SEC)
+    resp.headers["Cache-Control"] = f"public, max-age={CACHE_TTL_SEC}"
+    return resp
+
+
 # ---------- main ------------------------------------------------------------
 def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
     out_tmp = out.with_suffix(".tmp.mp4")
@@ -3016,7 +3032,7 @@ def init_routes(app: Flask) -> None:
 
         video_path = os.path.join(base_path, f"{lgroup}_in_process.mp4")
         if os.path.exists(video_path):
-            return send_file(video_path)
+            return send_video_with_metadata(video_path)
 
         abort(404)
 
@@ -3041,7 +3057,7 @@ def init_routes(app: Flask) -> None:
 
         in_process = os.path.join(path, "in_process.mp4")
         if os.path.exists(in_process):
-            return send_file(in_process)
+            return send_video_with_metadata(in_process)
 
         # Fallback to the most recent finalized video
         video_files = [
@@ -3049,7 +3065,7 @@ def init_routes(app: Flask) -> None:
         ]
         if video_files:
             latest = max(video_files, key=os.path.getmtime)
-            return send_file(latest)
+            return send_video_with_metadata(latest)
 
         abort(404)
 
@@ -3596,7 +3612,8 @@ def init_routes(app: Flask) -> None:
         if not os.path.exists(path):
             abort(404)
 
-        return send_from_directory(path, filename)
+        file_path = os.path.join(path, filename)
+        return send_video_with_metadata(file_path)
 
     def delete_setting(name: str) -> bool:
         name = name.replace("'", "")[:32]
