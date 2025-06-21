@@ -498,6 +498,17 @@ def is_hash_valid(timed_hash: str) -> bool:
         return False
 
 
+def is_safe_redirect_url(target: str | None) -> bool:
+    """Return ``True`` when ``target`` is a safe relative URL."""
+
+    if not target:
+        return False
+    if "\n" in target or "\r" in target:
+        return False
+    parsed = urlparse(target)
+    return not parsed.scheme and not parsed.netloc
+
+
 def login_required(f: Callable) -> Callable:
     """Decorator enforcing session or API key authentication for routes."""
 
@@ -1862,6 +1873,7 @@ def init_routes(app: Flask) -> None:
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
+        next_url = request.args.get("next")
         ip_address = request.remote_addr
         now = datetime.now()
 
@@ -1908,7 +1920,10 @@ def init_routes(app: Flask) -> None:
                     ip_address, None
                 )  # Reset attempts on successful login
                 logging.info("Successful login for %s from %s", username, ip_address)
-                return redirect(url_for("index"))
+                target = (
+                    next_url if is_safe_redirect_url(next_url) else url_for("index")
+                )
+                return redirect(target)
             else:
                 # Record the failed attempt
                 if ip_address not in login_attempts:
