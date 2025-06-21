@@ -423,6 +423,10 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
         subprocess.run(cmd, input=concat_payload, timeout=30, check=True)
         out_tmp.rename(out)
         return True
+    except subprocess.TimeoutExpired:
+        logging.error("FFmpeg concat timed out after 30s")
+        out_tmp.unlink(missing_ok=True)
+        return False
     except subprocess.SubprocessError as exc:
         logging.error("FFmpeg concat failed: %s", exc, exc_info=True)
         out_tmp.unlink(missing_ok=True)
