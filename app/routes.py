@@ -25,6 +25,7 @@ import typing
 import uuid
 from collections import deque
 from datetime import datetime, timedelta
+from fractions import Fraction
 from functools import lru_cache, wraps
 from ipaddress import ip_network
 from pathlib import Path
@@ -269,7 +270,12 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
         ref = fixed[-1]  # last clip for geometry/fps
         first_clip = fixed[0]
         w, h = _probe(ref, "width"), _probe(ref, "height")
-        fps = eval(_probe(ref, "r_frame_rate"))
+        fps_str = _probe(ref, "r_frame_rate")
+        try:
+            fps = float(Fraction(fps_str))
+        except (ValueError, ZeroDivisionError):
+            logging.warning("Invalid r_frame_rate %s, defaulting to 1", fps_str)
+            fps = 1.0
         pad = ramroot / "pad_black.mp4"
 
         # extract first frame from earliest clip for overlay

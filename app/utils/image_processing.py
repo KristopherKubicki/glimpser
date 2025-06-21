@@ -39,8 +39,35 @@ class ChatGPTImageComparison:
         self.url = "https://api.openai.com/v1/chat/completions"
 
     def compare_images(
-        self, prompt, image_paths, max_size=512, low_res=False, tokens=48
-    ):
+        self,
+        prompt: str,
+        image_paths: List[str],
+        max_size: int = 512,
+        low_res: bool = False,
+        tokens: int = 48,
+    ) -> tuple[str | None, int]:
+        """Return a caption for ``image_paths`` using the ChatGPT vision API.
+
+        Parameters
+        ----------
+        prompt : str
+            The text prompt describing the images.
+        image_paths : List[str]
+            Paths to images to send to ChatGPT; the first existing image will be
+            used.
+        max_size : int, optional
+            Maximum dimension of the resized image. Defaults to ``512``.
+        low_res : bool, optional
+            Request lower detail when ``True``. Defaults to ``False``.
+        tokens : int, optional
+            Maximum tokens to request from the API. Defaults to ``48``.
+
+        Returns
+        -------
+        tuple[str | None, int]
+            The cleaned caption text (``None`` on error) and the number of
+            tokens consumed.
+        """
 
         global last_429_error_time
 

@@ -1,3 +1,5 @@
+"""Database model for Web Push subscription information."""
+
 from sqlalchemy import Column, ForeignKey, Integer, String, Text
 
 from app.utils.db import Base

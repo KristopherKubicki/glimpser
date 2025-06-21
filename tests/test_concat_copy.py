@@ -78,6 +78,46 @@ class TestConcatCopy(unittest.TestCase):
             self.assertLess(ss_idx, t_idx)
             self.assertEqual(concat_cmd[ss_idx + 1], "1.000")
 
+    def test_malformed_frame_rate_defaults_to_one(self):
+        """Pad generation uses fps=1.0 when r_frame_rate is invalid."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out = Path(tmpdir) / "clip.mp4"
+            part = Path(tmpdir) / "final_0.mp4"
+            part.touch()
+            parts = [part]
+
+            calls = []
+
+            def fake_run(cmd, *args, **kwargs):
+                calls.append(cmd)
+                if cmd:
+                    last = cmd[-1]
+                    if isinstance(last, (str, Path)) and str(last).endswith(".mp4"):
+                        Path(str(last)).touch()
+                return None
+
+            with (
+                patch.object(routes, "_duration", return_value=1),
+                patch.object(
+                    routes,
+                    "_probe",
+                    side_effect=lambda p, k: {
+                        "width": "640",
+                        "height": "360",
+                        "r_frame_rate": "bad",
+                    }[k],
+                ),
+                patch("subprocess.run", side_effect=fake_run),
+            ):
+                self.assertTrue(routes._concat_copy(out, parts, clip_len=2))
+
+            overlay_cmd = next(
+                (c for c in calls if "color=c=black@0.9" in " ".join(map(str, c))),
+                None,
+            )
+            self.assertIsNotNone(overlay_cmd)
+            self.assertIn("r=1.0", " ".join(map(str, overlay_cmd)))
+
 
 if __name__ == "__main__":
     unittest.main()
