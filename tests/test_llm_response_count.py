@@ -1,6 +1,5 @@
 import json
 import os
-import sys
 import unittest
 
 from app.utils.template_manager import LLM_USAGE_PATH, get_llm_response_count

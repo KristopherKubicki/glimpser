@@ -1,7 +1,6 @@
 import io
 import os
 import shutil
-import sys
 import unittest
 from unittest.mock import patch
 

@@ -1,7 +1,6 @@
 # Integration tests for retention_policy cleanup logic
 
 import os
-import sys
 import tempfile
 import time
 import unittest

@@ -1,6 +1,5 @@
 import os
 import socket
-import sys
 import unittest
 
 from app.utils.screenshots import is_chrome_debug_port_open

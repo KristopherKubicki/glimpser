@@ -1,5 +1,4 @@
 import os
-import sys
 import unittest
 
 from app.utils.oui_map import OUI_MAP

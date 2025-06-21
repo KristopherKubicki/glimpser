@@ -3,7 +3,6 @@ import os
 import sqlite3
 
 # ensure repo root in path
-import sys
 import tempfile
 import unittest
 from unittest.mock import patch

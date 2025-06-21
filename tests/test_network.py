@@ -2,7 +2,6 @@
 
 import os
 import socket
-import sys
 import tempfile
 import unittest
 from unittest.mock import patch

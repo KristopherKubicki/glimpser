@@ -1,7 +1,6 @@
 # tests/test_init.py
 
 import os
-import sys
 import unittest
 
 from flask import Flask

@@ -1,7 +1,6 @@
 # tests/test_routes.py
 
 import os
-import sys
 import unittest
 from types import SimpleNamespace
 from unittest import mock
