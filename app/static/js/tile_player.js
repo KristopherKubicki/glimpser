@@ -54,10 +54,13 @@ export function initTilePlayer() {
   if (speedSlider) speedSlider.addEventListener("input", updateSpeedLabel);
   updateSpeedLabel();
 
-  const image = document.createElement("img");
-  image.id = "live-image";
-  image.style.display = "none";
-  if (container) container.appendChild(image);
+  let image = document.getElementById("live-image");
+  if (!image) {
+    image = document.createElement("img");
+    image.id = "live-image";
+    image.style.display = "none";
+    if (container) container.appendChild(image);
+  }
 
   function showBounce() {
     if (!spinner) return;

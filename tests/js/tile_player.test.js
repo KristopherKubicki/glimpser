@@ -110,3 +110,14 @@ test("clip waits 30s before live", () => {
   jest.advanceTimersByTime(1);
   expect(img.src).toMatch(/\/stream\.mjpg\?group=all&time=\d+$/);
 });
+
+test("init does not duplicate live-image", () => {
+  document.body.innerHTML = `
+    <video id="live-video"><source></source></video>
+  `;
+  window.templateDetails = { cam1: {} };
+  init();
+  expect(document.querySelectorAll("#live-image").length).toBe(1);
+  init();
+  expect(document.querySelectorAll("#live-image").length).toBe(1);
+});
