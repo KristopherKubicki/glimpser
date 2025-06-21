@@ -225,6 +225,34 @@ def send_conditional_file(
 
 # ---------- main ------------------------------------------------------------
 def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
+    """Assemble a clip from segments using three FFmpeg phases.
+
+    1. Finalize each entry in ``parts`` and copy it to a temporary RAM
+       directory so the container metadata is correct.
+    2. If the combined duration is shorter than ``clip_len`` generate a
+       fading black pad from the first frame and prepend it.
+    3. Concatenate all pieces with FFmpeg, trimming to exactly ``clip_len`` and
+       writing ``out``.
+
+    Parameters
+    ----------
+    out: Path
+        Destination file for the assembled clip.
+    parts: list[Path]
+        Video fragments ordered from oldest to newest.
+    clip_len: int
+        Desired clip length in seconds.
+
+    Returns
+    -------
+    bool
+        ``True`` on success, ``False`` otherwise.
+
+    Side Effects
+    ------------
+    Creates and deletes a temporary directory under ``/dev/shm``.
+    """
+
     out_tmp = out.with_suffix(".tmp.mp4")
     ramroot = Path(tempfile.mkdtemp(dir=Path("/dev/shm")))
     fixed: list[Path] = []
