@@ -1,4 +1,5 @@
 import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -117,6 +118,21 @@ class TestConcatCopy(unittest.TestCase):
             )
             self.assertIsNotNone(overlay_cmd)
             self.assertIn("r=1.0", " ".join(map(str, overlay_cmd)))
+
+    def test_concat_timeout_returns_false(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out = Path(tmpdir) / "clip.mp4"
+            part = Path(tmpdir) / "final_0.mp4"
+            part.touch()
+
+            with (
+                patch.object(routes, "_duration", return_value=1),
+                patch(
+                    "subprocess.run",
+                    side_effect=subprocess.TimeoutExpired(cmd="ffmpeg", timeout=30),
+                ),
+            ):
+                self.assertFalse(routes._concat_copy(out, [part], clip_len=1))
 
 
 if __name__ == "__main__":
