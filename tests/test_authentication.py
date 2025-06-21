@@ -63,6 +63,74 @@ class TestAuthentication(unittest.TestCase):
             self.assertEqual(response.status_code, 302)
             self.assertIn("/", response.headers["Location"])
 
+    def test_login_redirects_to_next_when_safe(self):
+        with (
+            patch("app.routes.SessionLocal") as mock_session_local,
+            patch("app.routes.login_attempts", {}),
+            patch("app.routes.check_password_hash", return_value=True),
+        ):
+            dummy_user = SimpleNamespace(id=1, username=USER_NAME, password_hash="hash")
+
+            class DummyQuery:
+                def filter_by(self, **kwargs):
+                    return self
+
+                def first(self):
+                    return dummy_user
+
+            class DummySession:
+                def query(self, model):
+                    return DummyQuery()
+
+                def close(self):
+                    pass
+
+            mock_session_local.return_value = DummySession()
+
+            response = self.client.post(
+                "/login?next=/protected",
+                data={
+                    "username": USER_NAME,
+                    "password": "correct_password",  # pragma: allowlist secret
+                },
+            )
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual("/protected", response.headers["Location"])
+
+    def test_login_redirects_ignores_unsafe_next(self):
+        with (
+            patch("app.routes.SessionLocal") as mock_session_local,
+            patch("app.routes.login_attempts", {}),
+            patch("app.routes.check_password_hash", return_value=True),
+        ):
+            dummy_user = SimpleNamespace(id=1, username=USER_NAME, password_hash="hash")
+
+            class DummyQuery:
+                def filter_by(self, **kwargs):
+                    return self
+
+                def first(self):
+                    return dummy_user
+
+            class DummySession:
+                def query(self, model):
+                    return DummyQuery()
+
+                def close(self):
+                    pass
+
+            mock_session_local.return_value = DummySession()
+
+            response = self.client.post(
+                "/login?next=http://evil.com",
+                data={
+                    "username": USER_NAME,
+                    "password": "correct_password",  # pragma: allowlist secret
+                },
+            )
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual("/", response.headers["Location"])
+
     def test_login_failure(self):
         with (
             patch("app.routes.SessionLocal") as mock_session_local,
