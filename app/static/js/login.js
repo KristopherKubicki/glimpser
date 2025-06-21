@@ -57,13 +57,16 @@ export async function attemptAutoLogin() {
         remember: "on",
       }),
     });
-    if (resp.redirected || resp.url.endsWith("/")) {
+    if (resp.ok && (resp.redirected || resp.url.endsWith("/"))) {
       window.IS_LOGGED_IN = true;
       if (window.location.pathname === "/login") {
         window.location.href = "/";
       }
       return true;
     }
+    // Login failed; clear stored credentials so we don't keep retrying.
+    localStorage.removeItem("autoLogin");
+    return false;
   } catch (err) {
     console.error("Auto login failed", err);
   }
