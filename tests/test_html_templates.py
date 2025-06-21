@@ -183,6 +183,24 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn('name="TEST_BOOL"', html)
         self.assertIn('type="checkbox"', html)
 
+    def test_player_camera_name_has_live_status(self):
+        html = Path("app/templates/player.html").read_text(encoding="utf-8")
+        self.assertIn('id="camera-name"', html)
+        self.assertIn('role="status"', html)
+        self.assertIn('aria-live="polite"', html)
+
+    def test_logs_status_has_live_region(self):
+        html = Path("app/templates/logs.html").read_text(encoding="utf-8")
+        self.assertIn('id="log-connection-status"', html)
+        self.assertIn('role="status"', html)
+        self.assertIn('aria-live="polite"', html)
+
+    def test_index_time_live_region(self):
+        html = Path("app/templates/index.html").read_text(encoding="utf-8")
+        self.assertIn('id="index-time"', html)
+        self.assertIn('role="timer"', html)
+        self.assertIn('aria-live="polite"', html)
+
 
 if __name__ == "__main__":
     unittest.main()
