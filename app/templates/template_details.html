@@ -112,7 +112,7 @@ template_form %} {% block content %}
     <h3>Edit Template Details</h3>
     {{ template_form( 'edit-template-form', '/update_template/' ~ template_name,
     template=template_details, preview_src='/stream.mjpg?camera=' ~
-    template_name, preview_id='mini-live-preview', include_name=False,
+    template_name, preview_id='url-preview', include_name=False,
     submit_label='Update Template', object_tokens=object_tokens,
     clip_model=clip_model, clip_gpu=clip_gpu ) }}
   </div>
@@ -558,9 +558,9 @@ template_form %} {% block content %}
       title="Close dialog"
       >&times;</span
     >
-    {{ template_form( 'edit-template-form', '/update_template/' ~ template_name,
-    template=template_details, preview_src='/stream.mjpg?camera=' ~
-    template_name, preview_id='mini-live-preview', include_name=False,
+    {{ template_form( 'edit-template-form-modal', '/update_template/' ~
+    template_name, template=template_details, preview_src='/stream.mjpg?camera='
+    ~ template_name, preview_id='url-preview', include_name=False,
     submit_label='Save', object_tokens=object_tokens, clip_model=clip_model,
     clip_gpu=clip_gpu ) }}
   </div>
@@ -572,5 +572,9 @@ template_form %} {% block content %}
 <script
   type="module"
   src="{{ url_for('static', filename='js/recent_videos.js') }}"
+></script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/url_test.js') }}"
 ></script>
 {% endblock %}
