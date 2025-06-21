@@ -43,6 +43,7 @@ currently covered are:
 1. Opening the root URL redirects to `/login`.
 2. The login page renders a form containing `username` and `password`
    fields.
+3. Visiting `/offline` shows the offline fallback page.
 
 Ensure that either **ChromeDriver** or **geckodriver** is installed and
 available on your `PATH`. If Selenium cannot create a browser driver the tests
@@ -52,6 +53,7 @@ End-to-end tests are skipped by default. To run them set `SKIP_E2E=0` and use:
 
 ```sh
 pytest tests/test_e2e_web.py
+pytest tests/test_e2e_offline_page.py
 ```
 
 Running the full suite with coverage, including the end-to-end tests, looks
