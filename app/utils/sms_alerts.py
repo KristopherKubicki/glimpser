@@ -11,7 +11,7 @@ from app.config import (
 )
 
 
-def send_sms_alert(message):
+def send_sms_alert(message: str) -> None:
     """Send an SMS alert using Twilio.
 
     Parameters
@@ -45,7 +45,7 @@ def send_sms_alert(message):
         logging.error("Error sending SMS alert: %s", exc)
 
 
-def sms_alert(event_type, details):
+def sms_alert(event_type: str, details: str) -> None:
     """Format and send an SMS alert for an event.
 
     Parameters
