@@ -68,6 +68,23 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertTrue(inputs, "remember checkbox missing")
         self.assertEqual(inputs[0].get("type"), "checkbox")
 
+    def test_login_error_has_alert_role(self):
+        html = Path("app/templates/login.html").read_text(encoding="utf-8")
+        self.assertIn('id="login-error"', html)
+        self.assertIn('role="alert"', html)
+        self.assertIn('aria-live="assertive"', html)
+
+    def test_login_inputs_described_by_error(self):
+        parser = parse_template(Path("app/templates/login.html"))
+        username = next(
+            i for i in parser.forms[0]["inputs"] if i.get("id") == "username"
+        )
+        password = next(
+            i for i in parser.forms[0]["inputs"] if i.get("id") == "password"
+        )
+        self.assertEqual(username.get("aria-describedby"), "login-error")
+        self.assertEqual(password.get("aria-describedby"), "login-error")
+
     def test_discover_add_camera_form_inputs(self):
         html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")
         self.assertIn("template_form(", html)

@@ -24,6 +24,7 @@ content %}
         placeholder="Username"
         required
         title="Enter your username"
+        aria-describedby="login-error"
       />
     </div>
     <div class="form-field">
@@ -35,9 +36,15 @@ content %}
         placeholder="Password"
         required
         title="Enter your password"
+        aria-describedby="login-error"
       />
     </div>
-    <div id="login-error" class="form-error hidden"></div>
+    <div
+      id="login-error"
+      class="form-error hidden"
+      role="alert"
+      aria-live="assertive"
+    ></div>
 
     <div class="checkbox-row">
       <input id="remember" type="checkbox" name="remember" />
