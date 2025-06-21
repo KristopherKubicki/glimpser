@@ -1,5 +1,14 @@
 # app/utils/scheduling.py
 
+"""Manage Glimpser's background jobs and scheduler.
+
+This module configures a :class:`GracefulAPScheduler` wrapper around
+``APScheduler`` and provides helpers to run jobs in isolated processes with
+backoff logic. Functions such as ``schedule_crawlers`` and
+``schedule_summarization`` set up periodic crawling, summarization and other
+maintenance tasks.
+"""
+
 import datetime
 import importlib
 import json
