@@ -847,15 +847,15 @@ def parse_cache_delay(headers: typing.Mapping[str, str]) -> float:
     if m:
         try:
             return float(m.group(1))
-        except ValueError:
-            pass
+        except ValueError as exc:
+            logging.warning("Invalid max-age header %s: %s", m.group(1), exc)
     expires = headers.get("Expires")
     if expires:
         try:
             dt = email.utils.parsedate_to_datetime(expires)
             return max(0.0, dt.timestamp() - time.time())
-        except Exception:
-            pass
+        except (TypeError, ValueError) as exc:
+            logging.warning("Invalid Expires header %s: %s", expires, exc)
     return 0.0
 
 
@@ -1208,8 +1208,12 @@ def generate(
                             )
                             try:
                                 os.remove(last_shot)
-                            except OSError:
-                                pass
+                            except OSError as exc:
+                                logging.warning(
+                                    "Failed to remove bad shot %s: %s",
+                                    last_shot,
+                                    exc,
+                                )
                             last_shot = None
                     except Exception as e:
                         logging.error("Failed to open last shot %s: %s", last_shot, e)
@@ -1302,8 +1306,12 @@ def generate(
                                 )
                                 try:
                                     os.remove(most_recent_file)
-                                except OSError:
-                                    pass
+                                except OSError as exc:
+                                    logging.warning(
+                                        "Failed to remove invalid screenshot %s: %s",
+                                        most_recent_file,
+                                        exc,
+                                    )
                                 frame = None
 
                             if frame is not None:
@@ -1318,8 +1326,12 @@ def generate(
                                     f.write(frame)
                                 # Atomically move the temp file into place
                                 os.replace(temp_path, last_path)
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            logging.error(
+                                "Failed to update screenshot cache: %s",
+                                exc,
+                                exc_info=True,
+                            )
 
         if not frame:
             frame = _placeholder_frame()
@@ -1495,8 +1507,8 @@ def init_routes(app: Flask) -> None:
             from app.utils.github import is_update_available
 
             outdated = is_update_available(str(VERSION))
-        except Exception:
-            pass
+        except Exception as exc:
+            logging.warning("Could not determine update status: %s", exc)
 
         return dict(
             VERSION=VERSION,
@@ -2214,8 +2226,12 @@ def init_routes(app: Flask) -> None:
             logging.warning("Invalid latest camera image removed: %s", latest_path)
             try:
                 os.remove(latest_path)
-            except OSError:
-                pass
+            except OSError as exc:
+                logging.warning(
+                    "Failed to remove invalid latest image %s: %s",
+                    latest_path,
+                    exc,
+                )
 
         global last_time, last_shot
         # implement some simple caching so the server doesn't get crushed
@@ -2714,8 +2730,8 @@ def init_routes(app: Flask) -> None:
                             except Exception:
                                 iso_ts = ts
                             entries.append({iso_ts: text})
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logging.error("Failed to parse captions: %s", exc)
             finally:
                 session_db.close()
         except Exception:
@@ -2884,14 +2900,14 @@ def init_routes(app: Flask) -> None:
                 try:
                     start_ts = int(datetime.fromisoformat(start).timestamp())
                     query = query.filter(Summary.timestamp >= start_ts)
-                except Exception:
-                    pass
+                except (ValueError, TypeError) as exc:
+                    logging.warning("Invalid start parameter %s: %s", start, exc)
             if end:
                 try:
                     end_ts = int(datetime.fromisoformat(end).timestamp())
                     query = query.filter(Summary.timestamp <= end_ts)
-                except Exception:
-                    pass
+                except (ValueError, TypeError) as exc:
+                    logging.warning("Invalid end parameter %s: %s", end, exc)
             records = query.limit(101).all()
             truncated = len(records) > 100
             records = records[:100]
