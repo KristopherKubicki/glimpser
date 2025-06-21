@@ -3,6 +3,8 @@ import time
 from typing import Dict
 from urllib.parse import urlparse
 
+logger = logging.getLogger(__name__)
+
 
 class ColorFormatter(logging.Formatter):
     """Add ANSI colors to log level names for console output."""
@@ -53,6 +55,6 @@ def sanitize_url(url: str) -> str:
                 netloc += f":{parts.port}"
             parts = parts._replace(netloc=netloc)
             return parts.geturl()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Failed to sanitize URL %s: %s", url, exc)
     return url
