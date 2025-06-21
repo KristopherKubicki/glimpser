@@ -5,13 +5,24 @@ export function initPasswordToggle() {
     if (!toggle || !input) return;
     const useEl = toggle.querySelector("use");
     const sprite = useEl ? useEl.getAttribute("href").split("#")[0] : "";
-    toggle.addEventListener("click", () => {
-      const showing = input.type === "text";
-      input.type = showing ? "password" : "text";
+    const show = () => {
+      input.type = "text";
       if (useEl) {
-        useEl.setAttribute("href", `${sprite}#${showing ? "eye" : "eye-off"}`);
+        useEl.setAttribute("href", `${sprite}#eye-off`);
       }
-    });
+    };
+    const hide = () => {
+      input.type = "password";
+      if (useEl) {
+        useEl.setAttribute("href", `${sprite}#eye`);
+      }
+    };
+    toggle.addEventListener("mousedown", show);
+    toggle.addEventListener("touchstart", show);
+    toggle.addEventListener("mouseup", hide);
+    toggle.addEventListener("mouseleave", hide);
+    toggle.addEventListener("touchend", hide);
+    toggle.addEventListener("touchcancel", hide);
   };
 
   if (document.readyState === "loading") {

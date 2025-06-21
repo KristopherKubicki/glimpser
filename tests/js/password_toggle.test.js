@@ -7,7 +7,7 @@ beforeAll(async () => {
   initPasswordToggle = mod.initPasswordToggle;
 });
 
-test("click toggles password visibility", () => {
+test("password visible while button held", () => {
   document.body.innerHTML = `
     <input id="password" type="password" />
     <button id="password-toggle" aria-label="Show password">
@@ -19,10 +19,10 @@ test("click toggles password visibility", () => {
   const input = document.getElementById("password");
   const btn = document.getElementById("password-toggle");
   const useEl = btn.querySelector("use");
-  btn.click();
+  btn.dispatchEvent(new Event("mousedown"));
   expect(input.type).toBe("text");
   expect(useEl.getAttribute("href")).toBe("icons.svg#eye-off");
-  btn.click();
+  btn.dispatchEvent(new Event("mouseup"));
   expect(input.type).toBe("password");
   expect(useEl.getAttribute("href")).toBe("icons.svg#eye");
 });
