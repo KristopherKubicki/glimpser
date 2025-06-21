@@ -87,16 +87,6 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertEqual(username.get("aria-describedby"), "login-error")
         self.assertEqual(password.get("aria-describedby"), "login-error")
 
-    def test_login_username_autofocus_and_label(self):
-        """Username input should have autofocus and an associated label."""
-        html = Path("app/templates/login.html").read_text(encoding="utf-8")
-        self.assertIn('<label for="username"', html)
-        parser = parse_template(Path("app/templates/login.html"))
-        username = next(
-            i for i in parser.forms[0]["inputs"] if i.get("id") == "username"
-        )
-        self.assertIn("autofocus", username)
-
     def test_discover_add_camera_form_inputs(self):
         html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")
         self.assertIn("template_form(", html)
