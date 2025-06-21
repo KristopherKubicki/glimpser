@@ -148,6 +148,8 @@ SEGMENT_SEC = 10
 
 
 FFMPEG = config.FFMPEG_PATH  # shortcut
+# Limit configuration uploads to 5 MB to avoid excessive memory usage
+MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 
 
 # ---------- tiny helpers ----------------------------------------------------
@@ -3700,9 +3702,18 @@ def init_routes(app: Flask) -> None:
                     if file.filename == "":
                         flash("No selected file", "error")
                     elif file and allowed_file(file.filename):
-                        file.save(BACKUP_PATH)
-                        restore_config()
-                        flash("Configuration restored successfully", "success")
+                        file.stream.seek(0, os.SEEK_END)
+                        size = file.stream.tell()
+                        file.stream.seek(0)
+                        if size > MAX_UPLOAD_SIZE:
+                            flash("File exceeds 5 MB limit", "error")
+                        else:
+                            file.save(BACKUP_PATH)
+                            restore_config()
+                            flash(
+                                "Configuration restored successfully",
+                                "success",
+                            )
                     else:
                         flash("Invalid file type", "error")
             elif action == "test_email":
