@@ -79,6 +79,7 @@ def setup_logging(args=None):
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     color_formatter = ColorFormatter("%(asctime)s - %(levelname)s - %(message)s")
     logger = logging.getLogger()
+    logger.handlers.clear()
     logger.setLevel(getattr(logging, args.log_level if args else config.LOG_LEVEL))
 
     # Ensure log directory exists
