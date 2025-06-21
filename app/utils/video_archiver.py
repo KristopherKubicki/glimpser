@@ -803,7 +803,7 @@ def _old_compile_to_video_inner(camera_path, video_path) -> bool:
                 frame_files.append(f)
             except Exception:
                 logging.warning("skipping corrupt screenshot %s", f)
-                print("skipp", f)
+                logging.debug("skipping corrupt screenshot %s", f)
 
         if not frame_files:
             return
