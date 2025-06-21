@@ -17,6 +17,19 @@ from app.utils.screenshots import check_user_activity
 
 
 def get_files_sorted_by_creation_time(directory):
+    """Return files in *directory* sorted from oldest to newest.
+
+    Parameters
+    ----------
+    directory : str
+        Path to a directory containing files.
+
+    Returns
+    -------
+    list[str]
+        Ordered list of file paths or ``[]`` if ``directory`` is invalid.
+    """
+
     if not os.path.isdir(directory):
         return []
 
@@ -35,6 +48,24 @@ def get_files_sorted_by_creation_time(directory):
 
 
 def delete_old_files(file_list, max_age, max_size, minimum=10):
+    """Delete files older than ``max_age`` days or when ``max_size`` is exceeded.
+
+    Parameters
+    ----------
+    file_list : list[str]
+        Files sorted from oldest to newest.
+    max_age : int
+        Age in days beyond which a file is removed.
+    max_size : int
+        Maximum cumulative size before pruning begins.
+    minimum : int, optional
+        Number of newest files to preserve. Defaults to 10.
+
+    Returns
+    -------
+    None
+    """
+
     current_time = time.time()
     total_size = 0
 

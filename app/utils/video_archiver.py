@@ -39,6 +39,8 @@ class ConcatStatus(Enum):
 
 
 def touch(fname, times=None):
+    """Create ``fname`` if missing and update its modification time."""
+
     with open(fname, "a"):
         os.utime(fname, times)
 
