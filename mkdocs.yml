@@ -16,6 +16,7 @@ nav:
       - Camera Discovery: camera_discovery.md
       - Camera Fix: camera_fix.md
       - Capture Process: capture_process.md
+      - Capture Summary Sequence: capture_summary_sequence.md
       - Browser Driver Management: driver_pool.md
       - Captions Live Update: captions_live_update.md
       - Floating Navigation Bar: floating_nav.md
