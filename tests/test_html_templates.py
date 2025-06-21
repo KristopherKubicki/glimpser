@@ -68,6 +68,13 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertTrue(inputs, "remember checkbox missing")
         self.assertEqual(inputs[0].get("type"), "checkbox")
 
+    def test_login_autocomplete_attributes(self):
+        """Username and password inputs should set autocomplete."""
+        parser = parse_template(Path("app/templates/login.html"))
+        inputs = {i.get("name"): i for i in parser.forms[0]["inputs"]}
+        self.assertEqual(inputs["username"].get("autocomplete"), "username")
+        self.assertEqual(inputs["password"].get("autocomplete"), "current-password")
+
     def test_discover_add_camera_form_inputs(self):
         html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")
         self.assertIn("template_form(", html)
