@@ -95,7 +95,6 @@ from app.utils import (
     video_archiver,
 )
 from app.utils.llm import ask_question
-from app.utils.network import is_system_online
 from app.utils.screenshots import (
     capture_frame_from_stream,
     check_user_activity,
@@ -1509,6 +1508,12 @@ def allowed_filename(filename: str) -> bool:
 
 def init_routes(app: Flask) -> None:
     """Register all route handlers on the given ``app``."""
+    from app.blueprints.network import create_blueprint
+
+    if not getattr(app, "_network_bp_registered", False):
+        app.register_blueprint(create_blueprint())
+        app._network_bp_registered = True
+
     # get_active_groups()
 
     @app.after_request
@@ -1737,12 +1742,6 @@ def init_routes(app: Flask) -> None:
     def discovery_status():
         """Return cached background discovery status."""
         return jsonify(scheduling.get_discovery_status())
-
-    @app.route("/network_status")
-    @login_required
-    def network_status():
-        """Return current network connectivity status."""
-        return jsonify({"online": is_system_online()})
 
     @app.route("/discover/subnets")
     @login_required

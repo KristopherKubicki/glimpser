@@ -18,13 +18,13 @@ class TestNetworkStatusEndpoint(unittest.TestCase):
     def tearDown(self):
         self.login_patch.stop()
 
-    @patch("app.routes.is_system_online", return_value=True)
+    @patch("app.blueprints.network.is_system_online", return_value=True)
     def test_online(self, mock_online):
         resp = self.client.get("/network_status")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.get_json(), {"online": True})
 
-    @patch("app.routes.is_system_online", return_value=False)
+    @patch("app.blueprints.network.is_system_online", return_value=False)
     def test_offline(self, mock_online):
         resp = self.client.get("/network_status")
         self.assertEqual(resp.status_code, 200)
