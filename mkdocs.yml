@@ -44,6 +44,7 @@ nav:
       - Nginx HTTP/2 Push: nginx_http2_push.md
       - Offline Fonts: offline_fonts.md
       - Offline Preview: offline_preview.md
+      - Offline Job Flow: offline_job_flow.md
       - Pylint Checks: pylint_checks.md
       - Web Notifications: web_notifications.md
       - Notifications Flow: notifications_flow.md
