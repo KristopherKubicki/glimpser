@@ -148,6 +148,8 @@ SEGMENT_SEC = 10
 
 
 FFMPEG = config.FFMPEG_PATH  # shortcut
+# Limit configuration uploads to 5 MB to avoid excessive memory usage
+MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 
 
 # ---------- tiny helpers ----------------------------------------------------
@@ -494,6 +496,17 @@ def is_hash_valid(timed_hash: str) -> bool:
     except ValueError:
         # Incorrectly formatted hash
         return False
+
+
+def is_safe_redirect_url(target: str | None) -> bool:
+    """Return ``True`` when ``target`` is a safe relative URL."""
+
+    if not target:
+        return False
+    if "\n" in target or "\r" in target:
+        return False
+    parsed = urlparse(target)
+    return not parsed.scheme and not parsed.netloc
 
 
 def login_required(f: Callable) -> Callable:
@@ -1860,6 +1873,7 @@ def init_routes(app: Flask) -> None:
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
+        next_url = request.args.get("next")
         ip_address = request.remote_addr
         now = datetime.now()
 
@@ -1906,7 +1920,10 @@ def init_routes(app: Flask) -> None:
                     ip_address, None
                 )  # Reset attempts on successful login
                 logging.info("Successful login for %s from %s", username, ip_address)
-                return redirect(url_for("index"))
+                target = (
+                    next_url if is_safe_redirect_url(next_url) else url_for("index")
+                )
+                return redirect(target)
             else:
                 # Record the failed attempt
                 if ip_address not in login_attempts:
@@ -3625,6 +3642,7 @@ def init_routes(app: Flask) -> None:
     @app.route("/settings", methods=["GET", "POST"])
     @login_required
     def settings():
+        """Render settings page and handle configuration updates via POST."""
         if request.method == "POST":
             email_settings = [
                 "EMAIL_ENABLED",
@@ -3700,9 +3718,18 @@ def init_routes(app: Flask) -> None:
                     if file.filename == "":
                         flash("No selected file", "error")
                     elif file and allowed_file(file.filename):
-                        file.save(BACKUP_PATH)
-                        restore_config()
-                        flash("Configuration restored successfully", "success")
+                        file.stream.seek(0, os.SEEK_END)
+                        size = file.stream.tell()
+                        file.stream.seek(0)
+                        if size > MAX_UPLOAD_SIZE:
+                            flash("File exceeds 5 MB limit", "error")
+                        else:
+                            file.save(BACKUP_PATH)
+                            restore_config()
+                            flash(
+                                "Configuration restored successfully",
+                                "success",
+                            )
                     else:
                         flash("Invalid file type", "error")
             elif action == "test_email":

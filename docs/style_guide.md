@@ -16,9 +16,17 @@ The macro renders a modal with `delete-modal`, `delete-close` and related IDs so
 JavaScript can attach behavior consistently.
 
 ### Parameters
+
 - **name** – base identifier for generated element IDs.
 - **message** – text displayed inside the modal.
 - **confirm** – label for the confirm button.
 - **cancel** – label for the cancel button.
 
 Including this component ensures all dialogs share the same markup and style.
+
+## Accessible Form Controls
+
+When adding inputs like the dashboard search box or width slider, include a
+`label` element with the `sr-only` class for screen reader users.
+This keeps the visual layout clean while providing context for assistive
+technologies.

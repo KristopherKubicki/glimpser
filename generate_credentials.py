@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 # generate_credentials.py
+"""Create or update Glimpser credentials and settings.
+
+Run the script without arguments to interactively set up the initial
+``settings`` and ``users`` tables in the SQLite database. Command-line
+options allow specifying the database path, username, password and secret
+key, or updating only specific values.
+"""
 
 import argparse
 import getpass

@@ -4,6 +4,8 @@ import unittest
 from html.parser import HTMLParser
 from pathlib import Path
 
+from jinja2 import Environment, FileSystemLoader
+
 
 class TemplateParser(HTMLParser):
     """Simple HTML parser to capture img tags and form inputs."""
@@ -68,6 +70,23 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertTrue(inputs, "remember checkbox missing")
         self.assertEqual(inputs[0].get("type"), "checkbox")
 
+    def test_login_error_has_alert_role(self):
+        html = Path("app/templates/login.html").read_text(encoding="utf-8")
+        self.assertIn('id="login-error"', html)
+        self.assertIn('role="alert"', html)
+        self.assertIn('aria-live="assertive"', html)
+
+    def test_login_inputs_described_by_error(self):
+        parser = parse_template(Path("app/templates/login.html"))
+        username = next(
+            i for i in parser.forms[0]["inputs"] if i.get("id") == "username"
+        )
+        password = next(
+            i for i in parser.forms[0]["inputs"] if i.get("id") == "password"
+        )
+        self.assertEqual(username.get("aria-describedby"), "login-error")
+        self.assertEqual(password.get("aria-describedby"), "login-error")
+
     def test_discover_add_camera_form_inputs(self):
         html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")
         self.assertIn("template_form(", html)
@@ -104,6 +123,10 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIsNotNone(advanced, "advanced-toggle missing")
         self.assertEqual(advanced.get("type"), "checkbox")
 
+    def test_settings_has_contrast_toggle(self):
+        html = Path("app/templates/settings.html").read_text(encoding="utf-8")
+        self.assertIn('id="contrast-toggle"', html)
+
     def test_captions_prompt_label(self):
         """Captions page prompt textarea should have a visible label."""
         html = Path("app/templates/captions.html").read_text(encoding="utf-8")
@@ -134,6 +157,32 @@ class TestHtmlTemplates(unittest.TestCase):
     def test_status_tab_thread_list(self):
         html = Path("app/templates/_status_tab.html").read_text(encoding="utf-8")
         self.assertIn('<table id="thread-table"', html)
+
+    def test_index_has_control_labels(self):
+        """Dashboard search and slider inputs should have labels."""
+        html = Path("app/templates/components.html").read_text(encoding="utf-8")
+        self.assertIn('label for="search-input"', html)
+        self.assertIn('label for="grid-width-slider"', html)
+
+    def test_settings_row_macro_renders(self):
+        env = Environment(loader=FileSystemLoader("app/templates"))
+        tmpl = env.from_string(
+            '{% from "components.html" import settings_row with context %}{{ settings_row(setting) }}'
+        )
+        context = {
+            "setting": {"name": "TEST_BOOL", "value": "True"},
+            "boolean_fields": {"TEST_BOOL"},
+            "numeric_fields": set(),
+            "choices": {},
+            "placeholders": {},
+            "locked_settings": set(),
+            "tooltips": {},
+            "metrics": {"ffmpeg_gpu_support": True},
+        }
+        html = tmpl.render(**context)
+        self.assertIn("<tr>", html)
+        self.assertIn('name="TEST_BOOL"', html)
+        self.assertIn('type="checkbox"', html)
 
 
 if __name__ == "__main__":
