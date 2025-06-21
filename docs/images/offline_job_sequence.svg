@@ -1,0 +1,66 @@
+<svg
+  width="300"
+  height="220"
+  viewBox="0 0 300 220"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <defs>
+    <marker
+      id="arrow"
+      viewBox="0 0 10 10"
+      refX="5"
+      refY="5"
+      markerWidth="6"
+      markerHeight="6"
+      orient="auto-start-reverse"
+    >
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="black" />
+    </marker>
+    <style>
+      rect {
+        fill: #f2f2f2;
+        stroke: #333;
+        stroke-width: 1;
+      }
+      text {
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+      }
+    </style>
+  </defs>
+  <rect x="90" y="10" width="120" height="30" />
+  <text x="150" y="30" text-anchor="middle">run_with_timeout</text>
+  <line
+    x1="150"
+    y1="40"
+    x2="150"
+    y2="70"
+    stroke="black"
+    marker-end="url(#arrow)"
+  />
+
+  <rect x="90" y="70" width="120" height="30" />
+  <text x="150" y="90" text-anchor="middle">System Offline?</text>
+  <line
+    x1="150"
+    y1="100"
+    x2="150"
+    y2="130"
+    stroke="black"
+    marker-end="url(#arrow)"
+  />
+
+  <rect x="60" y="130" width="180" height="30" />
+  <text x="150" y="150" text-anchor="middle">Insert into OfflineJob</text>
+  <line
+    x1="150"
+    y1="160"
+    x2="150"
+    y2="190"
+    stroke="black"
+    marker-end="url(#arrow)"
+  />
+
+  <rect x="70" y="190" width="160" height="30" />
+  <text x="150" y="210" text-anchor="middle">process_offline_jobs</text>
+</svg>
