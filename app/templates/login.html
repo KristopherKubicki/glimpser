@@ -38,6 +38,18 @@ content %}
         title="Enter your password"
         aria-describedby="login-error"
       />
+      <button
+        type="button"
+        id="password-toggle"
+        aria-label="Show password"
+        class="toggle-password"
+      >
+        <svg width="16" height="16">
+          <use
+            href="{{ url_for('static', filename='icons/sprite.svg') }}#eye"
+          />
+        </svg>
+      </button>
     </div>
     <div
       id="login-error"
@@ -66,5 +78,9 @@ content %}
 <script
   type="module"
   src="{{ url_for('static', filename='js/login.js') }}"
+></script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/password_toggle.js') }}"
 ></script>
 {% endblock %}
