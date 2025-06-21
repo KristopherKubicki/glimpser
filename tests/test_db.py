@@ -23,6 +23,7 @@ class TestInitDb(unittest.TestCase):
         importlib.reload(models)
         importlib.reload(models.user)
         importlib.reload(models.summary)
+        importlib.reload(models.log_summary)
         self.db = db
 
     def tearDown(self):
@@ -36,6 +37,7 @@ class TestInitDb(unittest.TestCase):
         importlib.reload(models)
         importlib.reload(models.user)
         importlib.reload(models.summary)
+        importlib.reload(models.log_summary)
         self.temp_dir.cleanup()
 
     def test_init_db_creates_users_table(self):
@@ -46,6 +48,7 @@ class TestInitDb(unittest.TestCase):
         tables = inspector.get_table_names()
         self.assertIn("users", tables)
         self.assertIn("summaries", tables)
+        self.assertIn("log_summaries", tables)
 
 
 if __name__ == "__main__":

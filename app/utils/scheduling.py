@@ -99,7 +99,7 @@ from app.config import (
     WATCHDOG_CPU_THRESHOLD,
     get_setting,
 )
-from app.models import OfflineJob, Summary
+from app.models import LogSummary, OfflineJob, Summary
 from app.utils.auto_update import check_for_update
 from app.utils.db import SessionLocal
 
@@ -1578,6 +1578,50 @@ def get_last_summary_time() -> str | None:
     finally:
         session.close()
     return None
+
+
+def summarize_recent_logs(limit: int = 200) -> str | None:
+    """Summarize log entries from the last day using the LLM."""
+
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+    with log_cache_lock:
+        lines = [
+            f"{e['level']} {e['message']}"
+            for e in list(log_cache)[-limit:]
+            if e.get("timestamp") and e["timestamp"] >= cutoff
+        ]
+
+    if not lines:
+        return None
+
+    text = "\n".join(lines)
+    result = summarize(text)
+    if result:
+        ts = int(datetime.datetime.utcnow().timestamp())
+        session = SessionLocal()
+        try:
+            session.add(LogSummary(timestamp=ts, content=result))
+            session.commit()
+        finally:
+            session.close()
+    return result
+
+
+def get_or_generate_log_summary() -> str | None:
+    """Return a recent log summary or generate one."""
+
+    cutoff = int(
+        (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).timestamp()
+    )
+    session = SessionLocal()
+    try:
+        rec = session.query(LogSummary).order_by(LogSummary.timestamp.desc()).first()
+        if rec and rec.timestamp >= cutoff:
+            return rec.content
+    finally:
+        session.close()
+
+    return summarize_recent_logs()
 
 
 # Background discovery cache
