@@ -168,6 +168,27 @@ class TestSettingsRoute(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(self._get_value("A"), "2")
 
+    def test_upload_too_large_rejected(self):
+        big_path = os.path.join(self.temp_dir.name, "big.json")
+        from app.routes import MAX_UPLOAD_SIZE
+
+        with open(big_path, "wb") as f:
+            f.write(b"0" * (MAX_UPLOAD_SIZE + 1))
+        with (
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.login_required", lambda x: x),
+        ):
+            with open(big_path, "rb") as file_data:
+                response = self.client.post(
+                    "/settings",
+                    data={"action": "upload", "file": (file_data, "big.json")},
+                    content_type="multipart/form-data",
+                )
+        self.assertEqual(response.status_code, 302)
+        with self.client.session_transaction() as sess:
+            flashes = sess.get("_flashes", [])
+        self.assertIn(("error", "File exceeds 5 MB limit"), flashes)
+
     def test_download_without_backup(self):
         """Downloading settings should not crash when no backup exists."""
         if os.path.exists(self.backup_path):
