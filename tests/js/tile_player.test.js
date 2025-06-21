@@ -28,6 +28,7 @@ test("no clip fetch occurs", async () => {
 });
 
 test("group change updates image src", () => {
+  jest.useFakeTimers();
   document.body.innerHTML = `
     <video id="live-video"><source></source></video>
     <select id="camera-selector"></select>
@@ -41,10 +42,13 @@ test("group change updates image src", () => {
   init();
   changeGroup("kitchen");
   const img = document.getElementById("live-image");
+  expect(img.src).toMatch(/\/stream\.mjpg\?group=all&time=\d+$/);
+  jest.advanceTimersByTime(30000);
   expect(img.src).toMatch(/\/stream\.mjpg\?group=kitchen&time=\d+$/);
 });
 
 test("fallback to nav camera dropdown", () => {
+  jest.useFakeTimers();
   document.body.innerHTML = `
     <video id="live-video"><source></source></video>
     <select id="nav-camera-dropdown"></select>
@@ -58,10 +62,13 @@ test("fallback to nav camera dropdown", () => {
   init();
   changeGroup("foo");
   const img = document.getElementById("live-image");
+  expect(img.src).toMatch(/\/stream\.mjpg\?group=all&time=\d+$/);
+  jest.advanceTimersByTime(30000);
   expect(img.src).toMatch(/\/stream\.mjpg\?group=foo&time=\d+$/);
 });
 
 test("all group uses group mjpeg", () => {
+  jest.useFakeTimers();
   document.body.innerHTML = `
     <video id="live-video"><source></source></video>
     <select id="camera-selector"><option>All</option></select>
@@ -87,4 +94,19 @@ test("context menu is suppressed", () => {
   const event = new Event("contextmenu", { bubbles: true, cancelable: true });
   video.dispatchEvent(event);
   expect(event.defaultPrevented).toBe(true);
+});
+
+test("clip waits 30s before live", () => {
+  jest.useFakeTimers();
+  document.body.innerHTML = `
+    <video id="live-video"><source src="/last_video/cam1"></source></video>
+  `;
+  window.templateDetails = { cam1: {} };
+  init();
+  const img = document.getElementById("live-image");
+  expect(img.src).toBe("");
+  jest.advanceTimersByTime(29999);
+  expect(img.src).toBe("");
+  jest.advanceTimersByTime(1);
+  expect(img.src).toMatch(/\/stream\.mjpg\?group=all&time=\d+$/);
 });
