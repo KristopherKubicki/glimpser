@@ -87,6 +87,18 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertEqual(username.get("aria-describedby"), "login-error")
         self.assertEqual(password.get("aria-describedby"), "login-error")
 
+    def test_login_autocomplete_and_focus(self):
+        parser = parse_template(Path("app/templates/login.html"))
+        username = next(
+            i for i in parser.forms[0]["inputs"] if i.get("id") == "username"
+        )
+        password = next(
+            i for i in parser.forms[0]["inputs"] if i.get("id") == "password"
+        )
+        self.assertEqual(username.get("autocomplete"), "username")
+        self.assertIn("autofocus", username)
+        self.assertEqual(password.get("autocomplete"), "current-password")
+
     def test_discover_add_camera_form_inputs(self):
         html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")
         self.assertIn("template_form(", html)
