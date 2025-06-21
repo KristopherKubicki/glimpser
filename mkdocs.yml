@@ -77,6 +77,7 @@ nav:
       - Live View Scrubbing: live_scrub.md
       - Clip Navigation: clip_navigation.md
       - LLM Prompt Settings: llm_prompts.md
+      - LLM Summarization: llm_summarization.md
       - MCP Integration: mcp_integration.md
       - In-App Onboarding: onboarding.md
       - OpenSSF Scorecard: scorecard.md
