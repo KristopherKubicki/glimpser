@@ -34,7 +34,8 @@ class TestCaptureStatusErrors(unittest.TestCase):
         mock_reachable.assert_not_called()
 
     @patch("app.utils.screenshots.http_session")
-    def test_get_content_type_caches_error(self, mock_session_factory):
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
+    def test_get_content_type_caches_error(self, mock_online, mock_session_factory):
         url = "http://example.com"
         mock_session = MagicMock()
         resp = MagicMock()

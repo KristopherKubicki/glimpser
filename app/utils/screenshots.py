@@ -1385,6 +1385,14 @@ def get_content_type(
 
     content_type = ""
     clean_url = sanitize_url(url)
+
+    if not is_system_online():
+        logging.warning(
+            "System offline; skipping content type check for %s",
+            clean_url,
+        )
+        return "", False
+
     methods = [requests.head, requests.get]
 
     lua = UA
