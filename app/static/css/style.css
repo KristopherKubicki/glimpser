@@ -679,7 +679,7 @@ body.high-contrast-mode {
 }
 
 .status-box.error {
-  border-color: red;
+  border-color: gray;
 }
 
 @media (max-width: 767px) {
@@ -2274,7 +2274,7 @@ details > summary {
   background-color: orange;
 }
 .status-dot.error {
-  background-color: red;
+  background-color: gray;
 }
 
 .danger-icon {
