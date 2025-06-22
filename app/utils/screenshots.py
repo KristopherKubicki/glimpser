@@ -42,9 +42,15 @@ from pdf2image import convert_from_bytes
 from PIL import (
     Image,
     ImageDraw,
+    ImageFile,
     ImageFont,
     ImageOps,
 )
+
+# PIL may raise 'image file is truncated' if a screenshot is incomplete.
+# Allow truncated images to load so we can still overlay timestamps and
+# handle files gracefully.
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.chrome.options import Options
@@ -2688,10 +2694,15 @@ def _finalize_screenshot(tmp_path, final_path, name, invert, dark):
                 img.save(tmp_path, "PNG")
                 success = True
 
-        # Now add a timestamp overlay
+        # Now add a timestamp overlay. If this fails the file may be removed.
         add_timestamp(tmp_path, name=name, invert=invert)
 
-        # Finally rename
+        # Finally rename if the temp file still exists. Timestamp overlay may
+        # delete corrupt images, so verify before moving.
+        if not os.path.exists(tmp_path):
+            logging.error("Temporary screenshot missing after timestamp overlay")
+            return False
+
         os.makedirs(os.path.dirname(final_path), exist_ok=True)
         os.rename(tmp_path, final_path)
 

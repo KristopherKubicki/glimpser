@@ -8,7 +8,11 @@ import os
 import re
 from typing import List, Optional
 
-from PIL import Image
+from PIL import Image, ImageFile
+
+# Allow reading truncated images so processing does not fail when a screenshot
+# is incomplete.
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 from app.config import CHATGPT_KEY, LLM_CAPTION_PROMPT, LLM_MODEL_VERSION
 from app.utils import llm_cache
