@@ -1557,6 +1557,9 @@ def allowed_filename(filename: str) -> bool:
 def init_routes(app: Flask) -> None:
     """Register all route handlers on the given ``app``."""
     from app.blueprints.network import create_blueprint
+    from app.blueprints.notifications import (
+        create_blueprint as create_notifications_blueprint,
+    )
     from app.blueprints.status import create_blueprint as create_status_blueprint
 
     if not getattr(app, "_network_bp_registered", False):
@@ -1566,6 +1569,10 @@ def init_routes(app: Flask) -> None:
     if not getattr(app, "_status_bp_registered", False):
         app.register_blueprint(create_status_blueprint())
         app._status_bp_registered = True
+
+    if not getattr(app, "_notifications_bp_registered", False):
+        app.register_blueprint(create_notifications_blueprint())
+        app._notifications_bp_registered = True
 
     # get_active_groups()
 
@@ -4072,15 +4079,6 @@ def init_routes(app: Flask) -> None:
 
         return Response(stream_with_context(generate()), mimetype="text/event-stream")
 
-    @app.route("/telemetry", methods=["POST"])
-    @login_required
-    def collect_telemetry():
-        """Collect lightweight UI events for diagnostics."""
-        data = request.get_json(force=True)
-        telemetry_events.append({"ts": int(time.time()), "data": data})
-        logging.info("telemetry: %s", data)
-        return jsonify({"status": "ok"})
-
     @app.route("/discover/add", methods=["POST"])
     @login_required
     def add_discovered_camera():
@@ -4318,79 +4316,3 @@ def init_routes(app: Flask) -> None:
     @login_required
     def profiling_data():
         return jsonify(get_latency_stats())
-
-    notifications = []
-    MAX_NOTIFICATIONS = 100
-
-    telemetry_events = deque(maxlen=1000)
-
-    @app.route("/send_notification", methods=["POST"])
-    @login_required
-    def send_notification():
-        data = request.get_json(force=True)
-        notifications.append(
-            {
-                "title": data.get("title", "Notification"),
-                "body": data.get("body", ""),
-            }
-        )
-        if len(notifications) > MAX_NOTIFICATIONS:
-            notifications.pop(0)
-        return jsonify({"status": "queued"})
-
-    @app.route("/register_push", methods=["POST"])
-    @login_required
-    def register_push():
-        sub = request.get_json(force=True)
-        session_db = SessionLocal()
-        try:
-            existing = (
-                session_db.query(PushSubscription)
-                .filter_by(endpoint=sub.get("endpoint"), user_id=session["user_id"])
-                .first()
-            )
-            if not existing:
-                session_db.add(
-                    PushSubscription(
-                        user_id=session["user_id"],
-                        endpoint=sub.get("endpoint"),
-                        auth=sub.get("keys", {}).get("auth"),
-                        p256dh=sub.get("keys", {}).get("p256dh"),
-                        created_at=int(time.time()),
-                    )
-                )
-                session_db.commit()
-            return jsonify({"status": "registered"})
-        finally:
-            session_db.close()
-
-    @app.route("/unregister_push", methods=["POST"])
-    @login_required
-    def unregister_push():
-        sub = request.get_json(force=True)
-        session_db = SessionLocal()
-        try:
-            existing = (
-                session_db.query(PushSubscription)
-                .filter_by(endpoint=sub.get("endpoint"), user_id=session["user_id"])
-                .first()
-            )
-            if existing:
-                session_db.delete(existing)
-                session_db.commit()
-            return jsonify({"status": "deleted"})
-        finally:
-            session_db.close()
-
-    @app.route("/stream_notifications")
-    @login_required
-    def stream_notifications():
-        def generate(last=len(notifications)):
-            while True:
-                if last < len(notifications):
-                    data = notifications[last]
-                    last += 1
-                    yield f"data: {json.dumps(data)}\n\n"
-                time.sleep(1)
-
-        return Response(stream_with_context(generate()), mimetype="text/event-stream")
