@@ -65,7 +65,7 @@ mouse = None
 
 
 def _safe_import_pynput() -> None:
-    """Import pynput if an X server is available."""
+    """Import pynput when input libraries are available."""
 
     global keyboard, mouse
 
@@ -73,7 +73,9 @@ def _safe_import_pynput() -> None:
         # Already attempted
         return
 
-    if not os.environ.get("DISPLAY"):
+    display = os.environ.get("DISPLAY")
+    system = platform.system()
+    if display is None and system not in ("Darwin", "Windows"):
         logging.debug("Skipping pynput import: no DISPLAY set")
         return
 
@@ -435,6 +437,43 @@ def idle_seconds_loginctl() -> int:
     return int((time.monotonic() * 1_000_000 - idle_us) / 1_000_000)
 
 
+def idle_seconds_windows() -> int:
+    """Return idle seconds on Windows systems."""
+    import ctypes
+    import ctypes.wintypes
+
+    class LASTINPUTINFO(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", ctypes.wintypes.UINT),
+            ("dwTime", ctypes.wintypes.DWORD),
+        ]
+
+    info = LASTINPUTINFO()
+    info.cbSize = ctypes.sizeof(LASTINPUTINFO)
+    if not ctypes.windll.user32.GetLastInputInfo(ctypes.byref(info)):
+        raise RuntimeError("GetLastInputInfo failed")
+    millis = ctypes.windll.kernel32.GetTickCount() - info.dwTime
+    return millis // 1000
+
+
+def idle_seconds_macos() -> int:
+    """Return idle seconds on macOS systems."""
+    import subprocess
+
+    try:
+        out = subprocess.check_output(
+            ["ioreg", "-c", "IOHIDSystem"], text=True, timeout=0.3
+        )
+    except subprocess.SubprocessError:
+        raise RuntimeError("ioreg unavailable")
+
+    for line in out.splitlines():
+        if "HIDIdleTime" in line:
+            nanoseconds = int(line.split()[-1])
+            return nanoseconds // 1_000_000_000
+    raise RuntimeError("HIDIdleTime not found")
+
+
 # Function to detect user activity
 def check_user_activity(timeout=10):
     _safe_import_pynput()
@@ -454,11 +493,26 @@ def check_user_activity(timeout=10):
             return user_active
     except Exception as e:
         logging.debug(f"idle_seconds_x11 failed: {e}")
-
-    # idle_seconds = idle_seconds_loginctl()
-    # if 1 < idle_seconds < 120:
-    #    user_active = True  # allow to check on listeners for the 0 second case
-    #    return user_active
+        try:
+            idle_seconds_l = idle_seconds_loginctl()
+            if idle_seconds_l < 120:
+                user_active = True
+                return user_active
+        except Exception as e2:
+            logging.debug(f"idle_seconds_loginctl failed: {e2}")
+            system = platform.system()
+            try:
+                if system == "Windows":
+                    idle_os = idle_seconds_windows()
+                elif system == "Darwin":
+                    idle_os = idle_seconds_macos()
+                else:
+                    idle_os = None
+                if idle_os is not None and idle_os < 120:
+                    user_active = True
+                    return user_active
+            except Exception as e3:
+                logging.debug(f"idle_seconds_{system.lower()} failed: {e3}")
 
     if mouse is None or keyboard is None:
         return user_active
