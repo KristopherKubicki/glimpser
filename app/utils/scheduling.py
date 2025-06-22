@@ -1726,6 +1726,7 @@ def process_offline_jobs() -> None:
     try:
         jobs = session.query(OfflineJob).order_by(OfflineJob.id).all()
         for job in jobs:
+            job_id = job.id
             try:
                 module_name, func_name = job.function.rsplit(".", 1)
                 mod = importlib.import_module(module_name)
@@ -1737,7 +1738,7 @@ def process_offline_jobs() -> None:
                 session.commit()
             except Exception as exc:
                 session.rollback()
-                logging.error("Failed to run offline job %s: %s", job.id, exc)
+                logging.error("Failed to run offline job %s: %s", job_id, exc)
     finally:
         session.close()
 
