@@ -1437,6 +1437,10 @@ def get_content_type(
                 )
 
             if resp.status_code >= 400:
+                if verb == "HEAD" and resp.status_code == 403:
+                    # some cameras block HEAD; retry with GET before failing
+                    logging.debug("HEAD 403 for %s; retrying with GET", clean_url)
+                    continue
                 logging.info(f"HTTP error {resp.status_code} for {clean_url}")
                 set_cached_status_code(url, resp.status_code)
                 return "", False
