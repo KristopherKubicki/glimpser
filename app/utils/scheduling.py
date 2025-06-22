@@ -82,6 +82,8 @@ class CLIPProcessor:
         }
 
 
+from sqlalchemy.orm.exc import ObjectDeletedError
+
 from app.config import (
     AUTO_UPDATE_BRANCH,
     CLIP_MODEL_NAME,
@@ -1728,7 +1730,12 @@ def process_offline_jobs() -> None:
     try:
         jobs = session.query(OfflineJob).order_by(OfflineJob.id).all()
         for job in jobs:
-            job_id = job.id
+            try:
+                job_id = job.id
+            except ObjectDeletedError:
+                # Job removed after query; skip it gracefully
+                session.rollback()
+                continue
             try:
                 module_name, func_name = job.function.rsplit(".", 1)
                 mod = importlib.import_module(module_name)
@@ -1738,6 +1745,9 @@ def process_offline_jobs() -> None:
                 )
                 session.delete(job)
                 session.commit()
+            except ObjectDeletedError:
+                session.rollback()
+                continue
             except Exception as exc:
                 session.rollback()
                 logging.error("Failed to run offline job %s: %s", job_id, exc)
