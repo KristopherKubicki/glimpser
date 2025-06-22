@@ -14,6 +14,7 @@ import queue
 import random
 import re
 import shutil
+import socket
 import sqlite3
 import struct
 import subprocess
@@ -3672,6 +3673,58 @@ def init_routes(app: Flask) -> None:
         ]
         info = camera_fix.check_camera_template(url, xpaths)
         return jsonify(info)
+
+    @app.route("/camera_diagnostics/<string:template_name>")
+    @login_required
+    def camera_diagnostics(template_name: TemplateName) -> Response:
+        """Return live diagnostics for ``template_name``.
+
+        The diagnostics include ping latency, open ports, HTTP banner
+        information and a simple device type label when available.
+        """
+
+        template_name = validate_template_name(str(template_name))
+        if template_name is None:
+            abort(404)
+
+        details = template_manager.get_template(template_name)
+        if not details:
+            abort(404)
+
+        url = details.get("url", "")
+        host = urlparse(url).hostname or url
+        try:
+            ip = socket.gethostbyname(host)
+        except Exception:
+            ip = host
+
+        data: dict[str, typing.Any] = {"ip": ip}
+
+        latency = camera_discovery._ping_latency(ip)
+        if latency is not None:
+            data["ping_ms"] = latency
+
+        ports = camera_discovery._detect_open_ports(ip, camera_discovery.COMMON_PORTS)
+        if ports:
+            data["open_ports"] = ports
+            for p in ports:
+                if p in (80, 8080, 443):
+                    banner = camera_discovery._fetch_http_banner(ip, p)
+                    for k, v in banner.items():
+                        data.setdefault(k, v)
+
+        dtype = camera_discovery._classify_device(
+            {
+                "ip": ip,
+                "protocol": details.get("protocol", urlparse(url).scheme or "http"),
+                "port": details.get("port", urlparse(url).port or 0),
+                "info": data,
+            }
+        )
+        if dtype:
+            data["device_type"] = dtype
+
+        return jsonify(data)
 
     @app.route("/screenshots/<string:name>/<string:filename>")
     @login_required
