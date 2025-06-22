@@ -488,6 +488,8 @@ def update_camera(name, template, image_file=None, motion=False):
         ):
             mark_offline(name)
         set_capture_failed(name, True)
+        # Raise an exception so ``run_with_timeout`` can apply backoff logic
+        raise RuntimeError("capture failed")
 
     if lsuc is True:
         directory = os.path.join(SCREENSHOT_DIRECTORY, name)
