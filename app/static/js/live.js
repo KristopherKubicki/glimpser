@@ -804,6 +804,7 @@ function handleVideoEnded() {
 
 function playLive() {
   resetVideo();
+  showLoadingIndicator();
   video.style.display = "block";
   // Live video cannot be scrubbed
   const seekBar = document.getElementById("seek-bar");
