@@ -18,6 +18,8 @@ LINUX_PATHS = [
     Path("/usr/share/applications/chromium.desktop"),
 ]
 
+MAC_DIRS = [Path("/Applications"), Path.home() / "Applications"]
+
 
 def _update_shortcut(shortcut: Path, shell) -> bool:
     sc = shell.CreateShortcut(str(shortcut))
@@ -44,6 +46,34 @@ def _update_desktop_file(desktop: Path) -> bool:
     if updated:
         desktop.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return updated
+
+
+def _update_macos_script(script: Path) -> bool:
+    """Add the debug flag to a macOS script-based shortcut."""
+    if not script.exists() or not os.access(script, os.W_OK):
+        return False
+    try:
+        text = script.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return False
+    if FLAG in text:
+        return False
+    script.write_text(text.rstrip() + f" {FLAG}\n", encoding="utf-8")
+    return True
+
+
+def _mac_shortcut_paths() -> list[Path]:
+    paths: list[Path] = []
+    for base in MAC_DIRS:
+        if base.exists():
+            for item in base.iterdir():
+                if item.suffix.lower() in {".command", ".applescript", ".sh"}:
+                    paths.append(item)
+                elif item.suffix == ".app":
+                    target = item / "Contents" / "MacOS" / item.stem
+                    if target.exists():
+                        paths.append(target)
+    return paths
 
 
 def update_chrome_shortcuts() -> list[Path]:
@@ -73,6 +103,14 @@ def update_chrome_shortcuts() -> list[Path]:
                             updated.append(shortcut)
         return updated
 
+    if sys.platform == "darwin":
+        updated: list[Path] = []
+        for script in _mac_shortcut_paths():
+            if "chrome" in script.name.lower():
+                if _update_macos_script(script):
+                    updated.append(script)
+        return updated
+
     updated = []
     for path in LINUX_PATHS:
         if _update_desktop_file(path):
@@ -83,7 +121,10 @@ def update_chrome_shortcuts() -> list[Path]:
 def update_chrome_shortcuts_info(path: Path | None = None) -> tuple[list[Path], str]:
     """Return updated paths and a message describing the result."""
     if path is not None:
-        paths = [path] if _update_desktop_file(path) else []
+        if sys.platform == "darwin":
+            paths = [path] if _update_macos_script(path) else []
+        else:
+            paths = [path] if _update_desktop_file(path) else []
     else:
         paths = update_chrome_shortcuts()
 
@@ -127,6 +168,18 @@ def shortcuts_need_patch(path: Path | None = None) -> bool:
                             return True
         return False
 
+    if sys.platform == "darwin":
+        paths = [path] if path else _mac_shortcut_paths()
+        for script in paths:
+            if script.exists():
+                try:
+                    text = script.read_text(encoding="utf-8")
+                except UnicodeDecodeError:
+                    continue
+                if FLAG not in text:
+                    return True
+        return False
+
     paths = [path] if path else LINUX_PATHS
     for desktop in paths:
         if desktop.exists():
@@ -160,6 +213,12 @@ def first_shortcut_path() -> Path | None:
                     if "chrome" in shortcut.name.lower():
                         shell.CreateShortcut(str(shortcut))
                         return shortcut
+        return None
+
+    if sys.platform == "darwin":
+        for script in _mac_shortcut_paths():
+            if script.exists():
+                return script
         return None
 
     for path in LINUX_PATHS:
