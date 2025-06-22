@@ -1565,6 +1565,7 @@ def init_routes(app: Flask) -> None:
         create_blueprint as create_notifications_blueprint,
     )
     from app.blueprints.status import create_blueprint as create_status_blueprint
+    from app.blueprints.stream import create_blueprint as create_stream_blueprint
     from app.blueprints.views import create_blueprint as create_views_blueprint
 
     if not getattr(app, "_network_bp_registered", False):
@@ -1582,6 +1583,10 @@ def init_routes(app: Flask) -> None:
     if not getattr(app, "_docs_bp_registered", False):
         app.register_blueprint(create_docs_blueprint())
         app._docs_bp_registered = True
+
+    if not getattr(app, "_stream_bp_registered", False):
+        app.register_blueprint(create_stream_blueprint())
+        app._stream_bp_registered = True
 
     if not getattr(app, "_api_bp_registered", False):
         app.register_blueprint(create_api_blueprint())
@@ -2065,34 +2070,6 @@ def init_routes(app: Flask) -> None:
             )
 
         return "Method Not Allowed", 405
-
-    @app.route("/test.mjpg", methods=["GET"])
-    @login_required
-    def test_mjpg():
-        group = request.args.get("group")
-        camera = request.args.get("camera")
-        if group == "all":
-            group = None
-        if camera == "all":
-            camera = None
-        return Response(
-            generate(group=group, camera=camera, filename="latest_camera.png"),
-            mimetype="multipart/x-mixed-replace; boundary=frame",
-        )
-
-    @app.route("/stream.mjpg", methods=["GET"])
-    @login_required
-    def stream_mjpg():
-        group = request.args.get("group")
-        camera = request.args.get("camera")
-        if group == "all":
-            group = None
-        if camera == "all":
-            camera = None
-        return Response(
-            generate(group=group, camera=camera, filename="latest_camera.png"),
-            mimetype="multipart/x-mixed-replace; boundary=frame",
-        )
 
     @app.route("/motion.mjpg", methods=["GET"])
     @login_required
