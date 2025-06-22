@@ -248,7 +248,7 @@ template_form %} {% block content %}
     }, 10000);
   }
 
-  function showCameraDetails(templateName) {
+  async function showCameraDetails(templateName) {
     const baseUrl = window.location.origin;
     const endpoints = {
       "Camera Name": templateName,
@@ -273,6 +273,19 @@ template_form %} {% block content %}
     }
     if (meta.capture_failed) {
       metadata["Capture Failed"] = true;
+    }
+
+    try {
+      const resp = await fetch(`/camera_diagnostics/${templateName}`);
+      if (resp.ok) {
+        const diag = await resp.json();
+        if (diag.device_type) metadata["Device Type"] = diag.device_type;
+        if (diag.ping_ms) metadata["Ping (ms)"] = diag.ping_ms;
+        if (diag.open_ports)
+          metadata["Open Ports"] = diag.open_ports.join(", ");
+      }
+    } catch (err) {
+      console.error("diagnostics error", err);
     }
 
     let detailsHtml = "<h3>Camera Endpoints</h3><pre>";
