@@ -105,6 +105,7 @@ from app.config import (
 from app.models import LogSummary, OfflineJob, Summary
 from app.utils.auto_update import check_for_update
 from app.utils.db import SessionLocal, ensure_column
+from app.utils.logging_utils import sanitize_url
 
 from . import camera_discovery
 from .detect import calculate_difference_fast
@@ -196,7 +197,11 @@ def _run_target(func, args):
         if args and isinstance(args[0], str):
             title += f":{args[0]}"
         setproctitle(f"glimpser {title}")
-    func(*args)
+    try:
+        func(*args)
+    except Exception:
+        logging.exception("Unhandled exception in %s", getattr(func, "__name__", "job"))
+        raise
 
 
 def run_with_timeout(func, args=(), timeout=300):
@@ -489,8 +494,10 @@ def update_camera(name, template, image_file=None, motion=False):
         ):
             mark_offline(name)
         set_capture_failed(name, True)
+        clean_url = sanitize_url(url)
+        logging.error("Capture failed for %s (%s)", name, clean_url)
         # Raise an exception so ``run_with_timeout`` can apply backoff logic
-        raise RuntimeError("capture failed")
+        raise RuntimeError(f"capture failed for {name}: {clean_url}")
 
     if lsuc is True:
         directory = os.path.join(SCREENSHOT_DIRECTORY, name)
