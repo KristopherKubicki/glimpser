@@ -20,6 +20,7 @@ import re
 import select
 import shutil
 import subprocess
+import sys
 import textwrap
 import threading
 import time
@@ -190,8 +191,12 @@ class GracefulAPScheduler(APScheduler):
 scheduler = GracefulAPScheduler()
 
 
-class CaptureFailed(RuntimeError):
-    """Raised when screenshot capture fails."""
+def register_job_failure(key: str) -> None:
+    """Increment failure count and set backoff for ``key``."""
+    with active_jobs_lock:
+        fails = job_failures.get(key, 0) + 1
+        job_failures[key] = fails
+        job_backoff_until[key] = time.time() + min(2**fails, 300)
 
 
 def _run_target(func, args):
@@ -203,12 +208,9 @@ def _run_target(func, args):
         setproctitle(f"glimpser {title}")
     try:
         func(*args)
-    except CaptureFailed as exc:
-        logging.error(str(exc))
-        raise
     except Exception:
         logging.exception("Unhandled exception in %s", getattr(func, "__name__", "job"))
-        raise
+        sys.exit(1)
 
 
 def run_with_timeout(func, args=(), timeout=300):
@@ -324,9 +326,7 @@ def run_with_timeout(func, args=(), timeout=300):
             job_failures.pop(key, None)
             job_backoff_until.pop(key, None)
         else:
-            fails = job_failures.get(key, 0) + 1
-            job_failures[key] = fails
-            job_backoff_until[key] = time.time() + min(2**fails, 300)
+            register_job_failure(key)
 
 
 MAX_IMAGE_TIME_DIFF = datetime.timedelta(minutes=5)
@@ -503,8 +503,8 @@ def update_camera(name, template, image_file=None, motion=False):
         set_capture_failed(name, True)
         clean_url = sanitize_url(url)
         logging.error("Capture failed for %s (%s)", name, clean_url)
-        # Raise an exception so ``run_with_timeout`` can apply backoff logic
-        raise CaptureFailed(f"capture failed for {name}: {clean_url}")
+        register_job_failure(name)
+        return None
 
     if lsuc is True:
         directory = os.path.join(SCREENSHOT_DIRECTORY, name)
