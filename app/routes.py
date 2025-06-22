@@ -1559,6 +1559,7 @@ def init_routes(app: Flask) -> None:
     from app.blueprints.authentication import create_blueprint as create_auth_blueprint
     from app.blueprints.discovery import create_blueprint as create_discovery_blueprint
     from app.blueprints.docs import create_blueprint as create_docs_blueprint
+    from app.blueprints.logs import create_blueprint as create_logs_blueprint
     from app.blueprints.mcp import create_blueprint as create_mcp_blueprint
     from app.blueprints.media import create_blueprint as create_media_blueprint
     from app.blueprints.network import create_blueprint
@@ -1592,6 +1593,10 @@ def init_routes(app: Flask) -> None:
     if not getattr(app, "_media_bp_registered", False):
         app.register_blueprint(create_media_blueprint())
         app._media_bp_registered = True
+
+    if not getattr(app, "_logs_bp_registered", False):
+        app.register_blueprint(create_logs_blueprint())
+        app._logs_bp_registered = True
 
     if not getattr(app, "_api_bp_registered", False):
         app.register_blueprint(create_api_blueprint())
@@ -3633,101 +3638,6 @@ def init_routes(app: Flask) -> None:
     def status():
         """Redirect to the Status tab under Settings for consistency."""
         return redirect(url_for("settings", tab="status-tab"))
-
-    @app.route("/logs")
-    @login_required
-    def logs():
-        return render_template("logs.html", page_title="Logs")
-
-    @app.route("/cost_summary")
-    @login_required
-    def cost_summary_page():
-        templates = template_manager.get_templates()
-        costs = {
-            name: template_manager.get_llm_cost_estimate(name) for name in templates
-        }
-        start_time = int(scheduling.system_metrics.get("start_time", time.time()))
-        return render_template(
-            "cost_summary.html",
-            costs=costs,
-            start_time=start_time,
-            page_title="LLM Cost Summary",
-        )
-
-    @app.route("/api/llm_cost_summary")
-    @login_required
-    def api_llm_cost_summary():
-        start = request.args.get("start")
-        end = request.args.get("end")
-        group = request.args.get("group")
-        summary, _, _, _ = template_manager.get_llm_cost_summary(
-            start_date=start, end_date=end, group=group
-        )
-        costs = {
-            entry["name"]: {
-                "tokens": entry["tokens"],
-                "cost": entry["cost"],
-                "calls": entry.get("calls", 0),
-            }
-            for entry in summary
-        }
-        return jsonify(costs)
-
-    @app.route("/api/camera_log_summary/<string:template_name>")
-    @login_required
-    def api_camera_log_summary(template_name: TemplateName):
-        template_name = validate_template_name(str(template_name))
-        if template_name is None:
-            abort(404)
-        summary = scheduling.get_or_generate_camera_log_summary(template_name)
-        if summary is None:
-            return ("", 204)
-        return jsonify({"summary": summary})
-
-    @app.route("/stream_logs")
-    @login_required
-    def stream_logs():
-
-        level = request.args.get("level")
-        source = request.args.get("source")
-        start_date = request.args.get("start_date")
-        end_date = request.args.get("end_date")
-        search = request.args.get("search")
-
-        user_id = session.get("user_id", 0)
-        combo = (int(user_id), level or "", search or "")
-        if combo in active_log_streams:
-            # avoid spawning duplicate streams for the same parameters
-            return Response(
-                "event: duplicate\ndata: {}\n\n",
-                mimetype="text/event-stream",
-            )
-        active_log_streams[combo] = True
-
-        def generate():
-            try:
-                while True:
-                    # Read and filter logs from memory
-                    logs = read_logs_from_memory(
-                        level=level,
-                        source=source,
-                        start_date=start_date,
-                        end_date=end_date,
-                        search=search,
-                    )
-
-                    # Limit the number of logs sent to improve performance
-                    logs = logs[:50]
-
-                    yield f"data: {json.dumps(logs, default=str)}\n\n"
-                    time.sleep(1)  # Send updates every second
-            finally:
-                active_log_streams.pop(combo, None)
-
-        return Response(
-            stream_with_context(generate()),
-            mimetype="text/event-stream",
-        )
 
     @app.route("/search_suggestions")
     @login_required
