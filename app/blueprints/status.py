@@ -99,7 +99,9 @@ def create_blueprint() -> Blueprint:
     @routes.login_required
     @routes.profile_route("/danger_status")
     def danger_status():
-        port_open = routes.is_chrome_debug_port_open("127.0.0.1", 9222)
+        port_open = routes.is_chrome_debug_port_open(
+            "127.0.0.1", routes.config.DANGER_PORT
+        )
         idle = not routes.check_user_activity(timeout=1)
         enabled = routes.config.get_setting("DANGER_MODE", "True") == "True"
         browser_path = routes.get_chrome_path()
@@ -107,6 +109,7 @@ def create_blueprint() -> Blueprint:
         return jsonify(
             {
                 "port_open": port_open,
+                "port": routes.config.DANGER_PORT,
                 "idle": idle,
                 "enabled": enabled,
                 "ready": port_open and idle and enabled,

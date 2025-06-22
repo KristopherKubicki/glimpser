@@ -1708,7 +1708,8 @@ def init_routes(app: Flask) -> None:
             "version": (get_chrome_version(chrome_path) if chrome_path else "N/A"),
             "shortcut": str(first_shortcut_path() or "N/A"),
             "patched": not shortcuts_need_patch(),
-            "running": is_chrome_debug_port_open("127.0.0.1", 9222),
+            "running": is_chrome_debug_port_open("127.0.0.1", config.DANGER_PORT),
+            "port": config.DANGER_PORT,
         }
 
         return render_template(
@@ -3565,7 +3566,8 @@ def init_routes(app: Flask) -> None:
             "version": (get_chrome_version(chrome_path) if chrome_path else "N/A"),
             "shortcut": str(first_shortcut_path() or "N/A"),
             "patched": not shortcuts_need_patch(),
-            "running": is_chrome_debug_port_open("127.0.0.1", 9222),
+            "running": is_chrome_debug_port_open("127.0.0.1", config.DANGER_PORT),
+            "port": config.DANGER_PORT,
         }
 
         last_backup = None

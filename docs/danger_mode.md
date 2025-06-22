@@ -1,13 +1,13 @@
 # Danger Mode Setup and Usage
 
-Danger mode allows Glimpser to leverage your existing Chrome session for capturing dynamic sites. When active, Glimpser attaches to a local Chrome instance running with the `--remote-debugging-port=9222` flag. This is useful for pages that require an authenticated session or user context.
+Danger mode allows Glimpser to leverage your existing Chrome session for capturing dynamic sites. When active, Glimpser attaches to a local Chrome instance running with the `--remote-debugging-port=<PORT>` flag where `<PORT>` is the value of the `DANGER_PORT` setting. This is useful for pages that require an authenticated session or user context.
 
 ## Enabling Remote Debugging
 
 1. **Launch Chrome with the debugging port open.** The exact command varies by platform:
-   - **Linux**: `google-chrome --remote-debugging-port=9222`
-   - **macOS**: `open /Applications/Google\ Chrome.app --args --remote-debugging-port=9222`
-   - **Windows**: modify your Chrome shortcut to append `--remote-debugging-port=9222` to the _Target_ field.
+   - **Linux**: `google-chrome --remote-debugging-port=$DANGER_PORT`
+   - **macOS**: `open /Applications/Google\ Chrome.app --args --remote-debugging-port=$DANGER_PORT`
+   - **Windows**: modify your Chrome shortcut to append `--remote-debugging-port=%DANGER_PORT%` to the _Target_ field.
 2. Leave this Chrome window running. Glimpser will connect to the existing instance when the port is detected.
 
 If Chrome is not started with this flag, Danger mode will be unavailable.
@@ -61,13 +61,14 @@ review or disable the setting.
 Enabling the debugging port exposes your active Chrome session to other
 programs on the same machine. Keep your system on a trusted network and close
 Chrome when you are finished capturing. Avoid running Danger mode if untrusted
-software could access `http://localhost:9222`.
+software could access `http://localhost:<PORT>` where `<PORT>` matches
+`DANGER_PORT`.
 
 ## Connection Troubleshooting
 
 If Glimpser does not detect your Chrome instance:
 
-1. Visit `http://localhost:9222` in a browser. A JSON page should appear if the
+1. Visit `http://localhost:$DANGER_PORT` in a browser. A JSON page should appear if the
    port is open.
 2. Confirm Chrome was started with the flag and that no firewall is blocking the
    connection.
@@ -75,10 +76,9 @@ If Glimpser does not detect your Chrome instance:
 
 ## Customizing the Debugging Port
 
-If port `9222` is already in use, you may launch Chrome with a different port
-such as `--remote-debugging-port=9333`. Update any scripts that add the flag so
-they use the same value. Glimpser currently expects `9222`, so you must adjust
-the source code if you change it.
+If the default port is already in use, launch Chrome with a different value such
+as `--remote-debugging-port=9333`. Set `DANGER_PORT` to the same number so
+Glimpser knows where to connect.
 
 ## Temporary Enablement
 

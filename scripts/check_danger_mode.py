@@ -1,9 +1,10 @@
+import app.config as config
 from app.utils.screenshots import is_chrome_debug_port_open
 from scripts.update_chrome_shortcut import shortcuts_need_patch
 
 
 def main() -> int:
-    ready = is_chrome_debug_port_open("127.0.0.1", 9222)
+    ready = is_chrome_debug_port_open("127.0.0.1", config.DANGER_PORT)
     if ready:
         print("Danger mode detected.")
     else:

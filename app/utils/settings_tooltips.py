@@ -27,6 +27,11 @@ SETTINGS_TOOLTIPS = {
         "TCP port used by the built-in web server. The default is 8082 but any "
         "available port may be chosen."
     ),
+    "DANGER_PORT": (
+        "Port used by Chrome for remote debugging when Danger mode is enabled. "
+        "Change this if you launch Chrome with --remote-debugging-port on a "
+        "different value."
+    ),
     "USER_NAME": (
         "Default username for logging into the interface. Combine with the "
         "password hash for authentication."
@@ -328,6 +333,7 @@ SETTINGS_GROUPS = {
         "TZ",
         "HOST",
         "PORT",
+        "DANGER_PORT",
         "DEBUG",
         "DEBUG_MODE",
         "MAX_WORKERS",
@@ -410,6 +416,7 @@ NUMERIC_FIELDS = {
     "LIVE_FALLBACK_FPS",
     "LIVE_MAX_FAILURES",
     "CHYRON_SPEED",
+    "DANGER_PORT",
     "WATCHDOG_FAILURE_THRESHOLD",
     "WATCHDOG_RESTART_COOLDOWN",
     "WATCHDOG_MAX_FILE_HANDLES",

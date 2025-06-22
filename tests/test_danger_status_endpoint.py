@@ -33,6 +33,7 @@ class TestDangerStatusEndpoint(unittest.TestCase):
             resp.get_json(),
             {
                 "port_open": True,
+                "port": 9222,
                 "idle": True,
                 "enabled": True,
                 "ready": True,
@@ -60,6 +61,7 @@ class TestDangerStatusEndpoint(unittest.TestCase):
             resp.get_json(),
             {
                 "port_open": False,
+                "port": 9222,
                 "idle": True,
                 "enabled": True,
                 "ready": False,
@@ -87,6 +89,7 @@ class TestDangerStatusEndpoint(unittest.TestCase):
             resp.get_json(),
             {
                 "port_open": True,
+                "port": 9222,
                 "idle": False,
                 "enabled": True,
                 "ready": False,
