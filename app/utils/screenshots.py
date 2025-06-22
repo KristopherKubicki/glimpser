@@ -2148,10 +2148,10 @@ def is_port_open(host, port, timeout=5):
         return False
 
 
-def is_chrome_debug_port_open(host="127.0.0.1", port=9222, timeout=1):
-    """
-    Check if an existing Chrome with --remote-debugging-port=9222 is open.
-    """
+def is_chrome_debug_port_open(host="127.0.0.1", port=None, timeout=1):
+    """Return True if Chrome's remote debugging port is reachable."""
+    if port is None:
+        port = config.DANGER_PORT
     try:
         sock = socket.create_connection((host, port), timeout=timeout)
         sock.close()
@@ -2463,7 +2463,8 @@ def capture_screenshot_and_har(
     Captures a screenshot of `url` and saves to `output_path`.
 
     1) Danger Mode (danger=True):
-       - Attaches to an existing Chrome with --remote-debugging-port=9222.
+       - Attaches to an existing Chrome with the configured remote-debugging
+         port.
        - Opens a new tab, loads page, screenshots, closes tab.
        - Skips if the user is active (check_user_activity).
        - Not headless (relies on the user’s Chrome).
@@ -2508,11 +2509,11 @@ def capture_screenshot_and_har(
     # Danger Mode
     ############
     if danger and config.get_setting("DANGER_MODE", "True") == "True":
-        # If we rely on the user's local Chrome with remote-debugging-port=9222,
-        # let's confirm it's actually open.
-        if not is_chrome_debug_port_open("127.0.0.1", 9222):
+        # If we rely on the user's local Chrome with the debugging port open,
+        # confirm it is actually reachable.
+        if not is_chrome_debug_port_open("127.0.0.1", config.DANGER_PORT):
             logging.warning(
-                "[capture_screenshot_and_har] Danger mode requested, but no Chrome on port 9222."
+                "[capture_screenshot_and_har] Danger mode requested, but no Chrome on configured port."
             )
             return False
 
@@ -2785,7 +2786,8 @@ def _capture_danger_mode(
     dark,
 ) -> bool:
     """
-    Attach to an existing local Chrome with remote-debugging-port=9222,
+    Attach to an existing local Chrome with remote-debugging-port configured by
+    ``DANGER_PORT``,
     open a new tab, capture a screenshot, close the tab, and yield the result.
 
     Because we are hooking into a real user’s Chrome, you must be aware that
@@ -2800,7 +2802,7 @@ def _capture_danger_mode(
 
     # This part uses normal Selenium for the attach:
     danger_options = webdriver.ChromeOptions()
-    danger_options.debugger_address = "127.0.0.1:9222"
+    danger_options.debugger_address = f"127.0.0.1:{config.DANGER_PORT}"
 
     driver = None
     original_window = None

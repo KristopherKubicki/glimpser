@@ -7,8 +7,10 @@ try:
 except ImportError:  # pragma: no cover - platform specific
     win32com = None
 
+import app.config as config
 
-FLAG = "--remote-debugging-port=9222"
+FLAG = f"--remote-debugging-port={config.DANGER_PORT}"
+
 
 LINUX_PATHS = [
     Path.home() / ".local/share/applications/google-chrome.desktop",

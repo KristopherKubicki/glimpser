@@ -84,6 +84,7 @@ class CLIPProcessor:
 
 from sqlalchemy.orm.exc import ObjectDeletedError
 
+import app.config as config
 from app.config import (
     AUTO_UPDATE_BRANCH,
     CLIP_MODEL_NAME,
