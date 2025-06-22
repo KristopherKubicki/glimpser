@@ -206,6 +206,11 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn('role="timer"', html)
         self.assertIn('aria-live="polite"', html)
 
+    def test_live_page_has_overlay(self):
+        html = Path("app/templates/live.html").read_text(encoding="utf-8")
+        self.assertIn('id="video-overlay"', html)
+        self.assertIn('id="loading-indicator"', html)
+
 
 if __name__ == "__main__":
     unittest.main()
