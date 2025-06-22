@@ -1560,6 +1560,7 @@ def init_routes(app: Flask) -> None:
     from app.blueprints.discovery import create_blueprint as create_discovery_blueprint
     from app.blueprints.docs import create_blueprint as create_docs_blueprint
     from app.blueprints.mcp import create_blueprint as create_mcp_blueprint
+    from app.blueprints.media import create_blueprint as create_media_blueprint
     from app.blueprints.network import create_blueprint
     from app.blueprints.notifications import (
         create_blueprint as create_notifications_blueprint,
@@ -1587,6 +1588,10 @@ def init_routes(app: Flask) -> None:
     if not getattr(app, "_stream_bp_registered", False):
         app.register_blueprint(create_stream_blueprint())
         app._stream_bp_registered = True
+
+    if not getattr(app, "_media_bp_registered", False):
+        app.register_blueprint(create_media_blueprint())
+        app._media_bp_registered = True
 
     if not getattr(app, "_api_bp_registered", False):
         app.register_blueprint(create_api_blueprint())
@@ -3171,18 +3176,6 @@ def init_routes(app: Flask) -> None:
             page_title="Camera Details",
         )
 
-    @app.route("/screenshots/<string:name>")
-    @login_required
-    def list_screenshots(name: TemplateName):
-        """Return a JSON list of screenshot files for ``name``."""
-
-        template_name = validate_template_name(str(name))
-        if template_name is None:
-            abort(404)
-
-        lscreens = template_manager.get_screenshots_for_template(template_name)
-        return jsonify({"screenshots": lscreens})
-
     @app.route("/generate_prompt/<string:template_name>", methods=["POST"])
     @login_required
     def generate_prompt_route(template_name: TemplateName):
@@ -3268,25 +3261,6 @@ def init_routes(app: Flask) -> None:
 
         return jsonify(data)
 
-    @app.route("/screenshots/<string:name>/<string:filename>")
-    @login_required
-    def uploaded_file(name: TemplateName, filename: str):
-        template_name = validate_template_name(str(name))
-        if template_name is None or not allowed_filename(filename):
-            abort(404)
-
-        path = os.path.join(
-            os.path.dirname(os.path.join(__file__)),
-            "..",
-            SCREENSHOT_DIRECTORY,
-            str(template_name),
-        )
-
-        if not os.path.exists(path):
-            abort(404)
-
-        return send_from_directory(path, filename)
-
     def delete_setting(name: str) -> bool:
         name = name.replace("'", "")[:32]
         if not re.findall(r"^[A-Z_]+?$", name):
@@ -3302,37 +3276,6 @@ def init_routes(app: Flask) -> None:
             session.close()
 
         return True
-
-    @app.route("/videos/<string:name>")
-    @login_required
-    def list_videos(name: TemplateName):
-        """Return a JSON list of video files for ``name``."""
-
-        template_name = validate_template_name(str(name))
-        if template_name is None:
-            abort(404)
-
-        lvideos = template_manager.get_videos_for_template(template_name)
-        return jsonify({"videos": lvideos})
-
-    @app.route("/videos/<string:name>/<string:filename>")
-    @login_required
-    def view_video(name: TemplateName, filename: str):
-        template_name = validate_template_name(str(name))
-        if template_name is None or not allowed_filename(filename):
-            abort(404)
-
-        path = os.path.join(
-            os.path.dirname(os.path.join(__file__)),
-            "..",
-            VIDEO_DIRECTORY,
-            str(template_name),
-        )
-
-        if not os.path.exists(path):
-            abort(404)
-
-        return send_from_directory(path, filename)
 
     @app.route("/settings", methods=["GET", "POST"])
     @login_required
