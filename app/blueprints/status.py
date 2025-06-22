@@ -6,7 +6,6 @@ from datetime import datetime
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request
-
 from sqlalchemy import text
 
 
@@ -70,7 +69,9 @@ def create_blueprint() -> Blueprint:
             error_messages.append("Database connection failed")
 
         try:
-            scheduler_status = "running" if routes.scheduling.scheduler.running else "stopped"
+            scheduler_status = (
+                "running" if routes.scheduling.scheduler.running else "stopped"
+            )
             if scheduler_status != "running":
                 is_nominal = False
                 error_messages.append("Scheduler is not running")
@@ -111,7 +112,9 @@ def create_blueprint() -> Blueprint:
                 "ready": port_open and idle and enabled,
                 "browser": (os.path.basename(browser_path) if browser_path else None),
                 "path": browser_path,
-                "version": (routes.get_chrome_version(browser_path) if browser_path else None),
+                "version": (
+                    routes.get_chrome_version(browser_path) if browser_path else None
+                ),
                 "shortcut": str(routes.first_shortcut_path() or ""),
                 "patched": patched,
             }
@@ -140,13 +143,22 @@ def create_blueprint() -> Blueprint:
                     latest_time = dt
                     caption = tmpl.get("last_caption", "")
             if latest_time:
-                return jsonify({"caption": caption, "timestamp": latest_time.strftime("%Y-%m-%d %H:%M:%S")})
+                return jsonify(
+                    {
+                        "caption": caption,
+                        "timestamp": latest_time.strftime("%Y-%m-%d %H:%M:%S"),
+                    }
+                )
 
         caption = ""
         timestamp = ""
         session_db = routes.SessionLocal()
         try:
-            rec = session_db.query(routes.Summary).order_by(routes.Summary.timestamp.desc()).first()
+            rec = (
+                session_db.query(routes.Summary)
+                .order_by(routes.Summary.timestamp.desc())
+                .first()
+            )
             if rec:
                 try:
                     data = json.loads(getattr(rec, "content", ""))
@@ -156,7 +168,9 @@ def create_blueprint() -> Blueprint:
                     caption = getattr(rec, "content", "")
                 ts = getattr(rec, "timestamp", None)
                 if ts is not None:
-                    timestamp = datetime.utcfromtimestamp(ts).strftime("%Y-%m-%dT%H:%M:%SZ")
+                    timestamp = datetime.utcfromtimestamp(ts).strftime(
+                        "%Y-%m-%dT%H:%M:%SZ"
+                    )
         except Exception as e:  # pragma: no cover - unexpected DB errors
             routes.logging.error("error retrieving captions status: %s", e)
         finally:
