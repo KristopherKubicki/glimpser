@@ -3751,6 +3751,17 @@ def init_routes(app: Flask) -> None:
         }
         return jsonify(costs)
 
+    @app.route("/api/camera_log_summary/<string:template_name>")
+    @login_required
+    def api_camera_log_summary(template_name: TemplateName):
+        template_name = validate_template_name(str(template_name))
+        if template_name is None:
+            abort(404)
+        summary = scheduling.get_or_generate_camera_log_summary(template_name)
+        if summary is None:
+            return ("", 204)
+        return jsonify({"summary": summary})
+
     @app.route("/stream_logs")
     @login_required
     def stream_logs():

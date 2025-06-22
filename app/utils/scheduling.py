@@ -103,7 +103,7 @@ from app.config import (
 )
 from app.models import LogSummary, OfflineJob, Summary
 from app.utils.auto_update import check_for_update
-from app.utils.db import SessionLocal
+from app.utils.db import SessionLocal, ensure_column
 
 from . import camera_discovery
 from .detect import calculate_difference_fast
@@ -1626,6 +1626,61 @@ def get_or_generate_log_summary() -> str | None:
         session.close()
 
     return summarize_recent_logs()
+
+
+def summarize_camera_logs(name: str, limit: int = 200) -> str | None:
+    """Summarize recent logs mentioning ``name`` using the LLM."""
+
+    ensure_column("log_summaries", "camera", "VARCHAR(255)", "''")
+
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+    with log_cache_lock:
+        lines = [
+            f"{e['level']} {e['message']}"
+            for e in list(log_cache)[-limit:]
+            if e.get("timestamp")
+            and e["timestamp"] >= cutoff
+            and name in e.get("message", "")
+        ]
+
+    if not lines:
+        return None
+
+    text = "\n".join(lines)
+    result = summarize(text)
+    if result:
+        ts = int(datetime.datetime.utcnow().timestamp())
+        session = SessionLocal()
+        try:
+            session.add(LogSummary(timestamp=ts, camera=name, content=result))
+            session.commit()
+        finally:
+            session.close()
+    return result
+
+
+def get_or_generate_camera_log_summary(name: str) -> str | None:
+    """Return a recent log summary for ``name`` or generate one."""
+
+    ensure_column("log_summaries", "camera", "VARCHAR(255)", "''")
+
+    cutoff = int(
+        (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).timestamp()
+    )
+    session = SessionLocal()
+    try:
+        rec = (
+            session.query(LogSummary)
+            .filter_by(camera=name)
+            .order_by(LogSummary.timestamp.desc())
+            .first()
+        )
+        if rec and rec.timestamp >= cutoff:
+            return rec.content
+    finally:
+        session.close()
+
+    return summarize_camera_logs(name)
 
 
 # Background discovery cache

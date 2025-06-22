@@ -1,6 +1,6 @@
 """Database model for daily log summaries."""
 
-from sqlalchemy import Column, Integer, Text
+from sqlalchemy import Column, Integer, String, Text
 
 from app.utils.db import Base
 
@@ -12,7 +12,8 @@ class LogSummary(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     timestamp = Column(Integer, nullable=False)
+    camera = Column(String, default="", nullable=False)
     content = Column(Text, nullable=False)
 
     def __repr__(self) -> str:
-        return f"<LogSummary id={self.id} ts={self.timestamp}>"
+        return f"<LogSummary id={self.id} camera={self.camera} ts={self.timestamp}>"
