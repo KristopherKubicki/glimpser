@@ -818,16 +818,21 @@ def update_camera(name, template, image_file=None, motion=False):
                 send_http_callback(template.get("callback_url"), event, payload)
 
             if last_motion_trigger or lsum:
-                if os.path.exists(
-                    os.path.join(directory, "last_motion_caption.png.tmp")
-                ):
-                    os.remove(os.path.join(directory, "last_motion_caption.png.tmp"))
+                tmp_motion_caption = os.path.join(
+                    directory, "last_motion_caption.png.tmp"
+                )
+                if os.path.exists(tmp_motion_caption):
+                    try:
+                        os.remove(tmp_motion_caption)
+                    except FileNotFoundError:
+                        # another process may have removed it
+                        pass
                 os.symlink(
                     png_files[-1],
-                    os.path.join(directory, "last_motion_caption.png.tmp"),
+                    tmp_motion_caption,
                 )
                 os.rename(
-                    os.path.join(directory, "last_motion_caption.png.tmp"),
+                    tmp_motion_caption,
                     os.path.join(directory, "last_motion_caption.png"),
                 )
 
