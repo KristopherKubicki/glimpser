@@ -153,6 +153,10 @@ class TestHtmlTemplates(unittest.TestCase):
         components = Path("app/templates/components.html").read_text(encoding="utf-8")
         self.assertIn("object-gpu-status", components)
 
+    def test_browser_checkbox_present(self):
+        components = Path("app/templates/components.html").read_text(encoding="utf-8")
+        self.assertIn('id="browser"', components)
+
     def test_status_tab_has_sparklines(self):
         html = Path("app/templates/_status_tab.html").read_text(encoding="utf-8")
         self.assertIn('id="memory-sparkline"', html)
