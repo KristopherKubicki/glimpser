@@ -1280,6 +1280,14 @@ def generate(
                             last_shot = None
                     except Exception as e:
                         logging.error("Failed to open last shot %s: %s", last_shot, e)
+                        try:
+                            os.remove(last_shot)
+                        except OSError as exc:
+                            logging.warning(
+                                "Failed to remove bad shot %s: %s",
+                                last_shot,
+                                exc,
+                            )
                         last_shot = None
 
                 if frame is None:
@@ -1395,6 +1403,14 @@ def generate(
                                 exc,
                                 exc_info=True,
                             )
+                            try:
+                                os.remove(most_recent_file)
+                            except OSError as remove_exc:
+                                logging.warning(
+                                    "Failed to remove invalid screenshot %s: %s",
+                                    most_recent_file,
+                                    remove_exc,
+                                )
 
         if not frame:
             frame = _placeholder_frame()
