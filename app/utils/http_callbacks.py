@@ -1,5 +1,7 @@
 import logging
+import socket
 import time
+from urllib.parse import urlparse
 
 import requests
 
@@ -36,6 +38,17 @@ def send_http_callback(
     hammering the remote service.
     """
     if not url:
+        return
+
+    parsed = urlparse(url)
+    host = parsed.hostname
+    if not host:
+        logging.warning("Invalid callback URL: %s", sanitize_url(url))
+        return
+    try:
+        socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        logging.warning("Callback host does not resolve: %s", host)
         return
 
     data = {"event": event_type, "payload": payload}
