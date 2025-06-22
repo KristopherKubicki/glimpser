@@ -190,6 +190,10 @@ class GracefulAPScheduler(APScheduler):
 scheduler = GracefulAPScheduler()
 
 
+class CaptureFailed(RuntimeError):
+    """Raised when screenshot capture fails."""
+
+
 def _run_target(func, args):
     """Wrapper to set process title before executing ``func``."""
     if setproctitle:
@@ -199,6 +203,9 @@ def _run_target(func, args):
         setproctitle(f"glimpser {title}")
     try:
         func(*args)
+    except CaptureFailed as exc:
+        logging.error(str(exc))
+        raise
     except Exception:
         logging.exception("Unhandled exception in %s", getattr(func, "__name__", "job"))
         raise
@@ -497,7 +504,7 @@ def update_camera(name, template, image_file=None, motion=False):
         clean_url = sanitize_url(url)
         logging.error("Capture failed for %s (%s)", name, clean_url)
         # Raise an exception so ``run_with_timeout`` can apply backoff logic
-        raise RuntimeError(f"capture failed for {name}: {clean_url}")
+        raise CaptureFailed(f"capture failed for {name}: {clean_url}")
 
     if lsuc is True:
         directory = os.path.join(SCREENSHOT_DIRECTORY, name)
