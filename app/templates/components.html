@@ -413,6 +413,23 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
           />
           Dark Mode
         </label>
+        <label for="browser" title="Capture using full browser">
+          <input
+            type="checkbox"
+            id="browser"
+            name="browser"
+            {%
+            if
+            template
+            and
+            template.browser
+            %}checked{%
+            endif
+            %}
+            title="Capture page using a full browser"
+          />
+          Browser
+        </label>
         <label for="headless" title="Run in headless mode">
           <input
             type="checkbox"
