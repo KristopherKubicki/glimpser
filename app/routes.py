@@ -1556,13 +1556,16 @@ def allowed_filename(filename: str) -> bool:
 
 def init_routes(app: Flask) -> None:
     """Register all route handlers on the given ``app``."""
+    from app.blueprints.api import create_blueprint as create_api_blueprint
     from app.blueprints.authentication import create_blueprint as create_auth_blueprint
     from app.blueprints.docs import create_blueprint as create_docs_blueprint
+    from app.blueprints.mcp import create_blueprint as create_mcp_blueprint
     from app.blueprints.network import create_blueprint
     from app.blueprints.notifications import (
         create_blueprint as create_notifications_blueprint,
     )
     from app.blueprints.status import create_blueprint as create_status_blueprint
+    from app.blueprints.views import create_blueprint as create_views_blueprint
 
     if not getattr(app, "_network_bp_registered", False):
         app.register_blueprint(create_blueprint())
@@ -1579,6 +1582,23 @@ def init_routes(app: Flask) -> None:
     if not getattr(app, "_docs_bp_registered", False):
         app.register_blueprint(create_docs_blueprint())
         app._docs_bp_registered = True
+
+    if not getattr(app, "_api_bp_registered", False):
+        app.register_blueprint(create_api_blueprint())
+        app._api_bp_registered = True
+
+    if not getattr(app, "_mcp_bp_registered", False):
+        app.register_blueprint(create_mcp_blueprint())
+        app._mcp_bp_registered = True
+
+    if not getattr(app, "_views_bp_registered", False):
+        app.register_blueprint(create_views_blueprint())
+        app.add_url_rule(
+            "/",
+            endpoint="index",
+            view_func=app.view_functions["views.index"],
+        )
+        app._views_bp_registered = True
 
     if not getattr(app, "_auth_bp_registered", False):
         app.register_blueprint(create_auth_blueprint())
@@ -1694,122 +1714,6 @@ def init_routes(app: Flask) -> None:
             danger_info=danger_info,
             shortcut_options=shortcut_opts,
             page_title="Danger Mode",
-        )
-
-    @app.route("/api/discover")
-    @profile_route("/api/discover")
-    def api_discover():
-        api_info = {
-            "version": "1.0",
-            "endpoints": [
-                {
-                    "path": "/health",
-                    "method": "GET",
-                    "description": "Check the health status of the API",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/danger_status",
-                    "method": "GET",
-                    "description": "Check if Danger mode is ready",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/captions_status",
-                    "method": "GET",
-                    "description": "Get the most recent caption and timestamp",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/discovery_status",
-                    "method": "GET",
-                    "description": "Check background discovery status",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/api/discover",
-                    "method": "GET",
-                    "description": "Get information about available API endpoints",
-                    "authentication_required": False,
-                },
-                {
-                    "path": "/login",
-                    "method": "GET, POST",
-                    "description": "User login endpoint",
-                    "authentication_required": False,
-                },
-                {
-                    "path": "/logout",
-                    "method": "GET",
-                    "description": "User logout endpoint",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/",
-                    "method": "GET",
-                    "description": "Main index page",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/templates",
-                    "method": "GET, POST, DELETE",
-                    "description": "Manage templates",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/settings",
-                    "method": "GET, POST",
-                    "description": "Manage application settings",
-                    "authentication_required": True,
-                },
-            ],
-        }
-        return jsonify(api_info), 200
-
-    @app.route("/mcp/tools")
-    @login_required
-    def mcp_tools():
-        """Return the list of tools exposed by the configured MCP server."""
-        from app.utils import mcp
-
-        tools = mcp.list_tools_sync()
-        return jsonify(tools)
-
-    @app.route("/mcp/tool/<string:name>", methods=["POST"])
-    @login_required
-    def mcp_call_tool(name):
-        """Call a tool on the configured MCP server."""
-        from app.utils import mcp
-
-        params = request.get_json(silent=True) or {}
-        result = mcp.call_tool_sync(name, params)
-        return jsonify(result)
-
-    @app.route("/")
-    @login_required
-    def index():
-        """Render the index page with available templates."""
-        template_details = template_manager.get_templates()
-        return render_template(
-            "index.html",
-            template_details=template_details,
-            page_title="Dashboard",
-        )
-
-    @app.route("/group/<string:group_name>")
-    @login_required
-    def group_page(group_name: str):
-        """Render a page listing all cameras in a group."""
-        group_name = secure_filename(group_name)
-        groups = get_active_groups()
-        if group_name == "all":
-            return redirect(url_for("index"))
-        if group_name not in groups:
-            abort(404)
-        return render_template(
-            "group.html",
-            group_name=group_name,
-            page_title=f"Group – {group_name}",
         )
 
     def get_active_templates():
