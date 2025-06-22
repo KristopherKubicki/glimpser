@@ -1933,7 +1933,13 @@ def init_routes(app: Flask) -> None:
             and login_attempts[ip_address]["locked_until"] > now
         ):
             flash("Too many failed attempts. Please try again later.", "error")
-            logging.warning("Locked login attempt from %s", ip_address)
+            logging.warning(
+                "Locked login attempt from %s until %s",
+                ip_address,
+                login_attempts[ip_address]["locked_until"].strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
+            )
             return render_template("login.html", page_title="Login"), 429
 
         if request.method == "POST":
@@ -1944,13 +1950,32 @@ def init_routes(app: Flask) -> None:
                 flash("Username and password are required", "error")
                 return render_template("login.html", page_title="Login"), 400
 
+            logging.debug(
+                "Login request from %s: username=%s, password_length=%d",
+                ip_address,
+                username or "<empty>",
+                len(password),
+            )
+
             db_session = SessionLocal()
             try:
                 user = db_session.query(User).filter_by(username=username).first()
             finally:
                 db_session.close()
 
-            if user and check_password_hash(user.password_hash, password):
+            password_valid = False
+            if user:
+                password_valid = check_password_hash(user.password_hash, password)
+                logging.debug(
+                    "User %s found with hash %s; password valid: %s",
+                    username,
+                    user.password_hash,
+                    password_valid,
+                )
+            else:
+                logging.debug("User %s not found", username)
+
+            if user and password_valid:
                 session["user_id"] = user.id
                 if remember:
                     current_app.permanent_session_lifetime = timedelta(
@@ -1995,8 +2020,16 @@ def init_routes(app: Flask) -> None:
                     login_attempts[ip_address]["locked_until"] = now + timedelta(
                         minutes=1
                     )
+                reason = "unknown user" if user is None else "wrong password"
                 logging.warning(
-                    "Failed login attempt for %s from %s", username, ip_address
+                    "Failed login attempt for %s from %s: %s (attempt %d, lock until %s)",
+                    username or "<empty>",
+                    ip_address,
+                    reason,
+                    login_attempts[ip_address]["attempts"],
+                    login_attempts[ip_address]["locked_until"].strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    ),
                 )
                 flash("Invalid username or password", "error")
         return render_template("login.html", page_title="Login")
