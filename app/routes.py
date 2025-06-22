@@ -1556,6 +1556,8 @@ def allowed_filename(filename: str) -> bool:
 
 def init_routes(app: Flask) -> None:
     """Register all route handlers on the given ``app``."""
+    from app.blueprints.authentication import create_blueprint as create_auth_blueprint
+    from app.blueprints.docs import create_blueprint as create_docs_blueprint
     from app.blueprints.network import create_blueprint
     from app.blueprints.notifications import (
         create_blueprint as create_notifications_blueprint,
@@ -1573,6 +1575,30 @@ def init_routes(app: Flask) -> None:
     if not getattr(app, "_notifications_bp_registered", False):
         app.register_blueprint(create_notifications_blueprint())
         app._notifications_bp_registered = True
+
+    if not getattr(app, "_docs_bp_registered", False):
+        app.register_blueprint(create_docs_blueprint())
+        app._docs_bp_registered = True
+
+    if not getattr(app, "_auth_bp_registered", False):
+        app.register_blueprint(create_auth_blueprint())
+        # Provide legacy endpoint names for compatibility
+        app.add_url_rule(
+            "/login",
+            endpoint="login",
+            view_func=app.view_functions["authentication.login"],
+        )
+        app.add_url_rule(
+            "/logout",
+            endpoint="logout",
+            view_func=app.view_functions["authentication.logout"],
+        )
+        app.add_url_rule(
+            "/sso",
+            endpoint="sso_login",
+            view_func=app.view_functions["authentication.sso_login"],
+        )
+        app._auth_bp_registered = True
 
     # get_active_groups()
 
@@ -1758,183 +1784,6 @@ def init_routes(app: Flask) -> None:
         params = request.get_json(silent=True) or {}
         result = mcp.call_tool_sync(name, params)
         return jsonify(result)
-
-    @app.route("/login", methods=["GET", "POST"])
-    def login():
-        next_url = request.args.get("next")
-        ip_address = request.remote_addr
-        now = datetime.now()
-
-        # Check if the IP address is locked out
-        if (
-            ip_address in login_attempts
-            and login_attempts[ip_address]["locked_until"] > now
-        ):
-            flash("Too many failed attempts. Please try again later.", "error")
-            logging.warning("Locked login attempt from %s", ip_address)
-            return render_template("login.html", page_title="Login"), 429
-
-        if request.method == "POST":
-            username = (request.form.get("username") or "").strip()
-            password = (request.form.get("password") or "").strip()
-            remember = request.form.get("remember") == "on"
-            if not username or not password:
-                logging.debug("Login failed: missing credentials from %s", ip_address)
-                flash("Username and password are required", "error")
-                return render_template("login.html", page_title="Login"), 400
-
-            db_session = SessionLocal()
-            try:
-                user = db_session.query(User).filter_by(username=username).first()
-            finally:
-                db_session.close()
-
-            if user and check_password_hash(user.password_hash, password):
-                session["user_id"] = user.id
-                if remember:
-                    current_app.permanent_session_lifetime = timedelta(
-                        days=config.AUTO_LOGIN_DAYS
-                    )
-                    session["remember"] = True
-                    timeout = timedelta(days=config.AUTO_LOGIN_DAYS)
-                else:
-                    current_app.permanent_session_lifetime = timedelta(
-                        minutes=config.SESSION_TIMEOUT_MINUTES
-                    )
-                    session.pop("remember", None)
-                    timeout = timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
-                session["expiry"] = (now + timeout).strftime("%Y-%m-%d %H:%M:%S")
-                session.permanent = True
-                login_attempts.pop(
-                    ip_address, None
-                )  # Reset attempts on successful login
-                logging.info("Successful login for %s from %s", username, ip_address)
-                target = (
-                    next_url if is_safe_redirect_url(next_url) else url_for("index")
-                )
-                return redirect(target)
-            else:
-                # Record the failed attempt
-                if ip_address not in login_attempts:
-                    login_attempts[ip_address] = {
-                        "attempts": 1,
-                        "locked_until": now,
-                    }
-                else:
-                    login_attempts[ip_address]["attempts"] += 1
-
-                # Lockout after 5 failed attempts
-                if login_attempts[ip_address]["attempts"] >= 5:
-                    login_attempts[ip_address]["locked_until"] = now + timedelta(
-                        hours=24
-                    )
-
-                # Rate limit after 2 attempts per minute
-                if login_attempts[ip_address]["attempts"] % 2 == 0:
-                    login_attempts[ip_address]["locked_until"] = now + timedelta(
-                        minutes=1
-                    )
-
-                if not user:
-                    logging.warning(
-                        "Login failed: unknown username '%s' from %s",
-                        username,
-                        ip_address,
-                    )
-                else:
-                    logging.warning(
-                        "Login failed: incorrect password for %s from %s",
-                        username,
-                        ip_address,
-                    )
-                logging.debug(
-                    "Failed login attempt count %s from %s",
-                    login_attempts[ip_address]["attempts"],
-                    ip_address,
-                )
-                flash("Invalid username or password", "error")
-        return render_template("login.html", page_title="Login")
-
-    @app.route("/sso", methods=["GET"])
-    def sso_login():
-        token = request.args.get("token") or request.headers.get("X-SSO-Token")
-        if token != config.SSO_TOKEN or not token:
-            flash("Invalid SSO token", "error")
-            logging.warning("Invalid SSO token from %s", request.remote_addr)
-            return redirect(url_for("login"))
-
-        db_session = SessionLocal()
-        try:
-            user = (
-                db_session.query(User).filter_by(username=config.SSO_USERNAME).first()
-            )
-        finally:
-            db_session.close()
-
-        if not user:
-            flash("Configured SSO user not found", "error")
-            logging.error("SSO user %s not found", config.SSO_USERNAME)
-            return redirect(url_for("login"))
-
-        session["user_id"] = user.id
-        session["expiry"] = (
-            datetime.now() + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
-        ).strftime("%Y-%m-%d %H:%M:%S")
-        session.permanent = True
-        flash("Logged in via SSO", "success")
-        logging.info("SSO login for %s from %s", user.username, request.remote_addr)
-        return redirect(url_for("index"))
-
-    @app.route("/help")
-    @login_required
-    def help_page():
-        return render_template("help.html", page_title="Help")
-
-    @app.route("/docs/<string:filename>")
-    @login_required
-    def docs_file(filename: str):
-        """Serve Markdown documentation files from the repository."""
-        if not allowed_filename(filename):
-            abort(404)
-
-        docs_path = os.path.join(
-            os.path.dirname(os.path.join(__file__)),
-            "..",
-            DOCS_DIRECTORY,
-        )
-        full_path = os.path.join(docs_path, filename)
-        if not os.path.exists(full_path):
-            abort(404)
-
-        return send_from_directory(docs_path, filename)
-
-    @app.route("/cli_help")
-    @login_required
-    def cli_help():
-        """Return CLI help text."""
-        from app.utils.cli import cli_help_text
-
-        return Response(cli_help_text(), mimetype="text/plain")
-
-    @app.route("/settings_help")
-    @login_required
-    def settings_help():
-        """Redirect old help route to the main settings page."""
-        return redirect(url_for("settings"))
-
-    @app.route("/offline")
-    @login_required
-    def offline_page():
-        """Render a fallback page when offline."""
-        return render_template("offline.html", page_title="Offline")
-
-    @app.route("/logout")
-    @login_required
-    def logout():
-        session.pop("user_id", None)
-        flash("You have been logged out successfully.", "success")
-        # add query flag so client can clear persistent credentials
-        return redirect(url_for("login", logout="1"))
 
     @app.route("/")
     @login_required
