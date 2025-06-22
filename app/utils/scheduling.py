@@ -511,7 +511,7 @@ def update_camera(name, template, image_file=None, motion=False):
         lpath = os.path.join(SCREENSHOT_DIRECTORY, "latest_camera.png")
 
         try:
-            if os.path.exists(lpath + ".tmp"):
+            if os.path.lexists(lpath + ".tmp"):
                 os.unlink(os.path.abspath(lpath + ".tmp"))
             os.symlink(
                 os.path.abspath(os.path.join("data/screenshots", name, png_files[-1])),
@@ -520,7 +520,7 @@ def update_camera(name, template, image_file=None, motion=False):
             os.rename(os.path.abspath(lpath + ".tmp"), os.path.abspath(lpath))
 
             lpath = os.path.join(SCREENSHOT_DIRECTORY, name, "latest_camera.png")
-            if os.path.exists(lpath + ".tmp"):
+            if os.path.lexists(lpath + ".tmp"):
                 os.unlink(os.path.abspath(lpath + ".tmp"))
             os.symlink(
                 os.path.abspath(os.path.join("data/screenshots", name, png_files[-1])),
@@ -536,7 +536,7 @@ def update_camera(name, template, image_file=None, motion=False):
                     group_lpath = os.path.join(
                         SCREENSHOT_DIRECTORY, f"{trimmed_group_name}_latest_camera.png"
                     )
-                    if os.path.exists(group_lpath + ".tmp"):
+                    if os.path.lexists(group_lpath + ".tmp"):
                         os.unlink(os.path.abspath(group_lpath + ".tmp"))
                     os.symlink(
                         os.path.abspath(
@@ -820,7 +820,7 @@ def update_camera(name, template, image_file=None, motion=False):
                 send_http_callback(template.get("callback_url"), event, payload)
 
             if last_motion_trigger or lsum:
-                if os.path.exists(
+                if os.path.lexists(
                     os.path.join(directory, "last_motion_caption.png.tmp")
                 ):
                     os.remove(os.path.join(directory, "last_motion_caption.png.tmp"))
@@ -834,7 +834,7 @@ def update_camera(name, template, image_file=None, motion=False):
                 )
 
             if last_caption_trigger:
-                if os.path.exists(os.path.join(directory, "last_caption.png.tmp")):
+                if os.path.lexists(os.path.join(directory, "last_caption.png.tmp")):
                     os.remove(os.path.join(directory, "last_caption.png.tmp"))
                 os.symlink(
                     png_files[-1], os.path.join(directory, "last_caption.png.tmp")
@@ -844,9 +844,9 @@ def update_camera(name, template, image_file=None, motion=False):
                     os.path.join(directory, "last_caption.png"),
                 )
 
-            if os.path.exists(prev_motion):
+            if os.path.lexists(prev_motion):
                 destination = os.readlink(prev_motion)
-                if os.path.exists(os.path.join(directory, "prev_motion.png.tmp")):
+                if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
                     os.remove(os.path.join(directory, "prev_motion.png.tmp"))
                 os.symlink(destination, os.path.join(directory, "prev_motion.png.tmp"))
                 os.rename(
@@ -854,7 +854,7 @@ def update_camera(name, template, image_file=None, motion=False):
                     os.path.join(directory, "prev_motion.png"),
                 )
                 image_paths.append(os.path.join(directory, "prev_motion.png"))
-            if os.path.exists(os.path.join(directory, "last_motion.png.tmp")):
+            if os.path.lexists(os.path.join(directory, "last_motion.png.tmp")):
                 os.remove(os.path.join(directory, "last_motion.png.tmp"))
             os.symlink(png_files[-1], os.path.join(directory, "last_motion.png.tmp"))
             os.rename(
@@ -882,16 +882,16 @@ def update_camera(name, template, image_file=None, motion=False):
                 }
                 send_http_callback(template.get("callback_url"), "motion", payload)
 
-            if os.path.exists(prev_motion):
+            if os.path.lexists(prev_motion):
                 destination = os.readlink(prev_motion)
-                if os.path.exists(os.path.join(directory, "prev_motion.png.tmp")):
+                if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
                     os.remove(os.path.join(directory, "prev_motion.png.tmp"))
                 os.symlink(destination, os.path.join(directory, "prev_motion.png.tmp"))
                 os.rename(
                     os.path.join(directory, "prev_motion.png.tmp"),
                     os.path.join(directory, "prev_motion.png"),
                 )
-            if os.path.exists(os.path.join(directory, "last_motion.png.tmp")):
+            if os.path.lexists(os.path.join(directory, "last_motion.png.tmp")):
                 os.remove(os.path.join(directory, "last_motion.png.tmp"))
             os.symlink(png_files[-1], os.path.join(directory, "last_motion.png.tmp"))
             os.rename(
