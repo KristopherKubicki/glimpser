@@ -20,7 +20,7 @@ After Chrome updates, shortcuts may revert to their original command line. Two a
 - **Helper script**: Run `python scripts/update_chrome_shortcut.py` to rewrite the shortcut with the required flag. This can also be triggered from the _Update Chrome Shortcut_ button on the Settings page or the _Patch Chrome Shortcuts_ button on the Danger page. The page now shows which shortcuts were updated after the patch completes.
 - **Dropdown selector**: The Danger page lets you choose a detected shortcut from a dropdown or enter a custom path before patching.
 - **Check script**: Run `python scripts/check_danger_mode.py` to print whether the debug port is detected and if your shortcuts still require patching.
-- **Default shortcut locations**: `%USERPROFILE%\Desktop`, `%APPDATA%\Microsoft\Windows\Start Menu\Programs`, and `%ProgramData%\Microsoft\Windows\Start Menu\Programs`. On Linux, try `/usr/share/applications/google-chrome.desktop` or `~/.local/share/applications/google-chrome.desktop`. The Settings page lists any writable shortcuts it discovers.
+- **Default shortcut locations**: `%USERPROFILE%\Desktop`, `%APPDATA%\Microsoft\Windows\Start Menu\Programs`, and `%ProgramData%\Microsoft\Windows\Start Menu\Programs`. On Linux, try `/usr/share/applications/google-chrome.desktop` or `~/.local/share/applications/google-chrome.desktop`. On macOS, pass the path to your `.app` or AppleScript file to `python scripts/update_chrome_shortcut.py`. The Settings page lists any writable shortcuts it discovers.
 
 After patching your shortcuts, restart Chrome and open it using the profile you intend to use with Danger mode.
 
