@@ -1556,6 +1556,7 @@ def allowed_filename(filename: str) -> bool:
 def init_routes(app: Flask) -> None:
     """Register all route handlers on the given ``app``."""
     from app.blueprints.api import create_blueprint as create_api_blueprint
+    from app.blueprints.assets import create_blueprint as create_assets_blueprint
     from app.blueprints.authentication import create_blueprint as create_auth_blueprint
     from app.blueprints.discovery import create_blueprint as create_discovery_blueprint
     from app.blueprints.docs import create_blueprint as create_docs_blueprint
@@ -1592,6 +1593,10 @@ def init_routes(app: Flask) -> None:
     if not getattr(app, "_media_bp_registered", False):
         app.register_blueprint(create_media_blueprint())
         app._media_bp_registered = True
+
+    if not getattr(app, "_assets_bp_registered", False):
+        app.register_blueprint(create_assets_blueprint())
+        app._assets_bp_registered = True
 
     if not getattr(app, "_api_bp_registered", False):
         app.register_blueprint(create_api_blueprint())
