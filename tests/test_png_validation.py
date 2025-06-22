@@ -31,6 +31,20 @@ class TestPNGValidation(unittest.TestCase):
         finally:
             os.remove(path)
 
+    def test_truncated_png(self):
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+            path = tmp.name
+        try:
+            with Image.new("RGB", (10, 10), color="blue") as img:
+                img.save(path)
+            with open(path, "rb+") as f:
+                data = f.read()
+                f.seek(len(data) // 2)
+                f.truncate()
+            self.assertFalse(_is_valid_png(path))
+        finally:
+            os.remove(path)
+
 
 if __name__ == "__main__":
     unittest.main()

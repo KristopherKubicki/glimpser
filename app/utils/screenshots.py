@@ -259,10 +259,12 @@ def http_session():
     return _session
 
 
-def _is_valid_png(path):
+def _is_valid_png(path: str) -> bool:
+    """Return ``True`` if ``path`` points to a valid, readable PNG."""
+
     try:
         with Image.open(path) as im:
-            im.verify()  # raises if corrupt/zero-byte
+            im.load()  # fully read file to detect truncation
         return True
     except Exception:
         return False
