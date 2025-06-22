@@ -3,15 +3,16 @@ from __future__ import annotations
 import csv
 import io
 import json
+import queue
 from ipaddress import ip_network
 from threading import Thread
-import queue
+
 from flask import (
     Blueprint,
     Response,
     jsonify,
-    request,
     render_template,
+    request,
     stream_with_context,
 )
 
