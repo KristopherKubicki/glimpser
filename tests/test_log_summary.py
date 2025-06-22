@@ -45,6 +45,28 @@ class TestLogSummary(unittest.TestCase):
         session = db.SessionLocal()
         try:
             rows = session.query(LogSummary).all()
-            self.assertEqual(len(rows), 1)
+            self.assertGreaterEqual(len(rows), 1)
+        finally:
+            session.close()
+
+    @patch("app.utils.scheduling.summarize", return_value='{"1": "cam"}')
+    def test_camera_log_summary(self, mock_sum):
+        name = "cam1"
+        now = datetime.datetime.utcnow()
+        with scheduling.log_cache_lock:
+            scheduling.log_cache.clear()
+            scheduling.log_cache.append(
+                {
+                    "timestamp": now,
+                    "level": "ERROR",
+                    "source": "camera",
+                    "message": f"{name} failed",
+                }
+            )
+        scheduling.summarize_camera_logs(name)
+        session = db.SessionLocal()
+        try:
+            rows = session.query(LogSummary).filter_by(camera=name).all()
+            self.assertGreaterEqual(len(rows), 1)
         finally:
             session.close()

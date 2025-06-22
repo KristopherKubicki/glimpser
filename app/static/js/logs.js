@@ -51,6 +51,22 @@ export function initLogs() {
     const searchInput = document.getElementById("search-input");
     const levelSelect = document.getElementById("level-select");
     const status = document.getElementById("log-connection-status");
+    const summaryEl = document.getElementById("daily-summary");
+
+    async function fetchSummary() {
+      const params = new URLSearchParams(window.location.search);
+      const camera = params.get("search");
+      if (!camera) return;
+      try {
+        const resp = await fetch(`/api/camera_log_summary/${camera}`);
+        if (resp.ok && summaryEl) {
+          const data = await resp.json();
+          summaryEl.textContent = data.summary || "";
+        }
+      } catch {
+        /* ignore network errors */
+      }
+    }
 
     let eventSource;
     let reconnectTimer;
@@ -106,6 +122,7 @@ export function initLogs() {
 
     // Start the initial event stream
     startEventStream();
+    fetchSummary();
 
     // expose for tests
     window.__startLogStream = startEventStream;

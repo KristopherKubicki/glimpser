@@ -444,6 +444,12 @@ template_form %} {% block content %}
   >
     Record 20s
   </button>
+  <button
+    onclick="window.location.href='/logs?search={{ template_name }}'"
+    title="View logs for this camera"
+  >
+    View Logs
+  </button>
   <button onclick="openModal('edit-template-modal')" title="Edit this template">
     Edit Template
   </button>
