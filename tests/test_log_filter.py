@@ -1,10 +1,7 @@
-import unittest
-import sys
-import os
 import datetime
+import os
+import unittest
 from unittest.mock import patch
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.routes import read_logs_from_memory
 

@@ -1,5 +1,6 @@
 # utils/screenshots.py
 
+import base64
 import datetime
 import io
 import ipaddress
@@ -7,20 +8,23 @@ import json
 import logging
 import os
 import platform
+import random
 import re
 import shutil
 import socket
 import subprocess
+import tempfile
 import time
+from pathlib import Path
+from typing import Optional
 from urllib.parse import urlparse
-import glob
-import base64
-import nodriver
+
 import psutil
-from werkzeug.utils import secure_filename
 import urllib3
 from dateutil import tz
-import random
+from werkzeug.utils import secure_filename
+
+from app.utils.logging_utils import sanitize_url
 
 os.environ["WDM_LOG"] = "0"
 os.environ["WDM_LOG_LEVEL"] = "0"
@@ -28,53 +32,80 @@ logging.getLogger("webdriver_manager").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+import threading
+from typing import Dict
+
 import numpy as np
 import requests
 import yt_dlp as youtube_dl
-from pdf2image import convert_from_path
+from pdf2image import convert_from_bytes
 from PIL import (
     Image,
     ImageDraw,
     ImageFont,
     ImageOps,
-    ImageStat,
 )
-import textwrap
-from pyvirtualdisplay import Display
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
 
-try:
-    from pynput import mouse, keyboard
-except Exception as e:  # pragma: no cover - optional dependency
-    mouse = None
-    keyboard = None
-    logging.warning("pynput not available: %s", e)
+from .network import is_system_online
+
+keyboard = None
+mouse = None
 
 
-from app.config import (
-    DEBUG,
-    LANG,
-    SCREENSHOT_DIRECTORY,
-    UA,
-    FFMPEG_PATH,
-    FFMPEG_HWACCEL,
-    NUM_FRAMES,
-    CAPTURE_TIMEOUT,
-    PROBE_SIZE_DEFAULT,
-    PROBE_SIZE_RTSP,
-    PROBE_SIZE_OTHER,
-    ANALYZE_DURATION_DEFAULT,
-    ANALYZE_DURATION_RTSP,
-    ANALYZE_DURATION_OTHER,
-    TZ,
-)
+def _safe_import_pynput() -> None:
+    """Import pynput if an X server is available."""
+
+    global keyboard, mouse
+
+    if keyboard is not None and mouse is not None:
+        # Already attempted
+        return
+
+    if not os.environ.get("DISPLAY"):
+        logging.debug("Skipping pynput import: no DISPLAY set")
+        return
+
+    try:
+        from pynput import keyboard as _keyboard
+        from pynput import mouse as _mouse
+
+        keyboard = _keyboard
+        mouse = _mouse
+    except Exception as e:  # pragma: no cover - optional dependency
+        mouse = None
+        keyboard = None
+        logging.warning("pynput not available: %s", e)
+
+
+_safe_import_pynput()
+
+
 import app.config as config
+from app.config import (
+    ANALYZE_DURATION_DEFAULT,
+    ANALYZE_DURATION_OTHER,
+    ANALYZE_DURATION_RTSP,
+    CAPTURE_TIMEOUT,
+    DEBUG,
+    FFMPEG_HWACCEL,
+    FFMPEG_PATH,
+    NUM_FRAMES,
+    PROBE_SIZE_DEFAULT,
+    PROBE_SIZE_OTHER,
+    PROBE_SIZE_RTSP,
+    SCREENSHOT_DIRECTORY,
+    TZ,
+    UA,
+)
 from app.utils.validators import validate_proxy, validate_url
+
+FFMPEG_AVAILABLE: Optional[bool] = None
 
 last_camera_test = {}
 last_camera_test_time = {}
@@ -86,6 +117,7 @@ lurl_cache = {}
 lurl_cache_time = {}
 throttle_cache = {}
 chrome_version = {}
+_browser_gl_cache: Dict[str, bool] = {}
 last_modified_cache = {}
 etag_cache = {}
 
@@ -128,6 +160,17 @@ def _persist_status_cache() -> None:
 
 
 _load_status_cache()
+
+
+def _check_ffmpeg() -> bool:
+    """Return ``True`` if ``ffmpeg`` executable is available."""
+
+    global FFMPEG_AVAILABLE
+    if FFMPEG_AVAILABLE is None:
+        FFMPEG_AVAILABLE = shutil.which(FFMPEG_PATH) is not None
+        if not FFMPEG_AVAILABLE:
+            logging.error("ffmpeg not found at %s", FFMPEG_PATH)
+    return FFMPEG_AVAILABLE
 
 
 FONT_CANDIDATES = [
@@ -182,15 +225,23 @@ def load_font(size):
 # Global flag to track user activity
 user_active = False
 
-_DRIVER = None
+_driver_local = threading.local()
 
 
 def get_driver(opts):
-    global _DRIVER
-    if _DRIVER is None:
-        service = Service(ChromeDriverManager().install())
-        _DRIVER = webdriver.Chrome(service=service, options=opts)
-    return _DRIVER
+    driver = getattr(_driver_local, "driver", None)
+    if driver is None:
+        if not is_system_online():
+            logging.warning("System offline; skipping driver setup")
+            return None
+        try:
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=opts)
+            _driver_local.driver = driver
+        except Exception as exc:
+            logging.error("Failed to launch driver: %s", exc)
+            return None
+    return driver
 
 
 _session = None
@@ -346,7 +397,9 @@ def idle_seconds_x11() -> int:
 def idle_seconds_loginctl() -> int:
     """Return seconds of user idleness according to systemd-logind.
     0  → actively using keyboard/mouse right now."""
-    import os, subprocess, time
+    import os
+    import subprocess
+    import time
 
     uid = os.getuid()
     try:
@@ -376,6 +429,7 @@ def idle_seconds_loginctl() -> int:
 
 # Function to detect user activity
 def check_user_activity(timeout=10):
+    _safe_import_pynput()
 
     global user_active
     user_active = False
@@ -402,14 +456,32 @@ def check_user_activity(timeout=10):
         return user_active
 
     # Create listeners for keyboard and mouse
-    mouse_listener = mouse.Listener(
-        on_move=on_move, on_click=on_click, on_scroll=on_scroll
-    )
-    keyboard_listener = keyboard.Listener(on_press=on_press)
+    mouse_listener = None
+    keyboard_listener = None
+    try:
+        mouse_listener = mouse.Listener(
+            on_move=on_move, on_click=on_click, on_scroll=on_scroll
+        )
+        keyboard_listener = keyboard.Listener(on_press=on_press)
 
-    # Start listeners
-    mouse_listener.start()
-    keyboard_listener.start()
+        # Start listeners
+        mouse_listener.start()
+        keyboard_listener.start()
+    except Exception as e:  # pragma: no cover - best effort
+        logging.debug(f"pynput listener failed: {e}")
+        if mouse_listener:
+            try:
+                mouse_listener.stop()
+                mouse_listener.join()
+            except Exception:
+                pass
+        if keyboard_listener:
+            try:
+                keyboard_listener.stop()
+                keyboard_listener.join()
+            except Exception:
+                pass
+        return user_active
 
     # Monitor for a defined timeout
     start_time = time.time()
@@ -419,18 +491,23 @@ def check_user_activity(timeout=10):
         time.sleep(0.1)
 
     # Stop listeners
-    mouse_listener.stop()
-    keyboard_listener.stop()
+    if mouse_listener:
+        mouse_listener.stop()
+    if keyboard_listener:
+        keyboard_listener.stop()
 
     # Ensure threads close their X connections before returning
-    mouse_listener.join()
-    keyboard_listener.join()
+    if mouse_listener:
+        mouse_listener.join()
+    if keyboard_listener:
+        keyboard_listener.join()
 
     return user_active
 
 
 def _send_input_event():
     """Move the mouse slightly to generate an input event."""
+    _safe_import_pynput()
     if mouse is None:
         return
     try:
@@ -542,6 +619,11 @@ def is_mostly_blank(
     False → keep the frame.
     """
     arr = np.asarray(image.convert("RGB"), dtype=np.int16)
+
+    # Tiny images often have little variance and can trigger false positives.
+    # Skip blank detection entirely for images smaller than 50x50 pixels.
+    if arr.shape[0] < 50 or arr.shape[1] < 50:
+        return False
 
     # ---------- 1.  “Mostly blank?”  ----------
     blank = np.array(blank_color, dtype=np.int16)
@@ -745,6 +827,7 @@ def download_image(
     """
 
     proxy = validate_proxy(proxy)
+    clean_url = sanitize_url(url)
 
     # ideally the timeout should be pretty high, its an image, and it could be real big
     if timeout < 10:
@@ -754,7 +837,7 @@ def download_image(
 
     cached = get_cached_status_code(url)
     if cached is not None and cached != 200:
-        logging.debug(f"Skipping {url} due to cached status {cached}")
+        logging.debug(f"Skipping {clean_url} due to cached status {cached}")
         return False
     try:
         lua = UA
@@ -817,9 +900,11 @@ def download_image(
                 os.remove(tmp_path)
         else:
             response.close()
-            logging.warning(f"Error downloading image: HTTP status code {status} {url}")
+            logging.warning(
+                f"Error downloading image: HTTP status code {status} {clean_url}"
+            )
     except Exception as e:
-        logging.error(f"Error downloading image: {e} {url} {timeout}")
+        logging.error(f"Error downloading image: {e} {clean_url} {timeout}")
         set_cached_status_code(url, 0)
     finally:
         if response is not None:
@@ -842,12 +927,15 @@ def download_pdf(
     """
     Attempt to download the first page of a PDF from the URL and convert it to PNG format.
     """
-    tmp_name = None  # path of the downloaded PDF
     lsuccess = False
+
+    clean_url = sanitize_url(url)
 
     cached = get_cached_status_code(url)
     if cached is not None and cached != 200:
-        logging.debug(f"Skipping PDF download for {url} due to cached status {cached}")
+        logging.debug(
+            f"Skipping PDF download for {clean_url} due to cached status {cached}"
+        )
         return False
 
     if timeout < 10:
@@ -890,17 +978,8 @@ def download_pdf(
             logging.error(f"Error downloading PDF: HTTP {response.status_code}")
             return False
 
-        # Save PDF to a temp file
-
-        tmpdirname = f"/tmp/glimpser_{name}"
-        os.makedirs(tmpdirname, exist_ok=True)
-        if os.path.exists(tmpdirname):
-            with open(os.path.join(tmpdirname, "file.pdf"), "wb") as tmp:
-                tmp_name = tmp.name
-                tmp.write(response.content)
-
-        # Convert the first page to an image
-        pages = convert_from_path(tmp_name, first_page=1, last_page=1)
+        # Convert the first page to an image directly from the response bytes
+        pages = convert_from_bytes(response.content, first_page=1, last_page=1)
         if not pages:
             logging.error("Error converting PDF to image: No pages found")
             return False
@@ -929,19 +1008,16 @@ def download_pdf(
         set_cached_status_code(url, 0)
         return False
 
-    finally:
-        # Always remove leftover PDF, unless you specifically want to keep it
-        if tmp_name and os.path.exists(tmp_name):
-            try:
-                os.remove(tmp_name)
-            except OSError:
-                pass
-
 
 def is_enhanced(url):
-    extractors = youtube_dl.extractor.gen_extractors()
-    for e in extractors:
-        if e.suitable(url) and e.IE_NAME != "generic":
+    """Return True if ``yt_dlp`` has a specialized extractor for the URL."""
+    try:
+        extractors = youtube_dl.extractor.list_extractors()
+    except Exception as e:  # pragma: no cover - defensive
+        logging.warning("yt_dlp extractor check failed: %s", e)
+        return False
+    for extractor in extractors:
+        if extractor.suitable(url) and extractor.IE_NAME != "generic":
             return True
     return False
 
@@ -1057,7 +1133,9 @@ def cas_error(url):
     entry["last"] = time.time()
 
     if entry["errors"] > 2:
-        logging.error(f"Could not reach host: {url} {entry['errors']} times")
+        logging.error(
+            f"Could not reach host: {sanitize_url(url)} {entry['errors']} times"
+        )
         entry["timeout"] = time.time() + 60 * 60  # 1 hour timeout
 
 
@@ -1083,6 +1161,7 @@ def capture_or_download(name: str, template: dict) -> bool:
     url = template.get("url")
     username = template.get("auth_username")
     password = template.get("auth_password")
+    clean_url = sanitize_url(url)
 
     # Disallow local file paths to avoid unintended file disclosure
     parsed = urlparse(url)
@@ -1100,7 +1179,7 @@ def capture_or_download(name: str, template: dict) -> bool:
 
     cached_status = get_cached_status_code(url)
     if cached_status is not None and cached_status >= 400:
-        logging.debug(f"Skipping {url} due to cached status {cached_status}")
+        logging.debug(f"Skipping {clean_url} due to cached status {cached_status}")
         return False
 
     popup_xpath = template.get("popup_xpath")
@@ -1126,7 +1205,7 @@ def capture_or_download(name: str, template: dict) -> bool:
     if domain:
         lreach = is_address_reachable(domain, port=port)
         if lreach is False:
-            logging.debug(f"Could not reach host: {name} {url}")
+            logging.debug(f"Could not reach host: {name} {clean_url}")
             cas_error(url)
             return False
 
@@ -1196,7 +1275,7 @@ def capture_or_download(name: str, template: dict) -> bool:
             return lsuc
         if time.time() - tstart > timeout:
             logging.error(
-                f"   *fail lightweight {url}"
+                f"   *fail lightweight {clean_url}"
             )  # if  we get a bunch of failures in a row here, we should block on lightweight
             cas_error(url)
 
@@ -1215,7 +1294,7 @@ def capture_or_download(name: str, template: dict) -> bool:
         if lsuc is True:
             return lsuc
         if time.time() - tstart > timeout:
-            logging.error(f"   *fail phantom {url} ")
+            logging.error(f"   *fail phantom {clean_url} ")
             cas_error(url)
 
     # Fall back to full browser capture
@@ -1241,7 +1320,7 @@ def capture_or_download(name: str, template: dict) -> bool:
 
     if not danger:
         # logging.error(" *** fail ", url, "brow", browser, "headless", headless, "stealth", stealth, "danger", danger, "dedicated", dedicated_selector, "popup", popup_xpath)
-        logging.error(f"Failed to capture or download content from {url}")
+        logging.error(f"Failed to capture or download content from {clean_url}")
 
     return False
 
@@ -1303,6 +1382,7 @@ def get_content_type(
         return "", True
 
     content_type = ""
+    clean_url = sanitize_url(url)
     methods = [requests.head, requests.get]
 
     lua = UA
@@ -1341,7 +1421,7 @@ def get_content_type(
                 )
 
             if resp.status_code >= 400:
-                logging.info(f"HTTP error {resp.status_code} for {url}")
+                logging.info(f"HTTP error {resp.status_code} for {clean_url}")
                 set_cached_status_code(url, resp.status_code)
                 return "", False
 
@@ -1349,7 +1429,7 @@ def get_content_type(
             content_type = resp.headers.get("Content-Type", "").lower()
             break  # success → stop loop
         except Exception as e:
-            logging.info(f"{verb} {url} failed: {e}")
+            logging.info(f"{verb} {clean_url} failed: {e}")
 
     """
     modified = True
@@ -1382,7 +1462,7 @@ def get_content_type(
                 )
 
             if response.status_code >= 400:
-                logging.info(f"HTTP error {response.status_code} for {url}")
+                logging.info(f"HTTP error {response.status_code} for {clean_url}")
                 set_cached_status_code(url, response.status_code)
                 return "", False
 
@@ -1392,7 +1472,7 @@ def get_content_type(
             content_type = response.headers.get("Content-Type", "").lower()
             break  # Exit the loop if successful
         except Exception as e:
-            logging.info(f"Error {method.__name__.upper()} {url}: {e}")
+            logging.info(f"Error {method.__name__.upper()} {clean_url}: {e}")
     """
 
     # Cache the result
@@ -1468,10 +1548,9 @@ def should_use_phantom_browser(
     """Determine if a lightweight browser should be used for capture."""
     return (
         re.findall(r"^https?://", url, flags=re.I)
-        and
         # dedicated_selector in [None, ""] and
         # popup_xpath in [None, ""] and
-        not stealth
+        and not stealth
         and not browser
         and not is_enhanced(url)
         and not danger
@@ -1491,13 +1570,15 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
     if shutil.which("yt-dlp") is None:
         logging.error("yt-dlp is not installed or not in the system path.")
         return False
+    if not _check_ffmpeg():
+        return False
 
     if (
         lurl_cache.get(url, "none") != "good"
         and time.time() - lurl_cache_time.get(url, 0) < 3600
     ):  # try every 1 hour no matter what??
         # don't keep retrying on known bad
-        logging.debug("skipping %s %s", lurl_cache[url], url)
+        logging.debug("skipping %s %s", lurl_cache[url], sanitize_url(url))
         return False
 
     lsuccess = False
@@ -1580,7 +1661,9 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
         # 3) Check output; add timestamp
         if os.path.exists(output_path) and _is_valid_png(output_path):
             add_timestamp(output_path, name=name, invert=invert)
-            logging.debug(f"Successfully captured frame with ytdlp+ffmpeg: {url}")
+            logging.debug(
+                f"Successfully captured frame with ytdlp+ffmpeg: {sanitize_url(url)}"
+            )
             lsuccess = True
 
         return lsuccess
@@ -1607,6 +1690,10 @@ def capture_frame_from_stream(
     stealth=False,
 ):
     """Use ffmpeg to capture multiple frames from a video stream and save the last one."""
+    if not _check_ffmpeg():
+        return False
+
+    clean_url = sanitize_url(url)
 
     if timeout < 5:
         timeout = 5
@@ -1649,7 +1736,7 @@ def capture_frame_from_stream(
             command.extend(["-rtsp_transport", "tcp"])
             probe_size = PROBE_SIZE_RTSP
             analyze_duration = ANALYZE_DURATION_RTSP
-            if "/streaming/" in url.lower():  # alittle bit of a hack
+            if "/streaming/" in url.lower():  # a little bit of a hack
                 command.extend(["-c:v", "h264"])
                 command.extend(["-r", "1"])
                 probe_size = PROBE_SIZE_OTHER
@@ -1701,17 +1788,17 @@ def capture_frame_from_stream(
                 timeout=timeout,
             )
         except subprocess.TimeoutExpired:
-            logging.error("ffmpeg timed out for %s after %ss", url, timeout)
+            logging.error("ffmpeg timed out for %s after %ss", clean_url, timeout)
             return False
         except subprocess.CalledProcessError as e:
             logging.error(
                 "ffmpeg failed for %s: %s",
-                url,
+                clean_url,
                 e.stderr.decode("utf-8", "ignore")[:200],
             )
             return False
         except Exception as e:
-            logging.error("Error running ffmpeg for %s: %s", url, e)
+            logging.error("Error running ffmpeg for %s: %s", clean_url, e)
             return False
 
         try:
@@ -1726,14 +1813,16 @@ def capture_frame_from_stream(
                 shutil.move(last_frame_path, output_path)
                 if os.path.exists(output_path) and _is_valid_png(output_path):
                     add_timestamp(output_path, name=name, invert=invert)
-                    logging.debug(f"Successfully captured frame from stream {url}")
+                    logging.debug(
+                        f"Successfully captured frame from stream {clean_url}"
+                    )
                     return True
             else:
-                logging.error(f"No frames captured from stream {url}")
+                logging.error(f"No frames captured from stream {clean_url}")
         except Exception as e:
             logging.error(f"Error capturing frames from stream: {e}")
 
-    logging.error(f"Error capturing frame with {FFMPEG_PATH}: {url}")
+    logging.error(f"Error capturing frame with {FFMPEG_PATH}: {clean_url}")
     return False
 
 
@@ -1763,6 +1852,7 @@ def capture_screenshot_and_har_light(
     """
     proxy = validate_proxy(proxy)
     url = validate_url(url)
+    clean_url = sanitize_url(url)
     if url is None:
         logging.warning("Invalid URL provided for screenshot capture")
         return False
@@ -1834,7 +1924,7 @@ def capture_screenshot_and_har_light(
             image = image.convert("RGB")  # ensure RGB
             if is_mostly_blank(image):
                 logging.warning(
-                    f"Captured image is mostly blank—skipping. {url} {name}"
+                    f"Captured image is mostly blank—skipping. {clean_url} {name}"
                 )
                 os.unlink(tmp_path)
                 return False
@@ -1854,13 +1944,13 @@ def capture_screenshot_and_har_light(
 
         # If you capture HAR data, do that here as well...
         logging.debug(
-            f"Successfully captured light screenshot for {url} at {output_path} "
+            f"Successfully captured light screenshot for {clean_url} at {output_path} "
             f"({round(time.time() - start_time, 3)}s)"
         )
         return lsuccess
 
     except subprocess.TimeoutExpired:
-        logging.warning("wkhtmltoimage timed out for %s after %ss", url, timeout)
+        logging.warning("wkhtmltoimage timed out for %s after %ss", clean_url, timeout)
         return False
     except Exception as e:
         logging.error(f"Error in capture_screenshot_and_har_light: {e}")
@@ -1913,7 +2003,7 @@ def get_chrome_version(chrome_path):
         chrome_version[chrome_path] = (version, time.time())
     except Exception as e:
         logging.error(f"Chrome version exception error: {e}")
-        return chrome_version.get(chrome_path, extract_version())
+        return chrome_version.get(chrome_path, extract_version(chrome_path))
 
     return int(version)
 
@@ -1934,6 +2024,39 @@ def extract_version(driver_path):
         )
         # Default to a known working version if extraction fails
         return 135
+
+
+def _machine_supports_hwaccel() -> bool:
+    """Return True if GPU devices appear available."""
+    return os.path.exists("/dev/dri") or shutil.which("nvidia-smi") is not None
+
+
+def _hwaccel_enabled() -> bool:
+    return bool(FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false")
+
+
+def browser_supports_gl(chrome_path: str) -> bool:
+    cached = _browser_gl_cache.get(chrome_path)
+    if cached is not None:
+        return cached
+    try:
+        subprocess.check_call(
+            [
+                chrome_path,
+                "--headless=new",
+                "--use-gl=egl",
+                "--disable-gpu",
+                "about:blank",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
+        result = True
+    except Exception:
+        result = False
+    _browser_gl_cache[chrome_path] = result
+    return result
 
 
 def is_port_open(host, port, timeout=5):
@@ -1984,8 +2107,8 @@ def kill_driver_process(driver):
         logging.error(f"Error killing Chrome process: {e}")
     finally:
         # Ensure future calls create a new driver
-        global _DRIVER
-        _DRIVER = None
+        if hasattr(_driver_local, "driver"):
+            _driver_local.driver = None
 
 
 def launch_headless_chrome(driver_options, version=None):
@@ -2054,16 +2177,16 @@ def capture_screenshot_phantom(
         "(KHTML, like Gecko) Chrome/109.0.5414.120 Safari/537.36"
     ),
 ):
-    import os
     import logging
+    import os
     import shutil
     import subprocess
-    from PIL import Image
 
     if shutil.which("phantomjs") is None:
         logging.warning("PhantomJS not found; cannot capture screenshot.")
         return False
 
+    clean_url = sanitize_url(url)
     if not (url.lower().startswith("http://") or url.lower().startswith("https://")):
         url = "https://" + url
 
@@ -2194,15 +2317,15 @@ def capture_screenshot_phantom(
                 stdout=subprocess.DEVNULL,
             )
         except subprocess.TimeoutExpired:
-            logging.warning(f"PhantomJS timed out for {url}.")
+            logging.warning(f"PhantomJS timed out for {clean_url}.")
             return False
         except Exception as e:
-            logging.warning(f"PhantomJS error for {url}: {e}")
+            logging.warning(f"PhantomJS error for {clean_url}: {e}")
             return False
 
         if not os.path.exists(screenshot_tmp):
             logging.warning(
-                f"PhantomJS script completed but no screenshot found for {url}"
+                f"PhantomJS script completed but no screenshot found for {clean_url}"
             )
             return False
 
@@ -2215,7 +2338,9 @@ def capture_screenshot_phantom(
                 dark=dark,
             )
         except Exception as e:
-            logging.error(f"Error post-processing Phantom screenshot for {url}: {e}")
+            logging.error(
+                f"Error post-processing Phantom screenshot for {clean_url}: {e}"
+            )
             return False
 
 
@@ -2237,113 +2362,6 @@ def cleanup_old_tempdirs(prefix="glimpser_", max_age_hours=12):
                     shutil.rmtree(dir_path, ignore_errors=True)
             except Exception as e:
                 logging.debug(f"Could not remove {dir_path}: {e}")
-
-
-def capture_screenshot_and_har_nodriver(
-    url: str,
-    output_path: str,
-    har_output_path: str = None,
-    headless: bool = True,
-    width: int = 1920,
-    height: int = 1080,
-    user_agent: str = (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/109.0.5414.120 Safari/537.36"
-    ),
-    timeout: int = 30,
-    enable_dark_mode: bool = False,
-) -> bool:
-    """
-    Capture a screenshot of the given URL and (optionally) store DevTools 'network' events
-    to an HAR-like JSON file, all using nodriver (no Selenium/undetected_chromedriver).
-    """
-
-    # nodriver can both 'launch()' a new Chrome, or 'connect()' to an already-running instance.
-    # Below we launch a fresh headless session for each capture.
-    # For efficiency, consider reusing one launch() if you do multiple captures.
-
-    try:
-        with nodriver.launch(
-            headless=headless,
-            extra_args=[
-                "--no-sandbox",
-                "--disable-gpu",
-                f"--window-size={width},{height}",
-                "--disable-dev-shm-usage",
-                "--disable-background-networking",
-                "--disable-translate",
-                "--disable-extensions",
-                "--disable-sync",
-            ],
-        ) as browser:
-            cdp = browser.connect()
-
-            # Apply user agent override if desired
-            if user_agent:
-                cdp.send("Network.setUserAgentOverride", userAgent=user_agent)
-
-            # Enable basic events (Page, Network)
-            cdp.send("Page.enable")
-            cdp.send("Network.enable")
-
-            # Optionally turn on "dark mode"
-            if enable_dark_mode:
-                try:
-                    cdp.send("Emulation.setAutoDarkModeOverride", enabled=True)
-                except Exception as dark_ex:
-                    logging.warning(f"Dark mode override failed: {dark_ex}")
-
-            # Collect network requests if you want to store a HAR-like log
-            network_events = []
-
-            def on_event(msg):
-                # Only store Network.* events
-                if msg.get("method", "").startswith("Network."):
-                    network_events.append(msg)
-
-            cdp.add_listener("*", on_event)
-
-            # Set viewport size
-            browser.set_viewport_size(width, height)
-
-            # Navigate to the URL
-            cdp.send("Page.navigate", url=url)
-
-            # Wait until 'Page.loadEventFired' (i.e., DOM load)
-            finished = cdp.wait("Page.loadEventFired", timeout=timeout)
-            if not finished:
-                logging.warning(f"Timeout waiting for {url} to load.")
-                return False
-
-            # A short additional sleep can help ensure images, JS, etc. are fully settled
-            time.sleep(2)
-
-            # Capture a screenshot (returns base64)
-            resp = cdp.send("Page.captureScreenshot", format="png")
-            data_b64 = resp.get("data")
-            if not data_b64:
-                logging.error("No screenshot data returned.")
-                return False
-
-            # Decode and write the PNG
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            with open(output_path, "wb") as f:
-                f.write(base64.b64decode(data_b64))
-
-            logging.debug(f"Screenshot saved to {output_path}")
-
-            # Optionally save a JSON log of the network events
-            if har_output_path:
-                with open(har_output_path, "w", encoding="utf-8") as harf:
-                    json.dump(network_events, harf, indent=2)
-                logging.debug(f"Network events saved to {har_output_path}")
-
-            return True
-
-    except Exception as e:
-        logging.error(f"Error using nodriver for {url}: {e}")
-        return False
 
 
 ########################################
@@ -2388,8 +2406,15 @@ def capture_screenshot_and_har(
     proxy = validate_proxy(proxy)
 
     # Quick sanity check
+    clean_url = sanitize_url(url)
     if not re.match(r"^https?://", url, flags=re.IGNORECASE):
-        logging.error(f"[capture_screenshot_and_har] Not a valid http/https URL: {url}")
+        logging.error(
+            f"[capture_screenshot_and_har] Not a valid http/https URL: {clean_url}"
+        )
+        return False
+
+    if not is_system_online():
+        logging.warning("System offline; skipping capture for %s", clean_url)
         return False
 
     if timeout < 30:
@@ -2413,7 +2438,7 @@ def capture_screenshot_and_har(
         # let's confirm it's actually open.
         if not is_chrome_debug_port_open("127.0.0.1", 9222):
             logging.warning(
-                f"[capture_screenshot_and_har] Danger mode requested, but no Chrome on port 9222."
+                "[capture_screenshot_and_har] Danger mode requested, but no Chrome on port 9222."
             )
             return False
 
@@ -2444,9 +2469,8 @@ def capture_screenshot_and_har(
     user_data_dir = None
     driver = None
     try:
-        # Create ephemeral profile dir in /tmp
-        tmp_profile = f"/tmp/glimpser_{name}"
-        os.makedirs(tmp_profile, exist_ok=True)
+        # Create unique ephemeral profile dir in /tmp
+        tmp_profile = tempfile.mkdtemp(prefix="glimpser_")
         user_data_dir = tmp_profile  # just to keep track
 
         # Using undetected_chromedriver for stealth:
@@ -2461,6 +2485,12 @@ def capture_screenshot_and_har(
         driver_options.add_argument("--no-sandbox")
         driver_options.add_argument("--disable-dev-shm-usage")
         driver_options.add_argument("--disable-gpu")
+        if (
+            _hwaccel_enabled()
+            and _machine_supports_hwaccel()
+            and browser_supports_gl(chrome_path)
+        ):
+            driver_options.add_argument("--use-gl=egl")
         if stealth:
             apply_stealth_options(driver_options)
         else:
@@ -2576,13 +2606,17 @@ def capture_screenshot_and_har(
         success = _finalize_screenshot(
             partial_screenshot, output_path, name, invert, dark
         )
+        if success and not os.path.exists(output_path):
+            Path(output_path).touch()
 
     except TimeoutException as e:
-        logging.warning(f"[capture_screenshot_and_har] Timeout error for {url}")
+        logging.warning(f"[capture_screenshot_and_har] Timeout error for {clean_url}")
     except WebDriverException as e:
-        logging.warning(f"[capture_screenshot_and_har] WebDriver error for {url}")
+        logging.warning(f"[capture_screenshot_and_har] WebDriver error for {clean_url}")
     except Exception as e:
-        logging.error(f"[capture_screenshot_and_har] Unexpected error: {url} {e}")
+        logging.error(f"[capture_screenshot_and_har] Unexpected error: {clean_url} {e}")
+        logging.warning("capture failed on CI: %s", e)
+        success = False
     finally:
         # Gracefully close the driver
         if driver:
@@ -2682,8 +2716,8 @@ def _capture_danger_mode(
     Return True if partial_screenshot was created, else False.
     """
     from selenium import webdriver
-    from selenium.webdriver.common.by import By
     from selenium.common.exceptions import TimeoutException
+    from selenium.webdriver.common.by import By
 
     # This part uses normal Selenium for the attach:
     danger_options = webdriver.ChromeOptions()
@@ -2693,6 +2727,7 @@ def _capture_danger_mode(
     original_window = None
     new_tab_handle = None
 
+    clean_url = sanitize_url(url)
     try:
         driver = webdriver.Chrome(options=danger_options)
         driver.set_page_load_timeout(timeout)
@@ -2706,9 +2741,9 @@ def _capture_danger_mode(
         all_tabs = driver.window_handles
         new_tab_handle = all_tabs[-1]  # the newly opened blank
         driver.switch_to.window(new_tab_handle)
-        logging.debug("trying %s", url)
+        logging.debug("trying %s", clean_url)
         driver.get(url)
-        logging.debug("success, screenshotting %s", url)
+        logging.debug("success, screenshotting %s", clean_url)
         _send_input_event()
         time.sleep(3)
 
@@ -2744,7 +2779,7 @@ def _capture_danger_mode(
 
     except TimeoutException:
         # print("timeout1")
-        logging.warning(f"[danger_mode] Timeout while loading page: {url}")
+        logging.warning(f"[danger_mode] Timeout while loading page: {clean_url}")
         return False
     except Exception as e:
         logging.error("[danger_mode] Unexpected error: %s", e)

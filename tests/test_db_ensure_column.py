@@ -1,8 +1,7 @@
-import os, sys
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import os
 import unittest
 from unittest.mock import patch
+
 from sqlalchemy import create_engine, text
 
 from app.utils.db import ensure_column

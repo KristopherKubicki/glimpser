@@ -1,12 +1,9 @@
 import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scripts import update_chrome_shortcut  # noqa: E402
 
@@ -37,8 +34,9 @@ class TestShortcutsNeedPatch(unittest.TestCase):
             desktop = self._setup_env(tmpdir)
             (desktop / "Chrome.lnk").touch()
             stub = self._win32_stub("")
-            with self._patch_os(), patch.object(
-                update_chrome_shortcut, "win32com", stub
+            with (
+                self._patch_os(),
+                patch.object(update_chrome_shortcut, "win32com", stub),
             ):
                 self.assertTrue(update_chrome_shortcut.shortcuts_need_patch())
 
@@ -47,8 +45,9 @@ class TestShortcutsNeedPatch(unittest.TestCase):
             desktop = self._setup_env(tmpdir)
             (desktop / "Chrome.lnk").touch()
             stub = self._win32_stub(update_chrome_shortcut.FLAG)
-            with self._patch_os(), patch.object(
-                update_chrome_shortcut, "win32com", stub
+            with (
+                self._patch_os(),
+                patch.object(update_chrome_shortcut, "win32com", stub),
             ):
                 self.assertFalse(update_chrome_shortcut.shortcuts_need_patch())
 

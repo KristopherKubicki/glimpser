@@ -1,16 +1,19 @@
+import re
 import subprocess
 import sys
 from pathlib import Path
 
+VERSION_FILE = Path("pyproject.toml")
 
-VERSION_FILE = Path("setup.py")
 
+def get_version() -> str:
+    """Return the version string from pyproject.toml."""
 
-def get_version():
-    for line in VERSION_FILE.read_text().splitlines():
-        if "version=" in line:
-            return line.split('"')[1]
-    raise RuntimeError("Version not found in setup.py")
+    content = VERSION_FILE.read_text()
+    match = re.search(r'^version = "(?P<ver>[^"]+)"', content, flags=re.MULTILINE)
+    if not match:
+        raise RuntimeError("Version not found in pyproject.toml")
+    return match.group("ver")
 
 
 def tag_exists(tag):

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Exit on error
-set -e
+# Exit on error and undefined variables, fail on pipeline errors
+set -euo pipefail
 
 # Function to check if a command exists
 command_exists() {
@@ -23,7 +23,6 @@ fi
 echo "Building Debian package..."
 mkdir -p debian/glimpser/opt/glimpser || { echo "Failed to create directory"; exit 1; }
 rsync -a app/ debian/glimpser/opt/glimpser/app/ || { echo "Failed to sync app directory"; exit 1; }
-cp requirements.txt debian/glimpser/opt/glimpser/ || { echo "Failed to copy requirements.txt"; exit 1; }
 rsync -a data/ debian/glimpser/opt/glimpser/data/ || { echo "Failed to sync data directory"; exit 1; }
 mkdir -p debian/glimpser/etc/systemd/system || { echo "Failed to create systemd directory"; exit 1; }
 cat > debian/glimpser/etc/systemd/system/glimpser.service << EOL || { echo "Failed to create service file"; exit 1; }

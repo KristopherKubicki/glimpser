@@ -1,11 +1,8 @@
-import unittest
 import os
-import sys
-from unittest.mock import patch, MagicMock
-from requests.structures import CaseInsensitiveDict
+import unittest
+from unittest.mock import MagicMock, patch, sentinel
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from unittest.mock import patch, sentinel
+from requests.structures import CaseInsensitiveDict
 
 import app.utils.screenshots as ss
 
@@ -30,19 +27,25 @@ class TestHttpSession(unittest.TestCase):
 
 class TestGetDriver(unittest.TestCase):
     def setUp(self):
-        ss._DRIVER = None
+        if hasattr(ss._driver_local, "driver"):
+            ss._driver_local.driver = None
 
     def tearDown(self):
-        ss._DRIVER = None
+        if hasattr(ss._driver_local, "driver"):
+            ss._driver_local.driver = None
 
     def test_driver_cached(self):
-        with patch(
-            "app.utils.screenshots.ChromeDriverManager.install",
-            return_value=sentinel.binary,
-        ) as mock_install, patch(
-            "app.utils.screenshots.webdriver.Chrome",
-            return_value=sentinel.driver,
-        ) as mock_chrome:
+        with (
+            patch(
+                "app.utils.screenshots.ChromeDriverManager.install",
+                return_value=sentinel.binary,
+            ) as mock_install,
+            patch(
+                "app.utils.screenshots.webdriver.Chrome",
+                return_value=sentinel.driver,
+            ) as mock_chrome,
+            patch("app.utils.screenshots.is_system_online", return_value=True),
+        ):
             driver1 = ss.get_driver(sentinel.options)
             driver2 = ss.get_driver(sentinel.options)
             self.assertIs(driver1, sentinel.driver)

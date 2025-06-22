@@ -1,32 +1,56 @@
 export function initThemeToggle() {
   document.addEventListener("DOMContentLoaded", () => {
     const toggle = document.getElementById("theme-toggle");
-    if (!toggle) return;
-
-    const useEl = toggle.querySelector("use");
-    if (!useEl) return;
-    const sprite = useEl.getAttribute("href").split("#")[0];
+    const useEl = toggle?.querySelector("use");
+    const sprite = useEl ? useEl.getAttribute("href").split("#")[0] : "";
 
     const applyTheme = (theme) => {
       document.body.classList.toggle("light-mode", theme === "light");
-      useEl.setAttribute(
-        "href",
-        `${sprite}#${theme === "light" ? "moon" : "sun"}`,
-      );
+      document.body.classList.toggle("dark-mode", theme === "dark");
+      if (useEl) {
+        useEl.setAttribute(
+          "href",
+          `${sprite}#${theme === "light" ? "moon" : "sun"}`,
+        );
+      }
     };
 
-    let current =
-      localStorage.getItem("theme") ||
-      (window.matchMedia("(prefers-color-scheme: light)").matches
-        ? "light"
-        : "dark");
+    let current = localStorage.getItem("theme");
+    if (!current) {
+      current = "dark";
+      localStorage.setItem("theme", current);
+    }
     applyTheme(current);
 
-    toggle.addEventListener("click", (e) => {
+    if (toggle) {
+      toggle.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        current = current === "light" ? "dark" : "light";
+        localStorage.setItem("theme", current);
+        applyTheme(current);
+        document.querySelector('.tab-link[data-tab="General-tab"]')?.click();
+      });
+    }
+  });
+}
+
+export function initContrastToggle() {
+  document.addEventListener("DOMContentLoaded", () => {
+    const toggle = document.getElementById("contrast-toggle");
+    const applyContrast = (mode) => {
+      document.body.classList.toggle("high-contrast-mode", mode === "high");
+    };
+
+    let current = localStorage.getItem("contrast") || "normal";
+    applyContrast(current);
+
+    toggle?.addEventListener("click", (e) => {
       e.preventDefault();
-      current = current === "light" ? "dark" : "light";
-      localStorage.setItem("theme", current);
-      applyTheme(current);
+      e.stopPropagation();
+      current = current === "high" ? "normal" : "high";
+      localStorage.setItem("contrast", current);
+      applyContrast(current);
     });
   });
 }

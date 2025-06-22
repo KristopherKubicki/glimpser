@@ -7,7 +7,7 @@ This guide provides detailed instructions for installing and setting up Glimpser
 - **Architecture**: Glimpser is primarily designed for x86 architecture.
   - ARM support may require additional work and is not guaranteed.
 - **Operating System**: Linux (Ubuntu 20.04 LTS or later recommended)
-- **Python**: Version 3.8 to 3.12
+- **Python**: Version 3.8 to 3.13
 
 ## Installation Steps
 
@@ -32,8 +32,8 @@ sudo apt-get install -y curl wget gnupg2 software-properties-common apt-transpor
 Google Chrome is required for some of Glimpser's functionality. To install it:
 
 ```sh
-wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+wget -qO- https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-linux-signing-keyring.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-linux-signing-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
 sudo apt-get update
 sudo apt-get install -y google-chrome-stable
 ```
@@ -51,12 +51,10 @@ sudo apt-get install -y ffmpeg
 Install the required Python packages:
 
 ```sh
-pip install -r requirements.txt
+pip install .
 ```
 
-The `requirements.txt` file now includes the CPU builds of **JAX 0.6.1** and
-**Flax 0.2.0**, along with updated `scikit-image` (0.25.0) and
-`numpy` (1.25.0).
+All runtime dependencies, including `psutil`, are defined in `pyproject.toml`.
 
 ### 6. (Optional) Configure Environment Variables
 

@@ -1,10 +1,7 @@
-import os
-import sys
 import asyncio
+import os
 import unittest
 from unittest.mock import AsyncMock, patch
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.utils import mcp
 

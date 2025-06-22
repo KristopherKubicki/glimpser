@@ -1,10 +1,10 @@
-import unittest
-import time
 import hashlib
-import sys
-import types
-import tempfile
 import os
+import sys
+import tempfile
+import time
+import types
+import unittest
 from unittest.mock import patch
 
 # Provide a dummy psutil module if it's not installed
@@ -55,7 +55,7 @@ if "PIL" not in sys.modules:
 
 if "app.config" not in sys.modules:
     config_mock = types.ModuleType("app.config")
-    config_mock.API_KEY = "dummy"
+    config_mock.API_KEY = "dummy"  # pragma: allowlist secret
     config_mock.SCREENSHOT_DIRECTORY = ""
     config_mock.USER_NAME = ""
     config_mock.USER_PASSWORD_HASH = ""
@@ -109,7 +109,7 @@ for sub in [
         if sub == "email_alerts":
             mod.email_alert = lambda *a, **k: None
 
-from app.routes import generate_timed_hash, is_hash_valid, generate_video_stream
+from app.routes import generate_timed_hash, generate_video_stream, is_hash_valid
 
 
 class TestRoutesUtils(unittest.TestCase):

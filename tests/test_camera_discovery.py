@@ -1,13 +1,13 @@
-import unittest
-import socket
 import os
-import sys
+import socket
+import tempfile
+import unittest
 from ipaddress import ip_network
-from unittest.mock import patch
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import mock_open, patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
+from app import config
 from app.utils import camera_discovery
 
 
@@ -280,6 +280,12 @@ class TestCameraDiscovery(unittest.TestCase):
                 "port": 8082,
                 "info": {"name": "System Status"},
             },
+            {
+                "ip": "127.0.0.1",
+                "protocol": "rtsp",
+                "port": 8082,
+                "info": {"name": "Test Frame"},
+            },
         ]
         # convert to set of tuples for comparison ignoring order
         self.assertEqual(
@@ -388,6 +394,29 @@ class TestCameraDiscovery(unittest.TestCase):
         mock_run.return_value = FakeProc()
         latency = camera_discovery._ping_latency("1.2.3.4")
         self.assertAlmostEqual(latency, 2.3, places=1)
+
+    @patch("app.utils.camera_discovery._mac_manufacturer")
+    @patch("app.utils.camera_discovery._mac_for_ip")
+    def test_add_mac_info_sets_fields(self, mock_mac_for_ip, mock_manufacturer):
+        mock_mac_for_ip.return_value = "00:11:22:33:44:55"
+        mock_manufacturer.return_value = "VendorX"
+        cam = {"ip": "1.2.3.4", "protocol": "rtsp", "info": {}}
+        camera_discovery._add_mac_info(cam)
+        self.assertEqual(cam["info"].get("mac"), "00:11:22:33:44:55")
+        self.assertEqual(cam["info"].get("manufacturer"), "VendorX")
+
+    @patch("app.utils.camera_discovery._mac_for_ip", return_value=None)
+    def test_add_mac_info_missing_mac(self, mock_mac_for_ip):
+        cam = {"ip": "1.2.3.4", "protocol": "rtsp", "info": {}}
+        camera_discovery._add_mac_info(cam)
+        self.assertEqual(cam["info"], {})
+
+    @patch("app.utils.camera_discovery._mac_for_ip")
+    def test_add_mac_info_local_protocol(self, mock_mac_for_ip):
+        cam = {"ip": "1.2.3.4", "protocol": "local", "info": {}}
+        camera_discovery._add_mac_info(cam)
+        mock_mac_for_ip.assert_not_called()
+        self.assertEqual(cam["info"], {})
 
     @patch("app.utils.camera_discovery._ping_latency", return_value=5.0)
     @patch("app.utils.camera_discovery._detect_open_ports", return_value=[])
@@ -538,9 +567,10 @@ class TestCameraDiscovery(unittest.TestCase):
         self.assertEqual(cam.get("url"), "rtsp://1.2.3.4:554/")
         self.assertEqual(cam["info"].get("device_type"), "camera")
 
-    @patch("app.utils.camera_discovery.requests.post")
+    @patch("app.utils.camera_discovery.request_with_retry")
     def test_autodetect_onvif_endpoints(self, mock_post):
-        def _side_effect(url, data, timeout=3):
+        def _side_effect(method, url, **kwargs):
+            data = kwargs.get("data", "")
             if "GetCapabilities" in data:
                 xml = "<Envelope><Body><Capabilities><Media><XAddr>http://1.2.3.4/onvif/media_service</XAddr></Media></Capabilities></Body></Envelope>"
             elif "GetProfiles" in data:
@@ -555,6 +585,125 @@ class TestCameraDiscovery(unittest.TestCase):
         res = camera_discovery.autodetect_onvif_endpoints("http://1.2.3.4")
         self.assertEqual(res["stream"], "rtsp://1.2.3.4/stream")
         self.assertEqual(res["snapshot"], "http://1.2.3.4/snap.jpg")
+
+    def test_mac_for_ip_parses_arp(self):
+        arp = (
+            "IP address       HW type     Flags       HW address            Mask     Device\n"
+            "192.168.1.5      0x1         0x2         00:0C:29:AA:BB:CC     *        eth0\n"
+            "10.0.0.5         0x1         0x2         00:11:22:33:44:55     *        wlan0\n"
+        )
+        with patch("builtins.open", mock_open(read_data=arp)):
+            self.assertEqual(
+                camera_discovery._mac_for_ip("192.168.1.5"), "00:0c:29:aa:bb:cc"
+            )
+            self.assertIsNone(camera_discovery._mac_for_ip("10.0.0.8"))
+
+    @patch("app.utils.camera_discovery.request_with_retry")
+    def test_mac_manufacturer_cached(self, mock_get):
+        with patch.object(camera_discovery, "OUI_MAP", {"001122": "TestCo"}):
+            camera_discovery._remote_vendor_lookup.cache_clear()
+            vendor = camera_discovery._mac_manufacturer("00:11:22:33:44:55")
+            self.assertEqual(vendor, "TestCo")
+            mock_get.assert_not_called()
+
+    @patch("app.utils.camera_discovery.request_with_retry")
+    def test_mac_manufacturer_remote_and_cache(self, mock_get):
+        resp = SimpleNamespace(status_code=200, json=lambda: {"company": "RemoteCo"})
+        mock_get.return_value = resp
+        with patch.object(camera_discovery, "OUI_MAP", {}):
+            camera_discovery._remote_vendor_lookup.cache_clear()
+            vendor = camera_discovery._mac_manufacturer("00:11:22:33:44:55")
+            self.assertEqual(vendor, "RemoteCo")
+            self.assertEqual(camera_discovery.OUI_MAP["001122"], "RemoteCo")
+            vendor2 = camera_discovery._mac_manufacturer("00:11:22:33:44:55")
+            self.assertEqual(vendor2, "RemoteCo")
+            self.assertEqual(mock_get.call_count, 1)
+
+    @patch("app.utils.camera_discovery.request_with_retry")
+    def test_remote_vendor_lookup_success(self, mock_get):
+        camera_discovery._remote_vendor_lookup.cache_clear()
+        mock_get.return_value = SimpleNamespace(
+            status_code=200, json=lambda: {"company": "AcmeCam"}
+        )
+        vendor = camera_discovery._remote_vendor_lookup("00:11:22:33:44:55")
+        self.assertEqual(vendor, "AcmeCam")
+
+    @patch("app.utils.camera_discovery.request_with_retry")
+    def test_remote_vendor_lookup_failure(self, mock_get):
+        camera_discovery._remote_vendor_lookup.cache_clear()
+        mock_get.side_effect = Exception("boom")
+        vendor = camera_discovery._remote_vendor_lookup("00:11:22:33:44:55")
+        self.assertIsNone(vendor)
+
+    @patch("app.utils.camera_discovery._local_subnets", return_value=[])
+    @patch("app.utils.camera_discovery._local_video_devices", return_value=[])
+    @patch("app.utils.camera_discovery._scan_hls_streams", return_value=[])
+    @patch("app.utils.camera_discovery._scan_http_endpoints", return_value=[])
+    @patch("app.utils.camera_discovery._scan_snmp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_webrtc_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_sip_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_rtmp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._scan_rtsp_ports", return_value=[])
+    @patch("app.utils.camera_discovery._probe_ssdp", return_value=[])
+    @patch("app.utils.camera_discovery._probe_mdns", return_value=[])
+    @patch("app.utils.camera_discovery._probe_onvif", return_value=[])
+    @patch("app.utils.camera_discovery._mac_manufacturer")
+    @patch("app.utils.camera_discovery._mac_for_ip")
+    @patch("app.utils.camera_discovery.is_port_open", return_value=False)
+    @patch("app.utils.camera_discovery._trace_upstream", return_value=None)
+    def test_local_endpoints(
+        self,
+        mock_trace,
+        mock_is_port_open,
+        mock_mac,
+        mock_vendor,
+        mock_onvif,
+        *_mocks,
+    ):
+        cams = camera_discovery.discover_cameras()
+        urls = {c["url"] for c in cams}
+        base = f"http://127.0.0.1:{config.PORT}"
+        self.assertIn(f"{base}/test.mjpg", urls)
+        self.assertIn(f"{base}/test_pattern.mjpg", urls)
+        self.assertIn(f"{base}/stream.mjpg?group=all", urls)
+        self.assertIn(f"{base}/motion.mjpg?group=all", urls)
+        self.assertIn(f"{base}/caption.mjpg?group=all", urls)
+
+    def test_load_local_ouis(self):
+        """_load_local_ouis should parse valid lines and ignore others."""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            f1 = Path(tmpdir) / "manuf1"
+            f1.write_text(
+                "\n".join(
+                    [
+                        "# comment",
+                        "001122 VendorA",
+                        "33-44-55 VendorB",
+                        "invalidline",
+                        "00aa Short",
+                    ]
+                )
+            )
+            f2 = Path(tmpdir) / "manuf2"
+            f2.write_text("66:77:88 VendorC\n")
+            missing = Path(tmpdir) / "missing"
+
+            with patch.object(
+                camera_discovery,
+                "_OUI_FILES",
+                [str(f1), str(missing), str(f2)],
+            ):
+                vendors = camera_discovery._load_local_ouis()
+
+            expected = {
+                "001122": "VendorA",
+                "334455": "VendorB",
+                "667788": "VendorC",
+            }
+
+        expected = {"001122": "VendorA", "334455": "VendorB", "667788": "VendorC"}
+        self.assertEqual(vendors, expected)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,19 @@
 import { fetchJson } from "./fetch_utils.js";
 
+function setStatus(el, status) {
+  if (!el) return;
+  el.classList.remove("ok", "slow", "error");
+  el.classList.add(status);
+}
+
+function updateStatusText(el, status) {
+  if (!el) return;
+  const map = { running: "ok", stopped: "error", error: "error" };
+  el.title = status;
+  el.textContent = "";
+  setStatus(el, map[status] || "error");
+}
+
 export function initSchedulerToggle() {
   document.addEventListener("DOMContentLoaded", () => {
     const toggleSchedulerButton = document.getElementById("toggle-scheduler");
@@ -16,23 +30,23 @@ export function initSchedulerToggle() {
         if (!shouldToggle) return;
         try {
           const data = await fetchJson("/toggle_scheduler", { method: "POST" });
-          schedulerStatus.textContent = data.status;
+          updateStatusText(schedulerStatus, data.status);
           toggleSchedulerButton.textContent =
             data.status === "running" ? "Stop Scheduler" : "Start Scheduler";
         } catch (error) {
-          schedulerStatus.textContent = "Error occurred";
+          updateStatusText(schedulerStatus, "error");
           alert("Unable to toggle scheduler.");
         }
       });
 
       fetchJson("/scheduler_status")
         .then((data) => {
-          schedulerStatus.textContent = data.status;
+          updateStatusText(schedulerStatus, data.status);
           toggleSchedulerButton.textContent =
             data.status === "running" ? "Stop Scheduler" : "Start Scheduler";
         })
         .catch(() => {
-          schedulerStatus.textContent = "Error occurred";
+          updateStatusText(schedulerStatus, "error");
         });
     }
   });

@@ -1,23 +1,24 @@
 {
-  "name": "glimpser",
-  "version": "0.2.7",
-  "type": "module",
-  "private": true,
-  "scripts": {
-    "lint:css": "stylelint 'app/static/css/**/*.css'",
-    "lint:js": "eslint 'app/static/js/**/*.js'",
-    "format:js": "prettier --check 'app/static/js/**/*.js'",
-    "format:js:write": "prettier --write 'app/static/js/**/*.js'",
-    "format": "npm run format:js:write",
-    "test:js": "node --experimental-vm-modules node_modules/jest/bin/jest.js --env=jsdom",
-    "test": "npm run test:js"
-  },
-  "devDependencies": {
-    "eslint": "^8.57.0",
-    "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0",
-    "prettier": "^3.5.3",
-    "stylelint": "^15.10.0",
-    "stylelint-config-standard": "^34.0.0"
-  }
+    "name": "glimpser",
+    "version": "0.2.8",
+    "type": "module",
+    "private": true,
+    "scripts": {
+        "lint:css": "stylelint 'app/static/css/**/*.css'",
+        "lint:js": "eslint 'app/static/js/**/*.js'",
+        "format:js": "prettier --check 'app/static/js/**/*.js'",
+        "format:js:write": "prettier --write 'app/static/js/**/*.js'",
+        "format": "npm run format:js:write",
+        "test:js": "node --experimental-vm-modules node_modules/jest/bin/jest.js --env=jsdom",
+        "test": "npm run test:js",
+        "size-audit": "node scripts/size-audit.js"
+    },
+    "devDependencies": {
+        "eslint": "^8.57.0",
+        "jest": "^29.7.0",
+        "jest-environment-jsdom": "^29.7.0",
+        "prettier": "^3.5.3",
+        "stylelint": "^15.10.0",
+        "stylelint-config-standard": "^34.0.0"
+    }
 }

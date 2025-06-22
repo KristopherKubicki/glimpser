@@ -6,44 +6,48 @@ This guide describes the available command line arguments for the main `glimpser
 
 The primary application script accepts the following options:
 
-| Argument | Description |
-| --- | --- |
-| `--db-path` | Path to the SQLite database file. |
-| `--host` | Host for the web server. |
-| `--port` | Port for the web server. |
-| `--log-path` | Path to the log file. |
-| `--log-level` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). |
-| `--console-log` | Enable logging to the console. |
-| `--debug` | Enable debug mode. |
-| `--no-scheduler` | Disable the background scheduler. |
-| `--no-watchdog` | Disable the watchdog thread. |
-| `--no-crawlers` | Skip scheduling crawler jobs. |
-| `--screenshot-dir` | Directory for storing screenshots. |
-| `--video-dir` | Directory for storing video files. |
-| `--summaries-dir` | **Deprecated:** summaries are now stored in the database. |
+| Argument           | Description                                                      |
+| ------------------ | ---------------------------------------------------------------- |
+| `--db-path`        | Path to the SQLite database file.                                |
+| `--host`           | Host for the web server.                                         |
+| `--port`           | Port for the web server.                                         |
+| `--log-path`       | Path to the log file.                                            |
+| `--log-level`      | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). |
+| `--console-log`    | Enable logging to the console.                                   |
+| `--debug`          | Enable debug mode.                                               |
+| `--no-scheduler`   | Disable the background scheduler.                                |
+| `--no-watchdog`    | Disable the watchdog thread.                                     |
+| `--no-crawlers`    | Skip scheduling crawler jobs.                                    |
+| `--no-log-cache`   | Disable the log caching thread.                                  |
+| `--screenshot-dir` | Directory for storing screenshots.                               |
+| `--video-dir`      | Directory for storing video files.                               |
+| `--summaries-dir`  | **Deprecated:** summaries are now stored in the database.        |
+| `--version`        | Show the current Glimpser version and exit. |
+The background scheduler orchestrates all recurring jobs. It creates teaser clips, archives screenshots, refreshes clip previews, cleans up old files, processes queued offline jobs, collects system metrics and checks for application updates. Use `--no-scheduler` to disable every scheduled task or `--no-crawlers` when only camera captures should be skipped.
+
 
 ## generate_credentials.py
 
 This helper script creates or updates the credentials stored in the database.
 
-| Argument | Description |
-| --- | --- |
-| `--db-path` | Path to the SQLite database file. |
-| `--username` | Username for login. |
-| `--password` | Password for login. |
+| Argument            | Description                                                |
+| ------------------- | ---------------------------------------------------------- |
+| `--db-path`         | Path to the SQLite database file.                          |
+| `--username`        | Username for login.                                        |
+| `--password`        | Password for login.                                        |
 | `--update-password` | Update only the password without modifying other settings. |
-| `--secret-key` | Custom secret key; a new one is generated if not provided. |
-| `--update-key` | Replace the stored secret key. |
+| `--secret-key`      | Custom secret key; a new one is generated if not provided. |
+| `--update-key`      | Replace the stored secret key.                             |
 
 ## config.py
 
 When invoked directly, `app/config.py` accepts a few path options to override the
 defaults loaded from environment variables:
 
-| Argument | Description |
-| --- | --- |
-| `--db-path` | Override the SQLite database location. |
-| `--log-path` | Override the main log file path. |
+| Argument        | Description                             |
+| --------------- | --------------------------------------- |
+| `--db-path`     | Override the SQLite database location.  |
+| `--log-path`    | Override the main log file path.        |
 | `--backup-path` | Override the configuration backup file. |
 
 Use `--help` with any script to see these options from the command line.
@@ -52,3 +56,7 @@ Use `--help` with any script to see these options from the command line.
 
 This helper clears the console screen. It uses the same logic as the main
 application's startup routine and works on Windows, macOS and Linux.
+
+## glimpser-dashboard
+
+`glimpser-dashboard` opens a lightweight terminal dashboard that lists each feed with its current status. The display refreshes every few seconds. Press `q` to exit.

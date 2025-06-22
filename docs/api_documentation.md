@@ -4,7 +4,7 @@ This document outlines the API endpoints available in Glimpser for programmatic 
 
 ## Authentication
 
-All API requests require an API key. Include your API key in the header of each request:
+Most API requests require a valid session or API key. A few informational endpoints such as `/api/discover` and `/login` are accessible without authentication. When an API key is needed, include it in the request header:
 
 ```
 Authorization: Bearer YOUR_API_KEY
@@ -112,26 +112,33 @@ Stream a camera directly from its configured URL in real time. Specify `camera` 
 Example: `/live_video?camera=frontdoor`
 
 If the underlying `ffmpeg` process exits unexpectedly the server now
-restarts it automatically. This ensures the client receives a valid MP4
-stream whenever the camera becomes available again.
+restarts it automatically. When repeated failures occur the delay between
+attempts grows exponentially (up to 30 seconds) to reduce log spam. This
+ensures the client receives a valid MP4 stream whenever the camera becomes
+available again while avoiding rapid restarts.
 
 ### 5. Additional Streaming Endpoints
 
 Several other routes provide streaming functionality:
 
 - **GET /stream.mjpg** – Continuous MJPEG stream of the latest camera image. Optional `camera` or `group` query parameters limit the feed. Passing `group=all` shows the newest frame from any camera.
-- **GET /stream.png** – Returns the most recent screenshot across all cameras.
+- **GET /fast_stream.mjpg** – Fast MJPEG feed capturing a fresh frame whenever possible. The `/live` page uses this for near real-time playback. Requires a `camera` parameter.
+- **GET /stream.png** – Returns the most recent screenshot. Optional `camera` or `group` parameters filter the result.
 - **GET /motion.mjpg** – MJPEG stream containing only motion frames. Accepts `camera` or `group` as query parameters.
 - **GET /caption.mjpg** – MJPEG stream of the last caption frame for a group.
 - **GET /motion_caption.mjpg** – Combines motion and caption frames in a single MJPEG stream.
-- **GET /internal_caption.mjpg** – Loops the latest caption text as an MJPEG stream.
+- **GET /internal_caption.mjpg** – Loops the latest caption text as an MJPEG stream. Accepts `camera` or `group` to limit captions.
 - **GET /stream.m3u8** – HLS playlist referencing the latest videos.
   Optional `camera` or `group` query parameters filter the playlist to a
   single camera or group of cameras.
 - **GET /last_video/<template_name>** – Download the most recent MP4 for the given template. Returns a 404 response if no video is available.
 - **GET /last_screenshot/<template_name>** – Retrieve the latest screenshot for a template.
 - **GET /last_teaser** – Returns the teaser video compiled from recent footage. Accepts an optional `group` query parameter to retrieve a group-specific teaser, e.g. `/last_teaser?group=frontdoor`.
+- **GET /clip/<template_name>** – Concatenate the active `in_process.mp4` with recent finalized segments. If the in‑progress video is shorter than the requested `duration` (default `DEFAULT_CLIP_DURATION`) older finalized clips are prepended. When no footage exists the server falls back to a blank video. Subsequent requests reuse the cached clip stored under `CLIPS_DIRECTORY` for speed. Responses include `Cache-Control: public, max-age=120` so browsers retain the clip for two minutes.
 - **GET /test.rtsp** – Basic RTSP endpoint that serves MJPEG frames when used with `/rtsp_stream`. Send periodic `GET_PARAMETER` requests to keep the session alive.
+- **GET /test.mjpg** – MJPEG view of the test frame. Supports optional `camera` and `group` query parameters.
+- **GET /test_pattern.mjpg** – Streams a generated test pattern with a small
+  spinner and multilingual timestamp overlay.
 
 ### 6. Trigger Screenshot Capture
 
@@ -148,17 +155,25 @@ Example response:
 { "status": "success", "message": "Screenshot for camera1 taken" }
 ```
 
-### 7. View System Status
+### 7. View Status
 
 **GET /status**
 
-Redirects to the *System Status* tab on the Settings page which displays metrics such as CPU, memory, and disk usage along with open file count, thread count, and uptime. These metrics are gathered in a background thread (see `app/utils/scheduling.py`).
+Redirects to the _System Status_ tab on the Settings page which displays metrics such as CPU, memory, and disk usage along with open file count, thread count, and uptime. These metrics are gathered in a background thread (see `app/utils/scheduling.py`).
 
 ### 8. Stream Logs
 
 **GET /stream_logs**
 
-Streams log records via Server-Sent Events. Optional query parameters `level`, `source`, `start_date`, `end_date`, and `search` allow filtering. The `/logs` page and *System Status* tab use this endpoint for the live log viewer.
+
+Streams log records via Server-Sent Events. Optional query parameters `level`, `source`, `start_date`, `end_date`, and `search` allow filtering. The `/logs` page and _System Status_ tab use this endpoint for the live log viewer.
+
+To reduce load during rapid typing, identical `level`/`search` combinations are ignored if a stream for the same user is already active.
+
+Authentication is required. When a session is missing or expired the server
+returns a `401` status with an SSE-formatted error message instead of redirecting
+to the login page.
+
 
 ### 9. List Stored Videos
 
@@ -225,10 +240,22 @@ Indicates whether Danger mode is ready for use.
 **GET /captions_status**
 
 Returns the latest caption text and timestamp.
+The timestamp is now provided in ISO 8601 UTC format (e.g. `1970-01-01T00:00:00Z`).
 
 **GET /discovery_status**
 
 Reports the status of background camera discovery.
+
+**GET /network_status**
+
+Indicates whether the server is online.
+
+### 14. Search Suggestions
+
+**GET /search_suggestions?q=term**
+
+Return a JSON array of camera or group names that contain the provided
+query string. At most ten results are returned.
 
 ## Error Handling
 

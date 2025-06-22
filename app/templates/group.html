@@ -1,38 +1,30 @@
-{% extends 'base.html' %}
-{% block content %}
-<div>
-  <label for="search-input" title="Search for cameras or groups">Search:</label>
-  <input
-    type="text"
-    id="search-input"
-    placeholder="Search cameras or groups"
-    title="Enter search terms"
-  />
-  <input
-    type="range"
-    id="grid-width-slider"
-    min="50"
-    max="3840"
-    value="360"
-    title="Adjust the width of the template grid"
-  />
-  <button id="play-all-button" title="Play/Stop all videos">Play All</button>
-  <button id="live-all-button" title="Live stream all cameras">Live All</button>
-  <button
-    id="toggle-captions"
-    title="Toggle caption overlays"
-    aria-label="Toggle caption overlays"
-  >
-    Hide Captions
-  </button>
-</div>
+{% extends 'base.html' %} {% from 'components.html' import template_controls %}
+{% block content %} {% call template_controls() %}
+<select id="sort-date" class="sort-select" aria-label="Sort cameras">
+  <option value="">↕</option>
+  <option value="name_asc">A–Z</option>
+  <option value="name_desc">Z–A</option>
+  <option value="last_desc">Last ↓</option>
+  <option value="last_asc">Last ↑</option>
+  <option value="next_desc">Next ↓</option>
+  <option value="next_asc">Next ↑</option>
+  <option value="error_desc">Error ↓</option>
+  <option value="error_asc">Error ↑</option>
+</select>
+{% endcall %}
 <div
   id="template-list"
   title="List of all templates"
   role="region"
   aria-label="Templates"
 ></div>
-<div id="index-time" class="corner-time" title=""></div>
+<div
+  id="index-time"
+  class="corner-time"
+  title=""
+  role="timer"
+  aria-live="polite"
+></div>
 <script type="module">
   import { loadTemplates } from '{{ url_for('static', filename='js/templates.js') }}';
   window.currentGroup = '{{ group_name }}';

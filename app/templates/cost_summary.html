@@ -1,0 +1,56 @@
+{% extends 'base.html' %} {% from 'components.html' import card %} {% block
+content %}
+<h1>LLM Cost Summary</h1>
+{% call card('Select Range') %}
+<form id="cost-form" class="cost-form">
+  <label for="cost-group">Group:</label>
+  <select id="cost-group" title="Filter by group"></select>
+  <label for="cost-start" class="ml-4">Start:</label>
+  <input
+    type="range"
+    id="cost-start"
+    min="0"
+    max="180"
+    value="150"
+    title="Start date"
+  />
+  <span id="cost-start-label"></span>
+  <label for="cost-end" class="ml-4">End:</label>
+  <input
+    type="range"
+    id="cost-end"
+    min="0"
+    max="180"
+    value="180"
+    title="End date"
+  />
+  <span id="cost-end-label"></span>
+  <button type="button" id="since-restart" title="Use start time from restart">
+    Since Last Restart
+  </button>
+  <button type="button" id="load-cost" title="Load cost data">Load</button>
+</form>
+{% endcall %}
+<canvas id="costChart" width="250" height="250"></canvas>
+<table id="cost-table" class="cost-table">
+  <thead>
+    <tr>
+      <th>Template</th>
+      <th>LLM Cost</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for name, cost in costs.items() %}
+    <tr>
+      <td>{{ name }}</td>
+      <td>{{ cost }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module">
+  import { initCostSummary } from '{{ url_for('static', filename='js/costs.js') }}';
+  initCostSummary({{ start_time }});
+</script>
+{% endblock %}

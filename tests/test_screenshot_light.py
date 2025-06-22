@@ -1,7 +1,7 @@
-import unittest
-import tempfile
 import os
-from unittest.mock import patch, MagicMock
+import tempfile
+import unittest
+from unittest.mock import MagicMock, patch
 
 from app.utils.screenshots import capture_screenshot_and_har_light
 

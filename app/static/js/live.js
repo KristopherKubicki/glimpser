@@ -1,6 +1,10 @@
 import { timeAgo, formatExactTime } from "./templates.js";
+import { attemptAutoLogin } from "./login.js";
 
 const video = document.getElementById("live-video");
+
+const CLIP_THROTTLE_MS = 30000;
+let lastClipTime = 0;
 
 function safePlay(el) {
   const promise = el.play();
@@ -15,6 +19,18 @@ function safePlay(el) {
     });
   }
 }
+
+function setClipSrc(cameraName) {
+  const now = Date.now();
+  if (now - lastClipTime >= CLIP_THROTTLE_MS) {
+    video.src = `/clip/${cameraName}`;
+    lastClipTime = now;
+  } else {
+    video.src = `/stream.mp4?camera=${encodeURIComponent(cameraName)}`;
+  }
+  video.load();
+  safePlay(video);
+}
 const image = document.getElementById("live-image");
 const templateDetailsContainer = document.getElementById("template-details");
 const templateDetails = window.templateDetails || {};
@@ -24,6 +40,23 @@ let currentCamera = "All"; // Default to showing all cameras
 const templateKeys = Object.keys(templateDetails);
 if (templateKeys.length === 1) {
   currentCamera = templateKeys[0];
+}
+
+// Ensure the synthetic "All" group is defined on page load so switching the
+// video source works even before the camera selector is changed. Without this
+// initialization, functions like playPNG() would crash when currentCamera is
+// "All" because templateDetails["All"] would be undefined.
+if (!templateDetails["All"]) {
+  templateDetails["All"] = {
+    url: "/stream.mp4",
+    groupCameras: templateKeys,
+  };
+}
+
+function getCameraNames() {
+  return Object.keys(templateDetails).filter(
+    (key) => key !== "All" && !key.startsWith("group-"),
+  );
 }
 
 // Allow embedding the live view for a specific camera by reading the
@@ -62,7 +95,10 @@ const streamErrorIndicator = document.getElementById("stream-error-indicator");
 const streamErrorMessage = document.getElementById("stream-error-message");
 const seekBar = document.getElementById("seek-bar");
 const jogShuttle = document.getElementById("jog-shuttle");
-let jogInterval = null;
+// Track jog state and throttle updates via requestAnimationFrame
+let jogRaf = null;
+let jogSpeed = 1;
+let jogDirection = 1;
 let jogging = false;
 let isSeeking = false;
 // Track whether template details are shown. Expose on window so inline
@@ -72,6 +108,54 @@ window.detailsVisible = false;
 // a camera repeatedly fails. Track the last message and time displayed.
 let lastErrorMessage = "";
 let lastErrorTime = 0;
+
+function updateCameraOptions(group) {
+  const camSelect = document.getElementById("camera-selector");
+  if (!camSelect) return;
+  camSelect.innerHTML = "";
+  if (!group || group === "all") {
+    camSelect.style.display = "none";
+    const opt = document.createElement("option");
+    opt.value = "All";
+    opt.textContent = "All";
+    camSelect.appendChild(opt);
+    camSelect.value = "All";
+    return;
+  }
+  camSelect.style.display = "";
+  const groupOpt = document.createElement("option");
+  groupOpt.value = `group-${group}`;
+  groupOpt.textContent = `Group: ${group}`;
+  camSelect.appendChild(groupOpt);
+  Object.entries(templateDetails)
+    .filter(
+      ([cam, det]) =>
+        det.groups &&
+        det.groups
+          .split(",")
+          .map((s) => s.trim())
+          .includes(group),
+    )
+    .map(([cam]) => cam)
+    .sort()
+    .forEach((cam) => {
+      const opt = document.createElement("option");
+      opt.value = cam;
+      opt.textContent = cam;
+      camSelect.appendChild(opt);
+    });
+  camSelect.value = `group-${group}`;
+}
+
+function changeGroup(group) {
+  const navGroup = document.getElementById("nav-group-dropdown");
+  if (!group) {
+    group = navGroup ? navGroup.value : "all";
+  }
+  if (navGroup) navGroup.value = group;
+  updateCameraOptions(group);
+  changeCamera(group === "all" ? "All" : `group-${group}`);
+}
 
 // Restore previously selected camera, source and speed from localStorage so
 // reloading the page keeps user preferences. If the user specified a camera in
@@ -95,6 +179,7 @@ function loadSavedPreferences() {
       } else if (currentCamera.startsWith("group-")) {
         navGroup.value = currentCamera.split("group-")[1];
       }
+      updateCameraOptions(navGroup.value);
     }
   }
 
@@ -176,10 +261,10 @@ function showError(message) {
   }, 5000);
 }
 
-function showOfflineIndicator(cameraName) {
+function showOfflineIndicator(message) {
   videoOverlay.style.display = "block";
   offlineIndicator.style.display = "block";
-  offlineMessage.textContent = `Camera ${cameraName} is currently offline`;
+  offlineMessage.textContent = message;
   loadingIndicator.style.display = "none";
   playPauseIndicator.style.display = "none";
 }
@@ -298,10 +383,21 @@ image.addEventListener("error", () => {
   }, 2000);
 });
 
-function changeCamera() {
+function changeCamera(selectedValue) {
   showLoadingIndicator();
-  const cameraSelector = document.getElementById("camera-selector");
-  const selectedValue = cameraSelector.value;
+  if (!selectedValue) {
+    const cameraSelector = document.getElementById("camera-selector");
+    if (cameraSelector) {
+      selectedValue = cameraSelector.value;
+    } else {
+      const navGroup = document.getElementById("nav-group-dropdown");
+      if (navGroup && navGroup.value !== "all") {
+        selectedValue = `group-${navGroup.value}`;
+      } else {
+        selectedValue = "All";
+      }
+    }
+  }
   // Check if the camera is connected
   let isConnected = checkCameraConnection(currentCamera);
 
@@ -310,7 +406,7 @@ function changeCamera() {
     currentCamera = "All";
     templateDetails["All"] = {
       url: "/stream.mp4", // Set the URL for the MP4 stream without a group
-      groupCameras: Object.keys(templateDetails).filter((key) => key !== "All"), // Add all cameras
+      groupCameras: getCameraNames(), // Add all cameras but skip groups
       // Add other necessary properties for the "All" group, if needed
     };
     isConnected = true;
@@ -357,7 +453,7 @@ function changeCamera() {
   localStorage.setItem("liveCamera", currentCamera);
 
   if (!isConnected) {
-    showOfflineIndicator(currentCamera);
+    showOfflineIndicator(`Camera ${currentCamera} is currently offline`);
     hideLoadingIndicator();
     video.pause();
     video.src = "";
@@ -387,11 +483,10 @@ function updateTemplateDetails() {
   }
 
   video.title = details.last_caption;
+  image.title = details.last_caption;
   templateDetailsContainer.style.display = "block";
   templateDetailsContainer.innerHTML = `
         <div>
-            <strong>Last Screenshot:</strong> ${details.last_screenshot_time || "N/A"}<br/>
-            <strong>Last Video:</strong> ${details.last_video_time || "N/A"}<br/>
             <strong>Last Caption:</strong> ${details.last_caption || "N/A"}<br/>
             ${details.offline_since ? `<strong>Offline Since:</strong> ${details.offline_since}<br/>` : ""}
             ${details.capture_failed ? "<strong>Capture Failed</strong><br/>" : ""}
@@ -407,7 +502,7 @@ function updateFeed() {
   hideStreamErrorIndicator();
 
   if (!isConnected) {
-    showOfflineIndicator(currentCamera);
+    showOfflineIndicator(`Camera ${currentCamera} is currently offline`);
     hideCaptureErrorIndicator();
     hideLoadingIndicator();
     video.pause();
@@ -555,15 +650,13 @@ function playLoop() {
     let groupCameras;
     if (currentCamera === "All") {
       // If the "All" group is selected, get all camera names
-      groupCameras = Object.keys(templateDetails).filter(
-        (key) => key !== "All",
-      );
+      groupCameras = getCameraNames().filter(Boolean);
     } else {
       // If a specific group is selected, get the cameras in that group
       const groupName = currentCamera.split("group-")[1];
       const groupDetails = templateDetails["group-" + groupName];
       if (groupDetails) {
-        groupCameras = groupDetails.groupCameras;
+        groupCameras = (groupDetails.groupCameras || []).filter(Boolean);
       } else {
         // Fallback: collect cameras belonging to the group on the fly
         groupCameras = Object.entries(templateDetails)
@@ -575,7 +668,8 @@ function playLoop() {
                 .map((s) => s.trim())
                 .includes(groupName),
           )
-          .map(([camera]) => camera);
+          .map(([camera]) => camera)
+          .filter(Boolean);
       }
     }
 
@@ -593,9 +687,7 @@ function playLoop() {
         cameraIndex = 0; // Reset the index to loop through the cameras again
       }
       const cameraName = groupCameras[cameraIndex];
-      video.src = `/last_video/${cameraName}`; // Update the video source with the current camera
-      video.load();
-      safePlay(video);
+      setClipSrc(cameraName);
       cameraIndex++; // Move to the next camera
     };
 
@@ -603,9 +695,7 @@ function playLoop() {
     video.addEventListener("ended", loopHandler); // Continue the loop when the video ends
   } else {
     // Handling for individual cameras
-    video.src = `/last_video/${currentCamera}`;
-    video.load();
-    safePlay(video);
+    setClipSrc(currentCamera);
   }
 }
 
@@ -625,8 +715,20 @@ function updateFrameTimestamp() {
   );
   container.setAttribute(
     "title",
-    formatExactTime(details.last_screenshot_time),
+    details.last_caption
+      ? `${formatExactTime(details.last_screenshot_time)} - ${details.last_caption}`
+      : formatExactTime(details.last_screenshot_time),
   );
+}
+
+function setTimestampVisibility(show) {
+  const container = document.querySelector(".video-container");
+  if (!container) return;
+  if (show) {
+    updateFrameTimestamp();
+  } else {
+    container.removeAttribute("data-timestamp");
+  }
 }
 
 function refreshPNG() {
@@ -665,7 +767,6 @@ function playMP4() {
   resetVideo();
   video.style.display = "block";
   stopLiveSwitch();
-  stopPNG();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     const groupName = currentCamera.split("group-")[1];
@@ -690,15 +791,15 @@ function playMP4() {
 function handleVideoEnded() {
   if (currentCamera === "All" || currentCamera.startsWith("group-")) {
     // For "All" or group options, move to the next camera
-    const groupCameras = templateDetails[currentCamera].groupCameras;
+    const groupCameras = (
+      templateDetails[currentCamera].groupCameras || []
+    ).filter(Boolean);
     const currentIndex = groupCameras.indexOf(video.dataset.currentCamera);
     const nextIndex = (currentIndex + 1) % groupCameras.length;
     const nextCamera = groupCameras[nextIndex];
-    video.src = "/last_video/" + nextCamera;
+    setClipSrc(nextCamera);
     video.dataset.currentCamera = nextCamera;
   }
-  video.load();
-  safePlay(video);
 }
 
 function playLive() {
@@ -725,9 +826,7 @@ function playLive() {
   if (currentCamera.startsWith("group-") || currentCamera === "All") {
     let groupCameras;
     if (currentCamera === "All") {
-      groupCameras = Object.keys(templateDetails).filter(
-        (key) => key !== "All",
-      );
+      groupCameras = getCameraNames();
     } else {
       const groupName = currentCamera.split("group-")[1];
       const groupDetails = templateDetails["group-" + groupName];
@@ -782,11 +881,13 @@ function playPNG() {
   // When switching from video playback to PNG images, ensure any
   // ongoing video stream is stopped to avoid "media element" errors.
   resetVideo();
+  stopPNG();
   video.pause();
   video.src = "";
+  stopLiveSwitch();
+  stopPNG();
   video.style.display = "none";
   image.style.display = "block";
-  stopLiveSwitch();
   const slider = document.getElementById("speed-slider");
   const speed = Math.pow(2, slider.value);
   const seekBar = document.getElementById("seek-bar");
@@ -803,7 +904,6 @@ function playPNG() {
       msg: `seekBar:${seekBar},speed:${speed}`,
     }),
   );
-  stopPNG();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     let cameraIndex = 0;
@@ -823,9 +923,7 @@ function playPNG() {
   } else if (currentCamera === "All") {
     // Special handling for the "All" option
     let cameraIndex = 0;
-    const allCameras = Object.keys(templateDetails).filter(
-      (key) => key !== "All",
-    );
+    const allCameras = getCameraNames().filter(Boolean);
     const refreshAllPNG = () => {
       if (cameraIndex >= allCameras.length) {
         cameraIndex = 0;
@@ -849,8 +947,11 @@ function playPNG() {
 function playMJPG() {
   // Stop any existing video stream before showing MJPEG frames
   resetVideo();
+  stopPNG();
   video.pause();
   video.src = "";
+  stopLiveSwitch();
+  stopPNG();
   video.style.display = "none";
   image.style.display = "block";
   // MJPEG streams are continuous images, disable scrubbing
@@ -862,28 +963,28 @@ function playMJPG() {
   }
   stopLiveSwitch();
   stopPNG();
+  const ts = Date.now();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     const groupName = currentCamera.split("group-")[1];
-    image.src = `/stream.mjpg?group=${encodeURIComponent(groupName)}`;
+    image.src = `/stream.mjpg?group=${encodeURIComponent(groupName)}&time=${ts}`;
   } else if (currentCamera === "All") {
     // Special handling for the "All" option
-    image.src = "/stream.mjpg?group=all";
+    image.src = `/stream.mjpg?group=all&time=${ts}`;
   } else {
     // URL for individual cameras
-    image.src =
-      "/stream.mjpg?camera=" +
-      encodeURIComponent(currentCamera) +
-      "&time=" +
-      new Date().getTime();
+    image.src = `/fast_stream.mjpg?camera=${encodeURIComponent(currentCamera)}&time=${ts}`;
   }
 }
 
 function playMotion() {
   // Stop any existing video stream before showing motion JPEG frames
   resetVideo();
+  stopPNG();
   video.pause();
   video.src = "";
+  stopLiveSwitch();
+  stopPNG();
   video.style.display = "none";
   image.style.display = "block";
   const seekBar = document.getElementById("seek-bar");
@@ -894,20 +995,17 @@ function playMotion() {
   }
   stopLiveSwitch();
   stopPNG();
+  const ts = Date.now();
   if (currentCamera.startsWith("group-")) {
     // Special handling for groups
     const groupName = currentCamera.split("group-")[1];
-    image.src = `/motion.mjpg?group=${encodeURIComponent(groupName)}`;
+    image.src = `/motion.mjpg?group=${encodeURIComponent(groupName)}&time=${ts}`;
   } else if (currentCamera === "All") {
     // Special handling for the "All" option
-    image.src = "/motion.mjpg?group=all";
+    image.src = `/motion.mjpg?group=all&time=${ts}`;
   } else {
     // URL for individual cameras
-    image.src =
-      "/motion.mjpg?camera=" +
-      encodeURIComponent(currentCamera) +
-      "&time=" +
-      new Date().getTime();
+    image.src = `/motion.mjpg?camera=${encodeURIComponent(currentCamera)}&time=${ts}`;
   }
 }
 
@@ -962,19 +1060,16 @@ function stopLiveSwitch() {
   }
 }
 
-function applyJog(speed, direction) {
-  if (jogInterval) {
-    clearInterval(jogInterval);
-    jogInterval = null;
-  }
-  if (direction >= 0) {
-    video.playbackRate = speed;
-    safePlay(video);
-  } else {
-    video.pause();
-    jogInterval = setInterval(() => {
-      video.currentTime = Math.max(0, video.currentTime - 0.05 * speed);
-    }, 50);
+function scheduleJogUpdate() {
+  if (!jogRaf) {
+    jogRaf = requestAnimationFrame(() => {
+      if (jogDirection < 0) {
+        video.currentTime = Math.max(0, video.currentTime - 0.05 * jogSpeed);
+      } else {
+        video.playbackRate = jogSpeed;
+      }
+      jogRaf = null;
+    });
   }
 }
 
@@ -985,28 +1080,37 @@ function handleJogMove(e) {
   const radius = rect.width / 2;
   const norm = Math.max(-1, Math.min(1, x / radius));
   const level = Math.min(4, Math.floor(Math.abs(norm) * 4));
-  const speed = Math.pow(2, level);
-  if (speed === 0) return;
-  applyJog(speed, Math.sign(norm));
+  jogSpeed = Math.pow(2, level);
+  if (jogSpeed === 0) return;
+  jogDirection = Math.sign(norm);
+  scheduleJogUpdate();
 }
 
 function stopJog() {
+  if (!jogging) return;
   jogging = false;
-  if (jogInterval) {
-    clearInterval(jogInterval);
-    jogInterval = null;
+  if (jogRaf) {
+    cancelAnimationFrame(jogRaf);
+    jogRaf = null;
   }
-  video.pause();
+  if (jogDirection >= 0) {
+    video.playbackRate = jogSpeed;
+    safePlay(video);
+  } else {
+    video.pause();
+  }
 }
 
 function initJogShuttle() {
   if (!jogShuttle) return;
   jogShuttle.addEventListener("mousedown", (e) => {
     jogging = true;
+    video.pause();
     handleJogMove(e);
   });
   jogShuttle.addEventListener("touchstart", (e) => {
     jogging = true;
+    video.pause();
     handleJogMove(e.touches[0]);
   });
   window.addEventListener("touchmove", (e) => {
@@ -1025,9 +1129,7 @@ function updateSpeedContainer() {
   let cameraCount = 0;
   if (isGroupView) {
     if (currentCamera === "All") {
-      cameraCount = Object.keys(templateDetails).filter(
-        (k) => k !== "All",
-      ).length;
+      cameraCount = getCameraNames().length;
     } else {
       const details = templateDetails[currentCamera];
       cameraCount =
@@ -1056,6 +1158,7 @@ function updateSeekBar() {
     seekBar.max = video.duration || 0;
     seekBar.value = video.currentTime || 0;
   }
+  setTimestampVisibility(show);
 }
 
 function updateJogShuttle() {
@@ -1102,6 +1205,13 @@ async function fetchLatestCaptions() {
     const resp = await fetch("/templates");
     if (!resp.ok) return;
     const data = await resp.json();
+    if (data.error === "unauthorized") {
+      const ok = await attemptAutoLogin();
+      if (ok) {
+        fetchLatestCaptions();
+      }
+      return;
+    }
     for (const name in templateDetails) {
       if (data[name]) {
         templateDetails[name].last_caption = data[name].last_caption;
@@ -1226,6 +1336,7 @@ document.addEventListener("keydown", (event) => {
   if (
     event.target.tagName === "INPUT" ||
     event.target.tagName === "SELECT" ||
+    event.target.tagName === "TEXTAREA" ||
     event.target.isContentEditable
   ) {
     return;
@@ -1267,6 +1378,59 @@ window.selectPreviousCamera = selectPreviousCamera;
 window.selectNextSource = selectNextSource;
 window.selectPreviousSource = selectPreviousSource;
 window.togglePlayback = togglePlayback;
+window.changeGroup = changeGroup;
+window.updateCameraOptions = updateCameraOptions;
+
+if (playButton) {
+  playButton.addEventListener("click", togglePlayback);
+}
+
+// --- Offline handling ---
+let reconnectTimer = null;
+let resumeTime = 0;
+let wasPlaying = false;
+
+async function attemptReconnect() {
+  try {
+    const res = await fetch("/network_status");
+    const data = await res.json();
+    if (data.error === "unauthorized") {
+      const ok = await attemptAutoLogin();
+      if (ok) {
+        return attemptReconnect();
+      }
+      return;
+    }
+    if (data.online) {
+      clearInterval(reconnectTimer);
+      reconnectTimer = null;
+      hideOfflineIndicator();
+      video.currentTime = resumeTime;
+      if (wasPlaying) {
+        safePlay(video);
+      }
+    }
+  } catch {
+    // still offline
+  }
+}
+
+function handleNetworkOffline() {
+  wasPlaying = !video.paused;
+  resumeTime = video.currentTime;
+  video.pause();
+  showOfflineIndicator("Offline. Reconnecting...");
+  if (!reconnectTimer) {
+    reconnectTimer = setInterval(attemptReconnect, 5000);
+  }
+}
+
+async function handleNetworkOnline() {
+  await attemptReconnect();
+}
+
+window.addEventListener("offline", handleNetworkOffline);
+window.addEventListener("online", handleNetworkOnline);
 
 // Allow pausing/resuming the video by clicking anywhere on the player
 video.addEventListener("click", togglePlayback);
@@ -1312,3 +1476,11 @@ function handleTouchEnd(event) {
 
 document.addEventListener("touchstart", handleTouchStart, { passive: true });
 document.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+export {
+  updateFrameTimestamp,
+  getCameraNames,
+  handleNetworkOffline,
+  handleNetworkOnline,
+  setClipSrc,
+};

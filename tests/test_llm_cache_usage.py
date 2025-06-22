@@ -1,14 +1,10 @@
 import os
-import sys
 import tempfile
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
+from app.utils import image_processing, llm_cache
 from app.utils.llm import summarize
-from app.utils import image_processing
-from app.utils import llm_cache
 
 
 class TestLLMCache(unittest.TestCase):

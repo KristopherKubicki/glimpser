@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Dict, List
-
 import logging
+from typing import Any, Dict, List
 
 try:
     from openai_agents_python import (
-        MCPServerStdio,
         MCPServerSse,
+        MCPServerStdio,
         MCPServerStreamableHttp,
     )
 except Exception:  # pragma: no cover - openai-agents may not be installed

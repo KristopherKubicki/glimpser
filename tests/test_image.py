@@ -1,14 +1,11 @@
-import unittest
-import tempfile
 import os
-import sys
-from PIL import Image
-from unittest.mock import patch, MagicMock
+import tempfile
+import unittest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from PIL import Image
 
 from app.utils.retention_policy import delete_old_files
-from app.utils.screenshots import add_timestamp, remove_background, is_mostly_blank
+from app.utils.screenshots import add_timestamp, is_mostly_blank, remove_background
 
 
 class TestFileRetention(unittest.TestCase):

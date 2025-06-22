@@ -1,32 +1,49 @@
 # Glimpser Help Page
 
-The built-in help page is accessible at the `/help` route once you log in.
-It provides step-by-step instructions for adding templates, managing
-captures, and using the command line interface. The help page is cached
-locally after you view it online so you can reference it offline.
+The built-in help page is available at the `/help` route once you log in. It explains how to add templates, manage captures and settings, and use the command line interface. The page is cached after your first visit so you can read it even when you're offline.
+
+The help content is organized into **Basics**, **Usage**, **Advanced** and **Support** tabs so you can quickly jump to a topic. Each tab contains cards summarizing important actions.
 
 Key topics covered include:
 
-- Adding a template with detailed field descriptions.
-- Viewing recent screenshots, video captures, and live streams.
-- Managing templates, including editing and deletion.
-- Advanced features like camera discovery, video archiving, and cost tracking.
+- [Guided setup](guided_setup.md) when you first launch the app.
+- Adding templates with field descriptions and sample prompts.
+- Viewing screenshots, archived video, and real-time streams.
+- Managing templates and groups, including editing and deletion.
+- Discovering local cameras automatically.
+- Compiling screenshots into MP4s with the video archiver.
+- Tracking AI usage and cost for captions and summaries.
 - Configuration file locations and environment overrides.
+- Dark mode toggle and mobile-friendly responsive layout.
+- Status metrics, feed dashboard, and live log viewer.
+- Offline preview of recent snapshots and locally hosted fonts.
+- "Remember me" option on the login page for automatic sign in.
+- Logging out now clears any saved credentials so shared devices stay secure.
 - Links to the rest of the documentation under `docs/`.
-- Troubleshooting tips and frequently asked questions.
-- A link to the project on [GitHub](https://github.com/KristopherKubicki/glimpser) where you can
-  report issues or contribute.
+- Tooltips across the interface for quick explanations.
+- Inline viewing of command-line help via the **Show CLI Help** button.
+- A link to the project on [GitHub](https://github.com/KristopherKubicki/glimpser) where you can report issues or contribute.
 
 ## Viewing Captures
 
-On the **Live** page, pick a camera from the drop-down menu. The **Video Source** now defaults to **MJPG** so you immediately see a lightweight stream of the latest frames. Select **Live Video** if you want a direct real-time feed. Glimpser remembers your last selected camera, video source, and playback speed to streamline future visits.
+On the **Live** page, pick a camera from the drop-down menu. The **Video Source** now defaults to **MJPG** so you immediately see a lightweight stream of the latest frames. Select **Live Video** for a direct real-time feed or **MP4** to scrub through archived footage. Glimpser remembers your last camera, video source, and playback speed to streamline future visits.
 
-When watching a live stream, you can click directly on the video to pause or resume playback. Keyboard shortcuts also work:
-`Space` or `k` toggles play/pause, `m` toggles mute, `f` toggles fullscreen.
-Left/Right arrows change the selected camera, Up/Down arrows cycle through the
-available media types, and `[`/`]` adjust playback speed. On phones and tablets,
-swipe left or right on the video to switch cameras or swipe up or down to change
-the media type quickly.
+Click **Live All** to switch every tile to a real-time feed and **Play All** to toggle between playing or pausing archived clips. When watching a single stream you can drag the jog‑shuttle or time slider to scrub forward or backward.
 
-Navigate back to the main interface using the **Back to Glimpser** link at the
-bottom of the help page.
+Keyboard shortcuts help you navigate quickly: press `Ctrl+F` or `⌘+F` to jump to the page search box, `Space` or `k` toggles play or pause, `f` enters fullscreen, `[` and `]` change playback speed, and the arrow keys cycle cameras or media types. On phones and tablets, swipe left or right on the video to switch cameras or swipe up or down to change the media type. A vertical speed slider also appears when you hover over the player so you can fine‑tune playback without extra clutter.
+Press `?` at any time to see a quick overlay of these shortcuts and `Esc` to dismiss it.
+
+Navigate back to the main interface using the **Back to Glimpser** link at the bottom of the help page.
+
+## Additional Resources
+
+The help page is only a starting point. For more details, explore these key documentation sections:
+
+- [Getting Started](getting_started.md) for installation and initial setup
+- [Configuration Guide](configuration_guide.md) to tailor Glimpser to your environment
+- [Troubleshooting](troubleshooting.md) if something goes wrong
+- [FAQ](faq.md) for quick answers to common questions
+- [Offline Preview](offline_preview.md) for tips on viewing captures without an internet connection
+
+All documentation lives under the `docs/` directory so you can read it offline after cloning the repository.
+You can open any of these Markdown files locally by visiting `/docs/<filename>` in your browser.

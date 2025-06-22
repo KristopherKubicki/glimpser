@@ -1,20 +1,18 @@
-import sys
 import os
-import unittest
 import tempfile
-from unittest.mock import patch, MagicMock
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import unittest
+from unittest.mock import MagicMock, patch
 
 from app.utils.template_manager import (
-    TemplateManager,
     Template,
-    mark_offline,
-    update_last_screenshot_time,
-    set_capture_failed,
+    TemplateManager,
+    clear_template_cache,
     get_storage_usage,
     get_storage_usage_bytes,
     get_templates,
+    mark_offline,
+    set_capture_failed,
+    update_last_screenshot_time,
 )
 from app.utils.validators import validate_template_name
 
@@ -22,6 +20,7 @@ from app.utils.validators import validate_template_name
 class TestTemplateManager(unittest.TestCase):
     def setUp(self):
         self.template_manager = TemplateManager()
+        clear_template_cache()
 
     def tearDown(self):
         # Clean up any resources after each test if needed
@@ -347,9 +346,10 @@ class TestStorageUsage(unittest.TestCase):
             with open(os.path.join(vid_dir, "cam1", "cam1.mp4"), "wb") as f:
                 f.write(b"0" * 2048)
 
-            with patch(
-                "app.utils.template_manager.SCREENSHOT_DIRECTORY", sshot_dir
-            ), patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir):
+            with (
+                patch("app.utils.template_manager.SCREENSHOT_DIRECTORY", sshot_dir),
+                patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir),
+            ):
                 result = get_storage_usage("cam1")
                 self.assertEqual(result, "3.0 KB")
 
@@ -366,10 +366,13 @@ class TestStorageUsage(unittest.TestCase):
             with open(os.path.join(vid_dir, "cam1", "cam1.mp4"), "wb") as f:
                 f.write(b"0" * 2048)
 
-            with patch(
-                "app.utils.template_manager.SCREENSHOT_DIRECTORY",
-                sshot_dir,
-            ), patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir):
+            with (
+                patch(
+                    "app.utils.template_manager.SCREENSHOT_DIRECTORY",
+                    sshot_dir,
+                ),
+                patch("app.utils.template_manager.VIDEO_DIRECTORY", vid_dir),
+            ):
                 result = get_storage_usage_bytes("cam1")
                 self.assertEqual(result, 3072)
 
@@ -377,6 +380,7 @@ class TestStorageUsage(unittest.TestCase):
 class TestSnapshotDetection(unittest.TestCase):
     @patch("app.utils.template_manager.SessionLocal")
     def test_snapshot_flag_in_get_templates(self, mock_session):
+        clear_template_cache()
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
         mock_query = mock_sess.query.return_value
@@ -393,6 +397,7 @@ class TestSnapshotDetection(unittest.TestCase):
 
     @patch("app.utils.template_manager.SessionLocal")
     def test_snapshot_flag_in_get_template(self, mock_session):
+        clear_template_cache()
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
         mock_query = mock_sess.query.return_value

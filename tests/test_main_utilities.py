@@ -1,10 +1,7 @@
-import sys
 import os
-import unittest
 import signal
-from unittest.mock import patch, MagicMock
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import unittest
+from unittest.mock import MagicMock, call, patch
 
 import main  # noqa: E402
 
@@ -21,9 +18,13 @@ class TestMainUtilities(unittest.TestCase):
             "thread_count": 5,
             "uptime": "1h",
             "ffmpeg_version": "6.0",
+            "ffmpeg_path": "/usr/bin/ffmpeg",
             "machine_hwaccel": True,
             "ffmpeg_hwaccel": True,
             "hwaccel_enabled": True,
+            "gpu_support": True,
+            "ffmpeg_gpu_enabled": True,
+            "danger_mode": True,
         }
         mock_metrics.return_value = metrics
 
@@ -37,10 +38,17 @@ class TestMainUtilities(unittest.TestCase):
             ("Open Files: %s", metrics["open_files"]),
             ("Thread Count: %s", metrics["thread_count"]),
             ("Uptime: %s", metrics["uptime"]),
-            ("FFmpeg Version: %s", metrics["ffmpeg_version"]),
+            (
+                "FFmpeg Version: %s (%s)",
+                metrics["ffmpeg_version"],
+                metrics["ffmpeg_path"],
+            ),
             ("Machine HW Accel: %s", metrics["machine_hwaccel"]),
             ("FFmpeg HW Accel: %s", metrics["ffmpeg_hwaccel"]),
             ("HW Accel Enabled: %s", metrics["hwaccel_enabled"]),
+            ("GPU Support: %s", metrics["gpu_support"]),
+            ("FFmpeg GPU Enabled: %s", metrics["ffmpeg_gpu_enabled"]),
+            ("Danger Mode: %s", metrics["danger_mode"]),
             ("Thank you for running Glimpser. Goodbye!",),
         ]
         self.assertEqual([c.args for c in mock_log.call_args_list], expected)
@@ -109,6 +117,58 @@ class TestMainUtilities(unittest.TestCase):
             mock_socket.assert_not_called()
         finally:
             os.environ.pop("IN_DOCKER")
+
+    @patch("main.subprocess.run")
+    def test_get_port_usage_lsof(self, mock_run):
+        result = MagicMock(stdout="lsof output", stderr="")
+        mock_run.return_value = result
+
+        output = main.get_port_usage(8082)
+
+        mock_run.assert_called_once_with(
+            [
+                "lsof",
+                "-i",
+                ":8082",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(output, "lsof output")
+
+    @patch("main.subprocess.run")
+    def test_get_port_usage_fuser_fallback(self, mock_run):
+        result = MagicMock(stdout="fuser output", stderr="")
+        mock_run.side_effect = [FileNotFoundError, result]
+
+        output = main.get_port_usage(8082)
+
+        expected_calls = [
+            call(
+                [
+                    "lsof",
+                    "-i",
+                    ":8082",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            ),
+            call(
+                [
+                    "fuser",
+                    "-n",
+                    "tcp",
+                    "8082",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            ),
+        ]
+        self.assertEqual(mock_run.call_args_list, expected_calls)
+        self.assertEqual(output, "fuser output")
 
 
 if __name__ == "__main__":

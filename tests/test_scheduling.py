@@ -1,22 +1,14 @@
 # test/test_scheduling.py
 
-import unittest
-from unittest.mock import patch, MagicMock
-import sys
 import os
-import logging
 import tempfile
+import unittest
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
+
 from PIL import Image
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from app.utils.scheduling import (
-    scheduler,
-    schedule_crawlers,
-    start_log_caching,
-    find_closest_image,
-)
+from app.utils.scheduling import find_closest_image, scheduler, start_log_caching
 
 
 class TestScheduler(unittest.TestCase):
@@ -157,6 +149,15 @@ class TestScheduler(unittest.TestCase):
             schedule_crawlers()
             # Ensure no jobs are scheduled when templates are empty
             mock_add_job.assert_not_called()
+
+    def test_calculate_optimal_offsets_unique(self):
+        templates = {
+            'a': {'name': 'a', 'frequency': 30},
+            'b': {'name': 'b', 'frequency': 30},
+            'c': {'name': 'c', 'frequency': 60},
+        }
+        offsets = scheduling.calculate_optimal_offsets(templates, 10)
+        self.assertEqual(len(set(offsets.values())), len(templates))
     """
 
 

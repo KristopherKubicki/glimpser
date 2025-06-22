@@ -1,5 +1,5 @@
-{% extends 'base.html' %} {% from 'components.html' import card %} {% block
-content %}
+{% extends 'base.html' %} {% from 'components.html' import card, confirm_modal,
+template_form, settings_row with context %} {% block content %}
 <main class="container settings-page">
   {# Help content now appears directly in the table, so the collapsible menu was
   removed #}
@@ -14,21 +14,37 @@ content %}
     <button
       type="button"
       class="tab-link{% if loop.first %} active{% endif %}"
-      data-tab="{{ group|replace(' ', '-') }}-tab"
+      data-tab="{{ 'management-tab' if group == 'Admin' else group|replace(' ', '-') ~ '-tab' }}"
+      title="Open {{ group }} tab"
     >
       {{ group }}
     </button>
     {% if loop.first %}
-    <button type="button" class="tab-link" data-tab="discover-tab">
+    <button
+      type="button"
+      class="tab-link"
+      data-tab="discover-tab"
+      title="Open Discover tab"
+    >
       Discover
     </button>
-    <button type="button" class="tab-link" data-tab="status-tab">
-      System Status
+    <button
+      type="button"
+      class="tab-link"
+      data-tab="status-tab"
+      title="Open Status tab"
+    >
+      Status
+    </button>
+    <button
+      type="button"
+      class="tab-link"
+      data-tab="costs-tab"
+      title="Open Costs tab"
+    >
+      Costs
     </button>
     {% endif %} {% endfor %}
-    <button type="button" class="tab-link" data-tab="management-tab">
-      Management
-    </button>
     <a
       href="{{ url_for('logout') }}"
       class="tab-link logout-link"
@@ -46,177 +62,205 @@ content %}
         <use href="{{ url_for('static', filename='icons/sprite.svg') }}#sun" />
       </svg>
     </a>
+    <a
+      id="contrast-toggle"
+      href="#"
+      class="tab-link"
+      title="Toggle high contrast mode"
+      aria-label="Toggle high contrast"
+    >
+      <svg width="18" height="18">
+        <use
+          href="{{ url_for('static', filename='icons/sprite.svg') }}#contrast"
+        />
+      </svg>
+    </a>
   </div>
 
-
-  <form method="POST" action="{{ url_for('settings') }}" id="settings-form">
-    {% for group, items in grouped_settings.items() %}
+  <form
+    method="POST"
+    action="{{ url_for('settings') }}"
+    id="settings-form"
+    enctype="multipart/form-data"
+  >
+    <svg
+      id="unsaved-icon"
+      width="16"
+      height="16"
+      class="unsaved-icon hidden"
+      aria-label="Unsaved changes"
+      title="Unsaved changes"
+    >
+      <use href="{{ url_for('static', filename='icons/sprite.svg') }}#alert" />
+    </svg>
+    {% for name, opts in choices.items() %}
+    <datalist id="{{ name }}-list">
+      {% for opt in opts %}
+      <option value="{{ opt }}"></option>
+      {% endfor %}
+    </datalist>
+    {% endfor %} {% for group, items in grouped_settings.items() %}
     <div
-      id="{{ group|replace(' ', '-') }}-tab"
+      id="{{ 'management-tab' if group == 'Admin' else group|replace(' ', '-') ~ '-tab' }}"
       class="tab-content{% if loop.first %} active{% endif %}"
     >
-      <h3>{{ group }} Settings</h3>
+      {% call card(group) %}
       <table class="settings-table">
         <thead>
           <tr>
             <th class="searchable">Setting</th>
             <th class="searchable">Value</th>
-            <th class="searchable">Explanation</th>
-            <th>Action</th>
+            <th class="advanced-only">Action</th>
           </tr>
         </thead>
         <tbody>
-          {% for setting in items %}
-          <tr>
-            <td title="{{ tooltips.get(setting.name, '') }}">
-              {{ setting.name }}
-            </td>
-            <td>
-              {% if setting.value in ['True', 'False'] %}
-              <label class="switch">
-                <input
-                  type="checkbox"
-                  name="{{ setting.name }}"
-                  value="True"
-                  {% if setting.value == 'True' %}checked{% endif %}
-                  data-boolean
-                />
-                <span class="slider round"></span>
-              </label>
-              {% elif setting.name in choices %}
-              <input
-                type="text"
-                name="{{ setting.name }}"
-                list="{{ setting.name }}-options"
-                value="{{ setting.value }}"
-                title="Select or enter value for {{ setting.name }}"
-              />
-              <datalist id="{{ setting.name }}-options">
-                {% for option in choices[setting.name] %}
-                <option value="{{ option }}"></option>
-                {% endfor %}
-              </datalist>
-              {% elif setting.name == 'PORT' %}
-              <input
-                type="number"
-                name="PORT"
-                min="1024"
-                max="65535"
-                value="{{ setting.value }}"
-                title="Edit port"
-              />
-              {% else %}
-              <input
-                type="text"
-                name="{{ setting.name }}"
-                value="{{ setting.value }}"
-                title="Edit value for {{ setting.name }}"
-              />
-              {% endif %}
-            </td>
-            <td class="setting-explanation">
-              {{ tooltips.get(setting.name, '') }}
-            </td>
-            <td>
-              <button
-                type="submit"
-                name="action"
-                value="delete"
-                title="Delete {{ setting.name }}"
-                onclick="return confirmDeleteSetting('{{ setting.name }}')"
-              >
-                Delete
-              </button>
-            </td>
-          </tr>
-          {% endfor %}
+          {% for setting in items %} {{ settings_row(setting) }} {% endfor %}
         </tbody>
       </table>
+      {% endcall %} {% if group == 'Admin' %} {% call card('Configuration
+      Management') %}
+      <div class="checkbox-row">
+        <span>Advanced Options</span>
+        <label class="switch" title="Toggle advanced options">
+          <input id="advanced-toggle" type="checkbox" />
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <p>Last backup: {{ last_backup or 'Never' }}</p>
+      <button
+        type="submit"
+        name="action"
+        value="backup"
+        title="Create a JSON backup of all settings"
+      >
+        Backup Configuration
+      </button>
+      <button
+        type="submit"
+        name="action"
+        value="download"
+        title="Download the latest configuration backup"
+      >
+        Download Configuration
+      </button>
+      <input
+        type="file"
+        name="file"
+        accept=".json"
+        title="Select configuration file to upload"
+      />
+      <button
+        type="submit"
+        name="action"
+        value="upload"
+        title="Restore configuration from uploaded file"
+        onclick="return confirmRestore()"
+      >
+        Upload Configuration
+      </button>
+      {% endcall %} {% call card('Danger Mode') %}
+      <a
+        href="../docs/danger_mode.md"
+        target="_blank"
+        title="Open Danger Mode documentation"
+        class="doc-link"
+        >docs</a
+      >
+      <ul class="danger-info">
+        <li>Browser: {{ danger_info.browser }}</li>
+        <li>Path: {{ danger_info.path }}</li>
+        <li>Version: {{ danger_info.version }}</li>
+        <li>Shortcut: {{ danger_info.shortcut }}</li>
+        <li>
+          Shortcut Patched:
+          <span
+            class="status-dot {{ 'ok' if danger_info.patched else 'error' }}"
+            title="{{ 'patched' if danger_info.patched else 'needs patch' }}"
+          ></span>
+        </li>
+        <li>
+          Running:
+          <span
+            class="status-dot {{ 'ok' if danger_info.running else 'error' }}"
+            title="{{ 'running' if danger_info.running else 'not running' }}"
+          ></span>
+        </li>
+      </ul>
+      <label for="shortcut-path" class="sr-only">Chrome shortcut</label>
+      <input
+        id="shortcut-path"
+        name="shortcut_path"
+        type="text"
+        list="shortcut-options"
+        value="{{ danger_info.shortcut if danger_info.shortcut != 'N/A' else (shortcut_options[0] if shortcut_options else '') }}"
+        placeholder="/usr/share/applications/google-chrome.desktop"
+      />
+      <datalist id="shortcut-options">
+        {% for opt in shortcut_options %}
+        <option value="{{ opt }}"></option>
+        {% endfor %}
+      </datalist>
+      <!-- prettier-ignore -->
+      <button id="update-shortcut-btn" type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode" {% if danger_info.shortcut == 'N/A' %}disabled{% endif %}>
+        Update Chrome Shortcut
+      </button>
+      {% endcall %} {% call card('Navigation Logo') %}
+      <img
+        src="{{ url_for('static', filename=NAV_ICON) }}"
+        alt="Current navigation logo"
+        class="logo-preview"
+      />
+      <label for="logo-choice" class="sr-only">Built-in logo</label>
+      <select
+        name="logo_choice"
+        id="logo-choice"
+        form="nav-logo-form"
+        title="Upload your own PNG image. Select the default option to restore the original logo."
+      >
+        <option value="img/glimpser_small.png">Default Small</option>
+        <option value="img/glimpser.png">Default Large</option>
+      </select>
+      <input
+        type="file"
+        name="logo_file"
+        accept="image/png"
+        form="nav-logo-form"
+        title="Upload custom logo"
+      />
+      <button type="submit" form="nav-logo-form" title="Update navigation logo">
+        Save Logo
+      </button>
+      {% endcall %}
+      <input
+        type="hidden"
+        id="name_to_delete"
+        name="name_to_delete"
+        value=""
+        title="Name of setting to delete"
+      />
+      {% endif %}
+      <button type="submit" title="Save all changes">Save Changes</button>
     </div>
     {% if loop.first %}
     <div id="discover-tab" class="tab-content">
       {% include '_discover_tab.html' %}
     </div>
-    {% endif %} {% endfor %}
-
-
-    <form method="POST" action="{{ url_for('settings') }}" id="settings-form">
-        {% for group, items in grouped_settings.items() %}
-        <div id="{{ group|replace(' ', '-') }}-tab" class="tab-content{% if loop.first %} active{% endif %}">
-            <h3>{{ group }} Settings</h3>
-            <table class="settings-table">
-                <thead>
-                    <tr>
-                        <th class="searchable">Setting</th>
-                        <th class="searchable">Value</th>
-                        <th class="searchable">Explanation</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for setting in items %}
-                    <tr>
-                        <td title="{{ tooltips.get(setting.name, '') }}">{{ setting.name }}</td>
-                        <td>
-                            {% if setting.value in ['True', 'False'] %}
-                            <label class="switch">
-                                <input type="checkbox" name="{{ setting.name }}" value="True" {% if setting.value == 'True' %}checked{% endif %} data-boolean>
-                                <span class="slider round"></span>
-                            </label>
-                            {% else %}
-                            <input type="text" name="{{ setting.name }}" value="{{ setting.value }}" title="Edit value for {{ setting.name }}">
-                            {% endif %}
-                        </td>
-                        <td class="setting-explanation">{{ tooltips.get(setting.name, '') }}</td>
-                        <td>
-                            <button type="submit" name="action" value="delete" title="Delete {{ setting.name }}" onclick="return confirmDeleteSetting('{{ setting.name }}')">Delete</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% if loop.first %}
-        <div id="discover-tab" class="tab-content">
-            {% include '_discover_tab.html' %}
-        </div>
-        <div id="status-tab" class="tab-content">
-            {% include '_status_tab.html' %}
-        </div>
-        {% endif %}
-        {% endfor %}
-
-        <div id="management-tab" class="tab-content">
-            <h3>Configuration Management</h3>
-            <button type="submit" name="action" value="backup" title="Create a JSON backup of all settings">Backup Configuration</button>
-            <button type="submit" name="action" value="download" title="Download the latest configuration backup">Download Configuration</button>
-            <input type="file" name="file" accept=".json" title="Select configuration file to upload">
-            <button type="submit" name="action" value="upload" title="Restore configuration from uploaded file" onclick="return confirmRestore()">Upload Configuration</button>
-
-            <h3>Danger Mode</h3>
-            <button type="submit" name="action" value="update_shortcut" title="Update Chrome shortcuts for Danger mode">Update Chrome Shortcut</button>
-
-
-      <h3>Danger Mode</h3>
-      <button
-        type="submit"
-        name="action"
-        value="update_shortcut"
-        title="Update Chrome shortcuts for Danger mode"
-      >
-        Update Chrome Shortcut
-      </button>
+    <div id="status-tab" class="tab-content">
+      {% include '_status_tab.html' %}
     </div>
-
-    <input
-      type="hidden"
-      id="name_to_delete"
-      name="name_to_delete"
-      value=""
-      title="Name of setting to delete"
-    />
-    <button type="submit" title="Save all changes">Save Changes</button>
+    <div id="costs-tab" class="tab-content">
+      {% include '_costs_tab.html' %}
+    </div>
+    {% endif %} {% endfor %}
   </form>
+  <form
+    id="nav-logo-form"
+    action="{{ url_for('upload_nav_icon') }}"
+    method="post"
+    enctype="multipart/form-data"
+  ></form>
+  {{ confirm_modal('delete-setting', 'Delete this setting?', 'Delete', 'Cancel')
+  }}
 </main>
 <script
   type="module"
@@ -224,21 +268,47 @@ content %}
 ></script>
 <script
   type="module"
+  src="{{ url_for('static', filename='js/capture_status.js') }}"
+></script>
+<script
+  type="module"
   src="{{ url_for('static', filename='js/tabs.js') }}"
 ></script>
 <script>
-  function confirmDeleteSetting(name) {
-    if (confirm("Are you sure you want to delete " + name + "?")) {
-      document.getElementById("name_to_delete").value = name;
-      return true;
-    }
-    return false;
-  }
+  document.addEventListener("DOMContentLoaded", () => {
+    const modal = document.getElementById("delete-setting-modal");
+    const msg = document.getElementById("delete-setting-modal-message");
+    const confirmBtn = document.getElementById("delete-setting-confirm");
+    const cancelBtn = document.getElementById("delete-setting-cancel");
+    const closeBtn = document.getElementById("delete-setting-close");
+    let pending = null;
 
-  function confirmRestore() {
-    return confirm(
-      "Restore configuration from the selected file? This will overwrite existing settings.",
-    );
-  }
+    const hide = () => {
+      if (modal) modal.style.display = "none";
+    };
+
+    cancelBtn?.addEventListener("click", hide);
+    closeBtn?.addEventListener("click", hide);
+    confirmBtn?.addEventListener("click", () => {
+      if (!pending) return;
+      document.getElementById("name_to_delete").value = pending;
+      pending = null;
+      hide();
+      document.getElementById("settings-form").submit();
+    });
+
+    window.confirmDeleteSetting = (name) => {
+      if (!modal || !msg) return false;
+      pending = name;
+      msg.textContent = `Delete ${name}?`;
+      modal.style.display = "block";
+      return false;
+    };
+
+    window.confirmRestore = () =>
+      confirm(
+        "Restore configuration from the selected file? This will overwrite existing settings.",
+      );
+  });
 </script>
 {% endblock %}

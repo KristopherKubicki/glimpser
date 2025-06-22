@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 import requests
 
-from app.config import CAP_ENDPOINT, CAP_SENDER
+from app.config import CAP_ENABLED, CAP_ENDPOINT, CAP_SENDER
 
 
 def build_cap_message(event_type: str, description: str) -> bytes:
@@ -34,7 +34,7 @@ def build_cap_message(event_type: str, description: str) -> bytes:
 
 def send_cap_alert(event_type: str, description: str) -> None:
     """Send a CAP alert to the configured endpoint."""
-    if not CAP_ENDPOINT or not CAP_SENDER:
+    if CAP_ENABLED.lower() != "true" or not CAP_ENDPOINT or not CAP_SENDER:
         logging.info("CAP alerts are disabled.")
         return
 

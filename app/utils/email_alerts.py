@@ -4,19 +4,21 @@ import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
 from app.config import (
     EMAIL_ENABLED,
-    EMAIL_SENDER,
+    EMAIL_PASSWORD,
     EMAIL_RECIPIENTS,
-    EMAIL_SMTP_SERVER,
+    EMAIL_SENDER,
     EMAIL_SMTP_PORT,
+    EMAIL_SMTP_SERVER,
+    EMAIL_SMTP_TIMEOUT,
     EMAIL_USE_TLS,
     EMAIL_USERNAME,
-    EMAIL_PASSWORD,
 )
 
 
-def send_email_alert(subject, body):
+def send_email_alert(subject: str, body: str) -> None:
     """Send an email to the configured recipients.
 
     Parameters
@@ -44,7 +46,9 @@ def send_email_alert(subject, body):
     message.attach(MIMEText(body, "plain"))
 
     try:
-        with smtplib.SMTP(EMAIL_SMTP_SERVER, int(EMAIL_SMTP_PORT)) as server:
+        with smtplib.SMTP(
+            EMAIL_SMTP_SERVER, int(EMAIL_SMTP_PORT), timeout=EMAIL_SMTP_TIMEOUT
+        ) as server:
             if EMAIL_USE_TLS.lower() == "true":
                 server.starttls()
             server.login(EMAIL_USERNAME, EMAIL_PASSWORD)
@@ -54,7 +58,7 @@ def send_email_alert(subject, body):
         logging.error("Error sending email alert: %s", e)
 
 
-def email_alert(event_type, details):
+def email_alert(event_type: str, details: str) -> None:
     """Compose a standard alert email and send it.
 
     Parameters

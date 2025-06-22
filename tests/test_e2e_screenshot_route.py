@@ -1,6 +1,5 @@
 import os
 import socket
-import sys
 from threading import Thread
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -13,7 +12,7 @@ from werkzeug.serving import make_server
 def _has_network() -> bool:
     """Check if outbound network access is available."""
     try:
-        socket.create_connection(("1.1.1.1", 53), timeout=1).close()
+        socket.create_connection(("1.1.1.1", 443), timeout=1).close()
         return True
     except OSError:
         return False
@@ -22,7 +21,6 @@ def _has_network() -> bool:
 if os.environ.get("SKIP_E2E") == "1" or not _has_network():
     pytest.skip("E2E tests disabled due to no network", allow_module_level=True)
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app import create_app
 
@@ -56,7 +54,9 @@ def screenshot_server(tmp_path):
             return self
 
         def first(self):
-            return SimpleNamespace(id=1, username="admin", password_hash="hash")
+            return SimpleNamespace(
+                id=1, username="admin", password_hash="hash"  # pragma: allowlist secret
+            )
 
     class DummySession:
         def query(self, model):
@@ -81,7 +81,7 @@ def screenshot_server(tmp_path):
     for p in patches:
         p.start()
 
-    app = create_app(enable_watchdog=False, schedule=False)
+    app = create_app(enable_watchdog=False, schedule=False, log_cache=False)
     server = ServerThread(app)
     server.start()
     url = f"http://127.0.0.1:{server.port}"
@@ -96,7 +96,7 @@ def test_take_screenshot_route(screenshot_server):
     session = requests.Session()
     resp = session.post(
         f"{base_url}/login",
-        data={"username": "admin", "password": "pw"},
+        data={"username": "admin", "password": "pw"},  # pragma: allowlist secret
         allow_redirects=False,
     )
     assert resp.status_code == 302

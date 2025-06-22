@@ -1,112 +1,46 @@
-#!./env/bin/python3
+#!/usr/bin/env python3
 #  main.py
 
+import argparse
+import atexit
 import logging
 import os
-import subprocess
-import argparse
-import random
-import time
-import signal, sys, threading, atexit
+import signal
 import socket
+import subprocess
+import sys
+import threading
+import time
 
 import app.config as config
-from app import create_app
-from app import scheduler
+from app import create_app, scheduler
+from app.utils.cli import build_argument_parser, cli_help_text
+from app.utils.logging_utils import ColorFormatter, RateLimitFilter
 from app.utils.scheduling import get_system_metrics, stop_background_tasks
 
-banner = """
+banner = f"""\033[96m
           ____  _  _
          / ___|| |(_)_ __ ___  _ __  ___  ___ _ __
         | |  _ | || | '_ ` _ `| '_ `/ __|/ _ ` '__|
         | |_| || || | | | | | | |_) `__ '  __/ |
-         `____||_||_|_| |_| |_| .__/|___/`___|_|
+         `____||_||_|_| |_| |_| .__/|___/`___|_| v{config.VERSION}
                               |_|
-"""
+\033[0m"""
 
 
 def parse_arguments(arg_list=None):
-    """
-    Parse command-line arguments for the Glimpser application.
-
-    This function sets up the argument parser and defines various command-line options
-    for configuring the application, including paths for database, logs, and media files,
-    as well as server and logging settings.
-
-    Returns:
-        argparse.Namespace: An object containing the parsed arguments.
-    """
-    parser = argparse.ArgumentParser(description="Glimpser %s" % config.VERSION)
-    parser.add_argument(
-        "--db-path",
-        default=config.DATABASE_PATH,
-        help="Path to the database file (default: %s)" % config.DATABASE_PATH,
-    )
-    parser.add_argument(
-        "--host",
-        default=config.HOST,
-        help="Host for the web server (default: %s)" % config.HOST,
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=config.PORT,
-        help="Port for the web server (default: %s)" % config.PORT,
-    )
-    parser.add_argument(
-        "--log-path",
-        default=config.LOGGING_PATH,
-        help="Path to the log file (default: %s)" % config.LOGGING_PATH,
-    )
-    parser.add_argument(
-        "--log-level",
-        default=config.LOG_LEVEL,
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Logging level",
-    )
-    parser.add_argument(
-        "--console-log",
-        action="store_true",
-        help="Enable logging to the console",
-        default=False,
-    )
-    parser.add_argument(
-        "--debug", action="store_true", default=config.DEBUG, help="Enable debug mode"
-    )
-    parser.add_argument(
-        "--no-scheduler",
-        action="store_true",
-        help="Disable the background scheduler",
-        default=False,
-    )
-    parser.add_argument(
-        "--no-watchdog",
-        action="store_true",
-        help="Disable the watchdog thread",
-        default=False,
-    )
-    parser.add_argument(
-        "--no-crawlers",
-        action="store_true",
-        help="Skip scheduling crawler jobs",
-        default=False,
-    )
-    parser.add_argument(
-        "--screenshot-dir",
-        default=config.SCREENSHOT_DIRECTORY,
-        help="Directory for storing screenshots",
-    )
-    parser.add_argument(
-        "--video-dir",
-        default=config.VIDEO_DIRECTORY,
-        help="Directory for storing video files",
-    )
-    parser.add_argument(
-        "--summaries-dir",
-        default=config.SUMMARIES_DIRECTORY,
-        help="Directory for storing summaries",
-    )
+    """Return parsed command-line arguments."""
+    parser = build_argument_parser()
     return parser.parse_args(arg_list)
+
+
+def get_cli_help() -> str:
+    """Return the formatted CLI help text.
+
+    The output reflects all supported options, including the ``--version``
+    flag added to :func:`app.utils.cli.build_argument_parser`.
+    """
+    return cli_help_text()
 
 
 def setup_config(args=None):
@@ -125,6 +59,10 @@ def setup_config(args=None):
     # Update variables based on command-line arguments
     config.DATABASE_PATH = args.db_path
     config.HOST = args.host
+    if config.ENFORCE_DOMAIN_IN_HOST and "." not in config.HOST:
+        raise ValueError(
+            "HOST must include a domain when ENFORCE_DOMAIN_IN_HOST is enabled"
+        )
     config.PORT = args.port
     config.LOGGING_PATH = args.log_path
     config.DEBUG_MODE = args.debug
@@ -143,7 +81,9 @@ def setup_logging(args=None):
     This function sets up file logging and optionally console logging based on the provided arguments.
     """
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    color_formatter = ColorFormatter("%(asctime)s - %(levelname)s - %(message)s")
     logger = logging.getLogger()
+    logger.handlers.clear()
     logger.setLevel(getattr(logging, args.log_level if args else config.LOG_LEVEL))
 
     # Ensure log directory exists
@@ -152,12 +92,15 @@ def setup_logging(args=None):
     # Set up file logging
     file_handler = logging.FileHandler(config.LOGGING_PATH)
     file_handler.setFormatter(formatter)
+    rate_filter = RateLimitFilter(config.LOG_RATE_LIMIT_SEC)
+    file_handler.addFilter(rate_filter)
     logger.addHandler(file_handler)
 
     # Set up console logging if requested
     if args and args.console_log:
         console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
+        console_handler.setFormatter(color_formatter if config.LOG_COLOR else formatter)
+        console_handler.addFilter(rate_filter)
         logger.addHandler(console_handler)
 
 
@@ -211,15 +154,24 @@ def create_application(args=None):
         setup_config()
         setup_logging()
 
+    if config.ENFORCE_DOMAIN_IN_HOST and "." not in config.HOST:
+        raise ValueError(
+            "HOST must include a domain when ENFORCE_DOMAIN_IN_HOST is enabled"
+        )
+
     ensure_directories()
     generate_credentials_if_needed()
 
     schedule = not getattr(args, "no_scheduler", False)
     enable_watchdog = not getattr(args, "no_watchdog", False)
     crawlers = not getattr(args, "no_crawlers", False)
+    log_cache = not getattr(args, "no_log_cache", False)
 
     return create_app(
-        enable_watchdog=enable_watchdog, schedule=schedule, crawlers=crawlers
+        enable_watchdog=enable_watchdog,
+        schedule=schedule,
+        crawlers=crawlers,
+        log_cache=log_cache,
     )
 
 
@@ -233,10 +185,17 @@ def output_shutdown_stats():
     logging.info("Open Files: %s", metrics["open_files"])
     logging.info("Thread Count: %s", metrics["thread_count"])
     logging.info("Uptime: %s", metrics["uptime"])
-    logging.info("FFmpeg Version: %s", metrics["ffmpeg_version"])
+    logging.info(
+        "FFmpeg Version: %s (%s)",
+        metrics["ffmpeg_version"],
+        metrics["ffmpeg_path"],
+    )
     logging.info("Machine HW Accel: %s", metrics["machine_hwaccel"])
     logging.info("FFmpeg HW Accel: %s", metrics["ffmpeg_hwaccel"])
     logging.info("HW Accel Enabled: %s", metrics["hwaccel_enabled"])
+    logging.info("GPU Support: %s", metrics["gpu_support"])
+    logging.info("FFmpeg GPU Enabled: %s", metrics["ffmpeg_gpu_enabled"])
+    logging.info("Danger Mode: %s", metrics["danger_mode"])
     logging.info("Thank you for running Glimpser. Goodbye!")
 
 
@@ -321,9 +280,89 @@ def display_startup_tips():
     for tip in STARTUP_TIPS:
         logging.info("* %s", tip)
     logging.info(border)
+    # Warn when the server binds to a loopback address. Remote
+    # clients cannot reach 127.x or localhost hosts.
+    if config.HOST.startswith("127.") or config.HOST in {"localhost", "::1"}:
+        logging.warning(
+            "HOST %s is only reachable locally; remote clients may not connect.",
+            config.HOST,
+        )
     if config.SESSION_COOKIE_SECURE:
         logging.warning(
             "SESSION_COOKIE_SECURE is enabled; browsers only send the login cookie over HTTPS."
+        )
+
+
+def _format_table(rows, headers):
+    col_widths = [
+        max(len(str(item)) for item in column) for column in zip(headers, *rows)
+    ]
+    header = " | ".join(h.ljust(w) for h, w in zip(headers, col_widths))
+    separator = "-+-".join("-" * w for w in col_widths)
+    lines = [header, separator]
+    for row in rows:
+        lines.append(" | ".join(str(item).ljust(w) for item, w in zip(row, col_widths)))
+    return "\n".join(lines)
+
+
+def display_startup_info(args=None):
+    """Log configuration and system metrics in table form."""
+    border = "-" * 60
+    logging.info(border)
+    logging.info("Startup Configuration")
+    logging.info(border)
+    # Assemble a detailed table of configuration values. Showing paths and
+    # flags together makes it easier to confirm everything is wired up
+    # correctly when Glimpser launches.
+    config_table = [
+        ["Version", config.VERSION],
+        ["Host", config.HOST],
+        ["Port", config.PORT],
+        ["Debug Mode", config.DEBUG_MODE],
+        ["Log Level", config.LOG_LEVEL],
+        ["Database", config.DATABASE_PATH],
+        ["Log File", config.LOGGING_PATH],
+        ["Screenshots", config.SCREENSHOT_DIRECTORY],
+        ["Videos", config.VIDEO_DIRECTORY],
+        ["Summaries", config.SUMMARIES_DIRECTORY],
+        [
+            "Scheduler Enabled",
+            "No" if getattr(args, "no_scheduler", False) else "Yes",
+        ],
+        [
+            "Watchdog Enabled",
+            "No" if getattr(args, "no_watchdog", False) else "Yes",
+        ],
+        [
+            "Crawlers Enabled",
+            "No" if getattr(args, "no_crawlers", False) else "Yes",
+        ],
+    ]
+    logging.info("\n" + _format_table(config_table, ["Option", "Value"]))
+
+    metrics = get_system_metrics()
+    logging.info(border)
+    logging.info("System Metrics")
+    logging.info(border)
+    # Capture richer runtime details so administrators have a snapshot of the
+    # environment before connecting to the web UI.
+    metrics_table = [
+        ["CPU Usage", f"{metrics['cpu_usage']}%"],
+        ["Memory Usage", f"{metrics['memory_usage']}%"],
+        ["Disk Usage", f"{metrics['disk_usage']}%"],
+        ["Open Files", metrics["open_files"]],
+        ["Thread Count", metrics["thread_count"]],
+        ["Uptime", metrics["uptime"]],
+        ["FFmpeg", metrics["ffmpeg_version"]],
+        ["HW Accel", "Yes" if metrics["hwaccel_enabled"] else "No"],
+        ["GPU Support", "Yes" if metrics["gpu_support"] else "No"],
+        ["Danger Mode", "Yes" if metrics["danger_mode"] else "No"],
+    ]
+    logging.info("\n" + _format_table(metrics_table, ["Metric", "Value"]))
+    logging.info(border)
+    if metrics["machine_hwaccel"] and not metrics["ffmpeg_gpu_support"]:
+        logging.warning(
+            "GPU hardware detected but ffmpeg lacks hardware acceleration support."
         )
 
 
@@ -334,6 +373,20 @@ def is_port_in_use(port):
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(("localhost", port)) == 0
+
+
+def get_port_usage(port: int) -> str:
+    """Return any process details using ``port`` or an empty string."""
+    commands = [["lsof", "-i", f":{port}"], ["fuser", "-n", "tcp", str(port)]]
+    for cmd in commands:
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+            output = result.stdout.strip() or result.stderr.strip()
+            if output:
+                return output
+        except FileNotFoundError:
+            continue
+    return ""
 
 
 def main(argv=None):
@@ -351,12 +404,21 @@ def main(argv=None):
     logging.info("Initializing...")
     args = parse_arguments(argv)
     app = create_application(args)
+    display_startup_info(args)
 
     if is_port_in_use(config.PORT) and config.DEBUG_MODE is False:
         logging.error(
             "Error: Port %s is already in use. Please choose a different port.",
             config.PORT,
         )
+        usage = get_port_usage(config.PORT)
+        if usage:
+            logging.error("Processes using port %s:\n%s", config.PORT, usage)
+        else:
+            logging.error(
+                "Could not determine which process is using port %s.",
+                config.PORT,
+            )
         sys.exit(1)
 
     try:

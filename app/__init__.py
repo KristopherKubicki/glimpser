@@ -2,62 +2,53 @@
 
 import logging
 import os
+import sys
 import threading
 import time
-import sys
-import psutil
 from datetime import timedelta
 
+import psutil
 from flask import Flask
 
-from app.utils.retention_policy import retention_cleanup
+from app.config import (
+    DISCOVERY_AUTOSTART,
+    LOG_LEVEL,
+    WATCHDOG_CPU_THRESHOLD,
+    WATCHDOG_FAILURE_THRESHOLD,
+    WATCHDOG_MAX_FILE_HANDLES,
+    WATCHDOG_MEMORY_THRESHOLD,
+    WATCHDOG_RESTART_COOLDOWN,
+    backup_config,
+    restore_config,
+)
+from app.utils.email_alerts import email_alert
+from app.utils.retention_policy import cleanup_clips, retention_cleanup
 from app.utils.scheduling import (
+    refresh_clips,
+    schedule_auto_update,
+    schedule_clip_refresh,
     schedule_crawlers,
-    schedule_summarization,
     schedule_discovery,
+    schedule_offline_job_processor,
+    schedule_summarization,
     scheduler,
     start_log_caching,
     start_metrics_collection,
-    stop_background_tasks,
     stop_event,
 )
-from app.utils.video_archiver import archive_screenshots, compile_to_teaser
-from app.config import (
-    LOG_LEVEL,
-    backup_config,
-    restore_config,
-    DISCOVERY_AUTOSTART,
-    WATCHDOG_FAILURE_THRESHOLD,
-    WATCHDOG_RESTART_COOLDOWN,
-    WATCHDOG_MAX_FILE_HANDLES,
-)
-from app.utils.email_alerts import email_alert
 from app.utils.sms_alerts import sms_alert
-
-# from app.utils.db import SessionLocal
-# from app.models.log import Log
+from app.utils.video_archiver import archive_screenshots, compile_to_teaser
 
 # needed for the llava compare
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-"""
-class SQLAlchemyHandler(logging.Handler):
-    def __init__(self):
-        super().__init__()
-        self.session = scoped_session(SessionLocal)
 
-    def emit(self, record):
-        log_entry = Log(
-            level=record.levelname,
-            message=record.getMessage(),
-            source=record.name
-        )
-        self.session.add(log_entry)
-        self.session.commit()
-"""
-
-
-def create_app(enable_watchdog=True, schedule=True, crawlers=True):
+def create_app(
+    enable_watchdog: bool = True,
+    schedule: bool = True,
+    crawlers: bool = True,
+    log_cache: bool = True,
+):
     """Create and configure the Flask application.
 
     This function sets up the entire Flask application, including:
@@ -83,22 +74,28 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
         ``False`` to skip scheduling crawlers, which is useful during
         testing or when using the application purely for playback.
 
+    log_cache : bool, optional
+        When ``True`` (the default) a background thread tails the log file
+        so recent entries can be served via the web UI.  Pass ``False`` to
+        disable this thread during debugging or unit tests.
+
     Returns
     -------
     Flask
         The configured Flask application instance.
     """
     from app.config import (
-        SECRET_KEY,
+        API_KEY,
+        CLIPS_DIRECTORY,
         MAX_WORKERS,
+        SCHEDULER_API_ENABLED,
         SCREENSHOT_DIRECTORY,
+        SECRET_KEY,
+        SESSION_COOKIE_HTTPONLY,
+        SESSION_COOKIE_SECURE,
+        SESSION_TIMEOUT_MINUTES,
         SUMMARIES_DIRECTORY,
         VIDEO_DIRECTORY,
-        SESSION_COOKIE_SECURE,
-        SESSION_COOKIE_HTTPONLY,
-        SESSION_TIMEOUT_MINUTES,
-        FLASK_LOG_LEVEL,
-        API_KEY,
     )
 
     app = Flask(__name__)
@@ -116,6 +113,7 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)
     os.makedirs(VIDEO_DIRECTORY, exist_ok=True)
     os.makedirs(SUMMARIES_DIRECTORY, exist_ok=True)
+    os.makedirs(CLIPS_DIRECTORY, exist_ok=True)
 
     from app.routes import init_routes
 
@@ -126,12 +124,16 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
         app.config["SCHEDULER_EXECUTORS"] = {
             "default": {"type": "processpool", "max_workers": MAX_WORKERS}
         }
+        app.config["SCHEDULER_API_ENABLED"] = SCHEDULER_API_ENABLED
         logging.info("Starting with %s workers" % str(MAX_WORKERS))
-        scheduler.init_app(app)
+        if not scheduler.running:
+            scheduler.init_app(app)
 
     # Set up and start the scheduler
-    if schedule is True and (
-        os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug
+    if (
+        schedule is True
+        and (os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug)
+        and not scheduler.running
     ):
         scheduler.start()
         logging.info("Initializing scheduler...")
@@ -157,14 +159,25 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
                 minutes=1,
             )
             scheduler.add_job(
+                id="cleanup_clips",
+                func=cleanup_clips,
+                trigger="interval",
+                minutes=5,
+            )
+            scheduler.add_job(
                 id="retention_cleanup", func=retention_cleanup, trigger="cron", day="*"
             )
             schedule_summarization()
+            schedule_offline_job_processor()
+            schedule_clip_refresh()
+            schedule_auto_update()
             if DISCOVERY_AUTOSTART:
                 schedule_discovery()
 
         # Perform initial cleanup
         retention_cleanup()
+        cleanup_clips()
+        refresh_clips()
         logging.info("Initialization complete")
 
     # Backup the current configuration
@@ -174,10 +187,11 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
     def _watchdog_thread():
         """Background health monitor.
 
-        The thread issues requests to ``/health`` and inspects the number of
-        open file handles every 10 seconds.  When either check fails it first
-        restores the backed-up configuration and then exits the process so that
-        an external supervisor can restart it.  A 15 minute cooldown prevents
+        The thread issues requests to ``/health`` and performs additional
+        checks every 30 seconds. When CPU or memory usage exceeds configured
+        thresholds the number of open file handles is inspected. If any check
+        fails the previous configuration is restored and the process exits so
+        an external supervisor can restart it. A 15 minute cooldown prevents
         rapid restart loops.
         """
         last_restart_time = 0
@@ -187,7 +201,7 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
         failure_threshold = WATCHDOG_FAILURE_THRESHOLD
 
         while not stop_event.is_set():
-            time.sleep(10)  # Check every 10 seconds
+            time.sleep(30)  # Check every 30 seconds
             if not app.debug:
                 try:
                     # Check app responsiveness
@@ -196,13 +210,26 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
                         if response.status_code != 200:
                             raise Exception("Application is not responding correctly")
 
-                    # Check file handle usage
                     current_process = psutil.Process()
-                    open_files = current_process.open_files()
-                    if len(open_files) > max_file_handles:
-                        raise Exception(
-                            f"Too many open file handles: {len(open_files)}"
-                        )
+                    cpu_usage = psutil.cpu_percent(interval=0.1)
+                    mem_usage = psutil.virtual_memory().percent
+
+                    # Only check open files when system usage is high
+                    if (
+                        cpu_usage > WATCHDOG_CPU_THRESHOLD
+                        or mem_usage > WATCHDOG_MEMORY_THRESHOLD
+                    ):
+                        # psutil exposes num_fds() on POSIX systems. Prefer
+                        # this to avoid fetching the entire open_files list.
+                        if hasattr(current_process, "num_fds"):
+                            open_file_count = current_process.num_fds()
+                        else:
+                            open_file_count = len(current_process.open_files())
+
+                        if open_file_count > max_file_handles:
+                            raise Exception(
+                                f"Too many open file handles: {open_file_count}"
+                            )
 
                 except Exception as e:
                     logging.error("Application error detected: %s", e)
@@ -237,27 +264,76 @@ def create_app(enable_watchdog=True, schedule=True, crawlers=True):
                     # Reset failure count on successful check
                     failure_count = 0
 
-    # Start the watchdog thread
-    if enable_watchdog:
-        watchdog_thread = threading.Thread(target=_watchdog_thread)
-        watchdog_thread.daemon = True
-        watchdog_thread.start()
-        app.watchdog_thread = watchdog_thread
-
-    # Start collecting metrics
-    start_metrics_collection()
-
-    start_log_caching()
-
     # Send alerts when the application starts
-    email_alert(
-        "Application Start", "The Glimpser application has been started successfully."
-    )
-    sms_alert(
-        "Application Start", "The Glimpser application has been started successfully."
-    )
+    def _start_background_components() -> None:
+        """Initialize scheduler and monitoring in a low priority thread."""
 
-    # Make scheduler accessible globally
-    app.scheduler = scheduler
+        if (
+            schedule
+            and (os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug)
+            and not scheduler.running
+        ):
+            scheduler.start()
+            logging.info("Initializing scheduler...")
+
+            with app.app_context():
+                scheduler.remove_all_jobs()
+
+                if crawlers:
+                    schedule_crawlers()
+                scheduler.add_job(
+                    id="compile_to_teaser",
+                    func=compile_to_teaser,
+                    trigger="interval",
+                    minutes=3,
+                )
+                scheduler.add_job(
+                    id="archive_screenshots",
+                    func=archive_screenshots,
+                    trigger="interval",
+                    minutes=1,
+                )
+                scheduler.add_job(
+                    id="retention_cleanup",
+                    func=retention_cleanup,
+                    trigger="cron",
+                    day="*",
+                )
+                schedule_summarization()
+                schedule_offline_job_processor()
+                if DISCOVERY_AUTOSTART:
+                    schedule_discovery()
+
+            retention_cleanup()
+            cleanup_clips()
+            logging.info("Initialization complete")
+
+        if enable_watchdog:
+            watchdog_thread = threading.Thread(
+                target=_watchdog_thread, name="watchdog", daemon=True
+            )
+            watchdog_thread.start()
+            app.watchdog_thread = watchdog_thread
+
+        if schedule:
+            start_metrics_collection()
+
+        start_log_caching()
+
+        email_alert(
+            "Application Start",
+            "The Glimpser application has been started successfully.",
+        )
+        sms_alert(
+            "Application Start",
+            "The Glimpser application has been started successfully.",
+        )
+
+        app.scheduler = scheduler
+
+    if schedule or enable_watchdog or log_cache:
+        threading.Thread(
+            target=_start_background_components, name="init-bg", daemon=True
+        ).start()
 
     return app

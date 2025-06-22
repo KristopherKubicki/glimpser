@@ -1,17 +1,12 @@
+import argparse
+import importlib
 import os
 import shutil
 from threading import Thread
-from werkzeug.serving import make_server
-
-import importlib
 from unittest.mock import patch
-import argparse
-
-import sys
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import pytest
+from werkzeug.serving import make_server
 
 if os.environ.get("NO_NETWORK") == "1" or os.environ.get("SKIP_E2E") == "1":
     pytest.skip("E2E tests disabled due to no network", allow_module_level=True)
@@ -20,10 +15,10 @@ import app
 
 try:
     from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service as ChromeService
-    from selenium.webdriver.firefox.service import Service as FirefoxService
-    from selenium.webdriver.common.by import By
     from selenium.common.exceptions import WebDriverException
+    from selenium.webdriver.chrome.service import Service as ChromeService
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.firefox.service import Service as FirefoxService
 except Exception:  # pragma: no cover - optional dependency may not be present
     webdriver = None  # type: ignore
     By = None
@@ -45,7 +40,7 @@ class ServerThread(Thread):
 
 @pytest.fixture(scope="module")
 def live_server(tmp_path_factory):
-    application = app.create_app(enable_watchdog=False, schedule=False)
+    application = app.create_app(enable_watchdog=False, schedule=False, log_cache=False)
     data_dir = tmp_path_factory.mktemp("data")
     prev_cwd = os.getcwd()
     os.chdir(data_dir)
@@ -114,10 +109,10 @@ def live_server_with_user(tmp_path_factory):
     secure_patch = patch("app.config.SESSION_COOKIE_SECURE", False)
     secure_patch.start()
 
-    import generate_credentials
     import app.config as config
-    import app.utils.db as db
     import app.routes as routes
+    import app.utils.db as db
+    import generate_credentials
 
     importlib.reload(config)
     importlib.reload(db)
@@ -127,14 +122,14 @@ def live_server_with_user(tmp_path_factory):
     args = argparse.Namespace(
         db_path=db_path,
         username="e2e",
-        password="secret",
+        password="secret",  # pragma: allowlist secret
         update_password=False,
-        secret_key="secretkey",
+        secret_key="secretkey",  # pragma: allowlist secret
         update_key=False,
     )
     generate_credentials.generate_credentials(args)
 
-    application = app.create_app(enable_watchdog=False, schedule=False)
+    application = app.create_app(enable_watchdog=False, schedule=False, log_cache=False)
     prev_cwd = os.getcwd()
     os.chdir(data_dir)
     server = ServerThread(application)
@@ -174,8 +169,6 @@ def test_login_and_redirect(live_server_with_user, browser):
     browser.find_element(By.ID, "search-input")
     browser.get(f"{live_server_with_user}/live")
     video = browser.find_element(By.ID, "live-video")
-    selector = browser.find_element(By.ID, "camera-selector")
     slider = browser.find_element(By.ID, "speed-slider")
     assert video is not None
-    assert selector is not None
     assert slider is not None

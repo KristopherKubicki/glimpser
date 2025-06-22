@@ -1,14 +1,11 @@
+import importlib
 import os
 import sqlite3
-import importlib
+
+# ensure repo root in path
 import tempfile
 import unittest
 from unittest.mock import patch
-
-# ensure repo root in path
-import sys
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 class TestGetSetting(unittest.TestCase):

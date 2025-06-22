@@ -7,14 +7,19 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [Configuration Guide](configuration_guide.md)
 - [Command Line Reference](command_line.md)
 - [Video Archiver](video_archiver.md)
-- [Live All Playback](live_all.md)
+- [Video and Image Endpoints](video_image_endpoints.md)
+- [Dashboard Live Button](live_all.md)
 - [Live View Scrubbing](live_scrub.md)
+- [Search Bar Autocomplete](search_autocomplete.md)
 - [Jog-Shuttle Control](jog_shuttle.md)
 - [Developer Guide](developer_guide.md)
 - [Testing and Coverage](testing.md)
 - [Release Workflow](release_workflow.md)
 - [Docker Build Verification](docker_build.md)
 - [CodeQL Security Scanning](codeql.md)
+- [Pylint Checks](pylint_checks.md)
+- [Docs Build Workflow](docs_build.md)
+- [Dependency Review](dependency_review.md)
 - [Continuous Integration Checks](ci_checks.md)
 - [System Monitoring and Logs](system_monitoring.md)
 - [Danger Mode](danger_mode.md)
@@ -27,7 +32,7 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [Help Page Overview](help_page.md)
 - [Camera Fix Suggestions](camera_fix.md)
 - [HTTP Callback Guide](http_callbacks.md)
-- [MCP Integration](mcp_integration.md)
+- [MCP Integration Guide](mcp_integration.md)
 - [Recommendations](recommendations.md)
 - [Troubleshooting](troubleshooting.md)
 - [Startup Tips](startup_tips.md)
@@ -44,16 +49,18 @@ Glimpser is a monitoring platform that captures images and video streams, using 
 - [Settings Page Overview](settings_page.md)
 - [Configuration Management](config_management.md)
 - [Offline Preview](offline_preview.md)
+- [Web Notifications](web_notifications.md)
 - [Nginx HTTP/2 Push](nginx_http2_push.md)
 - [API Resilience](api_resilience.md)
 - [OpenSSF Scorecard](scorecard.md)
+- [EthicalCheck Workflow](ethicalcheck.md)
 
 ## Dashboard Time
 
 The main dashboard now displays the current time in the lower right corner. Hover over the time to view the full ISO 8601 timestamp.
 
-Thumbnails also now show the last capture time in a human readable
-"X ago" format, matching the tables on the Captions page.
+Thumbnails also now show the last capture time in a compact
+"5m ago" style, matching the tables on the Captions page.
 The Live View page displays the time of the latest frame in the
 lower-right corner using the same format. Timestamp parsing was improved so
 times display correctly across time zones instead of always showing

@@ -1,18 +1,37 @@
 #!/usr/bin/env python3
 # generate_credentials.py
+"""Create or update Glimpser credentials and settings.
 
+Run the script without arguments to interactively set up the initial
+``settings`` and ``users`` tables in the SQLite database. Command-line
+options allow specifying the database path, username, password and secret
+key, or updating only specific values.
+"""
+
+import argparse
+import getpass
+import logging
 import secrets
 import sqlite3
-import getpass
-import argparse
 import sys
 
-import app.config
-import logging
 from werkzeug.security import generate_password_hash
 
+import app.config
 
-def upsert_setting(name, value, conn):
+
+def upsert_setting(name: str, value: str | None, conn: sqlite3.Connection) -> None:
+    """Insert or update a setting in the database.
+
+    Parameters
+    ----------
+    name : str
+        Setting key.
+    value : str | None
+        Value to store; if ``None`` the function does nothing.
+    conn : sqlite3.Connection
+        Database connection.
+    """
     if value is None:
         return
 
@@ -28,7 +47,14 @@ def upsert_setting(name, value, conn):
     conn.commit()
 
 
-def create_settings(conn):
+def create_settings(conn: sqlite3.Connection) -> None:
+    """Create the ``settings`` table if it is missing.
+
+    Parameters
+    ----------
+    conn : sqlite3.Connection
+        Open database connection.
+    """
     create_settings_table = """
     CREATE TABLE IF NOT EXISTS settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,7 +67,14 @@ def create_settings(conn):
     conn.commit()
 
 
-def create_users(conn):
+def create_users(conn: sqlite3.Connection) -> None:
+    """Create the ``users`` table if it is missing.
+
+    Parameters
+    ----------
+    conn : sqlite3.Connection
+        Open database connection.
+    """
     create_users_table = """
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,7 +88,22 @@ def create_users(conn):
     conn.commit()
 
 
-def upsert_user(username, password_hash, role, conn):
+def upsert_user(
+    username: str, password_hash: str, role: str, conn: sqlite3.Connection
+) -> None:
+    """Insert or update a user record.
+
+    Parameters
+    ----------
+    username : str
+        Login name for the user.
+    password_hash : str
+        Hashed password to store.
+    role : str
+        User role within the application.
+    conn : sqlite3.Connection
+        Database connection.
+    """
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -68,7 +116,14 @@ def upsert_user(username, password_hash, role, conn):
     conn.commit()
 
 
-def generate_credentials(args):
+def generate_credentials(args: argparse.Namespace | None) -> None:
+    """Create or update application credentials and settings.
+
+    Parameters
+    ----------
+    args : argparse.Namespace | None
+        Command line arguments. If ``None`` the function prompts interactively.
+    """
     # Use the provided or default database path
     database_path = app.config.get_setting("DATABASE_PATH", "data/glimpser.db")
     if args and args.db_path:
@@ -122,6 +177,11 @@ def generate_credentials(args):
     conn.close()
 
     logging.info("Credentials and settings updated in the database.")
+    logging.info(
+        "Open http://%s:%s in your browser after starting Glimpser to finish setup.",
+        app.config.HOST,
+        app.config.PORT,
+    )
 
 
 if __name__ == "__main__":

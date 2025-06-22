@@ -1,12 +1,10 @@
 # tests/test_png_validation.py
 
-import unittest
-import tempfile
 import os
-import sys
-from PIL import Image
+import tempfile
+import unittest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from PIL import Image
 
 from app.utils.screenshots import _is_valid_png
 

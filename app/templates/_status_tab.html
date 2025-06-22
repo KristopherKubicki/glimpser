@@ -1,71 +1,288 @@
-<div class="scheduler-controls">
-    <button id="toggle-scheduler" class="btn btn-primary" title="Start or stop the scheduler">
-        Loading...
-    </button>
-    <span id="scheduler-status" title="Current scheduler status">Checking status...</span>
-</div>
-
-<h1>System Status</h1>
-
 {% call card('System Metrics') %}
-<ul class="metrics-list">
-    <li title="Current CPU utilization">CPU Usage:
-        <progress class="metric-bar" value="{{ metrics.cpu_usage }}" max="100"></progress>
-        {{ metrics.cpu_usage }}%
-    </li>
-    <li title="Current memory utilization">Memory Usage:
-        <progress class="metric-bar" value="{{ metrics.memory_usage }}" max="100"></progress>
-        {{ metrics.memory_usage }}%
-    </li>
-    <li title="Disk space used">Disk Usage:
-        <progress class="metric-bar" value="{{ metrics.disk_usage }}" max="100"></progress>
-        {{ metrics.disk_usage }}%
-    </li>
-    <li title="Open file handles">Open Files: {{ metrics.open_files }}</li>
-    <li title="Number of active threads">Thread Count: {{ metrics.thread_count }}</li>
-    <li title="System uptime">Uptime: {{ metrics.uptime }}</li>
-</ul>
-{% endcall %}
-
-{% call card('Feed Status') %}
-<table id="feed-status" class="feed-status">
+<div class="metrics-container">
+  <ul class="metrics-list">
+  <li title="Start or stop the scheduler">
+    <span class="metric-label">Scheduler:</span>
+    <button
+      id="toggle-scheduler"
+      class="btn btn-primary"
+      title="Start or stop the scheduler"
+    >
+      Loading...
+    </button>
+    <span
+      id="scheduler-status"
+      class="status-dot"
+      title="Green = running, red = stopped or error"
+    ></span>
+  </li>
+  <li title="Current CPU utilization">
+    <span class="metric-label">CPU Usage:</span>
+    <progress
+      id="cpu-bar"
+      class="metric-bar"
+      value="{{ metrics.cpu_usage }}"
+      max="100"
+    ></progress>
+    <span id="cpu-value">{{ metrics.cpu_usage }}%</span>
+    <canvas
+      id="cpu-sparkline"
+      class="sparkline"
+      width="100"
+      height="20"
+    ></canvas>
+  </li>
+  <li title="Current memory utilization">
+    <span class="metric-label">Memory Usage:</span>
+    <progress
+      id="memory-bar"
+      class="metric-bar"
+      value="{{ metrics.memory_usage }}"
+      max="100"
+    ></progress>
+    <span id="memory-value">{{ metrics.memory_usage }}%</span>
+    <canvas
+      id="memory-sparkline"
+      class="sparkline"
+      width="100"
+      height="20"
+    ></canvas>
+  </li>
+  <li title="Disk space used">
+    <span class="metric-label">Disk Usage:</span>
+    <progress
+      id="disk-bar"
+      class="metric-bar"
+      value="{{ metrics.disk_usage }}"
+      max="100"
+    ></progress>
+    <span id="disk-value">{{ metrics.disk_usage }}%</span>
+    <canvas
+      id="disk-sparkline"
+      class="sparkline"
+      width="100"
+      height="20"
+    ></canvas>
+  </li>
+  <li title="Open file handles">
+    <span class="metric-label">Open Files:</span>
+    <span id="open-files">{{ metrics.open_files }}</span>
+  </li>
+  <li title="Number of active threads">
+    <span class="metric-label">Thread Count:</span>
+    <span id="thread-count">{{ metrics.thread_count }}</span>
+  </li>
+  <li title="System uptime">
+    <span class="metric-label">Uptime:</span>
+    <span id="uptime-value">{{ metrics.uptime }}</span>
+  </li>
+  <li title="GPU acceleration status">
+    <span class="metric-label">GPU:</span>
+    <a
+      href="/settings?tab=Capture-tab#FFMPEG_HWACCEL"
+      title="Configure hardware acceleration"
+    >
+      <span
+        id="gpu-status"
+        class="status-dot {{ 'ok' if metrics.ffmpeg_gpu_enabled else ('slow' if metrics.gpu_support else 'error') }}"
+      ></span>
+    </a>
+  </li>
+  </ul>
+  <table id="thread-table" class="thread-table" title="CPU usage by thread">
     <thead>
-        <tr>
-            <th class="sortable" data-type="string">Feed</th>
-            <th class="sortable" data-type="date">Last Image</th>
-            <th class="sortable" data-type="date">Last Caption</th>
-            <th class="sortable" data-type="string">Status</th>
-        </tr>
+      <tr>
+        <th>Thread</th>
+        <th>CPU %</th>
+      </tr>
+    </thead>
+    <tbody id="thread-table-body">
+      {% for t in metrics.top_threads %}
+      <tr>
+        <td class="thread-name">{{ t.name }}</td>
+        <td class="thread-cpu">{{ t.cpu }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endcall %} {% call card('Feed Status') %}
+<div class="table-container">
+  <table id="feed-status" class="feed-status">
+    <thead>
+      <tr>
+        <th class="sortable" data-type="string" title="Camera name">Feed</th>
+        <th
+          class="sortable capture-col"
+          data-type="string"
+          title="Capture activity"
+        >
+          Cap.
+        </th>
+        <th
+          class="sortable status-col"
+          data-type="string"
+          title="Current feed status"
+        >
+          Status
+        </th>
+        <th
+          class="sortable time-col"
+          data-type="date"
+          title="Most recent caption time"
+        >
+          Caption
+        </th>
+        <th
+          class="sortable time-col"
+          data-type="date"
+          title="Most recent screenshot time"
+        >
+          Image
+        </th>
+        <th class="sortable" data-type="number" title="Total screenshots">
+          Shots
+        </th>
+        <th class="sortable videos-col" data-type="number" title="Total videos">
+          Videos
+        </th>
+        <th class="sortable" data-type="number" title="Disk usage">Storage</th>
+        <th class="sortable llm-col" data-type="number" title="LLM responses">
+          LLM
+        </th>
+        <th class="sortable" data-type="number" title="Estimated LLM cost">
+          LLM $
+        </th>
+      </tr>
     </thead>
     <tbody>
-    {% for feed in feeds %}
-        <tr class="{{ feed.status }}">
-            <td data-label="Feed" data-value="{{ feed.name }}"><a href="{{ url_for('template_details', template_name=feed.name) }}">{{ feed.name }}</a></td>
-            <td data-label="Last Image" data-value="{{ feed.last_screenshot_time or '' }}">
-                {% if feed.last_screenshot_display %}
-                <span class="humanized-time" data-time="{{ feed.last_screenshot_time }}" title="{{ feed.last_screenshot_time }}">
-                    {{ feed.last_screenshot_display }}
-                </span>
-                {% else %}
-                N/A
-                {% endif %}
-            </td>
-            <td data-label="Last Caption" data-value="{{ feed.last_caption_time or '' }}">
-                {% if feed.last_caption_display %}
-                <span class="humanized-time" data-time="{{ feed.last_caption_time }}" title="{{ feed.last_caption_time }}">
-                    {{ feed.last_caption_display }}
-                </span>
-                {% else %}
-                N/A
-                {% endif %}
-            </td>
-            <td data-label="Status" data-value="{{ feed.status }}"><span class="status-dot {{ feed.status }}" title="{{ feed.tooltip }}"></span></td>
-        </tr>
-    {% endfor %}
+      {% for feed in feeds %}
+      <tr
+        class="{{ feed.status }}{% if feed.danger_reason %} danger-{{ feed.danger_reason }}{% endif %}"
+      >
+        <td data-label="Feed" data-value="{{ feed.name }}">
+          <svg
+            width="12"
+            height="12"
+            class="camera-icon {{ feed.camera_type }}"
+            aria-label="{{ feed.camera_tooltip }}"
+            title="{{ feed.camera_tooltip }}"
+          >
+            <use
+              href="{{ url_for('static', filename='icons/sprite.svg') }}#{% if feed.camera_type == 'browser' %}browser{% elif 'stealth' in feed.camera_type %}mask{% else %}camera{% endif %}"
+            />
+          </svg>
+          {% if feed.danger %}
+          <svg
+            width="12"
+            height="12"
+            class="danger-icon-inline {{ feed.danger_reason or '' }}"
+            aria-label="Danger mode"
+            title="{{ 'Danger mode disabled' if feed.danger_reason == 'disabled' else 'Danger mode user active' if feed.danger_reason == 'user' else 'Danger mode' }}"
+          >
+            <use
+              href="{{ url_for('static', filename='icons/sprite.svg') }}#alert"
+            />
+          </svg>
+          {% endif %}
+          <a
+            href="{{ url_for('template_details', template_name=feed.name) }}"
+            title="View template details"
+            >{{ feed.name }}</a
+          >
+        </td>
+        <td
+          class="capture-col"
+          data-label="Cap."
+          data-value="{{ '1' if feed.capturing else '0' }}"
+        >
+          <span
+            class="capture-dot countdown{% if feed.capturing %} active{% endif %}"
+            data-next="{{ feed.next_capture_time or '' }}"
+            data-frequency="{{ feed.frequency }}"
+          ></span>
+        </td>
+        <td
+          class="status-col"
+          data-label="Status"
+          data-value="{{ feed.status }}"
+        >
+          {% if feed.danger_reason %}
+          <svg
+            width="12"
+            height="12"
+            class="danger-icon {{ feed.danger_reason }}"
+            aria-label="Danger mode required"
+            title="{{ 'Danger mode disabled' if feed.danger_reason == 'disabled' else 'User active' }}"
+          >
+            <use
+              href="{{ url_for('static', filename='icons/sprite.svg') }}#alert"
+            />
+          </svg>
+          {% endif %}
+          <span
+            class="status-dot {{ feed.status }}"
+            title="{{ feed.tooltip }}"
+          ></span>
+        </td>
+        <td
+          data-label="Caption"
+          class="time-col"
+          data-value="{{ feed.last_caption_time or '' }}"
+        >
+          {% if feed.last_caption_display %}
+          <span
+            class="humanized-time"
+            data-time="{{ feed.last_caption_time }}"
+            title="{{ feed.last_caption_time }}"
+          >
+            {{ feed.last_caption_display }}
+          </span>
+          {% else %} N/A {% endif %}
+        </td>
+        <td
+          data-label="Image"
+          class="time-col"
+          data-value="{{ feed.last_screenshot_time or '' }}"
+        >
+          {% if feed.last_screenshot_display %}
+          <span
+            class="humanized-time"
+            data-time="{{ feed.last_screenshot_time }}"
+            title="{{ feed.last_screenshot_time }}"
+          >
+            {{ feed.last_screenshot_display }}
+          </span>
+          {% else %} N/A {% endif %}
+        </td>
+        <td data-label="Shots" data-value="{{ feed.screenshot_count }}">
+          {{ feed.screenshot_count }}
+        </td>
+        <td
+          data-label="Videos"
+          class="videos-col"
+          data-value="{{ feed.video_count }}"
+        >
+          {{ feed.video_count }}
+        </td>
+        <td data-label="Storage" data-value="{{ feed.storage_usage_bytes }}">
+          {{ feed.storage_usage }}
+        </td>
+        <td
+          data-label="LLM"
+          class="llm-col"
+          data-value="{{ feed.llm_response_count }}"
+        >
+          {{ feed.llm_response_count }}
+        </td>
+        <td data-label="LLM $" data-value="{{ feed.llm_cost_estimate }}">
+          {{ feed.llm_cost_estimate }}
+        </td>
+      </tr>
+      {% endfor %}
     </tbody>
-</table>
+  </table>
+</div>
 
 <p>Last summary generated: {{ last_summary or 'N/A' }}</p>
-{% endcall %}
-
-{% include 'logs.html' %}
+{% endcall %} {% include 'logs.html' %}

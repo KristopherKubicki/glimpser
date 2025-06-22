@@ -1,9 +1,8 @@
 import os
-import sys
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scripts import auto_tag_release  # noqa: E402
 
@@ -29,6 +28,13 @@ class TestAutoTagRelease(unittest.TestCase):
                     unittest.mock.call(["git", "push", "origin", "v1.2.3"]),
                 ],
             )
+
+    def test_get_version_parses_pyproject(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pyproject = Path(tmpdir) / "pyproject.toml"
+            pyproject.write_text('[project]\nversion = "9.9.9"\n')
+            with patch.object(auto_tag_release, "VERSION_FILE", pyproject):
+                self.assertEqual(auto_tag_release.get_version(), "9.9.9")
 
 
 if __name__ == "__main__":
