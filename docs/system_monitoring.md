@@ -14,7 +14,7 @@ Below the system metrics the page lists each configured feed with a color-coded 
 
 - **Green** – the feed is updating on schedule.
 - **Yellow** – the last capture is behind its configured frequency.
-- **Red** – capturing failed or the feed is offline.
+- **Gray** – capturing failed or the feed is offline.
 
 The dashboard also shows when the most recent system summary was generated.
 

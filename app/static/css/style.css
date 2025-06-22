@@ -468,7 +468,7 @@ body.light-mode {
 }
 
 .status-box.error {
-  border-color: red;
+  border-color: gray;
 }
 
 /* Improve video controls on mobile */
@@ -1558,7 +1558,7 @@ details > summary {
   background-color: orange;
 }
 .status-dot.error {
-  background-color: red;
+  background-color: gray;
 }
 
 .metrics-list li {
