@@ -52,6 +52,19 @@ export function initUrlTester() {
         status.title = title || "URL test result";
       };
 
+      const formatTitle = (data) => {
+        if (!data.ok) {
+          return (
+            data.error || (data.status ? `HTTP ${data.status}` : "Unreachable")
+          );
+        }
+        let t = data.status ? `HTTP ${data.status}` : "OK";
+        if (data.content_type) {
+          t += ` \u00b7 ${data.content_type}`;
+        }
+        return t;
+      };
+
       const check = async () => {
         const url = input.value.trim();
         setStatus("");
@@ -69,20 +82,20 @@ export function initUrlTester() {
             },
           );
           const data = await res.json();
+          const title = formatTitle(data);
           if (res.ok && data.ok) {
-            setStatus("ok", "URL reachable");
+            setStatus("ok", title);
             if (submit) submit.disabled = false;
           } else {
-            const msg = data.status
-              ? `HTTP ${data.status}`
-              : data.error || "Unreachable";
-            setStatus("bad", msg);
+            setStatus("bad", title);
+            if (preview) preview.src = defaultSrc;
             if (submit) submit.disabled = true;
           }
           sendTelemetry("url_test", { url, ok: data.ok });
         } catch {
           if (controller.signal.aborted) return;
           setStatus("bad", "Unreachable");
+          if (preview) preview.src = defaultSrc;
           if (submit) submit.disabled = true;
           sendTelemetry("url_test", { url, ok: false });
         }
