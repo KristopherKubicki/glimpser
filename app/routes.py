@@ -10,7 +10,6 @@ import json
 import logging
 import math
 import os
-import queue
 import random
 import re
 import shutil
@@ -28,7 +27,7 @@ from collections import deque
 from datetime import datetime, timedelta
 from fractions import Fraction
 from functools import lru_cache, wraps
-from ipaddress import ip_address, ip_network
+from ipaddress import ip_address
 from pathlib import Path
 from threading import Lock, Thread
 from urllib.parse import urlparse
@@ -1558,6 +1557,7 @@ def init_routes(app: Flask) -> None:
     """Register all route handlers on the given ``app``."""
     from app.blueprints.api import create_blueprint as create_api_blueprint
     from app.blueprints.authentication import create_blueprint as create_auth_blueprint
+    from app.blueprints.discovery import create_blueprint as create_discovery_blueprint
     from app.blueprints.docs import create_blueprint as create_docs_blueprint
     from app.blueprints.mcp import create_blueprint as create_mcp_blueprint
     from app.blueprints.network import create_blueprint
@@ -1590,6 +1590,10 @@ def init_routes(app: Flask) -> None:
     if not getattr(app, "_mcp_bp_registered", False):
         app.register_blueprint(create_mcp_blueprint())
         app._mcp_bp_registered = True
+
+    if not getattr(app, "_discovery_bp_registered", False):
+        app.register_blueprint(create_discovery_blueprint())
+        app._discovery_bp_registered = True
 
     if not getattr(app, "_views_bp_registered", False):
         app.register_blueprint(create_views_blueprint())
@@ -3701,209 +3705,6 @@ def init_routes(app: Flask) -> None:
                 return jsonify({"message": "Template updated successfully!"})
 
             return redirect("/templates/" + template_name)
-
-    @app.route("/discover", methods=["GET"])
-    @login_required
-    def discover_cameras_route():
-        templates = template_manager.get_templates()
-        existing_urls = {}
-        for name, t in templates.items():
-            url = t.get("url")
-            if url:
-                existing_urls[url] = name
-        object_tokens = ["person", "car", "dog", "cat", "truck", "bus", "bicycle"]
-        return render_template(
-            "discover.html",
-            cameras=[],
-            existing_urls=existing_urls,
-            object_tokens=object_tokens,
-            clip_model=CLIP_MODEL_NAME,
-            clip_gpu=clip_gpu_available(),
-            page_title="Discover Cameras",
-        )
-
-    @app.route("/discover/scan", methods=["POST"])
-    @login_required
-    def discover_cameras_scan():
-        cidr = request.form.get("cidr") if request.form else request.args.get("cidr")
-        nets = None
-        if cidr and cidr.lower() == "internet":
-            from app.utils.internet_cameras import INTERNET_CAMERAS
-
-            return jsonify(INTERNET_CAMERAS)
-        if cidr:
-            try:
-                nets = [ip_network(cidr, strict=False)]
-            except ValueError:
-                pass
-        cameras = camera_discovery.discover_cameras(subnets=nets)
-        return jsonify(cameras)
-
-    @app.route("/discover/scan_stream")
-    @login_required
-    def discover_cameras_scan_stream():
-        def generate():
-            cidr = request.args.get("cidr")
-            nets = None
-            if cidr and cidr.lower() == "internet":
-                from app.utils.internet_cameras import INTERNET_CAMERAS
-
-                yield (
-                    "data: "
-                    + json.dumps(
-                        {"total": 1, "subnets": ["internet"], "stages": ["internet"]}
-                    )
-                    + "\n\n"
-                )
-                yield (
-                    "data: "
-                    + json.dumps(
-                        {
-                            "stage": "internet",
-                            "count": len(INTERNET_CAMERAS),
-                            "cameras": INTERNET_CAMERAS,
-                            "progress": 100,
-                            "eta": 0,
-                        }
-                    )
-                    + "\n\n"
-                )
-                yield 'data: {"done": true}\n\n'
-                return
-            if cidr:
-                try:
-                    nets = [ip_network(cidr, strict=False)]
-                except ValueError:
-                    pass
-
-            stages = camera_discovery.get_discovery_stages()
-
-            q = queue.Queue()
-            # Provide the client with the number of discovery stages so it
-            # can display a progress bar and show subnet information.
-            q.put(
-                {
-                    "total": len(stages),
-                    "subnets": [
-                        str(n) for n in (nets or camera_discovery._local_subnets())
-                    ],
-                    "stages": stages,
-                }
-            )
-
-            sent = set()
-
-            def progress(stage, count, new_cams, pct, eta):
-                fresh = []
-                for cam in new_cams:
-                    key = (cam.get("ip"), cam.get("protocol"), cam.get("port"))
-                    if key not in sent:
-                        sent.add(key)
-                        fresh.append(cam)
-                q.put(
-                    {
-                        "stage": stage,
-                        "count": count,
-                        "cameras": fresh,
-                        "progress": pct,
-                        "eta": eta,
-                    }
-                )
-
-            def run():
-                try:
-                    camera_discovery.discover_cameras(
-                        progress_callback=progress, subnets=nets
-                    )
-                except Exception as e:  # pragma: no cover - network
-                    logging.exception("discovery scan failed: %s", e)
-                    q.put({"error": str(e)})
-                finally:
-                    q.put({"done": True})
-
-            thread = Thread(target=run, daemon=True)
-            thread.start()
-
-            while True:
-                msg = q.get()
-                yield f"data: {json.dumps(msg)}\n\n"
-                if msg.get("done"):
-                    break
-
-        return Response(stream_with_context(generate()), mimetype="text/event-stream")
-
-    @app.route("/discover/add", methods=["POST"])
-    @login_required
-    def add_discovered_camera():
-        data = request.form if request.form else request.get_json(force=True)
-        name = data.get("name") or data.get("ip")
-        protocol = data.get("protocol", "rtsp")
-        port = int(data.get("port", 554))
-        url = data.get("url") or f"{protocol}://{data.get('ip')}:{port}"
-        template = {
-            "name": name,
-            "url": url,
-            "frequency": data.get("frequency", 30),
-            "timeout": data.get("timeout", 10),
-        }
-        template_manager.save_template(name, template)
-        return jsonify({"status": "success"})
-
-    @app.route("/templates/test_url")
-    @login_required
-    def test_template_url() -> Response:
-        """Return JSON indicating whether the given URL is reachable."""
-
-        url = request.args.get("url") or ""
-        url = validators.validate_url(url)
-        if not url:
-            return jsonify({"ok": False, "error": "invalid"}), 400
-
-        try:
-            resp = requests.head(url, timeout=5)
-            ok = resp.status_code < 400
-        except Exception as exc:  # pragma: no cover - network
-            logging.warning("url check failed: %s", exc)
-            return jsonify({"ok": False, "error": "unreachable"}), 400
-
-        return jsonify({"ok": ok, "status": resp.status_code})
-
-    @app.route("/discover/export", methods=["POST"])
-    @login_required
-    def export_discovery_results():
-        fmt = request.args.get("format", "json")
-        cameras = request.get_json(force=True)
-        if not isinstance(cameras, list):
-            cameras = cameras.get("cameras", []) if isinstance(cameras, dict) else []
-        if fmt == "csv":
-            output = io.StringIO()
-            writer = csv.writer(output)
-            writer.writerow(
-                ["ip", "protocol", "port", "mac", "manufacturer", "firmware"]
-            )
-            for cam in cameras:
-                info = cam.get("info", {})
-                writer.writerow(
-                    [
-                        cam.get("ip"),
-                        cam.get("protocol"),
-                        cam.get("port"),
-                        info.get("mac"),
-                        info.get("manufacturer"),
-                        info.get("firmware"),
-                    ]
-                )
-            output.seek(0)
-            return Response(
-                output.getvalue(),
-                mimetype="text/csv",
-                headers={"Content-Disposition": "attachment;filename=discovery.csv"},
-            )
-        return Response(
-            json.dumps(cameras, indent=2),
-            mimetype="application/json",
-            headers={"Content-Disposition": "attachment;filename=discovery.json"},
-        )
 
     @app.route("/status")
     @login_required
