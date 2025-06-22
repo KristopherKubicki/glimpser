@@ -13,6 +13,7 @@ from PIL import Image
 from app.config import CHATGPT_KEY, LLM_CAPTION_PROMPT, LLM_MODEL_VERSION
 from app.utils import llm_cache
 from app.utils.api_utils import request_with_retry
+from app.utils.screenshots import _is_valid_png
 
 HEADER_PREFIX_RE = re.compile(r"^(caption|title|summary):\s*", re.IGNORECASE)
 
@@ -95,8 +96,12 @@ class ChatGPTImageComparison:
         ]
         messages.append({"role": "user", "content": [{"type": "text", "text": prompt}]})
 
+        valid_image_added = False
         for image_path in reversed(image_paths):
             if not os.path.exists(image_path):
+                continue
+            if not _is_valid_png(image_path):
+                logging.warning("Invalid image for ChatGPT comparison: %s", image_path)
                 continue
             with Image.open(image_path).convert("RGB") as img:
                 # Calculate new size preserving aspect ratio
@@ -121,7 +126,12 @@ class ChatGPTImageComparison:
                         ],
                     }
                 )
+                valid_image_added = True
                 break
+
+        if not valid_image_added:
+            logging.warning("No valid images found for ChatGPT comparison")
+            return None, 0
 
         # Construct the payload with the prompt and images
         payload = {
