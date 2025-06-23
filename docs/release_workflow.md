@@ -5,7 +5,8 @@ The process is split across multiple runners:
 
 - **Ubuntu** builds the Debian package and runs the test suite. The packaging
   script now uses `rsync` to copy directories so unchanged files are skipped,
-  speeding up repeated builds.
+  speeding up repeated builds. It also reads the version from `pyproject.toml`
+  to populate the Debian control file so releases stay in sync.
 - **Windows** builds the standalone executable using `build_windows.py`.
 - The build sets `GLIMPSER_SKIP_DB_INIT=1` to prevent database access during analysis.
 - It also skips the optional `onnxruntime` package to avoid lengthy dependency scanning.

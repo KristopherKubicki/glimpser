@@ -25,6 +25,7 @@ def test_scheduler_executes_job(tmp_path):
         patch("app.start_log_caching"),
         patch("app.email_alert"),
         patch("app.sms_alert"),
+        patch("time.sleep", return_value=None),
     ):
         create_app(enable_watchdog=False, schedule=True)
         # Shut down any jobs created during app initialization. Using wait=True
@@ -39,10 +40,10 @@ def test_scheduler_executes_job(tmp_path):
             func=create_flag_file,
             args=(flag_file,),
             trigger="date",
-            run_date=datetime.now() + timedelta(milliseconds=100),
+            run_date=datetime.now(),
             id="test_job",
         )
-        for _ in range(50):
+        for _ in range(10):
             if flag_file.exists():
                 break
             time.sleep(0.02)
