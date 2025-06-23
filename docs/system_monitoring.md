@@ -16,7 +16,8 @@ Below the system metrics the page lists each configured feed with a color-coded 
 
 - **Green** – the feed is updating on schedule.
 - **Yellow** – the last capture is behind its configured frequency.
-- **Red** – capturing failed or the feed is offline.
+- **Gray** – capturing failed or the feed is offline.
+- **Red** – the feed is being recorded.
 - **Blue** – a capture job is currently running.
 - Cameras marked as **Danger** show a hazard icon when the feature is required.
   The icon is orange if Danger mode is available but suppressed due to recent

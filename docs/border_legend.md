@@ -9,7 +9,7 @@ also appears on the **Captions** and **Group** pages.
 
 - **Accent border** – blue for recent captures. The color intensity fades by half after one minute,
   again after ten minutes, and so on.
-- **Red border** – indicates the most recent capture attempt failed. The red border fades using the
+- **Gray border** – indicates the most recent capture attempt failed. The gray border fades using the
   same logarithmic scale. A successful capture clears the error state.
 
 Search, width slider and legend controls now start collapsed in a dropdown to keep the dashboard uncluttered.
