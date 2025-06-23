@@ -77,11 +77,12 @@ content %}
     {% endif %} {% endwith %}
     <input type="submit" value="Login" title="Click to log in" />
   </form>
+  {% if show_recovery_note %}
   <p id="recovery-note" class="recovery-note">
     Forgot your password? Stop Glimpser and run
     <code>generate_credentials.py --update-password</code>.
   </p>
-  {% endcall %}
+  {% endif %} {% endcall %}
 </div>
 <script
   type="module"
