@@ -15,8 +15,12 @@ class TestScreenshotCapture(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
         self.output_path = os.path.join(self.temp_dir, "test_screenshot.png")
+        # Speed up tests by skipping sleeps in the screenshot helper
+        self.sleep_patch = patch("app.utils.screenshots.time.sleep", return_value=None)
+        self.sleep_patch.start()
 
     def tearDown(self):
+        self.sleep_patch.stop()
         if os.path.exists(self.output_path):
             os.remove(self.output_path)
         orig = self.output_path + ".orig.png"
