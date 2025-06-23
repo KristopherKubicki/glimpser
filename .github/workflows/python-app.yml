@@ -53,18 +53,10 @@ jobs:
       - name: Install Node dependencies
         run: npm install
         # Jest and Prettier are devDependencies installed here
-      - name: Install pre-commit hooks
-        run: pre-commit install-hooks
       - name: Run pre-commit
         run: pre-commit run --all-files
-      - name: Lint JavaScript
-        run: npm run lint:js
-      - name: Check JavaScript formatting
-        run: npm run format:js
       - name: Run JavaScript tests with coverage
         run: npm test -- --coverage
-      - name: Lint CSS
-        run: npm run lint:css
       - name: Audit npm packages
         run: npm audit --audit-level=high
       # Temporary until Selenium 4.34 is released
