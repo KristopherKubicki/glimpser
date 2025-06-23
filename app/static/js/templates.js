@@ -455,7 +455,7 @@ export function isMobile() {
 }
 
 export function computeBorderColor(ageMinutes, isError) {
-  const base = isError ? [255, 0, 0] : [26, 115, 232];
+  const base = isError ? [128, 128, 128] : [26, 115, 232];
   let step = 0;
   if (ageMinutes >= 1) {
     step = Math.floor(Math.log10(ageMinutes)) + 1;
