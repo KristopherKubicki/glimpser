@@ -1568,6 +1568,7 @@ def init_routes(app: Flask) -> None:
     )
     from app.blueprints.status import create_blueprint as create_status_blueprint
     from app.blueprints.stream import create_blueprint as create_stream_blueprint
+    from app.blueprints.system import create_blueprint as create_system_blueprint
     from app.blueprints.views import create_blueprint as create_views_blueprint
 
     if not getattr(app, "_network_bp_registered", False):
@@ -1597,6 +1598,10 @@ def init_routes(app: Flask) -> None:
     if not getattr(app, "_assets_bp_registered", False):
         app.register_blueprint(create_assets_blueprint())
         app._assets_bp_registered = True
+
+    if not getattr(app, "_system_bp_registered", False):
+        app.register_blueprint(create_system_blueprint())
+        app._system_bp_registered = True
 
     if not getattr(app, "_api_bp_registered", False):
         app.register_blueprint(create_api_blueprint())
@@ -3535,11 +3540,6 @@ def init_routes(app: Flask) -> None:
             page_title="Settings",
         )
 
-    # Retained for backwards compatibility; redirect to the health endpoint.
-    @app.route("/system_metrics")
-    def system_metrics():
-        return redirect(url_for("health_check"))
-
     def allowed_file(filename):
         return "." in filename and filename.rsplit(".", 1)[1].lower() == "json"
 
@@ -3759,52 +3759,3 @@ def init_routes(app: Flask) -> None:
                 break
 
         return jsonify(suggestions)
-
-    @app.route("/sw.js")
-    def service_worker():
-        response = make_response(app.send_static_file("sw.js"))
-        response.headers["Cache-Control"] = "no-cache"
-        return response
-
-    @app.route("/robots.txt")
-    def robots_txt():
-        """Return ``robots.txt`` rules based on ``ALLOW_BOTS`` setting."""
-        rules = ["User-agent: *"]
-        if config.ALLOW_BOTS:
-            rules.append("Allow: /")
-        else:
-            rules.append("Disallow: /")
-        response = Response("\n".join(rules) + "\n", mimetype="text/plain")
-        response.headers["Cache-Control"] = "no-cache"
-        return response
-
-    @app.route("/toggle_scheduler", methods=["POST"])
-    @login_required
-    @profile_route("/toggle_scheduler")
-    def toggle_scheduler():
-        try:
-            if scheduling.scheduler.running:
-                scheduling.scheduler.shutdown(wait=True)
-                return jsonify({"status": "stopped"})
-            else:
-                scheduling.scheduler.start()
-                with app.app_context():
-                    scheduling.scheduler.remove_all_jobs()
-                    scheduling.schedule_crawlers()
-                    scheduling.schedule_summarization()
-                return jsonify({"status": "running"})
-        except Exception as e:
-            return jsonify({"status": "error", "message": str(e)}), 500
-
-    @app.route("/scheduler_status")
-    @login_required
-    @profile_route("/scheduler_status")
-    def get_scheduler_status():
-        return jsonify(
-            {"status": ("running" if scheduling.scheduler.running else "stopped")}
-        )
-
-    @app.route("/profiling")
-    @login_required
-    def profiling_data():
-        return jsonify(get_latency_stats())

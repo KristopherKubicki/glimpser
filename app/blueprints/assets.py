@@ -27,7 +27,7 @@ def create_blueprint() -> Blueprint:
 
         lgroup = routes.secure_filename(group) if group else "all"
         base_path = os.path.join(
-            os.path.dirname(os.path.join(__file__)), "..", routes.VIDEO_DIRECTORY
+            os.path.dirname(os.path.join(routes.__file__)), "..", routes.VIDEO_DIRECTORY
         )
         if not os.path.exists(base_path):
             routes.abort(404)
@@ -48,7 +48,7 @@ def create_blueprint() -> Blueprint:
             routes.abort(404)
 
         path = os.path.join(
-            os.path.dirname(os.path.join(__file__)),
+            os.path.dirname(os.path.join(routes.__file__)),
             "..",
             routes.VIDEO_DIRECTORY,
             str(template_name),
@@ -105,7 +105,7 @@ def create_blueprint() -> Blueprint:
             routes.abort(400, "Invalid duration")
 
         root = (
-            Path(__file__).resolve().parent
+            Path(routes.__file__).resolve().parent
             / ".."
             / routes.VIDEO_DIRECTORY
             / str(template_name)
@@ -205,7 +205,7 @@ def create_blueprint() -> Blueprint:
 
         for group_camera in re.findall(r"^group-(.+?)$", template_name):
             path = os.path.join(
-                os.path.dirname(os.path.join(__file__)),
+                os.path.dirname(os.path.join(routes.__file__)),
                 "..",
                 routes.SCREENSHOT_DIRECTORY,
                 f"{group_camera}_latest_camera.png",
@@ -222,7 +222,7 @@ def create_blueprint() -> Blueprint:
             return resp
 
         path = os.path.join(
-            os.path.dirname(os.path.join(__file__)),
+            os.path.dirname(os.path.join(routes.__file__)),
             "..",
             routes.SCREENSHOT_DIRECTORY,
             str(template_name),
@@ -254,5 +254,23 @@ def create_blueprint() -> Blueprint:
         )
         resp.status_code = 404
         return resp
+
+    @bp.route("/sw.js")
+    def service_worker():
+        response = routes.make_response(routes.current_app.send_static_file("sw.js"))
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+    @bp.route("/robots.txt")
+    def robots_txt():
+        """Return ``robots.txt`` rules based on ``ALLOW_BOTS`` setting."""
+        rules = ["User-agent: *"]
+        if routes.config.ALLOW_BOTS:
+            rules.append("Allow: /")
+        else:
+            rules.append("Disallow: /")
+        response = routes.Response("\n".join(rules) + "\n", mimetype="text/plain")
+        response.headers["Cache-Control"] = "no-cache"
+        return response
 
     return bp
