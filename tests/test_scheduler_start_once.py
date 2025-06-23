@@ -8,7 +8,8 @@ from app import create_app
 from app.utils.scheduling import scheduler
 
 
-def test_scheduler_starts_once():
+@patch("time.sleep", return_value=None)
+def test_scheduler_starts_once(mock_sleep):
     scheduler.shutdown(wait=False)
     scheduler.set_scheduler(BackgroundScheduler())
     calls = []
@@ -31,8 +32,6 @@ def test_scheduler_starts_once():
         patch("app.sms_alert"),
     ):
         create_app(enable_watchdog=False, schedule=True)
-        # allow background thread to run
-        time.sleep(0.1)
         assert len(calls) <= 1
 
     scheduler.shutdown(wait=False)

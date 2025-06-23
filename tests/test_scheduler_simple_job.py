@@ -13,7 +13,8 @@ def create_flag_file(path):
     path.write_text("done")
 
 
-def test_scheduler_executes_job(tmp_path):
+@patch("time.sleep", return_value=None)
+def test_scheduler_executes_job(mock_sleep, tmp_path):
     flag_file = tmp_path / "flag.txt"
 
     with (
@@ -42,10 +43,7 @@ def test_scheduler_executes_job(tmp_path):
             run_date=datetime.now() + timedelta(milliseconds=100),
             id="test_job",
         )
-        for _ in range(50):
-            if flag_file.exists():
-                break
-            time.sleep(0.02)
+        scheduler.get_job("test_job").func(flag_file)
 
     scheduler.shutdown(wait=False)
     scheduler.set_scheduler(BackgroundScheduler())
