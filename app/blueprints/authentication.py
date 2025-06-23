@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta
+from ipaddress import ip_address as ip_address_module
 
 from flask import Blueprint, current_app, request, session, url_for
 
@@ -18,6 +19,13 @@ def create_blueprint() -> Blueprint:
     def login():
         next_url = request.args.get("next")
         ip_address = request.remote_addr
+        show_recovery = False
+        if ip_address:
+            try:
+                addr = ip_address_module(ip_address)
+                show_recovery = addr.is_private or addr.is_loopback
+            except ValueError:
+                pass
         now = datetime.now()
 
         if (
@@ -26,7 +34,12 @@ def create_blueprint() -> Blueprint:
         ):
             routes.flash("Too many failed attempts. Please try again later.", "error")
             logging.warning("Locked login attempt from %s", ip_address)
-            return routes.render_template("login.html", page_title="Login"), 429
+            return (
+                routes.render_template(
+                    "login.html", page_title="Login", show_recovery_note=show_recovery
+                ),
+                429,
+            )
 
         if request.method == "POST":
             username = (request.form.get("username") or "").strip()
@@ -35,7 +48,14 @@ def create_blueprint() -> Blueprint:
             if not username or not password:
                 logging.debug("Login failed: missing credentials from %s", ip_address)
                 routes.flash("Username and password are required", "error")
-                return routes.render_template("login.html", page_title="Login"), 400
+                return (
+                    routes.render_template(
+                        "login.html",
+                        page_title="Login",
+                        show_recovery_note=show_recovery,
+                    ),
+                    400,
+                )
 
             db_session = routes.SessionLocal()
             try:
@@ -104,7 +124,9 @@ def create_blueprint() -> Blueprint:
                     ip_address,
                 )
                 routes.flash("Invalid username or password", "error")
-        return routes.render_template("login.html", page_title="Login")
+        return routes.render_template(
+            "login.html", page_title="Login", show_recovery_note=show_recovery
+        )
 
     @bp.route("/sso", methods=["GET"], endpoint="sso_login")
     def sso_login():
