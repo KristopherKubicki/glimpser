@@ -609,9 +609,13 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
         temp_file_path = None
         with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_file:
             for file in new_files[-300:]:  # keep it short for now
-                if os.path.getsize(os.path.abspath(file)) > 10 and "_2" in file:
-                    temp_file.write(f"file '{os.path.abspath(file)}'\n")
-                    lcount += 1
+                try:
+                    if os.path.getsize(os.path.abspath(file)) > 10 and "_2" in file:
+                        temp_file.write(f"file '{os.path.abspath(file)}'\n")
+                        lcount += 1
+                except FileNotFoundError:
+                    # Screenshot was removed concurrently; ignore it
+                    continue
             temp_file_path = temp_file.name
         if lcount == 0:
             # nothing to do
@@ -791,9 +795,14 @@ def _old_compile_to_video_inner(camera_path, video_path) -> bool:
 
     if new_files:
         # keep the size/“_2” filter you already had
-        candidate = [
-            f for f in new_files[-300:] if os.path.getsize(f) > 10 and "_2" in f
-        ]
+        candidate = []
+        for f in new_files[-300:]:
+            try:
+                if os.path.getsize(f) > 10 and "_2" in f:
+                    candidate.append(f)
+            except FileNotFoundError:
+                # Screenshot was removed concurrently; ignore it
+                continue
 
         # drop corrupt or truncated PNGs
         frame_files = []

@@ -292,6 +292,34 @@ class TestVideoArchiver(unittest.TestCase):
         mock_open.assert_called_once_with("shot_2.png")
         # self.assertEqual(captured_lines, ["shot_2.png"])
 
+    @patch("app.utils.video_archiver.run_ffmpeg")
+    @patch("app.utils.video_archiver.Image.open")
+    @patch("glob.glob")
+    def test_compile_to_video_skips_missing_files(
+        self, mock_glob, mock_open, mock_run_ffmpeg
+    ):
+        mock_glob.return_value = ["frame1_2.png", "frame2_2.png"]
+
+        def size_side_effect(path):
+            if "frame1" in path:
+                raise FileNotFoundError
+            return 1000
+
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("os.path.isfile", return_value=False),
+            patch("os.path.getmtime", return_value=1724516114),
+            patch("os.path.getctime", return_value=1724516115),
+            patch("os.path.getsize", side_effect=size_side_effect),
+            patch("os.rename"),
+        ):
+            mock_open.return_value.__enter__.return_value = MagicMock()
+            mock_open.return_value.__exit__.return_value = None
+            mock_run_ffmpeg.return_value.returncode = 0
+            compile_to_video(self.temp_dir, self.temp_dir)
+
+        self.assertTrue(mock_run_ffmpeg.called)
+
     @patch("app.utils.video_archiver.compile_to_video")
     def test_archive_screenshots(self, mock_compile_to_video):
         with (
