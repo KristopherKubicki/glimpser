@@ -335,8 +335,9 @@ def run_with_timeout(func, args=(), timeout=300):
         if success:
             job_failures.pop(key, None)
             job_backoff_until.pop(key, None)
-        else:
-            register_job_failure(key)
+
+    if not success:
+        register_job_failure(key)
 
 
 MAX_IMAGE_TIME_DIFF = datetime.timedelta(minutes=5)
