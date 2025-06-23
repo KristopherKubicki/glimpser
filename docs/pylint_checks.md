@@ -1,6 +1,6 @@
 # Pylint Checks
 
-The workflow `.github/workflows/pylint.yml` runs Pylint on each push. It sets up a matrix of Python versions `3.8` through `3.13`. For every version it:
+The workflow [`pylint.yml`](https://github.com/KristopherKubicki/glimpser/blob/main/.github/workflows/pylint.yml) runs Pylint on each push. It sets up a matrix of Python versions `3.8` through `3.13`. For every version it:
 
 1. Checks out the repository.
 2. Installs Pylint using `pip`.
