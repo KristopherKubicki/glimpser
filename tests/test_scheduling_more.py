@@ -40,8 +40,30 @@ class TestRunWithTimeout(unittest.TestCase):
         self.assertTrue(flag.value)
 
     @patch("app.utils.scheduling.is_system_online", return_value=True)
-    def test_run_terminated_on_timeout(self, _online):
+    @patch("time.sleep", return_value=None)
+    @patch("app.utils.scheduling.multiprocessing.Process")
+    def test_run_terminated_on_timeout(self, mock_proc, _sleep, _online):
         flag = multiprocessing.Value("b", False)
+
+        class DummyProc:
+            def __init__(self, *args, **kwargs):
+                self.alive = False
+                self.exitcode = 0
+
+            def start(self):
+                self.alive = True
+
+            def join(self, timeout=None):
+                if timeout is None:
+                    self.alive = False
+
+            def is_alive(self):
+                return self.alive
+
+            def terminate(self):
+                self.alive = False
+
+        mock_proc.side_effect = DummyProc
 
         def slow(val):
             time.sleep(1)
@@ -54,7 +76,31 @@ class TestRunWithTimeout(unittest.TestCase):
     @patch("app.utils.scheduling.is_system_online", return_value=True)
     @patch("app.utils.scheduling.cas_error")
     @patch("app.utils.scheduling.mark_offline")
-    def test_timeout_marks_offline(self, mock_offline, mock_cas_error, _online, _cpu):
+    @patch("time.sleep", return_value=None)
+    @patch("app.utils.scheduling.multiprocessing.Process")
+    def test_timeout_marks_offline(
+        self, mock_proc, _sleep, mock_offline, mock_cas_error, _online, _cpu
+    ):
+        class DummyProc:
+            def __init__(self, *args, **kwargs):
+                self.alive = False
+                self.exitcode = 0
+
+            def start(self):
+                self.alive = True
+
+            def join(self, timeout=None):
+                if timeout is None:
+                    self.alive = False
+
+            def is_alive(self):
+                return self.alive
+
+            def terminate(self):
+                self.alive = False
+
+        mock_proc.side_effect = DummyProc
+
         def slow(name, template):
             time.sleep(1)
 
