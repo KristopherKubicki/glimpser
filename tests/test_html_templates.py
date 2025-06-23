@@ -96,9 +96,8 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn("template_form(", html)
 
     def test_discover_has_existing_map_variable(self):
-        with open("app/templates/_discover_tab.html", encoding="utf-8") as f:
-            html = f.read()
-        self.assertIn("existingMap", html)
+        html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")
+        self.assertIn("data-existing-map", html)
 
     def test_discover_table_sortable(self):
         html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")

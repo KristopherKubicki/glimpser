@@ -10,6 +10,7 @@ const OFFLINE_URLS = [
   "/static/css/style.css",
   "/static/css/player.css",
   "/static/js/script.js",
+  "/static/js/discovery_scan.js",
 ];
 
 self.addEventListener("install", (event) => {

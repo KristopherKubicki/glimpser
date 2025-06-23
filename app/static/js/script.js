@@ -31,6 +31,7 @@ import { initUnsavedIndicator } from "./unsaved.js";
 import { initVideoZoom } from "./zoom.js";
 import { initSearchShortcut } from "./search_shortcut.js";
 import { initUrlTester } from "./url_test.js";
+import { initDiscoveryScan } from "./discovery_scan.js";
 
 initTemplates();
 initVideoControls();
@@ -39,6 +40,7 @@ initSchedulerToggle();
 initDiscoveryToggle();
 initSubnetInput();
 initDiscoveryTable();
+initDiscoveryScan();
 initNav();
 initFormValidation();
 initAddSettingValidation();
