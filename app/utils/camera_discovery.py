@@ -57,8 +57,21 @@ def _load_local_ouis() -> dict[str, str]:
 # Merge local OUI data without clobbering built‑in mappings. Some
 # distributions ship different vendor names for the same prefix which can
 # break unit tests expecting the bundled values.
-for _prefix, _vendor in _load_local_ouis().items():
-    OUI_MAP.setdefault(_prefix, _vendor)
+
+# Defer loading of large OUI databases until needed to keep imports fast
+_LOCAL_OUIS_LOADED = False
+
+
+def _ensure_local_ouis_loaded() -> None:
+    """Merge vendor prefixes from :data:`_OUI_FILES` into :data:`OUI_MAP`."""
+
+    global _LOCAL_OUIS_LOADED
+    if _LOCAL_OUIS_LOADED:
+        return
+    for _prefix, _vendor in _load_local_ouis().items():
+        OUI_MAP.setdefault(_prefix, _vendor)
+    _LOCAL_OUIS_LOADED = True
+
 
 # Ports checked for additional metadata after discovery. The list focuses on
 # common services exposed by cameras and network appliances. New ports can be
@@ -299,6 +312,7 @@ def _mac_manufacturer(mac: str | None) -> str | None:
 
     if not mac:
         return None
+    _ensure_local_ouis_loaded()
     prefix = mac.replace(":", "").lower()[:6]
     vendor = OUI_MAP.get(prefix)
     if vendor:
