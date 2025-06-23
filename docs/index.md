@@ -40,7 +40,6 @@ Glimpser monitors cameras and video streams, applying AI to summarize important 
 - [Testing and Coverage](testing.md)
 - [Release Workflow](release_workflow.md)
 - [Docs Build Workflow](docs_build.md)
-- [Pylint Checks](pylint_checks.md)
 - [Dependency Review](dependency_review.md)
 - [Continuous Integration Checks](ci_checks.md)
 - [CodeQL Security Scanning](codeql.md)
