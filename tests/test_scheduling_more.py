@@ -31,26 +31,24 @@ class TestRunWithTimeout(unittest.TestCase):
 
     @patch("app.utils.scheduling.is_system_online", return_value=True)
     def test_run_completes_before_timeout(self, _online):
-        with multiprocessing.Manager() as manager:
-            d = manager.dict()
+        flag = multiprocessing.Value("b", False)
 
-            def quick(val):
-                val["done"] = True
+        def quick(val):
+            val.value = True
 
-            run_with_timeout(quick, args=(d,), timeout=2)
-            self.assertTrue(d.get("done"))
+        run_with_timeout(quick, args=(flag,), timeout=2)
+        self.assertTrue(flag.value)
 
     @patch("app.utils.scheduling.is_system_online", return_value=True)
     def test_run_terminated_on_timeout(self, _online):
-        with multiprocessing.Manager() as manager:
-            d = manager.dict()
+        flag = multiprocessing.Value("b", False)
 
-            def slow(val):
-                time.sleep(1)
-                val["done"] = True
+        def slow(val):
+            time.sleep(1)
+            val.value = True
 
-            run_with_timeout(slow, args=(d,), timeout=0.2)
-            self.assertIsNone(d.get("done"))
+        run_with_timeout(slow, args=(flag,), timeout=0.2)
+        self.assertFalse(flag.value)
 
     @patch("app.utils.scheduling.psutil.cpu_percent", return_value=10)
     @patch("app.utils.scheduling.is_system_online", return_value=True)
