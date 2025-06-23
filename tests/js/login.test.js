@@ -21,6 +21,7 @@ beforeAll(async () => {
 beforeEach(() => {
   localStorage.clear();
   jest.clearAllMocks();
+  window.IS_LOGGED_IN = false;
 });
 
 test("shows error when fields empty", () => {
@@ -76,7 +77,9 @@ test("attemptAutoLogin posts credentials and redirects", async () => {
     configurable: true,
     value: { pathname: "/login", href: "/login" },
   });
-  global.fetch = jest.fn(() => Promise.resolve({ redirected: true, url: "/" }));
+  global.fetch = jest.fn(() =>
+    Promise.resolve({ redirected: true, url: "/", ok: true }),
+  );
   const result = await attemptAutoLogin();
   expect(fetch).toHaveBeenCalledWith(
     "/login",
@@ -85,4 +88,22 @@ test("attemptAutoLogin posts credentials and redirects", async () => {
   expect(result).toBe(true);
   expect(window.location.href).toBe("/");
   expect(window.IS_LOGGED_IN).toBe(true);
+});
+
+test("failed auto login clears stored credentials", async () => {
+  localStorage.setItem(
+    "autoLogin",
+    JSON.stringify({ username: "carol", password: "pw" }),
+  );
+  global.fetch = jest.fn(() =>
+    Promise.resolve({
+      redirected: false,
+      url: "/login",
+      ok: false,
+      status: 401,
+    }),
+  );
+  const result = await attemptAutoLogin();
+  expect(result).toBe(false);
+  expect(localStorage.getItem("autoLogin")).toBeNull();
 });

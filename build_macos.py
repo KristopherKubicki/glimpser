@@ -25,6 +25,7 @@ ARGS = [
     "--hidden-import=yt_dlp",
     "--hidden-import=pdf2image",
     "--hidden-import=pyvirtualdisplay",
+    "--exclude-module=onnxruntime",  # Skip optional onnxruntime to speed up build
     "--icon=app/static/favicon.ico",
 ]
 

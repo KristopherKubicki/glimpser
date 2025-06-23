@@ -1,3 +1,4 @@
+import socket
 import unittest
 from unittest.mock import patch
 
@@ -42,6 +43,14 @@ class TestHttpCallbacks(unittest.TestCase):
         with patch("requests.post", side_effect=[Exception("fail"), None]) as mock_post:
             send_http_callback("http://example.com", "event", {"a": 1}, retries=1)
             self.assertEqual(mock_post.call_count, 2)
+
+    def test_send_http_callback_bad_host(self):
+        with (
+            patch("socket.getaddrinfo", side_effect=socket.gaierror()),
+            patch("requests.post") as mock_post,
+        ):
+            send_http_callback("http://badhost", "event", {})
+            mock_post.assert_not_called()
 
 
 if __name__ == "__main__":

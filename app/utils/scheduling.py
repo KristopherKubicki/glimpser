@@ -20,6 +20,7 @@ import re
 import select
 import shutil
 import subprocess
+import sys
 import textwrap
 import threading
 import time
@@ -82,6 +83,9 @@ class CLIPProcessor:
         }
 
 
+from sqlalchemy.orm.exc import ObjectDeletedError
+
+import app.config as config
 from app.config import (
     AUTO_UPDATE_BRANCH,
     CLIP_MODEL_NAME,
@@ -97,11 +101,13 @@ from app.config import (
     SUMMARIES_DIRECTORY,
     VIDEO_DIRECTORY,
     WATCHDOG_CPU_THRESHOLD,
+    WATCHDOG_MEMORY_THRESHOLD,
     get_setting,
 )
-from app.models import OfflineJob, Summary
+from app.models import LogSummary, OfflineJob, Summary
 from app.utils.auto_update import check_for_update
-from app.utils.db import SessionLocal
+from app.utils.db import SessionLocal, ensure_column
+from app.utils.logging_utils import sanitize_url
 
 from . import camera_discovery
 from .detect import calculate_difference_fast
@@ -146,7 +152,9 @@ clip_processor, clip_session = None, None
 
 # Track currently running jobs to avoid launching duplicates.
 active_jobs: dict[str, multiprocessing.Process] = {}
-active_jobs_lock = threading.Lock()
+# Use an RLock to prevent deadlocks when register_job_failure is invoked
+# while the lock is already held in run_with_timeout.
+active_jobs_lock = threading.RLock()
 # Track failures and backoff time to slow down flapping jobs.
 job_failures: dict[str, int] = {}
 job_backoff_until: dict[str, float] = {}
@@ -186,6 +194,14 @@ class GracefulAPScheduler(APScheduler):
 scheduler = GracefulAPScheduler()
 
 
+def register_job_failure(key: str) -> None:
+    """Increment failure count and set backoff for ``key``."""
+    with active_jobs_lock:
+        fails = job_failures.get(key, 0) + 1
+        job_failures[key] = fails
+        job_backoff_until[key] = time.time() + min(2**fails, 300)
+
+
 def _run_target(func, args):
     """Wrapper to set process title before executing ``func``."""
     if setproctitle:
@@ -193,7 +209,11 @@ def _run_target(func, args):
         if args and isinstance(args[0], str):
             title += f":{args[0]}"
         setproctitle(f"glimpser {title}")
-    func(*args)
+    try:
+        func(*args)
+    except Exception:
+        logging.exception("Unhandled exception in %s", getattr(func, "__name__", "job"))
+        sys.exit(1)
 
 
 def run_with_timeout(func, args=(), timeout=300):
@@ -235,6 +255,15 @@ def run_with_timeout(func, args=(), timeout=300):
         logging.info(
             "High CPU (%.1f%%); skipping job %s",
             cpu_level,
+            getattr(func, "__name__", "job"),
+        )
+        return
+
+    mem_level = psutil.virtual_memory().percent
+    if mem_level > WATCHDOG_MEMORY_THRESHOLD:
+        logging.info(
+            "High memory (%.1f%%); skipping job %s",
+            mem_level,
             getattr(func, "__name__", "job"),
         )
         return
@@ -308,10 +337,9 @@ def run_with_timeout(func, args=(), timeout=300):
         if success:
             job_failures.pop(key, None)
             job_backoff_until.pop(key, None)
-        else:
-            fails = job_failures.get(key, 0) + 1
-            job_failures[key] = fails
-            job_backoff_until[key] = time.time() + min(2**fails, 300)
+
+    if not success:
+        register_job_failure(key)
 
 
 MAX_IMAGE_TIME_DIFF = datetime.timedelta(minutes=5)
@@ -486,6 +514,10 @@ def update_camera(name, template, image_file=None, motion=False):
         ):
             mark_offline(name)
         set_capture_failed(name, True)
+        clean_url = sanitize_url(url)
+        logging.error("Capture failed for %s (%s)", name, clean_url)
+        register_job_failure(name)
+        return None
 
     if lsuc is True:
         directory = os.path.join(SCREENSHOT_DIRECTORY, name)
@@ -507,7 +539,7 @@ def update_camera(name, template, image_file=None, motion=False):
         lpath = os.path.join(SCREENSHOT_DIRECTORY, "latest_camera.png")
 
         try:
-            if os.path.exists(lpath + ".tmp"):
+            if os.path.lexists(lpath + ".tmp"):
                 os.unlink(os.path.abspath(lpath + ".tmp"))
             os.symlink(
                 os.path.abspath(os.path.join("data/screenshots", name, png_files[-1])),
@@ -516,7 +548,7 @@ def update_camera(name, template, image_file=None, motion=False):
             os.rename(os.path.abspath(lpath + ".tmp"), os.path.abspath(lpath))
 
             lpath = os.path.join(SCREENSHOT_DIRECTORY, name, "latest_camera.png")
-            if os.path.exists(lpath + ".tmp"):
+            if os.path.lexists(lpath + ".tmp"):
                 os.unlink(os.path.abspath(lpath + ".tmp"))
             os.symlink(
                 os.path.abspath(os.path.join("data/screenshots", name, png_files[-1])),
@@ -532,7 +564,7 @@ def update_camera(name, template, image_file=None, motion=False):
                     group_lpath = os.path.join(
                         SCREENSHOT_DIRECTORY, f"{trimmed_group_name}_latest_camera.png"
                     )
-                    if os.path.exists(group_lpath + ".tmp"):
+                    if os.path.lexists(group_lpath + ".tmp"):
                         os.unlink(os.path.abspath(group_lpath + ".tmp"))
                     os.symlink(
                         os.path.abspath(
@@ -816,7 +848,7 @@ def update_camera(name, template, image_file=None, motion=False):
                 send_http_callback(template.get("callback_url"), event, payload)
 
             if last_motion_trigger or lsum:
-                if os.path.exists(
+                if os.path.lexists(
                     os.path.join(directory, "last_motion_caption.png.tmp")
                 ):
                     os.remove(os.path.join(directory, "last_motion_caption.png.tmp"))
@@ -830,7 +862,7 @@ def update_camera(name, template, image_file=None, motion=False):
                 )
 
             if last_caption_trigger:
-                if os.path.exists(os.path.join(directory, "last_caption.png.tmp")):
+                if os.path.lexists(os.path.join(directory, "last_caption.png.tmp")):
                     os.remove(os.path.join(directory, "last_caption.png.tmp"))
                 os.symlink(
                     png_files[-1], os.path.join(directory, "last_caption.png.tmp")
@@ -840,9 +872,9 @@ def update_camera(name, template, image_file=None, motion=False):
                     os.path.join(directory, "last_caption.png"),
                 )
 
-            if os.path.exists(prev_motion):
+            if os.path.lexists(prev_motion):
                 destination = os.readlink(prev_motion)
-                if os.path.exists(os.path.join(directory, "prev_motion.png.tmp")):
+                if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
                     os.remove(os.path.join(directory, "prev_motion.png.tmp"))
                 os.symlink(destination, os.path.join(directory, "prev_motion.png.tmp"))
                 os.rename(
@@ -850,7 +882,7 @@ def update_camera(name, template, image_file=None, motion=False):
                     os.path.join(directory, "prev_motion.png"),
                 )
                 image_paths.append(os.path.join(directory, "prev_motion.png"))
-            if os.path.exists(os.path.join(directory, "last_motion.png.tmp")):
+            if os.path.lexists(os.path.join(directory, "last_motion.png.tmp")):
                 os.remove(os.path.join(directory, "last_motion.png.tmp"))
             os.symlink(png_files[-1], os.path.join(directory, "last_motion.png.tmp"))
             os.rename(
@@ -878,16 +910,16 @@ def update_camera(name, template, image_file=None, motion=False):
                 }
                 send_http_callback(template.get("callback_url"), "motion", payload)
 
-            if os.path.exists(prev_motion):
+            if os.path.lexists(prev_motion):
                 destination = os.readlink(prev_motion)
-                if os.path.exists(os.path.join(directory, "prev_motion.png.tmp")):
+                if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
                     os.remove(os.path.join(directory, "prev_motion.png.tmp"))
                 os.symlink(destination, os.path.join(directory, "prev_motion.png.tmp"))
                 os.rename(
                     os.path.join(directory, "prev_motion.png.tmp"),
                     os.path.join(directory, "prev_motion.png"),
                 )
-            if os.path.exists(os.path.join(directory, "last_motion.png.tmp")):
+            if os.path.lexists(os.path.join(directory, "last_motion.png.tmp")):
                 os.remove(os.path.join(directory, "last_motion.png.tmp"))
             os.symlink(png_files[-1], os.path.join(directory, "last_motion.png.tmp"))
             os.rename(
@@ -1339,9 +1371,11 @@ def cache_logs():
     try:
         with open(log_file_path, "r") as file:
             file.seek(0, os.SEEK_END)  # Start at end of file
-            while not stop_event.is_set():
+            while True:
                 new_log = file.readline()
                 if not new_log:
+                    if stop_event.is_set():
+                        break
                     # Avoid busy looping when no new log lines are written.
                     time.sleep(1)
                     # The file may have been truncated. Seek to end and retry.
@@ -1580,6 +1614,105 @@ def get_last_summary_time() -> str | None:
     return None
 
 
+def summarize_recent_logs(limit: int = 200) -> str | None:
+    """Summarize log entries from the last day using the LLM."""
+
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+    with log_cache_lock:
+        lines = [
+            f"{e['level']} {e['message']}"
+            for e in list(log_cache)[-limit:]
+            if e.get("timestamp") and e["timestamp"] >= cutoff
+        ]
+
+    if not lines:
+        return None
+
+    text = "\n".join(lines)
+    result = summarize(text)
+    if result:
+        ts = int(datetime.datetime.utcnow().timestamp())
+        session = SessionLocal()
+        try:
+            session.add(LogSummary(timestamp=ts, content=result))
+            session.commit()
+        finally:
+            session.close()
+    return result
+
+
+def get_or_generate_log_summary() -> str | None:
+    """Return a recent log summary or generate one."""
+
+    cutoff = int(
+        (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).timestamp()
+    )
+    session = SessionLocal()
+    try:
+        rec = session.query(LogSummary).order_by(LogSummary.timestamp.desc()).first()
+        if rec and rec.timestamp >= cutoff:
+            return rec.content
+    finally:
+        session.close()
+
+    return summarize_recent_logs()
+
+
+def summarize_camera_logs(name: str, limit: int = 200) -> str | None:
+    """Summarize recent logs mentioning ``name`` using the LLM."""
+
+    ensure_column("log_summaries", "camera", "VARCHAR(255)", "''")
+
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+    with log_cache_lock:
+        lines = [
+            f"{e['level']} {e['message']}"
+            for e in list(log_cache)[-limit:]
+            if e.get("timestamp")
+            and e["timestamp"] >= cutoff
+            and name in e.get("message", "")
+        ]
+
+    if not lines:
+        return None
+
+    text = "\n".join(lines)
+    result = summarize(text)
+    if result:
+        ts = int(datetime.datetime.utcnow().timestamp())
+        session = SessionLocal()
+        try:
+            session.add(LogSummary(timestamp=ts, camera=name, content=result))
+            session.commit()
+        finally:
+            session.close()
+    return result
+
+
+def get_or_generate_camera_log_summary(name: str) -> str | None:
+    """Return a recent log summary for ``name`` or generate one."""
+
+    ensure_column("log_summaries", "camera", "VARCHAR(255)", "''")
+
+    cutoff = int(
+        (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).timestamp()
+    )
+    session = SessionLocal()
+    try:
+        rec = (
+            session.query(LogSummary)
+            .filter_by(camera=name)
+            .order_by(LogSummary.timestamp.desc())
+            .first()
+        )
+        if rec and rec.timestamp >= cutoff:
+            return rec.content
+    finally:
+        session.close()
+
+    return summarize_camera_logs(name)
+
+
 # Background discovery cache
 
 discovery_cache = {
@@ -1683,6 +1816,12 @@ def process_offline_jobs() -> None:
         jobs = session.query(OfflineJob).order_by(OfflineJob.id).all()
         for job in jobs:
             try:
+                job_id = job.id
+            except ObjectDeletedError:
+                # Job removed after query; skip it gracefully
+                session.rollback()
+                continue
+            try:
                 module_name, func_name = job.function.rsplit(".", 1)
                 mod = importlib.import_module(module_name)
                 func = getattr(mod, func_name)
@@ -1691,9 +1830,12 @@ def process_offline_jobs() -> None:
                 )
                 session.delete(job)
                 session.commit()
+            except ObjectDeletedError:
+                session.rollback()
+                continue
             except Exception as exc:
                 session.rollback()
-                logging.error("Failed to run offline job %s: %s", job.id, exc)
+                logging.error("Failed to run offline job %s: %s", job_id, exc)
     finally:
         session.close()
 

@@ -42,9 +42,11 @@
     <script>
       window.IS_LOGGED_IN = {{ 'true' if session.get('user_id') else 'false' }};
     </script>
+    {% if session.get('user_id') %}
     <script
       type="module"
       src="{{ url_for('static', filename='js/script.js') }}"
     ></script>
+    {% endif %}
   </head>
 </html>

@@ -8,6 +8,7 @@ The process is split across multiple runners:
   speeding up repeated builds.
 - **Windows** builds the standalone executable using `build_windows.py`.
 - The build sets `GLIMPSER_SKIP_DB_INIT=1` to prevent database access during analysis.
+- It also skips the optional `onnxruntime` package to avoid lengthy dependency scanning.
 - **macOS** builds a self-contained application with `build_macos.py`.
 
 The Ubuntu job also generates a small `release-badges.md` file that lists

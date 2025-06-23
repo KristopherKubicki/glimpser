@@ -10,10 +10,10 @@ import json
 import logging
 import math
 import os
-import queue
 import random
 import re
 import shutil
+import socket
 import sqlite3
 import struct
 import subprocess
@@ -27,7 +27,7 @@ from collections import deque
 from datetime import datetime, timedelta
 from fractions import Fraction
 from functools import lru_cache, wraps
-from ipaddress import ip_network
+from ipaddress import ip_address
 from pathlib import Path
 from threading import Lock, Thread
 from urllib.parse import urlparse
@@ -95,7 +95,6 @@ from app.utils import (
     video_archiver,
 )
 from app.utils.llm import ask_question
-from app.utils.network import is_system_online
 from app.utils.screenshots import (
     capture_frame_from_stream,
     check_user_activity,
@@ -423,6 +422,10 @@ def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
         subprocess.run(cmd, input=concat_payload, timeout=30, check=True)
         out_tmp.rename(out)
         return True
+    except subprocess.TimeoutExpired:
+        logging.error("FFmpeg concat timed out after 30s")
+        out_tmp.unlink(missing_ok=True)
+        return False
     except subprocess.SubprocessError as exc:
         logging.error("FFmpeg concat failed: %s", exc, exc_info=True)
         out_tmp.unlink(missing_ok=True)
@@ -553,6 +556,18 @@ def login_required(f: Callable) -> Callable:
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Allow LAN access without login when configured
+        ip = request.remote_addr
+        try:
+            ip_obj = ip_address(ip) if ip else None
+        except ValueError:
+            ip_obj = None
+        if (
+            ip_obj
+            and any(ip_obj in net for net in config.SKIP_LOGIN_SUBNETS)
+            and not request.path.startswith("/settings")
+        ):
+            return f(*args, **kwargs)
         # Check for API key in headers, GET parameters, or POST form data
         api_key = (
             request.headers.get("X-API-Key")
@@ -564,6 +579,7 @@ def login_required(f: Callable) -> Callable:
         # Check for valid timed API key
         if timed_key:
             if not is_hash_valid(timed_key):
+                logging.warning("Invalid timed key from %s", ip)
                 return jsonify({"error": "Invalid timed key"}), 401
             return f(*args, **kwargs)
 
@@ -577,6 +593,7 @@ def login_required(f: Callable) -> Callable:
             # data should trigger a logout redirect rather than allowing the
             # request through.
             if not isinstance(session.get("user_id"), int):
+                logging.warning("Malformed session for %s", ip)
                 session.pop("user_id", None)
                 flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
@@ -585,6 +602,11 @@ def login_required(f: Callable) -> Callable:
             if expiry and datetime.now() > datetime.strptime(
                 expiry, "%Y-%m-%d %H:%M:%S"
             ):
+                logging.info(
+                    "Expired session for user %s from %s",
+                    session.get("user_id"),
+                    ip,
+                )
                 session.pop("user_id", None)
                 flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
@@ -610,6 +632,11 @@ def login_required(f: Callable) -> Callable:
                 db_session.close()
 
             if not user:
+                logging.info(
+                    "Session user id %s not found for %s",
+                    session.get("user_id"),
+                    ip,
+                )
                 session.pop("user_id", None)
                 flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
@@ -620,6 +647,7 @@ def login_required(f: Callable) -> Callable:
         # Handle missing or invalid authentication
         else:
             if api_key:
+                logging.warning("Invalid API key from %s", ip)
                 return jsonify({"error": "Invalid API key"}), 401
             else:
                 # For Server-Sent Events endpoints, return an SSE-formatted
@@ -640,6 +668,8 @@ def login_required(f: Callable) -> Callable:
                         "error",
                     )
                     logging.debug("Missing session cookie from %s", request.remote_addr)
+                else:
+                    logging.debug("No valid auth cookie from %s", ip)
                 return redirect(url_for("login", next=request.url))
 
     return decorated_function
@@ -1250,6 +1280,14 @@ def generate(
                             last_shot = None
                     except Exception as e:
                         logging.error("Failed to open last shot %s: %s", last_shot, e)
+                        try:
+                            os.remove(last_shot)
+                        except OSError as exc:
+                            logging.warning(
+                                "Failed to remove bad shot %s: %s",
+                                last_shot,
+                                exc,
+                            )
                         last_shot = None
 
                 if frame is None:
@@ -1365,6 +1403,14 @@ def generate(
                                 exc,
                                 exc_info=True,
                             )
+                            try:
+                                os.remove(most_recent_file)
+                            except OSError as remove_exc:
+                                logging.warning(
+                                    "Failed to remove invalid screenshot %s: %s",
+                                    most_recent_file,
+                                    remove_exc,
+                                )
 
         if not frame:
             frame = _placeholder_frame()
@@ -1509,6 +1555,95 @@ def allowed_filename(filename: str) -> bool:
 
 def init_routes(app: Flask) -> None:
     """Register all route handlers on the given ``app``."""
+    from app.blueprints.api import create_blueprint as create_api_blueprint
+    from app.blueprints.assets import create_blueprint as create_assets_blueprint
+    from app.blueprints.authentication import create_blueprint as create_auth_blueprint
+    from app.blueprints.discovery import create_blueprint as create_discovery_blueprint
+    from app.blueprints.docs import create_blueprint as create_docs_blueprint
+    from app.blueprints.mcp import create_blueprint as create_mcp_blueprint
+    from app.blueprints.media import create_blueprint as create_media_blueprint
+    from app.blueprints.network import create_blueprint
+    from app.blueprints.notifications import (
+        create_blueprint as create_notifications_blueprint,
+    )
+    from app.blueprints.status import create_blueprint as create_status_blueprint
+    from app.blueprints.stream import create_blueprint as create_stream_blueprint
+    from app.blueprints.system import create_blueprint as create_system_blueprint
+    from app.blueprints.views import create_blueprint as create_views_blueprint
+
+    if not getattr(app, "_network_bp_registered", False):
+        app.register_blueprint(create_blueprint())
+        app._network_bp_registered = True
+
+    if not getattr(app, "_status_bp_registered", False):
+        app.register_blueprint(create_status_blueprint())
+        app._status_bp_registered = True
+
+    if not getattr(app, "_notifications_bp_registered", False):
+        app.register_blueprint(create_notifications_blueprint())
+        app._notifications_bp_registered = True
+
+    if not getattr(app, "_docs_bp_registered", False):
+        app.register_blueprint(create_docs_blueprint())
+        app._docs_bp_registered = True
+
+    if not getattr(app, "_stream_bp_registered", False):
+        app.register_blueprint(create_stream_blueprint())
+        app._stream_bp_registered = True
+
+    if not getattr(app, "_media_bp_registered", False):
+        app.register_blueprint(create_media_blueprint())
+        app._media_bp_registered = True
+
+    if not getattr(app, "_assets_bp_registered", False):
+        app.register_blueprint(create_assets_blueprint())
+        app._assets_bp_registered = True
+
+    if not getattr(app, "_system_bp_registered", False):
+        app.register_blueprint(create_system_blueprint())
+        app._system_bp_registered = True
+
+    if not getattr(app, "_api_bp_registered", False):
+        app.register_blueprint(create_api_blueprint())
+        app._api_bp_registered = True
+
+    if not getattr(app, "_mcp_bp_registered", False):
+        app.register_blueprint(create_mcp_blueprint())
+        app._mcp_bp_registered = True
+
+    if not getattr(app, "_discovery_bp_registered", False):
+        app.register_blueprint(create_discovery_blueprint())
+        app._discovery_bp_registered = True
+
+    if not getattr(app, "_views_bp_registered", False):
+        app.register_blueprint(create_views_blueprint())
+        app.add_url_rule(
+            "/",
+            endpoint="index",
+            view_func=app.view_functions["views.index"],
+        )
+        app._views_bp_registered = True
+
+    if not getattr(app, "_auth_bp_registered", False):
+        app.register_blueprint(create_auth_blueprint())
+        # Provide legacy endpoint names for compatibility
+        app.add_url_rule(
+            "/login",
+            endpoint="login",
+            view_func=app.view_functions["authentication.login"],
+        )
+        app.add_url_rule(
+            "/logout",
+            endpoint="logout",
+            view_func=app.view_functions["authentication.logout"],
+        )
+        app.add_url_rule(
+            "/sso",
+            endpoint="sso_login",
+            view_func=app.view_functions["authentication.sso_login"],
+        )
+        app._auth_bp_registered = True
+
     # get_active_groups()
 
     @app.after_request
@@ -1555,233 +1690,6 @@ def init_routes(app: Flask) -> None:
             CLOCK_NAVBAR=CLOCK_NAVBAR,
         )
 
-    # Add a new route for the extended health check
-    @app.route("/health")
-    @login_required
-    @profile_route("/health")
-    def health_check():
-
-        scheduler_status = "failed"
-        free_gb = 0
-
-        metrics = scheduling.get_system_metrics()
-
-        # Define thresholds for nominal performance
-        cpu_threshold = 80  # 80% CPU usage
-        memory_threshold = 80  # 80% memory usage
-        thread_threshold = 100  # 100 threads # should be tied to the thread count in the config, right?
-        open_file_threshold = 1024  # thats a lot
-        disk_threshold = 95  # almost full
-
-        # Check if metrics are nominal and collect error messages
-        error_messages = []
-        is_nominal = True
-
-        if metrics["cpu_usage"] >= cpu_threshold:
-            is_nominal = False
-            error_messages.append(f"CPU usage is high: {metrics['cpu_usage']}%")
-        if metrics["memory_usage"] >= memory_threshold:
-            is_nominal = False
-            error_messages.append(f"Memory usage is high: {metrics['memory_usage']}%")
-        if metrics["thread_count"] >= thread_threshold:
-            is_nominal = False
-            error_messages.append(f"Thread count is high: {metrics['thread_count']}")
-        if metrics["open_files"] >= open_file_threshold:
-            is_nominal = False
-            error_messages.append(f"Too many open files: {metrics['open_files']}")
-        if metrics["disk_usage"] >= disk_threshold:
-            is_nominal = False
-            error_messages.append(f"Disk usage is high: {metrics['disk_usage']}%")
-
-        try:
-            # 0h 1m 6s
-            if (
-                len(metrics["uptime"]) < 9 and "0h 0m " in metrics["uptime"]
-            ):  # first ten seconds...
-                is_nominal = False
-                error_messages.append("System just started, still initializing")
-        except Exception:
-            is_nominal = False
-            error_messages.append("Error getting system uptime")
-
-        ######
-        #  consider rolling these into the metrics
-        try:
-            # Check database connection
-            session = SessionLocal()
-            session.execute(text("SELECT 1"))
-            session.close()
-            db_status = "connected"
-        except Exception:
-            is_nominal = False
-            db_status = "disconnected"
-            error_messages.append("Database connection failed")
-
-        try:
-            # Check if scheduler is running
-            scheduler_status = "running" if scheduling.scheduler.running else "stopped"
-            if scheduler_status != "running":
-                is_nominal = False
-                error_messages.append("Scheduler is not running")
-        except Exception:
-            is_nominal = False
-            scheduler_status = "failed"
-            error_messages.append("Error checking scheduler status")
-
-        #
-        ######
-
-        return (
-            jsonify(
-                {
-                    "status": "healthy" if is_nominal else "degraded",
-                    "metrics": metrics,
-                    "nominal": is_nominal,
-                    "database": db_status,
-                    "scheduler": scheduler_status,
-                    "free_disk_space_gb": free_gb,
-                    "error_messages": error_messages,
-                }
-            ),
-            200,
-        )  # always return 200, but might be degraded.
-
-    @app.route("/danger_status")
-    @login_required
-    @profile_route("/danger_status")
-    def danger_status():
-        """Return whether Danger mode can be used."""
-        port_open = is_chrome_debug_port_open("127.0.0.1", 9222)
-        idle = not check_user_activity(timeout=1)
-        enabled = config.get_setting("DANGER_MODE", "True") == "True"
-        browser_path = get_chrome_path()
-        patched = not shortcuts_need_patch()
-        return jsonify(
-            {
-                "port_open": port_open,
-                "idle": idle,
-                "enabled": enabled,
-                "ready": port_open and idle and enabled,
-                "browser": (os.path.basename(browser_path) if browser_path else None),
-                "path": browser_path,
-                "version": (get_chrome_version(browser_path) if browser_path else None),
-                "shortcut": str(first_shortcut_path() or ""),
-                "patched": patched,
-            }
-        )
-
-    @app.route("/captions_status")
-    @login_required
-    def captions_status():
-        """Return the most recent caption and timestamp.
-
-        If a ``group`` query parameter is provided, the newest caption from
-        templates in that group is returned. Otherwise the latest global summary
-        is used.
-        """
-
-        group = request.args.get("group")
-        if group and group != "all":
-            templates = template_manager.get_templates()
-            latest_time = None
-            caption = ""
-            for name, tmpl in templates.items():
-                groups = [g.strip() for g in tmpl.get("groups", "").split(",")]
-                if group not in groups:
-                    continue
-                t = tmpl.get("last_caption_time")
-                if not t:
-                    continue
-                try:
-                    dt = datetime.strptime(t, "%Y-%m-%d %H:%M:%S")
-                except Exception:
-                    continue
-                if not latest_time or dt > latest_time:
-                    latest_time = dt
-                    caption = tmpl.get("last_caption", "")
-            if latest_time:
-                return jsonify(
-                    {
-                        "caption": caption,
-                        "timestamp": latest_time.strftime("%Y-%m-%d %H:%M:%S"),
-                    }
-                )
-
-        caption = ""
-        timestamp = ""
-        session_db = SessionLocal()
-        try:
-            rec = session_db.query(Summary).order_by(Summary.timestamp.desc()).first()
-            if rec:
-                try:
-                    data = json.loads(getattr(rec, "content", ""))
-                    if data:
-                        caption = next(iter(data.values()))
-                except Exception:
-                    caption = getattr(rec, "content", "")
-                ts = getattr(rec, "timestamp", None)
-                if ts is not None:
-                    timestamp = datetime.utcfromtimestamp(ts).strftime(
-                        "%Y-%m-%dT%H:%M:%SZ"
-                    )
-        except Exception as e:  # pragma: no cover - unexpected DB errors
-            logging.error("error retrieving captions status: %s", e)
-        finally:
-            session_db.close()
-
-        return jsonify({"caption": caption, "timestamp": timestamp})
-
-    @app.route("/discovery_status")
-    @login_required
-    @profile_route("/discovery_status")
-    def discovery_status():
-        """Return cached background discovery status."""
-        return jsonify(scheduling.get_discovery_status())
-
-    @app.route("/network_status")
-    @login_required
-    def network_status():
-        """Return current network connectivity status."""
-        return jsonify({"online": is_system_online()})
-
-    @app.route("/discover/subnets")
-    @login_required
-    def discover_subnets():
-        """Return local IPv4 subnets as strings."""
-        nets = [str(n) for n in camera_discovery._local_subnets()]
-        nets.append("internet")
-        return jsonify(nets)
-
-    @app.route("/toggle_discovery", methods=["POST"])
-    @login_required
-    @profile_route("/toggle_discovery")
-    def toggle_discovery():
-        """Start or stop hourly background discovery."""
-        try:
-            job = scheduling.scheduler.get_job("background_discovery")
-            if job:
-                scheduling.stop_discovery()
-                update_setting("DISCOVERY_AUTOSTART", "False", restart=False)
-                return jsonify({"status": "stopped"})
-            scheduling.schedule_discovery()
-            update_setting("DISCOVERY_AUTOSTART", "True", restart=False)
-            return jsonify({"status": "running"})
-        except Exception as e:
-            return jsonify({"status": "error", "message": str(e)}), 500
-
-    @app.route("/toggle_chyron", methods=["POST"])
-    @login_required
-    @profile_route("/toggle_chyron")
-    def toggle_chyron():
-        """Enable or disable the caption chyron."""
-        try:
-            current = config.get_setting("CHYRON_SPEED", "0")
-            new_speed = "0" if str(current) != "0" else "240"
-            update_setting("CHYRON_SPEED", new_speed)
-            return jsonify({"speed": int(new_speed)})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
     @app.route("/danger", methods=["GET", "POST"])
     @login_required
     def danger_mode():
@@ -1820,7 +1728,8 @@ def init_routes(app: Flask) -> None:
             "version": (get_chrome_version(chrome_path) if chrome_path else "N/A"),
             "shortcut": str(first_shortcut_path() or "N/A"),
             "patched": not shortcuts_need_patch(),
-            "running": is_chrome_debug_port_open("127.0.0.1", 9222),
+            "running": is_chrome_debug_port_open("127.0.0.1", config.DANGER_PORT),
+            "port": config.DANGER_PORT,
         }
 
         return render_template(
@@ -1830,316 +1739,6 @@ def init_routes(app: Flask) -> None:
             danger_info=danger_info,
             shortcut_options=shortcut_opts,
             page_title="Danger Mode",
-        )
-
-    @app.route("/api/discover")
-    @profile_route("/api/discover")
-    def api_discover():
-        api_info = {
-            "version": "1.0",
-            "endpoints": [
-                {
-                    "path": "/health",
-                    "method": "GET",
-                    "description": "Check the health status of the API",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/danger_status",
-                    "method": "GET",
-                    "description": "Check if Danger mode is ready",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/captions_status",
-                    "method": "GET",
-                    "description": "Get the most recent caption and timestamp",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/discovery_status",
-                    "method": "GET",
-                    "description": "Check background discovery status",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/api/discover",
-                    "method": "GET",
-                    "description": "Get information about available API endpoints",
-                    "authentication_required": False,
-                },
-                {
-                    "path": "/login",
-                    "method": "GET, POST",
-                    "description": "User login endpoint",
-                    "authentication_required": False,
-                },
-                {
-                    "path": "/logout",
-                    "method": "GET",
-                    "description": "User logout endpoint",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/",
-                    "method": "GET",
-                    "description": "Main index page",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/templates",
-                    "method": "GET, POST, DELETE",
-                    "description": "Manage templates",
-                    "authentication_required": True,
-                },
-                {
-                    "path": "/settings",
-                    "method": "GET, POST",
-                    "description": "Manage application settings",
-                    "authentication_required": True,
-                },
-            ],
-        }
-        return jsonify(api_info), 200
-
-    @app.route("/mcp/tools")
-    @login_required
-    def mcp_tools():
-        """Return the list of tools exposed by the configured MCP server."""
-        from app.utils import mcp
-
-        tools = mcp.list_tools_sync()
-        return jsonify(tools)
-
-    @app.route("/mcp/tool/<string:name>", methods=["POST"])
-    @login_required
-    def mcp_call_tool(name):
-        """Call a tool on the configured MCP server."""
-        from app.utils import mcp
-
-        params = request.get_json(silent=True) or {}
-        result = mcp.call_tool_sync(name, params)
-        return jsonify(result)
-
-    @app.route("/login", methods=["GET", "POST"])
-    def login():
-        next_url = request.args.get("next")
-        ip_address = request.remote_addr
-        now = datetime.now()
-
-        # Check if the IP address is locked out
-        if (
-            ip_address in login_attempts
-            and login_attempts[ip_address]["locked_until"] > now
-        ):
-            flash("Too many failed attempts. Please try again later.", "error")
-            logging.warning(
-                "Locked login attempt from %s until %s",
-                ip_address,
-                login_attempts[ip_address]["locked_until"].strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                ),
-            )
-            return render_template("login.html", page_title="Login"), 429
-
-        if request.method == "POST":
-            username = (request.form.get("username") or "").strip()
-            password = (request.form.get("password") or "").strip()
-            remember = request.form.get("remember") == "on"
-            if not username or not password:
-                flash("Username and password are required", "error")
-                return render_template("login.html", page_title="Login"), 400
-
-            logging.debug(
-                "Login request from %s: username=%s, password_length=%d",
-                ip_address,
-                username or "<empty>",
-                len(password),
-            )
-
-            db_session = SessionLocal()
-            try:
-                user = db_session.query(User).filter_by(username=username).first()
-            finally:
-                db_session.close()
-
-            password_valid = False
-            if user:
-                password_valid = check_password_hash(user.password_hash, password)
-                logging.debug(
-                    "User %s found with hash %s; password valid: %s",
-                    username,
-                    user.password_hash,
-                    password_valid,
-                )
-            else:
-                logging.debug("User %s not found", username)
-
-            if user and password_valid:
-                session["user_id"] = user.id
-                if remember:
-                    current_app.permanent_session_lifetime = timedelta(
-                        days=config.AUTO_LOGIN_DAYS
-                    )
-                    session["remember"] = True
-                    timeout = timedelta(days=config.AUTO_LOGIN_DAYS)
-                else:
-                    current_app.permanent_session_lifetime = timedelta(
-                        minutes=config.SESSION_TIMEOUT_MINUTES
-                    )
-                    session.pop("remember", None)
-                    timeout = timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
-                session["expiry"] = (now + timeout).strftime("%Y-%m-%d %H:%M:%S")
-                session.permanent = True
-                login_attempts.pop(
-                    ip_address, None
-                )  # Reset attempts on successful login
-                logging.info("Successful login for %s from %s", username, ip_address)
-                target = (
-                    next_url if is_safe_redirect_url(next_url) else url_for("index")
-                )
-                return redirect(target)
-            else:
-                # Record the failed attempt
-                if ip_address not in login_attempts:
-                    login_attempts[ip_address] = {
-                        "attempts": 1,
-                        "locked_until": now,
-                    }
-                else:
-                    login_attempts[ip_address]["attempts"] += 1
-
-                # Lockout after 5 failed attempts
-                if login_attempts[ip_address]["attempts"] >= 5:
-                    login_attempts[ip_address]["locked_until"] = now + timedelta(
-                        hours=24
-                    )
-
-                # Rate limit after 2 attempts per minute
-                if login_attempts[ip_address]["attempts"] % 2 == 0:
-                    login_attempts[ip_address]["locked_until"] = now + timedelta(
-                        minutes=1
-                    )
-                reason = "unknown user" if user is None else "wrong password"
-                logging.warning(
-                    "Failed login attempt for %s from %s: %s (attempt %d, lock until %s)",
-                    username or "<empty>",
-                    ip_address,
-                    reason,
-                    login_attempts[ip_address]["attempts"],
-                    login_attempts[ip_address]["locked_until"].strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    ),
-                )
-                flash("Invalid username or password", "error")
-        return render_template("login.html", page_title="Login")
-
-    @app.route("/sso", methods=["GET"])
-    def sso_login():
-        token = request.args.get("token") or request.headers.get("X-SSO-Token")
-        if token != config.SSO_TOKEN or not token:
-            flash("Invalid SSO token", "error")
-            logging.warning("Invalid SSO token from %s", request.remote_addr)
-            return redirect(url_for("login"))
-
-        db_session = SessionLocal()
-        try:
-            user = (
-                db_session.query(User).filter_by(username=config.SSO_USERNAME).first()
-            )
-        finally:
-            db_session.close()
-
-        if not user:
-            flash("Configured SSO user not found", "error")
-            logging.error("SSO user %s not found", config.SSO_USERNAME)
-            return redirect(url_for("login"))
-
-        session["user_id"] = user.id
-        session["expiry"] = (
-            datetime.now() + timedelta(minutes=config.SESSION_TIMEOUT_MINUTES)
-        ).strftime("%Y-%m-%d %H:%M:%S")
-        session.permanent = True
-        flash("Logged in via SSO", "success")
-        logging.info("SSO login for %s from %s", user.username, request.remote_addr)
-        return redirect(url_for("index"))
-
-    @app.route("/help")
-    @login_required
-    def help_page():
-        return render_template("help.html", page_title="Help")
-
-    @app.route("/docs/<string:filename>")
-    @login_required
-    def docs_file(filename: str):
-        """Serve Markdown documentation files from the repository."""
-        if not allowed_filename(filename):
-            abort(404)
-
-        docs_path = os.path.join(
-            os.path.dirname(os.path.join(__file__)),
-            "..",
-            DOCS_DIRECTORY,
-        )
-        full_path = os.path.join(docs_path, filename)
-        if not os.path.exists(full_path):
-            abort(404)
-
-        return send_from_directory(docs_path, filename)
-
-    @app.route("/cli_help")
-    @login_required
-    def cli_help():
-        """Return CLI help text."""
-        from app.utils.cli import cli_help_text
-
-        return Response(cli_help_text(), mimetype="text/plain")
-
-    @app.route("/settings_help")
-    @login_required
-    def settings_help():
-        """Redirect old help route to the main settings page."""
-        return redirect(url_for("settings"))
-
-    @app.route("/offline")
-    @login_required
-    def offline_page():
-        """Render a fallback page when offline."""
-        return render_template("offline.html", page_title="Offline")
-
-    @app.route("/logout")
-    @login_required
-    def logout():
-        session.pop("user_id", None)
-        flash("You have been logged out successfully.", "success")
-        # add query flag so client can clear persistent credentials
-        return redirect(url_for("login", logout="1"))
-
-    @app.route("/")
-    @login_required
-    def index():
-        """Render the index page with available templates."""
-        template_details = template_manager.get_templates()
-        return render_template(
-            "index.html",
-            template_details=template_details,
-            page_title="Dashboard",
-        )
-
-    @app.route("/group/<string:group_name>")
-    @login_required
-    def group_page(group_name: str):
-        """Render a page listing all cameras in a group."""
-        group_name = secure_filename(group_name)
-        groups = get_active_groups()
-        if group_name == "all":
-            return redirect(url_for("index"))
-        if group_name not in groups:
-            abort(404)
-        return render_template(
-            "group.html",
-            group_name=group_name,
-            page_title=f"Group – {group_name}",
         )
 
     def get_active_templates():
@@ -2487,34 +2086,6 @@ def init_routes(app: Flask) -> None:
             )
 
         return "Method Not Allowed", 405
-
-    @app.route("/test.mjpg", methods=["GET"])
-    @login_required
-    def test_mjpg():
-        group = request.args.get("group")
-        camera = request.args.get("camera")
-        if group == "all":
-            group = None
-        if camera == "all":
-            camera = None
-        return Response(
-            generate(group=group, camera=camera, filename="latest_camera.png"),
-            mimetype="multipart/x-mixed-replace; boundary=frame",
-        )
-
-    @app.route("/stream.mjpg", methods=["GET"])
-    @login_required
-    def stream_mjpg():
-        group = request.args.get("group")
-        camera = request.args.get("camera")
-        if group == "all":
-            group = None
-        if camera == "all":
-            camera = None
-        return Response(
-            generate(group=group, camera=camera, filename="latest_camera.png"),
-            mimetype="multipart/x-mixed-replace; boundary=frame",
-        )
 
     @app.route("/motion.mjpg", methods=["GET"])
     @login_required
@@ -3615,18 +3186,6 @@ def init_routes(app: Flask) -> None:
             page_title="Camera Details",
         )
 
-    @app.route("/screenshots/<string:name>")
-    @login_required
-    def list_screenshots(name: TemplateName):
-        """Return a JSON list of screenshot files for ``name``."""
-
-        template_name = validate_template_name(str(name))
-        if template_name is None:
-            abort(404)
-
-        lscreens = template_manager.get_screenshots_for_template(template_name)
-        return jsonify({"screenshots": lscreens})
-
     @app.route("/generate_prompt/<string:template_name>", methods=["POST"])
     @login_required
     def generate_prompt_route(template_name: TemplateName):
@@ -3660,24 +3219,57 @@ def init_routes(app: Flask) -> None:
         info = camera_fix.check_camera_template(url, xpaths)
         return jsonify(info)
 
-    @app.route("/screenshots/<string:name>/<string:filename>")
+    @app.route("/camera_diagnostics/<string:template_name>")
     @login_required
-    def uploaded_file(name: TemplateName, filename: str):
-        template_name = validate_template_name(str(name))
-        if template_name is None or not allowed_filename(filename):
+    def camera_diagnostics(template_name: TemplateName) -> Response:
+        """Return live diagnostics for ``template_name``.
+
+        The diagnostics include ping latency, open ports, HTTP banner
+        information and a simple device type label when available.
+        """
+
+        template_name = validate_template_name(str(template_name))
+        if template_name is None:
             abort(404)
 
-        path = os.path.join(
-            os.path.dirname(os.path.join(__file__)),
-            "..",
-            SCREENSHOT_DIRECTORY,
-            str(template_name),
+        details = template_manager.get_template(template_name)
+        if not details:
+            abort(404)
+
+        url = details.get("url", "")
+        host = urlparse(url).hostname or url
+        try:
+            ip = socket.gethostbyname(host)
+        except Exception:
+            ip = host
+
+        data: dict[str, typing.Any] = {"ip": ip}
+
+        latency = camera_discovery._ping_latency(ip)
+        if latency is not None:
+            data["ping_ms"] = latency
+
+        ports = camera_discovery._detect_open_ports(ip, camera_discovery.COMMON_PORTS)
+        if ports:
+            data["open_ports"] = ports
+            for p in ports:
+                if p in (80, 8080, 443):
+                    banner = camera_discovery._fetch_http_banner(ip, p)
+                    for k, v in banner.items():
+                        data.setdefault(k, v)
+
+        dtype = camera_discovery._classify_device(
+            {
+                "ip": ip,
+                "protocol": details.get("protocol", urlparse(url).scheme or "http"),
+                "port": details.get("port", urlparse(url).port or 0),
+                "info": data,
+            }
         )
+        if dtype:
+            data["device_type"] = dtype
 
-        if not os.path.exists(path):
-            abort(404)
-
-        return send_from_directory(path, filename)
+        return jsonify(data)
 
     def delete_setting(name: str) -> bool:
         name = name.replace("'", "")[:32]
@@ -3694,37 +3286,6 @@ def init_routes(app: Flask) -> None:
             session.close()
 
         return True
-
-    @app.route("/videos/<string:name>")
-    @login_required
-    def list_videos(name: TemplateName):
-        """Return a JSON list of video files for ``name``."""
-
-        template_name = validate_template_name(str(name))
-        if template_name is None:
-            abort(404)
-
-        lvideos = template_manager.get_videos_for_template(template_name)
-        return jsonify({"videos": lvideos})
-
-    @app.route("/videos/<string:name>/<string:filename>")
-    @login_required
-    def view_video(name: TemplateName, filename: str):
-        template_name = validate_template_name(str(name))
-        if template_name is None or not allowed_filename(filename):
-            abort(404)
-
-        path = os.path.join(
-            os.path.dirname(os.path.join(__file__)),
-            "..",
-            VIDEO_DIRECTORY,
-            str(template_name),
-        )
-
-        if not os.path.exists(path):
-            abort(404)
-
-        return send_from_directory(path, filename)
 
     @app.route("/settings", methods=["GET", "POST"])
     @login_required
@@ -3918,6 +3479,7 @@ def init_routes(app: Flask) -> None:
         metrics = scheduling.get_system_metrics()
         feeds = scheduling.get_feed_status()
         last_summary = scheduling.get_last_summary_time()
+        log_summary = scheduling.get_or_generate_log_summary()
         danger_enabled = config.get_setting("DANGER_MODE", "True") == "True"
         cost_summary, total_tokens, total_cost, total_calls = (
             template_manager.get_llm_cost_summary()
@@ -3934,7 +3496,8 @@ def init_routes(app: Flask) -> None:
             "version": (get_chrome_version(chrome_path) if chrome_path else "N/A"),
             "shortcut": str(first_shortcut_path() or "N/A"),
             "patched": not shortcuts_need_patch(),
-            "running": is_chrome_debug_port_open("127.0.0.1", 9222),
+            "running": is_chrome_debug_port_open("127.0.0.1", config.DANGER_PORT),
+            "port": config.DANGER_PORT,
         }
 
         last_backup = None
@@ -3957,6 +3520,7 @@ def init_routes(app: Flask) -> None:
             metrics=metrics,
             feeds=feeds,
             last_summary=last_summary,
+            log_summary=log_summary,
             cost_summary=cost_summary,
             total_tokens=total_tokens,
             total_cost=total_cost,
@@ -3975,11 +3539,6 @@ def init_routes(app: Flask) -> None:
             last_backup=last_backup,
             page_title="Settings",
         )
-
-    # Retained for backwards compatibility; redirect to the health endpoint.
-    @app.route("/system_metrics")
-    def system_metrics():
-        return redirect(url_for("health_check"))
 
     def allowed_file(filename):
         return "." in filename and filename.rsplit(".", 1)[1].lower() == "json"
@@ -4074,218 +3633,6 @@ def init_routes(app: Flask) -> None:
 
             return redirect("/templates/" + template_name)
 
-    @app.route("/discover", methods=["GET"])
-    @login_required
-    def discover_cameras_route():
-        templates = template_manager.get_templates()
-        existing_urls = {}
-        for name, t in templates.items():
-            url = t.get("url")
-            if url:
-                existing_urls[url] = name
-        object_tokens = ["person", "car", "dog", "cat", "truck", "bus", "bicycle"]
-        return render_template(
-            "discover.html",
-            cameras=[],
-            existing_urls=existing_urls,
-            object_tokens=object_tokens,
-            clip_model=CLIP_MODEL_NAME,
-            clip_gpu=clip_gpu_available(),
-            page_title="Discover Cameras",
-        )
-
-    @app.route("/discover/scan", methods=["POST"])
-    @login_required
-    def discover_cameras_scan():
-        cidr = request.form.get("cidr") if request.form else request.args.get("cidr")
-        nets = None
-        if cidr and cidr.lower() == "internet":
-            from app.utils.internet_cameras import INTERNET_CAMERAS
-
-            return jsonify(INTERNET_CAMERAS)
-        if cidr:
-            try:
-                nets = [ip_network(cidr, strict=False)]
-            except ValueError:
-                pass
-        cameras = camera_discovery.discover_cameras(subnets=nets)
-        return jsonify(cameras)
-
-    @app.route("/discover/scan_stream")
-    @login_required
-    def discover_cameras_scan_stream():
-        def generate():
-            cidr = request.args.get("cidr")
-            nets = None
-            if cidr and cidr.lower() == "internet":
-                from app.utils.internet_cameras import INTERNET_CAMERAS
-
-                yield (
-                    "data: "
-                    + json.dumps(
-                        {"total": 1, "subnets": ["internet"], "stages": ["internet"]}
-                    )
-                    + "\n\n"
-                )
-                yield (
-                    "data: "
-                    + json.dumps(
-                        {
-                            "stage": "internet",
-                            "count": len(INTERNET_CAMERAS),
-                            "cameras": INTERNET_CAMERAS,
-                            "progress": 100,
-                            "eta": 0,
-                        }
-                    )
-                    + "\n\n"
-                )
-                yield 'data: {"done": true}\n\n'
-                return
-            if cidr:
-                try:
-                    nets = [ip_network(cidr, strict=False)]
-                except ValueError:
-                    pass
-
-            stages = camera_discovery.get_discovery_stages()
-
-            q = queue.Queue()
-            # Provide the client with the number of discovery stages so it
-            # can display a progress bar and show subnet information.
-            q.put(
-                {
-                    "total": len(stages),
-                    "subnets": [
-                        str(n) for n in (nets or camera_discovery._local_subnets())
-                    ],
-                    "stages": stages,
-                }
-            )
-
-            sent = set()
-
-            def progress(stage, count, new_cams, pct, eta):
-                fresh = []
-                for cam in new_cams:
-                    key = (cam.get("ip"), cam.get("protocol"), cam.get("port"))
-                    if key not in sent:
-                        sent.add(key)
-                        fresh.append(cam)
-                q.put(
-                    {
-                        "stage": stage,
-                        "count": count,
-                        "cameras": fresh,
-                        "progress": pct,
-                        "eta": eta,
-                    }
-                )
-
-            def run():
-                try:
-                    camera_discovery.discover_cameras(
-                        progress_callback=progress, subnets=nets
-                    )
-                except Exception as e:  # pragma: no cover - network
-                    logging.exception("discovery scan failed: %s", e)
-                    q.put({"error": str(e)})
-                finally:
-                    q.put({"done": True})
-
-            thread = Thread(target=run, daemon=True)
-            thread.start()
-
-            while True:
-                msg = q.get()
-                yield f"data: {json.dumps(msg)}\n\n"
-                if msg.get("done"):
-                    break
-
-        return Response(stream_with_context(generate()), mimetype="text/event-stream")
-
-    @app.route("/telemetry", methods=["POST"])
-    @login_required
-    def collect_telemetry():
-        """Collect lightweight UI events for diagnostics."""
-        data = request.get_json(force=True)
-        telemetry_events.append({"ts": int(time.time()), "data": data})
-        logging.info("telemetry: %s", data)
-        return jsonify({"status": "ok"})
-
-    @app.route("/discover/add", methods=["POST"])
-    @login_required
-    def add_discovered_camera():
-        data = request.form if request.form else request.get_json(force=True)
-        name = data.get("name") or data.get("ip")
-        protocol = data.get("protocol", "rtsp")
-        port = int(data.get("port", 554))
-        url = data.get("url") or f"{protocol}://{data.get('ip')}:{port}"
-        template = {
-            "name": name,
-            "url": url,
-            "frequency": data.get("frequency", 30),
-            "timeout": data.get("timeout", 10),
-        }
-        template_manager.save_template(name, template)
-        return jsonify({"status": "success"})
-
-    @app.route("/templates/test_url")
-    @login_required
-    def test_template_url() -> Response:
-        """Return JSON indicating whether the given URL is reachable."""
-
-        url = request.args.get("url") or ""
-        url = validators.validate_url(url)
-        if not url:
-            return jsonify({"ok": False, "error": "invalid"}), 400
-
-        try:
-            resp = requests.head(url, timeout=5)
-            ok = resp.status_code < 400
-        except Exception as exc:  # pragma: no cover - network
-            logging.warning("url check failed: %s", exc)
-            return jsonify({"ok": False, "error": "unreachable"}), 400
-
-        return jsonify({"ok": ok, "status": resp.status_code})
-
-    @app.route("/discover/export", methods=["POST"])
-    @login_required
-    def export_discovery_results():
-        fmt = request.args.get("format", "json")
-        cameras = request.get_json(force=True)
-        if not isinstance(cameras, list):
-            cameras = cameras.get("cameras", []) if isinstance(cameras, dict) else []
-        if fmt == "csv":
-            output = io.StringIO()
-            writer = csv.writer(output)
-            writer.writerow(
-                ["ip", "protocol", "port", "mac", "manufacturer", "firmware"]
-            )
-            for cam in cameras:
-                info = cam.get("info", {})
-                writer.writerow(
-                    [
-                        cam.get("ip"),
-                        cam.get("protocol"),
-                        cam.get("port"),
-                        info.get("mac"),
-                        info.get("manufacturer"),
-                        info.get("firmware"),
-                    ]
-                )
-            output.seek(0)
-            return Response(
-                output.getvalue(),
-                mimetype="text/csv",
-                headers={"Content-Disposition": "attachment;filename=discovery.csv"},
-            )
-        return Response(
-            json.dumps(cameras, indent=2),
-            mimetype="application/json",
-            headers={"Content-Disposition": "attachment;filename=discovery.json"},
-        )
-
     @app.route("/status")
     @login_required
     def status():
@@ -4330,6 +3677,17 @@ def init_routes(app: Flask) -> None:
             for entry in summary
         }
         return jsonify(costs)
+
+    @app.route("/api/camera_log_summary/<string:template_name>")
+    @login_required
+    def api_camera_log_summary(template_name: TemplateName):
+        template_name = validate_template_name(str(template_name))
+        if template_name is None:
+            abort(404)
+        summary = scheduling.get_or_generate_camera_log_summary(template_name)
+        if summary is None:
+            return ("", 204)
+        return jsonify({"summary": summary})
 
     @app.route("/stream_logs")
     @login_required
@@ -4401,128 +3759,3 @@ def init_routes(app: Flask) -> None:
                 break
 
         return jsonify(suggestions)
-
-    @app.route("/sw.js")
-    def service_worker():
-        response = make_response(app.send_static_file("sw.js"))
-        response.headers["Cache-Control"] = "no-cache"
-        return response
-
-    @app.route("/robots.txt")
-    def robots_txt():
-        """Return ``robots.txt`` rules based on ``ALLOW_BOTS`` setting."""
-        rules = ["User-agent: *"]
-        if config.ALLOW_BOTS:
-            rules.append("Allow: /")
-        else:
-            rules.append("Disallow: /")
-        response = Response("\n".join(rules) + "\n", mimetype="text/plain")
-        response.headers["Cache-Control"] = "no-cache"
-        return response
-
-    @app.route("/toggle_scheduler", methods=["POST"])
-    @login_required
-    @profile_route("/toggle_scheduler")
-    def toggle_scheduler():
-        try:
-            if scheduling.scheduler.running:
-                scheduling.scheduler.shutdown(wait=True)
-                return jsonify({"status": "stopped"})
-            else:
-                scheduling.scheduler.start()
-                with app.app_context():
-                    scheduling.scheduler.remove_all_jobs()
-                    scheduling.schedule_crawlers()
-                    scheduling.schedule_summarization()
-                return jsonify({"status": "running"})
-        except Exception as e:
-            return jsonify({"status": "error", "message": str(e)}), 500
-
-    @app.route("/scheduler_status")
-    @login_required
-    @profile_route("/scheduler_status")
-    def get_scheduler_status():
-        return jsonify(
-            {"status": ("running" if scheduling.scheduler.running else "stopped")}
-        )
-
-    @app.route("/profiling")
-    @login_required
-    def profiling_data():
-        return jsonify(get_latency_stats())
-
-    notifications = []
-    MAX_NOTIFICATIONS = 100
-
-    telemetry_events = deque(maxlen=1000)
-
-    @app.route("/send_notification", methods=["POST"])
-    @login_required
-    def send_notification():
-        data = request.get_json(force=True)
-        notifications.append(
-            {
-                "title": data.get("title", "Notification"),
-                "body": data.get("body", ""),
-            }
-        )
-        if len(notifications) > MAX_NOTIFICATIONS:
-            notifications.pop(0)
-        return jsonify({"status": "queued"})
-
-    @app.route("/register_push", methods=["POST"])
-    @login_required
-    def register_push():
-        sub = request.get_json(force=True)
-        session_db = SessionLocal()
-        try:
-            existing = (
-                session_db.query(PushSubscription)
-                .filter_by(endpoint=sub.get("endpoint"), user_id=session["user_id"])
-                .first()
-            )
-            if not existing:
-                session_db.add(
-                    PushSubscription(
-                        user_id=session["user_id"],
-                        endpoint=sub.get("endpoint"),
-                        auth=sub.get("keys", {}).get("auth"),
-                        p256dh=sub.get("keys", {}).get("p256dh"),
-                        created_at=int(time.time()),
-                    )
-                )
-                session_db.commit()
-            return jsonify({"status": "registered"})
-        finally:
-            session_db.close()
-
-    @app.route("/unregister_push", methods=["POST"])
-    @login_required
-    def unregister_push():
-        sub = request.get_json(force=True)
-        session_db = SessionLocal()
-        try:
-            existing = (
-                session_db.query(PushSubscription)
-                .filter_by(endpoint=sub.get("endpoint"), user_id=session["user_id"])
-                .first()
-            )
-            if existing:
-                session_db.delete(existing)
-                session_db.commit()
-            return jsonify({"status": "deleted"})
-        finally:
-            session_db.close()
-
-    @app.route("/stream_notifications")
-    @login_required
-    def stream_notifications():
-        def generate(last=len(notifications)):
-            while True:
-                if last < len(notifications):
-                    data = notifications[last]
-                    last += 1
-                    yield f"data: {json.dumps(data)}\n\n"
-                time.sleep(1)
-
-        return Response(stream_with_context(generate()), mimetype="text/event-stream")

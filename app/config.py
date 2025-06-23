@@ -9,6 +9,7 @@ import shutil
 import sqlite3
 import subprocess
 from importlib.metadata import PackageNotFoundError, version
+from ipaddress import ip_network
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
@@ -265,6 +266,7 @@ NAME = get_setting("NAME", "glimpser")
 NAV_ICON = get_setting("NAV_ICON", "img/glimpser_small.png")
 HOST = get_setting("HOST", "0.0.0.0")
 PORT = int(get_setting("PORT", 8082))
+DANGER_PORT = int(get_setting("DANGER_PORT", 9222))
 ENFORCE_DOMAIN_IN_HOST = get_setting("ENFORCE_DOMAIN_IN_HOST", "False") == "True"
 DEBUG = get_setting("DEBUG", "False") == "True"
 # Provide a separate attribute for runtime checks
@@ -290,6 +292,14 @@ SESSION_COOKIE_SECURE = get_setting("SESSION_COOKIE_SECURE", "True") == "True"
 SESSION_COOKIE_HTTPONLY = get_setting("SESSION_COOKIE_HTTPONLY", "True") == "True"
 SESSION_TIMEOUT_MINUTES = int(get_setting("SESSION_TIMEOUT_MINUTES", 30))
 AUTO_LOGIN_DAYS = int(get_setting("AUTO_LOGIN_DAYS", 30))
+# Skip login for these networks when not accessing admin pages
+_login_subnets_raw = get_setting("SKIP_LOGIN_SUBNETS", "")
+SKIP_LOGIN_SUBNETS = []
+for _sub in [s.strip() for s in _login_subnets_raw.split(",") if s.strip()]:
+    try:
+        SKIP_LOGIN_SUBNETS.append(ip_network(_sub))
+    except ValueError:
+        logging.warning("Invalid subnet in SKIP_LOGIN_SUBNETS: %s", _sub)
 
 # Clock configuration
 CLOCK_OVERLAY = get_setting("CLOCK_OVERLAY", "False") == "True"

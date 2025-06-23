@@ -30,7 +30,7 @@ content %}
         autofocus
       />
     </div>
-    <div class="form-field">
+    <div class="form-field password-input">
       <label for="password" class="sr-only">Password</label>
       <input
         id="password"
@@ -77,7 +77,12 @@ content %}
     {% endif %} {% endwith %}
     <input type="submit" value="Login" title="Click to log in" />
   </form>
-  {% endcall %}
+  {% if show_recovery_note %}
+  <p id="recovery-note" class="recovery-note">
+    Forgot your password? Stop Glimpser and run
+    <code>generate_credentials.py --update-password</code>.
+  </p>
+  {% endif %} {% endcall %}
 </div>
 <script
   type="module"

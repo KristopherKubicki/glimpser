@@ -1,0 +1,21 @@
+<svg width="300" height="200" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="black" />
+    </marker>
+    <linearGradient id="stage" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f9f9f9" />
+      <stop offset="100%" stop-color="#dcdcdc" />
+    </linearGradient>
+  </defs>
+  <rect x="90" y="10" width="120" height="30" fill="url(#stage)" stroke="#333" />
+  <text x="150" y="30" font-size="12" text-anchor="middle" fill="#333">Browser registers sw.js</text>
+  <line x1="150" y1="40" x2="150" y2="70" stroke="#333" marker-end="url(#arrow)" />
+  <rect x="90" y="70" width="120" height="30" fill="url(#stage)" stroke="#333" />
+  <text x="150" y="90" font-size="12" text-anchor="middle" fill="#333">POST /register_push</text>
+  <line x1="150" y1="100" x2="150" y2="130" stroke="#333" marker-end="url(#arrow)" />
+  <rect x="90" y="130" width="120" height="30" fill="url(#stage)" stroke="#333" />
+  <text x="150" y="150" font-size="12" text-anchor="middle" fill="#333">POST /send_notification</text>
+  <line x1="150" y1="160" x2="150" y2="190" stroke="#333" marker-end="url(#arrow)" />
+  <text x="150" y="198" font-size="12" text-anchor="middle" fill="#333">Push or SSE /stream_notifications</text>
+</svg>

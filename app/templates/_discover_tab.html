@@ -43,8 +43,15 @@
       class="discovery-progress hidden"
       max="100"
       title="Discovery progress"
+      role="progressbar"
+      aria-live="polite"
     ></progress>
-    <span id="discover-message" title="Status messages"></span>
+    <span
+      id="discover-message"
+      title="Status messages"
+      role="status"
+      aria-live="polite"
+    ></span>
   </div>
   {% endcall %} {% call card('Results') %}
   <div class="wizard-step" title="Review results and export if desired">
@@ -112,7 +119,13 @@
               <input type="hidden" name="url" value="{{ cam.url }}" />
               {% endif %}
               <input type="hidden" name="name" value="{{ cam.ip }}" />
-              <button type="submit" title="Add this camera">Add</button>
+              <button
+                class="btn btn-primary"
+                type="submit"
+                title="Add this camera"
+              >
+                Add
+              </button>
             </form>
             {% endif %}
           </td>
@@ -184,7 +197,7 @@
         } catch (e) {
           console.warn("Unable to start background discovery", e);
         }
-        progress.style.display = "inline";
+        progress.classList.remove("hidden");
         progress.value = 0;
         body.innerHTML = "";
         results = [];
@@ -212,7 +225,7 @@
                             ${cam.port ? `<input type="hidden" name="port" value="${cam.port}">` : ""}
                             ${cam.url ? `<input type="hidden" name="url" value="${cam.url}">` : ""}
                             <input type="hidden" name="name" value="${cam.name || cam.ip}">
-                            <button type="submit" title="Add this camera">Add</button>
+                            <button class="btn btn-primary" type="submit" title="Add this camera">Add</button>
                         </form>`;
           let protocol = cam.protocol;
           let port = cam.port;
@@ -241,7 +254,7 @@
           if (data.error) {
             console.error("Discovery error", data.error);
             msg.textContent = `Error discovering cameras: ${data.error}`;
-            progress.style.display = "none";
+            progress.classList.add("hidden");
             source.close();
             return;
           }
@@ -256,7 +269,7 @@
           }
           if (data.done) {
             msg.textContent = `Found ${known.size} cameras.`;
-            progress.style.display = "none";
+            progress.classList.add("hidden");
             source.close();
             return;
           }
@@ -284,7 +297,7 @@
             text += `: ${e.message}`;
           }
           msg.textContent = text;
-          progress.style.display = "none";
+          progress.classList.add("hidden");
           source.close();
         };
       });

@@ -37,7 +37,7 @@ These tooltips aim to make the interface self‑explanatory and easier to naviga
 Interactive forms now include additional tooltips:
 
 - **Add Camera** – describes each field on the Discover tab and the "Structured" XPath buttons. A short helper paragraph guides you to test the URL and open the Advanced Options section.
-- **URL tester** – a tooltip shows "checking" then "valid" or "invalid" next to the URL field.
+- **URL tester** – now displays detailed feedback like HTTP status and content type. The live preview falls back to a placeholder image when the check fails.
 - **Template Details** – buttons like "Suggest Prompt" and "Suggest Fix" describe their actions.
 - **Template toolbar** – quick actions appear at the bottom-left of the details page and fade out when idle.
 - **Captions** – upload and filter controls have descriptive titles. The metric dropdown filters feeds by count or storage and updates the list immediately.

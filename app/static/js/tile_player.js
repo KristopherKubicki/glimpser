@@ -1,5 +1,10 @@
 import { showSpinner, hideSpinner, showErrorIndicator } from "./video.js";
 
+function safePlay(el) {
+  const p = el.play?.();
+  if (p && typeof p.catch === "function") p.catch(() => {});
+}
+
 export function initTilePlayer() {
   const video = document.getElementById("live-video");
   if (!video) return;
@@ -31,10 +36,31 @@ export function initTilePlayer() {
     container.appendChild(spinner);
   }
 
-  const image = document.createElement("img");
-  image.id = "live-image";
-  image.style.display = "none";
-  if (container) container.appendChild(image);
+  const speedSlider = document.getElementById("speed-slider");
+  const speedValue = document.getElementById("speed-value");
+  let refreshSeconds = speedSlider
+    ? Math.max(1, parseInt(speedSlider.value, 10) || 1)
+    : 1;
+
+  function updateSpeedLabel() {
+    if (!speedValue || !speedSlider) return;
+    const secs = Math.max(1, parseInt(speedSlider.value, 10) || 1);
+    refreshSeconds = secs;
+    speedValue.textContent =
+      secs === 60 ? "1fpm" : `${(1 / secs).toFixed(2)}fps`;
+    video.playbackRate = 1 / secs;
+  }
+
+  if (speedSlider) speedSlider.addEventListener("input", updateSpeedLabel);
+  updateSpeedLabel();
+
+  let image = document.getElementById("live-image");
+  if (!image) {
+    image = document.createElement("img");
+    image.id = "live-image";
+    image.style.display = "none";
+    if (container) container.appendChild(image);
+  }
 
   function showBounce() {
     if (!spinner) return;
@@ -48,6 +74,14 @@ export function initTilePlayer() {
   }
 
   const LIVE_CLASS = "live-mode";
+  const IDLE_DELAY = 30000;
+
+  function showClip() {
+    image.style.display = "none";
+    video.style.display = "block";
+    container?.classList.remove(LIVE_CLASS);
+    safePlay(video);
+  }
 
   function playMjpg(target, isCamera = false) {
     if (!target) return;
@@ -61,23 +95,9 @@ export function initTilePlayer() {
     if (container) container.classList.add(LIVE_CLASS);
   }
 
-  function scheduleLive(group) {
+  function scheduleLive(name) {
     clearTimeout(liveTimer);
-    const onInteract = () => {
-      clearTimeout(liveTimer);
-      container.removeEventListener("mousemove", onInteract);
-      container.removeEventListener("mousedown", onInteract);
-      container.removeEventListener("touchstart", onInteract);
-    };
-    container.addEventListener("mousemove", onInteract);
-    container.addEventListener("mousedown", onInteract);
-    container.addEventListener("touchstart", onInteract);
-    liveTimer = setTimeout(() => {
-      container.removeEventListener("mousemove", onInteract);
-      container.removeEventListener("mousedown", onInteract);
-      container.removeEventListener("touchstart", onInteract);
-      playMjpg(group);
-    }, 2000);
+    liveTimer = setTimeout(() => play(name), IDLE_DELAY);
   }
 
   async function loadHdClip() {
@@ -136,19 +156,27 @@ export function initTilePlayer() {
   }
 
   if (camSelect) {
-    camSelect.addEventListener("change", () => play(camSelect.value));
+    camSelect.addEventListener("change", () => {
+      current = camSelect.value;
+      showClip();
+      scheduleLive(current);
+    });
   }
 
-  play(current);
-
-  if (container) {
-    const reset = () => {
-      if (container.classList.contains(LIVE_CLASS)) {
-        play(current);
+  if (source && source.src) {
+    const onInteract = () => {
+      clearTimeout(liveTimer);
+      if (container?.classList.contains(LIVE_CLASS)) {
+        showClip();
       }
+      scheduleLive(current);
     };
-    container.addEventListener("mousedown", reset);
-    container.addEventListener("touchstart", reset);
+    container?.addEventListener("mousemove", onInteract);
+    container?.addEventListener("mousedown", onInteract);
+    container?.addEventListener("touchstart", onInteract);
+    scheduleLive(current);
+  } else {
+    play(current);
   }
 }
 

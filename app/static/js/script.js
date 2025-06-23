@@ -30,6 +30,7 @@ import { initNetworkBanner } from "./network_banner.js";
 import { initUnsavedIndicator } from "./unsaved.js";
 import { initVideoZoom } from "./zoom.js";
 import { initSearchShortcut } from "./search_shortcut.js";
+import { initUrlTester } from "./url_test.js";
 
 initTemplates();
 initVideoControls();
@@ -65,3 +66,4 @@ initCliHelp();
 initVideoZoom();
 initSearchShortcut();
 initHotkeys();
+initUrlTester();

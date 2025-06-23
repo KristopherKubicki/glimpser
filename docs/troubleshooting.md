@@ -103,6 +103,7 @@ This guide addresses common issues that users might encounter while using Glimps
 - Ensure you're using the correct username and password
 - Verify that the account exists in the `users` table
 - Try resetting your password through the recovery process
+- If you have shell access, stop Glimpser and run `generate_credentials.py --update-password` to set a new password without using the web interface
 - Repeated failures trigger a 24-hour lockout and display a
   "Too many failed attempts" message
 - Invalid credentials now generate on-screen feedback and are logged
@@ -231,6 +232,8 @@ snapshot image rather than a true video stream.
 - HTTP errors like `403 Forbidden` or repeated ffmpeg timeouts typically mean
   the stream is blocked. Verify the URL is accessible from the host running
   Glimpser and check for required credentials or firewall rules.
+- Cameras that reject the `HEAD` method with a 403 now trigger a `GET`
+  fallback so valid streams aren't marked offline.
 - When ffmpeg repeatedly fails, retries now back off exponentially up to
   `LIVE_MAX_RETRY_DELAY` seconds so the server isn't hammered.
 - Some cameras reject ffmpeg if it does not send browser-style headers. The

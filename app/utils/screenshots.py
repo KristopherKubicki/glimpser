@@ -42,9 +42,15 @@ from pdf2image import convert_from_bytes
 from PIL import (
     Image,
     ImageDraw,
+    ImageFile,
     ImageFont,
     ImageOps,
 )
+
+# PIL may raise 'image file is truncated' if a screenshot is incomplete.
+# Allow truncated images to load so we can still overlay timestamps and
+# handle files gracefully.
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.chrome.options import Options
@@ -59,7 +65,7 @@ mouse = None
 
 
 def _safe_import_pynput() -> None:
-    """Import pynput if an X server is available."""
+    """Import pynput when input libraries are available."""
 
     global keyboard, mouse
 
@@ -67,7 +73,9 @@ def _safe_import_pynput() -> None:
         # Already attempted
         return
 
-    if not os.environ.get("DISPLAY"):
+    display = os.environ.get("DISPLAY")
+    system = platform.system()
+    if display is None and system not in ("Darwin", "Windows"):
         logging.debug("Skipping pynput import: no DISPLAY set")
         return
 
@@ -259,10 +267,12 @@ def http_session():
     return _session
 
 
-def _is_valid_png(path):
+def _is_valid_png(path: str) -> bool:
+    """Return ``True`` if ``path`` points to a valid, readable PNG."""
+
     try:
         with Image.open(path) as im:
-            im.verify()  # raises if corrupt/zero-byte
+            im.load()  # fully read file to detect truncation
         return True
     except Exception:
         return False
@@ -427,6 +437,43 @@ def idle_seconds_loginctl() -> int:
     return int((time.monotonic() * 1_000_000 - idle_us) / 1_000_000)
 
 
+def idle_seconds_windows() -> int:
+    """Return idle seconds on Windows systems."""
+    import ctypes
+    import ctypes.wintypes
+
+    class LASTINPUTINFO(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", ctypes.wintypes.UINT),
+            ("dwTime", ctypes.wintypes.DWORD),
+        ]
+
+    info = LASTINPUTINFO()
+    info.cbSize = ctypes.sizeof(LASTINPUTINFO)
+    if not ctypes.windll.user32.GetLastInputInfo(ctypes.byref(info)):
+        raise RuntimeError("GetLastInputInfo failed")
+    millis = ctypes.windll.kernel32.GetTickCount() - info.dwTime
+    return millis // 1000
+
+
+def idle_seconds_macos() -> int:
+    """Return idle seconds on macOS systems."""
+    import subprocess
+
+    try:
+        out = subprocess.check_output(
+            ["ioreg", "-c", "IOHIDSystem"], text=True, timeout=0.3
+        )
+    except subprocess.SubprocessError:
+        raise RuntimeError("ioreg unavailable")
+
+    for line in out.splitlines():
+        if "HIDIdleTime" in line:
+            nanoseconds = int(line.split()[-1])
+            return nanoseconds // 1_000_000_000
+    raise RuntimeError("HIDIdleTime not found")
+
+
 # Function to detect user activity
 def check_user_activity(timeout=10):
     _safe_import_pynput()
@@ -446,11 +493,26 @@ def check_user_activity(timeout=10):
             return user_active
     except Exception as e:
         logging.debug(f"idle_seconds_x11 failed: {e}")
-
-    # idle_seconds = idle_seconds_loginctl()
-    # if 1 < idle_seconds < 120:
-    #    user_active = True  # allow to check on listeners for the 0 second case
-    #    return user_active
+        try:
+            idle_seconds_l = idle_seconds_loginctl()
+            if idle_seconds_l < 120:
+                user_active = True
+                return user_active
+        except Exception as e2:
+            logging.debug(f"idle_seconds_loginctl failed: {e2}")
+            system = platform.system()
+            try:
+                if system == "Windows":
+                    idle_os = idle_seconds_windows()
+                elif system == "Darwin":
+                    idle_os = idle_seconds_macos()
+                else:
+                    idle_os = None
+                if idle_os is not None and idle_os < 120:
+                    user_active = True
+                    return user_active
+            except Exception as e3:
+                logging.debug(f"idle_seconds_{system.lower()} failed: {e3}")
 
     if mouse is None or keyboard is None:
         return user_active
@@ -1383,6 +1445,14 @@ def get_content_type(
 
     content_type = ""
     clean_url = sanitize_url(url)
+
+    if not is_system_online():
+        logging.warning(
+            "System offline; skipping content type check for %s",
+            clean_url,
+        )
+        return "", False
+
     methods = [requests.head, requests.get]
 
     lua = UA
@@ -1421,6 +1491,10 @@ def get_content_type(
                 )
 
             if resp.status_code >= 400:
+                if verb == "HEAD" and resp.status_code == 403:
+                    # some cameras block HEAD; retry with GET before failing
+                    logging.debug("HEAD 403 for %s; retrying with GET", clean_url)
+                    continue
                 logging.info(f"HTTP error {resp.status_code} for {clean_url}")
                 set_cached_status_code(url, resp.status_code)
                 return "", False
@@ -2074,10 +2148,10 @@ def is_port_open(host, port, timeout=5):
         return False
 
 
-def is_chrome_debug_port_open(host="127.0.0.1", port=9222, timeout=1):
-    """
-    Check if an existing Chrome with --remote-debugging-port=9222 is open.
-    """
+def is_chrome_debug_port_open(host="127.0.0.1", port=None, timeout=1):
+    """Return True if Chrome's remote debugging port is reachable."""
+    if port is None:
+        port = config.DANGER_PORT
     try:
         sock = socket.create_connection((host, port), timeout=timeout)
         sock.close()
@@ -2389,7 +2463,8 @@ def capture_screenshot_and_har(
     Captures a screenshot of `url` and saves to `output_path`.
 
     1) Danger Mode (danger=True):
-       - Attaches to an existing Chrome with --remote-debugging-port=9222.
+       - Attaches to an existing Chrome with the configured remote-debugging
+         port.
        - Opens a new tab, loads page, screenshots, closes tab.
        - Skips if the user is active (check_user_activity).
        - Not headless (relies on the user’s Chrome).
@@ -2434,11 +2509,11 @@ def capture_screenshot_and_har(
     # Danger Mode
     ############
     if danger and config.get_setting("DANGER_MODE", "True") == "True":
-        # If we rely on the user's local Chrome with remote-debugging-port=9222,
-        # let's confirm it's actually open.
-        if not is_chrome_debug_port_open("127.0.0.1", 9222):
+        # If we rely on the user's local Chrome with the debugging port open,
+        # confirm it is actually reachable.
+        if not is_chrome_debug_port_open("127.0.0.1", config.DANGER_PORT):
             logging.warning(
-                "[capture_screenshot_and_har] Danger mode requested, but no Chrome on port 9222."
+                "[capture_screenshot_and_har] Danger mode requested, but no Chrome on configured port."
             )
             return False
 
@@ -2678,10 +2753,15 @@ def _finalize_screenshot(tmp_path, final_path, name, invert, dark):
                 img.save(tmp_path, "PNG")
                 success = True
 
-        # Now add a timestamp overlay
+        # Now add a timestamp overlay. If this fails the file may be removed.
         add_timestamp(tmp_path, name=name, invert=invert)
 
-        # Finally rename
+        # Finally rename if the temp file still exists. Timestamp overlay may
+        # delete corrupt images, so verify before moving.
+        if not os.path.exists(tmp_path):
+            logging.error("Temporary screenshot missing after timestamp overlay")
+            return False
+
         os.makedirs(os.path.dirname(final_path), exist_ok=True)
         os.rename(tmp_path, final_path)
 
@@ -2706,7 +2786,8 @@ def _capture_danger_mode(
     dark,
 ) -> bool:
     """
-    Attach to an existing local Chrome with remote-debugging-port=9222,
+    Attach to an existing local Chrome with remote-debugging-port configured by
+    ``DANGER_PORT``,
     open a new tab, capture a screenshot, close the tab, and yield the result.
 
     Because we are hooking into a real user’s Chrome, you must be aware that
@@ -2721,7 +2802,7 @@ def _capture_danger_mode(
 
     # This part uses normal Selenium for the attach:
     danger_options = webdriver.ChromeOptions()
-    danger_options.debugger_address = "127.0.0.1:9222"
+    danger_options.debugger_address = f"127.0.0.1:{config.DANGER_PORT}"
 
     driver = None
     original_window = None

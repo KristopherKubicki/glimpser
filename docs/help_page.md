@@ -16,6 +16,7 @@ Key topics covered include:
 - Configuration file locations and environment overrides.
 - Dark mode toggle and mobile-friendly responsive layout.
 - Status metrics, feed dashboard, and live log viewer.
+- Camera diagnostics on the edit page show device type, open ports and ping latency.
 - Offline preview of recent snapshots and locally hosted fonts.
 - "Remember me" option on the login page for automatic sign in.
 - Logging out now clears any saved credentials so shared devices stay secure.

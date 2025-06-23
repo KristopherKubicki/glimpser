@@ -1,13 +1,13 @@
 # Danger Mode Setup and Usage
 
-Danger mode allows Glimpser to leverage your existing Chrome session for capturing dynamic sites. When active, Glimpser attaches to a local Chrome instance running with the `--remote-debugging-port=9222` flag. This is useful for pages that require an authenticated session or user context.
+Danger mode allows Glimpser to leverage your existing Chrome session for capturing dynamic sites. When active, Glimpser attaches to a local Chrome instance running with the `--remote-debugging-port=<PORT>` flag where `<PORT>` is the value of the `DANGER_PORT` setting. This is useful for pages that require an authenticated session or user context.
 
 ## Enabling Remote Debugging
 
 1. **Launch Chrome with the debugging port open.** The exact command varies by platform:
-   - **Linux**: `google-chrome --remote-debugging-port=9222`
-   - **macOS**: `open /Applications/Google\ Chrome.app --args --remote-debugging-port=9222`
-   - **Windows**: modify your Chrome shortcut to append `--remote-debugging-port=9222` to the _Target_ field.
+   - **Linux**: `google-chrome --remote-debugging-port=$DANGER_PORT`
+   - **macOS**: `open /Applications/Google\ Chrome.app --args --remote-debugging-port=$DANGER_PORT`
+   - **Windows**: modify your Chrome shortcut to append `--remote-debugging-port=%DANGER_PORT%` to the _Target_ field.
 2. Leave this Chrome window running. Glimpser will connect to the existing instance when the port is detected.
 
 If Chrome is not started with this flag, Danger mode will be unavailable.
@@ -20,7 +20,7 @@ After Chrome updates, shortcuts may revert to their original command line. Two a
 - **Helper script**: Run `python scripts/update_chrome_shortcut.py` to rewrite the shortcut with the required flag. This can also be triggered from the _Update Chrome Shortcut_ button on the Settings page or the _Patch Chrome Shortcuts_ button on the Danger page. The page now shows which shortcuts were updated after the patch completes.
 - **Dropdown selector**: The Danger page lets you choose a detected shortcut from a dropdown or enter a custom path before patching.
 - **Check script**: Run `python scripts/check_danger_mode.py` to print whether the debug port is detected and if your shortcuts still require patching.
-- **Default shortcut locations**: `%USERPROFILE%\Desktop`, `%APPDATA%\Microsoft\Windows\Start Menu\Programs`, and `%ProgramData%\Microsoft\Windows\Start Menu\Programs`. On Linux, try `/usr/share/applications/google-chrome.desktop` or `~/.local/share/applications/google-chrome.desktop`. The Settings page lists any writable shortcuts it discovers.
+- **Default shortcut locations**: `%USERPROFILE%\Desktop`, `%APPDATA%\Microsoft\Windows\Start Menu\Programs`, and `%ProgramData%\Microsoft\Windows\Start Menu\Programs`. On Linux, try `/usr/share/applications/google-chrome.desktop` or `~/.local/share/applications/google-chrome.desktop`. On macOS, pass the path to your `.app` or AppleScript file to `python scripts/update_chrome_shortcut.py`. The Settings page lists any writable shortcuts it discovers.
 
 After patching your shortcuts, restart Chrome and open it using the profile you intend to use with Danger mode.
 
@@ -31,6 +31,10 @@ For now, you can store the launch command in a script and double-click it instea
 When Chrome's debug port is open and no user input has been detected for a short period, Glimpser shows an orange indicator in the navigation bar. The icon hides again when Danger mode is unavailable. A `!` appears when ready and an `×` in the tooltip explains why it's disabled.
 
 Captures marked as "Danger" in the template editor will use your running Chrome session. Glimpser opens a new tab, performs the capture, and closes the tab when finished. It skips the operation if you become active while the capture is pending.
+
+The diagram below illustrates the typical flow:
+
+![Danger Mode Flow](images/danger_mode_flow.svg)
 
 Be cautious with this feature, as it can interact with your browser while you are away. Ensure you trust the pages being captured.
 
@@ -57,13 +61,14 @@ review or disable the setting.
 Enabling the debugging port exposes your active Chrome session to other
 programs on the same machine. Keep your system on a trusted network and close
 Chrome when you are finished capturing. Avoid running Danger mode if untrusted
-software could access `http://localhost:9222`.
+software could access `http://localhost:<PORT>` where `<PORT>` matches
+`DANGER_PORT`.
 
 ## Connection Troubleshooting
 
 If Glimpser does not detect your Chrome instance:
 
-1. Visit `http://localhost:9222` in a browser. A JSON page should appear if the
+1. Visit `http://localhost:$DANGER_PORT` in a browser. A JSON page should appear if the
    port is open.
 2. Confirm Chrome was started with the flag and that no firewall is blocking the
    connection.
@@ -71,10 +76,9 @@ If Glimpser does not detect your Chrome instance:
 
 ## Customizing the Debugging Port
 
-If port `9222` is already in use, you may launch Chrome with a different port
-such as `--remote-debugging-port=9333`. Update any scripts that add the flag so
-they use the same value. Glimpser currently expects `9222`, so you must adjust
-the source code if you change it.
+If the default port is already in use, launch Chrome with a different value such
+as `--remote-debugging-port=9333`. Set `DANGER_PORT` to the same number so
+Glimpser knows where to connect.
 
 ## Temporary Enablement
 

@@ -194,7 +194,9 @@ class TestRoutes(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 200)
-        mock_render_template.assert_called_with("login.html", page_title="Login")
+        mock_render_template.assert_called_with(
+            "login.html", page_title="Login", show_recovery_note=True
+        )
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.login_attempts", {})
@@ -202,7 +204,9 @@ class TestRoutes(unittest.TestCase):
     def test_login_missing_fields(self, mock_render_template, mock_session_local):
         response = self.client.post("/login", data={"username": "", "password": ""})
         self.assertEqual(response.status_code, 400)
-        mock_render_template.assert_called_with("login.html", page_title="Login")
+        mock_render_template.assert_called_with(
+            "login.html", page_title="Login", show_recovery_note=True
+        )
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
@@ -340,8 +344,9 @@ class TestRoutes(unittest.TestCase):
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
+    @patch("app.routes.camera_discovery.autodetect_onvif_endpoints", return_value={})
     @patch("app.routes.template_manager.save_template")
-    def test_save_template(self, mock_save_template, mock_session_local):
+    def test_save_template(self, mock_save_template, _auto, mock_session_local):
         dummy_user = SimpleNamespace(id=1)
 
         class DummyQuery:

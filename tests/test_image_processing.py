@@ -175,6 +175,14 @@ class TestChatGPTImageComparison(unittest.TestCase):
             self.assertIsNone(result)
             self.assertEqual(tokens, 0)
 
+            # Test handling of invalid images
+            with open(image1_path, "wb") as bad:
+                bad.write(b"not a real png")
+            mock_post.side_effect = None
+            result, tokens = comparison.compare_images("Test prompt", [image1_path])
+            self.assertIsNone(result)
+            self.assertEqual(tokens, 0)
+
         finally:
             # Clean up temporary files
             os.remove(image1_path)

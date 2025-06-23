@@ -27,6 +27,9 @@ Below the system metrics the page lists each configured feed with a color-coded 
 The dashboard also shows when the most recent system summary was generated. The
 same table appears on the _Status_ tab under Settings so you can review
 usage metrics without leaving the configuration interface.
+Below the metrics graph a short daily log summary now appears. It condenses
+the last 24 hours of logs into a single paragraph using the configured
+language model.
 
 Additional KPI columns track the number of screenshots, videos, total storage
 used, LLM counts, and estimated LLM cost for each feed. Costs now display three decimal places.

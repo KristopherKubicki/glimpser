@@ -16,6 +16,7 @@ nav:
       - Camera Discovery: camera_discovery.md
       - Camera Fix: camera_fix.md
       - Capture Process: capture_process.md
+      - Capture Summary Sequence: capture_summary_sequence.md
       - Browser Driver Management: driver_pool.md
       - Captions Live Update: captions_live_update.md
       - Floating Navigation Bar: floating_nav.md
@@ -44,8 +45,10 @@ nav:
       - Nginx HTTP/2 Push: nginx_http2_push.md
       - Offline Fonts: offline_fonts.md
       - Offline Preview: offline_preview.md
+      - Offline Job Flow: offline_job_flow.md
       - Pylint Checks: pylint_checks.md
       - Web Notifications: web_notifications.md
+      - Notifications Flow: notifications_flow.md
       - Search Autocomplete: search_autocomplete.md
       - Recommendations: recommendations.md
       - Release Workflow: release_workflow.md
@@ -77,6 +80,7 @@ nav:
       - Live View Scrubbing: live_scrub.md
       - Clip Navigation: clip_navigation.md
       - LLM Prompt Settings: llm_prompts.md
+      - LLM Summarization: llm_summarization.md
       - MCP Integration: mcp_integration.md
       - In-App Onboarding: onboarding.md
       - OpenSSF Scorecard: scorecard.md
@@ -88,3 +92,4 @@ nav:
       - Speed Slider: speed_slider.md
       - Size Audit: size_audit.md
       - Template Edit Preview: edit_template_preview.md
+      - Login Flow: login_flow.md

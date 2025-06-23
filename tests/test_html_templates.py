@@ -86,6 +86,11 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertEqual(username.get("aria-describedby"), "login-error")
         self.assertEqual(password.get("aria-describedby"), "login-error")
 
+    def test_login_has_recovery_note(self):
+        html = Path("app/templates/login.html").read_text(encoding="utf-8")
+        self.assertIn('id="recovery-note"', html)
+        self.assertIn("generate_credentials.py", html)
+
     def test_discover_add_camera_form_inputs(self):
         html = Path("app/templates/_discover_tab.html").read_text(encoding="utf-8")
         self.assertIn("template_form(", html)
@@ -148,6 +153,10 @@ class TestHtmlTemplates(unittest.TestCase):
         components = Path("app/templates/components.html").read_text(encoding="utf-8")
         self.assertIn("object-gpu-status", components)
 
+    def test_browser_checkbox_present(self):
+        components = Path("app/templates/components.html").read_text(encoding="utf-8")
+        self.assertIn('id="browser"', components)
+
     def test_status_tab_has_sparklines(self):
         html = Path("app/templates/_status_tab.html").read_text(encoding="utf-8")
         self.assertIn('id="memory-sparkline"', html)
@@ -200,6 +209,11 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn('id="index-time"', html)
         self.assertIn('role="timer"', html)
         self.assertIn('aria-live="polite"', html)
+
+    def test_live_page_has_overlay(self):
+        html = Path("app/templates/live.html").read_text(encoding="utf-8")
+        self.assertIn('id="video-overlay"', html)
+        self.assertIn('id="loading-indicator"', html)
 
 
 if __name__ == "__main__":
