@@ -154,6 +154,11 @@ def create_application(args=None):
         setup_config()
         setup_logging()
 
+    # Ensure a GPU-enabled FFmpeg build exists before it's used
+    from app.utils import ffmpeg_setup
+
+    ffmpeg_setup.get_ffmpeg_path()
+
     if config.ENFORCE_DOMAIN_IN_HOST and "." not in config.HOST:
         raise ValueError(
             "HOST must include a domain when ENFORCE_DOMAIN_IN_HOST is enabled"

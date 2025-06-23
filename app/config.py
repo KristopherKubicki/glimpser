@@ -1,6 +1,7 @@
 # config.py
 
 import argparse
+import importlib.util
 import json
 import logging
 import os
@@ -13,6 +14,13 @@ from ipaddress import ip_network
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
+
+_ffmpeg_spec = importlib.util.spec_from_file_location(
+    "app.utils.ffmpeg_setup",
+    Path(__file__).resolve().parent / "utils" / "ffmpeg_setup.py",
+)
+ffmpeg_setup = importlib.util.module_from_spec(_ffmpeg_spec)
+_ffmpeg_spec.loader.exec_module(ffmpeg_setup)
 
 _SKIP_DB_INIT = os.getenv("GLIMPSER_SKIP_DB_INIT") == "1"
 
@@ -342,7 +350,8 @@ LLM_CAPTION_PROMPT = get_setting(
 )
 
 # FFMPEG/FFPROBE path settings
-FFMPEG_PATH = get_setting("FFMPEG_PATH", "ffmpeg")
+_ffmpeg_default = ffmpeg_setup.get_ffmpeg_path() or "ffmpeg"
+FFMPEG_PATH = get_setting("FFMPEG_PATH", _ffmpeg_default)
 FFPROBE_PATH = get_setting("FFPROBE_PATH", "ffprobe")
 
 
