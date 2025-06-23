@@ -344,8 +344,9 @@ class TestRoutes(unittest.TestCase):
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
+    @patch("app.routes.camera_discovery.autodetect_onvif_endpoints", return_value={})
     @patch("app.routes.template_manager.save_template")
-    def test_save_template(self, mock_save_template, mock_session_local):
+    def test_save_template(self, mock_save_template, _auto, mock_session_local):
         dummy_user = SimpleNamespace(id=1)
 
         class DummyQuery:

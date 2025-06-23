@@ -42,8 +42,10 @@ class TestDangerModeCapture(unittest.TestCase):
     @patch("app.utils.screenshots.webdriver.Chrome")
     @patch("app.utils.screenshots.check_user_activity", return_value=False)
     @patch("app.utils.screenshots.is_chrome_debug_port_open", return_value=True)
+    @patch("app.utils.screenshots.time.sleep", return_value=None)
     def test_success(
         self,
+        _sleep,
         mock_port,
         mock_user_idle,
         mock_webdriver,
