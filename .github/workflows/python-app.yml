@@ -55,6 +55,9 @@ jobs:
         # Jest and Prettier are devDependencies installed here
       - name: Run pre-commit
         run: pre-commit run --all-files
+      - name: Run Pylint
+        run: |
+          pylint $(git ls-files '*.py') --exit-zero
       - name: Run JavaScript tests with coverage
         run: npm test -- --coverage
       - name: Audit npm packages
