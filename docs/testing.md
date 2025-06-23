@@ -3,11 +3,14 @@
 Glimpser includes a comprehensive suite of unit tests. Run them with coverage to ensure your changes do not introduce regressions:
 
 ```sh
-python -m coverage run -m pytest
+python -m coverage run -m pytest -n auto
 python -m coverage html
 ```
 
 The HTML report will be generated in `htmlcov/index.html`.
+
+Tests run in parallel because `PYTEST_ADDOPTS=-n auto` is set in the CI
+workflow.
 
 Before submitting a patch, lint the code with `ruff` and `flake8`:
 
@@ -60,7 +63,7 @@ Running the full suite with coverage, including the end-to-end tests, looks
 like:
 
 ```sh
-python -m coverage run -m pytest
+python -m coverage run -m pytest -n auto
 python -m coverage html
 ```
 
