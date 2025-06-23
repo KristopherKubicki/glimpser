@@ -152,7 +152,9 @@ clip_processor, clip_session = None, None
 
 # Track currently running jobs to avoid launching duplicates.
 active_jobs: dict[str, multiprocessing.Process] = {}
-active_jobs_lock = threading.Lock()
+# Use an RLock to prevent deadlocks when register_job_failure is invoked
+# while the lock is already held in run_with_timeout.
+active_jobs_lock = threading.RLock()
 # Track failures and backoff time to slow down flapping jobs.
 job_failures: dict[str, int] = {}
 job_backoff_until: dict[str, float] = {}
