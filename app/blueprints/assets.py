@@ -27,7 +27,7 @@ def create_blueprint() -> Blueprint:
 
         lgroup = routes.secure_filename(group) if group else "all"
         base_path = os.path.join(
-            os.path.dirname(os.path.join(routes.__file__)), "..", routes.VIDEO_DIRECTORY
+            os.path.dirname(routes.__file__), "..", routes.VIDEO_DIRECTORY
         )
         if not os.path.exists(base_path):
             routes.abort(404)
