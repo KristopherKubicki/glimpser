@@ -184,7 +184,7 @@
         } catch (e) {
           console.warn("Unable to start background discovery", e);
         }
-        progress.style.display = "inline";
+        progress.classList.remove("hidden");
         progress.value = 0;
         body.innerHTML = "";
         results = [];
@@ -241,7 +241,7 @@
           if (data.error) {
             console.error("Discovery error", data.error);
             msg.textContent = `Error discovering cameras: ${data.error}`;
-            progress.style.display = "none";
+            progress.classList.add("hidden");
             source.close();
             return;
           }
@@ -256,7 +256,7 @@
           }
           if (data.done) {
             msg.textContent = `Found ${known.size} cameras.`;
-            progress.style.display = "none";
+            progress.classList.add("hidden");
             source.close();
             return;
           }
@@ -284,7 +284,7 @@
             text += `: ${e.message}`;
           }
           msg.textContent = text;
-          progress.style.display = "none";
+          progress.classList.add("hidden");
           source.close();
         };
       });
