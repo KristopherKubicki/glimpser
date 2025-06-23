@@ -27,7 +27,7 @@ class TestLastTeaserRoute(unittest.TestCase):
         resp = self.client.get("/last_teaser?group=mygroup")
         self.assertEqual(resp.status_code, 200)
         expected = os.path.join(
-            os.path.dirname(assets.__file__),
+            os.path.dirname(routes.__file__),
             "..",
             config.VIDEO_DIRECTORY,
             "mygroup_in_process.mp4",
