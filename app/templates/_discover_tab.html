@@ -43,8 +43,15 @@
       class="discovery-progress hidden"
       max="100"
       title="Discovery progress"
+      role="progressbar"
+      aria-live="polite"
     ></progress>
-    <span id="discover-message" title="Status messages"></span>
+    <span
+      id="discover-message"
+      title="Status messages"
+      role="status"
+      aria-live="polite"
+    ></span>
   </div>
   {% endcall %} {% call card('Results') %}
   <div class="wizard-step" title="Review results and export if desired">
