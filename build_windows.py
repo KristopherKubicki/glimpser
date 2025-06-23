@@ -25,6 +25,7 @@ ARGS = [
     "--hidden-import=yt_dlp",  # Include hidden import yt_dlp
     "--hidden-import=pdf2image",  # Include hidden import pdf2image
     "--hidden-import=pyvirtualdisplay",  # Include hidden import pyvirtualdisplay
+    "--collect-binaries=onnxruntime",  # Bundle ONNX Runtime DLLs
     "--exclude-module=urllib3.contrib.emscripten",  # Skip optional module
     "--exclude-module=curl_cffi",  # Skip optional module
     "--icon=app/static/favicon.ico",  # Path to the icon file

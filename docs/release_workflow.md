@@ -7,6 +7,8 @@ The process is split across multiple runners:
   script now uses `rsync` to copy directories so unchanged files are skipped,
   speeding up repeated builds.
 - **Windows** builds the standalone executable using `build_windows.py`.
+  The script bundles ONNX Runtime binaries with `--collect-binaries=onnxruntime`
+  so CUDA libraries are included when available.
 - The build sets `GLIMPSER_SKIP_DB_INIT=1` to prevent database access during analysis.
 - **macOS** builds a self-contained application with `build_macos.py`.
 

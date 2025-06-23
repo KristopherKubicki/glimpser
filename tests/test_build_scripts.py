@@ -23,6 +23,7 @@ class TestBuildWindows(TestCase):
         mock_run.assert_called_once()
         args = mock_run.call_args.args[0]
         self.assertIn("--name=Glimpser", args)
+        self.assertIn("--collect-binaries=onnxruntime", args)
 
 
 def test_build_packages_missing_deps(tmp_path):
