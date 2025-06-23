@@ -3,8 +3,9 @@ import os
 from types import SimpleNamespace
 from unittest.mock import patch
 
-import app
 import pytest
+
+import app
 
 
 @pytest.fixture()
