@@ -112,7 +112,13 @@
               <input type="hidden" name="url" value="{{ cam.url }}" />
               {% endif %}
               <input type="hidden" name="name" value="{{ cam.ip }}" />
-              <button type="submit" title="Add this camera">Add</button>
+              <button
+                class="btn btn-primary"
+                type="submit"
+                title="Add this camera"
+              >
+                Add
+              </button>
             </form>
             {% endif %}
           </td>
@@ -212,7 +218,7 @@
                             ${cam.port ? `<input type="hidden" name="port" value="${cam.port}">` : ""}
                             ${cam.url ? `<input type="hidden" name="url" value="${cam.url}">` : ""}
                             <input type="hidden" name="name" value="${cam.name || cam.ip}">
-                            <button type="submit" title="Add this camera">Add</button>
+                            <button class="btn btn-primary" type="submit" title="Add this camera">Add</button>
                         </form>`;
           let protocol = cam.protocol;
           let port = cam.port;
