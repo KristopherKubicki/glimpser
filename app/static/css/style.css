@@ -1619,19 +1619,22 @@ footer.fade-out {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: calc(100dvh - 120px); /* Reduce excess vertical scroll */
-  padding: 20px 0;
+  min-height: 100dvh;
+  padding: 0;
+}
+.login-page main {
+  padding: 0 1rem;
 }
 .login-container {
   background-color: var(--form-bg-color);
   color: var(--form-text-color);
-  padding: 20px;
-  border-radius: 5px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  border-radius: 6px;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.15);
   display: inline-block;
-  max-width: 340px;
-  width: 100%;
-  margin: 20px auto;
+  max-width: 380px;
+  width: 90%;
+  margin: 0 auto;
 }
 .login-form .form-field {
   margin-bottom: 1rem;

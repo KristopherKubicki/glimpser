@@ -1,12 +1,12 @@
 {% include 'header.html' %}
-<body>
+<body class="{{ body_class|default('') }}">
     <a href="#main-content" class="skip-link" title="Jump to main area">Skip to main content</a>
     <header>
         {% include 'nav.html' %}
     </header>
     <div id="network-banner" class="network-banner" role="alert" aria-live="polite"></div>
 
-    <main id="main-content" tabindex="-1">
+    <main id="main-content" tabindex="-1" class="{{ main_class|default('') }}">
         {% block content %}{% endblock %}
     </main>
     {% from 'components.html' import hotkeys_overlay %}
