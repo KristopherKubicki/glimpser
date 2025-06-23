@@ -101,6 +101,7 @@ from app.config import (
     SUMMARIES_DIRECTORY,
     VIDEO_DIRECTORY,
     WATCHDOG_CPU_THRESHOLD,
+    WATCHDOG_MEMORY_THRESHOLD,
     get_setting,
 )
 from app.models import LogSummary, OfflineJob, Summary
@@ -252,6 +253,15 @@ def run_with_timeout(func, args=(), timeout=300):
         logging.info(
             "High CPU (%.1f%%); skipping job %s",
             cpu_level,
+            getattr(func, "__name__", "job"),
+        )
+        return
+
+    mem_level = psutil.virtual_memory().percent
+    if mem_level > WATCHDOG_MEMORY_THRESHOLD:
+        logging.info(
+            "High memory (%.1f%%); skipping job %s",
+            mem_level,
             getattr(func, "__name__", "job"),
         )
         return
