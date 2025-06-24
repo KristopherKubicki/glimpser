@@ -187,6 +187,7 @@
             />
           </svg>
           {% endif %}
+          {# Use blueprint-prefixed route to avoid BuildError #}
           <a
             href="{{ url_for('ui.template_details', template_name=feed.name) }}"
             title="View template details"

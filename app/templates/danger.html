@@ -49,6 +49,7 @@
     <ul>
       {% for camera in danger_cameras %}
       <li>
+        {# prefix with blueprint to reach template details #}
         <a
           href="{{ url_for('ui.template_details', template_name=camera) }}"
           title="Open {{ camera }} details"

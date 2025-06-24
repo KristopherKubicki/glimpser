@@ -104,6 +104,7 @@
           </td>
           <td>
             {% if url in existing_urls %}
+            {# use blueprint prefix for template details route #}
             <a
               href="{{ url_for('ui.template_details', template_name=existing_urls[url]) }}"
               class="btn btn-primary"
