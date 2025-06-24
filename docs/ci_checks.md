@@ -13,6 +13,7 @@ following tasks:
 - Coverage reports allow a small drop (up to 0.5%) before the Codecov check fails.
 - Scans dependencies using `npm audit`.
 - Caches Python and Node dependencies to speed up builds.
+- Installs Python dependencies from `uv.lock` with `uv` for reproducible environments.
 
 Running `pre-commit run --all-files` locally will execute the same Black,
 isort, Flake8, and mypy checks before they fail in CI. These checks help catch

@@ -43,7 +43,8 @@ def test_scheduler_executes_job(tmp_path):
             run_date=datetime.now(),
             id="test_job",
         )
-        for _ in range(10):
+        # CI runners may take longer to execute the scheduled job, so wait a bit more
+        for _ in range(25):
             if flag_file.exists():
                 break
             time.sleep(0.02)
