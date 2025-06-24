@@ -9,6 +9,10 @@ on:
   pull_request:
     branches: ["main", "staging"]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -43,15 +47,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Cache npm
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
+          cache: npm
+          cache-dependency-path: "**/package-lock.json"
       - name: Install Node dependencies
-        run: npm install
+        run: npm ci
         # Jest and Prettier are devDependencies installed here
       - name: Run pre-commit
         run: pre-commit run --all-files
