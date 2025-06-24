@@ -20,10 +20,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install ".[dev]"
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+      - name: Install dependencies with uv
+        run: uv pip install --system --editable . --group dev
       - name: Lint with flake8
         run: |
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
@@ -38,7 +45,7 @@ jobs:
           ./build_packages.sh
       - name: Build Python distributions
         run: |
-          python -m pip install build
+          uv pip install --system build
           python -m build
       - name: Generate release badges
         run: |
@@ -69,16 +76,22 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+      - name: Install uv
+        shell: bash
+        run: python -m pip install --upgrade uv
       - name: Install PyInstaller
         shell: bash
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller
+        run: uv pip install --system pyinstaller
       - name: Install project requirements
         shell: bash
-        run: |
-          python -m pip install --upgrade pip
-          pip install .
+        run: uv pip install --system .
       - name: Build Windows executable
         run: python build_windows.py
       - name: Upload Windows executable
@@ -99,12 +112,19 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+      - name: Install uv
+        run: python -m pip install --upgrade uv
       - name: Install PyInstaller
-        run: python -m pip install --upgrade pip && pip install pyinstaller
+        run: uv pip install --system pyinstaller
       - name: Install project requirements
-        run: |
-          python -m pip install --upgrade pip
-          pip install .
+        run: uv pip install --system .
       - name: Build macOS executable
         run: python build_macos.py
       - name: Upload macOS archive

@@ -179,6 +179,7 @@ Additional variables control AI behaviour and external tools:
 - `LLM_CAPTION_PROMPT` – system prompt for image captions. Refer to
   [LLM Prompt Settings](llm_prompts.md) for examples and usage.
 - `FFMPEG_PATH` – path to the `ffmpeg` binary (default `ffmpeg`)
+- `GLIMPSER_AUTO_BUILD_FFMPEG` – set to `1` to build FFmpeg automatically when missing (default disabled)
 - `FFPROBE_PATH` – path to the `ffprobe` binary (default `ffprobe`)
 - `FFMPEG_HWACCEL` – hardware acceleration mode for ffmpeg (default `auto`).
   When set to `auto` Glimpser inspects available encoders and enables the first

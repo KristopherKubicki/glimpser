@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sortable KPI table on captions page with filtering
 - Unified test pattern with spinner and multilingual timestamp overlay
 - Advanced calibration graphics including grayscale gradient and HDR targets
+- FFmpeg auto-build disabled by default; set `GLIMPSER_AUTO_BUILD_FFMPEG=1` to enable
 
 ### Changed
 

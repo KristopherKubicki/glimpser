@@ -16,9 +16,9 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    ```sh
    pip install .[dev]
    ```
-   Browser automation packages used for screenshots are grouped under the
-   optional `browser` extras in `setup.py`. A minimal install only requires
-   `wkhtmltoimage` for lightweight captures.
+   Browser automation packages used for screenshots are optional and configured
+   in `pyproject.toml`. A minimal install only requires `wkhtmltoimage` for
+   lightweight captures.
 3. Set up tooling:
    ```sh
    make setup  # installs pre-commit hooks and JS packages
@@ -54,7 +54,7 @@ The project uses `pytest` for testing and lints Python with `ruff` and `flake8`.
 ```sh
 ruff check --exit-zero .
 flake8
-pytest
+pytest  # runs in parallel via pytest-xdist
 ```
 
 Running the full test suite helps ensure that your changes do not introduce regressions.

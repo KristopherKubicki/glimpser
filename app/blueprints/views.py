@@ -22,7 +22,7 @@ def create_blueprint() -> Blueprint:
             page_title="Dashboard",
         )
 
-    @bp.route("/group/<string:group_name>")
+    @bp.route("/group/<string:group_name>", endpoint="group_page")
     @routes.login_required
     def group_page(group_name: str):
         """Render a page listing all cameras in a group."""

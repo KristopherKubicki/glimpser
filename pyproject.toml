@@ -83,6 +83,7 @@ dev = [
   "pylint>=3.3.7",
   "prettier",
   "pytest-socket", # for offline test passing
+  "pytest-xdist",
   
   
   # “Super-human” goodies, not required for building
@@ -144,7 +145,7 @@ check_untyped_defs     = true
 
 # pytest defaults (feel free to tweak)
 [tool.pytest.ini_options]
-addopts = "-ra -q"
+addopts = "-ra -q --durations=10 -n auto"
 testpaths = ["tests"]
 
 # bandit – basic security scan config
@@ -189,6 +190,7 @@ dev = [
   "commitizen>=3.12",     # conventional commits / changelog
   # safety intentionally NOT included (paid)
   "pytest-socket", # for offline testing
+  "pytest-xdist",
 ]
 
 agents = [

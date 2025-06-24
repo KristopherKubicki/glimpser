@@ -1,6 +1,5 @@
-import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest.mock import patch
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -39,10 +38,10 @@ def test_scheduler_executes_job(tmp_path):
             func=create_flag_file,
             args=(flag_file,),
             trigger="date",
-            run_date=datetime.now() + timedelta(milliseconds=100),
+            run_date=datetime.now(),
             id="test_job",
         )
-        for _ in range(50):
+        for _ in range(10):
             if flag_file.exists():
                 break
             time.sleep(0.02)

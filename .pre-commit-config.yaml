@@ -80,6 +80,13 @@ repos:
         entry: python scripts/check_exclude_docs.py
         language: system
         pass_filenames: false
+  - repo: local
+    hooks:
+      - id: check-docs-nav
+        name: docs navigation complete
+        entry: python scripts/check_docs_nav.py
+        language: system
+        pass_filenames: false
 
   - repo: local
     hooks:

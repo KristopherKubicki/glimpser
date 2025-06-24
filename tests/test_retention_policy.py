@@ -4,6 +4,7 @@ import os
 import tempfile
 import time
 import unittest
+from itertools import count
 from unittest.mock import patch
 
 import app.utils.retention_policy as retention_policy
@@ -17,7 +18,17 @@ from app.utils.retention_policy import (
 
 class TestRetentionPolicy(unittest.TestCase):
 
-    def test_delete_old_files(self):
+    @patch("app.utils.retention_policy.os.path.getctime")
+    @patch("time.sleep", return_value=None)
+    def test_delete_old_files(self, _sleep, mock_getctime):
+        counter = count()
+        times = {}
+
+        def fake_ctime(path):
+            return times[path]
+
+        mock_getctime.side_effect = fake_ctime
+
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create dummy files in sequence so creation times increase
             file_paths = []
@@ -26,7 +37,8 @@ class TestRetentionPolicy(unittest.TestCase):
                 with open(file_path, "w") as f:
                     f.write("Some content")
                 file_paths.append(file_path)
-                time.sleep(0.01)  # ensure distinct timestamps
+                times[file_path] = next(counter)
+                time.sleep(0.01)
 
             # Run the delete function
             delete_old_files(file_paths, max_age=0, max_size=0, minimum=2)
@@ -44,7 +56,17 @@ class TestRetentionPolicy(unittest.TestCase):
 
             self.assertFalse(os.path.exists(dir_path))
 
-    def test_get_files_sorted_by_creation_time(self):
+    @patch("app.utils.retention_policy.os.path.getctime")
+    @patch("time.sleep", return_value=None)
+    def test_get_files_sorted_by_creation_time(self, _sleep, mock_getctime):
+        counter = count()
+        times = {}
+
+        def fake_ctime(path):
+            return times[path]
+
+        mock_getctime.side_effect = fake_ctime
+
         with tempfile.TemporaryDirectory() as temp_dir:
             file_paths = []
             for name in ["a.txt", "b.txt", "c.txt"]:
@@ -52,6 +74,7 @@ class TestRetentionPolicy(unittest.TestCase):
                 with open(path, "w"):
                     pass
                 file_paths.append(path)
+                times[path] = next(counter)
                 time.sleep(0.01)
 
             # Add a symlink which should be ignored
@@ -80,7 +103,17 @@ class TestRetentionPolicy(unittest.TestCase):
         )
         self.assertEqual(mock_delete.call_count, 2)
 
-    def test_retention_cleanup_temp_dirs(self):
+    @patch("app.utils.retention_policy.os.path.getctime")
+    @patch("time.sleep", return_value=None)
+    def test_retention_cleanup_temp_dirs(self, _sleep, mock_getctime):
+        counter = count()
+        times = {}
+
+        def fake_ctime(path):
+            return times[path]
+
+        mock_getctime.side_effect = fake_ctime
+
         with (
             tempfile.TemporaryDirectory() as video_dir,
             tempfile.TemporaryDirectory() as shot_dir,
@@ -90,8 +123,10 @@ class TestRetentionPolicy(unittest.TestCase):
             for root in (video_dir, shot_dir):
                 cam = os.path.join(root, "cam1")
                 for i in range(12):
-                    with open(os.path.join(cam, f"file{i}.txt"), "w") as f:
+                    file_path = os.path.join(cam, f"file{i}.txt")
+                    with open(file_path, "w") as f:
                         f.write("data")
+                    times[file_path] = next(counter)
                     time.sleep(0.01)
 
             with (

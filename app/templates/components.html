@@ -153,7 +153,7 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
           value="{{ template.url if template else '' }}"
           required
           pattern="https?://.+"
-          placeholder="{{ url_for('test_pattern_mjpg', _external=True) }}"
+          placeholder="{{ url_for('stream.test_pattern_mjpg', _external=True) }}"
           title="Enter the URL to monitor"
           data-default-url="{{ default_url or '' }}"
         />
