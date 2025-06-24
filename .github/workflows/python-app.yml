@@ -68,7 +68,7 @@ jobs:
         run: mypy .
       - name: Test with coverage
         run: |
-          python -m coverage run -m pytest -n auto --color=yes
+          python -m coverage run -m pytest --color=yes
           python -m coverage xml
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
