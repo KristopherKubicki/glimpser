@@ -24,7 +24,6 @@ import sys
 import textwrap
 import threading
 import time
-from collections import deque
 from functools import reduce
 from math import gcd
 
@@ -342,136 +341,11 @@ def run_with_timeout(func, args=(), timeout=300):
         register_job_failure(key)
 
 
-MAX_IMAGE_TIME_DIFF = datetime.timedelta(minutes=5)
-
-
-def find_closest_image(directory, last_caption_time, max_time_diff=MAX_IMAGE_TIME_DIFF):
-    """Return the closest motion image not older than ``max_time_diff``."""
-    closest_image = None
-    min_time_diff = None
-
-    for filename in os.listdir(directory):
-        if (
-            filename.endswith(".png")
-            and "motion" in filename
-            and not os.path.islink(os.path.join(directory, filename))
-        ):
-            # Extract timestamp from filename
-            timestamp_str = filename.split("_")[0]
-            try:
-                timestamp = datetime.datetime.strptime(timestamp_str, "%Y%m%d%H%M%S")
-                time_diff = abs(last_caption_time - timestamp)
-
-                # Ignore images outside the allowed time window
-                if time_diff > max_time_diff:
-                    continue
-
-                if min_time_diff is None or time_diff < min_time_diff:
-                    closest_image = filename
-                    min_time_diff = time_diff
-            except ValueError:
-                continue  # Skip files with unexpected filename format
-
-    return closest_image
-
-
-def load_image(image_path):
-    """Return an RGB image or ``None`` if loading fails."""
-    try:
-        image = Image.open(image_path)
-        return image.convert("RGB")
-    except Exception as e:  # pragma: no cover - I/O errors are environment specific
-        if DEBUG:
-            os.rename(image_path, image_path.replace(".png", ".broken"))
-        else:
-            os.unlink(image_path)
-        logging.warning("image load issue: %s %s", image_path, e)
-        logging.error("Error saving image: %s %s", image_path, e)
-        return None
-
-
-def apply_motion_icon(image, draw, font, font_size, top_offset, padding=6):
-    motion_icon = "░"
-    text_w = int(draw.textlength(motion_icon, font=font))
-    text_h = font_size
-    x = int(image.width - text_w - 10)
-    y = int(image.height - int(font_size * 3) - top_offset)
-    background = Image.new(
-        "RGBA",
-        (text_w + padding * 2, text_h + padding * 2),
-        (0, 0, 0, 128),
-    )
-    image.paste(background, (x - padding, y - padding), background)
-    draw.text(
-        (x, y),
-        motion_icon,
-        font=font,
-        fill=(255, 255, 255, 255),
-        stroke_width=1,
-        stroke_fill=(0, 0, 0, 255),
-    )
-
-
-def apply_caption(image, draw, font, font_size, caption, top_offset, padding=6):
-    caption = caption[:64].replace("\n", " ")
-    wrapped = textwrap.fill(caption, width=32)
-    x = padding
-    y = int(image.height - int(font_size * 3) - top_offset)
-    bbox = draw.multiline_textbbox((x, y), wrapped, font=font, stroke_width=1)
-    text_w = bbox[2] - bbox[0]
-    text_h = bbox[3] - bbox[1]
-    background = Image.new(
-        "RGBA",
-        (text_w + padding * 2, text_h + padding * 2),
-        (0, 0, 0, 128),
-    )
-    image.paste(background, (x - padding, y - padding), background)
-    draw.multiline_text(
-        (x, y),
-        wrapped,
-        font=font,
-        fill=(255, 255, 255, 255),
-        stroke_width=1,
-        stroke_fill=(0, 0, 0, 255),
-    )
-
-
-def save_image(image, image_path):
-    image.save(image_path, "PNG")
-    image.close()
-
-
-def add_motion_and_caption(image_path, caption=None, motion=False):
-    if not os.path.exists(image_path):
-        return
-
-    if caption is None and not motion:
-        return
-
-    image = load_image(image_path)
-    if image is None:
-        return
-
-    try:
-        draw = ImageDraw.Draw(image)
-        max_height = min(image.height, image.width * 9 // 16)
-        font_size = int(max_height * 0.05)
-        top_offset = (image.height - max_height) / 2
-
-        # Use the same font loader as timestamps
-        font = load_font(font_size)
-
-        padding = 6
-
-        if motion:
-            apply_motion_icon(image, draw, font, font_size, top_offset, padding)
-
-        if caption is not None:
-            apply_caption(image, draw, font, font_size, caption, top_offset, padding)
-
-        save_image(image, image_path)
-    except Exception as e:  # pragma: no cover - unexpected errors
-        logging.error(f"Error updating image {image_path} : {e}")
+from .image_utils import (
+    MAX_IMAGE_TIME_DIFF,
+    add_motion_and_caption,
+    find_closest_image,
+)
 
 
 def update_camera(name, template, image_file=None, motion=False):
@@ -1213,216 +1087,22 @@ def schedule_crawlers():
         logging.error(f"Error scheduling initial crawl: {e}")
 
 
-system_metrics = {
-    "cpu_usage": 0.0,
-    "memory_usage": 0.0,
-    "thread_count": 0,
-    "start_time": time.time(),
-    "top_threads": [],
-}
-
-
-stop_event = threading.Event()
-metrics_thread = None
-log_caching_thread = None
-thread_cpu_times = {}
-last_thread_sample = time.time()
-child_procs = []
-
-# Cache ffmpeg version after the first lookup to avoid repeated subprocess calls.
-FFMPEG_VERSION: str | None = None
-
-
-def ffmpeg_version() -> str:
-    """Return the installed FFmpeg version or 'unavailable'.
-
-    The result is cached in ``FFMPEG_VERSION`` after the first lookup.
-    """
-    global FFMPEG_VERSION
-    if FFMPEG_VERSION is not None:
-        return FFMPEG_VERSION
-    try:
-        output = subprocess.check_output(
-            [FFMPEG_PATH, "-version"], stderr=subprocess.STDOUT, timeout=2
-        ).decode()
-        first = output.splitlines()[0]
-        match = re.search(r"ffmpeg version\s+([^\s]+)", first)
-        FFMPEG_VERSION = match.group(1) if match else first
-    except Exception:
-        FFMPEG_VERSION = "unavailable"
-    return FFMPEG_VERSION
-
-
-def machine_supports_hwaccel() -> bool:
-    """Return ``True`` if GPU devices appear to be available."""
-    return os.path.exists("/dev/dri") or shutil.which("nvidia-smi") is not None
-
-
-def ffmpeg_supports_hwaccel() -> bool:
-    """Return ``True`` if ``ffmpeg`` reports any hardware acceleration methods."""
-    try:
-        output = subprocess.check_output(
-            [FFMPEG_PATH, "-hwaccels"], stderr=subprocess.STDOUT, timeout=2
-        ).decode()
-        lines = [l.strip() for l in output.splitlines() if l.strip()]
-        return len(lines) > 1
-    except Exception:
-        return False
-
-
-def collect_system_metrics():
-    """Continuously update CPU and memory metrics."""
-    # Prime psutil's CPU measurement to avoid blocking on the first call
-    psutil.cpu_percent(interval=None)
-    proc = psutil.Process()
-    global thread_cpu_times, last_thread_sample, child_procs
-    proc.cpu_percent(interval=None)
-    child_procs = proc.children(recursive=True)
-    for child in child_procs:
-        try:
-            child.cpu_percent(interval=None)
-        except Exception:
-            continue
-    while not stop_event.is_set():
-        start = time.time()
-        # Non-blocking call since we primed above
-        system_metrics["cpu_usage"] = psutil.cpu_percent(interval=None)
-        system_metrics["memory_usage"] = psutil.virtual_memory().percent
-        system_metrics["thread_count"] = threading.active_count()
-
-        interval = start - last_thread_sample or 1
-        current = {t.id: t.user_time + t.system_time for t in proc.threads()}
-        usages = []
-        for tid, ttime in current.items():
-            prev = thread_cpu_times.get(tid, ttime)
-            cpu = ((ttime - prev) / interval) * 100 / psutil.cpu_count()
-            name = next(
-                (t.name for t in threading.enumerate() if t.ident == tid),
-                f"Thread {tid}",
-            )
-            usages.append({"id": tid, "name": name, "cpu": round(cpu, 1)})
-        thread_cpu_times = current
-        last_thread_sample = start
-        for child in proc.children(recursive=True):
-            try:
-                cpu = child.cpu_percent(interval=None)
-                cmd = child.cmdline()
-                name = (
-                    os.path.basename(cmd[0]) if cmd else os.path.basename(child.name())
-                )
-                if cpu:
-                    usages.append({"id": child.pid, "name": name, "cpu": round(cpu, 1)})
-            except Exception:
-                continue
-        usages.sort(key=lambda x: x["cpu"], reverse=True)
-        system_metrics["top_threads"] = usages[:10]
-        # Wait up to 5 seconds, exiting sooner if stop_event is set
-        stop_event.wait(5)
-
-
-def start_metrics_collection():
-    global metrics_thread
-    metrics_thread = threading.Thread(target=collect_system_metrics, daemon=True)
-    metrics_thread.start()
-
-
-def get_system_metrics():
-    uptime = time.time() - system_metrics["start_time"]
-    disk_usage = psutil.disk_usage("/").percent
-    process = psutil.Process()
-    if hasattr(process, "num_fds"):
-        open_files = process.num_fds()
-    else:
-        open_files = len(process.open_files())
-    ffmpeg_path = shutil.which(FFMPEG_PATH) or FFMPEG_PATH
-    ffmpeg_version_str = ffmpeg_version()
-    ffmpeg_gpu_support = ffmpeg_supports_hwaccel()
-    return {
-        "cpu_usage": round(system_metrics["cpu_usage"], 1),
-        "memory_usage": round(system_metrics["memory_usage"], 1),
-        "disk_usage": round(disk_usage, 1),
-        "open_files": open_files,
-        "thread_count": system_metrics["thread_count"],
-        "top_threads": system_metrics.get("top_threads", []),
-        "uptime": f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s",
-        "ffmpeg_version": ffmpeg_version_str,
-        "ffmpeg_path": ffmpeg_path,
-        "machine_hwaccel": machine_supports_hwaccel(),
-        "ffmpeg_hwaccel": ffmpeg_gpu_support,
-        "ffmpeg_gpu_support": ffmpeg_gpu_support,
-        "hwaccel_enabled": bool(FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false"),
-        "gpu_support": machine_supports_hwaccel(),
-        "ffmpeg_gpu_enabled": bool(
-            FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false"
-        ),
-        "danger_mode": get_setting("DANGER_MODE", "True") == "True",
-    }
-
-
-log_cache = deque(maxlen=10000)  # Store last 10000 log entries
-log_cache_lock = threading.Lock()
-
-
-def cache_logs():
-    log_file_path = LOGGING_PATH
-    os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
-    open(log_file_path, "a").close()
-
-    try:
-        with open(log_file_path, "r") as file:
-            file.seek(0, os.SEEK_END)  # Start at end of file
-            while True:
-                new_log = file.readline()
-                if not new_log:
-                    if stop_event.is_set():
-                        break
-                    # Avoid busy looping when no new log lines are written.
-                    time.sleep(1)
-                    # The file may have been truncated. Seek to end and retry.
-                    file.seek(0, os.SEEK_END)
-                    continue
-
-                with log_cache_lock:
-                    truncated_log = (
-                        new_log[:500] + "..." if len(new_log) > 500 else new_log
-                    )
-                    log_parts = truncated_log.strip().split(" - ", 3)
-                    if len(log_parts) >= 4:
-                        timestamp_str, log_level, log_source, log_message = log_parts
-                        try:
-                            timestamp = datetime.datetime.strptime(
-                                timestamp_str, "%Y-%m-%d %H:%M:%S,%f"
-                            )
-                            log_cache.append(
-                                {
-                                    "timestamp": timestamp,
-                                    "level": log_level,
-                                    "source": log_source,
-                                    "message": log_message,
-                                }
-                            )
-                        except ValueError:
-                            continue  # Skip incorrect timestamp format
-    except Exception as e:
-        logging.error(f"Error in cache_logs: {e}")
-
-
-def start_log_caching():
-    global log_caching_thread
-    log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
-    log_caching_thread.start()
-
-    # No longer schedule cache_logs via the APScheduler.  The background thread
-    # itself handles continuous log caching and avoids spawning additional
-    # threads on scheduler restarts.
-
-
-def stop_background_tasks() -> None:
-    """Signal background threads to exit and wait for them."""
-    stop_event.set()
-    for t in (metrics_thread, log_caching_thread):
-        if t is not None:
-            t.join(timeout=1)
+from .system_metrics import (
+    FFMPEG_VERSION,
+    cache_logs,
+    ffmpeg_supports_hwaccel,
+    ffmpeg_version,
+    get_system_metrics,
+    log_cache,
+    log_cache_lock,
+    machine_supports_hwaccel,
+    metrics_thread,
+    start_log_caching,
+    start_metrics_collection,
+    stop_background_tasks,
+    stop_event,
+    system_metrics,
+)
 
 
 def get_feed_status():
