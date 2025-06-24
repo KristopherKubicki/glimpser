@@ -154,7 +154,7 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.check_password_hash")
     @patch("app.routes.SessionLocal")
     @patch("app.routes.login_attempts", {})
-    @patch("app.routes.render_template")
+    @patch("app.blueprints.ui.render_template")
     def test_login_failure(
         self, mock_render_template, mock_session_local, mock_check_password
     ):
@@ -200,7 +200,7 @@ class TestRoutes(unittest.TestCase):
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.login_attempts", {})
-    @patch("app.routes.render_template")
+    @patch("app.blueprints.ui.render_template")
     def test_login_missing_fields(self, mock_render_template, mock_session_local):
         response = self.client.post("/login", data={"username": "", "password": ""})
         self.assertEqual(response.status_code, 400)
@@ -243,7 +243,7 @@ class TestRoutes(unittest.TestCase):
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
-    @patch("app.routes.render_template")
+    @patch("app.blueprints.ui.render_template")
     @patch("app.routes.template_manager.get_templates")
     def test_index(self, mock_get_templates, mock_render_template, mock_session_local):
         dummy_user = SimpleNamespace(id=1)
@@ -282,7 +282,7 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
     @patch("app.routes.template_manager.get_templates")
-    @patch("app.routes.render_template")
+    @patch("app.blueprints.ui.render_template")
     def test_captions(
         self, mock_render_template, mock_get_templates, mock_session_local
     ):
@@ -403,7 +403,7 @@ class TestRoutes(unittest.TestCase):
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
-    @patch("app.routes.render_template")
+    @patch("app.blueprints.ui.render_template")
     def test_stream(self, mock_render_template, mock_session_local):
         dummy_user = SimpleNamespace(id=1)
 
@@ -444,7 +444,7 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.SessionLocal")
     @patch("app.routes.camera_discovery.discover_cameras")
     @patch("app.routes.template_manager.get_templates")
-    @patch("app.routes.render_template")
+    @patch("app.blueprints.ui.render_template")
     def test_discover_route(
         self,
         mock_render_template,
@@ -552,7 +552,7 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
     @patch("app.routes.template_manager.get_template")
-    @patch("app.routes.render_template")
+    @patch("app.blueprints.ui.render_template")
     def test_live_single_camera(
         self, mock_render_template, mock_get_template, mock_session_local
     ):
@@ -585,7 +585,7 @@ class TestRoutes(unittest.TestCase):
             page_title="Live View",
         )
 
-    @patch("app.routes.render_template")
+    @patch("app.blueprints.ui.render_template")
     @patch("app.routes.get_active_groups")
     @patch("app.routes.session", {"user_id": 1})
     def test_group_page(self, mock_groups, mock_render_template):
