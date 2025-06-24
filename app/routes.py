@@ -1633,6 +1633,11 @@ def init_routes(app: Flask) -> None:
             endpoint="index",
             view_func=app.view_functions["views.index"],
         )
+        app.add_url_rule(
+            "/group/<string:group_name>",
+            endpoint="group_page",
+            view_func=app.view_functions["views.group_page"],
+        )
         app._views_bp_registered = True
 
     if not getattr(app, "_auth_bp_registered", False):
