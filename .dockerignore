@@ -1,2 +1,12 @@
+# Keep Docker context small by excluding non-runtime files
+.git
+.github
+docs
+tests
+node_modules
+.env
+.env.example
+AGENTS.md
+AGENTS.template.md
 data
 logs
