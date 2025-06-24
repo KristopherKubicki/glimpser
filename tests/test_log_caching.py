@@ -6,6 +6,7 @@ from collections import deque
 from unittest.mock import MagicMock, patch
 
 import app.utils.scheduling as scheduling
+from app.utils import system_metrics
 
 
 class DummyFile:
@@ -45,8 +46,8 @@ def test_cache_logs_parses_lines(tmp_path):
 
     with (
         patch.object(scheduling, "LOGGING_PATH", str(tmp_path / "test.log")),
-        patch.object(scheduling, "stop_event", event),
-        patch.object(scheduling, "log_cache", new_cache),
+        patch.object(system_metrics, "stop_event", event),
+        patch.object(system_metrics, "log_cache", new_cache),
         patch("builtins.open", fake_open),
         patch("os.makedirs"),
         patch("app.utils.scheduling.time.sleep", lambda _: None),
@@ -76,9 +77,9 @@ def test_start_and_stop_log_caching():
         patch(
             "app.utils.scheduling.threading.Thread", return_value=thread_instance
         ) as mock_thread,
-        patch.object(scheduling, "stop_event", event),
-        patch.object(scheduling, "metrics_thread", None),
-        patch.object(scheduling, "log_caching_thread", None),
+        patch.object(system_metrics, "stop_event", event),
+        patch.object(system_metrics, "metrics_thread", None),
+        patch.object(system_metrics, "log_caching_thread", None),
     ):
         scheduling.start_log_caching()
         mock_thread.assert_called_once_with(target=scheduling.cache_logs, daemon=True)
