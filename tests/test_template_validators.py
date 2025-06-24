@@ -41,4 +41,3 @@ def test_validate_object_confidence():
         t.validate_object_confidence("object_confidence", 1.5)
     t_no_filter = Template(object_filter="")
     assert t_no_filter.validate_object_confidence("object_confidence", 1.5) == 1.5
-
