@@ -1,6 +1,5 @@
-import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest.mock import patch
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -25,7 +24,6 @@ def test_scheduler_executes_job(tmp_path):
         patch("app.start_log_caching"),
         patch("app.email_alert"),
         patch("app.sms_alert"),
-        patch("time.sleep", return_value=None),
     ):
         create_app(enable_watchdog=False, schedule=True)
         # Shut down any jobs created during app initialization. Using wait=True

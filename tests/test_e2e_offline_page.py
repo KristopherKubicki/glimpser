@@ -6,10 +6,13 @@ from threading import Thread
 from unittest.mock import patch
 
 import pytest
+import pytest_socket
 from werkzeug.serving import make_server
 
 if os.environ.get("NO_NETWORK") == "1" or os.environ.get("SKIP_E2E") == "1":
     pytest.skip("E2E tests disabled due to no network", allow_module_level=True)
+
+pytest_socket.enable_socket()
 
 import app
 
