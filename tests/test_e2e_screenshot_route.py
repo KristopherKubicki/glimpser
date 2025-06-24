@@ -1,5 +1,4 @@
 import os
-import socket
 import sys
 from threading import Thread
 from types import SimpleNamespace
@@ -10,17 +9,8 @@ import requests
 from werkzeug.serving import make_server
 
 
-def _has_network() -> bool:
-    """Check if outbound network access is available."""
-    try:
-        socket.create_connection(("1.1.1.1", 53), timeout=1).close()
-        return True
-    except OSError:
-        return False
-
-
-if os.environ.get("SKIP_E2E") == "1" or not _has_network():
-    pytest.skip("E2E tests disabled due to no network", allow_module_level=True)
+if os.environ.get("SKIP_E2E") == "1":
+    pytest.skip("E2E tests disabled", allow_module_level=True)
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

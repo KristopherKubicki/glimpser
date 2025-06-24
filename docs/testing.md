@@ -50,6 +50,10 @@ python -m coverage run -m pytest
 python -m coverage html
 ```
 
+If your machine lacks internet access you can also set `NO_NETWORK=1` to
+avoid lengthy connection attempts during startup. The test server will skip
+network probes and the scenarios run entirely offline.
+
 ## JavaScript Unit Tests
 
 Front‑end utilities under `app/static/js` are tested with **Jest**. The tests
