@@ -1598,6 +1598,12 @@ def init_routes(app: Flask) -> None:
 
     if not getattr(app, "_templates_bp_registered", False):
         app.register_blueprint(create_templates_blueprint())
+        app.add_url_rule(
+            "/upload_nav_icon",
+            endpoint="upload_nav_icon",
+            view_func=app.view_functions["templates.upload_nav_icon"],
+            methods=["POST"],
+        )
         app._templates_bp_registered = True
 
     if not getattr(app, "_assets_bp_registered", False):
@@ -2569,6 +2575,281 @@ def init_routes(app: Flask) -> None:
             return send_conditional_file(os.path.join(path, latest_file), PNG_TTL_SEC)
 
         abort(404)
+
+    def delete_setting(name: str) -> bool:
+        name = name.replace("'", "")[:32]
+        if not re.findall(r"^[A-Z_]+?$", name):
+            return False
+
+        session_db = SessionLocal()
+        try:
+            session_db.execute(
+                text("DELETE FROM settings WHERE name = :name"), {"name": name}
+            )
+            session_db.commit()
+        finally:
+            session_db.close()
+
+        return True
+
+    @app.route("/settings", methods=["GET", "POST"])
+    @login_required
+    def settings():
+        """Render settings page and handle configuration updates via POST."""
+
+        if request.method == "POST":
+            email_settings = [
+                "EMAIL_ENABLED",
+                "EMAIL_SENDER",
+                "EMAIL_RECIPIENTS",
+                "EMAIL_SMTP_SERVER",
+                "EMAIL_SMTP_PORT",
+                "EMAIL_USE_TLS",
+                "EMAIL_USERNAME",
+                "EMAIL_PASSWORD",
+            ]
+            notification_settings = ["SMS_ENABLED", "CAP_ENABLED"]
+            action = request.form.get("action")
+
+            if action == "add":
+                new_name = (request.form.get("new_name") or "").strip()
+                new_value = (request.form.get("new_value") or "").strip()
+                if not new_name or not new_value:
+                    flash("Setting name and value are required", "error")
+                    return redirect(url_for("settings")), 400
+                if not re.fullmatch(r"[A-Z_]+", new_name):
+                    flash(
+                        "Setting names must contain only uppercase letters and underscores",
+                        "error",
+                    )
+                    return redirect(url_for("settings")), 400
+                sanitized = validate_setting(new_name, new_value)
+                if sanitized is None:
+                    flash(f"Invalid value for {new_name}", "error")
+                    return redirect(url_for("settings")), 400
+                update_setting(new_name, sanitized)
+            elif action == "delete":
+                name_to_delete = request.form.get("name_to_delete")
+                if name_to_delete:
+                    delete_setting(name_to_delete)
+            elif action == "update_email":
+                for setting in email_settings:
+                    value = request.form.get(setting)
+                    if value is not None:
+                        sanitized = validate_setting(setting, value)
+                        if sanitized is None:
+                            flash(f"Invalid value for {setting}", "error")
+                            return redirect(url_for("settings")), 400
+                        update_setting(setting, sanitized)
+            elif action == "backup":
+                if backup_config():
+                    flash("Configuration backed up successfully", "success")
+                else:
+                    flash("Failed to backup configuration", "error")
+            elif action == "download":
+
+                def generate() -> typing.Generator[bytes, None, None]:
+                    """Stream the configuration JSON after triggering a backup."""
+
+                    yield b""
+                    backup_config()
+                    if os.path.exists(BACKUP_PATH):
+                        with open(BACKUP_PATH, "rb") as f:
+                            for chunk in iter(lambda: f.read(8192), b""):
+                                yield chunk
+
+                headers = {
+                    "Content-Disposition": "attachment; filename=config_backup.json"
+                }
+                return Response(
+                    stream_with_context(generate()),
+                    mimetype="application/json",
+                    headers=headers,
+                )
+            elif action == "upload":
+                if "file" not in request.files:
+                    flash("No file part", "error")
+                else:
+                    file = request.files["file"]
+                    if file.filename == "":
+                        flash("No selected file", "error")
+                    elif file and allowed_file(file.filename):
+                        file.stream.seek(0, os.SEEK_END)
+                        size = file.stream.tell()
+                        file.stream.seek(0)
+                        if size > MAX_UPLOAD_SIZE:
+                            flash("File exceeds 5 MB limit", "error")
+                        else:
+                            file.save(BACKUP_PATH)
+                            restore_config()
+                            flash(
+                                "Configuration restored successfully",
+                                "success",
+                            )
+                    else:
+                        flash("Invalid file type", "error")
+            elif action == "test_email":
+                send_email_alert(
+                    "Glimpser Test Email",
+                    "This is a test email from Glimpser.",
+                )
+                flash("Email test triggered. Check logs for results.", "info")
+            elif action == "test_sms":
+                send_sms_alert("Test SMS from Glimpser")
+                flash("SMS test triggered. Check logs for results.", "info")
+            elif action == "update_shortcut":
+                path_val = request.form.get("shortcut_path")
+                path = Path(path_val) if path_val else None
+                paths, msg = update_chrome_shortcuts_info(path)
+                if paths:
+                    joined = ", ".join(str(p) for p in paths)
+                    flash(
+                        f"Updated {len(paths)} shortcut{'s' if len(paths) != 1 else ''}: {joined}",
+                        "success",
+                    )
+                else:
+                    flash(f"Failed to update shortcuts: {msg}", "error")
+            else:
+                current = {s["name"]: s["value"] for s in get_all_settings()}
+                bool_settings = {
+                    n for n, v in current.items() if validators.is_bool_string(v)
+                }
+                for name in bool_settings:
+                    if name in email_settings:
+                        continue
+                    new_val = (
+                        "True"
+                        if str(request.form.get(name, "")).lower()
+                        in {"true", "on", "1", "t", "y", "yes"}
+                        else "False"
+                    )
+                    update_setting(name, new_val)
+
+                for name, value in request.form.items():
+                    if (
+                        name
+                        in [
+                            "action",
+                            "new_name",
+                            "new_value",
+                            "name_to_delete",
+                        ]
+                        or name in email_settings
+                        or name in bool_settings
+                    ):
+                        continue
+
+                    sanitized = validate_setting(name, value)
+                    if sanitized is None:
+                        flash(f"Invalid value for {name}", "error")
+                        continue
+
+                    if name in SETTINGS_CHOICES:
+                        update_setting(name, sanitized)
+                        continue
+
+                    update_setting(name, sanitized)
+            flash("Settings updated successfully", "success")
+            return redirect(url_for("settings"))
+
+        settings = get_all_settings()
+        grouped_settings: Dict[str, List[Dict[str, Any]]] = {
+            group: [] for group in SETTINGS_GROUPS
+        }
+        grouped_settings["Other"] = []
+        for setting in settings:
+            placed = False
+            for group, names in SETTINGS_GROUPS.items():
+                if setting["name"] in names:
+                    grouped_settings[group].append(setting)
+                    placed = True
+                    break
+            if not placed:
+                grouped_settings["Other"].append(setting)
+
+        if "Advanced" in grouped_settings:
+            grouped_settings["Advanced"].extend(grouped_settings.get("Other", []))
+        else:
+            grouped_settings["Advanced"] = grouped_settings.get("Other", [])
+        grouped_settings.pop("Other", None)
+
+        # Remove empty groups to avoid blank headings in the UI
+        grouped_settings = {g: items for g, items in grouped_settings.items() if items}
+
+        collapsed_groups = {
+            "Capture",
+            "Admin",
+            "Advanced",
+        }
+        file_location_items = [s for s in settings if s["name"] in FILE_LOCATION_NAMES]
+        file_info = file_location_metrics(file_location_items)
+
+        metrics = scheduling.get_system_metrics()
+        feeds = scheduling.get_feed_status()
+        last_summary = scheduling.get_last_summary_time()
+        log_summary = scheduling.get_or_generate_log_summary()
+        danger_enabled = config.get_setting("DANGER_MODE", "True") == "True"
+        cost_summary, total_tokens, total_cost, total_calls = (
+            template_manager.get_llm_cost_summary()
+        )
+        cost_summary = template_manager.group_cost_summary(cost_summary, top=10)
+
+        chrome_path = get_chrome_path()
+        shortcut_opts = [
+            str(p) for p in LINUX_PATHS if p.exists() and os.access(p, os.W_OK)
+        ]
+        danger_info = {
+            "browser": os.path.basename(chrome_path) if chrome_path else "N/A",
+            "path": chrome_path or "N/A",
+            "version": (get_chrome_version(chrome_path) if chrome_path else "N/A"),
+            "shortcut": str(first_shortcut_path() or "N/A"),
+            "patched": not shortcuts_need_patch(),
+            "running": is_chrome_debug_port_open("127.0.0.1", config.DANGER_PORT),
+            "port": config.DANGER_PORT,
+        }
+
+        last_backup = None
+        if os.path.exists(BACKUP_PATH):
+            ts = datetime.fromtimestamp(os.path.getmtime(BACKUP_PATH))
+            last_backup = ts.strftime("%Y-%m-%d %H:%M:%S")
+
+        templates = template_manager.get_templates()
+        existing_urls = {t.get("url"): n for n, t in templates.items() if t.get("url")}
+
+        tooltips = dict(SETTINGS_TOOLTIPS)
+        if not metrics.get("ffmpeg_gpu_support"):
+            tooltips["FFMPEG_HWACCEL"] = "Hardware acceleration not available"
+
+        return render_template(
+            "settings.html",
+            grouped_settings=grouped_settings,
+            collapsed_groups=collapsed_groups,
+            tooltips=tooltips,
+            metrics=metrics,
+            feeds=feeds,
+            last_summary=last_summary,
+            log_summary=log_summary,
+            cost_summary=cost_summary,
+            total_tokens=total_tokens,
+            total_cost=total_cost,
+            total_calls=total_calls,
+            danger_info=danger_info,
+            shortcut_options=shortcut_opts,
+            choices=SETTINGS_CHOICES,
+            boolean_fields=validators.BOOLEAN_SETTINGS,
+            danger_enabled=danger_enabled,
+            numeric_fields=NUMERIC_FIELDS,
+            email_fields=EMAIL_FIELDS,
+            locked_settings=LOCKED_SETTINGS,
+            file_info=file_info,
+            existing_urls=existing_urls,
+            placeholders=SETTINGS_PLACEHOLDERS,
+            last_backup=last_backup,
+            page_title="Settings",
+        )
+
+    def allowed_file(filename):
+        return "." in filename and filename.rsplit(".", 1)[1].lower() == "json"
 
     @app.route("/status")
     @login_required

@@ -17,7 +17,7 @@ def create_blueprint() -> Blueprint:
 
     bp = Blueprint("templates", __name__)
 
-    @bp.route("/upload_nav_icon", methods=["POST"])
+    @bp.route("/upload_nav_icon", methods=["POST"], endpoint="upload_nav_icon")
     @routes.login_required
     def upload_nav_icon() -> Response:
         """Upload or select a navigation icon."""
