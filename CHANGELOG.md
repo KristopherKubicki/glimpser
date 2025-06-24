@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Live video retries now use exponential backoff to reduce repeated ffmpeg errors
 - Template toolbar now anchors to the lower left of detail pages
 - Image thumbnails show captions in their tooltips
+- Routes related to templates are now organized into a blueprint
 - Dashboard tiles now use the `/clip` endpoint to loop the last two minutes of footage
 
 ### Fixed
