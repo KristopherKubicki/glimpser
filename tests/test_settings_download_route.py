@@ -25,7 +25,7 @@ class TestSettingsDownloadRoute(unittest.TestCase):
         self.path_patch.stop()
         self.temp_dir.cleanup()
 
-    @patch("app.routes.open", new_callable=mock_open, read_data=b"{}")
+    @patch("builtins.open", new_callable=mock_open, read_data=b"{}")
     @patch("app.routes.backup_config", return_value=True)
     @patch("app.routes.os.path.exists", return_value=True)
     def test_download_triggers_backup(self, mock_exists, mock_backup, mock_file):
