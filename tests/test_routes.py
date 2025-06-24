@@ -585,10 +585,11 @@ class TestRoutes(unittest.TestCase):
             page_title="Live View",
         )
 
+    @patch("app.routes.SessionLocal")
     @patch("app.routes.render_template")
     @patch("app.routes.get_active_groups")
     @patch("app.routes.session", {"user_id": 1})
-    def test_group_page(self, mock_groups, mock_render_template):
+    def test_group_page(self, mock_groups, mock_render_template, mock_session_local):
         mock_groups.return_value = ["group1", "group2"]
         response = self.client.get("/group/group1")
         self.assertEqual(response.status_code, 200)
@@ -596,24 +597,27 @@ class TestRoutes(unittest.TestCase):
             "group.html", group_name="group1", page_title="Group – group1"
         )
 
+    @patch("app.routes.SessionLocal")
     @patch("app.routes.get_active_groups")
     @patch("app.routes.session", {"user_id": 1})
-    def test_group_page_not_found(self, mock_groups):
+    def test_group_page_not_found(self, mock_groups, mock_session_local):
         mock_groups.return_value = ["group1"]
         response = self.client.get("/group/unknown")
         self.assertEqual(response.status_code, 404)
 
+    @patch("app.routes.SessionLocal")
     @patch("app.routes.get_active_groups")
     @patch("app.routes.session", {"user_id": 1})
-    def test_group_page_all_redirect(self, mock_groups):
+    def test_group_page_all_redirect(self, mock_groups, mock_session_local):
         mock_groups.return_value = ["group1"]
         response = self.client.get("/group/all")
         self.assertEqual(response.status_code, 302)
         self.assertIn("/", response.headers["Location"])
 
+    @patch("app.routes.SessionLocal")
     @patch("app.routes.get_active_groups")
     @patch("app.routes.session", {"user_id": 1})
-    def test_groups_endpoint_includes_all(self, mock_groups):
+    def test_groups_endpoint_includes_all(self, mock_groups, mock_session_local):
         mock_groups.return_value = ["group1"]
         response = self.client.get("/groups")
         self.assertEqual(response.status_code, 200)

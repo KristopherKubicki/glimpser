@@ -148,8 +148,9 @@ class TestRunWithTimeout(unittest.TestCase):
             run_with_timeout(lambda name: None, args=("cam1",), timeout=1)
             mock_proc.assert_not_called()
 
+    @patch("app.utils.scheduling.psutil.cpu_percent", return_value=10)
     @patch("app.utils.scheduling.is_system_online", return_value=True)
-    def test_backoff_on_failure(self, _online):
+    def test_backoff_on_failure(self, _online, _cpu):
         def bad_job():
             raise RuntimeError("boom")
 
