@@ -18,7 +18,9 @@ class TestBlankFrameLogging(unittest.TestCase):
 
             template = {"name": "cam1", "url": "http://example.com", "motion": 1}
 
+            db_path = os.path.join(tmp, "test.db")
             with (
+                patch.dict(os.environ, {"GLIMPSER_DATABASE_PATH": db_path}),
                 patch("app.utils.scheduling.SCREENSHOT_DIRECTORY", tmp),
                 patch("app.utils.scheduling.capture_or_download", return_value=True),
                 patch("app.utils.scheduling.get_template", return_value=template),
