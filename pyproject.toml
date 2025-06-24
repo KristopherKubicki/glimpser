@@ -81,6 +81,7 @@ dev = [
   "uv>=0.6",
   "pyinstaller>=6.14.1",
   "pylint>=3.3.7",
+  "shellcheck-py>=0.9",
   "prettier",
   "pytest-socket", # for offline test passing
   "pytest-xdist",

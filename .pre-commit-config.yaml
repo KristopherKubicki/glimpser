@@ -90,6 +90,14 @@ repos:
 
   - repo: local
     hooks:
+      - id: shellcheck
+        name: shellcheck
+        entry: shellcheck
+        language: system
+        files: '\.sh$'
+
+  - repo: local
+    hooks:
       - id: check-yaml-format
         name: prettier yaml
         entry: npx prettier --check '*.yml'
