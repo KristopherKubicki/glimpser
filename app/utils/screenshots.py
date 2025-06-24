@@ -58,43 +58,9 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
-from .network import is_system_online
-
-keyboard = None
-mouse = None
-
-
-def _safe_import_pynput() -> None:
-    """Import pynput when input libraries are available."""
-
-    global keyboard, mouse
-
-    if keyboard is not None and mouse is not None:
-        # Already attempted
-        return
-
-    display = os.environ.get("DISPLAY")
-    system = platform.system()
-    if display is None and system not in ("Darwin", "Windows"):
-        logging.debug("Skipping pynput import: no DISPLAY set")
-        return
-
-    try:
-        from pynput import keyboard as _keyboard
-        from pynput import mouse as _mouse
-
-        keyboard = _keyboard
-        mouse = _mouse
-    except Exception as e:  # pragma: no cover - optional dependency
-        mouse = None
-        keyboard = None
-        logging.warning("pynput not available: %s", e)
-
-
-_safe_import_pynput()
-
-
 import app.config as config
+import app.utils.status_cache as status_cache
+import app.utils.user_activity as user_activity
 from app.config import (
     ANALYZE_DURATION_DEFAULT,
     ANALYZE_DURATION_OTHER,
@@ -113,6 +79,62 @@ from app.config import (
 )
 from app.utils.validators import validate_proxy, validate_url
 
+from .network import is_system_online
+
+_safe_import_pynput = user_activity._safe_import_pynput
+_send_input_event = user_activity._send_input_event
+idle_seconds_loginctl = user_activity.idle_seconds_loginctl
+idle_seconds_macos = user_activity.idle_seconds_macos
+idle_seconds_windows = user_activity.idle_seconds_windows
+idle_seconds_x11 = user_activity.idle_seconds_x11
+keyboard = user_activity.keyboard
+mouse = user_activity.mouse
+on_click = user_activity.on_click
+on_move = user_activity.on_move
+on_press = user_activity.on_press
+on_scroll = user_activity.on_scroll
+user_active = user_activity.user_active
+
+
+def check_user_activity(timeout: int = 10) -> bool:
+    user_activity._safe_import_pynput = _safe_import_pynput
+    user_activity.idle_seconds_x11 = idle_seconds_x11
+    user_activity.idle_seconds_loginctl = idle_seconds_loginctl
+    user_activity.idle_seconds_windows = idle_seconds_windows
+    user_activity.idle_seconds_macos = idle_seconds_macos
+    user_activity.keyboard = keyboard
+    user_activity.mouse = mouse
+    return user_activity.check_user_activity(timeout)
+
+
+STATUS_CACHE_PATH = status_cache.STATUS_CACHE_PATH
+STATUS_CACHE_TTL = status_cache.STATUS_CACHE_TTL
+status_code_cache = status_cache.status_code_cache
+status_code_cache_time = status_cache.status_code_cache_time
+
+
+def _load_status_cache() -> None:
+    status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
+    status_cache._load_status_cache()
+
+
+def _persist_status_cache() -> None:
+    status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
+    status_cache._persist_status_cache()
+
+
+def get_cached_status_code(url: str) -> int | None:
+    status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
+    return status_cache.get_cached_status_code(url)
+
+
+def set_cached_status_code(url: str, code: int) -> None:
+    status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
+    status_cache.set_cached_status_code(url, code)
+
+
+_load_status_cache()
+
 FFMPEG_AVAILABLE: Optional[bool] = None
 
 last_camera_test = {}
@@ -128,46 +150,6 @@ chrome_version = {}
 _browser_gl_cache: Dict[str, bool] = {}
 last_modified_cache = {}
 etag_cache = {}
-
-# Cache of last HTTP status codes per URL
-status_code_cache = {}
-status_code_cache_time = {}
-STATUS_CACHE_TTL = 60 * 60  # 1 hour
-STATUS_CACHE_PATH = "data/status_cache.json"
-
-
-def _load_status_cache() -> None:
-    """Load cached status codes from ``STATUS_CACHE_PATH``."""
-    if not os.path.exists(STATUS_CACHE_PATH):
-        return
-    try:
-        with open(STATUS_CACHE_PATH, "r") as f:
-            data = json.load(f)
-    except Exception:
-        return
-
-    status_code_cache.clear()
-    status_code_cache_time.clear()
-    for url, info in data.items():
-        status_code_cache[url] = info.get("code")
-        status_code_cache_time[url] = info.get("time", 0)
-
-
-def _persist_status_cache() -> None:
-    """Write ``status_code_cache`` to ``STATUS_CACHE_PATH``."""
-    os.makedirs(os.path.dirname(STATUS_CACHE_PATH), exist_ok=True)
-    data = {
-        url: {"code": code, "time": status_code_cache_time.get(url, 0)}
-        for url, code in status_code_cache.items()
-    }
-    try:
-        with open(STATUS_CACHE_PATH, "w") as f:
-            json.dump(data, f)
-    except Exception:
-        logging.exception("Failed to persist status cache")
-
-
-_load_status_cache()
 
 
 def _check_ffmpeg() -> bool:
@@ -276,310 +258,6 @@ def _is_valid_png(path: str) -> bool:
         return True
     except Exception:
         return False
-
-
-def get_cached_status_code(url):
-    """Return cached HTTP status code for URL if not expired."""
-    code = status_code_cache.get(url)
-    ts = status_code_cache_time.get(url, 0)
-    if code is not None and time.time() - ts < STATUS_CACHE_TTL:
-        return code
-    if code is not None:
-        # Entry expired, remove and persist cleanup
-        status_code_cache.pop(url, None)
-        status_code_cache_time.pop(url, None)
-        _persist_status_cache()
-    return None
-
-
-def set_cached_status_code(url, code):
-    """Store status code for URL with current timestamp."""
-    status_code_cache[url] = code
-    status_code_cache_time[url] = time.time()
-    _persist_status_cache()
-
-
-# Callback functions to update activity state
-def on_move(x, y):
-    global user_active
-    user_active = True
-
-
-def on_click(x, y, button, pressed):
-    global user_active
-    user_active = True
-
-
-def on_scroll(x, y, dx, dy):
-    global user_active
-    user_active = True
-
-
-def on_press(key):
-    global user_active
-    user_active = True
-
-
-import ctypes
-import ctypes.util
-import os
-import threading
-import time
-
-_idle_lock = threading.Lock()
-_x11 = None
-_xss = None
-
-
-class XScreenSaverInfo(ctypes.Structure):
-    _fields_ = [
-        ("window", ctypes.c_ulong),
-        ("state", ctypes.c_int),
-        ("kind", ctypes.c_int),
-        ("since", ctypes.c_ulong),  # ms since state started
-        ("idle", ctypes.c_ulong),  # ms idle (what we need)
-        ("eventMask", ctypes.c_ulong),
-    ]
-
-
-def idle_seconds_x11() -> int:
-    """Return idle seconds on X11 systems."""
-
-    dpy_name = os.environ.get("DISPLAY")
-    if not dpy_name:
-        raise RuntimeError("$DISPLAY is not set – not running under X11.")
-
-    global _x11, _xss
-
-    with _idle_lock:
-        if _x11 is None or _xss is None:
-            libX11_path = ctypes.util.find_library("X11")
-            libXss_path = ctypes.util.find_library("Xss")
-            if not (libX11_path and libXss_path):
-                raise RuntimeError(
-                    "libX11 or libXss not found (install libx11-6 libxss1)."
-                )
-
-            _x11 = ctypes.cdll.LoadLibrary(libX11_path)
-            _xss = ctypes.cdll.LoadLibrary(libXss_path)
-
-            _x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
-            _x11.XOpenDisplay.restype = ctypes.c_void_p
-            _x11.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
-            _x11.XDefaultRootWindow.restype = ctypes.c_ulong
-            _xss.XScreenSaverAllocInfo.restype = ctypes.POINTER(XScreenSaverInfo)
-            _xss.XScreenSaverQueryInfo.argtypes = [
-                ctypes.c_void_p,
-                ctypes.c_ulong,
-                ctypes.POINTER(XScreenSaverInfo),
-            ]
-            _xss.XScreenSaverQueryInfo.restype = ctypes.c_int
-            _x11.XFree.argtypes = [ctypes.c_void_p]
-            _x11.XFree.restype = None
-            _x11.XCloseDisplay.argtypes = [ctypes.c_void_p]
-            _x11.XCloseDisplay.restype = None
-
-        x11 = _x11
-        xss = _xss
-
-        dpy = x11.XOpenDisplay(dpy_name.encode())
-        if not dpy:
-            raise RuntimeError(f"cannot open X display '{dpy_name}'")
-
-        info = xss.XScreenSaverAllocInfo()
-        if not info:
-            x11.XCloseDisplay(dpy)
-            raise RuntimeError("XScreenSaverAllocInfo returned NULL")
-
-        root = x11.XDefaultRootWindow(dpy)
-        status = xss.XScreenSaverQueryInfo(dpy, root, info)
-        if status == 0:
-            x11.XFree(info)
-            x11.XCloseDisplay(dpy)
-            raise RuntimeError("XScreenSaver extension not active on this X server")
-
-        idle_ms = info.contents.idle
-        x11.XFree(info)
-        x11.XCloseDisplay(dpy)
-        return idle_ms // 1000
-
-
-def idle_seconds_loginctl() -> int:
-    """Return seconds of user idleness according to systemd-logind.
-    0  → actively using keyboard/mouse right now."""
-    import os
-    import subprocess
-    import time
-
-    uid = os.getuid()
-    try:
-        out = subprocess.check_output(
-            [
-                "loginctl",
-                "show-user",
-                str(uid),
-                "-p",
-                "IdleHint",
-                "-p",
-                "IdleSinceHintMonotonicUSec",
-            ],
-            text=True,
-            timeout=0.3,  # fail fast
-        ).splitlines()
-    except subprocess.SubprocessError:
-        raise RuntimeError("loginctl unavailable")
-
-    props = dict(l.split("=", 1) for l in out if "=" in l)
-    if props.get("IdleHint", "no") != "yes":
-        return 0  # user is active
-
-    idle_us = int(props["IdleSinceHintMonotonicUSec"])
-    return int((time.monotonic() * 1_000_000 - idle_us) / 1_000_000)
-
-
-def idle_seconds_windows() -> int:
-    """Return idle seconds on Windows systems."""
-    import ctypes
-    import ctypes.wintypes
-
-    class LASTINPUTINFO(ctypes.Structure):
-        _fields_ = [
-            ("cbSize", ctypes.wintypes.UINT),
-            ("dwTime", ctypes.wintypes.DWORD),
-        ]
-
-    info = LASTINPUTINFO()
-    info.cbSize = ctypes.sizeof(LASTINPUTINFO)
-    if not ctypes.windll.user32.GetLastInputInfo(ctypes.byref(info)):
-        raise RuntimeError("GetLastInputInfo failed")
-    millis = ctypes.windll.kernel32.GetTickCount() - info.dwTime
-    return millis // 1000
-
-
-def idle_seconds_macos() -> int:
-    """Return idle seconds on macOS systems."""
-    import subprocess
-
-    try:
-        out = subprocess.check_output(
-            ["ioreg", "-c", "IOHIDSystem"], text=True, timeout=0.3
-        )
-    except subprocess.SubprocessError:
-        raise RuntimeError("ioreg unavailable")
-
-    for line in out.splitlines():
-        if "HIDIdleTime" in line:
-            nanoseconds = int(line.split()[-1])
-            return nanoseconds // 1_000_000_000
-    raise RuntimeError("HIDIdleTime not found")
-
-
-# Function to detect user activity
-def check_user_activity(timeout=10):
-    _safe_import_pynput()
-
-    global user_active
-    user_active = False
-
-    # oiq = make_idle_irq()
-    # liq = oiq()
-    # if liq < 120:
-    #    user_active = True  # allow to check on listeners for the 0 second case
-    #    return user_active
-    try:
-        idle_seconds_x = idle_seconds_x11()
-        if idle_seconds_x < 120:
-            user_active = True  # user recently active
-            return user_active
-    except Exception as e:
-        logging.debug(f"idle_seconds_x11 failed: {e}")
-        try:
-            idle_seconds_l = idle_seconds_loginctl()
-            if idle_seconds_l < 120:
-                user_active = True
-                return user_active
-        except Exception as e2:
-            logging.debug(f"idle_seconds_loginctl failed: {e2}")
-            system = platform.system()
-            try:
-                if system == "Windows":
-                    idle_os = idle_seconds_windows()
-                elif system == "Darwin":
-                    idle_os = idle_seconds_macos()
-                else:
-                    idle_os = None
-                if idle_os is not None and idle_os < 120:
-                    user_active = True
-                    return user_active
-            except Exception as e3:
-                logging.debug(f"idle_seconds_{system.lower()} failed: {e3}")
-
-    if mouse is None or keyboard is None:
-        return user_active
-
-    # Create listeners for keyboard and mouse
-    mouse_listener = None
-    keyboard_listener = None
-    try:
-        mouse_listener = mouse.Listener(
-            on_move=on_move, on_click=on_click, on_scroll=on_scroll
-        )
-        keyboard_listener = keyboard.Listener(on_press=on_press)
-
-        # Start listeners
-        mouse_listener.start()
-        keyboard_listener.start()
-    except Exception as e:  # pragma: no cover - best effort
-        logging.debug(f"pynput listener failed: {e}")
-        if mouse_listener:
-            try:
-                mouse_listener.stop()
-                mouse_listener.join()
-            except Exception:
-                pass
-        if keyboard_listener:
-            try:
-                keyboard_listener.stop()
-                keyboard_listener.join()
-            except Exception:
-                pass
-        return user_active
-
-    # Monitor for a defined timeout
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        if user_active:
-            break
-        time.sleep(0.1)
-
-    # Stop listeners
-    if mouse_listener:
-        mouse_listener.stop()
-    if keyboard_listener:
-        keyboard_listener.stop()
-
-    # Ensure threads close their X connections before returning
-    if mouse_listener:
-        mouse_listener.join()
-    if keyboard_listener:
-        keyboard_listener.join()
-
-    return user_active
-
-
-def _send_input_event():
-    """Move the mouse slightly to generate an input event."""
-    _safe_import_pynput()
-    if mouse is None:
-        return
-    try:
-        controller = mouse.Controller()
-        x, y = controller.position
-        controller.move(1, 0)
-        controller.move(-1, 0)
-        controller.position = (x, y)
-    except Exception as e:  # pragma: no cover - best effort
-        logging.debug(f"_send_input_event failed: {e}")
 
 
 def detect_background_color(image: Image.Image, sample_width: int = 10):
