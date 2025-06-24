@@ -1,14 +1,24 @@
+from __future__ import annotations
+
+import tomllib
+from pathlib import Path
+
 from setuptools import find_packages, setup
 
-with open("README.md", "r", encoding="utf-8") as fh:
+BASE_DIR = Path(__file__).resolve().parent
+
+with open(BASE_DIR / "README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-with open("requirements.txt", "r", encoding="utf-8") as fh:
-    requirements = fh.read().splitlines()
+with open(BASE_DIR / "pyproject.toml", "rb") as fh:
+    project = tomllib.load(fh)["project"]
+
+requirements = project.get("dependencies", [])
+extras = project.get("optional-dependencies", {})
 
 setup(
     name="glimpser",
-    version="0.2.8",
+    version=project.get("version", "0.0.0"),
     author="Kristopher Kubicki",
     author_email="kristopher@glimpser.net",
     description="A real-time monitoring application for capturing and analyzing live data from various sources",
@@ -17,6 +27,7 @@ setup(
     url="https://github.com/KristopherKubicki/glimpser",
     packages=find_packages(),
     install_requires=requirements,
+    extras_require=extras,
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",

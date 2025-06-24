@@ -16,9 +16,9 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    ```sh
    pip install .[dev]
    ```
-   Browser automation packages used for screenshots are grouped under the
-   optional `browser` extras in `setup.py`. A minimal install only requires
-   `wkhtmltoimage` for lightweight captures.
+   Browser automation packages used for screenshots are optional and configured
+   in `pyproject.toml`. A minimal install only requires `wkhtmltoimage` for
+   lightweight captures.
 3. Set up tooling:
    ```sh
    make setup  # installs pre-commit hooks and JS packages
