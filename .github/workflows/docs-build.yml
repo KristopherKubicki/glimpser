@@ -24,5 +24,7 @@ jobs:
         run: python -m pip install --upgrade uv
       - name: Install mkdocs with uv
         run: uv pip install --system mkdocs
+      - name: Check docs navigation
+        run: python scripts/check_docs_nav.py
       - name: Build docs
         run: mkdocs build --strict --site-dir site
