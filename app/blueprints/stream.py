@@ -173,7 +173,114 @@ def create_blueprint() -> Blueprint:
             and routes.screenshots._is_valid_png(routes.last_shot)
         ):
             return routes.send_conditional_file(routes.last_shot, routes.PNG_TTL_SEC)
-        routes.abort(404)
+
+    @bp.route(
+        "/test.rtsp",
+        methods=[
+            "OPTIONS",
+            "DESCRIBE",
+            "SETUP",
+            "PLAY",
+            "PAUSE",
+            "GET_PARAMETER",
+            "TEARDOWN",
+        ],
+    )
+    @routes.login_required
+    def handle_rtsp() -> Response:
+        """Handle RTSP handshake and control messages."""
+
+        session_id = routes.request.headers.get("Session", str(routes.uuid.uuid4()))
+        cseq = routes.request.headers.get("CSeq", "0")
+
+        if routes.request.method == "OPTIONS":
+            return Response(
+                "Public: OPTIONS, DESCRIBE, SETUP, PLAY, PAUSE, GET_PARAMETER, TEARDOWN",
+                headers={"CSeq": cseq},
+            )
+
+        elif routes.request.method == "DESCRIBE":
+            sdp = (
+                "v=0\r\n"
+                "o=- 0 0 IN IP4 127.0.0.1\r\n"
+                "s=Glimpser RTSP Stream\r\n"
+                "t=0 0\r\n"
+                "m=video 0 RTP/AVP 26\r\n"
+                "a=rtpmap:26 JPEG/90000\r\n"
+                "a=control:streamid=0\r\n"
+            )
+            return Response(
+                sdp,
+                mimetype="application/sdp",
+                headers={"CSeq": cseq, "Content-Base": routes.request.url},
+            )
+
+        elif routes.request.method == "SETUP":
+            if session_id not in routes.rtsp_sessions:
+                routes.rtsp_sessions[session_id] = {
+                    "state": "READY",
+                    "seq": routes.random.randint(0, 65535),
+                    "timestamp": routes.random.randint(0, 0xFFFFFFFF),
+                    "ssrc": routes.random.randint(0, 0xFFFFFFFF),
+                    "last_keepalive": routes.time.time(),
+                }
+
+            transport = routes.request.headers.get("Transport", "")
+            client_ports = (0, 0)
+            match = routes.re.search(r"client_port=(\d+)(?:-(\d+))?", transport)
+            if match:
+                first = int(match.group(1))
+                second = int(match.group(2) or first + 1)
+                client_ports = (first, second)
+
+            server_ports = (5004, 5005)
+            session = routes.rtsp_sessions[session_id]
+            session["client_ports"] = client_ports
+            session["server_ports"] = server_ports
+
+            transport_response = transport
+            if transport_response and not transport_response.endswith(";"):
+                transport_response += ";"
+            transport_response += f"server_port={server_ports[0]}-{server_ports[1]};ssrc={session['ssrc']}"
+
+            return Response(
+                headers={
+                    "CSeq": cseq,
+                    "Session": session_id,
+                    "Transport": transport_response,
+                }
+            )
+
+        elif routes.request.method == "PLAY":
+            if session_id not in routes.rtsp_sessions:
+                routes.abort(454)  # Session Not Found
+            routes.rtsp_sessions[session_id]["state"] = "PLAYING"
+            return Response(
+                headers={
+                    "CSeq": cseq,
+                    "Session": session_id,
+                    "RTP-Info": "url=rtsp://example.com/test.rtsp/streamid=0;seq=0;rtptime=0",
+                }
+            )
+
+        elif routes.request.method == "PAUSE":
+            if session_id not in routes.rtsp_sessions:
+                routes.abort(454)
+            routes.rtsp_sessions[session_id]["state"] = "PAUSED"
+            return Response(headers={"CSeq": cseq, "Session": session_id})
+
+        elif routes.request.method == "GET_PARAMETER":
+            if session_id not in routes.rtsp_sessions:
+                routes.abort(454)
+            routes.rtsp_sessions[session_id]["last_keepalive"] = routes.time.time()
+            return Response(headers={"CSeq": cseq, "Session": session_id})
+
+        elif routes.request.method == "TEARDOWN":
+            if session_id in routes.rtsp_sessions:
+                del routes.rtsp_sessions[session_id]
+            return Response(headers={"CSeq": cseq, "Session": session_id})
+
+        return "Method Not Allowed", 405
 
     @bp.route("/motion.mjpg", methods=["GET"])
     @routes.login_required
