@@ -595,7 +595,8 @@ def login_required(f: Callable) -> Callable:
             if not isinstance(session.get("user_id"), int):
                 logging.warning("Malformed session for %s", ip)
                 session.pop("user_id", None)
-                flash("Session expired. Please log in again.")
+                if current_app.secret_key:
+                    flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
 
             expiry = session.get("expiry")
@@ -608,7 +609,8 @@ def login_required(f: Callable) -> Callable:
                     ip,
                 )
                 session.pop("user_id", None)
-                flash("Session expired. Please log in again.")
+                if current_app.secret_key:
+                    flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
 
             # Refresh expiry so the timeout is based on inactivity
@@ -638,7 +640,8 @@ def login_required(f: Callable) -> Callable:
                     ip,
                 )
                 session.pop("user_id", None)
-                flash("Session expired. Please log in again.")
+                if current_app.secret_key:
+                    flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
 
             # Optional role checks could be added here
@@ -663,10 +666,11 @@ def login_required(f: Callable) -> Callable:
                 # disabled or the SESSION_COOKIE_SECURE flag could block the
                 # cookie over HTTP. Provide a hint and log for easier debugging
                 if "session" not in request.cookies:
-                    flash(
-                        "Login requires cookies. Check browser settings.",
-                        "error",
-                    )
+                    if current_app.secret_key:
+                        flash(
+                            "Login requires cookies. Check browser settings.",
+                            "error",
+                        )
                     logging.debug("Missing session cookie from %s", request.remote_addr)
                 else:
                     logging.debug("No valid auth cookie from %s", ip)
@@ -2092,22 +2096,22 @@ def upload_nav_icon():
     if choice in {"img/glimpser_small.png", "img/glimpser.png"}:
         update_setting("NAV_ICON", choice)
         flash("Navigation logo updated", "success")
-        return redirect(url_for("settings"))
+        return redirect(url_for("ui.settings"))
 
     if "logo_file" not in request.files:
         flash("No logo file provided", "error")
-        return redirect(url_for("settings")), 400
+        return redirect(url_for("ui.settings")), 400
 
     logo_file = request.files["logo_file"]
     if logo_file.filename == "":
         flash("No logo file provided", "error")
-        return redirect(url_for("settings")), 400
+        return redirect(url_for("ui.settings")), 400
 
     if not allowed_filename(
         logo_file.filename
     ) or not logo_file.filename.lower().endswith(".png"):
         flash("Invalid file name", "error")
-        return redirect(url_for("settings")), 400
+        return redirect(url_for("ui.settings")), 400
 
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         logo_file.save(temp_file.name)
@@ -2117,11 +2121,11 @@ def upload_nav_icon():
             if h == 0 or not 2 <= w / h <= 10:
                 os.unlink(temp_file.name)
                 flash("Invalid aspect ratio", "error")
-                return redirect(url_for("settings")), 400
+                return redirect(url_for("ui.settings")), 400
         except Exception:
             os.unlink(temp_file.name)
             flash("Invalid image file", "error")
-            return redirect(url_for("settings")), 400
+            return redirect(url_for("ui.settings")), 400
 
         dest_dir = os.path.join(current_app.static_folder, "img")
         os.makedirs(dest_dir, exist_ok=True)
@@ -2130,7 +2134,7 @@ def upload_nav_icon():
         shutil.move(temp_file.name, dest_path)
         update_setting("NAV_ICON", f"img/{dest_name}")
     flash("Navigation logo uploaded", "success")
-    return redirect(url_for("settings"))
+    return redirect(url_for("ui.settings"))
 
 
 @login_required
@@ -2332,17 +2336,17 @@ def settings():
             new_value = (request.form.get("new_value") or "").strip()
             if not new_name or not new_value:
                 flash("Setting name and value are required", "error")
-                return redirect(url_for("settings")), 400
+                return redirect(url_for("ui.settings")), 400
             if not re.fullmatch(r"[A-Z_]+", new_name):
                 flash(
                     "Setting names must contain only uppercase letters and underscores",
                     "error",
                 )
-                return redirect(url_for("settings")), 400
+                return redirect(url_for("ui.settings")), 400
             sanitized = validate_setting(new_name, new_value)
             if sanitized is None:
                 flash(f"Invalid value for {new_name}", "error")
-                return redirect(url_for("settings")), 400
+                return redirect(url_for("ui.settings")), 400
             update_setting(new_name, sanitized)
         elif action == "delete":
             name_to_delete = request.form.get("name_to_delete")
@@ -2355,7 +2359,7 @@ def settings():
                     sanitized = validate_setting(setting, value)
                     if sanitized is None:
                         flash(f"Invalid value for {setting}", "error")
-                        return redirect(url_for("settings")), 400
+                        return redirect(url_for("ui.settings")), 400
                     update_setting(setting, sanitized)
         elif action == "backup":
             if backup_config():
@@ -2463,7 +2467,7 @@ def settings():
 
                 update_setting(name, sanitized)
         flash("Settings updated successfully", "success")
-        return redirect(url_for("settings"))
+        return redirect(url_for("ui.settings"))
 
     settings = get_all_settings()
     grouped_settings: Dict[str, List[Dict[str, Any]]] = {
@@ -2659,7 +2663,7 @@ def update_template(template_name: TemplateName):
 @login_required
 def status():
     """Redirect to the Status tab under Settings for consistency."""
-    return redirect(url_for("settings", tab="status-tab"))
+    return redirect(url_for("ui.settings", tab="status-tab"))
 
 
 @login_required
