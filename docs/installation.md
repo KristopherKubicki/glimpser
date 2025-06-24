@@ -47,7 +47,8 @@ sudo apt-get install -y ffmpeg
 ```
 
 For hardware-accelerated playback and encoding you may optionally build a custom
-version with GPU support:
+version with GPU support. Automatic builds are disabled by default. Set the
+environment variable `GLIMPSER_AUTO_BUILD_FFMPEG=1` or run the script manually:
 
 ```sh
 ./scripts/build_gpu_ffmpeg.sh

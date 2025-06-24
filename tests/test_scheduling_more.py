@@ -29,9 +29,12 @@ class TestRunWithTimeout(unittest.TestCase):
     def setUp(self):
         scheduling.active_jobs.clear()
 
+    @patch("app.utils.scheduling.psutil.virtual_memory")
+    @patch("app.utils.scheduling.psutil.cpu_percent", return_value=10)
     @patch("app.utils.scheduling.multiprocessing.Process")
     @patch("app.utils.scheduling.is_system_online", return_value=True)
-    def test_run_completes_before_timeout(self, _online, mock_proc):
+    def test_run_completes_before_timeout(self, _online, mock_proc, _cpu, mock_mem):
+        mock_mem.return_value.percent = 10
         flag = multiprocessing.Value("b", False)
 
         class DummyProc:
