@@ -1,3 +1,4 @@
+import os
 import string
 
 from hypothesis import given, settings
@@ -10,6 +11,7 @@ from app.utils.validators import (
 )
 
 LETTERS = string.ascii_letters + string.digits + string.punctuation + " \n\r"
+MAX_EXAMPLES = int(os.getenv("HYPOTHESIS_MAX_EXAMPLES", "50"))
 
 
 @given(
@@ -18,7 +20,7 @@ LETTERS = string.ascii_letters + string.digits + string.punctuation + " \n\r"
     ),
     value=st.text(LETTERS, min_size=0, max_size=10),
 )
-@settings(max_examples=50)
+@settings(max_examples=MAX_EXAMPLES)
 def test_fuzz_validate_setting(name: str, value: str) -> None:
     validate_setting(name, value)
 
@@ -58,12 +60,12 @@ def update_data_strategy(draw):
 
 
 @given(data=update_data_strategy())
-@settings(max_examples=20)
+@settings(max_examples=MAX_EXAMPLES)
 def test_fuzz_validate_update_data(data: dict) -> None:
     validate_update_data(data)
 
 
 @given(name=st.text(LETTERS, min_size=0, max_size=40))
-@settings(max_examples=50)
+@settings(max_examples=MAX_EXAMPLES)
 def test_fuzz_validate_template_name(name: str) -> None:
     validate_template_name(name)
