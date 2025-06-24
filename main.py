@@ -5,6 +5,7 @@ import logging
 import os
 import subprocess
 import argparse
+from typing import Any, List, Optional
 import random
 import time
 import signal, sys, threading, atexit
@@ -13,6 +14,7 @@ import socket
 import app.config as config
 from app import create_app
 from app import scheduler
+from flask import Flask
 from app.utils.scheduling import get_system_metrics, stop_background_tasks
 
 banner = """
@@ -25,7 +27,7 @@ banner = """
 """
 
 
-def parse_arguments(arg_list=None):
+def parse_arguments(arg_list: Optional[List[str]] = None) -> argparse.Namespace:
     """
     Parse command-line arguments for the Glimpser application.
 
@@ -109,7 +111,7 @@ def parse_arguments(arg_list=None):
     return parser.parse_args(arg_list)
 
 
-def setup_config(args=None):
+def setup_config(args: Optional[argparse.Namespace] = None) -> None:
     """
     Set up the application configuration based on command-line arguments or default values.
 
@@ -133,7 +135,7 @@ def setup_config(args=None):
     config.SUMMARIES_DIRECTORY = args.summaries_dir
 
 
-def setup_logging(args=None):
+def setup_logging(args: Optional[argparse.Namespace] = None) -> None:
     """
     Configure the logging system for the application.
 
@@ -161,7 +163,7 @@ def setup_logging(args=None):
         logger.addHandler(console_handler)
 
 
-def ensure_directories():
+def ensure_directories() -> None:
     """
     Create necessary directories for the application if they don't exist.
 
@@ -174,7 +176,7 @@ def ensure_directories():
     os.makedirs(config.SUMMARIES_DIRECTORY, exist_ok=True)
 
 
-def generate_credentials_if_needed():
+def generate_credentials_if_needed() -> None:
     """
     Generate credentials if the database file doesn't exist.
 
@@ -187,7 +189,7 @@ def generate_credentials_if_needed():
         generate_credentials(args=None)
 
 
-def create_application(args=None):
+def create_application(args: Optional[argparse.Namespace] = None) -> Flask:
     """
     Create and configure the Flask application.
 
@@ -223,7 +225,7 @@ def create_application(args=None):
     )
 
 
-def output_shutdown_stats():
+def output_shutdown_stats() -> None:
     # Get and display system metrics
     metrics = get_system_metrics()
     logging.info("System Metrics at Shutdown:")
@@ -281,12 +283,12 @@ class CleanupManager:
 shutdown_manager = CleanupManager()
 
 
-def cleanup_resources():
+def cleanup_resources() -> None:
     """Backward-compatible cleanup wrapper."""
     shutdown_manager.cleanup()
 
 
-def graceful_shutdown(signum, frame):
+def graceful_shutdown(signum: int, frame: Any) -> None:
     """Handle termination signals by cleaning up and exiting."""
     logging.info("Received signal %s. Shutting down...", signum)
     cleanup_resources()
@@ -294,13 +296,13 @@ def graceful_shutdown(signum, frame):
     sys.exit(0)
 
 
-def clear_console():
+def clear_console() -> None:
     """Clear the terminal in a platform agnostic way."""
     command = ["cls"] if os.name == "nt" else ["clear"]
     subprocess.run(command, check=False)
 
 
-def clear_console_cli():
+def clear_console_cli() -> None:
     """Entry point for the ``glimpser-clear`` command."""
     clear_console()
 
@@ -312,7 +314,7 @@ STARTUP_TIPS = [
 ]
 
 
-def display_startup_tips():
+def display_startup_tips() -> None:
     """Log common setup reminders."""
     border = "-" * 60
     logging.info(border)
@@ -327,7 +329,7 @@ def display_startup_tips():
         )
 
 
-def is_port_in_use(port):
+def is_port_in_use(port: int) -> bool:
     # Skip the check if running in Docker
     if os.environ.get("IN_DOCKER"):
         return False
@@ -336,7 +338,7 @@ def is_port_in_use(port):
         return s.connect_ex(("localhost", port)) == 0
 
 
-def main(argv=None):
+def main(argv: Optional[List[str]] | None = None) -> None:
     """Entry point for the ``glimpser`` command."""
     # Clear the console before starting
     clear_console()
