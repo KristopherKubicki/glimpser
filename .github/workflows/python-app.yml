@@ -23,13 +23,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: "3.12"
-    - name: Cache pip
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+        cache: "pip"
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -41,15 +35,10 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-    - name: Cache npm
-      uses: actions/cache@v4
-      with:
-        path: ~/.npm
-        key: ${{ runner.os }}-npm-${{ hashFiles('**/package.json') }}
-        restore-keys: |
-          ${{ runner.os }}-npm-
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
     - name: Install Node dependencies
-      run: npm install
+      run: npm ci
     - name: Audit npm packages
       run: npm audit --audit-level=high || true
     - name: Lint JavaScript
