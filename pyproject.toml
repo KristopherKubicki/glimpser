@@ -145,7 +145,7 @@ check_untyped_defs     = true
 
 # pytest defaults (feel free to tweak)
 [tool.pytest.ini_options]
-addopts = "-ra -q --durations=10"
+addopts = "-ra -q --durations=10 -n auto"
 testpaths = ["tests"]
 
 # bandit – basic security scan config
