@@ -3,6 +3,7 @@
 import os
 
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.config import DATABASE_PATH
@@ -28,7 +29,14 @@ def init_db():
     # load time.
     import app.models  # noqa: F401
 
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except OperationalError as exc:
+        # When multiple workers initialize the database concurrently the
+        # CREATE TABLE commands can race. Ignore "already exists" errors so
+        # repeated calls remain idempotent.
+        if "already exists" not in str(exc):
+            raise
 
 
 def ensure_column(

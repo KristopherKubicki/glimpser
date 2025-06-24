@@ -24,6 +24,7 @@ class TestInitDb(unittest.TestCase):
         importlib.reload(models.user)
         importlib.reload(models.summary)
         importlib.reload(models.log_summary)
+        importlib.reload(models.offline_job)
         self.db = db
 
     def tearDown(self):
@@ -38,6 +39,7 @@ class TestInitDb(unittest.TestCase):
         importlib.reload(models.user)
         importlib.reload(models.summary)
         importlib.reload(models.log_summary)
+        importlib.reload(models.offline_job)
         self.temp_dir.cleanup()
 
     def test_init_db_creates_users_table(self):
@@ -49,6 +51,16 @@ class TestInitDb(unittest.TestCase):
         self.assertIn("users", tables)
         self.assertIn("summaries", tables)
         self.assertIn("log_summaries", tables)
+
+    def test_init_db_is_idempotent(self):
+        """Calling init_db multiple times should not raise errors."""
+        self.db.init_db()
+        self.db.init_db()
+        from sqlalchemy import inspect
+
+        inspector = inspect(self.db.engine)
+        tables = inspector.get_table_names()
+        self.assertIn("offline_jobs", tables)
 
 
 if __name__ == "__main__":
