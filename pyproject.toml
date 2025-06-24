@@ -83,6 +83,7 @@ dev = [
   "pylint>=3.3.7",
   "prettier",
   "pytest-socket", # for offline test passing
+  "pytest-xdist",
   
   
   # “Super-human” goodies, not required for building
@@ -189,6 +190,7 @@ dev = [
   "commitizen>=3.12",     # conventional commits / changelog
   # safety intentionally NOT included (paid)
   "pytest-socket", # for offline testing
+  "pytest-xdist",
 ]
 
 agents = [
