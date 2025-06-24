@@ -29,9 +29,31 @@ class TestRunWithTimeout(unittest.TestCase):
     def setUp(self):
         scheduling.active_jobs.clear()
 
+    @patch("app.utils.scheduling.multiprocessing.Process")
     @patch("app.utils.scheduling.is_system_online", return_value=True)
-    def test_run_completes_before_timeout(self, _online):
+    def test_run_completes_before_timeout(self, _online, mock_proc):
         flag = multiprocessing.Value("b", False)
+
+        class DummyProc:
+            def __init__(self, target=None, args=None, **_):
+                self.target = target
+                self.args = args or ()
+                self.exitcode = 0
+
+            def start(self):
+                if self.target:
+                    self.target(*self.args)
+
+            def join(self, timeout=None):
+                pass
+
+            def is_alive(self):
+                return False
+
+            def terminate(self):
+                pass
+
+        mock_proc.side_effect = DummyProc
 
         def quick(val):
             val.value = True

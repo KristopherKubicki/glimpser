@@ -54,7 +54,7 @@ The project uses `pytest` for testing and lints Python with `ruff` and `flake8`.
 ```sh
 ruff check --exit-zero .
 flake8
-pytest
+pytest  # runs in parallel via pytest-xdist
 ```
 
 Running the full test suite helps ensure that your changes do not introduce regressions.
