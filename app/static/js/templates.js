@@ -1,6 +1,27 @@
 import { enqueueClip } from "./video.js";
-
-export const NO_TIMESTAMP_PLACEHOLDER = "no timestamp";
+import {
+  NO_TIMESTAMP_PLACEHOLDER,
+  timeAgo,
+  formatExactTime,
+  updateHumanizedTimes,
+} from "./time_utils.js";
+import { loadGroups, getSelectedGroup } from "./group_utils.js";
+import {
+  createTemplateCard,
+  setCaptionsVisibility,
+  getCaptionsVisibility,
+  applyCaptionVisibility,
+  updateTableLayout,
+  isMobile,
+  computeBorderColor,
+  setupTileResizeDrag,
+  updateGridLayout,
+} from "./grid_utils.js";
+import {
+  applyStatusFilter,
+  updateStatusCounts,
+  setupStatusFilter,
+} from "./status_filter.js";
 
 function safePlay(el) {
   const promise = el.play();
@@ -12,101 +33,6 @@ function safePlay(el) {
       }
     });
   }
-}
-
-function createTemplateCard(name, template, index, mobile) {
-  const lastScreenshotTime =
-    template.last_screenshot_time || NO_TIMESTAMP_PLACEHOLDER;
-  const humanizedTimestamp =
-    lastScreenshotTime === NO_TIMESTAMP_PLACEHOLDER
-      ? NO_TIMESTAMP_PLACEHOLDER
-      : timeAgo(lastScreenshotTime);
-  const lastScreenshotDate = new Date(lastScreenshotTime);
-  const ageMinutes = (Date.now() - lastScreenshotDate.getTime()) / 60000;
-  const videoContainerClass = "video-container";
-  const errorClass = template.capture_failed
-    ? "template-error"
-    : "recent-screenshot";
-  const borderColor = computeBorderColor(ageMinutes, template.capture_failed);
-
-  const div = document.createElement("div");
-  div.classList.add("templateDiv");
-  if (mobile) div.classList.add("mobile-card");
-  div.style.opacity = "0";
-  div.style.transform = "translateY(20px)";
-  div.style.transition = "opacity 0.5s ease, transform 0.5s ease";
-
-  div.dataset.name = name;
-  div.dataset.index = index.toString();
-  div.dataset.last = template.last_screenshot_time || "";
-  div.dataset.next = template.next_screenshot_time || "";
-  div.dataset.error = template.capture_failed ? "1" : "0";
-
-  div.innerHTML = `
-    <a href='/templates/${name}'>
-      <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
-        <div class="camera-name">${name}</div>
-        <div class="loading-spinner" aria-hidden="true"></div>
-        <video data-name="${name}" data-poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback data-hd-src="/clip/${name}" loading="lazy">
-          <source src="/last_video/${name}" type="video/mp4">
-          Your browser does not support the video tag.
-        </video>
-        <div class="caption-overlay">${template.last_caption || ""}</div>
-      </div>
-    </a>
-    <a href='${template.url}' target='_blank' class='open-url-link' title='Open monitored page' aria-label='Open monitored page'>↗</a>
-    <button class='delete-camera-btn advanced-only' onclick="window.confirmDeleteCamera('${name}')" title='Delete this camera' aria-label='Delete camera'>✖</button>
-  `;
-  return div;
-}
-
-let captionsVisible = localStorage.getItem("showCaptions") !== "false";
-
-export function setCaptionsVisibility(value) {
-  const slider = document.getElementById("grid-width-slider");
-  captionsVisible = value;
-  localStorage.setItem("showCaptions", value.toString());
-  applyCaptionVisibility(parseFloat(slider?.value || "0"));
-  updateTableLayout(parseFloat(slider?.value || "0"));
-}
-
-export function applyCaptionVisibility(width) {
-  const templateList = document.getElementById("template-list");
-  const captionToggle = document.getElementById("caption-toggle");
-  const enabled = !width || width >= 150;
-  const show = captionsVisible && enabled;
-  document.documentElement.classList.toggle("hide-captions", !show);
-  templateList
-    ?.querySelectorAll(".caption-overlay")
-    .forEach((o) => (o.style.display = show ? "block" : "none"));
-  if (captionToggle) {
-    captionToggle.classList.toggle("disabled", !enabled);
-    captionToggle.classList.toggle("active", captionsVisible && enabled);
-    captionToggle.classList.toggle("off", !captionsVisible && enabled);
-    captionToggle.title = enabled
-      ? captionsVisible
-        ? "Hide caption overlays"
-        : "Show caption overlays"
-      : "Increase tile size to enable captions";
-  }
-}
-
-export function updateTableLayout(width) {
-  const rows = document.querySelectorAll("#camera-table .camera-row");
-  rows.forEach((row) => {
-    const preview = row.querySelector(".templateDiv");
-    if (!preview) return;
-    const height = preview.offsetHeight;
-    row.style.height = `${height}px`;
-    const caption = row.querySelector(".last-caption");
-    const prompt = row.querySelector(".chat-prompt textarea");
-    if (!caption || !prompt) return;
-    caption.classList.toggle("hidden", width < 150);
-    const available = height - prompt.offsetHeight - 10;
-    const needsClamp = available < caption.scrollHeight;
-    caption.style.maxHeight = needsClamp ? `${Math.max(available, 0)}px` : "";
-    caption.classList.toggle("ellipsis", needsClamp);
-  });
 }
 
 export function initTemplates() {
@@ -200,10 +126,7 @@ export function initTemplates() {
     if (captionToggle) {
       captionToggle.addEventListener("click", () => {
         if (captionToggle.classList.contains("disabled")) return;
-        captionsVisible = !captionsVisible;
-        localStorage.setItem("showCaptions", captionsVisible.toString());
-        applyCaptionVisibility(parseFloat(slider?.value || "0"));
-        updateTableLayout(parseFloat(slider?.value || "0"));
+        setCaptionsVisibility(!getCaptionsVisibility());
       });
       setTimeout(() => {
         captionToggle.classList.add("flash-caption");
@@ -340,174 +263,6 @@ export function initTemplates() {
   window.generateXPath = generateXPath;
 }
 
-export async function loadGroups() {
-  // Support group selection in multiple pages
-  const groupDropdown =
-    document.getElementById("group-dropdown") ||
-    document.getElementById("cost-group");
-  const groupsSelect = document.getElementById("groups");
-  const groupDatalist = document.getElementById("group-options");
-  if (!groupDropdown && !groupsSelect) return;
-  if (groupDropdown) {
-    groupDropdown.innerHTML = '<option value="all">Loading groups...</option>';
-    groupDropdown.disabled = true;
-  }
-  if (groupsSelect) {
-    groupsSelect.disabled = true;
-    if (groupDatalist) groupDatalist.innerHTML = "";
-  }
-
-  try {
-    const response = await fetch("/groups");
-    const groups = await response.json();
-    if (groupDropdown) {
-      groupDropdown.innerHTML = '<option value="all">All Groups</option>';
-    }
-    if (groupsSelect && groupDatalist) {
-      groupDatalist.innerHTML = "";
-    }
-    groups.forEach((group) => {
-      if (groupDropdown) {
-        const option = document.createElement("option");
-        option.value = group;
-        option.textContent = group;
-        groupDropdown.appendChild(option);
-      }
-      if (groupsSelect && groupDatalist) {
-        const option = document.createElement("option");
-        option.value = group;
-        groupDatalist.appendChild(option);
-      }
-    });
-  } catch (error) {
-    console.error("Error loading groups:", error);
-    if (groupDropdown) {
-      groupDropdown.innerHTML = '<option value="all">All Groups</option>';
-    }
-    if (groupsSelect && groupDatalist) {
-      groupDatalist.innerHTML = "";
-    }
-  } finally {
-    if (groupDropdown) groupDropdown.disabled = false;
-    if (groupsSelect) groupsSelect.disabled = false;
-  }
-
-  // Close the loadGroups function
-}
-
-export function getSelectedGroup() {
-  const dropdown = document.getElementById("group-dropdown");
-  if (dropdown && dropdown.value) return dropdown.value;
-  const navDropdown = document.getElementById("nav-group-dropdown");
-  if (navDropdown && navDropdown.value) return navDropdown.value;
-  if (window.currentGroup) return window.currentGroup;
-  return "all";
-}
-
-export function timeAgo(dateString) {
-  if (!dateString) return "just now";
-  const now = new Date();
-  const iso =
-    dateString instanceof Date
-      ? dateString.toISOString()
-      : dateString.includes("T")
-        ? /Z$|[+-]\d{2}:?\d{2}$/.test(dateString)
-          ? dateString
-          : `${dateString}Z`
-        : `${dateString.replace(" ", "T")}Z`;
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return "just now";
-  const diffInSeconds = Math.floor((now - parsed) / 1000);
-  if (diffInSeconds < 0) return "in the future";
-
-  const intervals = [
-    { label: "year", short: "y", seconds: 31536000 },
-    { label: "month", short: "mo", seconds: 2592000 },
-    { label: "day", short: "d", seconds: 86400 },
-    { label: "hour", short: "h", seconds: 3600 },
-    { label: "minute", short: "m", seconds: 60 },
-    { label: "second", short: "s", seconds: 1 },
-  ];
-
-  for (const { label, short, seconds } of intervals) {
-    const count = Math.floor(diffInSeconds / seconds);
-    if (count >= 1) return `${count}${short} ago`;
-  }
-  return "just now";
-}
-
-export function formatExactTime(dateString) {
-  const date =
-    dateString instanceof Date
-      ? dateString
-      : new Date(
-          dateString.includes("T")
-            ? /Z$|[+-]\d{2}:?\d{2}$/.test(dateString)
-              ? dateString
-              : `${dateString}Z`
-            : `${dateString.replace(" ", "T")}Z`,
-        );
-  return date.toString();
-}
-
-export function isMobile() {
-  return window.matchMedia("(hover: none) and (max-width: 767px)").matches;
-}
-
-export function computeBorderColor(ageMinutes, isError) {
-  const base = isError ? [128, 128, 128] : [26, 115, 232];
-  let step = 0;
-  if (ageMinutes >= 1) {
-    step = Math.floor(Math.log10(ageMinutes)) + 1;
-  }
-  const alpha = Math.pow(0.5, step);
-  return `rgba(${base[0]}, ${base[1]}, ${base[2]}, ${alpha})`;
-}
-
-export function setupTileResizeDrag(slider) {
-  if (!slider) return;
-  const handle = document.createElement("div");
-  handle.id = "tile-drag-handle";
-  document.body.appendChild(handle);
-
-  let startX = 0;
-  let startVal = 0;
-
-  const onMove = (e) => {
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const dx = clientX - startX;
-    const { width } = slider.getBoundingClientRect();
-    const range = parseFloat(slider.max) - parseFloat(slider.min);
-    const delta = (dx / width) * range;
-    const value = Math.min(
-      parseFloat(slider.max),
-      Math.max(parseFloat(slider.min), startVal + delta),
-    );
-    slider.value = value.toString();
-    slider.dispatchEvent(new Event("input"));
-  };
-
-  const endDrag = () => {
-    document.removeEventListener("mousemove", onMove);
-    document.removeEventListener("touchmove", onMove);
-    document.removeEventListener("mouseup", endDrag);
-    document.removeEventListener("touchend", endDrag);
-  };
-
-  const startDrag = (e) => {
-    startX = e.touches ? e.touches[0].clientX : e.clientX;
-    startVal = parseFloat(slider.value);
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("touchmove", onMove);
-    document.addEventListener("mouseup", endDrag);
-    document.addEventListener("touchend", endDrag);
-    e.preventDefault();
-  };
-
-  handle.addEventListener("mousedown", startDrag);
-  handle.addEventListener("touchstart", startDrag);
-}
-
 function attachVideoHover(video, name) {
   const scrub = (e) => {
     const rect = video.getBoundingClientRect();
@@ -560,51 +315,10 @@ function attachVideoHover(video, name) {
   });
 }
 
-export function updateGridLayout() {
-  const templateList = document.getElementById("template-list");
-  if (!templateList) return;
-  if (isMobile()) {
-    templateList.style.gridTemplateColumns = "1fr";
-  } else {
-    templateList.style.gridTemplateColumns =
-      "repeat(auto-fit, minmax(50px, var(--tile-size)))";
-  }
-}
-
 export function templateBelongsToGroup(template, group) {
   if (group === "all") return true;
   const templateGroups = template.groups ? template.groups.split(",") : [];
   return templateGroups.includes(group);
-}
-
-export function updateHumanizedTimes() {
-  document.querySelectorAll(".humanized-time").forEach((element) => {
-    const timestamp = element.getAttribute("data-time");
-    if (timestamp) {
-      element.textContent = timeAgo(timestamp);
-      element.title = formatExactTime(timestamp);
-    }
-  });
-
-  document
-    .querySelectorAll(
-      ".video-container[data-timestamp], .templateDiv img[data-timestamp], video.hover-video[data-timestamp]",
-    )
-    .forEach((element) => {
-      const original =
-        element.dataset.originalTimestamp ||
-        element.getAttribute("data-timestamp");
-      if (!element.dataset.originalTimestamp) {
-        element.dataset.originalTimestamp = original;
-      }
-      if (original && original !== NO_TIMESTAMP_PLACEHOLDER) {
-        element.setAttribute("data-timestamp", timeAgo(original));
-        element.setAttribute("title", formatExactTime(original));
-      } else if (original === NO_TIMESTAMP_PLACEHOLDER) {
-        element.setAttribute("data-timestamp", NO_TIMESTAMP_PLACEHOLDER);
-        element.removeAttribute("title");
-      }
-    });
 }
 
 export function showStructuredInput(inputId) {
@@ -1164,66 +878,6 @@ export function setupCaptionsFilter() {
     });
 }
 
-let activeStatus = null;
-
-export function applyStatusFilter() {
-  document
-    .querySelectorAll("#template-list .video-container")
-    .forEach((box) => {
-      const wrapper = box.closest(".templateDiv");
-      if (!wrapper) return;
-      const isRecent = box.classList.contains("recent-screenshot");
-      const isError = box.classList.contains("template-error");
-      let show = true;
-      if (activeStatus === "recent") show = isRecent;
-      else if (activeStatus === "error") show = isError;
-      wrapper.style.display = show ? "" : "none";
-    });
-}
-
-export function updateStatusCounts() {
-  const legend = document.getElementById("status-legend");
-  if (!legend) return;
-  const recent = document.querySelectorAll(
-    "#template-list .video-container.recent-screenshot",
-  ).length;
-  const error = document.querySelectorAll(
-    "#template-list .video-container.template-error",
-  ).length;
-  legend
-    .querySelector('[data-status="recent"]')
-    ?.classList.toggle("disabled", recent === 0);
-  legend
-    .querySelector('[data-status="error"]')
-    ?.classList.toggle("disabled", error === 0);
-}
-
-export function setupStatusFilter() {
-  document.addEventListener("DOMContentLoaded", () => {
-    const legend = document.getElementById("status-legend");
-    if (!legend) return;
-    legend.querySelectorAll(".status-item").forEach((item) => {
-      item.dataset.status ||= item.textContent.trim().toLowerCase();
-      item.addEventListener("click", () => {
-        if (item.classList.contains("disabled")) return;
-        const status = item.dataset.status;
-        if (activeStatus === status) {
-          activeStatus = null;
-          item.classList.remove("active");
-        } else {
-          activeStatus = status;
-          legend
-            .querySelectorAll(".status-item")
-            .forEach((i) => i.classList.toggle("active", i === item));
-        }
-        applyStatusFilter();
-      });
-    });
-    updateStatusCounts();
-    window.addEventListener("templatesLoaded", updateStatusCounts);
-  });
-}
-
 export function updateBrowserOptions() {
   const browser = document.getElementById("browser");
   const headless = document.getElementById("headless");
@@ -1290,3 +944,24 @@ export function confirmDeleteCamera(name) {
 }
 
 window.confirmDeleteCamera = confirmDeleteCamera;
+
+export {
+  createTemplateCard,
+  setCaptionsVisibility,
+  getCaptionsVisibility,
+  applyCaptionVisibility,
+  updateTableLayout,
+  isMobile,
+  computeBorderColor,
+  setupTileResizeDrag,
+  updateGridLayout,
+  loadGroups,
+  getSelectedGroup,
+  NO_TIMESTAMP_PLACEHOLDER,
+  timeAgo,
+  formatExactTime,
+  updateHumanizedTimes,
+  applyStatusFilter,
+  updateStatusCounts,
+  setupStatusFilter,
+};
