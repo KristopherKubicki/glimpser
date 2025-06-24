@@ -1,5 +1,4 @@
 # flake8: noqa
-import csv
 import email.utils
 import fcntl
 import glob
@@ -1558,6 +1557,7 @@ def init_routes(app: Flask) -> None:
     from app.blueprints.api import create_blueprint as create_api_blueprint
     from app.blueprints.assets import create_blueprint as create_assets_blueprint
     from app.blueprints.authentication import create_blueprint as create_auth_blueprint
+    from app.blueprints.captions import create_blueprint as create_captions_blueprint
     from app.blueprints.discovery import create_blueprint as create_discovery_blueprint
     from app.blueprints.docs import create_blueprint as create_docs_blueprint
     from app.blueprints.mcp import create_blueprint as create_mcp_blueprint
@@ -1594,6 +1594,10 @@ def init_routes(app: Flask) -> None:
     if not getattr(app, "_media_bp_registered", False):
         app.register_blueprint(create_media_blueprint())
         app._media_bp_registered = True
+
+    if not getattr(app, "_captions_bp_registered", False):
+        app.register_blueprint(create_captions_blueprint())
+        app._captions_bp_registered = True
 
     if not getattr(app, "_assets_bp_registered", False):
         app.register_blueprint(create_assets_blueprint())
@@ -2252,248 +2256,6 @@ def init_routes(app: Flask) -> None:
         if "all" not in groups:
             groups = ["all"] + groups
         return jsonify(groups)
-
-    @app.route("/captions")
-    @login_required
-    def captions():
-        cost_start = request.args.get("cost_start")
-        cost_end = request.args.get("cost_end")
-
-        # Load recent summaries from the database and convert timestamps to ISO
-        entries = []
-        latest_caption = ""
-        try:
-            session_db = SessionLocal()
-            try:
-                records = (
-                    session_db.query(Summary)
-                    .order_by(Summary.timestamp.desc())
-                    .limit(100)
-                    .all()
-                )
-                for rec in records:
-                    try:
-                        data = json.loads(rec.content)
-                        for ts, text in data.items():
-                            try:
-                                dt = datetime.utcfromtimestamp(int(ts))
-                                iso_ts = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-                            except Exception:
-                                iso_ts = ts
-                            entries.append({iso_ts: text})
-                    except Exception as exc:
-                        logging.error("Failed to parse captions: %s", exc)
-            finally:
-                session_db.close()
-        except Exception:
-            entries = []
-
-        if entries:
-            try:
-                latest_caption = next(iter(entries[0].values()))
-            except Exception:
-                latest_caption = ""
-
-        # Get templates and calculate next capture time
-        templates = template_manager.get_templates()
-        for name, template in templates.items():
-            last_screenshot_time = template.get("last_screenshot_time")
-            frequency = int(
-                template.get("frequency", 30)
-            )  # Default to 30 minutes if not set
-
-            if last_screenshot_time:
-                last_screenshot = datetime.strptime(
-                    last_screenshot_time, "%Y-%m-%d %H:%M:%S"
-                )
-                next_screenshot = last_screenshot + timedelta(minutes=frequency)
-                template["next_screenshot_time"] = next_screenshot.strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
-            else:
-                template["next_screenshot_time"] = None
-
-            templates[name]["screenshot_count"] = template_manager.get_screenshot_count(
-                name
-            )
-            templates[name]["video_count"] = template_manager.get_video_count(name)
-            templates[name]["storage_usage"] = template_manager.get_storage_usage(name)
-            templates[name]["storage_usage_bytes"] = (
-                template_manager.get_storage_usage_bytes(name)
-            )
-            templates[name]["llm_response_count"] = (
-                template_manager.get_llm_response_count(name)
-            )
-            templates[name]["llm_cost_estimate"] = (
-                template_manager.get_llm_cost_estimate(
-                    name, start_date=cost_start, end_date=cost_end
-                )
-            )
-
-        # Get a list of active cameras (with updates within the last 1 day)
-        return render_template(
-            "captions.html",
-            template_details=templates,
-            lcaptions=entries,
-            latest_caption=latest_caption,
-            page_title="Captions",
-            cost_start=cost_start,
-            cost_end=cost_end,
-        )
-
-    @app.route("/download_captions_tsv")
-    @login_required
-    def download_captions_tsv():
-        """Download all template captions as a TSV file."""
-        templates = template_manager.get_templates()
-
-        # Create a StringIO object to write the TSV data
-        output = io.StringIO()
-        writer = csv.writer(output, delimiter="\t")
-
-        # Write header row
-        writer.writerow(["name", "groups", "notes", "last_caption"])
-
-        # Write data rows
-        for name, template in templates.items():
-            writer.writerow(
-                [
-                    name,
-                    template.get("groups", ""),
-                    template.get("notes", ""),
-                    template.get("last_caption", ""),
-                ]
-            )
-
-        # Create response with TSV file
-        output.seek(0)
-        return Response(
-            output.getvalue(),
-            mimetype="text/tab-separated-values",
-            headers={"Content-Disposition": "attachment;filename=captions.tsv"},
-        )
-
-    @app.route("/upload_captions_tsv", methods=["POST"])
-    @login_required
-    def upload_captions_tsv():
-        """Upload and process a TSV file to update template captions."""
-        if "tsv_file" not in request.files:
-            flash("No file part", "error")
-            return redirect(url_for("captions"))
-
-        file = request.files["tsv_file"]
-
-        if file.filename == "":
-            flash("No selected file", "error")
-            return redirect(url_for("captions"))
-
-        if file and file.filename.endswith(".tsv"):
-            # Read the TSV file
-            stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
-            reader = csv.reader(stream, delimiter="\t")
-
-            # Skip header row
-            next(reader, None)
-
-            # Process each row
-            updated_count = 0
-            for row in reader:
-                if len(row) >= 4:
-                    name, groups, notes, last_caption = row[:4]
-
-                    # Validate template name
-                    template_name = validate_template_name(name)
-                    if template_name is None:
-                        continue
-
-                    # Get existing template
-                    template = template_manager.get_template(template_name)
-                    if template:
-                        # Update template fields
-                        updates = {"groups": groups, "notes": notes}
-
-                        # Only update last_caption if it's different
-                        if last_caption and last_caption != template.get(
-                            "last_caption", ""
-                        ):
-                            updates["last_caption"] = last_caption
-                            updates["last_caption_time"] = datetime.utcnow().strftime(
-                                "%Y-%m-%d %H:%M:%S"
-                            )
-
-                        # Save the updated template
-                        if template_manager.save_template(template_name, updates):
-                            updated_count += 1
-
-            flash(f"Successfully updated {updated_count} templates", "success")
-            return redirect(url_for("captions"))
-
-        flash("Invalid file format. Please upload a TSV file.", "error")
-        return redirect(url_for("captions"))
-
-    @app.route("/captions_chat", methods=["POST"])
-    @login_required
-    def captions_chat():
-        """Answer a question using recent caption history."""
-
-        data = request.get_json(force=True) or {}
-        question = (data.get("question") or "").strip()
-        if not question:
-            return jsonify({"error": "Missing question"}), 400
-
-        start = data.get("start")
-        end = data.get("end")
-
-        session_db = SessionLocal()
-        try:
-            query = session_db.query(Summary).order_by(Summary.timestamp.desc())
-            if start:
-                try:
-                    start_ts = int(datetime.fromisoformat(start).timestamp())
-                    query = query.filter(Summary.timestamp >= start_ts)
-                except (ValueError, TypeError) as exc:
-                    logging.warning("Invalid start parameter %s: %s", start, exc)
-            if end:
-                try:
-                    end_ts = int(datetime.fromisoformat(end).timestamp())
-                    query = query.filter(Summary.timestamp <= end_ts)
-                except (ValueError, TypeError) as exc:
-                    logging.warning("Invalid end parameter %s: %s", end, exc)
-            records = query.limit(101).all()
-            truncated = len(records) > 100
-            records = records[:100]
-            captions = []
-            for rec in reversed(records):
-                try:
-                    jdata = json.loads(rec.content)
-                    captions.extend(jdata.values())
-                except Exception:
-                    captions.append(rec.content)
-        finally:
-            session_db.close()
-
-        history = "\n".join(captions)
-        answer = ask_question(question, history) or ""
-
-        ts = int(datetime.utcnow().timestamp())
-        session_db = SessionLocal()
-        try:
-            session_db.add(
-                Summary(timestamp=ts, content=json.dumps({ts: f"Q: {question}"}))
-            )
-            if answer:
-                ts2 = ts + 1
-                session_db.add(
-                    Summary(
-                        timestamp=ts2,
-                        content=json.dumps({ts2: f"A: {answer}"}),
-                    )
-                )
-            session_db.commit()
-        finally:
-            session_db.close()
-
-        return jsonify({"answer": answer, "truncated": truncated})
 
     @app.route("/live")
     @login_required
