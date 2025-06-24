@@ -12,12 +12,12 @@ uv pip install --system alembic==1.16.1 apscheduler==3.11.0 fake-useragent==2.2.
 # 2 – Dev toolchain
 uv pip install --system "black>=25.1" coverage>=7.9 flake8>=7.2 isort>=6.0 \
   mkdocs>=1.6 mypy>=1.16 pre-commit>=4.2 "pytest>=8.3,<8.5" "uv>=0.6" \
-  pyinstaller>=6.14.1 pylint>=3.3.7 prettier pytest-socket ruff>=0.4.4 \
+  pyinstaller>=6.14.1 pylint>=3.3.7 prettier pytest-socket pytest-xdist ruff>=0.4.4 \
   pytest-cov>=6.1 hypothesis>=6.135 nox>=2025.2 bandit>=1.7 py-spy>=0.4 \
   commitizen>=3.12
 
 # 3 – Ancillary “agents”
-uv pip install --system pytest-benchmark pytest-xdist interrogate yamllint \
+uv pip install --system pytest-benchmark interrogate yamllint \
   pre-commit-docker gitlint vulture pytest-socket
 
 npm i -D jest stylelint eslint
