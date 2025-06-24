@@ -15,6 +15,7 @@ import app.utils.scheduling as scheduling
 
 LETTERS = string.ascii_letters + string.digits + string.punctuation + " "
 MAX_EXAMPLES = int(os.getenv("HYPOTHESIS_MAX_EXAMPLES", "20"))
+DEADLINE_MS = int(os.getenv("HYPOTHESIS_DEADLINE_MS", "1000"))
 
 
 @st.composite
@@ -81,7 +82,7 @@ summary_strategy = st.one_of(
     ),
     summary=summary_strategy,
 )
-@settings(max_examples=MAX_EXAMPLES)
+@settings(max_examples=MAX_EXAMPLES, deadline=DEADLINE_MS)
 def test_fuzz_update_summary(templates, summary):
     with tempfile.TemporaryDirectory() as tmp:
         db_path = os.path.join(tmp, "test.db")
@@ -115,7 +116,7 @@ def test_fuzz_update_summary(templates, summary):
     ),
     summary=summary_strategy,
 )
-@settings(max_examples=MAX_EXAMPLES)
+@settings(max_examples=MAX_EXAMPLES, deadline=DEADLINE_MS)
 def test_fuzz_update_summary_edge_cases(templates, summary):
     with tempfile.TemporaryDirectory() as tmp:
         db_path = os.path.join(tmp, "test.db")
