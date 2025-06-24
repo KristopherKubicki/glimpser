@@ -1,93 +1,93 @@
 {% call card('System Metrics') %}
 <div class="metrics-container">
   <ul class="metrics-list">
-  <li title="Start or stop the scheduler">
-    <span class="metric-label">Scheduler:</span>
-    <button
-      id="toggle-scheduler"
-      class="btn btn-primary"
-      title="Start or stop the scheduler"
-    >
-      Loading...
-    </button>
-    <span
-      id="scheduler-status"
-      class="status-dot"
-      title="Green = running, red = stopped or error"
-    ></span>
-  </li>
-  <li title="Current CPU utilization">
-    <span class="metric-label">CPU Usage:</span>
-    <progress
-      id="cpu-bar"
-      class="metric-bar"
-      value="{{ metrics.cpu_usage }}"
-      max="100"
-    ></progress>
-    <span id="cpu-value">{{ metrics.cpu_usage }}%</span>
-    <canvas
-      id="cpu-sparkline"
-      class="sparkline"
-      width="100"
-      height="20"
-    ></canvas>
-  </li>
-  <li title="Current memory utilization">
-    <span class="metric-label">Memory Usage:</span>
-    <progress
-      id="memory-bar"
-      class="metric-bar"
-      value="{{ metrics.memory_usage }}"
-      max="100"
-    ></progress>
-    <span id="memory-value">{{ metrics.memory_usage }}%</span>
-    <canvas
-      id="memory-sparkline"
-      class="sparkline"
-      width="100"
-      height="20"
-    ></canvas>
-  </li>
-  <li title="Disk space used">
-    <span class="metric-label">Disk Usage:</span>
-    <progress
-      id="disk-bar"
-      class="metric-bar"
-      value="{{ metrics.disk_usage }}"
-      max="100"
-    ></progress>
-    <span id="disk-value">{{ metrics.disk_usage }}%</span>
-    <canvas
-      id="disk-sparkline"
-      class="sparkline"
-      width="100"
-      height="20"
-    ></canvas>
-  </li>
-  <li title="Open file handles">
-    <span class="metric-label">Open Files:</span>
-    <span id="open-files">{{ metrics.open_files }}</span>
-  </li>
-  <li title="Number of active threads">
-    <span class="metric-label">Thread Count:</span>
-    <span id="thread-count">{{ metrics.thread_count }}</span>
-  </li>
-  <li title="System uptime">
-    <span class="metric-label">Uptime:</span>
-    <span id="uptime-value">{{ metrics.uptime }}</span>
-  </li>
-  <li title="GPU acceleration status">
-    <span class="metric-label">GPU:</span>
-    <a
-      href="/settings?tab=Capture-tab#FFMPEG_HWACCEL"
-      title="Configure hardware acceleration"
-    >
+    <li title="Start or stop the scheduler">
+      <span class="metric-label">Scheduler:</span>
+      <button
+        id="toggle-scheduler"
+        class="btn btn-primary"
+        title="Start or stop the scheduler"
+      >
+        Loading...
+      </button>
       <span
-        id="gpu-status"
-        class="status-dot {{ 'ok' if metrics.ffmpeg_gpu_enabled else ('slow' if metrics.gpu_support else 'error') }}"
+        id="scheduler-status"
+        class="status-dot"
+        title="Green = running, red = stopped or error"
       ></span>
-    </a>
-  </li>
+    </li>
+    <li title="Current CPU utilization">
+      <span class="metric-label">CPU Usage:</span>
+      <progress
+        id="cpu-bar"
+        class="metric-bar"
+        value="{{ metrics.cpu_usage }}"
+        max="100"
+      ></progress>
+      <span id="cpu-value">{{ metrics.cpu_usage }}%</span>
+      <canvas
+        id="cpu-sparkline"
+        class="sparkline"
+        width="100"
+        height="20"
+      ></canvas>
+    </li>
+    <li title="Current memory utilization">
+      <span class="metric-label">Memory Usage:</span>
+      <progress
+        id="memory-bar"
+        class="metric-bar"
+        value="{{ metrics.memory_usage }}"
+        max="100"
+      ></progress>
+      <span id="memory-value">{{ metrics.memory_usage }}%</span>
+      <canvas
+        id="memory-sparkline"
+        class="sparkline"
+        width="100"
+        height="20"
+      ></canvas>
+    </li>
+    <li title="Disk space used">
+      <span class="metric-label">Disk Usage:</span>
+      <progress
+        id="disk-bar"
+        class="metric-bar"
+        value="{{ metrics.disk_usage }}"
+        max="100"
+      ></progress>
+      <span id="disk-value">{{ metrics.disk_usage }}%</span>
+      <canvas
+        id="disk-sparkline"
+        class="sparkline"
+        width="100"
+        height="20"
+      ></canvas>
+    </li>
+    <li title="Open file handles">
+      <span class="metric-label">Open Files:</span>
+      <span id="open-files">{{ metrics.open_files }}</span>
+    </li>
+    <li title="Number of active threads">
+      <span class="metric-label">Thread Count:</span>
+      <span id="thread-count">{{ metrics.thread_count }}</span>
+    </li>
+    <li title="System uptime">
+      <span class="metric-label">Uptime:</span>
+      <span id="uptime-value">{{ metrics.uptime }}</span>
+    </li>
+    <li title="GPU acceleration status">
+      <span class="metric-label">GPU:</span>
+      <a
+        href="/settings?tab=Capture-tab#FFMPEG_HWACCEL"
+        title="Configure hardware acceleration"
+      >
+        <span
+          id="gpu-status"
+          class="status-dot {{ 'ok' if metrics.ffmpeg_gpu_enabled else ('slow' if metrics.gpu_support else 'error') }}"
+        ></span>
+      </a>
+    </li>
   </ul>
   <table id="thread-table" class="thread-table" title="CPU usage by thread">
     <thead>
@@ -106,11 +106,9 @@
     </tbody>
   </table>
 </div>
-{% endcall %}
-{% if log_summary %}
+{% endcall %} {% if log_summary %}
 <p id="log-summary">{{ log_summary }}</p>
-{% endif %}
-{% call card('Feed Status') %}
+{% endif %} {% call card('Feed Status') %}
 <div class="table-container">
   <table id="feed-status" class="feed-status">
     <thead>
@@ -189,8 +187,9 @@
             />
           </svg>
           {% endif %}
+          {# Use blueprint-prefixed route to avoid BuildError #}
           <a
-            href="{{ url_for('template_details', template_name=feed.name) }}"
+            href="{{ url_for('ui.template_details', template_name=feed.name) }}"
             title="View template details"
             >{{ feed.name }}</a
           >
