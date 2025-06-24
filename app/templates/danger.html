@@ -50,7 +50,7 @@
       {% for camera in danger_cameras %}
       <li>
         <a
-          href="{{ url_for('template_details', template_name=camera) }}"
+          href="{{ url_for('ui.template_details', template_name=camera) }}"
           title="Open {{ camera }} details"
           >{{ camera }}</a
         >
