@@ -273,4 +273,257 @@ def create_blueprint() -> Blueprint:
         response.headers["Cache-Control"] = "no-cache"
         return response
 
+    @bp.route(
+        "/submit_image/<string:template_name>",
+        methods=["POST"],
+        endpoint="submit_image",
+    )
+    @routes.login_required
+    def submit_image(template_name: routes.TemplateName):
+        """Receive and process an uploaded image."""
+
+        raw_name = template_name
+        template_name = routes.validate_template_name(str(template_name))
+        if template_name is None:
+            routes.logging.warning("Unable to serve screenshot for %s", raw_name)
+            resp = routes.send_conditional_file(
+                routes._placeholder_screenshot(),
+                cache_seconds=routes.PNG_TTL_SEC,
+                mimetype="image/png",
+            )
+            resp.status_code = 404
+            return resp
+
+        details = routes.template_manager.get_template(template_name)
+        if not details:
+            return (
+                routes.jsonify({"status": "error", "message": "Template not found"}),
+                404,
+            )
+
+        template_name = details.get("name", template_name)
+
+        if "file" not in routes.request.files:
+            return (
+                routes.jsonify(
+                    {"status": "error", "message": "No file part in the request"}
+                ),
+                400,
+            )
+
+        file = routes.request.files["file"]
+
+        if file.filename == "":
+            return (
+                routes.jsonify({"status": "error", "message": "No selected file"}),
+                400,
+            )
+
+        if file and routes.allowed_filename(file.filename):
+            timestamp = routes.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+            filename = f"{template_name}_{timestamp}.png.tmp"
+            output_path = routes.os.path.join(
+                routes.SCREENSHOT_DIRECTORY, template_name, filename
+            )
+
+            file.save(output_path)
+            routes.screenshots.add_timestamp(output_path, name=template_name)
+            final_path = output_path.rstrip(".tmp")
+            routes.os.rename(output_path, final_path)
+
+            routes.template_manager.update_last_screenshot_time(template_name)
+
+            return (
+                routes.jsonify(
+                    {"status": "success", "message": "Image submitted successfully"}
+                ),
+                200,
+            )
+        return (
+            routes.jsonify({"status": "error", "message": "Invalid file format"}),
+            400,
+        )
+
+    @bp.route(
+        "/upload_screenshot/<string:template_name>",
+        methods=["POST"],
+        endpoint="upload_screenshot",
+    )
+    @routes.login_required
+    def upload_screenshot(template_name: routes.TemplateName):
+        """Upload a screenshot from disk."""
+
+        template_name = routes.validate_template_name(str(template_name))
+        if template_name is None:
+            routes.abort(404)
+
+        if "image_file" not in routes.request.files:
+            return (
+                routes.jsonify(
+                    {"status": "error", "message": "No image file provided"}
+                ),
+                400,
+            )
+
+        image_file = routes.request.files["image_file"]
+        if (image_file.filename or "") == "":
+            return (
+                routes.jsonify(
+                    {"status": "error", "message": "No image file provided"}
+                ),
+                400,
+            )
+
+        routes.logging.debug("Uploading screenshot for %s", template_name)
+        templates = routes.template_manager.get_templates()
+        if templates.get(template_name) is None:
+            routes.abort(404)
+
+        filename = image_file.filename or ""
+        if not routes.allowed_filename(filename) or not filename.lower().endswith(
+            ".png"
+        ):
+            return (
+                routes.jsonify({"status": "error", "message": "Invalid file name"}),
+                400,
+            )
+
+        with routes.tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            image_file.save(temp_file.name)
+            if not routes.screenshots._is_valid_png(temp_file.name):
+                routes.os.unlink(temp_file.name)
+                return (
+                    routes.jsonify(
+                        {"status": "error", "message": "Invalid image file"}
+                    ),
+                    400,
+                )
+
+            routes.scheduling.update_camera(
+                template_name,
+                templates.get(template_name),
+                image_file=temp_file.name,
+            )
+
+        if temp_file and routes.os.path.exists(temp_file.name):
+            routes.os.unlink(temp_file.name)
+
+        return routes.jsonify(
+            {
+                "status": "success",
+                "message": f"Screenshot for {template_name} uploaded",
+            }
+        )
+
+    @bp.route("/compile_teaser", methods=["POST"], endpoint="compile_teaser")
+    @routes.login_required
+    @routes.limit_rate(30)
+    def take_compile():
+        """Trigger teaser compilation."""
+
+        routes.video_archiver.compile_to_teaser()
+        return routes.jsonify({"status": "success", "message": "Compilation taken"})
+
+    @bp.route(
+        "/take_screenshot/<string:template_name>",
+        methods=["POST", "GET"],
+        endpoint="take_screenshot",
+    )
+    @routes.login_required
+    def take_screenshot(template_name: routes.TemplateName):
+        """Trigger immediate screenshot capture."""
+
+        template_name = routes.validate_template_name(str(template_name))
+        if template_name is None:
+            routes.abort(404)
+
+        templates = routes.template_manager.get_templates()
+        if templates.get(template_name) is None:
+            routes.abort(404)
+
+        motion_flag = routes.request.args.get("motion", "false").lower() in [
+            "1",
+            "true",
+            "yes",
+        ]
+        routes.scheduling.update_camera(
+            template_name, templates.get(template_name), motion=motion_flag
+        )
+        return routes.jsonify(
+            {
+                "status": "success",
+                "message": f"Screenshot for {template_name} taken",
+            }
+        )
+
+    @bp.route(
+        "/update_video/<string:template_name>",
+        methods=["POST"],
+        endpoint="update_video",
+    )
+    @routes.login_required
+    def update_video(template_name: routes.TemplateName):
+        """Compile screenshots into a video."""
+
+        template_name = routes.validate_template_name(str(template_name))
+        if template_name is None:
+            routes.abort(404)
+
+        templates = routes.template_manager.get_templates()
+        if templates.get(template_name) is None:
+            routes.abort(404)
+
+        camera_path = routes.os.path.join(
+            routes.os.path.dirname(routes.os.path.join(routes.__file__)),
+            "..",
+            routes.SCREENSHOT_DIRECTORY,
+            str(template_name),
+        )
+
+        video_path = routes.os.path.join(
+            routes.os.path.dirname(routes.os.path.join(routes.__file__)),
+            "..",
+            routes.VIDEO_DIRECTORY,
+            str(template_name),
+        )
+
+        if routes.os.path.exists(camera_path) and routes.os.path.exists(video_path):
+            routes.video_archiver.compile_to_video(camera_path, video_path)
+            return routes.jsonify(
+                {
+                    "status": "success",
+                    "message": f"Screenshot for {template_name} taken",
+                }
+            )
+
+    @bp.route("/record/<string:template_name>", methods=["POST"], endpoint="record")
+    @routes.login_required
+    def record_high_speed(template_name: routes.TemplateName):
+        """Capture frames rapidly for a short duration."""
+
+        template_name = routes.validate_template_name(str(template_name))
+        if template_name is None:
+            routes.abort(404)
+
+        templates = routes.template_manager.get_templates()
+        template = templates.get(template_name)
+        if template is None:
+            routes.abort(404)
+
+        duration = int(routes.request.args.get("duration", 20))
+
+        def _record() -> None:
+            end = routes.time.time() + duration
+            while routes.time.time() < end:
+                try:
+                    routes.scheduling.update_camera(template_name, template)
+                except Exception:
+                    routes.logging.exception(
+                        "High-speed capture failed: %s", template_name
+                    )
+                routes.time.sleep(0.2)
+
+        routes.Thread(target=_record, daemon=True).start()
+        return routes.jsonify({"status": "started"})
+
     return bp
