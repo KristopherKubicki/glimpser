@@ -1,25 +1,17 @@
 import os
-import socket
 from threading import Thread
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+import pytest_socket
 import requests
 from werkzeug.serving import make_server
 
-
-def _has_network() -> bool:
-    """Check if outbound network access is available."""
-    try:
-        socket.create_connection(("1.1.1.1", 443), timeout=1).close()
-        return True
-    except OSError:
-        return False
-
-
-if os.environ.get("SKIP_E2E") == "1" or not _has_network():
+if os.environ.get("NO_NETWORK") == "1" or os.environ.get("SKIP_E2E") == "1":
     pytest.skip("E2E tests disabled due to no network", allow_module_level=True)
+
+pytest_socket.enable_socket()
 
 
 from app import create_app
