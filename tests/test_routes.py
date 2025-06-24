@@ -282,7 +282,7 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
     @patch("app.routes.template_manager.get_templates")
-    @patch("app.routes.render_template")
+    @patch("app.blueprints.ui.render_template")
     def test_captions(
         self, mock_render_template, mock_get_templates, mock_session_local
     ):
@@ -403,7 +403,7 @@ class TestRoutes(unittest.TestCase):
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
-    @patch("app.routes.render_template")
+    @patch("app.blueprints.ui.render_template")
     def test_stream(self, mock_render_template, mock_session_local):
         dummy_user = SimpleNamespace(id=1)
 
@@ -552,7 +552,7 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
     @patch("app.routes.template_manager.get_template")
-    @patch("app.routes.render_template")
+    @patch("app.blueprints.ui.render_template")
     def test_live_single_camera(
         self, mock_render_template, mock_get_template, mock_session_local
     ):
