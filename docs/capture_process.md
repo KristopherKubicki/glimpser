@@ -58,7 +58,7 @@ Glimpser uses different methods to capture various types of content:
 For web pages, Glimpser uses two main approaches:
 
 1. **Lightweight Browser Capture**: Uses `wkhtmltoimage` for simple web pages without complex JavaScript or popup handling requirements. The URL and output path are passed directly to `wkhtmltoimage` without shell quoting.
-2. **Full Browser Capture**: Uses Selenium with Chrome/Chromium for more complex web pages, supporting JavaScript execution, popup handling, and custom selectors. These packages live in the optional `browser` extras and are not required for the default installation.
+2. **Full Browser Capture**: Uses Selenium with Chrome/Chromium for more complex web pages, supporting JavaScript execution, popup handling, and custom selectors. These packages are optional and are not required for the default installation.
 
 The choice between these methods depends on factors such as:
 - Presence of popups that need to be handled
