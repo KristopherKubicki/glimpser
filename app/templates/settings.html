@@ -79,7 +79,7 @@ template_form, settings_row with context %} {% block content %}
 
   <form
     method="POST"
-    action="{{ url_for('settings') }}"
+    action="{{ url_for('ui.settings') }}"
     id="settings-form"
     enctype="multipart/form-data"
   >
@@ -256,7 +256,7 @@ template_form, settings_row with context %} {% block content %}
   </form>
   <form
     id="nav-logo-form"
-    action="{{ url_for('upload_nav_icon') }}"
+    action="{{ url_for('ui.upload_nav_icon') }}"
     method="post"
     enctype="multipart/form-data"
   ></form>
