@@ -24,7 +24,9 @@ def get_ffmpeg_path() -> str | None:
 
     if not ffmpeg_bin.exists():
         if not auto_build:
-            logging.info("FFmpeg binary not found and auto-build disabled")
+            logging.info(
+                "FFmpeg binary not found; set GLIMPSER_AUTO_BUILD_FFMPEG=1 to build automatically"
+            )
             return None
         if not build_script.exists():
             logging.error("Missing build script: %s", build_script)
