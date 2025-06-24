@@ -30,9 +30,14 @@ WORKDIR /app
 
 # Install Python dependencies
 COPY pyproject.toml uv.lock ./
+
+# Copy package source early for installation
+COPY app scripts ./
+
+# Install Python dependencies once sources are present
 RUN pip install --no-cache-dir . gunicorn
 
-# Copy application code
+# Copy remaining application code
 COPY . .
 
 # Set environment variables
