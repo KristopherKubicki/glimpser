@@ -14,6 +14,7 @@ import app.utils.db as db
 import app.utils.scheduling as scheduling
 
 LETTERS = string.ascii_letters + string.digits + string.punctuation + " "
+MAX_EXAMPLES = int(os.getenv("HYPOTHESIS_MAX_EXAMPLES", "20"))
 
 
 @st.composite
@@ -80,7 +81,7 @@ summary_strategy = st.one_of(
     ),
     summary=summary_strategy,
 )
-@settings(max_examples=20)
+@settings(max_examples=MAX_EXAMPLES)
 def test_fuzz_update_summary(templates, summary):
     with tempfile.TemporaryDirectory() as tmp:
         db_path = os.path.join(tmp, "test.db")
@@ -114,7 +115,7 @@ def test_fuzz_update_summary(templates, summary):
     ),
     summary=summary_strategy,
 )
-@settings(max_examples=20)
+@settings(max_examples=MAX_EXAMPLES)
 def test_fuzz_update_summary_edge_cases(templates, summary):
     with tempfile.TemporaryDirectory() as tmp:
         db_path = os.path.join(tmp, "test.db")
