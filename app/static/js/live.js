@@ -1,35 +1,15 @@
-import { timeAgo, formatExactTime } from "./templates.js";
 import { attemptAutoLogin } from "./login.js";
+import { safePlay, setClipSrc as setClipSrcVideo } from "./video_utils.js";
+import { getCameraNames as getCameraNamesUtil } from "./camera_utils.js";
+import {
+  updateFrameTimestamp as updateFrameTimestampUtil,
+  setTimestampVisibility as setTimestampVisibilityUtil,
+} from "./timestamp_utils.js";
 
 const video = document.getElementById("live-video");
 
-const CLIP_THROTTLE_MS = 30000;
-let lastClipTime = 0;
-
-function safePlay(el) {
-  const promise = el.play();
-  if (promise && typeof promise.catch === "function") {
-    promise.catch((err) => {
-      // Browsers may reject play() when switching clips or before
-      // the user interacts with the page. Ignore these common cases
-      // so console logs stay readable.
-      if (err.name !== "AbortError" && err.name !== "NotAllowedError") {
-        console.error("Error playing video:", err);
-      }
-    });
-  }
-}
-
 function setClipSrc(cameraName) {
-  const now = Date.now();
-  if (now - lastClipTime >= CLIP_THROTTLE_MS) {
-    video.src = `/clip/${cameraName}`;
-    lastClipTime = now;
-  } else {
-    video.src = `/stream.mp4?camera=${encodeURIComponent(cameraName)}`;
-  }
-  video.load();
-  safePlay(video);
+  setClipSrcVideo(video, cameraName);
 }
 const image = document.getElementById("live-image");
 const templateDetailsContainer = document.getElementById("template-details");
@@ -54,9 +34,7 @@ if (!templateDetails["All"]) {
 }
 
 function getCameraNames() {
-  return Object.keys(templateDetails).filter(
-    (key) => key !== "All" && !key.startsWith("group-"),
-  );
+  return getCameraNamesUtil(templateDetails);
 }
 
 // Allow embedding the live view for a specific camera by reading the
@@ -700,35 +678,11 @@ function playLoop() {
 }
 
 function updateFrameTimestamp() {
-  const container = document.querySelector(".video-container");
-  if (!container) return;
-  const details = templateDetails[currentCamera];
-  if (!details || !details.last_screenshot_time) {
-    container.removeAttribute("data-timestamp");
-    container.removeAttribute("title");
-    return;
-  }
-  container.dataset.originalTimestamp = details.last_screenshot_time;
-  container.setAttribute(
-    "data-timestamp",
-    timeAgo(details.last_screenshot_time),
-  );
-  container.setAttribute(
-    "title",
-    details.last_caption
-      ? `${formatExactTime(details.last_screenshot_time)} - ${details.last_caption}`
-      : formatExactTime(details.last_screenshot_time),
-  );
+  updateFrameTimestampUtil(templateDetails, currentCamera);
 }
 
 function setTimestampVisibility(show) {
-  const container = document.querySelector(".video-container");
-  if (!container) return;
-  if (show) {
-    updateFrameTimestamp();
-  } else {
-    container.removeAttribute("data-timestamp");
-  }
+  setTimestampVisibilityUtil(templateDetails, currentCamera, show);
 }
 
 function refreshPNG() {
