@@ -33,7 +33,7 @@ export function initNotifications() {
 
   connect();
 
-  if ("serviceWorker" in navigator) {
+  if ("serviceWorker" in navigator && navigator.serviceWorker) {
     navigator.serviceWorker.ready
       .then((reg) =>
         reg.pushManager.getSubscription().then((sub) => {
