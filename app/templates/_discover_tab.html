@@ -103,8 +103,8 @@
             {% endif %}
           </td>
           <td>
-            {% if url in existing_urls %}
-            {# use blueprint prefix for template details route #}
+            {% if url in existing_urls %} {# use blueprint prefix for template
+            details route #}
             <a
               href="{{ url_for('ui.template_details', template_name=existing_urls[url]) }}"
               class="btn btn-primary"
@@ -207,14 +207,22 @@
         const url = cidr
           ? `/discover/scan_stream?cidr=${encodeURIComponent(cidr)}`
           : "/discover/scan_stream";
-        const source = new EventSource(url);
-        const known = new Set();
-        const addRow = (cam) => {
-          const key = cam.ip ? `${cam.ip}-${cam.protocol}-${cam.port}` : cam.url;
-          if (known.has(key)) return;
-          known.add(key);
-          results.push(cam);
-          updateExportState();
+
+        let source;
+        let reconnectTimer;
+
+        const startStream = () => {
+          if (source) source.close();
+          source = new EventSource(url);
+
+          const known = new Set();
+
+          const addRow = (cam) => {
+            const key = cam.ip ? `${cam.ip}-${cam.protocol}-${cam.port}` : cam.url;
+            if (known.has(key)) return;
+            known.add(key);
+            results.push(cam);
+            updateExportState();
           const tr = document.createElement("tr");
           let url = cam.url || `${cam.protocol}://${cam.ip}:${cam.port}`;
           const existing = existingMap[url];
@@ -249,58 +257,59 @@
                     <td>${action}</td>`;
           body.appendChild(tr);
         };
-        let plan = [];
-        source.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          if (data.error) {
-            console.error("Discovery error", data.error);
-            msg.textContent = `Error discovering cameras: ${data.error}`;
-            progress.classList.add("hidden");
-            source.close();
-            return;
-          }
-          if (data.total) {
-            progress.max = 100;
-            progress.value = 0;
-            plan = data.stages || [];
-            if (data.subnets) {
-              msg.textContent = `Scanning networks: ${data.subnets.join(", ")}. Plan: ${plan.join(", ")}`;
+          let plan = [];
+          source.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.error) {
+              console.error("Discovery error", data.error);
+              msg.textContent = `Error discovering cameras: ${data.error}`;
+              progress.classList.add("hidden");
+              source.close();
+              return;
             }
-            return;
-          }
-          if (data.done) {
-            msg.textContent = `Found ${known.size} cameras.`;
+            if (data.total) {
+              progress.max = 100;
+              progress.value = 0;
+              plan = data.stages || [];
+              if (data.subnets) {
+                msg.textContent = `Scanning networks: ${data.subnets.join(", ")}. Plan: ${plan.join(", ")}`;
+              }
+              return;
+            }
+            if (data.done) {
+              msg.textContent = `Found ${known.size} cameras.`;
+              progress.classList.add("hidden");
+              source.close();
+              return;
+            }
+            if (typeof data.progress === "number") {
+              progress.value = data.progress;
+            } else {
+              progress.value += 1;
+            }
+            if (plan.length && plan[0] === data.stage) {
+              plan.shift();
+            }
+            const eta = data.eta ? ` ~${Math.round(data.eta)}s left` : "";
+            msg.textContent =
+              `Scanning ${data.stage} (${data.count} found)...` +
+              (plan.length ? ` Next: ${plan[0]}` : "") +
+              eta;
+            if (data.cameras) {
+              data.cameras.forEach(addRow);
+            }
+          };
+          source.onerror = (e) => {
+            console.error("Discovery error", e);
+            msg.textContent = "Connection lost. Reconnecting...";
             progress.classList.add("hidden");
             source.close();
-            return;
-          }
-          if (typeof data.progress === "number") {
-            progress.value = data.progress;
-          } else {
-            progress.value += 1;
-          }
-          if (plan.length && plan[0] === data.stage) {
-            plan.shift();
-          }
-          const eta = data.eta ? ` ~${Math.round(data.eta)}s left` : "";
-          msg.textContent =
-            `Scanning ${data.stage} (${data.count} found)...` +
-            (plan.length ? ` Next: ${plan[0]}` : "") +
-            eta;
-          if (data.cameras) {
-            data.cameras.forEach(addRow);
-          }
+            clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(startStream, 3000);
+          };
         };
-        source.onerror = (e) => {
-          console.error("Discovery error", e);
-          let text = "Error discovering cameras";
-          if (e && e.message) {
-            text += `: ${e.message}`;
-          }
-          msg.textContent = text;
-          progress.classList.add("hidden");
-          source.close();
-        };
+
+        startStream();
       });
     }
 
