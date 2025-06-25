@@ -2,6 +2,7 @@ import io
 import os
 import shutil
 import unittest
+import uuid
 from unittest.mock import patch
 
 from flask import Flask
@@ -13,7 +14,7 @@ from app.routes import init_routes
 class TestServeScreenshot(unittest.TestCase):
     def setUp(self):
         self.repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-        self.sshot_dir = "test_screenshots"
+        self.sshot_dir = f"test_screenshots_{uuid.uuid4().hex}"
         self.full_base = os.path.join(self.repo_root, self.sshot_dir, "cam1")
         os.makedirs(self.full_base, exist_ok=True)
         self.sc_patch = patch("app.routes.SCREENSHOT_DIRECTORY", self.sshot_dir)
@@ -47,7 +48,7 @@ class TestServeScreenshot(unittest.TestCase):
 
     @patch("app.routes.logging.warning")
     def test_missing_directory_returns_placeholder(self, mock_warn):
-        shutil.rmtree(self.full_base)
+        shutil.rmtree(self.full_base, ignore_errors=True)
         resp = self.client.get("/last_screenshot/cam1")
         self.assertEqual(resp.status_code, 404)
         self.assertEqual(resp.mimetype, "image/png")

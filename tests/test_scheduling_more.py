@@ -9,13 +9,13 @@ from unittest.mock import patch
 
 from PIL import Image
 
-from app.utils import scheduling
+from app.utils import scheduling, system_metrics
 from app.utils.scheduling import (
     add_motion_and_caption,
-    get_system_metrics,
     process_offline_jobs,
     run_with_timeout,
 )
+from app.utils.system_metrics import get_system_metrics
 
 dummy_log = []
 
@@ -148,8 +148,9 @@ class TestRunWithTimeout(unittest.TestCase):
             run_with_timeout(lambda name: None, args=("cam1",), timeout=1)
             mock_proc.assert_not_called()
 
+    @patch("app.utils.scheduling.psutil.cpu_percent", return_value=10)
     @patch("app.utils.scheduling.is_system_online", return_value=True)
-    def test_backoff_on_failure(self, _online):
+    def test_backoff_on_failure(self, _online, _cpu):
         def bad_job():
             raise RuntimeError("boom")
 
@@ -198,12 +199,12 @@ class TestAddMotionAndCaption(unittest.TestCase):
 
 
 class TestGetSystemMetrics(unittest.TestCase):
-    @patch("app.utils.scheduling.psutil")
-    @patch.object(scheduling, "FFMPEG_VERSION", "6.0")
-    @patch("app.utils.scheduling.machine_supports_hwaccel", return_value=True)
-    @patch("app.utils.scheduling.ffmpeg_supports_hwaccel", return_value=True)
-    @patch("app.utils.scheduling.shutil.which", return_value="/usr/bin/ffmpeg")
-    @patch.object(scheduling, "FFMPEG_HWACCEL", "cuda")
+    @patch("app.utils.system_metrics.psutil")
+    @patch.object(system_metrics, "FFMPEG_VERSION", "6.0")
+    @patch("app.utils.system_metrics.machine_supports_hwaccel", return_value=True)
+    @patch("app.utils.system_metrics.ffmpeg_supports_hwaccel", return_value=True)
+    @patch("app.utils.system_metrics.shutil.which", return_value="/usr/bin/ffmpeg")
+    @patch("app.utils.system_metrics.FFMPEG_HWACCEL", "cuda")
     def test_metrics_fields(
         self,
         mock_which,
