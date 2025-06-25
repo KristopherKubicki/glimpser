@@ -146,8 +146,6 @@ last_camera_light_time = {}
 lurl_cache = {}
 lurl_cache_time = {}
 throttle_cache = {}
-chrome_version = {}
-_browser_gl_cache: Dict[str, bool] = {}
 last_modified_cache = {}
 etag_cache = {}
 
@@ -1717,125 +1715,18 @@ def capture_screenshot_and_har_light(
                 pass
 
 
-def get_chrome_path():
-    """
-    paths = [
-        "/usr/bin/google-chrome",
-        "/usr/bin/chromium",
-        "/snap/bin/chromium",
-    ]
-    for path in paths:
-        if os.path.exists(path):
-            return path
-    """
-    return (
-        shutil.which("google-chrome")
-        or shutil.which("chromium")
-        or shutil.which("chromium-browser")
-    )
-
-
-def get_chrome_version(chrome_path):
-    # Command to get the installed version of Chrome
-    if (
-        chrome_version.get(chrome_path) is not None
-        and chrome_version[chrome_path][1] > time.time() - 60 * 60
-    ):
-        return int(chrome_version[chrome_path][0])
-
-    try:
-        result = subprocess.run(
-            [chrome_path, "--version"],
-            capture_output=True,
-            text=True,
-            timeout=3,
-        )
-        version = result.stdout.strip().split()[-1]
-        version = int(version.split(".")[0])  # Return the major version
-        chrome_version[chrome_path] = (version, time.time())
-    except Exception as e:
-        logging.error(f"Chrome version exception error: {e}")
-        return chrome_version.get(chrome_path, extract_version(chrome_path))
-
-    return int(version)
-
-
-def extract_version(driver_path):
-    try:
-        # Extract the version using regex to handle different structures
-        match = re.search(r"(\d+)\.(\d+)\.(\d+)\.(\d+)", driver_path)
-        if match:
-            return int(
-                match.group(1)
-            )  # Return the main version part (e.g., 124 from 124.0.6367.207)
-        else:
-            raise ValueError("Version number not found in the path.")
-    except Exception as e:
-        logging.error(
-            "Error extracting version from path: %s, error: %s", driver_path, e
-        )
-        # Default to a known working version if extraction fails
-        return 135
-
-
-def _machine_supports_hwaccel() -> bool:
-    """Return True if GPU devices appear available."""
-    return os.path.exists("/dev/dri") or shutil.which("nvidia-smi") is not None
+from .chrome_utils import (
+    browser_supports_gl,
+    extract_version,
+    get_chrome_path,
+    get_chrome_version,
+    is_chrome_debug_port_open,
+    is_port_open,
+)
 
 
 def _hwaccel_enabled() -> bool:
     return bool(FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false")
-
-
-def browser_supports_gl(chrome_path: str) -> bool:
-    cached = _browser_gl_cache.get(chrome_path)
-    if cached is not None:
-        return cached
-    try:
-        subprocess.check_call(
-            [
-                chrome_path,
-                "--headless=new",
-                "--use-gl=egl",
-                "--disable-gpu",
-                "about:blank",
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=5,
-        )
-        result = True
-    except Exception:
-        result = False
-    _browser_gl_cache[chrome_path] = result
-    return result
-
-
-def is_port_open(host, port, timeout=5):
-    """Check if a network port is open on the specified host."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(timeout)
-        try:
-            result = sock.connect_ex((host, port))
-        except OSError:
-            return False
-        if result == 0:
-            return True
-        if host in ("google.com", "www.google.com") and port == 80:
-            return True
-        return False
-
-
-def is_chrome_debug_port_open(host="127.0.0.1", port=None, timeout=1):
-    """Return True if Chrome's remote debugging port is reachable."""
-    if port is None:
-        port = config.DANGER_PORT
-    try:
-        sock = socket.create_connection((host, port), timeout=timeout)
-        sock.close()
-        return True
-    except Exception:
-        return False
 
 
 def kill_driver_process(driver):
@@ -2240,7 +2131,7 @@ def capture_screenshot_and_har(
         driver_options.add_argument("--disable-gpu")
         if (
             _hwaccel_enabled()
-            and _machine_supports_hwaccel()
+            and config._machine_supports_hwaccel()
             and browser_supports_gl(chrome_path)
         ):
             driver_options.add_argument("--use-gl=egl")
