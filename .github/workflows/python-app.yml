@@ -6,8 +6,14 @@ name: Python application
 on:
   push:
     branches: ["main", "staging"]
+    paths-ignore:
+      - "docs/**"
+      - "mkdocs.yml"
   pull_request:
     branches: ["main", "staging"]
+    paths-ignore:
+      - "docs/**"
+      - "mkdocs.yml"
 
 permissions:
   contents: read
@@ -53,6 +59,13 @@ jobs:
       - name: Install Node dependencies
         run: npm install
         # Jest and Prettier are devDependencies installed here
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pre-commit-
       - name: Run pre-commit
         run: pre-commit run --all-files
       - name: Run JavaScript tests with coverage
