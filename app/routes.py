@@ -139,6 +139,7 @@ from typing import Any, Callable, Dict, Generator, List, Optional
 
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
+import app.utils.media_utils as media_utils
 from app.utils.db import SessionLocal, engine
 
 # Clip caching constants
@@ -154,44 +155,22 @@ MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 # Precompiled regular expression for validating filenames. Only letters,
 # numbers, periods, hyphens and underscores are allowed. Using a compiled
 # regex avoids recompiling the pattern on every call to ``allowed_filename``.
-ALLOWED_FILENAME_RE = re.compile(r"^[a-zA-Z0-9\.\-_]+?$")
+ALLOWED_FILENAME_RE = media_utils.ALLOWED_FILENAME_RE
 
 
 # ---------- tiny helpers ----------------------------------------------------
 @lru_cache(maxsize=256)
 def _duration(p: str) -> float:
-    out = subprocess.check_output(
-        [
-            FFMPEG.replace("ffmpeg", "ffprobe"),
-            "-v",
-            "error",
-            "-show_entries",
-            "format=duration",
-            "-of",
-            "default=noprint_wrappers=1:nokey=1",
-            p,
-        ]
-    )
-    return float(out.strip())
+    """Wrapper for :func:`media_utils._duration`."""
+
+    return media_utils._duration(p)
 
 
 @lru_cache(maxsize=256)
 def _probe(p: str, key: str):
-    out = subprocess.check_output(
-        [
-            FFMPEG.replace("ffmpeg", "ffprobe"),
-            "-v",
-            "error",
-            "-select_streams",
-            "v:0",
-            "-show_entries",
-            f"stream={key}",
-            "-of",
-            "json",
-            p,
-        ]
-    )
-    return json.loads(out)["streams"][0][key]
+    """Wrapper for :func:`media_utils._probe`."""
+
+    return media_utils._probe(p, key)
 
 
 def send_conditional_file(
@@ -1539,22 +1518,9 @@ def generate_caption_loop(
 
 
 def allowed_filename(filename: str) -> bool:
-    r"""Return ``True`` when ``filename`` contains only safe characters.
+    """Wrapper for :func:`media_utils.allowed_filename`."""
 
-    The function first rejects any occurrence of ``".."`` to prevent
-    directory traversal. It then matches the entire filename against the
-    regular expression ``^[a-zA-Z0-9\.\-_]+?$`` which allows only letters,
-    numbers, periods, hyphens, and underscores. A match means the filename
-    is free of path separators or other dangerous characters.
-    """
-
-    if ".." in filename:
-        return False
-
-    if ALLOWED_FILENAME_RE.fullmatch(filename):
-        return True
-
-    return False
+    return media_utils.allowed_filename(filename)
 
 
 def init_routes(app: Flask) -> None:
