@@ -4,6 +4,6 @@ Glimpser uses a Service Worker to deliver push notifications when possible. When
 
 Later any component can queue a message by POSTing to `/send_notification` with `title` and `body` fields. The server delivers the notification to all stored subscriptions.
 
-Browsers that do not support push still poll `/stream_notifications` with Server‑Sent Events (SSE). The main interface opens an `EventSource` that displays incoming notifications using the Notification API.
+Browsers that do not support push still poll `/stream_notifications` with Server‑Sent Events (SSE). The main interface opens an `EventSource` that displays incoming notifications using the Notification API. If the connection drops the client now retries automatically after a few seconds so alerts resume once the server is back online.
 
 ![Notification Sequence](images/notifications_sequence.svg)
