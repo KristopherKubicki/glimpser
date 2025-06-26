@@ -206,212 +206,23 @@ def send_conditional_file(
     return resp
 
 
-# ---------- main ------------------------------------------------------------
 def _concat_copy(out: Path, parts: list[Path], clip_len: int = 120) -> bool:
-    """Assemble a clip from segments using three FFmpeg phases.
+    """Wrap :func:`media_utils._concat_copy` using local helpers."""
 
-    1. Finalize each entry in ``parts`` and copy it to a temporary RAM
-       directory so the container metadata is correct.
-    2. If the combined duration is shorter than ``clip_len`` generate a
-       fading black pad from the first frame and prepend it.
-    3. Concatenate all pieces with FFmpeg, trimming to exactly ``clip_len`` and
-       writing ``out``.
-
-    Parameters
-    ----------
-    out: Path
-        Destination file for the assembled clip.
-    parts: list[Path]
-        Video fragments ordered from oldest to newest.
-    clip_len: int
-        Desired clip length in seconds.
-
-    Returns
-    -------
-    bool
-        ``True`` on success, ``False`` otherwise.
-
-    Side Effects
-    ------------
-    Creates and deletes a temporary directory under ``/dev/shm``.
-    """
-
-    out_tmp = out.with_suffix(".tmp.mp4")
-    ramroot = Path(tempfile.mkdtemp(dir=Path("/dev/shm")))
-    fixed: list[Path] = []
-
-    # 1) finalise any in-process clip → RAM
-    for p in parts:
-        if p.name.startswith("final_"):
-            fixed.append(p)
-            continue
-        dst = ramroot / f"{p.stem}_fix.mp4"
-        try:
-            subprocess.run(
-                [
-                    FFMPEG,
-                    "-loglevel",
-                    "quiet",
-                    "-i",
-                    p,
-                    "-c",
-                    "copy",
-                    "-movflags",
-                    "+faststart",
-                    "-y",
-                    dst,
-                ],
-                check=True,
-                timeout=10,
-            )
-            fixed.append(dst)
-        except subprocess.SubprocessError as e:
-            logging.warning("skip broken %s (%s)", p, e)
-
-    if not fixed:
-        shutil.rmtree(ramroot)
-        return False
-
-    fixed.sort(key=os.path.getmtime)  # oldest → newest
-    total = sum(_duration(p) for p in fixed)
-
-    # 2) create FRONT-pad if needed
-    if total < clip_len:
-        miss = clip_len - total  # seconds to pad
-        ref = fixed[-1]  # last clip for geometry/fps
-        first_clip = fixed[0]
-        w, h = _probe(ref, "width"), _probe(ref, "height")
-        fps_str = _probe(ref, "r_frame_rate")
-        try:
-            fps = float(Fraction(fps_str))
-        except (ValueError, ZeroDivisionError):
-            logging.warning("Invalid r_frame_rate %s, defaulting to 1", fps_str)
-            fps = 1.0
-        pad = ramroot / "pad_black.mp4"
-
-        # extract first frame from earliest clip for overlay
-        first_frame = ramroot / "first_frame.jpg"
-        try:
-            subprocess.run(
-                [
-                    FFMPEG,
-                    "-loglevel",
-                    "quiet",
-                    "-i",
-                    first_clip,
-                    "-vframes",
-                    "1",
-                    "-q:v",
-                    "2",
-                    "-y",
-                    first_frame,
-                ],
-                check=True,
-                timeout=20,
-            )
-        except subprocess.TimeoutExpired:
-            logging.error("FFmpeg frame extraction timed out after 20s")
-            return False
-        except (
-            subprocess.SubprocessError
-        ) as exc:  # pragma: no cover - ffmpeg errors logged
-            logging.error("FFmpeg frame extraction failed: %s", exc, exc_info=True)
-            return False
-
-        # create pad using the frame with a fading black overlay
-        try:
-            subprocess.run(
-                [
-                    FFMPEG,
-                    "-loglevel",
-                    "quiet",
-                    "-loop",
-                    "1",
-                    "-i",
-                    first_frame,
-                    "-f",
-                    "lavfi",
-                    "-i",
-                    f"color=c=black@0.9:s={w}x{h}:r={fps}",
-                    "-filter_complex",
-                    f"[1:v]format=rgba,fade=t=out:st=0:d={miss}:alpha=1[ov];[0:v][ov]overlay",
-                    "-t",
-                    f"{miss:.3f}",
-                    "-c:v",
-                    "libx264",
-                    "-pix_fmt",
-                    "yuv420p",
-                    "-preset",
-                    "ultrafast",
-                    "-movflags",
-                    "+faststart",
-                    "-y",
-                    pad,
-                ],
-                check=True,
-                timeout=30,
-            )
-        except subprocess.TimeoutExpired:
-            logging.error("FFmpeg pad generation timed out after 30s")
-            return False
-        except (
-            subprocess.SubprocessError
-        ) as exc:  # pragma: no cover - ffmpeg errors logged
-            logging.error("FFmpeg pad generation failed: %s", exc, exc_info=True)
-            return False
-        concat_parts = [pad] + fixed  # pad FIRST
-    else:
-        concat_parts = fixed
-
-    # 3) concat, trim to exactly clip_len, fix timestamps
-    concat_payload = (
-        "\n".join(f"file 'file:{p.as_posix()}'" for p in concat_parts).encode() + b"\n"
-    )
-
-    total_duration = sum(_duration(p) for p in concat_parts)
-    start_offset = max(0.0, total_duration - clip_len)
-
-    cmd = [
-        FFMPEG,
-        "-loglevel",
-        "warning",
-        "-f",
-        "concat",
-        "-safe",
-        "0",
-        "-protocol_whitelist",
-        "file,pipe",
-        "-i",
-        "pipe:0",
-        "-ss",
-        f"{start_offset:.3f}",  # trim from start when overlength
-        "-t",
-        str(clip_len),  # force exact 120 s
-        "-c",
-        "copy",
-        "-reset_timestamps",
-        "1",  # PTS starts at 0  ➜ scrub-bar fine
-        "-movflags",
-        "+faststart",
-        "-y",
-        out_tmp,
-    ]
-
+    # tests patch :func:`_duration` and :func:`_probe` on this module, so
+    # temporarily override the utility's references with ours
+    orig_duration = media_utils._duration
+    orig_probe = media_utils._probe
+    media_utils._duration = _duration
+    media_utils._probe = _probe
     try:
-        subprocess.run(cmd, input=concat_payload, timeout=30, check=True)
-        out_tmp.rename(out)
-        return True
-    except subprocess.TimeoutExpired:
-        logging.error("FFmpeg concat timed out after 30s")
-        out_tmp.unlink(missing_ok=True)
-        return False
-    except subprocess.SubprocessError as exc:
-        logging.error("FFmpeg concat failed: %s", exc, exc_info=True)
-        out_tmp.unlink(missing_ok=True)
-        return False
+        return media_utils._concat_copy(out, parts, clip_len)
     finally:
-        shutil.rmtree(ramroot, ignore_errors=True)
+        media_utils._duration = orig_duration
+        media_utils._probe = orig_probe
 
+
+# ---------- main ------------------------------------------------------------
 
 try:
     COMMIT_HASH = (
