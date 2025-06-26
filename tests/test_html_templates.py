@@ -215,6 +215,11 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn('id="video-overlay"', html)
         self.assertIn('id="loading-indicator"', html)
 
+    def test_timeline_has_nav_buttons(self):
+        html = Path("app/templates/timeline.html").read_text(encoding="utf-8")
+        self.assertIn('id="timeline-prev"', html)
+        self.assertIn('id="timeline-next"', html)
+
 
 if __name__ == "__main__":
     unittest.main()

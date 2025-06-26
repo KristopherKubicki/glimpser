@@ -78,6 +78,7 @@ nav:
       - Jog-Shuttle Control: jog_shuttle.md
       - Live All Playback: live_all.md
       - Live View Scrubbing: live_scrub.md
+      - Event Timeline: timeline.md
       - Clip Navigation: clip_navigation.md
       - LLM Prompt Settings: llm_prompts.md
       - LLM Summarization: llm_summarization.md

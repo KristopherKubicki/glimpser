@@ -1,0 +1,57 @@
+{% extends 'base.html' %} {% block content %}
+<h1>Timeline</h1>
+<nav class="timeline-nav" aria-label="Timeline navigation">
+  <button
+    id="timeline-prev"
+    type="button"
+    title="Previous event"
+    aria-label="Previous event"
+  >
+    Prev
+  </button>
+  <button
+    id="timeline-next"
+    type="button"
+    title="Next event"
+    aria-label="Next event"
+  >
+    Next
+  </button>
+</nav>
+<ol id="timeline-list" class="timeline-list">
+  {% for event in events %}
+  <li tabindex="0" data-type="{{ event.type }}">
+    <span class="humanized-time" data-time="{{ event.timestamp }}"
+      >{{ event.timestamp }}</span
+    >
+    {% if event.type == 'caption' %} {{ event.text }} {% else %} Motion detected
+    on {{ event.text }} {% endif %}
+  </li>
+  {% endfor %}
+</ol>
+<script type="module">
+  import { updateHumanizedTimes } from "{{ url_for('static', filename='js/time_utils.js') }}";
+  const items = Array.from(document.querySelectorAll("#timeline-list li"));
+  let idx = 0;
+  const focusItem = () => {
+    if (!items.length) return;
+    items.forEach((el, i) => el.classList.toggle("active", i === idx));
+    items[idx].focus();
+    items[idx].scrollIntoView({ block: "nearest" });
+  };
+  document.getElementById("timeline-prev").addEventListener("click", () => {
+    if (idx > 0) {
+      idx--;
+      focusItem();
+    }
+  });
+  document.getElementById("timeline-next").addEventListener("click", () => {
+    if (idx < items.length - 1) {
+      idx++;
+      focusItem();
+    }
+  });
+  updateHumanizedTimes();
+  focusItem();
+</script>
+{% endblock %}
