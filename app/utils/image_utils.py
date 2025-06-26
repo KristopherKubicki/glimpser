@@ -12,7 +12,7 @@ from typing import Optional
 from PIL import Image, ImageDraw
 
 from app.config import DEBUG
-from app.utils.screenshots import load_font
+from app.utils.browser import load_font
 
 MAX_IMAGE_TIME_DIFF = datetime.timedelta(minutes=5)
 

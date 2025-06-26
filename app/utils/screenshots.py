@@ -43,7 +43,6 @@ from PIL import (
     Image,
     ImageDraw,
     ImageFile,
-    ImageFont,
     ImageOps,
 )
 
@@ -54,9 +53,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
 
 import app.config as config
 import app.utils.status_cache as status_cache
@@ -79,6 +76,15 @@ from app.config import (
 )
 from app.utils.validators import validate_proxy, validate_url
 
+from .browser import apply_stealth_options as browser_apply_stealth_options
+from .browser import (
+    get_driver,
+    http_session,
+    load_font,
+    purge_driver_cache,
+    random_user_agent,
+    reset_cached_driver,
+)
 from .network import is_system_online
 
 _safe_import_pynput = user_activity._safe_import_pynput
@@ -159,92 +165,6 @@ def _check_ffmpeg() -> bool:
         if not FFMPEG_AVAILABLE:
             logging.error("ffmpeg not found at %s", FFMPEG_PATH)
     return FFMPEG_AVAILABLE
-
-
-FONT_CANDIDATES = [
-    "DejaVuSans-Bold.ttf",
-    "DejaVuSans.ttf",
-    "Arial.ttf",
-    "LiberationSans-Regular.ttf",
-]
-
-# User agent templates used when stealth mode is enabled. The actual version is
-# filled dynamically based on the installed Chrome version so that outdated
-# strings are avoided.
-STEALTH_UA_TEMPLATES = [
-    (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version}.0.0.0 "
-        "Safari/537.36"
-    ),
-    (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_4) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version}.0.0.0 "
-        "Safari/537.36"
-    ),
-    (
-        "Mozilla/5.0 (X11; Linux x86_64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version}.0.0.0 "
-        "Safari/537.36"
-    ),
-]
-
-
-def random_user_agent():
-    """Return a randomized user agent string for stealth mode."""
-    chrome_path = get_chrome_path()
-    version = get_chrome_version(chrome_path)
-    # Pick a nearby version to avoid obvious automation patterns
-    major_version = random.randint(max(100, version - 1), version + 1)
-    template = random.choice(STEALTH_UA_TEMPLATES)
-    return template.format(version=major_version)
-
-
-def load_font(size):
-    """Return a truetype font for overlays."""
-    for font_name in FONT_CANDIDATES:
-        try:
-            return ImageFont.truetype(font_name, size)
-        except IOError:
-            continue
-    return ImageFont.load_default()
-
-
-# Global flag to track user activity
-user_active = False
-
-_driver_local = threading.local()
-
-
-def get_driver(opts):
-    driver = getattr(_driver_local, "driver", None)
-    if driver is None:
-        if not is_system_online():
-            logging.warning("System offline; skipping driver setup")
-            return None
-        try:
-            service = Service(ChromeDriverManager().install())
-            driver = webdriver.Chrome(service=service, options=opts)
-            _driver_local.driver = driver
-        except Exception as exc:
-            logging.error("Failed to launch driver: %s", exc)
-            return None
-    return driver
-
-
-_session = None
-
-
-def http_session():
-    global _session
-    if _session is None:
-        _session = requests.Session()
-        _session.verify = False
-        _session.headers.update({"user-agent": UA})
-        _session.headers.update({"Accept": "*/*"})
-        _session.mount("http://", requests.adapters.HTTPAdapter(pool_maxsize=20))
-        _session.mount("https://", requests.adapters.HTTPAdapter(pool_maxsize=20))
-    return _session
 
 
 def _is_valid_png(path: str) -> bool:
@@ -1754,8 +1674,7 @@ def kill_driver_process(driver):
         logging.error(f"Error killing Chrome process: {e}")
     finally:
         # Ensure future calls create a new driver
-        if hasattr(_driver_local, "driver"):
-            _driver_local.driver = None
+        reset_cached_driver()
 
 
 def launch_headless_chrome(driver_options, version=None):
@@ -1776,35 +1695,13 @@ def launch_headless_chrome(driver_options, version=None):
 
 
 def apply_stealth_options(driver_options):
-    """Randomize options to better mimic a human browser."""
-    width = random.randint(1200, 1920)
-    height = random.randint(800, 1080)
-    driver_options.add_argument(f"--window-size={width},{height}")
-    driver_options.add_argument(f"--user-agent={random_user_agent()}")
-    driver_options.add_argument("--disable-blink-features=AutomationControlled")
-    driver_options.add_argument("--disable-infobars")
-    driver_options.add_argument("--disable-extensions")
+    """Backwards compatibility wrapper for browser.apply_stealth_options."""
+    return browser_apply_stealth_options(driver_options)
 
 
 def _purge_driver_cache():
-    """
-    Remove the undetected_chromedriver or webdriver_manager cache so that
-    on next run it will download a fresh driver matching the current Chrome version.
-    """
-    # undetected_chromedriver stores its driver at ~/.local/share/undetected_chromedriver
-    # webdriver_manager in ~/.wdm etc. Adjust as needed:
-
-    uc_cache_dir = os.path.expanduser("~/.local/share/undetected_chromedriver")
-    if os.path.isdir(uc_cache_dir):
-        logging.info(f"Removing undetected_chromedriver cache: {uc_cache_dir}")
-        time.sleep(1)
-        shutil.rmtree(uc_cache_dir, ignore_errors=True)
-
-    # If you're using webdriver_manager:
-    wdm_cache_dir = os.path.expanduser("~/.wdm")
-    if os.path.isdir(wdm_cache_dir):
-        logging.info(f"Removing webdriver_manager cache: {wdm_cache_dir}")
-        shutil.rmtree(wdm_cache_dir, ignore_errors=True)
+    """Deprecated wrapper for :func:`browser.purge_driver_cache`."""
+    purge_driver_cache()
 
 
 def capture_screenshot_phantom(

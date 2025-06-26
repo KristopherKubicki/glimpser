@@ -4,20 +4,20 @@ from unittest.mock import MagicMock, patch, sentinel
 
 from requests.structures import CaseInsensitiveDict
 
-import app.utils.screenshots as ss
+import app.utils.browser as browser
 
 
 class TestHttpSession(unittest.TestCase):
-    @patch("app.utils.screenshots.requests.Session")
+    @patch("app.utils.browser.requests.Session")
     def test_http_session_singleton_and_headers(self, mock_session_cls):
         session_instance = MagicMock()
         session_instance.headers = CaseInsensitiveDict()
         mock_session_cls.return_value = session_instance
 
-        ss._session = None
+        browser._session = None
 
-        sess1 = ss.http_session()
-        sess2 = ss.http_session()
+        sess1 = browser.http_session()
+        sess2 = browser.http_session()
 
         self.assertIs(sess1, sess2)
         mock_session_cls.assert_called_once()
@@ -27,27 +27,27 @@ class TestHttpSession(unittest.TestCase):
 
 class TestGetDriver(unittest.TestCase):
     def setUp(self):
-        if hasattr(ss._driver_local, "driver"):
-            ss._driver_local.driver = None
+        if hasattr(browser._driver_local, "driver"):
+            browser._driver_local.driver = None
 
     def tearDown(self):
-        if hasattr(ss._driver_local, "driver"):
-            ss._driver_local.driver = None
+        if hasattr(browser._driver_local, "driver"):
+            browser._driver_local.driver = None
 
     def test_driver_cached(self):
         with (
             patch(
-                "app.utils.screenshots.ChromeDriverManager.install",
+                "app.utils.browser.ChromeDriverManager.install",
                 return_value=sentinel.binary,
             ) as mock_install,
             patch(
-                "app.utils.screenshots.webdriver.Chrome",
+                "app.utils.browser.webdriver.Chrome",
                 return_value=sentinel.driver,
             ) as mock_chrome,
-            patch("app.utils.screenshots.is_system_online", return_value=True),
+            patch("app.utils.browser.is_system_online", return_value=True),
         ):
-            driver1 = ss.get_driver(sentinel.options)
-            driver2 = ss.get_driver(sentinel.options)
+            driver1 = browser.get_driver(sentinel.options)
+            driver2 = browser.get_driver(sentinel.options)
             self.assertIs(driver1, sentinel.driver)
             self.assertIs(driver1, driver2)
             mock_install.assert_called_once()

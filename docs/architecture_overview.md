@@ -34,6 +34,7 @@ This guide provides a high-level look at Glimpser's core components and how they
 - Key modules include:
   - `db.py` – SQLAlchemy setup and database initialization.
   - `screenshots.py` – capturing or downloading images and videos.
+  - `browser.py` – utilities for launching browsers and managing HTTP sessions.
   - `template_manager.py` – provides `TemplateManager` for validating,
     saving and deleting templates stored in the database.
   - `email_alerts.py`, `sms_alerts.py` and `cap_alerts.py` – sending notifications.

@@ -424,6 +424,7 @@ except Exception:
 NODE_ENV = os.getenv("NODE_ENV", "development")
 
 from app.utils import validators
+from app.utils.browser import load_font
 from app.utils.email_alerts import send_email_alert
 from app.utils.profiling import get_latency_stats, profile_route
 
@@ -434,7 +435,6 @@ from app.utils.screenshots import (
     get_chrome_path,
     get_chrome_version,
     is_chrome_debug_port_open,
-    load_font,
 )
 from app.utils.sms_alerts import send_sms_alert
 from app.utils.validators import (

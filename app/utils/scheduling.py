@@ -109,6 +109,7 @@ from app.utils.db import SessionLocal, ensure_column
 from app.utils.logging_utils import sanitize_url
 
 from . import camera_discovery
+from .browser import load_font
 from .detect import calculate_difference_fast
 from .email_alerts import email_alert
 from .http_callbacks import send_http_callback
@@ -123,7 +124,6 @@ from .screenshots import (
     get_cached_status_code,
     is_chrome_debug_port_open,
     is_mostly_blank,
-    load_font,
     remove_background,
     throttle_cache,
 )
