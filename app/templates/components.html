@@ -280,13 +280,18 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
         {% endfor %}
       </datalist>
       <div class="form-row double-row">
-        <label for="popup_xpath">Popup XPath:</label>
+        <label
+          for="popup_xpath"
+          title="Only for web pages. XPath of a button or dialog to dismiss before capturing; ignored for video streams"
+          >Popup XPath:</label
+        >
         <div class="xpath-input-container">
           <input
             type="text"
             id="popup_xpath"
             name="popup_xpath"
             value="{{ template.popup_xpath if template else '' }}"
+            title="XPath to close pop-ups; requires Browser mode"
           />
           <button
             type="button"
@@ -296,13 +301,18 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
             Structured
           </button>
         </div>
-        <label for="dedicated_xpath">Dedicated XPath:</label>
+        <label
+          for="dedicated_xpath"
+          title="Only for web pages. XPath of the main image or graph element; ignored when capturing video"
+          >Dedicated XPath:</label
+        >
         <div class="xpath-input-container">
           <input
             type="text"
             id="dedicated_xpath"
             name="dedicated_xpath"
             value="{{ template.dedicated_xpath if template else '' }}"
+            title="Element containing the main content; requires Browser mode"
           />
           <button
             type="button"
@@ -379,7 +389,10 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
         />
       </div>
       <div class="checkbox-row">
-        <label for="invert" title="Invert image colors">
+        <label
+          for="invert"
+          title="Flip colors of the captured frame. Useful for infrared feeds or high-contrast pages"
+        >
           <input
             type="checkbox"
             id="invert"
@@ -392,11 +405,14 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
             %}checked{%
             endif
             %}
-            title="Invert colors of the captured image"
+            title="Flip colors of the captured frame"
           />
           Invert
         </label>
-        <label for="dark" title="Use dark mode">
+        <label
+          for="dark"
+          title="Force dark color scheme in the browser when available; ignored for raw video feeds"
+        >
           <input
             type="checkbox"
             id="dark"
@@ -410,11 +426,14 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
             %}checked{%
             endif
             %}
-            title="Enable dark mode for the captured page"
+            title="Force dark color scheme when browser mode is enabled"
           />
           Dark Mode
         </label>
-        <label for="browser" title="Capture using full browser">
+        <label
+          for="browser"
+          title="Launch a full browser for pages that require JavaScript or login. Needed when using XPath fields. Leave off for direct video streams"
+        >
           <input
             type="checkbox"
             id="browser"
@@ -427,11 +446,14 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
             %}checked{%
             endif
             %}
-            title="Capture page using a full browser"
+            title="Use a full browser for dynamic pages or when XPaths are set"
           />
           Browser
         </label>
-        <label for="headless" title="Run in headless mode">
+        <label
+          for="headless"
+          title="Hide the browser window. Disable to watch the page during debugging"
+        >
           <input
             type="checkbox"
             id="headless"
@@ -445,11 +467,14 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
             %}checked{%
             endif
             %}
-            title="Run browser in headless mode"
+            title="Hide the browser window during capture"
           />
           Headless
         </label>
-        <label for="stealth" title="Use stealth mode">
+        <label
+          for="stealth"
+          title="Mask automation to bypass site bot checks. Increases startup time"
+        >
           <input
             type="checkbox"
             id="stealth"
@@ -462,7 +487,7 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
             %}checked{%
             endif
             %}
-            title="Use stealth mode to avoid detection"
+            title="Mask automation to avoid detection"
           />
           Stealth
         </label>
