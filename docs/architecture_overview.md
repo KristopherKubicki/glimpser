@@ -45,7 +45,7 @@ This guide provides a high-level look at Glimpser's core components and how they
 - Additional tasks refresh clips, process queued offline jobs, clean up old data, collect system metrics and check for updates.
 - Tasks run asynchronously so functions like `schedule_discovery` and `schedule_summarization` never block the caller.
 - Background components start in a low-priority thread so Flask can serve requests immediately.
-- Exposes a `GracefulAPScheduler` instance used by the Flask app.
+- Exposes a `GracefulAPScheduler` instance (see `app/utils/graceful_scheduler.py`) used by the Flask app.
 - Stale crawler jobs are removed when templates are updated.
 
 ## How Components Fit Together

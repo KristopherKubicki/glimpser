@@ -45,43 +45,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
 from flask_apscheduler import APScheduler
-from PIL import Image, ImageDraw
-
-
-class CLIPProcessor:
-    """Lightweight CLIP preprocessor used with ONNX models.
-
-    This avoids the heavy ``transformers`` dependency by providing the
-    minimal functionality needed for object filtering.
-    """
-
-    def __init__(self):
-        pass
-
-    @classmethod
-    def from_pretrained(cls, _name: str) -> "CLIPProcessor":
-        """Return a basic processor instance."""
-
-        return cls()
-
-    def __call__(self, text, images, return_tensors="np", padding=True):
-        token_ids = [ord(c) for c in (text[0] if text else "")][:77]
-        input_ids = np.zeros((1, 77), dtype=np.int64)
-        attention_mask = np.zeros((1, 77), dtype=np.int64)
-        input_ids[0, : len(token_ids)] = token_ids
-        attention_mask[0, : len(token_ids)] = 1
-
-        img = images.convert("RGB").resize((224, 224))
-        img_array = (np.array(img).astype("float32") / 255.0).transpose(2, 0, 1)
-        pixel_values = np.expand_dims(img_array, 0)
-
-        return {
-            "input_ids": input_ids,
-            "attention_mask": attention_mask,
-            "pixel_values": pixel_values,
-        }
-
-
+from PIL import Image
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 import app.config as config
@@ -109,8 +73,10 @@ from app.utils.db import SessionLocal, ensure_column
 from app.utils.logging_utils import sanitize_url
 
 from . import camera_discovery
+from .clip_processor import CLIPProcessor
 from .detect import calculate_difference_fast
 from .email_alerts import email_alert
+from .graceful_scheduler import GracefulAPScheduler
 from .http_callbacks import send_http_callback
 from .image_processing import chatgpt_compare
 from .llm import summarize
@@ -157,37 +123,6 @@ active_jobs_lock = threading.RLock()
 # Track failures and backoff time to slow down flapping jobs.
 job_failures: dict[str, int] = {}
 job_backoff_until: dict[str, float] = {}
-
-
-class GracefulAPScheduler(APScheduler):
-    def __init__(self):
-        super().__init__()
-        self._scheduler = None
-        self.set_scheduler(BackgroundScheduler())
-
-    def set_scheduler(self, scheduler):
-        self._scheduler = scheduler
-
-    def shutdown(self, wait=True):
-        try:
-            if self.running:
-                # Stop all running jobs
-                for job in self._scheduler.get_jobs():
-                    job.remove()
-
-                # Shutdown the scheduler
-                super().shutdown(wait)
-
-                # Reinitialize scheduler for future use without requiring a
-                # full application restart. This allows tests or other
-                # components to continue scheduling jobs after shutdown.
-                self.set_scheduler(BackgroundScheduler())
-            else:
-                logging.info("Scheduler is not running.")
-        except Exception as e:
-            logging.error(f"Error during scheduler shutdown: {e}")
-        finally:
-            logging.info("Scheduler shutdown complete.")
 
 
 scheduler = GracefulAPScheduler()
