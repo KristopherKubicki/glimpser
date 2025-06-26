@@ -236,6 +236,8 @@ SETTINGS_TOOLTIPS = {
     "VAPID_PRIVATE_KEY": (
         "Private key used for Web Push notifications."  # pragma: allowlist secret
     ),
+    "NOTIFY_ON_MOTION": ("Send push notifications whenever motion is detected."),
+    "NOTIFY_ON_CAPTION": ("Send push notifications when a new caption is generated."),
     "CAP_ENDPOINT": ("URL that accepts Common Alerting Protocol messages."),
     "CAP_SENDER": ("Identifier used in the CAP sender field."),
     "MCP_SERVER_COMMAND": ("Command line used to start the MCP server when enabled."),
@@ -406,6 +408,8 @@ SETTINGS_GROUPS = {
         "CLOCK_NAVBAR",
         "CAP_ENDPOINT",
         "CAP_SENDER",
+        "NOTIFY_ON_MOTION",
+        "NOTIFY_ON_CAPTION",
     ],
 }
 

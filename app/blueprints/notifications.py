@@ -12,7 +12,9 @@ def create_blueprint() -> Blueprint:
     """Create and return the notifications blueprint."""
 
     import app.routes as routes
+    from app.config import NOTIFY_ON_CAPTION, NOTIFY_ON_MOTION
     from app.models import PushSubscription
+    from app.utils.push_alerts import send_push_alert
 
     bp = Blueprint("notifications", __name__)
 
@@ -26,14 +28,18 @@ def create_blueprint() -> Blueprint:
         """Queue a notification for connected clients."""
 
         data = request.get_json(force=True)
-        notifications.append(
-            {
-                "title": data.get("title", "Notification"),
-                "body": data.get("body", ""),
-            }
-        )
+        event = data.get("event")
+        title = data.get("title", "Notification")
+        body = data.get("body", "")
+        notifications.append({"title": title, "body": body})
         if len(notifications) > MAX_NOTIFICATIONS:
             notifications.pop(0)
+        if (
+            event not in {"motion", "caption"}
+            or (event == "motion" and NOTIFY_ON_MOTION)
+            or (event == "caption" and NOTIFY_ON_CAPTION)
+        ):
+            send_push_alert(title, body)
         return jsonify({"status": "queued"})
 
     @bp.route("/register_push", methods=["POST"])
