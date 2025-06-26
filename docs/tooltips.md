@@ -47,6 +47,7 @@ Interactive forms now include additional tooltips:
 - **Info icon** – toggles camera metadata on the live page.
 - **Feed status indicators** – on the Status page, red or yellow dots display a tooltip with offline time and the latest log message.
 - **Camera type icons** – small symbols next to each feed name show whether the capture runs in a full browser, headless mode, or uses stealth.
+- **Camera advanced checkboxes** – Browser, Headless, Stealth, Dark Mode and Invert explain when each option applies. XPath fields work only with HTML pages, so disable Browser and clear the XPaths when monitoring video streams.
 - **Chat modal controls** – the close icon and submit button now describe their actions.
 - **Help page tabs** – each tab button explains what information the section contains.
 - **Settings tabs** – hovering shows which category will open.
