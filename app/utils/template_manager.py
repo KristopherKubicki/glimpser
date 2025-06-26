@@ -14,6 +14,7 @@ from werkzeug.utils import secure_filename
 
 import app.utils.db as db
 from app.config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY
+from app.utils.db import commit_with_retry
 
 from .validators import validate_template_name
 from .video_details import get_latest_screenshot_date, get_latest_video_date
@@ -922,7 +923,7 @@ def update_last_screenshot_time(name: str) -> None:
             )
             template.offline_since = ""
             template.capture_failed = False
-            session.commit()
+            commit_with_retry(session)
     finally:
         session.close()
 
