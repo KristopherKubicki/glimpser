@@ -43,6 +43,7 @@ Glimpser monitors cameras and video streams, applying AI to summarize important 
 - [Pylint Checks](pylint_checks.md)
 - [Dependency Review](dependency_review.md)
 - [Continuous Integration Checks](ci_checks.md)
+- [Staged GitHub Flow](staged_github_flow.md)
 - [CodeQL Security Scanning](codeql.md)
 - [OpenSSF Scorecard](scorecard.md)
 

@@ -75,6 +75,7 @@ nav:
       - Caption Prefix Issue: caption_prefix.md
       - Captions Chatbot: chatbot.md
       - Continuous Integration Checks: ci_checks.md
+      - Staged GitHub Flow: staged_github_flow.md
       - Jog-Shuttle Control: jog_shuttle.md
       - Live All Playback: live_all.md
       - Live View Scrubbing: live_scrub.md
