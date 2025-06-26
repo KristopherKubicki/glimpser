@@ -49,7 +49,10 @@ def test_url_test_endpoint(tmp_http_server):
                 f"http://127.0.0.1:{server.port}/templates/test_url",
                 params={"url": url},
             )
+            data = resp.json()
             assert resp.status_code == 200
-            assert resp.json()["ok"]
+            assert data["ok"]
+            assert data["kind"] == "webpage"
+            assert data["suggestions"]["browser"] is True
         finally:
             server.shutdown()
