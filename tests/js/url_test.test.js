@@ -128,6 +128,27 @@ describe("url_test", () => {
     expect(overlay.style.display).toBe("flex");
   });
 
+  test("adds confirm class on url failure", async () => {
+    const res = Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ ok: false }),
+    });
+    global.fetch = jest.fn(() => res);
+    initUrlTester();
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+    jest.clearAllTimers();
+    const input = document.getElementById("url");
+    const submit = document.querySelector("input[type='submit']");
+    input.value = "http://bad";
+    input.dispatchEvent(new Event("input"));
+    jest.advanceTimersByTime(500);
+    await Promise.resolve();
+    jest.runAllTimers();
+    await Promise.resolve();
+    expect(submit.classList.contains("confirm-submit")).toBe(true);
+    expect(submit.disabled).toBe(false);
+  });
+
   test("stops player on url error", async () => {
     const html = `
       <form><input id="url"><span id="url-status"></span><img id="url-preview" data-placeholder="blank.jpg"><div class="preview-status"></div><input type="submit"></form>

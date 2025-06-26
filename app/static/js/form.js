@@ -23,6 +23,15 @@ export function initFormValidation() {
       return false;
     }
 
+    const submitBtn = document.querySelector(
+      "input[type='submit'][data-url-ok]",
+    );
+    if (submitBtn && submitBtn.dataset.urlOk === "false") {
+      if (!confirm("URL check failed. Add anyway?")) {
+        return false;
+      }
+    }
+
     if (frequency < 0 || frequency > 43200) {
       alert("Frequency must be between 0 and 43200 minutes (30 days).");
       return false;
