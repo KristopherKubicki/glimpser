@@ -1,5 +1,10 @@
 export function initFormValidation() {
   window.validateForm = function validateForm() {
+    const err = document.getElementById("template-error");
+    if (err) {
+      err.textContent = "";
+      err.classList.add("hidden");
+    }
     const name = document.getElementById("name").value.trim();
     const url = document.getElementById("url").value.trim();
     const frequency = parseInt(document.getElementById("frequency").value);
@@ -13,18 +18,27 @@ export function initFormValidation() {
       .getElementById("dedicated_xpath")
       .value.trim();
 
+    const showError = (msg) => {
+      if (err) {
+        err.textContent = msg;
+        err.classList.remove("hidden");
+      } else {
+        alert(msg);
+      }
+    };
+
     if (name === "" || url === "") {
-      alert("Template Name and URL are required fields.");
+      showError("Template Name and URL are required fields.");
       return false;
     }
 
     if (!/^https?:\/\//.test(url)) {
-      alert("URL must start with http:// or https://");
+      showError("URL must start with http:// or https://");
       return false;
     }
 
     if (frequency < 0 || frequency > 43200) {
-      alert("Frequency must be between 0 and 43200 minutes (30 days).");
+      showError("Frequency must be between 0 and 43200 minutes (30 days).");
       return false;
     }
 
@@ -39,17 +53,17 @@ export function initFormValidation() {
     }
 
     if (timeout < 3 || timeout > 59) {
-      alert("Timeout must be between 3 and 59 seconds.");
+      showError("Timeout must be between 3 and 59 seconds.");
       return false;
     }
 
     if (frequency > 0 && timeout >= frequency * 60) {
-      alert("Timeout must be less than the frequency.");
+      showError("Timeout must be less than the frequency.");
       return false;
     }
 
     if (objectFilter !== "" && (objectConfidence < 0 || objectConfidence > 1)) {
-      alert(
+      showError(
         "Object Confidence must be between 0 and 1 when Object Filter is specified.",
       );
       return false;
@@ -59,7 +73,7 @@ export function initFormValidation() {
       (popupXpath !== "" && !popupXpath.startsWith("//")) ||
       (dedicatedXpath !== "" && !dedicatedXpath.startsWith("//"))
     ) {
-      alert("XPath expressions must start with '//'.");
+      showError("XPath expressions must start with '//'.");
       return false;
     }
 

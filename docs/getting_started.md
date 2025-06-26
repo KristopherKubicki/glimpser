@@ -51,7 +51,8 @@ This guide will walk you through the process of setting up Glimpser and running 
 
 4. Configure the source settings (URL, refresh rate, etc.). As you leave the URL
    field, Glimpser checks the address and shows a green check mark when it
-   responds. Expand **Advanced Options** to enter XPaths, callbacks or login
+   responds. Any problems appear below the form fields so you can correct them
+   right away. Expand **Advanced Options** to enter XPaths, callbacks or login
    credentials if needed.
 
 5. Save the source configuration.

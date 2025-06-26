@@ -144,6 +144,11 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn('min="0"', components)
         self.assertIn('datalist id="object-filter-options"', components)
 
+    def test_template_form_error_container(self):
+        components = Path("app/templates/components.html").read_text(encoding="utf-8")
+        self.assertIn('id="template-error"', components)
+        self.assertIn('role="alert"', components)
+
     def test_groups_field_has_datalist(self):
         components = Path("app/templates/components.html").read_text(encoding="utf-8")
         self.assertIn('id="groups"', components)
