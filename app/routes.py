@@ -1539,6 +1539,7 @@ def init_routes(app: Flask) -> None:
     from app.blueprints.status import create_blueprint as create_status_blueprint
     from app.blueprints.stream import create_blueprint as create_stream_blueprint
     from app.blueprints.system import create_blueprint as create_system_blueprint
+    from app.blueprints.timeline import create_blueprint as create_timeline_blueprint
     from app.blueprints.views import create_blueprint as create_views_blueprint
 
     if not getattr(app, "_network_bp_registered", False):
@@ -1584,6 +1585,10 @@ def init_routes(app: Flask) -> None:
     if not getattr(app, "_discovery_bp_registered", False):
         app.register_blueprint(create_discovery_blueprint())
         app._discovery_bp_registered = True
+
+    if not getattr(app, "_timeline_bp_registered", False):
+        app.register_blueprint(create_timeline_blueprint())
+        app._timeline_bp_registered = True
 
     if not getattr(app, "_views_bp_registered", False):
         app.register_blueprint(create_views_blueprint())
