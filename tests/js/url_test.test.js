@@ -177,6 +177,42 @@ describe("url_test", () => {
     expect(overlay.textContent).toBe("HTTP 404");
   });
 
+  test("applies checkbox suggestions", async () => {
+    document.body.innerHTML = `
+      <form>
+        <input id="url" />
+        <span id="url-status"></span>
+        <img id="url-preview" data-placeholder="blank.jpg">
+        <div class="preview-status"></div>
+        <input type="submit">
+      </form>
+      <input id="browser">
+      <input id="headless">
+      <input id="stealth">
+    `;
+    const res = Promise.resolve({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          ok: true,
+          suggestions: { browser: true, headless: true, stealth: false },
+        }),
+    });
+    global.fetch = jest.fn(() => res);
+    initUrlTester();
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+    const input = document.getElementById("url");
+    input.value = "http://ex";
+    input.dispatchEvent(new Event("input"));
+    jest.advanceTimersByTime(500);
+    await Promise.resolve();
+    jest.runAllTimers();
+    await Promise.resolve();
+    expect(document.getElementById("browser").checked).toBe(true);
+    expect(document.getElementById("headless").checked).toBe(true);
+    expect(document.getElementById("stealth").checked).toBe(false);
+  });
+
   test("initializes multiple forms", async () => {
     const multiHtml = `
       <div class="edit-template-container">

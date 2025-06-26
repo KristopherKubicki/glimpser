@@ -16,6 +16,8 @@ from flask import (
     stream_with_context,
 )
 
+import app.utils.screenshots as screenshots
+
 
 def create_blueprint() -> Blueprint:
     """Create and return the camera discovery blueprint."""
@@ -217,6 +219,23 @@ def create_blueprint() -> Blueprint:
                 return jsonify({"ok": False, "error": "unreachable"}), 400
 
         info["ok"] = info.get("status", 500) < 400
+
+        content_type = info.get("content_type", "")
+        kind = "webpage"
+        if screenshots.is_image_url(url, content_type):
+            kind = "image"
+        elif screenshots.is_pdf_url(url, content_type):
+            kind = "pdf"
+        elif screenshots.is_video_stream_url(url, content_type):
+            kind = "video"
+
+        suggestions = {
+            "browser": kind in {"webpage", "pdf"},
+            "headless": kind in {"webpage", "pdf"},
+            "stealth": False,
+        }
+
+        info.update({"kind": kind, "suggestions": suggestions})
         return jsonify(info)
 
     @bp.route("/discover/export", methods=["POST"])
