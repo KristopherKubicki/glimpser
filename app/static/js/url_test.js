@@ -103,6 +103,13 @@ export function initUrlTester() {
           );
           const data = await res.json();
           const title = formatTitle(data);
+          const sugg = data.suggestions || {};
+          const setCheck = (id, val) => {
+            const el = container
+              ? container.querySelector(`#${id}`)
+              : document.getElementById(id);
+            if (el && typeof val === "boolean") el.checked = val;
+          };
           if (res.ok && data.ok) {
             urlOk = true;
             setStatus("ok", title);
@@ -133,6 +140,9 @@ export function initUrlTester() {
               submit.dataset.urlOk = "false";
             }
           }
+          setCheck("browser", sugg.browser);
+          setCheck("headless", sugg.headless);
+          setCheck("stealth", sugg.stealth);
           sendTelemetry("url_test", { url, ok: data.ok });
         } catch {
           if (controller.signal.aborted) return;
