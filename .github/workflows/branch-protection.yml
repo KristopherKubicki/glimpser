@@ -26,6 +26,7 @@ jobs:
         if: steps.staging.outputs.staging_merge == 'false'
         run: |
           echo "❌ Direct pushes to main branch are not allowed!"
-          echo "Please create a pull request instead."
+          echo "Open a pull request against the staging branch."
           echo "Use: git checkout -b feature-branch && git push origin feature-branch"
+          echo "It will be reviewed and promoted to main."
           exit 1
