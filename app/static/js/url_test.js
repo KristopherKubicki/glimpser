@@ -45,6 +45,8 @@ export function initUrlTester() {
       const defaultSrc = preview
         ? preview.dataset.placeholder || preview.src
         : "";
+      const player = document.getElementById("live-video");
+      const playerSource = player ? player.querySelector("source") : null;
       const defaultUrl = input.dataset.defaultUrl;
       const setStatus = (cls, title = "") => {
         status.textContent = "";
@@ -89,6 +91,16 @@ export function initUrlTester() {
           } else {
             setStatus("bad", title);
             if (preview) preview.src = defaultSrc;
+            if (player) {
+              player.pause();
+              if (playerSource) {
+                playerSource.removeAttribute("src");
+              } else {
+                player.removeAttribute("src");
+              }
+              player.poster = defaultSrc;
+              player.load();
+            }
             if (submit) submit.disabled = true;
           }
           sendTelemetry("url_test", { url, ok: data.ok });
@@ -96,6 +108,16 @@ export function initUrlTester() {
           if (controller.signal.aborted) return;
           setStatus("bad", "Unreachable");
           if (preview) preview.src = defaultSrc;
+          if (player) {
+            player.pause();
+            if (playerSource) {
+              playerSource.removeAttribute("src");
+            } else {
+              player.removeAttribute("src");
+            }
+            player.poster = defaultSrc;
+            player.load();
+          }
           if (submit) submit.disabled = true;
           sendTelemetry("url_test", { url, ok: false });
         }

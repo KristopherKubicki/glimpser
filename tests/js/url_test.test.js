@@ -120,6 +120,32 @@ describe("url_test", () => {
     expect(preview.src).toContain("blank.jpg");
   });
 
+  test("stops player on url error", async () => {
+    const html = `
+      <form><input id="url"><span id="url-status"></span><img id="url-preview" data-placeholder="blank.jpg"><input type="submit"></form>
+      <video id="live-video"><source src="old.mp4"></video>`;
+    document.body.innerHTML = html;
+    const res = Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ ok: false, status: 404 }),
+    });
+    global.fetch = jest.fn(() => res);
+    initUrlTester();
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+    jest.clearAllTimers();
+    const input = document.getElementById("url");
+    const video = document.getElementById("live-video");
+    input.value = "http://bad";
+    input.dispatchEvent(new Event("input"));
+    jest.advanceTimersByTime(500);
+    await Promise.resolve();
+    jest.runAllTimers();
+    await Promise.resolve();
+    const source = video.querySelector("source");
+    expect(source.hasAttribute("src")).toBe(false);
+    expect(video.paused).toBe(true);
+  });
+
   test("initializes multiple forms", async () => {
     const multiHtml = `
       <div class="edit-template-container">
