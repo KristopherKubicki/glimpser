@@ -58,6 +58,7 @@ See [OpenSSF Scorecard](docs/scorecard.md) for details on the security badge.
 - **SMS Alerts**: Configure Twilio credentials to receive important notifications by text message.
 - **Camera Discovery**: Open **Settings** and switch to the **Discover** tab to automatically scan the local network for ONVIF, RTSP, RTMP, HTTP/MJPEG, HLS, and SSDP devices. The table now displays each camera's MAC address plus manufacturer and model information when available. Glimpser checks common system OUI databases, an online lookup service, and the ONVIF device service to gather these details.
 - **Camera Fix Suggestions**: Validate a template and discover alternative URLs with `/suggest_fix/<template>`. See [Camera Fix Suggestions](docs/camera_fix.md).
+- **Template Tester**: Use `/test_template/<template>` to detect content type and receive checkbox suggestions. See [Template Tester](docs/template_tester.md).
 - **Local Cameras**: The Discover tab also lists any available `/dev/video*` devices for easy webcam integration.
 
 - **Web Interface**: A user-friendly web interface allows for easy monitoring and configuration. Users can view live feeds, summaries, and configure settings without delving into the code.

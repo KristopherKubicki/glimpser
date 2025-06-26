@@ -181,6 +181,7 @@ function updateVideo(templateName) {
             </div>
             <button type="button" onclick="suggestPrompt('{{ template_name }}')" title="Generate a prompt">Suggest Prompt</button>
             <button type="button" onclick="suggestFix('{{ template_name }}')" title="Suggest troubleshooting tips">Suggest Fix</button>
+            <button type="button" onclick="testTemplate('{{ template_name }}')" title="Test this template and suggest settings">Test Template</button>
 
             <div class="form-row">
                 <label for="object_filter" title="Filter for specific objects">Object Filter:</label>
@@ -438,6 +439,24 @@ function suggestFix(name) {
         .then(data => {
             alert(JSON.stringify(data, null, 2));
         });
+}
+
+function testTemplate(name) {
+    const form = document.getElementById('edit-template-form');
+    const data = new URLSearchParams(new FormData(form));
+    fetch(`/test_template/${name}`, {
+        method: 'POST',
+        body: data
+    })
+    .then(resp => resp.json())
+    .then(info => {
+        alert(`Collector: ${info.collector}\nType: ${info.content_type}`);
+        if (info.checkboxes) {
+            document.getElementById('browser').checked = info.checkboxes.browser;
+            document.getElementById('headless').checked = info.checkboxes.headless;
+            document.getElementById('stealth').checked = info.checkboxes.stealth;
+        }
+    });
 }
 
 function closePromptModal() {

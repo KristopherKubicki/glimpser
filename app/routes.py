@@ -76,6 +76,7 @@ from app.utils import (
     camera_discovery,
     prompt_optimizer,
     camera_fix,
+    template_tester,
 )
 
 from app.utils.llm import ask_question
@@ -2533,6 +2534,47 @@ def init_routes(app: Flask) -> None:
         url = details.get("url", "")
         xpaths = [details.get("popup_xpath", ""), details.get("dedicated_xpath", "")]
         info = camera_fix.check_camera_template(url, xpaths)
+        return jsonify(info)
+
+    @app.route("/test_template/<string:template_name>", methods=["POST"])
+    @login_required
+    def test_template_route(template_name: TemplateName):
+        """Return capture strategy suggestions for ``template_name``."""
+
+        template_name = validate_template_name(template_name)
+        if template_name is None:
+            abort(404)
+
+        details = template_manager.get_template(template_name)
+        if not details:
+            abort(404)
+
+        form = request.get_json() if request.is_json else request.form.to_dict()
+
+        url = form.get("url") or details.get("url", "")
+        popup_xpath = form.get("popup_xpath") or details.get("popup_xpath", "")
+        dedicated_xpath = form.get("dedicated_xpath") or details.get(
+            "dedicated_xpath", ""
+        )
+
+        flags = {
+            "browser": form.get("browser", "false").lower()
+            in ["true", "1", "t", "y", "yes", "on"],
+            "headless": form.get("headless", "false").lower()
+            in ["true", "1", "t", "y", "yes", "on"],
+            "stealth": form.get("stealth", "false").lower()
+            in ["true", "1", "t", "y", "yes", "on"],
+            "danger": form.get("danger", "false").lower()
+            in ["true", "1", "t", "y", "yes", "on"],
+        }
+
+        info = template_tester.test_template_settings(
+            url,
+            popup_xpath=popup_xpath,
+            dedicated_xpath=dedicated_xpath,
+            **flags,
+        )
+
         return jsonify(info)
 
     @app.route("/screenshots/<string:name>/<string:filename>")
