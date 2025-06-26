@@ -641,9 +641,11 @@ def download_image(
             logging.warning(
                 f"Error downloading image: HTTP status code {status} {clean_url}"
             )
+            cas_error(url)
     except Exception as e:
-        logging.error(f"Error downloading image: {e} {clean_url} {timeout}")
+        logging.warning(f"Error downloading image: {e} {clean_url} {timeout}")
         set_cached_status_code(url, 0)
+        cas_error(url)
     finally:
         if response is not None:
             response.close()  # Ensure the connection is closed
@@ -713,7 +715,8 @@ def download_pdf(
         set_cached_status_code(url, response.status_code)
 
         if response.status_code != 200:
-            logging.error(f"Error downloading PDF: HTTP {response.status_code}")
+            logging.warning(f"Error downloading PDF: HTTP {response.status_code}")
+            cas_error(url)
             return False
 
         # Convert the first page to an image directly from the response bytes
@@ -742,8 +745,9 @@ def download_pdf(
         return lsuccess
 
     except Exception as e:
-        logging.error(f"Error downloading PDF: {e}")
+        logging.warning(f"Error downloading PDF: {e}")
         set_cached_status_code(url, 0)
+        cas_error(url)
         return False
 
 

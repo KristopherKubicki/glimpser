@@ -389,7 +389,10 @@ def update_camera(name, template, image_file=None, motion=False):
             mark_offline(name)
         set_capture_failed(name, True)
         clean_url = sanitize_url(url)
-        logging.error("Capture failed for %s (%s)", name, clean_url)
+        if entry and entry.get("errors", 0) > 2:
+            logging.debug("Capture failed for %s (%s)", name, clean_url)
+        else:
+            logging.error("Capture failed for %s (%s)", name, clean_url)
         register_job_failure(name)
         return None
 
