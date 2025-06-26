@@ -13,6 +13,9 @@ export function initUrlTester() {
       const preview = container
         ? container.querySelector("img")
         : document.getElementById("url-preview");
+      const overlay = container
+        ? container.querySelector(".preview-status")
+        : document.querySelector(".preview-status");
       if (!status) return;
 
       const form = input.closest("form");
@@ -54,6 +57,12 @@ export function initUrlTester() {
         status.title = title || "URL test result";
       };
 
+      const showOverlay = (msg) => {
+        if (!overlay) return;
+        overlay.textContent = msg;
+        overlay.style.display = msg ? "flex" : "none";
+      };
+
       const formatTitle = (data) => {
         if (!data.ok) {
           return (
@@ -70,12 +79,14 @@ export function initUrlTester() {
       const check = async () => {
         const url = input.value.trim();
         setStatus("");
+        showOverlay("");
         if (preview) preview.src = url || defaultSrc;
         if (submit) submit.disabled = true;
         if (!url) return;
         controller?.abort();
         controller = new AbortController();
         setStatus("pending", "Testing...");
+        showOverlay("Testing...");
         try {
           const res = await fetch(
             `/templates/test_url?url=${encodeURIComponent(url)}`,
@@ -87,9 +98,11 @@ export function initUrlTester() {
           const title = formatTitle(data);
           if (res.ok && data.ok) {
             setStatus("ok", title);
+            showOverlay("");
             if (submit) submit.disabled = false;
           } else {
             setStatus("bad", title);
+            showOverlay(title);
             if (preview) preview.src = defaultSrc;
             if (player) {
               player.pause();
@@ -107,6 +120,7 @@ export function initUrlTester() {
         } catch {
           if (controller.signal.aborted) return;
           setStatus("bad", "Unreachable");
+          showOverlay("Unreachable");
           if (preview) preview.src = defaultSrc;
           if (player) {
             player.pause();
@@ -139,12 +153,14 @@ export function initUrlTester() {
         toggleDisabled();
         const hasValue = input.value.trim() !== "";
         setStatus(hasValue ? "pending" : "", hasValue ? "Testing..." : "");
+        showOverlay(hasValue ? "Testing..." : "");
         if (submit) submit.disabled = true;
         if (hasValue) checkDebounced();
       });
       input.addEventListener("paste", () => {
         setTimeout(() => {
           setStatus("pending", "Testing...");
+          showOverlay("Testing...");
           checkDebounced();
         }, 0);
       });
