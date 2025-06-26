@@ -21,6 +21,7 @@ export function initUrlTester() {
       const form = input.closest("form");
       const controlled = [];
       let submit;
+      let urlOk = false;
       if (form) {
         form.querySelectorAll("input, select, textarea").forEach((el) => {
           if (el === input || el.id === "name") return;
@@ -34,7 +35,13 @@ export function initUrlTester() {
         controlled.forEach(([el, orig]) => {
           el.disabled = disable || orig;
         });
-        if (submit) submit.disabled = disable;
+        if (submit) {
+          submit.disabled = disable;
+          if (disable) {
+            submit.classList.remove("confirm-submit");
+            delete submit.dataset.urlOk;
+          }
+        }
       };
 
       let controller;
@@ -97,10 +104,16 @@ export function initUrlTester() {
           const data = await res.json();
           const title = formatTitle(data);
           if (res.ok && data.ok) {
+            urlOk = true;
             setStatus("ok", title);
             showOverlay("");
-            if (submit) submit.disabled = false;
+            if (submit) {
+              submit.disabled = false;
+              submit.classList.remove("confirm-submit");
+              submit.dataset.urlOk = "true";
+            }
           } else {
+            urlOk = false;
             setStatus("bad", title);
             showOverlay(title);
             if (preview) preview.src = defaultSrc;
@@ -114,11 +127,16 @@ export function initUrlTester() {
               player.poster = defaultSrc;
               player.load();
             }
-            if (submit) submit.disabled = true;
+            if (submit) {
+              submit.disabled = false;
+              submit.classList.add("confirm-submit");
+              submit.dataset.urlOk = "false";
+            }
           }
           sendTelemetry("url_test", { url, ok: data.ok });
         } catch {
           if (controller.signal.aborted) return;
+          urlOk = false;
           setStatus("bad", "Unreachable");
           showOverlay("Unreachable");
           if (preview) preview.src = defaultSrc;
@@ -132,7 +150,11 @@ export function initUrlTester() {
             player.poster = defaultSrc;
             player.load();
           }
-          if (submit) submit.disabled = true;
+          if (submit) {
+            submit.disabled = false;
+            submit.classList.add("confirm-submit");
+            submit.dataset.urlOk = "false";
+          }
           sendTelemetry("url_test", { url, ok: false });
         }
       };
@@ -154,13 +176,21 @@ export function initUrlTester() {
         const hasValue = input.value.trim() !== "";
         setStatus(hasValue ? "pending" : "", hasValue ? "Testing..." : "");
         showOverlay(hasValue ? "Testing..." : "");
-        if (submit) submit.disabled = true;
+        if (submit) {
+          submit.disabled = true;
+          submit.classList.remove("confirm-submit");
+          delete submit.dataset.urlOk;
+        }
         if (hasValue) checkDebounced();
       });
       input.addEventListener("paste", () => {
         setTimeout(() => {
           setStatus("pending", "Testing...");
           showOverlay("Testing...");
+          if (submit) {
+            submit.classList.remove("confirm-submit");
+            delete submit.dataset.urlOk;
+          }
           checkDebounced();
         }, 0);
       });
