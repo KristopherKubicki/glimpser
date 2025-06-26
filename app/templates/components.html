@@ -129,6 +129,12 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
     onsubmit="window.sendTelemetry && sendTelemetry('template_submit'); return validateForm()"
     title="Enter template details"
   >
+    <div
+      id="template-error"
+      class="form-error hidden"
+      role="alert"
+      aria-live="assertive"
+    ></div>
     {% if include_name %}
     <div class="form-row">
       <label for="name" title="Name of the template">Name:</label>
