@@ -1,0 +1,31 @@
+name: Branch Protection Enforcement
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  enforce_protection:
+    name: Enforce Branch Protection
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect staging merge
+        id: staging
+        run: |
+          if git log -1 --pretty=%B | grep -qi "merge.*staging"; then
+            echo "staging_merge=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "staging_merge=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Block direct pushes to main
+        if: steps.staging.outputs.staging_merge == 'false'
+        run: |
+          echo "❌ Direct pushes to main branch are not allowed!"
+          echo "Please create a pull request instead."
+          echo "Use: git checkout -b feature-branch && git push origin feature-branch"
+          exit 1

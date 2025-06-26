@@ -274,6 +274,13 @@ Contributions are always welcome. If you have an idea to improve Glimpser, feel 
    ```
 5. Open a pull request.
 
+### Branching Workflow
+
+All changes start in a feature branch and merge into `staging` first. The `main`
+branch is always deployable and receives commits only from the CD pipeline.
+Direct pushes to `main` are blocked by a branch protection workflow. See
+[Staged GitHub Flow](docs/staged_github_flow.md) for a detailed diagram.
+
 ## Recommendations
 
 For detailed suggestions on how to use Glimpser effectively, please check out our [Recommendations](docs/recommendations.md) guide.
