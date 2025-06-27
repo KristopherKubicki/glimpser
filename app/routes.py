@@ -159,18 +159,26 @@ ALLOWED_FILENAME_RE = media_utils.ALLOWED_FILENAME_RE
 
 
 # ---------- tiny helpers ----------------------------------------------------
+# Hold references to the original utility functions so wrapper implementations
+# can safely call them even when the module-level attributes are monkeypatched
+# during testing. Without this indirection, ``_concat_copy`` would replace
+# ``media_utils._duration`` with ``_duration`` and recursion would occur.
+_ORIG_MEDIA_DURATION = media_utils._duration
+_ORIG_MEDIA_PROBE = media_utils._probe
+
+
 @lru_cache(maxsize=256)
 def _duration(p: str) -> float:
-    """Wrapper for :func:`media_utils._duration`."""
+    """Return the duration of ``p`` using the original utility."""
 
-    return media_utils._duration(p)
+    return _ORIG_MEDIA_DURATION(p)
 
 
 @lru_cache(maxsize=256)
 def _probe(p: str, key: str):
-    """Wrapper for :func:`media_utils._probe`."""
+    """Return ``key`` metadata for ``p`` using the original utility."""
 
-    return media_utils._probe(p, key)
+    return _ORIG_MEDIA_PROBE(p, key)
 
 
 def send_conditional_file(
