@@ -5,6 +5,17 @@ import time
 from selenium.webdriver.common.by import By
 
 
+def _parse_network_event(log: dict) -> tuple[str | None, int | None]:
+    """Return the request URL and status extracted from a performance log."""
+
+    try:
+        msg = json.loads(log.get("message", ""))
+    except json.JSONDecodeError:
+        return None, None
+    response = msg.get("message", {}).get("params", {}).get("response", {})
+    return response.get("url"), response.get("status")
+
+
 def network_idle_condition(
     driver,
     url,
@@ -13,15 +24,16 @@ def network_idle_condition(
     stealth=False,
     stop_event: threading.Event | None = None,
 ):
-    """
-    Returns a function that can be used as a condition for WebDriverWait.
-    It checks if the network has been idle for a specified amount of time.
+    """Wait until network traffic settles for ``idle_time`` seconds.
 
     :param driver: The WebDriver instance.
     :param url: The URL being tested.
     :param timeout: Maximum time to wait for the network to become idle.
     :param idle_time: Time in seconds that the network should be idle.
     :param stealth: Whether to use stealth mode.
+    :param stop_event: Optional event to abort waiting early.
+    :return: ``(True, status)`` if idle or ``(False, status)`` on timeout or
+        error status.
     """
     gurl = url.split("#")[0]
     lstatus = 800
@@ -42,24 +54,9 @@ def network_idle_condition(
             or "Network.request" in log["message"]
         ]
         for gevent in events:
-            try:
-                levent = json.loads(gevent.get("message"))
-            except json.JSONDecodeError:
-                # Skip malformed log entries instead of raising an exception
-                continue
-            lurl = (
-                levent.get("message", {})
-                .get("params", {})
-                .get("response", {})
-                .get("url")
-            )
-            if lurl == gurl:
-                lstatus = (
-                    levent.get("message", {})
-                    .get("params", {})
-                    .get("response", {})
-                    .get("status")
-                )
+            url, status = _parse_network_event(gevent)
+            if url == gurl and status is not None:
+                lstatus = status
 
                 # Treat any 4xx or 5xx response as a failure so the caller can
                 # bail out early on server errors.
