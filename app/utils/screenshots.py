@@ -2329,10 +2329,14 @@ def _finalize_screenshot(tmp_path, final_path, name, invert, dark):
         # Now add a timestamp overlay. If this fails the file may be removed.
         add_timestamp(tmp_path, name=name, invert=invert)
 
-        # Finally rename if the temp file still exists. Timestamp overlay may
-        # delete corrupt images, so verify before moving.
+        # If the timestamp step removed the screenshot, replace it with a
+        # placeholder image rather than failing outright.
         if not os.path.exists(tmp_path):
-            logging.error("Temporary screenshot missing after timestamp overlay")
+            logging.warning("Timestamp overlay failed; creating placeholder instead")
+            create_placeholder(tmp_path, name)
+
+        # Finally rename after verifying the file exists.
+        if not os.path.exists(tmp_path):
             return False
 
         os.makedirs(os.path.dirname(final_path), exist_ok=True)
