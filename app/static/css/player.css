@@ -227,3 +227,21 @@ video::-moz-volume-control {
 #mute {
   display: none;
 }
+
+#fullscreen-toggle {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  padding: 0.25rem;
+  font-size: 1.25rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#fullscreen-toggle:focus {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
