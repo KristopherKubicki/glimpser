@@ -62,6 +62,18 @@ export function initTilePlayer() {
     if (container) container.appendChild(image);
   }
 
+  const fsButton = document.getElementById("fullscreen-toggle");
+  if (fsButton) {
+    fsButton.addEventListener("click", () => {
+      const target = container || video;
+      if (!document.fullscreenElement) {
+        target?.requestFullscreen?.();
+      } else {
+        document.exitFullscreen?.();
+      }
+    });
+  }
+
   function showBounce() {
     if (!spinner) return;
     spinner.textContent = "\u25CF";
