@@ -1,28 +1,39 @@
 # tests/test_routes.py
 
+import importlib
 import os
 import unittest
 from types import SimpleNamespace
 from unittest import mock
 from unittest.mock import patch
 
+import app.routes as routes
+
 from flask import Flask
 
 from app.models import Summary
-from app.routes import init_routes
 from app.utils.template_manager import clear_template_cache
 
 
 class TestRoutes(unittest.TestCase):
     def setUp(self):
+        import app.routes as routes
+
+        importlib.reload(routes)
+
         template_dir = os.path.join(
             os.path.abspath(os.path.dirname(__file__)), "../app/templates"
         )
         self.app = Flask(__name__, template_folder=template_dir)
         self.app.config["SECRET_KEY"] = "my_secret_key"  # pragma: allowlist secret
-        init_routes(self.app)
+        self.subnet_patch = patch("app.routes.config.SKIP_LOGIN_SUBNETS", [])
+        self.subnet_patch.start()
+        routes.init_routes(self.app)
         self.client = self.app.test_client()
         clear_template_cache()
+
+    def tearDown(self):
+        self.subnet_patch.stop()
 
     def test_health_check(self):
         response = self.client.get("/health")
