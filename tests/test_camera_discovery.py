@@ -167,9 +167,10 @@ class TestCameraDiscovery(unittest.TestCase):
         ]
         self.assertEqual(result, expected)
 
+    @patch("app.utils.camera_discovery._fetch_snmp_sysdescr", return_value="desc")
     @patch("app.utils.camera_discovery._fetch_snmp_sysname")
     @patch("app.utils.camera_discovery.is_port_open")
-    def test_scan_snmp_ports(self, mock_port_open, mock_fetch_name):
+    def test_scan_snmp_ports(self, mock_port_open, mock_fetch_name, mock_descr):
         mock_port_open.side_effect = self._port_open_side_effect
         mock_fetch_name.return_value = "cam1"
         subnets = [
@@ -182,7 +183,7 @@ class TestCameraDiscovery(unittest.TestCase):
                 "ip": "192.168.1.6",
                 "protocol": "snmp",
                 "port": 161,
-                "info": {"name": "cam1"},
+                "info": {"name": "cam1", "firmware": "desc"},
             },
         ]
         self.assertEqual(result, expected)
