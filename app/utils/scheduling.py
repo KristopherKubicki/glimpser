@@ -43,6 +43,8 @@ from dateutil import parser
 from flask_apscheduler import APScheduler
 from PIL import Image
 
+from . import system_metrics as _system_metrics
+
 
 class CLIPProcessor:
     """Lightweight CLIP preprocessor used with ONNX models.
@@ -92,6 +94,7 @@ from app.config import (
     VIDEO_DIRECTORY,
     WATCHDOG_CPU_THRESHOLD,
     WATCHDOG_MEMORY_THRESHOLD,
+    DEBUG,
     get_setting,
 )
 from app.models import LogSummary, OfflineJob, Summary
@@ -1086,6 +1089,17 @@ def schedule_crawlers():
 
 
 from .system_metrics import log_cache, log_cache_lock
+
+# Re-export select attributes for backwards compatibility with older tests
+LOGGING_PATH = _system_metrics.LOGGING_PATH
+cache_logs = _system_metrics.cache_logs
+start_log_caching = _system_metrics.start_log_caching
+stop_background_tasks = _system_metrics.stop_background_tasks
+system_metrics = _system_metrics.system_metrics
+start_metrics_collection = _system_metrics.start_metrics_collection
+stop_event = _system_metrics.stop_event
+get_system_metrics = _system_metrics.get_system_metrics
+DEBUG = DEBUG
 
 
 def get_feed_status():
