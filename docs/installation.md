@@ -76,6 +76,9 @@ cp .env.example .env
 # edit .env as needed
 ```
 
+The sample file now sets `FFMPEG_HWACCEL=auto` so GPU acceleration works
+out of the box when supported. Change it to `false` to disable.
+
 ### 7. Set Up the Database
 
 Initialize the local SQLite database:

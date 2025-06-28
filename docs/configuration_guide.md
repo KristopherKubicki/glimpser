@@ -184,7 +184,7 @@ Additional variables control AI behaviour and external tools:
 - `FFMPEG_HWACCEL` – hardware acceleration mode for ffmpeg (default `auto`).
   When set to `auto` Glimpser inspects available encoders and enables the first
   supported GPU method (`cuda`, `vaapi`, `qsv`, `v4l2m2m`) or falls back to
-  software when none are detected.
+  software when none are detected. Set to `false` to force CPU mode.
 - When hardware acceleration is enabled and Chrome supports OpenGL, Glimpser
   automatically launches Chrome with `--use-gl=egl` for improved GPU use.
 - `FFMPEG_THREADS` – number of threads ffmpeg uses when encoding (default half the CPU cores)
