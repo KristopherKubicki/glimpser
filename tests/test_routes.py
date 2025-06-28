@@ -1,16 +1,18 @@
 # tests/test_routes.py
 
-import unittest
 import os
 import sys
+import unittest
 from unittest.mock import patch
+
 from flask import Flask
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.routes import init_routes
-from app.models import Summary
 from types import SimpleNamespace
+
+from app.models import Summary
+from app.routes import init_routes
 
 
 class TestRoutes(unittest.TestCase):
