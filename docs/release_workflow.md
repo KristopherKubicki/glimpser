@@ -1,7 +1,13 @@
 # Release Workflow
 
 Glimpser packages are generated automatically when a version tag is pushed to the repository.
-The process is split across multiple runners:
+The process is split across multiple runners. Each job first builds a **light**
+package without GPU support. Tests run against this CPU‑only version to catch
+issues quickly. Once the light build succeeds, a second pass builds packages
+with `GLIMPSER_AUTO_BUILD_FFMPEG=1` so FFmpeg includes GPU acceleration. This
+approach avoids lengthy GPU builds when tests fail.
+
+The runners are structured as follows:
 
 - **Ubuntu** builds the Debian package and runs the test suite. The packaging
   script now uses `rsync` to copy directories so unchanged files are skipped,
