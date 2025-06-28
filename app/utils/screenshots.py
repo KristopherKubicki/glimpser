@@ -247,6 +247,11 @@ def _is_valid_png(path: str) -> bool:
         return False
 
 
+def _sanitize_path(path: str) -> str:
+    """Return a normalized absolute path."""
+    return os.path.abspath(os.path.normpath(path))
+
+
 def detect_background_color(image: Image.Image, sample_width: int = 10):
     """Return the most common color found along the image border."""
     arr = np.asarray(image.convert("RGBA"))
@@ -575,6 +580,7 @@ def download_image(
 
     proxy = validate_proxy(proxy)
     clean_url = sanitize_url(url)
+    output_path = _sanitize_path(output_path)
 
     # ideally the timeout should be pretty high, its an image, and it could be real big
     timeout = max(timeout, 10)
@@ -678,6 +684,7 @@ def download_pdf(
     lsuccess = False
 
     clean_url = sanitize_url(url)
+    output_path = _sanitize_path(output_path)
 
     cached = get_cached_status_code(url)
     if cached is not None and cached != 200:
@@ -2298,6 +2305,9 @@ def _finalize_screenshot(tmp_path, final_path, name, invert, dark):
     Checks if tmp_path exists, does some post-processing, and renames to final_path.
     Returns True on success, False otherwise.
     """
+    tmp_path = _sanitize_path(tmp_path)
+    final_path = _sanitize_path(final_path)
+
     if not os.path.exists(tmp_path):
         return False
 
