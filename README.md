@@ -125,7 +125,7 @@ If you cannot log in or see video feeds, double-check that your `.env` file matc
 To install Python packages required for development, run:
 
 ```sh
-pip install .[dev]
+uv sync --group dev
 ```
 
 Then install linters and JavaScript tools with `make setup` (or `scripts/setup_env.sh`).
@@ -206,14 +206,14 @@ To set up the project for development:
 3. Install Python and JavaScript dependencies:
 
    ```sh
-   pip install -e .[dev]
+   uv sync --group dev
    npm install
    ```
 
 4. Install Git hooks and additional tooling:
 
    ```sh
-   pre-commit install
+   uv run pre-commit install
    make setup  # optional helper to configure tools
    ```
 
@@ -222,15 +222,15 @@ To set up the project for development:
 
 1. Install the tooling and Git hooks (or run `make setup`):
    ```sh
-   pip install .[dev]
+   uv sync --group dev
    npm install
-   pre-commit install
+   uv run pre-commit install
    ```
 2. Verify hooks and run linters:
    ```sh
-   pre-commit run --all-files
-   flake8
-   pytest
+   uv run pre-commit run --all-files
+   uv run flake8
+   uv run pytest
    npm test -- --coverage
    ```
 
