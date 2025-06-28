@@ -7,10 +7,9 @@ from types import SimpleNamespace
 from unittest import mock
 from unittest.mock import patch
 
-import app.routes as routes
-
 from flask import Flask
 
+import app.routes as routes
 from app.models import Summary
 from app.utils.template_manager import clear_template_cache
 
