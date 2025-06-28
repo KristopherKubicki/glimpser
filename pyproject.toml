@@ -129,6 +129,7 @@ required-version  = "25.1.0"
 
 [tool.isort]
 profile = "black"
+line_length = 88
 
 # Ruff replaces most flake8 / isort / pylint rules, but you can keep the
 # originals for now; just run Ruff first so they have little to flag.

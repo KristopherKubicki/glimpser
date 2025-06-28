@@ -739,7 +739,7 @@ name = "exceptiongroup"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0b/9f/a65090624ecf468cdca03533906e7c69ed7588582240cfe7cc9e770b50eb/exceptiongroup-1.3.0.tar.gz", hash = "sha256:b241f5885f560bc56a59ee63ca4c6a8bfa46ae4ad651af316d4e81817bb9fd88", size = 29749, upload-time = "2025-05-10T17:42:51.123Z" }
 wheels = [
@@ -798,7 +798,6 @@ dependencies = [
     { name = "blinker" },
     { name = "click" },
     { name = "importlib-metadata", version = "8.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "importlib-metadata", version = "8.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_version < '0'" },
     { name = "itsdangerous" },
     { name = "jinja2" },
     { name = "markupsafe" },
@@ -1122,7 +1121,7 @@ requires-dist = [
     { name = "gitlint", marker = "extra == 'agents'" },
     { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.135" },
     { name = "interrogate", marker = "extra == 'agents'" },
-    { name = "isort", marker = "extra == 'dev'", specifier = ">=6.0" },
+    { name = "isort", marker = "extra == 'dev'", specifier = "==6.0.1" },
     { name = "jinja2", specifier = "==3.1.6" },
     { name = "mkdocs", marker = "extra == 'dev'", specifier = ">=1.6" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.16" },
@@ -1184,7 +1183,7 @@ dev = [
     { name = "coverage", specifier = ">=7.9" },
     { name = "flake8", specifier = ">=7.2" },
     { name = "hypothesis", specifier = ">=6.135" },
-    { name = "isort", specifier = ">=6.0" },
+    { name = "isort", specifier = "==6.0.1" },
     { name = "mkdocs", specifier = ">=1.6" },
     { name = "mypy", specifier = ">=1.16" },
     { name = "nox", specifier = ">=2025.2" },
