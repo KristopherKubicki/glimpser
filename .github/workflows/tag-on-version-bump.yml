@@ -2,7 +2,7 @@ name: Tag Release
 
 on:
   push:
-    branches: ["main", "staging"]
+    branches: ["main"]
 
 jobs:
   tag_release:
