@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import curses
-import time
 from typing import Any
 
 from .scheduling import get_feed_status
@@ -19,6 +18,8 @@ def _render(screen: curses.window) -> None:
     curses.init_pair(1, curses.COLOR_GREEN, -1)
     curses.init_pair(2, curses.COLOR_YELLOW, -1)
     curses.init_pair(3, curses.COLOR_RED, -1)
+
+    screen.timeout(REFRESH_INTERVAL * 1000)
 
     while True:
         feeds = get_feed_status()
@@ -44,11 +45,9 @@ def _render(screen: curses.window) -> None:
             screen.addstr(idx, 0, row[: width - 1], color)
 
         screen.refresh()
-        for _ in range(REFRESH_INTERVAL * 10):
-            time.sleep(0.1)
-            ch = screen.getch()
-            if ch in (ord("q"), ord("Q")):
-                return
+        ch = screen.getch()
+        if ch in (ord("q"), ord("Q")):
+            return
 
 
 def main() -> None:
