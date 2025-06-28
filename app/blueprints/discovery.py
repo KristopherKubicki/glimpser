@@ -182,7 +182,7 @@ def create_blueprint() -> Blueprint:
 
         url = request.args.get("url") or ""
         url = routes.validators.validate_url(url)
-        if not url:
+        if not url or not routes.validators.is_public_url(url):
             return jsonify({"ok": False, "error": "invalid"}), 400
 
         def attempt(method: str) -> tuple[bool, dict]:
