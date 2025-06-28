@@ -101,7 +101,7 @@ Navigate to http://127.0.0.1:8082 in your web browser to access the Glimpser int
 If you prefer to use Docker, you can use the provided Dockerfile and docker-compose.yaml:
 
 1. Make sure you have Docker and Docker Compose installed.
-2. Build and run the Docker container:
+2. Build the multi-stage image and run the container:
 
 ```sh
 docker-compose up --build

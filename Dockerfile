@@ -1,14 +1,19 @@
-# Use an official Python runtime as a parent image
-FROM python:3.12-slim
+# syntax=docker/dockerfile:1
 
-# Install system dependencies
+### Base image with system packages and the uv installer
+FROM python:3.12-slim AS base
+
+# Install system dependencies and uv
+ENV UV_VERSION="v0.1.28"
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 libsqlite3-0 curl iputils-ping net-tools netcat-traditional \
     libsqlite3-dev libjpeg62-turbo libpng16-16 libtiff6 libfreetype6 \
     libwebp7 unzip poppler-utils xvfb ffmpeg libssl3 libffi8 libbz2-1.0 \
     libreadline8 libncurses5 libncursesw6 libxml2 libxslt1.1 \
     build-essential gcc zlib1g wget gnupg iproute2 wkhtmltopdf \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -L "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-unknown-linux-musl.tar.gz" \
+       | tar xz -C /usr/local/bin uv
 
 # Install Google Chrome
 RUN wget -qO- https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-linux-signing-keyring.gpg \
@@ -25,20 +30,18 @@ RUN CHROME_DRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_
     && chown root:root /usr/local/bin/chromedriver \
     && chmod 0755 /usr/local/bin/chromedriver
 
-# Set work directory
+# Stage for installing Python dependencies
+FROM base AS dependencies
 WORKDIR /app
-
-# Install Python dependencies
 COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
 
-# Copy package source early for installation
-COPY app scripts ./
-
-# Install Python dependencies once sources are present
-RUN pip install --no-cache-dir . gunicorn
-
-# Copy remaining application code
+### Final stage with application code
+FROM base
+WORKDIR /app
+COPY --from=dependencies /usr/local /usr/local
 COPY . .
+RUN uv sync --frozen --no-dev --compile-bytecode
 
 # Set environment variables
 ENV FLASK_APP=main.py \
@@ -52,4 +55,4 @@ RUN mkdir -p /app/db /app/logs /app/screenshots /app/videos /app/summaries
 EXPOSE 8082
 
 # Run the application
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8082", "wsgi:app"]
+CMD ["uv", "run", "gunicorn", "-w", "4", "-b", "0.0.0.0:8082", "wsgi:app"]

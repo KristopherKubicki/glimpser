@@ -10,3 +10,8 @@ AGENTS.md
 AGENTS.template.md
 data
 logs
+__pycache__
+*.pyc
+*.pyo
+.venv
+.pytest_cache
