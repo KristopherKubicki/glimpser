@@ -18,3 +18,5 @@ following tasks:
 Running `pre-commit run --all-files` locally will execute the same Black,
 isort, Flake8, and mypy checks before they fail in CI. These checks help catch
 regressions and security issues before code is merged.
+On pull requests the workflow lints only the files that changed, while pushes
+to `staging` or `main` run the linter across the entire repository.
