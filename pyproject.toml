@@ -2,7 +2,7 @@
 name            = "glimpser"
 version         = "0.2.8"
 description     = "A real-time monitoring application for capturing and analyzing live data from various sources"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 readme          = "README.md"
 
 authors = [
