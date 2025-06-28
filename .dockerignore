@@ -1,11 +1,18 @@
 # Keep Docker context small by excluding non-runtime files
 .git
+.gitignore
 .github
 docs
 tests
 node_modules
 .env
 .env.example
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.coverage
+.mypy_cache
 AGENTS.md
 AGENTS.template.md
 data
