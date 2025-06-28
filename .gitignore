@@ -128,3 +128,4 @@ debian/glimpser/
 release-badges.md
 # Documentation build output
 site/
+pytest-report.xml
