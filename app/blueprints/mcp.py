@@ -6,7 +6,7 @@ from flask import Blueprint, jsonify, request
 def create_blueprint() -> Blueprint:
     """Create and return the MCP integration blueprint."""
 
-    import app.routes as routes
+    from app import routes
 
     bp = Blueprint("mcp", __name__)
 

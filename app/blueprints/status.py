@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime
-from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 from sqlalchemy import text
@@ -12,7 +11,7 @@ from sqlalchemy import text
 def create_blueprint() -> Blueprint:
     """Create and return the status blueprint."""
 
-    import app.routes as routes
+    from app import routes
 
     bp = Blueprint("status", __name__)
 

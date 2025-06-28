@@ -14,7 +14,7 @@ def _load_log() -> list:
     """Return the current latency log from ``LOG_PATH`` if it exists."""
     if os.path.exists(LOG_PATH):
         try:
-            with open(LOG_PATH, "r") as f:
+            with open(LOG_PATH) as f:
                 return json.load(f)
         except Exception:
             return []

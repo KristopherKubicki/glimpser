@@ -2,7 +2,7 @@
 
 import sys
 from collections import Counter
-from typing import Iterable
+from collections.abc import Iterable
 
 
 def _read_lines(file: Iterable[str]) -> list[str]:
@@ -20,7 +20,7 @@ def clean_lines(lines: Iterable[str]) -> list[str]:
 
 def main() -> None:
     if len(sys.argv) > 1:
-        with open(sys.argv[1], "r", encoding="utf-8") as f:
+        with open(sys.argv[1], encoding="utf-8") as f:
             lines = _read_lines(f)
     else:
         lines = _read_lines(sys.stdin)

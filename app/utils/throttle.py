@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable, Dict, Tuple
 
 from flask import abort, request
 
 # Map of (IP address, endpoint) to last access timestamp
-_last_calls: Dict[Tuple[str, str], float] = {}
+_last_calls: dict[tuple[str, str], float] = {}
 
 
 def clear() -> None:

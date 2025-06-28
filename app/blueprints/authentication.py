@@ -4,13 +4,13 @@ import logging
 from datetime import datetime, timedelta
 from ipaddress import ip_address as ip_address_module
 
-from flask import Blueprint, current_app, request, session, url_for
+from flask import Blueprint, current_app, request, session
 
 
 def create_blueprint() -> Blueprint:
     """Create and return the authentication blueprint."""
 
-    import app.routes as routes
+    from app import routes
     from app.models import User
 
     bp = Blueprint("authentication", __name__)

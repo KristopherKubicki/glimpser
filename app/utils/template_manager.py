@@ -12,8 +12,8 @@ from sqlalchemy import Boolean, Column, Float, Integer, String, Text
 from sqlalchemy.orm import validates
 from werkzeug.utils import secure_filename
 
-import app.utils.db as db
 from app.config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY
+from app.utils import db
 from app.utils.db import commit_with_retry
 
 from .validators import validate_template_name
@@ -697,7 +697,7 @@ def record_llm_usage(name: str, tokens: int) -> None:
 
     os.makedirs(os.path.dirname(LLM_USAGE_PATH), exist_ok=True)
     try:
-        with open(LLM_USAGE_PATH, "r") as f:
+        with open(LLM_USAGE_PATH) as f:
             data = json.load(f)
     except Exception:
         data = {}
@@ -740,7 +740,7 @@ def get_llm_response_count(name: str) -> int:
         return 0
 
     try:
-        with open(LLM_USAGE_PATH, "r") as f:
+        with open(LLM_USAGE_PATH) as f:
             data = json.load(f)
     except Exception:
         return 0
@@ -765,7 +765,7 @@ def get_llm_cost_estimate(
         return "$0.00"
 
     try:
-        with open(LLM_USAGE_PATH, "r") as f:
+        with open(LLM_USAGE_PATH) as f:
             data = json.load(f)
     except Exception:
         data = {}
@@ -807,7 +807,7 @@ def get_llm_cost_summary(
     """
 
     try:
-        with open(LLM_USAGE_PATH, "r") as f:
+        with open(LLM_USAGE_PATH) as f:
             data = json.load(f)
     except Exception:
         data = {}
@@ -851,16 +851,15 @@ def get_llm_cost_summary(
             if not start_date and not end_date:
                 tokens = entry.get("total", tokens)
                 calls = len(entries)
-        else:
-            if isinstance(entry, list):
-                tokens = sum(int(t) for t in entry)
-                calls = len(entry)
-            elif isinstance(entry, dict):
-                tokens = int(entry.get("total", 0))
-                calls = len(entry.get("entries", []))
-            elif isinstance(entry, int):
-                tokens = entry
-                calls = 1 if entry > 0 else 0
+        elif isinstance(entry, list):
+            tokens = sum(int(t) for t in entry)
+            calls = len(entry)
+        elif isinstance(entry, dict):
+            tokens = int(entry.get("total", 0))
+            calls = len(entry.get("entries", []))
+        elif isinstance(entry, int):
+            tokens = entry
+            calls = 1 if entry > 0 else 0
         total_tokens += tokens
         total_calls += calls
         cost = tokens * LLM_COST_PER_TOKEN

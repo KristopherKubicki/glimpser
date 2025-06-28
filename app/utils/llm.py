@@ -5,7 +5,6 @@ import json
 import logging
 import re
 import time
-from typing import Optional
 
 from app.config import CHATGPT_KEY, LLM_MODEL_VERSION, LLM_SUMMARY_PROMPT
 from app.utils import llm_cache
@@ -17,7 +16,7 @@ last_429_error_time = None
 
 def summarize(
     prompt: str,
-    history: Optional[str] = None,
+    history: str | None = None,
     tokens: int = 4096,
     *,
     timeout: int = 30,

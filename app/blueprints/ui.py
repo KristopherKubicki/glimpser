@@ -23,7 +23,7 @@ from flask import (
 def create_blueprint() -> Blueprint:
     """Create and return the UI blueprint with web routes."""
 
-    import app.routes as routes
+    from app import routes
 
     bp = Blueprint("ui", __name__)
 

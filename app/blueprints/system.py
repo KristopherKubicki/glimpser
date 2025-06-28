@@ -6,7 +6,7 @@ from flask import Blueprint, jsonify, redirect, url_for
 def create_blueprint() -> Blueprint:
     """Create and return the system management blueprint."""
 
-    import app.routes as routes
+    from app import routes
 
     bp = Blueprint("system", __name__)
 

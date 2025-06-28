@@ -1,10 +1,8 @@
 # utils/screenshots.py
 
-import base64
 import datetime
 import io
 import ipaddress
-import json
 import logging
 import os
 import platform
@@ -16,7 +14,6 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
 import psutil
@@ -33,19 +30,12 @@ logging.getLogger("urllib3").setLevel(logging.ERROR)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 import threading
-from typing import Dict
 
 import numpy as np
 import requests
 import yt_dlp as youtube_dl
 from pdf2image import convert_from_bytes
-from PIL import (
-    Image,
-    ImageDraw,
-    ImageFile,
-    ImageFont,
-    ImageOps,
-)
+from PIL import Image, ImageDraw, ImageFile, ImageFont, ImageOps
 
 # PIL may raise 'image file is truncated' if a screenshot is incomplete.
 # Allow truncated images to load so we can still overlay timestamps and
@@ -58,9 +48,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
-import app.config as config
-import app.utils.status_cache as status_cache
-import app.utils.user_activity as user_activity
+from app import config
 from app.config import (
     ANALYZE_DURATION_DEFAULT,
     ANALYZE_DURATION_OTHER,
@@ -77,6 +65,7 @@ from app.config import (
     TZ,
     UA,
 )
+from app.utils import status_cache, user_activity
 from app.utils.validators import validate_proxy, validate_url
 
 from .network import is_system_online
@@ -135,7 +124,7 @@ def set_cached_status_code(url: str, code: int) -> None:
 
 _load_status_cache()
 
-FFMPEG_AVAILABLE: Optional[bool] = None
+FFMPEG_AVAILABLE: bool | None = None
 
 last_camera_test = {}
 last_camera_test_time = {}
@@ -205,7 +194,7 @@ def load_font(size):
     for font_name in FONT_CANDIDATES:
         try:
             return ImageFont.truetype(font_name, size)
-        except IOError:
+        except OSError:
             continue
     return ImageFont.load_default()
 
@@ -588,8 +577,7 @@ def download_image(
     clean_url = sanitize_url(url)
 
     # ideally the timeout should be pretty high, its an image, and it could be real big
-    if timeout < 10:
-        timeout = 10
+    timeout = max(timeout, 10)
 
     response = None
 
@@ -698,8 +686,7 @@ def download_pdf(
         )
         return False
 
-    if timeout < 10:
-        timeout = 10
+    timeout = max(timeout, 10)
 
     try:
         # Download the PDF file
@@ -759,9 +746,8 @@ def download_pdf(
             os.replace(tmp_path, output_path)
             logging.debug(f"Successfully saved PDF page to {output_path}")
             lsuccess = True
-        else:
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
+        elif os.path.exists(tmp_path):
+            os.remove(tmp_path)
         return lsuccess
 
     except Exception as e:
@@ -802,12 +788,10 @@ def is_private_ip(ip_address):
 
 
 def is_address_reachable(address, port=80, timeout=5):
-
     if port is None:
         port = 80
 
-    if timeout < 3:
-        timeout = 3
+    timeout = max(timeout, 3)
 
     try:
         # Resolve the domain name to an IP address
@@ -884,7 +868,6 @@ def parse_url(url):
 
 
 def cas_error(url):
-
     entry = throttle_cache.setdefault(url, {"errors": 0, "first": time.time()})
 
     if entry.get("last", 0) > time.time() - 60 * 5:
@@ -1372,6 +1355,7 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             timeout=CAPTURE_TIMEOUT,
+            check=False,
         )
 
         # Note! check the result. If the return code isnt 0, then we should fail out.  Why though? Check on that too.
@@ -1469,8 +1453,7 @@ def capture_frame_from_stream(
 
     clean_url = sanitize_url(url)
 
-    if timeout < 5:
-        timeout = 5
+    timeout = max(timeout, 5)
 
     tmpdirname = f"/tmp/glimpser_{name}"
     os.makedirs(tmpdirname, exist_ok=True)
@@ -1635,8 +1618,7 @@ def capture_screenshot_and_har_light(
         logging.warning("wkhtmltoimage is not installed or not in the system path.")
         return False
 
-    if timeout < 10:
-        timeout = 10
+    timeout = max(timeout, 10)
 
     # We'll stage a temporary filename for the "in-progress" PNG
     tmp_path = output_path.replace(".png", ".tmp.png")
@@ -1682,6 +1664,7 @@ def capture_screenshot_and_har_light(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             shell=False,
+            check=False,
         )
 
         if result.returncode != 0:
@@ -1741,11 +1724,9 @@ def capture_screenshot_and_har_light(
 
 from .chrome_utils import (
     browser_supports_gl,
-    extract_version,
     get_chrome_path,
     get_chrome_version,
     is_chrome_debug_port_open,
-    is_port_open,
 )
 
 
@@ -1779,7 +1760,6 @@ def kill_driver_process(driver):
 
 
 def launch_headless_chrome(driver_options, version=None):
-
     driver = None
     try:
         # note - version not working
@@ -1857,8 +1837,7 @@ def capture_screenshot_phantom(
     if not (url.lower().startswith("http://") or url.lower().startswith("https://")):
         url = "https://" + url
 
-    if timeout < 15:
-        timeout = 15
+    timeout = max(timeout, 15)
     timeout = int(timeout)
 
     # Safely escape backslashes and quotes in XPaths
@@ -1982,6 +1961,7 @@ def capture_screenshot_phantom(
                 timeout=timeout + 10,
                 stderr=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
+                check=False,
             )
         except subprocess.TimeoutExpired:
             logging.warning(f"PhantomJS timed out for {clean_url}.")
@@ -2085,8 +2065,7 @@ def capture_screenshot_and_har(
         logging.warning("System offline; skipping capture for %s", clean_url)
         return False
 
-    if timeout < 30:
-        timeout = 30
+    timeout = max(timeout, 30)
 
     cleanup_old_tempdirs(prefix="glimpser_", max_age_hours=12)
 
@@ -2248,7 +2227,7 @@ def capture_screenshot_and_har(
         if popup_xpath:
             try:
                 _remove_popup(driver, popup_xpath)
-            except Exception as e:
+            except Exception:
                 # logging.info(f"Could not remove popup={popup_xpath}:")
                 pass
 
@@ -2259,7 +2238,7 @@ def capture_screenshot_and_har(
                 driver.execute_script("arguments[0].scrollIntoView(true);", element)
                 time.sleep(1)
                 element.screenshot(partial_screenshot)
-            except Exception as e:
+            except Exception:
                 pass
 
         # Fallback to entire page if partial didn't get created
@@ -2277,9 +2256,9 @@ def capture_screenshot_and_har(
         if success and not os.path.exists(output_path):
             Path(output_path).touch()
 
-    except TimeoutException as e:
+    except TimeoutException:
         logging.warning(f"[capture_screenshot_and_har] Timeout error for {clean_url}")
-    except WebDriverException as e:
+    except WebDriverException:
         logging.warning(f"[capture_screenshot_and_har] WebDriver error for {clean_url}")
     except Exception as e:
         logging.error(f"[capture_screenshot_and_har] Unexpected error: {clean_url} {e}")

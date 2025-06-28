@@ -11,18 +11,17 @@ from flask import (
     Blueprint,
     Response,
     jsonify,
-    render_template,
     request,
     stream_with_context,
 )
 
-import app.utils.screenshots as screenshots
+from app.utils import screenshots
 
 
 def create_blueprint() -> Blueprint:
     """Create and return the camera discovery blueprint."""
 
-    import app.routes as routes
+    from app import routes
 
     bp = Blueprint("discovery", __name__)
 

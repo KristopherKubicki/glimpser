@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 import requests
 
@@ -32,8 +32,8 @@ def _check_xpath(content: bytes, xpath: str) -> bool:
 
 
 def check_camera_template(
-    url: str, xpaths: List[str], timeout: int = 5
-) -> Dict[str, Any]:
+    url: str, xpaths: list[str], timeout: int = 5
+) -> dict[str, Any]:
     """Validate ``url`` and ``xpaths``.
 
     Parameters
@@ -51,7 +51,7 @@ def check_camera_template(
         Diagnostic information and potential replacement URLs.
     """
 
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "valid_url": False,
         "url_error": "",
         "xpath_results": {},
