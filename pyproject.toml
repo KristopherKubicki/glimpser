@@ -202,7 +202,7 @@ agents = [
   "yamllint",
   "pip-install-size",
   "pre-commit-docker",
-  "gitleaks",
+  # "gitleaks",  # temporarily removed; package unavailable on PyPI
   "gitlint",
   "vulture",
   "pytest-socket", # for offline coding
