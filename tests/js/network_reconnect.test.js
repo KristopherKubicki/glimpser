@@ -1,5 +1,9 @@
 import { jest } from "@jest/globals";
 
+jest.unstable_mockModule("../../app/static/js/login.js", () => ({
+  attemptAutoLogin: jest.fn(),
+}));
+
 document.body.innerHTML = `
   <div class="video-container"></div>
   <video id="live-video"></video>
@@ -36,15 +40,18 @@ Object.defineProperty(window.HTMLMediaElement.prototype, "play", {
 
 let handleNetworkOffline;
 let handleNetworkOnline;
+let attemptAutoLogin;
 
 beforeAll(async () => {
   const mod = await import("../../app/static/js/live.js");
   handleNetworkOffline = mod.handleNetworkOffline;
   handleNetworkOnline = mod.handleNetworkOnline;
+  const loginMod = await import("../../app/static/js/login.js");
+  attemptAutoLogin = loginMod.attemptAutoLogin;
 });
 
 global.fetch = jest.fn(() =>
-  Promise.resolve({ json: () => Promise.resolve({ online: true }) }),
+  Promise.resolve({ ok: true, redirected: false, json: () => Promise.resolve({ online: true }) }),
 );
 
 beforeEach(() => {
@@ -65,6 +72,20 @@ test("shows offline overlay and resumes when back online", async () => {
   );
   await handleNetworkOnline();
   expect(fetch).toHaveBeenCalledWith("/network_status");
+  expect(document.getElementById("offline-indicator").style.display).toBe(
+    "none",
+  );
+});
+
+test("auto login attempts when network_status redirects", async () => {
+  attemptAutoLogin.mockResolvedValue(true);
+  global.fetch
+    .mockResolvedValueOnce({ ok: false, redirected: true, json: () => Promise.resolve({}) })
+    .mockResolvedValueOnce({ ok: true, redirected: false, json: () => Promise.resolve({ online: true }) });
+  handleNetworkOffline();
+  await handleNetworkOnline();
+  expect(attemptAutoLogin).toHaveBeenCalled();
+  expect(fetch).toHaveBeenCalledTimes(2);
   expect(document.getElementById("offline-indicator").style.display).toBe(
     "none",
   );

@@ -1349,6 +1349,13 @@ let wasPlaying = false;
 async function attemptReconnect() {
   try {
     const res = await fetch("/network_status");
+    if (!res.ok || res.redirected) {
+      const ok = await attemptAutoLogin();
+      if (ok) {
+        return attemptReconnect();
+      }
+      return;
+    }
     const data = await res.json();
     if (data.error === "unauthorized") {
       const ok = await attemptAutoLogin();
