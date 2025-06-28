@@ -69,7 +69,9 @@ jobs:
       - name: Get changed files
         if: github.event_name == 'pull_request'
         id: changed
-        uses: tj-actions/changed-files@v44
+        # v44 contained a vulnerability allowing secret leakage
+        # via logs. v45 or later resolves this issue.
+        uses: tj-actions/changed-files@v45
       - name: Run pre-commit on changed files
         if: github.event_name == 'pull_request'
         run: pre-commit run --files ${{ steps.changed.outputs.all_changed_files }}
