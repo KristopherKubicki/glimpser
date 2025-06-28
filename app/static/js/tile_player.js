@@ -52,7 +52,18 @@ export function initTilePlayer() {
     };
   }
 
+  const params = new URLSearchParams(window.location.search);
+  const requested = params.get("camera");
+
   let current = camSelect && camSelect.value ? camSelect.value : "All";
+  if (!camSelect) {
+    const cams = Object.keys(window.templateDetails).filter((c) => c !== "All");
+    if (requested && window.templateDetails[requested]) {
+      current = requested;
+    } else if (cams.length === 1) {
+      current = cams[0];
+    }
+  }
 
   let abortCtl;
   let liveTimer;

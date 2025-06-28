@@ -20,6 +20,14 @@ test("defaults to all cameras", () => {
   expect(img.src).toMatch(/\/stream\.mjpg\?group=all&time=\d+$/);
 });
 
+test("single camera defaults to that camera", () => {
+  document.body.innerHTML = `<video id="live-video"><source></source></video>`;
+  window.templateDetails = { SoloCam: {} };
+  init();
+  const img = document.getElementById("live-image");
+  expect(img.src).toMatch(/\/fast_stream\.mjpg\?camera=SoloCam&time=\d+$/);
+});
+
 test("no clip fetch occurs", async () => {
   global.fetch = jest.fn();
   init();
@@ -108,7 +116,7 @@ test("clip waits 30s before live", () => {
   jest.advanceTimersByTime(29999);
   expect(img.src).toBe("");
   jest.advanceTimersByTime(1);
-  expect(img.src).toMatch(/\/stream\.mjpg\?group=all&time=\d+$/);
+  expect(img.src).toMatch(/\/fast_stream\.mjpg\?camera=cam1&time=\d+$/);
 });
 
 test("init does not duplicate live-image", () => {
