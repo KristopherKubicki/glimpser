@@ -1,6 +1,9 @@
 # Use an official Python runtime as a parent image
 FROM python:3.12-slim
 
+ARG GLIMPSER_AUTO_BUILD_FFMPEG=0
+ENV GLIMPSER_AUTO_BUILD_FFMPEG=$GLIMPSER_AUTO_BUILD_FFMPEG
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 libsqlite3-0 curl iputils-ping net-tools netcat-traditional \

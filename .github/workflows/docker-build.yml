@@ -10,7 +10,13 @@ jobs:
   build:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        gpu: [false, true]
     steps:
       - uses: actions/checkout@v4
       - name: Build Docker image
-        run: docker build -t glimpser .
+        run: |
+          docker build \
+            --build-arg GLIMPSER_AUTO_BUILD_FFMPEG=${{ matrix.gpu && '1' || '0' }} \
+            -t glimpser:${{ matrix.gpu && 'gpu' || 'light' }} .
