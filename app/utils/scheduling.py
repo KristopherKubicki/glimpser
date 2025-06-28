@@ -117,6 +117,12 @@ from .screenshots import (
     remove_background,
     throttle_cache,
 )
+from .system_metrics import (
+    get_system_metrics,
+    start_log_caching,
+    start_metrics_collection,
+    stop_event,
+)
 from .sms_alerts import sms_alert
 from .template_manager import (
     get_llm_cost_estimate,
