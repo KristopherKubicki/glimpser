@@ -18,7 +18,14 @@ def get_version() -> str:
 
 def tag_exists(tag):
     result = subprocess.run(
-        ["git", "tag", "-l", tag], capture_output=True, text=True, check=False
+        [
+            "git",
+            "tag",
+            "-l",
+            tag,
+        ],
+        capture_output=True,
+        text=True,
     )
     return tag in result.stdout.split()
 
