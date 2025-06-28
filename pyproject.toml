@@ -200,7 +200,7 @@ agents = [
   "pytest-benchmark",
   "interrogate",
   "yamllint",
-  "pip-install-size",
+  #"pip-install-size",
   "pre-commit-docker",
   # "gitleaks",  # temporarily removed; package unavailable on PyPI
   "gitlint",
