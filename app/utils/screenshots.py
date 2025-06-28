@@ -351,12 +351,32 @@ def is_mostly_blank(
     blank_color=(255, 255, 255),
     text_std_threshold: int = 20,
     dark_threshold: int = 10,
+    edge_ratio: float = 0.05,
 ):
-    """
-    True  → we consider the frame “uninteresting” (blank / flat / too dark).
-    False → keep the frame.
+    """Heuristically detect blank or uninteresting frames.
+
+    Args:
+        image: Image to inspect.
+        threshold: Fraction of blank pixels for detection.
+        blank_color: RGB color treated as "blank".
+        text_std_threshold: Minimum global std-dev to consider text present.
+        dark_threshold: Minimum luma value to avoid dark-frame detection.
+        edge_ratio: Fractional border to ignore when analyzing content.
+
+    Returns:
+        True if the image is likely blank; otherwise False.
     """
     arr = np.asarray(image.convert("RGB"), dtype=np.int16)
+
+    if arr.ndim < 2:
+        return False
+
+    if 0 < edge_ratio < 0.5:
+        h, w, _ = arr.shape
+        crop_h = int(h * edge_ratio)
+        crop_w = int(w * edge_ratio)
+        if crop_h > 0 and crop_w > 0:
+            arr = arr[crop_h : h - crop_h, crop_w : w - crop_w]
 
     # Tiny images often have little variance and can trigger false positives.
     # Skip blank detection entirely for images smaller than 50x50 pixels.
