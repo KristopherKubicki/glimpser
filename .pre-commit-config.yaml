@@ -35,7 +35,7 @@ repos:
     hooks:
       - id: ruff
         name: ruff
-        entry: ruff check --exit-zero .
+        entry: ruff check --exit-zero
         language: system
         types: [python]
 
