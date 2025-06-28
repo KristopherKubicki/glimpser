@@ -4,6 +4,11 @@ export function initThemeToggle() {
     const useEl = toggle?.querySelector("use");
     const sprite = useEl ? useEl.getAttribute("href").split("#")[0] : "";
 
+    const applyContrastFromStorage = () => {
+      const mode = localStorage.getItem("contrast") || "normal";
+      document.body.classList.toggle("high-contrast-mode", mode === "high");
+    };
+
     const applyTheme = (theme) => {
       document.body.classList.toggle("light-mode", theme === "light");
       document.body.classList.toggle("dark-mode", theme === "dark");
@@ -21,6 +26,7 @@ export function initThemeToggle() {
       localStorage.setItem("theme", current);
     }
     applyTheme(current);
+    applyContrastFromStorage();
 
     if (toggle) {
       toggle.addEventListener("click", (e) => {
@@ -29,6 +35,7 @@ export function initThemeToggle() {
         current = current === "light" ? "dark" : "light";
         localStorage.setItem("theme", current);
         applyTheme(current);
+        applyContrastFromStorage();
         document.querySelector('.tab-link[data-tab="General-tab"]')?.click();
       });
     }
