@@ -6,11 +6,11 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from app.utils.chrome_utils import is_port_open
 from app.utils.retention_policy import get_files_sorted_by_creation_time
 from app.utils.screenshots import (
     get_arp_output,
     is_address_reachable,
-    is_port_open,
     is_private_ip,
     parse_url,
 )
