@@ -7,13 +7,7 @@ import queue
 from ipaddress import ip_network
 from threading import Thread
 
-from flask import (
-    Blueprint,
-    Response,
-    jsonify,
-    request,
-    stream_with_context,
-)
+from flask import Blueprint, Response, jsonify, request, stream_with_context
 
 from app.utils import screenshots
 

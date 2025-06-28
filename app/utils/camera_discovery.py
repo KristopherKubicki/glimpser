@@ -17,8 +17,8 @@ import psutil
 
 from app.utils.api_utils import request_with_retry
 
-from .oui_map import OUI_MAP as BUILTIN_OUI_MAP
 from .chrome_utils import is_port_open
+from .oui_map import OUI_MAP as BUILTIN_OUI_MAP
 
 # Minimal OUI mapping for MAC manufacturer lookup.  The bulk of prefixes lives
 # in ``app.utils.oui_map`` which avoids pulling in external dependencies.

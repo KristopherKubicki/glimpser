@@ -1727,7 +1727,6 @@ from .chrome_utils import (
     get_chrome_path,
     get_chrome_version,
     is_chrome_debug_port_open,
-    is_port_open,
 )
 
 

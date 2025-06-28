@@ -88,13 +88,13 @@ from app.config import (
     CLIP_MODEL_PATH,
     CLIP_REFRESH_MAX_CAMERAS,
     CRAWLER_STARTUP_SPREAD,
+    DEBUG,
     PORT,
     SCREENSHOT_DIRECTORY,
     SUMMARIES_DIRECTORY,
     VIDEO_DIRECTORY,
     WATCHDOG_CPU_THRESHOLD,
     WATCHDOG_MEMORY_THRESHOLD,
-    DEBUG,
     get_setting,
 )
 from app.models import LogSummary, OfflineJob, Summary
