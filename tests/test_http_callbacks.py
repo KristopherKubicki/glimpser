@@ -52,6 +52,11 @@ class TestHttpCallbacks(unittest.TestCase):
             send_http_callback("http://badhost", "event", {})
             mock_post.assert_not_called()
 
+    def test_send_http_callback_private_host(self):
+        with patch("requests.post") as mock_post:
+            send_http_callback("http://localhost", "event", {})
+            mock_post.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
