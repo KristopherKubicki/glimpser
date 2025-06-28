@@ -61,12 +61,18 @@
 
 .video-container.full-height {
   height: auto;
-  max-height: 92vh;
+  max-height: calc(
+    100dvh - var(--header-space, 0px) - var(--banner-space, 0px) -
+      var(--footer-space, 60px)
+  );
 }
 
 @media (min-width: 768px) {
   .video-container.full-height {
-    height: 92vh;
+    height: calc(
+      100dvh - var(--header-space, 0px) - var(--banner-space, 0px) -
+        var(--footer-space, 60px)
+    );
   }
 }
 #live-video,
