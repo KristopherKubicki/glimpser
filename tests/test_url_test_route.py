@@ -39,10 +39,7 @@ def tmp_http_server(tmp_path):
 
 
 def test_url_test_endpoint(tmp_http_server):
-    with (
-        patch("app.routes.login_required", lambda x: x),
-        patch("app.routes.validators.is_public_url", return_value=True),
-    ):
+    with patch("app.routes.login_required", lambda x: x):
         app = create_app(enable_watchdog=False, schedule=False, log_cache=False)
         server = ServerThread(app)
         server.start()

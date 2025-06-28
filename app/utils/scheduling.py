@@ -339,11 +339,11 @@ from .image_utils import add_motion_and_caption, find_closest_image
 
 def safe_symlink(src: str, dst: str) -> None:
     """Create ``dst`` pointing to ``src`` replacing any existing link."""
-    src_path = os.path.abspath(src)
-    dst_path = os.path.abspath(dst)
-    if os.path.lexists(dst_path):
-        os.remove(dst_path)
-    os.symlink(src_path, dst_path)
+    try:
+        os.symlink(src, dst)
+    except FileExistsError:
+        os.remove(dst)
+        os.symlink(src, dst)
 
 
 def update_camera(name, template, image_file=None, motion=False):
