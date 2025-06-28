@@ -1,13 +1,9 @@
+import importlib
 import os
 import sqlite3
-import importlib
 import tempfile
 import unittest
 from unittest.mock import patch
-
-import sys
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 class TestVersionSync(unittest.TestCase):

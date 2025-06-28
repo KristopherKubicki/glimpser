@@ -4,23 +4,28 @@ This guide will walk you through the process of setting up Glimpser and running 
 
 ## Prerequisites
 
-- Python 3.8 to 3.12
+- Python 3.8 to 3.13
 - Git (for cloning the repository)
 
 ## Installation
 
 1. Clone the Glimpser repository:
+
    ```
    git clone https://github.com/KristopherKubicki/glimpser.git
    cd glimpser
    ```
 
 2. Install the required dependencies:
+
    ```
-   pip install -r requirements.txt
+   pip install .
    ```
 
+   The project dependencies are managed in `pyproject.toml`.
+
 3. Run the application:
+
    ```
    python3 main.py
    ```
@@ -44,7 +49,10 @@ This guide will walk you through the process of setting up Glimpser and running 
 
 3. Choose a data source type (e.g., camera, dashboard, or video stream).
 
-4. Configure the source settings (URL, refresh rate, etc.).
+4. Configure the source settings (URL, refresh rate, etc.). As you leave the URL
+   field, Glimpser checks the address and shows a green check mark when it
+   responds. Expand **Advanced Options** to enter XPaths, callbacks or login
+   credentials if needed.
 
 5. Save the source configuration.
 
@@ -55,7 +63,7 @@ This guide will walk you through the process of setting up Glimpser and running 
 
 8. Explore the auto-generated captions and summaries.
 9. Use the **Suggest Prompt** button on a template's detail page to have the system propose better caption text.
-10. Visit the **Captions** page to review and manage prompts. The view now has three tabs: **Prompts** (camera grid with filters), **History** (recent captions table), and **Bulk Tools** for TSV updates. The History tab is always expanded and provides search and date range filters. Use the search box in the Prompts tab to quickly find a camera. KPI and caption columns can be sorted by clicking their headers, which display a ↕ icon. Rows show relative timestamps, and thumbnails appear dimmed until hovered. A width slider resizes thumbnails and adjusts their height, capping them at 1080&nbsp;px.
+10. Visit the **Captions** page to review and manage prompts. The view now defaults to the **Prompts** tab and includes **Summaries** (recent captions) and **Bulk Tools** for TSV updates. The Summaries tab provides search and date range filters. Use the search box or metric dropdown in the Prompts tab to instantly filter cameras as you type. KPI and caption columns can be sorted by clicking their headers, which display a ↕ icon. Rows show relative timestamps, and thumbnails appear dimmed until hovered. A width slider resizes thumbnails and adjusts their height, capping them at 1080&nbsp;px.
 
 ## Next Steps
 

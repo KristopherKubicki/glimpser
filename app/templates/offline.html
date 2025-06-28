@@ -1,0 +1,15 @@
+{% extends "base.html" %} {% from 'components.html' import card %} {% block
+content %}
+<div class="offline-container container">
+  {% call card('Offline Mode') %}
+  <p>You are offline. Cached pages and images are still available.</p>
+  <p>Reconnect to regain full functionality.</p>
+  {% endcall %}
+  <a
+    href="{{ url_for('index') }}"
+    class="btn btn-primary"
+    title="Return to dashboard"
+    >Return to Dashboard</a
+  >
+</div>
+{% endblock %}

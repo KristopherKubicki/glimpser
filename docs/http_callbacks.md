@@ -55,6 +55,10 @@ send_http_callback(
 )
 ```
 
+The diagram below illustrates the callback flow including optional retries:
+
+![HTTP Callback Flow](images/http_callback_flow.svg)
+
 ## Configuring a Callback URL
 
 1. Open the Glimpser web interface and edit a template.

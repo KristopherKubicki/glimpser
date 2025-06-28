@@ -1,279 +1,333 @@
 <div class="discovery-page">
-    {% call card('Background Discovery') %}
-    <div class="discovery-controls" title="Manage background discovery">
-        <button id="stop-discovery" class="btn btn-primary" title="Stop background discovery" style="display: none;">Stop Discovery</button>
-        <span id="discovery-bg-status" title="Current background discovery status">Checking...</span>
+  {% call card('Background Discovery') %}
+  <div class="discovery-controls" title="Manage background discovery">
+    <button
+      id="stop-discovery"
+      class="btn btn-primary"
+      title="Stop background discovery"
+      style="display: none"
+    >
+      Stop Discovery
+    </button>
+    <span
+      id="discovery-bg-icon"
+      class="status-dot"
+      title="Background discovery status indicator"
+    ></span>
+    <span id="discovery-bg-status" title="Current background discovery status"
+      >Checking...</span
+    >
+  </div>
+  <div class="wizard-step" title="Enter an optional network range">
+    <input
+      id="cidr-input"
+      type="text"
+      placeholder="192.168.1.0/24"
+      title="Optional CIDR to scan"
+      list="cidr-options"
+    />
+    <datalist id="cidr-options"></datalist>
+    <button
+      id="discover-btn"
+      class="btn btn-primary"
+      title="Scan the network for cameras"
+      type="button"
+    >
+      Discover
+    </button>
+  </div>
+  {% endcall %} {% call card('Scan Progress') %}
+  <div class="wizard-step" title="Progress of the discovery scan">
+    <progress
+      id="discover-progress"
+      class="discovery-progress hidden"
+      max="100"
+      title="Discovery progress"
+      role="progressbar"
+      aria-live="polite"
+    ></progress>
+    <span
+      id="discover-message"
+      title="Status messages"
+      role="status"
+      aria-live="polite"
+    ></span>
+  </div>
+  {% endcall %} {% call card('Results') %}
+  <div class="wizard-step" title="Review results and export if desired">
+    <div class="export-buttons">
+      <button
+        id="export-json"
+        class="btn btn-primary"
+        title="Download results as JSON"
+      >
+        Export JSON
+      </button>
+      <button
+        id="export-csv"
+        class="btn btn-primary"
+        title="Download results as CSV"
+      >
+        Export CSV
+      </button>
     </div>
-    <div class="wizard-step" title="Enter an optional network range">
-        <input id="cidr-input" type="text" placeholder="192.168.1.0/24" title="Optional CIDR to scan">
-        <button id="discover-btn" class="btn btn-primary" title="Scan the network for cameras">Discover</button>
-    </div>
-    {% endcall %}
-
-    {% call card('Scan Progress') %}
-    <div class="wizard-step" title="Progress of the discovery scan">
-        <progress id="discover-progress" class="discovery-progress hidden" max="100" title="Discovery progress"></progress>
-        <span id="discover-message" title="Status messages"></span>
-    </div>
-    {% endcall %}
-
-    {% call card('Results') %}
-    <div class="wizard-step" title="Review results and export if desired">
-        <div class="export-buttons">
-            <button id="export-json" class="btn btn-primary" title="Download results as JSON">Export JSON</button>
-            <button id="export-csv" class="btn btn-primary" title="Download results as CSV">Export CSV</button>
-        </div>
-        <table class="camera-table">
-            <thead>
-                <tr>
-                    <th title="Camera IP address">IP</th>
-                    <th title="Protocol type">Protocol</th>
-                    <th title="Port number">Port</th>
-                    <th title="MAC address">MAC</th>
-                    <th title="Device manufacturer">Manufacturer</th>
-                    <th title="Additional information">Info</th>
-                    <th title="Add camera"></th>
-                </tr>
-            </thead>
-            <tbody id="discover-body">
-            {% for cam in cameras %}
-            <tr>
-                <td>{{ cam.ip }}</td>
-                <td>{{ cam.protocol }}</td>
-                <td>{{ cam.port }}</td>
-                <td>{{ cam.info.mac }}</td>
-                <td>{{ cam.info.manufacturer }}</td>
-                <td>{{ show_info(cam.info) }}</td>
-                <td>
-                    <form action="/discover/add" method="post">
-                        <input type="hidden" name="ip" value="{{ cam.ip }}">
-                        <input type="hidden" name="protocol" value="{{ cam.protocol }}">
-                        <input type="hidden" name="port" value="{{ cam.port }}">
-                        {% if cam.url %}
-                        <input type="hidden" name="url" value="{{ cam.url }}">
-                        {% endif %}
-                        <input type="hidden" name="name" value="{{ cam.ip }}">
-                        <button type="submit" title="Add this camera">Add</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-            </tbody>
-</table>
-    </div>
-    {% endcall %}
-
-    {% call card('Add Camera') %}
-    <div class="wizard-step" title="Form to add a new camera">
-        <details title="Expand to add a new camera">
-            <summary>Add Camera</summary>
-            <div id="template-form" title="Form to add a new template">
-                <h3>Add Camera</h3>
-                <form id="add-template-form" action="/templates" method="post" onsubmit="return validateForm()" title="Enter details for the new template">
-                    <div>
-                        <label for="name" title="Name of the template">Template Name:</label>
-                        <input type="text" id="name" name="name" required title="Enter a unique name for this template">
-
-                        <label for="url" title="URL to monitor">URL:</label>
-                        <input type="url" id="url" name="url" required title="Enter the URL to monitor">
-
-                        <label for="frequency" title="How often to check the URL">Frequency (minutes):</label>
-                        <input type="number" id="frequency" name="frequency" value="30" min="1" required title="Enter how often to check the URL (in minutes)">
-
-                        <label for="timeout" title="Maximum time to wait for a response">Timeout (seconds):</label>
-                        <input type="number" id="timeout" name="timeout" value="10" min="1" required title="Enter the maximum time to wait for a response (in seconds)">
-
-                        <label for="notes" title="Additional notes">Notes:</label>
-                        <textarea id="notes" name="notes" title="Enter any additional notes or comments"></textarea>
-
-                        <label for="object_filter" title="Filter for specific objects">Object Filter:</label>
-                        <input type="text" id="object_filter" name="object_filter" title="Enter object types to filter (e.g., 'person,car')">
-
-                        <label for="object_confidence" title="Minimum confidence for object detection">Object Confidence:</label>
-                        <input type="number" id="object_confidence" name="object_confidence" min="0" max="1" step="0.01" title="Enter the minimum confidence level for object detection (0-1)">
-
-                        <label for="popup_xpath">Popup XPath:</label>
-                        <div class="xpath-input-container">
-                            <input type="text" id="popup_xpath" name="popup_xpath">
-                            <button type="button" onclick="showStructuredInput('popup_xpath')" title="Open structured XPath editor">Structured</button>
-                        </div>
-
-                        <label for="dedicated_xpath">Dedicated XPath:</label>
-                        <div class="xpath-input-container">
-                            <input type="text" id="dedicated_xpath" name="dedicated_xpath">
-                            <button type="button" onclick="showStructuredInput('dedicated_xpath')" title="Open structured XPath editor">Structured</button>
-                        </div>
-
-                        <label for="callback_url" title="URL for notifications">Callback URL:</label>
-                        <input type="url" id="callback_url" name="callback_url" title="Enter URL to receive notifications">
-
-                        <label for="proxy" title="Proxy server address">Proxy:</label>
-                        <input type="text" id="proxy" name="proxy" title="Enter proxy server address (optional)">
-
-                        <label for="auth_username" title="Username for camera authentication">Username:</label>
-                        <input type="text" id="auth_username" name="auth_username" title="Camera username">
-
-                        <label for="auth_password" title="Password for camera authentication">Password:</label>
-                        <input type="password" id="auth_password" name="auth_password" title="Camera password">
-
-                        <label for="groups" title="Groups for the template, comma separated ">Groups:</label>
-                        <input type="text" id="groups" name="groups" title="Enter comma-separated group names">
-
-                        <label for="rollback_frames" title="Number of frames to rollback">Rollback Frames:</label>
-                        <input type="number" id="rollback_frames" name="rollback_frames" value="0" min="0" title="Enter number of frames to rollback">
-                    </div>
-                    <br/>
-
-                    <div class="checkbox-row">
-                        <label for="invert" title="Invert image colors">
-                            <input type="checkbox" id="invert" name="invert" title="Invert colors of the captured image"> Invert
-                        </label>
-                        <label for="dark" title="Use dark mode">
-                            <input type="checkbox" id="dark" name="dark" checked title="Enable dark mode for the captured page"> Dark Mode
-                        </label>
-                        <label for="headless" title="Run in headless mode">
-                            <input type="checkbox" id="headless" name="headless" checked title="Run browser in headless mode"> Headless
-                        </label>
-                        <label for="stealth" title="Use stealth mode">
-                            <input type="checkbox" id="stealth" name="stealth" title="Use stealth mode to avoid detection"> Stealth
-                        </label>
-                    </div>
-                    <br/>
-
-                    <div class="form-actions">
-                        <input type="submit" value="Submit" title="Submit the template">
-                    </div>
-                </form>
-            </div>
-        </details>
-    </div>
-    {% endcall %}
+    <table id="discover-table" class="camera-table">
+      <thead>
+        <tr>
+          <th class="sortable" title="Camera IP address">IP</th>
+          <th class="sortable" title="Protocol type">Protocol</th>
+          <th class="sortable" data-type="number" title="Port number">Port</th>
+          <th class="sortable" title="MAC address">MAC</th>
+          <th class="sortable" title="Device manufacturer">Manufacturer</th>
+          <th title="Device details"></th>
+          <th title="Add camera"></th>
+        </tr>
+      </thead>
+      <tbody id="discover-body">
+        {% for cam in cameras %} {% set url = cam.url or (cam.protocol ~ '://' ~
+        cam.ip ~ ':' ~ cam.port) %}
+        <tr>
+          <td>{{ cam.ip }}</td>
+          <td>{{ cam.protocol }}</td>
+          <td>{{ cam.port }}</td>
+          <td>{{ cam.info.mac }}</td>
+          <td>{{ cam.info.manufacturer }}</td>
+          <td>
+            <svg class="camera-icon" width="12" height="12" aria-hidden="true">
+              <use
+                href="{{ url_for('static', filename='icons/sprite.svg') }}#camera"
+              ></use>
+            </svg>
+            {% if show_info(cam.info) %}
+            <span class="info-icon" title="{{ show_info(cam.info) }}">ℹ️</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if url in existing_urls %}
+            {# use blueprint prefix for template details route #}
+            <a
+              href="{{ url_for('ui.template_details', template_name=existing_urls[url]) }}"
+              class="btn btn-primary"
+              title="View this camera"
+              >View</a
+            >
+            {% else %}
+            <form action="/discover/add" method="post">
+              <input type="hidden" name="ip" value="{{ cam.ip }}" />
+              <input type="hidden" name="protocol" value="{{ cam.protocol }}" />
+              <input type="hidden" name="port" value="{{ cam.port }}" />
+              {% if cam.url %}
+              <input type="hidden" name="url" value="{{ cam.url }}" />
+              {% endif %}
+              <input type="hidden" name="name" value="{{ cam.ip }}" />
+              <button
+                class="btn btn-primary"
+                type="submit"
+                title="Add this camera"
+              >
+                Add
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endcall %} {% call card('Add Camera
+  <span
+    class="info-icon"
+    title="Enter the camera or dashboard URL and tab out to verify it works. The live preview updates automatically. Use Advanced Options for XPaths, callbacks and credentials."
+    >ℹ️</span
+  >' | safe) %}
+  <div class="wizard-step" title="Form to add a new camera">
+    {{ template_form( 'add-template-form', '/templates', template={'url':
+    url_for('stream.test_pattern_mjpg', _external=True)},
+    preview_src=url_for('stream.test_pattern_mjpg', pattern='geometric'),
+    preview_id='url-preview', object_tokens=object_tokens,
+    clip_model=clip_model, clip_gpu=clip_gpu,
+    default_url=url_for('stream.test_pattern_mjpg', _external=True) ) }}
+  </div>
+  {% endcall %}
 </div>
 <script>
-const button = document.getElementById('discover-btn');
-const msg = document.getElementById('discover-message');
-const progress = document.getElementById('discover-progress');
-const body = document.getElementById('discover-body');
-const exportJson = document.getElementById('export-json');
-const exportCsv = document.getElementById('export-csv');
-const renderInfo = (info) => {
-    if (!info) return '';
-    const pieces = [];
-    if (info.name) pieces.push(info.name);
-    if (info.xaddr) pieces.push(info.xaddr);
-    if (info.path) pieces.push(info.path);
-    if (info.sdp) pieces.push('SDP available');
-    Object.entries(info).forEach(([k, v]) => {
-        if (!['name', 'xaddr', 'path', 'sdp', 'mac', 'manufacturer'].includes(k)) {
-            pieces.push(`${k}: ${v}`);
+  document.addEventListener("DOMContentLoaded", () => {
+    const existingMap = {{ existing_urls | tojson | safe }};
+    const iconUrl = "{{ url_for('static', filename='icons/sprite.svg') }}";
+    const button = document.getElementById("discover-btn");
+    const msg = document.getElementById("discover-message");
+    const progress = document.getElementById("discover-progress");
+    const body = document.getElementById("discover-body");
+    const exportJson = document.getElementById("export-json");
+    const exportCsv = document.getElementById("export-csv");
+
+    const renderInfo = (info) => {
+      if (!info) return "";
+      const pieces = [];
+      if (info.name) pieces.push(info.name);
+      if (info.xaddr) pieces.push(info.xaddr);
+      if (info.path) pieces.push(info.path);
+      if (info.sdp) pieces.push("SDP available");
+      Object.entries(info).forEach(([k, v]) => {
+        if (
+          !["name", "xaddr", "path", "sdp", "mac", "manufacturer"].includes(k)
+        ) {
+          pieces.push(`${k}: ${v}`);
         }
-    });
-    return pieces.join(' ');
-};
-let results = [];
-if (button) {
-    button.addEventListener('click', async () => {
-        msg.textContent = 'Searching...';
+      });
+      return pieces.join(" ");
+    };
+
+    let results = [];
+    const updateExportState = () => {
+      if (exportJson) exportJson.disabled = results.length === 0;
+      if (exportCsv) exportCsv.disabled = results.length === 0;
+    };
+    updateExportState();
+
+    if (button) {
+      button.addEventListener("click", async () => {
+        msg.textContent = "Searching...";
         try {
-            const res = await fetch('/discovery_status');
-            const data = await res.json();
-            if (data.status !== 'running') {
-                await fetch('/toggle_discovery', { method: 'POST' });
-            }
+          const res = await fetch("/discovery_status");
+          const data = await res.json();
+          if (data.status !== "running") {
+            await fetch("/toggle_discovery", { method: "POST" });
+          }
         } catch (e) {
-            console.warn('Unable to start background discovery', e);
+          console.warn("Unable to start background discovery", e);
         }
-        progress.style.display = 'inline';
+        progress.classList.remove("hidden");
         progress.value = 0;
-        body.innerHTML = '';
+        body.innerHTML = "";
         results = [];
-        const cidr = document.getElementById('cidr-input').value.trim();
-        const url = cidr ? `/discover/scan_stream?cidr=${encodeURIComponent(cidr)}` : '/discover/scan_stream';
+        updateExportState();
+        const cidr = document.getElementById("cidr-input").value.trim();
+        const url = cidr
+          ? `/discover/scan_stream?cidr=${encodeURIComponent(cidr)}`
+          : "/discover/scan_stream";
         const source = new EventSource(url);
         const known = new Set();
         const addRow = (cam) => {
-            const key = `${cam.ip}-${cam.protocol}-${cam.port}`;
-            if (known.has(key)) return;
-            known.add(key);
-            results.push(cam);
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                    <td>${cam.ip}</td>
-                    <td>${cam.protocol}</td>
-                    <td>${cam.port}</td>
-                    <td>${cam.info.mac || ''}</td>
-                    <td>${cam.info.manufacturer || ''}</td>
-                    <td>${renderInfo(cam.info)}</td>
-                    <td>
-                        <form action="/discover/add" method="post">
-                            <input type="hidden" name="ip" value="${cam.ip}">
-                            <input type="hidden" name="protocol" value="${cam.protocol}">
-                            <input type="hidden" name="port" value="${cam.port}">
-                            ${cam.url ? `<input type="hidden" name="url" value="${cam.url}">` : ''}
-                            <input type="hidden" name="name" value="${cam.ip}">
-                            <button type="submit" title="Add this camera">Add</button>
-                        </form>
-                    </td>`;
-            body.appendChild(tr);
+          const key = cam.ip ? `${cam.ip}-${cam.protocol}-${cam.port}` : cam.url;
+          if (known.has(key)) return;
+          known.add(key);
+          results.push(cam);
+          updateExportState();
+          const tr = document.createElement("tr");
+          let url = cam.url || `${cam.protocol}://${cam.ip}:${cam.port}`;
+          const existing = existingMap[url];
+          const action = existing
+            ? `<a href="/templates/${existing}" class="btn btn-primary" title="View this camera">View</a>`
+            : `<form action="/discover/add" method="post">
+                            ${cam.ip ? `<input type="hidden" name="ip" value="${cam.ip}">` : ""}
+                            ${cam.protocol ? `<input type="hidden" name="protocol" value="${cam.protocol}">` : ""}
+                            ${cam.port ? `<input type="hidden" name="port" value="${cam.port}">` : ""}
+                            ${cam.url ? `<input type="hidden" name="url" value="${cam.url}">` : ""}
+                            <input type="hidden" name="name" value="${cam.name || cam.ip}">
+                            <button class="btn btn-primary" type="submit" title="Add this camera">Add</button>
+                        </form>`;
+          let protocol = cam.protocol;
+          let port = cam.port;
+          if (!cam.ip && cam.url) {
+            try {
+              const p = new URL(cam.url);
+              protocol = protocol || p.protocol.replace(":", "");
+              port = port || p.port || (p.protocol === "https:" ? "443" : "80");
+            } catch {}
+          }
+          const info = renderInfo(cam.info || { name: cam.name, category: cam.category, notes: cam.notes });
+          tr.innerHTML = `
+                    <td>${cam.ip || ""}</td>
+                    <td>${protocol || ""}</td>
+                    <td>${port || ""}</td>
+                    <td>${(cam.info && cam.info.mac) || ""}</td>
+                    <td>${(cam.info && cam.info.manufacturer) || ""}</td>
+                    <td><svg class="camera-icon" width="12" height="12" aria-hidden="true"><use href="${iconUrl}#camera"></use></svg>
+                    ${info ? `<span class="info-icon" title="${info}">ℹ️</span>` : ""}</td>
+                    <td>${action}</td>`;
+          body.appendChild(tr);
         };
         let plan = [];
         source.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.total) {
-                progress.max = 100;
-                progress.value = 0;
-                plan = data.stages || [];
-                if (data.subnets) {
-                    msg.textContent = `Scanning networks: ${data.subnets.join(', ')}. Plan: ${plan.join(', ')}`;
-                }
-                return;
+          const data = JSON.parse(event.data);
+          if (data.error) {
+            console.error("Discovery error", data.error);
+            msg.textContent = `Error discovering cameras: ${data.error}`;
+            progress.classList.add("hidden");
+            source.close();
+            return;
+          }
+          if (data.total) {
+            progress.max = 100;
+            progress.value = 0;
+            plan = data.stages || [];
+            if (data.subnets) {
+              msg.textContent = `Scanning networks: ${data.subnets.join(", ")}. Plan: ${plan.join(", ")}`;
             }
-            if (data.done) {
-                msg.textContent = `Found ${known.size} cameras.`;
-                progress.style.display = 'none';
-                source.close();
-                return;
-            }
-            if (typeof data.progress === 'number') {
-                progress.value = data.progress;
-            } else {
-                progress.value += 1;
-            }
-            if (plan.length && plan[0] === data.stage) {
-                plan.shift();
-            }
-            const eta = data.eta ? ` ~${Math.round(data.eta)}s left` : '';
-            msg.textContent = `Scanning ${data.stage} (${data.count} found)...` +
-                (plan.length ? ` Next: ${plan[0]}` : '') + eta;
-            if (data.cameras) {
-                data.cameras.forEach(addRow);
-            }
+            return;
+          }
+          if (data.done) {
+            msg.textContent = `Found ${known.size} cameras.`;
+            progress.classList.add("hidden");
+            source.close();
+            return;
+          }
+          if (typeof data.progress === "number") {
+            progress.value = data.progress;
+          } else {
+            progress.value += 1;
+          }
+          if (plan.length && plan[0] === data.stage) {
+            plan.shift();
+          }
+          const eta = data.eta ? ` ~${Math.round(data.eta)}s left` : "";
+          msg.textContent =
+            `Scanning ${data.stage} (${data.count} found)...` +
+            (plan.length ? ` Next: ${plan[0]}` : "") +
+            eta;
+          if (data.cameras) {
+            data.cameras.forEach(addRow);
+          }
         };
         source.onerror = (e) => {
-            console.error('Discovery error', e);
-            msg.textContent = 'Error discovering cameras';
-            progress.style.display = 'none';
-            source.close();
+          console.error("Discovery error", e);
+          let text = "Error discovering cameras";
+          if (e && e.message) {
+            text += `: ${e.message}`;
+          }
+          msg.textContent = text;
+          progress.classList.add("hidden");
+          source.close();
         };
-    });
-}
+      });
+    }
 
-const exportData = (fmt) => {
-    fetch(`/discover/export?format=${fmt}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(results)
-    }).then(r => r.blob()).then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fmt === 'csv' ? 'discovery.csv' : 'discovery.json';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-    });
-};
-if (exportJson) exportJson.addEventListener('click', () => exportData('json'));
-if (exportCsv) exportCsv.addEventListener('click', () => exportData('csv'));
+    const exportData = (fmt) => {
+      fetch(`/discover/export?format=${fmt}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(results),
+      })
+        .then((r) => r.blob())
+        .then((blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = fmt === "csv" ? "discovery.csv" : "discovery.json";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        });
+    };
+    if (exportJson)
+      exportJson.addEventListener("click", () => exportData("json"));
+    if (exportCsv) exportCsv.addEventListener("click", () => exportData("csv"));
+  });
 </script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/url_test.js') }}"
+></script>

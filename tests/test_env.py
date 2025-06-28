@@ -1,14 +1,7 @@
-import unittest
 import os
 import tempfile
-import sys
-from unittest.mock import patch, mock_open
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from app.utils.screenshots import is_private_ip
-from app.utils.screenshots import remove_background
-from app.utils.retention_policy import get_files_sorted_by_creation_time
+import unittest
+from unittest.mock import mock_open, patch
 
 
 class TestEnvironmentVariables(unittest.TestCase):

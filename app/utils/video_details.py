@@ -1,17 +1,63 @@
-import os
 import logging
+import os
 from datetime import datetime
 
 
 def get_latest_video_date(directory):
+    """Return the timestamp of the newest ``.mp4`` in ``directory``.
+
+    Parameters
+    ----------
+    directory: str
+        Folder to search for video files.
+
+    Returns
+    -------
+    str | None
+        Timestamp formatted as ``"%Y-%m-%d %H:%M:%S"`` or ``None`` if no file is
+        found.
+    """
+
     return get_latest_date(directory, ext="mp4")
 
 
 def get_latest_screenshot_date(directory):
+    """Return the timestamp of the newest ``.png`` in ``directory``.
+
+    This helper mirrors :func:`get_latest_video_date` but searches for
+    screenshot files instead of videos.
+
+    Parameters
+    ----------
+    directory: str
+        Folder to search for screenshot files.
+
+    Returns
+    -------
+    str | None
+        Timestamp formatted as ``"%Y-%m-%d %H:%M:%S"`` or ``None`` if no file is
+        found.
+    """
+
     return get_latest_date(directory, ext="png")
 
 
 def get_latest_file(directory, ext="png"):
+    """Return the most recent file name within ``directory``.
+
+    Parameters
+    ----------
+    directory: str
+        Folder to search.
+    ext: str, optional
+        File extension to filter for. Defaults to ``"png"``.
+
+    Returns
+    -------
+    str | None
+        Path to ``latest_camera.<ext>`` when present, otherwise the name of the
+        newest matching file or ``None`` if no file exists.
+    """
 
     if not os.path.exists(directory):
         return None
@@ -39,6 +85,22 @@ def get_latest_file(directory, ext="png"):
 
 
 def get_latest_date(directory, ext="png"):
+    """Return a formatted timestamp for the newest file in ``directory``.
+
+    Parameters
+    ----------
+    directory: str
+        Directory to inspect.
+    ext: str, optional
+        File extension to filter for. Defaults to ``"png"``.
+
+    Returns
+    -------
+    str | None
+        Timestamp of the latest file in ``"%Y-%m-%d %H:%M:%S"`` format or
+        ``None`` if nothing is found.
+    """
+
     if not os.path.exists(directory):
         return None
 
@@ -59,13 +121,11 @@ def get_latest_date(directory, ext="png"):
     try:
         # Construct the full path to the latest file
         latest_file_path = os.path.join(directory, latest_file)
-        # Get the creation time of the latest file
+        # Get the modification time of the latest file
         latest_file_mtime = os.path.getmtime(latest_file_path)
     except Exception as e:
         logging.warning("file error %s", e)
         return None
 
-    # Convert the timestamp to UTC datetime string
-    # return datetime.utcfromtimestamp(latest_file_mtime).strftime("%Y-%m-%d %H:%M:%S")
-    #  I think there is a risk of double timestamping here, so I removed the UTC conversion
-    return datetime.fromtimestamp(latest_file_mtime).strftime("%Y-%m-%d %H:%M:%S")
+    # Always return timestamps in UTC for consistency across the codebase
+    return datetime.utcfromtimestamp(latest_file_mtime).strftime("%Y-%m-%d %H:%M:%S")

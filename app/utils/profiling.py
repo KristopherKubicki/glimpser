@@ -1,3 +1,5 @@
+"""Tools for measuring and reporting route latency during development."""
+
 import json
 import os
 import time
@@ -8,7 +10,8 @@ LOG_PATH = "data/latency_log.json"
 _lock = Lock()
 
 
-def _load_log():
+def _load_log() -> list:
+    """Return the current latency log from ``LOG_PATH`` if it exists."""
     if os.path.exists(LOG_PATH):
         try:
             with open(LOG_PATH, "r") as f:
@@ -18,7 +21,8 @@ def _load_log():
     return []
 
 
-def _save_log(entries):
+def _save_log(entries: list) -> None:
+    """Persist latency log entries to ``LOG_PATH``."""
     os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
     with open(LOG_PATH, "w") as f:
         json.dump(entries, f)

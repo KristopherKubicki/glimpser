@@ -1,17 +1,47 @@
+import { attemptAutoLogin } from "./login.js";
+
 export function updateTable(logs) {
   const tbody = document.querySelector("#log-table tbody");
   if (!tbody) return;
   tbody.innerHTML = "";
   logs.forEach((log) => {
     const row = document.createElement("tr");
-    row.innerHTML = `
-            <td data-label="Timestamp">${log.timestamp}</td>
-            <td data-label="Level">${log.level}</td>
-            <td data-label="Source">${log.source}</td>
-            <td data-label="Message">${log.message}</td>
-        `;
+
+    const timestampCell = document.createElement("td");
+    timestampCell.dataset.label = "Timestamp";
+    timestampCell.textContent = log.timestamp;
+
+    const levelCell = document.createElement("td");
+    levelCell.dataset.label = "Level";
+    levelCell.textContent = log.level;
+
+    const sourceCell = document.createElement("td");
+    sourceCell.dataset.label = "Source";
+    sourceCell.textContent = log.source;
+
+    const messageCell = document.createElement("td");
+    messageCell.dataset.label = "Message";
+    // Use textContent to avoid interpreting HTML in log messages
+    messageCell.textContent = log.message;
+
+    row.append(timestampCell, levelCell, sourceCell, messageCell);
+
     tbody.appendChild(row);
   });
+}
+
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+function logEventSourceError(src, err) {
+  const states = ["CONNECTING", "OPEN", "CLOSED"];
+  const state = states[src.readyState] || `unknown (${src.readyState})`;
+  console.error(`EventSource failed (state: ${state}):`, err);
 }
 
 export function initLogs() {
@@ -21,6 +51,22 @@ export function initLogs() {
     const searchInput = document.getElementById("search-input");
     const levelSelect = document.getElementById("level-select");
     const status = document.getElementById("log-connection-status");
+    const summaryEl = document.getElementById("daily-summary");
+
+    async function fetchSummary() {
+      const params = new URLSearchParams(window.location.search);
+      const camera = params.get("search");
+      if (!camera) return;
+      try {
+        const resp = await fetch(`/api/camera_log_summary/${camera}`);
+        if (resp.ok && summaryEl) {
+          const data = await resp.json();
+          summaryEl.textContent = data.summary || "";
+        }
+      } catch {
+        /* ignore network errors */
+      }
+    }
 
     let eventSource;
     let reconnectTimer;
@@ -40,12 +86,18 @@ export function initLogs() {
       };
 
       eventSource.onmessage = (event) => {
-        const logs = JSON.parse(event.data);
-        updateTable(logs);
+        const data = JSON.parse(event.data);
+        if (data.error === "unauthorized") {
+          attemptAutoLogin().then((ok) => {
+            if (ok) startEventStream();
+          });
+          return;
+        }
+        updateTable(data);
       };
 
       eventSource.onerror = (error) => {
-        console.error("EventSource failed:", error);
+        logEventSourceError(eventSource, error);
         if (status) {
           status.textContent = "Connection lost. Reconnecting...";
           status.classList.remove("hidden");
@@ -61,9 +113,8 @@ export function initLogs() {
       startEventStream();
     });
 
-    searchInput.addEventListener("input", () => {
-      startEventStream();
-    });
+    const debouncedStart = debounce(startEventStream, 300);
+    searchInput.addEventListener("input", debouncedStart);
 
     levelSelect.addEventListener("change", () => {
       startEventStream();
@@ -71,6 +122,7 @@ export function initLogs() {
 
     // Start the initial event stream
     startEventStream();
+    fetchSummary();
 
     // expose for tests
     window.__startLogStream = startEventStream;

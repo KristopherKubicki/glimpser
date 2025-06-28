@@ -1,6 +1,9 @@
-# Vendor OUI prefixes for manufacturer lookup
-# This map expands on the small list in camera_discovery and avoids external
-# dependencies for most vendor lookups.
+"""Mapping of vendor OUI prefixes to manufacturer names.
+
+This table supplements the smaller list in ``camera_discovery`` so that
+hardware vendors can be identified without querying external services.
+"""
+
 OUI_MAP: dict[str, str] = {
     "000c29": "VMware",
     "525400": "QEMU",

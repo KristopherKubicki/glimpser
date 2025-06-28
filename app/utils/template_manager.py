@@ -1,22 +1,22 @@
 # app/utils/template_manager.py
 
-import os
-import shutil
-import random
-import logging
 import json
+import logging
+import os
+import re
+import shutil
 from datetime import datetime
+from functools import lru_cache
 
 from sqlalchemy import Boolean, Column, Float, Integer, String, Text
+from sqlalchemy.orm import validates
 from werkzeug.utils import secure_filename
-from .validators import validate_template_name
-
-from app.config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY
 
 import app.utils.db as db
-from .video_details import get_latest_screenshot_date, get_latest_video_date
+from app.config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY
 
-from sqlalchemy.orm import validates
+from .validators import validate_template_name
+from .video_details import get_latest_screenshot_date, get_latest_video_date
 
 # Keep aliases for backward compatibility and testing mocks
 SessionLocal = db.SessionLocal
@@ -66,6 +66,7 @@ class Template(db.Base):
     auth_username = Column(String, default="")
     auth_password = Column(String, default="")
     url = Column(String, default="")
+    thumbnail = Column(String, default="")
     groups = Column(String, default="")
     invert = Column(Boolean, default=False)
     dark = Column(Boolean, default=False)
@@ -124,6 +125,7 @@ class TemplateManager:
         ensure_column("templates", "capture_failed", "BOOLEAN", "0")
         ensure_column("templates", "auth_username", "VARCHAR(255)", "''")
         ensure_column("templates", "auth_password", "VARCHAR(255)", "''")
+        ensure_column("templates", "thumbnail", "VARCHAR(255)", "''")
 
     def get_session(self):
         """Return a new SQLAlchemy session bound to the app database."""
@@ -398,6 +400,7 @@ class TemplateManager:
             session.close()
 
 
+@lru_cache(maxsize=1)
 def get_templates():
     """Return all templates enriched with filesystem metadata.
 
@@ -423,6 +426,12 @@ def get_templates():
         details["last_video_time"] = get_latest_video_date(video_path)
         details["snapshot_only"] = is_snapshot_url(details.get("url", ""))
     return templates
+
+
+def clear_template_cache() -> None:
+    """Clear cached template data."""
+
+    get_templates.cache_clear()
 
 
 def get_templates_sorted_by_last_caption_time():
@@ -581,10 +590,14 @@ def get_videos_for_template(name: str):
         for f in os.listdir(os.path.join(VIDEO_DIRECTORY, name))
         if (f.startswith(name) or f.startswith("final_")) and f.endswith(".mp4")
     ]
-    sorted_videos = sorted(
-        videos,
-        reverse=True,
-    )
+
+    def _sort_key(filename: str) -> int:
+        match = re.search(r"(\d+)(?=\.mp4$)", filename)
+        return int(match.group(1)) if match else -1
+
+    sorted_videos = sorted(videos, key=_sort_key, reverse=True)
+    if "last_video.mp4" not in sorted_videos:
+        sorted_videos.append("last_video.mp4")
     return sorted_videos[:10]
 
 
@@ -672,14 +685,10 @@ def get_storage_usage_bytes(name: str) -> int:
 
 
 def record_llm_usage(name: str, tokens: int) -> None:
-    """Record token usage for ``name`` in ``LLM_USAGE_PATH``.
+    """Record token usage for ``name`` with a timestamp.
 
-    Parameters
-    ----------
-    name : str
-        Template name the tokens were used for.
-    tokens : int
-        Number of tokens consumed.
+    The data format was originally a single cumulative integer. This now stores
+    a list of timestamped entries while remaining backward compatible.
     """
     name = validate_template_name(name)
     if name is None or tokens <= 0:
@@ -692,7 +701,19 @@ def record_llm_usage(name: str, tokens: int) -> None:
     except Exception:
         data = {}
 
-    data[name] = data.get(name, 0) + int(tokens)
+    entry = data.get(name)
+    if isinstance(entry, int):
+        entry = {"total": entry, "entries": []}
+    elif isinstance(entry, list):
+        entry = {"total": sum(e.get("tokens", 0) for e in entry), "entries": entry}
+    elif not isinstance(entry, dict):
+        entry = {"total": 0, "entries": []}
+
+    entry["entries"].append(
+        {"time": datetime.utcnow().strftime("%Y-%m-%d"), "tokens": int(tokens)}
+    )
+    entry["total"] += int(tokens)
+    data[name] = entry
 
     try:
         with open(LLM_USAGE_PATH, "w") as f:
@@ -724,6 +745,8 @@ def get_llm_response_count(name: str) -> int:
         return 0
 
     entry = data.get(name, [])
+    if isinstance(entry, dict):
+        entry = entry.get("entries", [])
     if isinstance(entry, list):
         return len(entry)
     if isinstance(entry, int):
@@ -731,8 +754,10 @@ def get_llm_response_count(name: str) -> int:
     return 0
 
 
-def get_llm_cost_estimate(name: str) -> str:
-    """Estimate LLM cost for ``name`` based on recorded token usage."""
+def get_llm_cost_estimate(
+    name: str, start_date: str | None = None, end_date: str | None = None
+) -> str:
+    """Estimate LLM cost for ``name`` within an optional date range."""
 
     name = validate_template_name(name)
     if name is None:
@@ -744,9 +769,141 @@ def get_llm_cost_estimate(name: str) -> str:
     except Exception:
         data = {}
 
-    tokens = data.get(name, 0)
+    entry = data.get(name)
+    tokens = 0
+    if isinstance(entry, dict) and "entries" in entry:
+        entries = entry.get("entries", [])
+        sd = datetime.fromisoformat(start_date).date() if start_date else None
+        ed = datetime.fromisoformat(end_date).date() if end_date else None
+        for e in entries:
+            try:
+                dt = datetime.fromisoformat(e.get("time", "")).date()
+            except Exception:
+                continue
+            if sd and dt < sd:
+                continue
+            if ed and dt > ed:
+                continue
+            tokens += int(e.get("tokens", 0))
+        if not start_date and not end_date:
+            tokens = entry.get("total", tokens)
+    else:
+        tokens = entry if isinstance(entry, int) else 0
+
     cost = tokens * LLM_COST_PER_TOKEN
-    return f"${cost:.2f}"
+    return f"${cost:.3f}"
+
+
+def get_llm_cost_summary(
+    start_date: str | None = None,
+    end_date: str | None = None,
+    group: str | None = None,
+) -> tuple[list[dict[str, object]], int, str, int]:
+    """Return LLM usage totals and overall cost within an optional date range.
+
+    When ``group`` is provided, only templates belonging to that group are
+    included in the summary.
+    """
+
+    try:
+        with open(LLM_USAGE_PATH, "r") as f:
+            data = json.load(f)
+    except Exception:
+        data = {}
+
+    summary = []
+    total_tokens = 0
+    total_calls = 0
+    sd = datetime.fromisoformat(start_date).date() if start_date else None
+    ed = datetime.fromisoformat(end_date).date() if end_date else None
+
+    allowed_names: set[str] | None = None
+    if group:
+        tmpl = TemplateManager().get_templates()
+        allowed_names = {
+            name
+            for name, details in tmpl.items()
+            if group in [g.strip() for g in details.get("groups", "").split(",")]
+        }
+    for name in sorted(data):
+        if allowed_names is not None and name not in allowed_names:
+            continue
+        entry = data.get(name, 0)
+        tokens = 0
+        calls = 0
+        if isinstance(entry, dict) and "entries" in entry:
+            entries = entry.get("entries", [])
+            for e in entries:
+                try:
+                    dt = datetime.fromisoformat(e.get("time", "")).date()
+                except Exception:
+                    continue
+                if sd and dt < sd:
+                    continue
+                if ed and dt > ed:
+                    continue
+                try:
+                    tokens += int(e.get("tokens", 0))
+                    calls += 1
+                except Exception:
+                    continue
+            if not start_date and not end_date:
+                tokens = entry.get("total", tokens)
+                calls = len(entries)
+        else:
+            if isinstance(entry, list):
+                tokens = sum(int(t) for t in entry)
+                calls = len(entry)
+            elif isinstance(entry, dict):
+                tokens = int(entry.get("total", 0))
+                calls = len(entry.get("entries", []))
+            elif isinstance(entry, int):
+                tokens = entry
+                calls = 1 if entry > 0 else 0
+        total_tokens += tokens
+        total_calls += calls
+        cost = tokens * LLM_COST_PER_TOKEN
+        summary.append(
+            {
+                "name": name,
+                "tokens": tokens,
+                "cost": f"${cost:.3f}",
+                "calls": calls,
+            }
+        )
+
+    total_cost = total_tokens * LLM_COST_PER_TOKEN
+    return summary, total_tokens, f"${total_cost:.3f}", total_calls
+
+
+def group_cost_summary(
+    summary: list[dict[str, object]], top: int = 10
+) -> list[dict[str, object]]:
+    """Return ``summary`` sorted by cost with smaller entries grouped."""
+
+    def _cost_val(entry: dict[str, object]) -> float:
+        try:
+            return float(str(entry.get("cost", "$0")).replace("$", ""))
+        except Exception:
+            return 0.0
+
+    rows = sorted(summary, key=_cost_val, reverse=True)
+    if len(rows) <= top:
+        return rows
+
+    keep = rows[: top - 1]
+    other_tokens = sum(r.get("tokens", 0) for r in rows[top - 1 :])
+    other_cost = sum(_cost_val(r) for r in rows[top - 1 :])
+    other_calls = sum(r.get("calls", 0) for r in rows[top - 1 :])
+    keep.append(
+        {
+            "name": "Other",
+            "tokens": other_tokens,
+            "cost": f"${other_cost:.3f}",
+            "calls": other_calls,
+        }
+    )
+    return keep
 
 
 def update_last_screenshot_time(name: str) -> None:
@@ -782,23 +939,6 @@ def mark_offline(name: str) -> None:
         template = session.query(Template).filter_by(name=name).first()
         if template and not template.offline_since:
             template.offline_since = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-            session.commit()
-    finally:
-        session.close()
-
-
-def set_capture_failed(name: str, failed: bool) -> None:
-    """Set ``capture_failed`` flag for ``name``."""
-    name = validate_template_name(name)
-    if name is None:
-        return
-
-    manager = TemplateManager()
-    session = manager.get_session()
-    try:
-        template = session.query(Template).filter_by(name=name).first()
-        if template:
-            template.capture_failed = bool(failed)
             session.commit()
     finally:
         session.close()

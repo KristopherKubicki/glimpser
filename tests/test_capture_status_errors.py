@@ -1,11 +1,8 @@
-import unittest
 import os
-import sys
-import tempfile
 import shutil
-from unittest.mock import patch, MagicMock
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import tempfile
+import unittest
+from unittest.mock import MagicMock, patch
 
 import app.utils.screenshots as ss
 
@@ -37,7 +34,8 @@ class TestCaptureStatusErrors(unittest.TestCase):
         mock_reachable.assert_not_called()
 
     @patch("app.utils.screenshots.http_session")
-    def test_get_content_type_caches_error(self, mock_session_factory):
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
+    def test_get_content_type_caches_error(self, mock_online, mock_session_factory):
         url = "http://example.com"
         mock_session = MagicMock()
         resp = MagicMock()
@@ -50,6 +48,26 @@ class TestCaptureStatusErrors(unittest.TestCase):
         self.assertEqual(ctype, "")
         self.assertFalse(modified)
         self.assertEqual(ss.get_cached_status_code(url), 500)
+
+    @patch("app.utils.screenshots.http_session")
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
+    def test_get_content_type_head_403_fallback(
+        self, mock_online, mock_session_factory
+    ):
+        url = "http://example.com"
+        mock_session = MagicMock()
+        head_resp = MagicMock()
+        head_resp.status_code = 403
+        head_resp.headers = {}
+        get_resp = MagicMock()
+        get_resp.status_code = 200
+        get_resp.headers = {"Content-Type": "video/mp4"}
+        mock_session.request.side_effect = [head_resp, get_resp]
+        mock_session_factory.return_value = mock_session
+
+        ctype, modified = ss.get_content_type(url, False)
+        self.assertEqual(ctype, "video/mp4")
+        self.assertTrue(modified)
 
 
 if __name__ == "__main__":

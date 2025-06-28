@@ -2,11 +2,11 @@ name: Build Release Packages
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
     tags:
       - "v*"
   pull_request:
-    branches: [main]
+    branches: [main, staging]
   workflow_dispatch:
 
 jobs:
@@ -20,15 +20,23 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install flake8 pytest
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+      - name: Install dependencies with uv
+        run: uv pip install --system --editable . --group dev
       - name: Lint with flake8
         run: |
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Lint with ruff
+        run: ruff check --exit-zero .
       - name: Test with pytest
         run: |
           pytest
@@ -37,19 +45,20 @@ jobs:
           ./build_packages.sh
       - name: Build Python distributions
         run: |
-          python -m pip install build
+          uv pip install --system build
           python -m build
       - name: Generate release badges
         run: |
           python scripts/generate_release_badges.py
       - name: Publish to PyPI
-        if: env.PYPI_API_TOKEN != ''
+        if: startsWith(github.ref, 'refs/tags/v') && env.PYPI_API_TOKEN != ''
         env:
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ env.PYPI_API_TOKEN }}
       - name: Upload Debian package
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
@@ -67,12 +76,60 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+      - name: Install uv
+        shell: bash
+        run: python -m pip install --upgrade uv
       - name: Install PyInstaller
-        run: python -m pip install --upgrade pip && pip install pyinstaller
+        shell: bash
+        run: uv pip install --system pyinstaller
+      - name: Install project requirements
+        shell: bash
+        run: uv pip install --system .
       - name: Build Windows executable
         run: python build_windows.py
       - name: Upload Windows executable
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           files: dist/Glimpser.exe
+
+  build_macos:
+    runs-on: macos-latest
+    needs: build_debian
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+      - name: Install PyInstaller
+        run: uv pip install --system pyinstaller
+      - name: Install project requirements
+        run: uv pip install --system .
+      - name: Build macOS executable
+        run: python build_macos.py
+      - name: Upload macOS archive
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: dist/Glimpser

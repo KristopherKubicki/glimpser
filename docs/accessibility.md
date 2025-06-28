@@ -3,10 +3,11 @@
 The user interface now includes additional tooltips and descriptive alt text to improve accessibility:
 
 - Navigation and login logos include descriptive `alt` attributes.
+- The login page now displays a lock icon with a brief security note.
 - The live feed image has both `alt` text and a tooltip.
 - The footer Help link displays a tooltip describing its purpose.
- - The navigation Settings link has a single descriptive `title` attribute.
- - The Discover icon also uses a descriptive `title` attribute and opens the Discover tab.
+- The navigation Settings link has a single descriptive `title` attribute.
+- The Discover icon also uses a descriptive `title` attribute and opens the Discover tab.
 - Navigation icons now include matching `aria-label` attributes for screen reader support.
 - When a camera is offline, the player shows an overlay with a clear icon instead of replacing the controls.
 - Deprecated `<center>` tags were removed from templates and replaced with CSS-based centering.
@@ -14,9 +15,13 @@ The user interface now includes additional tooltips and descriptive alt text to 
 - A "skip to main content" link enables quick keyboard navigation.
 - The base template uses a `<main>` element for semantic structure.
 - Live video overlays use ARIA roles so screen readers announce status changes.
+- Dynamic regions like the log connection status, player camera name, and
+  dashboard clock now use `aria-live="polite"` so updates are announced.
 - Offline and error indicators now include `title` attributes so assistive
   technology can describe the icon meaning.
 - Focus outlines appear when navigating via keyboard.
 - The delete button text color now meets color contrast guidelines.
 - The live player styles moved to `player.css` and the index page uses
   `<section>` elements for clearer structure.
+- A high contrast toggle in the Settings page stores your choice in
+  `localStorage` and applies a `high-contrast-mode` class to the body.

@@ -1,11 +1,8 @@
-import sys
-import os
 import json
+import os
 import unittest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from app.utils.template_manager import get_llm_response_count, LLM_USAGE_PATH
+from app.utils.template_manager import LLM_USAGE_PATH, get_llm_response_count
 
 
 class TestLLMResponseCount(unittest.TestCase):

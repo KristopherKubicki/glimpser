@@ -3,29 +3,81 @@
 import base64
 import datetime
 import io
-import os
 import logging
+import os
+import re
+from typing import List, Optional
 
-import requests
-from PIL import Image
+from PIL import Image, ImageFile
+
+# Allow reading truncated images so processing does not fail when a screenshot
+# is incomplete.
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 from app.config import CHATGPT_KEY, LLM_CAPTION_PROMPT, LLM_MODEL_VERSION
 from app.utils import llm_cache
+from app.utils.api_utils import request_with_retry
+from app.utils.screenshots import _is_valid_png
+
+HEADER_PREFIX_RE = re.compile(r"^(caption|title|summary):\s*", re.IGNORECASE)
+
+
+def clean_caption(text: str) -> str:
+    """Return caption text without header prefixes or Markdown markers."""
+
+    if not text:
+        return ""
+    cleaned = text.replace("**", "").strip()
+    cleaned = HEADER_PREFIX_RE.sub("", cleaned)
+    return cleaned.strip()
+
 
 last_429_error_time = None
 
 
 class ChatGPTImageComparison:
-    def __init__(self):
+    """Helper for caption prompts using the ChatGPT vision API."""
+
+    def __init__(self) -> None:
         self.api_key = CHATGPT_KEY
         self.headers = {"Authorization": f"Bearer {self.api_key}"}
         self.url = "https://api.openai.com/v1/chat/completions"
 
     def compare_images(
-        self, prompt, image_paths, max_size=512, low_res=False, tokens=48
-    ):
+        self,
+        prompt: str,
+        image_paths: List[str],
+        max_size: int = 512,
+        low_res: bool = False,
+        tokens: int = 48,
+    ) -> tuple[str | None, int]:
+        """Return a caption for ``image_paths`` using the ChatGPT vision API.
+
+        Parameters
+        ----------
+        prompt : str
+            The text prompt describing the images.
+        image_paths : List[str]
+            Paths to images to send to ChatGPT; the first existing image will be
+            used.
+        max_size : int, optional
+            Maximum dimension of the resized image. Defaults to ``512``.
+        low_res : bool, optional
+            Request lower detail when ``True``. Defaults to ``False``.
+        tokens : int, optional
+            Maximum tokens to request from the API. Defaults to ``48``.
+
+        Returns
+        -------
+        tuple[str | None, int]
+            The cleaned caption text (``None`` on error) and the number of
+            tokens consumed.
+        """
 
         global last_429_error_time
+
+        if not self.api_key:
+            return None, 0
         # Check if a 429 error occurred in the last 30 minutes
         if last_429_error_time and (
             datetime.datetime.now() - last_429_error_time
@@ -48,8 +100,12 @@ class ChatGPTImageComparison:
         ]
         messages.append({"role": "user", "content": [{"type": "text", "text": prompt}]})
 
+        valid_image_added = False
         for image_path in reversed(image_paths):
             if not os.path.exists(image_path):
+                continue
+            if not _is_valid_png(image_path):
+                logging.warning("Invalid image for ChatGPT comparison: %s", image_path)
                 continue
             with Image.open(image_path).convert("RGB") as img:
                 # Calculate new size preserving aspect ratio
@@ -74,7 +130,12 @@ class ChatGPTImageComparison:
                         ],
                     }
                 )
+                valid_image_added = True
                 break
+
+        if not valid_image_added:
+            logging.warning("No valid images found for ChatGPT comparison")
+            return None, 0
 
         # Construct the payload with the prompt and images
         payload = {
@@ -83,10 +144,12 @@ class ChatGPTImageComparison:
             "max_tokens": tokens,  # might even be less
         }
 
-        # Send the request to the API
+        # Send the request to the API with retry logic
         result = None
         try:
-            response = requests.post(self.url, headers=self.headers, json=payload)
+            response = request_with_retry(
+                "POST", self.url, headers=self.headers, json=payload, timeout=30
+            )
             if response.status_code == 429:
                 last_429_error_time = datetime.datetime.now()
                 logging.warning(
@@ -100,9 +163,10 @@ class ChatGPTImageComparison:
         # Process the response
         # For demonstration, we'll just return the text response
         try:
-            response_text = (
+            raw_text = (
                 result["choices"][0]["message"]["content"].replace("\n\n", "\t").strip()
             )
+            response_text = clean_caption(raw_text)
             ltokens = result["usage"]["total_tokens"]
             logging.info(
                 " total tokens $%0.5f images: %d %s",
@@ -115,7 +179,15 @@ class ChatGPTImageComparison:
             return None, 0
 
 
-def chatgpt_compare(prompt, image_paths, template_name=None):
+def chatgpt_compare(
+    prompt: str, image_paths: List[str], template_name: Optional[str] = None
+) -> Optional[str]:
+    """Return a caption for images via ChatGPT.
+
+    Cached responses are reused and token usage is recorded when
+    ``template_name`` is provided. Returns ``None`` on API failure or a
+    descriptive message when inputs are invalid.
+    """
 
     # Check if all images exist
     for image in image_paths:
@@ -128,13 +200,14 @@ def chatgpt_compare(prompt, image_paths, template_name=None):
 
     cached = llm_cache.get(prompt, image_paths)
     if cached is not None:
-        result = cached.get("response")
+        result = clean_caption(cached.get("response"))
         tokens = cached.get("tokens", 0)
     else:
         chatgpt_comparison = ChatGPTImageComparison()
         result, tokens = chatgpt_comparison.compare_images(prompt, image_paths)
         if result:
             llm_cache.store(prompt, result, tokens, image_paths)
+            result = clean_caption(result)
 
     if template_name and tokens:
         try:

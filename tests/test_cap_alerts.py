@@ -1,25 +1,28 @@
 import os
-import sys
 import unittest
 from unittest.mock import patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from app.utils.cap_alerts import send_cap_alert, cap_alert
+from app.utils.cap_alerts import cap_alert, send_cap_alert
 
 
 class TestCAPAlerts(unittest.TestCase):
     def test_send_cap_alert_disabled(self):
-        with patch("app.utils.cap_alerts.CAP_ENDPOINT", ""), patch(
-            "app.utils.cap_alerts.CAP_SENDER", ""
-        ), patch("requests.post") as mock_post:
+        with (
+            patch("app.utils.cap_alerts.CAP_ENDPOINT", ""),
+            patch("app.utils.cap_alerts.CAP_SENDER", ""),
+            patch("app.utils.cap_alerts.CAP_ENABLED", "False"),
+            patch("requests.post") as mock_post,
+        ):
             send_cap_alert("event", "details")
             mock_post.assert_not_called()
 
     def test_send_cap_alert_enabled(self):
-        with patch("app.utils.cap_alerts.CAP_ENDPOINT", "http://example.com"), patch(
-            "app.utils.cap_alerts.CAP_SENDER", "sender"
-        ), patch("requests.post") as mock_post:
+        with (
+            patch("app.utils.cap_alerts.CAP_ENDPOINT", "http://example.com"),
+            patch("app.utils.cap_alerts.CAP_SENDER", "sender"),
+            patch("app.utils.cap_alerts.CAP_ENABLED", "True"),
+            patch("requests.post") as mock_post,
+        ):
             send_cap_alert("event", "details")
             mock_post.assert_called_once()
             args, kwargs = mock_post.call_args

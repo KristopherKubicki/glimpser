@@ -1,26 +1,92 @@
-import unittest
-import random
-import string
 import datetime
-import json
-from unittest.mock import patch
-import tempfile
-import os
 import importlib
+import json
+import os
+import string
+import tempfile
+from unittest.mock import patch
+
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 import app.config as config
 import app.utils.db as db
 import app.utils.scheduling as scheduling
 
+LETTERS = string.ascii_letters + string.digits + string.punctuation + " "
+MAX_EXAMPLES = int(os.getenv("HYPOTHESIS_MAX_EXAMPLES", "20"))
+DEADLINE_MS = int(os.getenv("HYPOTHESIS_DEADLINE_MS", "1000"))
 
-class TestFuzzUpdateSummary(unittest.TestCase):
-    def test_fuzz_update_summary(self):
-        num_iterations = 100
 
-        with tempfile.TemporaryDirectory() as tmp:
-            db_path = os.path.join(tmp, "test.db")
-            env_patch = patch.dict(os.environ, {"GLIMPSER_DATABASE_PATH": db_path})
-            env_patch.start()
+@st.composite
+def template_strategy(draw):
+    name = draw(st.text(string.ascii_letters, min_size=1, max_size=10))
+    groups = draw(
+        st.text(string.ascii_lowercase, min_size=1, max_size=5).map(
+            lambda s: ",".join(s)
+        )
+    )
+    last_caption_time = draw(
+        st.datetimes(
+            min_value=datetime.datetime(2023, 1, 1),
+            max_value=datetime.datetime(2023, 12, 31, 23, 59, 59),
+        ).map(lambda d: d.strftime("%Y-%m-%d %H:%M:%S"))
+    )
+    notes = draw(st.text(LETTERS, min_size=0, max_size=100))
+    last_caption = draw(st.text(LETTERS, min_size=0, max_size=200))
+    return {
+        "name": name,
+        "groups": groups,
+        "last_caption_time": last_caption_time,
+        "notes": notes,
+        "last_caption": last_caption,
+    }
+
+
+@st.composite
+def template_edge_strategy(draw):
+    tpl = draw(template_strategy())
+    if draw(st.booleans()):
+        tpl["groups"] += ",private"
+    opt = draw(st.integers(min_value=0, max_value=2))
+    if opt == 0:
+        tpl.pop("last_caption_time", None)
+    elif opt == 1:
+        tpl["last_caption_time"] = ""
+    elif opt == 2:
+        dt = datetime.datetime.utcnow() - datetime.timedelta(
+            hours=draw(st.integers(min_value=4, max_value=24))
+        )
+        tpl["last_caption_time"] = dt.strftime("%Y-%m-%d %H:%M:%S")
+    if draw(st.booleans()):
+        tpl["notes"] *= draw(st.integers(min_value=2, max_value=4))
+    if draw(st.booleans()):
+        tpl["last_caption"] *= draw(st.integers(min_value=2, max_value=4))
+    return tpl
+
+
+summary_strategy = st.one_of(
+    st.text(string.ascii_letters + string.digits, min_size=1, max_size=50),
+    st.dictionaries(
+        st.integers(min_value=0, max_value=3).map(str),
+        st.text(string.ascii_letters, min_size=1, max_size=5),
+        min_size=1,
+        max_size=3,
+    ).map(json.dumps),
+)
+
+
+@given(
+    templates=st.dictionaries(
+        st.text(min_size=1, max_size=10), template_strategy(), min_size=1, max_size=10
+    ),
+    summary=summary_strategy,
+)
+@settings(max_examples=MAX_EXAMPLES, deadline=DEADLINE_MS)
+def test_fuzz_update_summary(templates, summary):
+    with tempfile.TemporaryDirectory() as tmp:
+        db_path = os.path.join(tmp, "test.db")
+        with patch.dict(os.environ, {"GLIMPSER_DATABASE_PATH": db_path}):
             importlib.reload(config)
             importlib.reload(db)
             import app.models as models
@@ -31,88 +97,30 @@ class TestFuzzUpdateSummary(unittest.TestCase):
             db.init_db()
             scheduling.SessionLocal = db.SessionLocal
 
-            for _ in range(num_iterations):
-                num_templates = random.randint(1, 10)
-                templates = {
-                    f"template_{i}": self.generate_random_template()
-                    for i in range(num_templates)
-                }
-
-                with patch(
+            with (
+                patch(
                     "app.utils.scheduling.get_templates_sorted_by_last_caption_time",
                     return_value=list(templates.items()),
-                ), patch(
-                    "app.utils.scheduling.summarize",
-                    return_value="".join(
-                        random.choices(string.ascii_letters + string.digits, k=50)
-                    ),
-                ):
-                    try:
-                        scheduling.update_summary()
-                    except Exception as e:
-                        env_patch.stop()
-                        self.fail(
-                            f"update_summary raised {type(e).__name__} unexpectedly: {str(e)}"
-                        )
-            env_patch.stop()
+                ),
+                patch("app.utils.scheduling.summarize", return_value=summary),
+            ):
+                scheduling.update_summary()
 
-    def generate_random_template(self):
-        return {
-            "name": "".join(random.choices(string.ascii_letters, k=10)),
-            "groups": ",".join(
-                random.choices(string.ascii_lowercase, k=random.randint(1, 5))
-            ),
-            "last_caption_time": f"2023-{random.randint(1,12):02d}-{random.randint(1,28):02d} {random.randint(0,23):02d}:{random.randint(0,59):02d}:{random.randint(0,59):02d}",
-            "notes": "".join(
-                random.choices(
-                    string.ascii_letters + string.digits + string.punctuation + " ",
-                    k=random.randint(0, 100),
-                )
-            ),
-            "last_caption": "".join(
-                random.choices(
-                    string.ascii_letters + string.digits + string.punctuation + " ",
-                    k=random.randint(0, 200),
-                )
-            ),
-        }
 
-    def generate_random_template_edge(self):
-        template = self.generate_random_template()
-        if random.random() < 0.3:
-            template["groups"] += ",private"
-        rand = random.random()
-        if rand < 0.2:
-            template.pop("last_caption_time", None)
-        elif rand < 0.4:
-            template["last_caption_time"] = ""
-        elif rand < 0.6:
-            dt = datetime.datetime.utcnow() - datetime.timedelta(
-                hours=random.randint(4, 24)
-            )
-            template["last_caption_time"] = dt.strftime("%Y-%m-%d %H:%M:%S")
-        if random.random() < 0.2:
-            template["notes"] *= random.randint(2, 4)
-        if random.random() < 0.2:
-            template["last_caption"] *= random.randint(2, 4)
-        return template
-
-    def random_summary(self):
-        if random.random() < 0.5:
-            entries = {
-                str(i): "".join(random.choices(string.ascii_letters, k=5))
-                for i in range(random.randint(1, 3))
-            }
-            return json.dumps(entries)
-        return "".join(random.choices(string.ascii_letters + string.digits, k=50))
-
-    def test_fuzz_update_summary_edge_cases(self):
-        num_iterations = 100
-
-        with tempfile.TemporaryDirectory() as tmp:
-            db_path = os.path.join(tmp, "test.db")
-            env_patch = patch.dict(os.environ, {"GLIMPSER_DATABASE_PATH": db_path})
-            env_patch.start()
+@given(
+    templates=st.dictionaries(
+        st.text(min_size=1, max_size=10),
+        template_edge_strategy(),
+        min_size=1,
+        max_size=10,
+    ),
+    summary=summary_strategy,
+)
+@settings(max_examples=MAX_EXAMPLES, deadline=DEADLINE_MS)
+def test_fuzz_update_summary_edge_cases(templates, summary):
+    with tempfile.TemporaryDirectory() as tmp:
+        db_path = os.path.join(tmp, "test.db")
+        with patch.dict(os.environ, {"GLIMPSER_DATABASE_PATH": db_path}):
             importlib.reload(config)
             importlib.reload(db)
             import app.models as models
@@ -123,29 +131,11 @@ class TestFuzzUpdateSummary(unittest.TestCase):
             db.init_db()
             scheduling.SessionLocal = db.SessionLocal
 
-            for _ in range(num_iterations):
-                num_templates = random.randint(1, 10)
-                templates = {
-                    f"template_{i}": self.generate_random_template_edge()
-                    for i in range(num_templates)
-                }
-
-                with patch(
+            with (
+                patch(
                     "app.utils.scheduling.get_templates_sorted_by_last_caption_time",
                     return_value=list(templates.items()),
-                ), patch(
-                    "app.utils.scheduling.summarize",
-                    side_effect=lambda *a, **k: self.random_summary(),
-                ):
-                    try:
-                        scheduling.update_summary()
-                    except Exception as e:
-                        env_patch.stop()
-                        self.fail(
-                            f"update_summary raised {type(e).__name__} unexpectedly: {str(e)}"
-                        )
-            env_patch.stop()
-
-
-if __name__ == "__main__":
-    unittest.main()
+                ),
+                patch("app.utils.scheduling.summarize", return_value=summary),
+            ):
+                scheduling.update_summary()

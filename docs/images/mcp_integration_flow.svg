@@ -1,0 +1,19 @@
+<svg width="220" height="220" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="stage" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f9f9f9" />
+      <stop offset="100%" stop-color="#dcdcdc" />
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333" />
+    </marker>
+  </defs>
+  <rect x="50" y="10" width="120" height="30" fill="url(#stage)" stroke="#333" />
+  <text x="110" y="30" font-size="12" text-anchor="middle" fill="#333">Glimpser</text>
+  <line x1="110" y1="40" x2="110" y2="80" stroke="#333" marker-end="url(#arrow)" />
+  <rect x="50" y="80" width="120" height="30" fill="url(#stage)" stroke="#333" />
+  <text x="110" y="100" font-size="12" text-anchor="middle" fill="#333">/mcp/tool/&lt;name&gt;</text>
+  <line x1="110" y1="110" x2="110" y2="150" stroke="#333" marker-end="url(#arrow)" />
+  <rect x="50" y="150" width="120" height="30" fill="url(#stage)" stroke="#333" />
+  <text x="110" y="170" font-size="12" text-anchor="middle" fill="#333">MCP Server</text>
+</svg>

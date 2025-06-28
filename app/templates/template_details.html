@@ -1,473 +1,599 @@
 <!-- app/templates/template_details.html -->
 
-{% extends 'base.html' %}
-{% block content %}
+{% extends 'base.html' %} {% from 'components.html' import confirm_modal,
+template_form %} {% block content %}
 <script>
-    const cameraMeta = {{ template_details|tojson }};
-    window.templateDetails = { "{{ template_name }}": cameraMeta };
-    window.currentCamera = '{{ template_name }}';
-    {% if template_details.get('groups') %}
-    window.currentGroup = "{{ template_details.get('groups').split(',')[0].strip() }}";
-    {% endif %}
+  const cameraMeta = {{ template_details|tojson }};
+  window.templateDetails = { "{{ template_name }}": cameraMeta };
+  window.currentCamera = '{{ template_name }}';
+  {% if template_details.get('groups') %}
+  window.currentGroup = "{{ template_details.get('groups').split(',')[0].strip() }}";
+  {% endif %}
 </script>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
-
-<div class="video-container full-height">
-    <img id="live-image" loading="lazy" alt="Live feed frame" title="Current frame from the live feed" />
-    <video id="live-video" class="hidden" autoplay muted>
-        <source src="" type="video/mp4" />
-        Your browser does not support the video tag.
-    </video>
-    <video id="preload-video" class="hidden" muted preload="auto"></video>
-    <div class="video-controls">
-        <input type="range" id="seek-bar" value="0" title="Seek position" />
-
-        <div class="control-row">
-            <button id="play-pause" title="play/pause"><i class="fa-play-pause"></i></button>
-            <div id="speed-container">
-                <input type="range" id="speed-slider" min="-3" max="4" value="0" step="0.1" oninput="updatePlaybackSpeed()" title="Adjust playback speed" />
-                <label for="speed-slider">Speed: <span id="speed-value">1x</span></label>
-            </div>
-            <button id="full-screen" title="fullscreen"><i class="fas fa-expand"></i></button>
-            <select id="video-source" onchange="changeVideoSource()">
-                <option value="png" title="View a series of PNG images">PNG Stream</option>
-                <!-- <option value="m3u8" title="View an HLS (HTTP Live Streaming) video stream">M3U8 Stream</option> -->
-                <option value="loop" title="Loop through available video clips">Loop Videos</option>
-                <option value="mp4" title="View an MP4 video stream">MP4 Stream</option>
-                <option value="live" title="View the direct live stream">Live Video</option>
-                <option value="motion" title="View motion-detected frames">Motion</option>
-                <option value="mjpg" selected title="View an MJPEG (Motion JPEG) stream">MJPG</option>
-            </select>
-        </div>
-    </div>
-    <div id="video-overlay" class="video-overlay">
-        <div id="loading-indicator" class="hidden">Loading...</div>
-        <div id="play-pause-indicator" class="video-icon hidden">▶</div>
-        <div id="offline-indicator" class="offline-indicator hidden">
-            <i class="fas fa-video-slash video-icon"></i>
-            <p id="offline-message"></p>
-        </div>
-        <div id="capture-error-indicator" class="error-indicator hidden">
-            <i class="fas fa-exclamation-triangle video-icon"></i>
-            <p id="capture-error-message"></p>
-        </div>
-        <div id="stream-error-indicator" class="error-indicator hidden">
-            <i class="fas fa-times-circle video-icon"></i>
-            <p id="stream-error-message"></p>
-        </div>
-        {% if CLOCK_OVERLAY %}
-        <div id="overlayClock" class="cool-clock clock-overlay" data-digital="{{ 'true' if CLOCK_DIGITAL else 'false' }}">
-            <div class="clock-face">
-                <div class="clock-hands">
-                    <div class="hand hour-hand"></div>
-                    <div class="hand minute-hand"></div>
-                    <div class="hand second-hand"></div>
-                </div>
-                <div class="digital-clock"></div>
-            </div>
-        </div>
-        {% endif %}
-    </div>
-    <div id="error-message"></div>
+<div
+  class="video-container full-height"
+  role="region"
+  aria-label="Live video feed"
+>
+  <span id="record-indicator" class="record-dot" aria-hidden="true"></span>
+  <button
+    id="prev-clip-btn"
+    class="clip-nav prev"
+    title="Previous clip"
+    aria-label="Previous clip"
+  >
+    &#9664;
+  </button>
+  <button
+    id="next-clip-btn"
+    class="clip-nav next"
+    title="Next clip"
+    aria-label="Next clip"
+  >
+    &#9654;
+  </button>
+  <video
+    id="live-video"
+    controls
+    autoplay
+    muted
+    preload="none"
+    poster="/last_screenshot/{{ template_name }}"
+  >
+    <source src="/last_video/{{ template_name }}" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
 </div>
 
 <div id="template-details"></div>
 <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
-<script type="module" src="{{ url_for('static', filename='js/live.js') }}"></script>
-
-
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/tile_player.js') }}"
+></script>
 
 <script>
-function takeInstantScreenshot(templateName) {
+  function takeInstantScreenshot(templateName) {
     fetch(`/take_screenshot/${templateName}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({}) // Empty body for POST request
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}), // Empty body for POST request
     })
-    .then(response => response.json())
-    .then(data => {
-        if(data.status === 'success') {
-            // Optionally refresh the page or update the UI to show the new screenshot
-            location.reload(); // Simple page refresh
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.status === "success") {
+          // Optionally refresh the page or update the UI to show the new screenshot
+          location.reload(); // Simple page refresh
         }
-    })
-    .catch(error => console.error('Error taking instant screenshot:', error));
-}
+      })
+      .catch((error) =>
+        console.error("Error taking instant screenshot:", error),
+      );
+  }
 
-function updateVideo(templateName) {
+  function updateVideo(templateName) {
     fetch(`/update_video/${templateName}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({}) // Empty body for POST request
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}), // Empty body for POST request
     })
-    .then(response => response.json())
-    .then(data => {
-        if(data.status === 'success') {
-            // Optionally refresh the page or update the UI to show the new screenshot
-            location.reload(); // Simple page refresh
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.status === "success") {
+          // Optionally refresh the page or update the UI to show the new screenshot
+          location.reload(); // Simple page refresh
         }
-    })
-    .catch(error => console.error('Error taking instant screenshot:', error));
-}
+      })
+      .catch((error) =>
+        console.error("Error taking instant screenshot:", error),
+      );
+  }
 
+  function recordHighSpeed(templateName) {
+    const indicator = document.getElementById("record-indicator");
+    const container = document.querySelector(".video-container");
+    indicator.style.display = "block";
+    container.classList.add("recording");
+    fetch(`/record/${templateName}`, { method: "POST" });
+    setTimeout(() => {
+      indicator.style.display = "none";
+      container.classList.remove("recording");
+    }, 20000);
+  }
 </script>
-
-    <div id="camera-metadata">
-        <ul>
-            <li><strong>Last Screenshot:</strong> {{ template_details.last_screenshot_time }}</li>
-            <li><strong>Last Video:</strong> {{ template_details.last_video_time }}</li>
-            <li><strong>Last Caption:</strong> {{ template_details.last_caption }}</li>
-            <li><strong>Caption Time:</strong> {{ template_details.last_caption_time }}</li>
-            {% if template_details.offline_since %}
-            <li><strong>Offline Since:</strong> {{ template_details.offline_since }}</li>
-            {% endif %}
-            {% if template_details.capture_failed %}
-            <li><strong>Capture Failed:</strong> Yes</li>
-            {% endif %}
-        </ul>
-    </div>
-
-
-  <details title="View recent videos for this template"><summary>Recent Videos</summary>
-    <div id="videos">
-        {% for video in videos %}
-            <div class="video">
-                <video src="/videos/{{template_name}}/{{video}}" height="200" autoplay loop muted title="Recent video capture: {{video}}"></video>
-            </div>
-        {% endfor %}
-    </div>
-  </details>
-
-    <details title="View recent screenshots for this template"><summary>Recent Captures</summary>
-    <div id="screenshots">
-        {% for screenshot in screenshots %}
-            <div class="screenshot">
-                    <a href='/screenshots/{{template_name}}/{{screenshot}}' title="View full-size screenshot"><img src="/screenshots/{{template_name}}/{{screenshot }}" loading="lazy" alt="Screenshot" height='200' title="Recent screenshot: {{screenshot}}"></a>
-            </div>
-        {% endfor %}
-    </div>
-  </details>
-
-
-
-<details title="Edit the details of this template">
-    <summary>Edit Template</summary>
-    <div id="edit-template">
-        <h3>Edit Template Details</h3>
-        <form id="edit-template-form" action="/update_template/{{ template_name }}" method="post" onsubmit="return validateForm()" title="Form to edit template details">
-            <div class="form-row">
-                <label for="url" title="URL to monitor">URL:</label>
-                <input type="url" id="url" name="url" value="{{ template_details.url }}" required title="Enter the URL to monitor">
-            </div>
-
-            <div class="form-row">
-                <label for="frequency" title="How often to check the URL">Frequency (minutes):</label>
-                <input type="number" id="frequency" name="frequency" value="{{ template_details.frequency }}" min="1" required title="Enter how often to check the URL (in minutes)">
-            </div>
-
-            <div class="form-row">
-                <label for="timeout" title="Maximum time to wait for a response">Timeout (seconds):</label>
-                <input type="number" id="timeout" name="timeout" value="{{ template_details.timeout }}" min="1" required title="Enter the maximum time to wait for a response (in seconds)">
-            </div>
-
-            <div class="form-row">
-                <label for="notes" title="Additional notes">Notes:</label>
-                <textarea id="notes" name="notes" title="Enter any additional notes or comments">{{ template_details.notes }}</textarea>
-            </div>
-            <button type="button" onclick="suggestPrompt('{{ template_name }}')" title="Generate a prompt">Suggest Prompt</button>
-            <button type="button" onclick="suggestFix('{{ template_name }}')" title="Suggest troubleshooting tips">Suggest Fix</button>
-
-            <div class="form-row">
-                <label for="object_filter" title="Filter for specific objects">Object Filter:</label>
-                <input type="text" id="object_filter" name="object_filter" value="{{ template_details.object_filter }}" title="Enter object types to filter (e.g., 'person,car')">
-            </div>
-
-            <div class="form-row">
-                <label for="object_confidence" title="Minimum confidence for object detection">Object Confidence:</label>
-                <input type="number" id="object_confidence" name="object_confidence" value="{{ template_details.object_confidence }}" min="0" max="1" step="0.01" title="Enter the minimum confidence level for object detection (0-1)">
-            </div>
-
-            <div class="form-row">
-                <label for="motion" title="Percentage of motion required to trigger an alert">Motion Percent:</label>
-                <input type="number" id="motion" name="motion" value="{{ template_details.motion }}" min="0" max="1" step="0.01" title="Enter the percentage of motion required to trigger an alert">
-            </div>
-
-            <div class="form-row">
-                <label for="popup_xpath">Popup XPath:</label>
-                <div class="xpath-input-container">
-                    <input type="text" id="popup_xpath" name="popup_xpath" value="{{ template_details.popup_xpath }}">
-                    <button type="button" onclick="showStructuredInput('popup_xpath')" title="Open structured XPath editor">Structured</button>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <label for="dedicated_xpath">Dedicated XPath:</label>
-                <div class="xpath-input-container">
-                    <input type="text" id="dedicated_xpath" name="dedicated_xpath" value="{{ template_details.dedicated_xpath }}">
-                    <button type="button" onclick="showStructuredInput('dedicated_xpath')" title="Open structured XPath editor">Structured</button>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <label for="callback_url" title="URL for notifications">Callback URL:</label>
-                <input type="url" id="callback_url" name="callback_url" value="{{ template_details.callback_url }}" title="Enter URL to receive notifications">
-            </div>
-
-            <div class="form-row">
-                <label for="proxy" title="Proxy server address">Proxy:</label>
-                <input type="text" id="proxy" name="proxy" value="{{ template_details.proxy }}" title="Enter proxy server address (optional)">
-            </div>
-
-            <div class="form-row">
-                <label for="auth_username" title="Username for camera authentication">Username:</label>
-                <input type="text" id="auth_username" name="auth_username" value="{{ template_details.auth_username }}" title="Camera username">
-            </div>
-
-            <div class="form-row">
-                <label for="auth_password" title="Password for camera authentication">Password:</label>
-                <input type="password" id="auth_password" name="auth_password" value="{{ template_details.auth_password }}" title="Camera password">
-            </div>
-
-            <div class="form-row">
-                <label for="groups" title="Groups for the template">Groups:</label>
-                <input type="text" id="groups" name="groups" value="{{ template_details.groups }}" title="Enter comma-separated group names">
-                {% if template_details.groups %}
-                <div class="group-links">
-                    {% for g in template_details.groups.split(',') %}
-                    <a href="/group/{{ g.strip() }}" class="group-link" title="View group {{ g.strip() }}">{{ g.strip() }}</a>
-                    {% endfor %}
-                </div>
-                {% endif %}
-            </div>
-
-            <div class="form-row">
-                <label for="rollback_frames" title="Number of frames to rollback">Rollback Frames:</label>
-                <input type="number" id="rollback_frames" name="rollback_frames" value="{{ template_details.rollback_frames or 0 }}" min="0" title="Enter number of frames to rollback">
-            </div>
-
-            </div>
-	    <br/>
-
-            <div class="checkbox-row">
-                <label for="invert" title="Invert image colors">
-                    <input type="checkbox" id="invert" name="invert" {% if template_details.invert %}checked{% endif %} title="Invert colors of the captured image"> Invert
-                </label>
-                <label for="dark" title="Use dark mode">
-                    <input type="checkbox" id="dark" name="dark" {% if template_details.dark %}checked{% endif %} title="Enable dark mode for the captured page"> Dark Mode
-                </label>
-                <label for="browser" title="Use a full browser: Enables a complete browser environment for more complex web interactions, potentially improving compatibility but using more resources.">
-                    <input type="checkbox" id="browser" name="browser" {% if template_details.browser %}checked{% endif %} title="Use a full browser instead of a headless one"> Browser
-                </label>
-                <label for="headless" title="Run in headless mode: Operates the browser without a visible UI, which is faster and uses fewer resources but may be less compatible with some websites.">
-                    <input type="checkbox" id="headless" name="headless" {% if template_details.headless %}checked{% endif %} title="Run browser in headless mode"> Headless
-                </label>
-                <label for="stealth" title="Use stealth mode: Applies various techniques to make the browser behave more like a human user, helping to avoid detection by anti-bot systems.">
-                    <input type="checkbox" id="stealth" name="stealth" {% if template_details.stealth %}checked{% endif %} title="Use stealth mode to avoid detection"> Stealth
-                </label>
-                <label for="danger" title="Mark as potentially dangerous: Flags this template as containing potentially sensitive or risky content, adding an extra layer of caution.">
-                    <input type="checkbox" id="danger" name="danger" {% if template_details.danger %}checked{% endif %} title="Mark this template as potentially dangerous"> Danger
-                </label>
-            </div>
-            <br/>
-            <div class="form-actions">
-                <input type="submit" value="Update Template" title="Save changes to this template">
-            </div>
-        </form>
-    </div>
-    <div id="delete-template" class="form-actions">
-        <button id="delete-btn" onclick="confirmDelete('{{ template_name }}')" title="Delete this template permanently">Delete Template</button>
-    </div>
-    <div id="undo-container" style="display:none" class="form-actions"></div>
+<details title="Edit the details of this template" class="hidden">
+  <summary>Edit Template</summary>
+  <div id="edit-template">
+    <h3>Edit Template Details</h3>
+    {{ template_form( 'edit-template-form', '/update_template/' ~ template_name,
+    template=template_details, preview_src='/stream.mjpg?camera=' ~
+    template_name, preview_id='url-preview', include_name=False,
+    submit_label='Update Template', object_tokens=object_tokens,
+    clip_model=clip_model, clip_gpu=clip_gpu ) }}
+  </div>
+  <div id="delete-template" class="form-actions">
+    <button
+      id="delete-btn"
+      onclick="confirmDelete('{{ template_name }}')"
+      title="Delete this template permanently"
+      class="advanced-only"
+    >
+      Delete Template
+    </button>
+  </div>
+  <div id="undo-container" style="display: none" class="form-actions"></div>
+  {{ confirm_modal('delete-template', 'Delete this template?', 'Delete',
+  'Cancel') }}
 </details>
 
 <script>
-function validateForm() {
-    const frequency = parseInt(document.getElementById('frequency').value);
-    const timeout = parseInt(document.getElementById('timeout').value);
-    const objectFilter = document.getElementById('object_filter').value.trim();
-    const objectConfidence = parseFloat(document.getElementById('object_confidence').value);
-    const popupXpath = document.getElementById('popup_xpath').value.trim();
-    const dedicatedXpath = document.getElementById('dedicated_xpath').value.trim();
+  function validateForm() {
+    const frequency = parseInt(document.getElementById("frequency").value);
+    const timeout = parseInt(document.getElementById("timeout").value);
+    const objectFilter = document.getElementById("object_filter").value.trim();
+    const objectConfidence = parseFloat(
+      document.getElementById("object_confidence").value,
+    );
+    const popupXpath = document.getElementById("popup_xpath").value.trim();
+    const dedicatedXpath = document
+      .getElementById("dedicated_xpath")
+      .value.trim();
 
-    if (frequency < 1 || frequency > 525600) {
-        alert("Frequency must be between 1 and 525600 minutes (1 year).");
-        return false;
+    if (frequency < 0.1 || frequency > 525600) {
+      alert("Frequency must be between 0.1 and 525600 minutes (1 year).");
+      return false;
     }
 
-    if (frequency >= 43200) {  // 43200 minutes = 30 days
-        if (!confirm("Warning: The frequency is set to " + frequency + " minutes (more than 30 days). Are you sure you want to continue?")) {
-            return false;
-        }
+    if (frequency >= 43200) {
+      // 43200 minutes = 30 days
+      if (
+        !confirm(
+          "Warning: The frequency is set to " +
+            frequency +
+            " minutes (more than 30 days). Are you sure you want to continue?",
+        )
+      ) {
+        return false;
+      }
     }
 
     if (timeout < 1 || timeout >= frequency * 60) {
-        alert("Timeout must be at least 1 second and less than the frequency.");
-        return false;
+      alert("Timeout must be at least 1 second and less than the frequency.");
+      return false;
     }
 
     if (objectFilter !== "" && (objectConfidence < 0 || objectConfidence > 1)) {
-        alert("Object Confidence must be between 0 and 1 when Object Filter is specified.");
-        return false;
+      alert(
+        "Object Confidence must be between 0 and 1 when Object Filter is specified.",
+      );
+      return false;
     }
 
-    if ((popupXpath !== "" && !popupXpath.startsWith('//')) || (dedicatedXpath !== "" && !dedicatedXpath.startsWith('//'))) {
-        alert("XPath expressions must start with '//'.");
-        return false;
+    if (
+      (popupXpath !== "" && !popupXpath.startsWith("//")) ||
+      (dedicatedXpath !== "" && !dedicatedXpath.startsWith("//"))
+    ) {
+      alert("XPath expressions must start with '//'.");
+      return false;
     }
 
     return true;
-}
+  }
 
-
-function confirmDelete(templateName) {
-    const confirmed = confirm("Are you sure you want to delete this template?");
-    if (!confirmed) return;
-    const templateData = window.templateDetails[templateName] || {};
-    fetch('/templates', {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: templateName })
-    })
-    .then(response => response.json())
-    .then(data => {
-        alert(data.message);
-        if(data.status === 'success') {
-            showUndo(templateName, templateData);
-        }
-    })
-    .catch(error => console.error('Error:', error));
-}
-
-function showUndo(name, data) {
-    const container = document.getElementById('undo-container');
-    if (!container) return;
-    container.style.display = 'block';
-    container.innerHTML = '<button id="undo-btn" title="Restore deleted template">Undo Delete</button>';
-    document.getElementById('undo-btn').addEventListener('click', () => {
-        fetch('/templates', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(Object.assign({ name }, data))
+  let pendingTemplate = null;
+  function confirmDelete(templateName) {
+    const modal = document.getElementById("delete-template-modal");
+    const msg = document.getElementById("delete-template-modal-message");
+    const confirmBtn = document.getElementById("delete-template-confirm");
+    const cancelBtn = document.getElementById("delete-template-cancel");
+    const closeBtn = document.getElementById("delete-template-close");
+    if (!modal || !msg || !confirmBtn) return;
+    pendingTemplate = templateName;
+    msg.textContent = `Delete template ${templateName}?`;
+    modal.style.display = "block";
+    const hide = () => {
+      modal.style.display = "none";
+    };
+    cancelBtn?.addEventListener("click", hide, { once: true });
+    closeBtn?.addEventListener("click", hide, { once: true });
+    confirmBtn.addEventListener(
+      "click",
+      () => {
+        hide();
+        const templateData = window.templateDetails[pendingTemplate] || {};
+        fetch("/templates", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: pendingTemplate }),
         })
-        .then(resp => resp.json())
-        .then(() => { window.location.reload(); })
-        .catch(err => console.error('Error:', err));
-    });
-    setTimeout(() => { container.style.display = 'none'; }, 10000);
-}
+          .then((response) => response.json())
+          .then((data) => {
+            alert(data.message);
+            if (data.status === "success") {
+              showUndo(pendingTemplate, templateData);
+            }
+          })
+          .catch((error) => console.error("Error:", error));
+        pendingTemplate = null;
+      },
+      { once: true },
+    );
+  }
 
-function showCameraDetails(templateName) {
+  function showUndo(name, data) {
+    const container = document.getElementById("undo-container");
+    if (!container) return;
+    container.style.display = "block";
+    container.innerHTML =
+      '<button id="undo-btn" title="Restore deleted template">Undo Delete</button>';
+    document.getElementById("undo-btn").addEventListener("click", () => {
+      fetch("/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.assign({ name }, data)),
+      })
+        .then((resp) => resp.json())
+        .then(() => {
+          window.location.reload();
+        })
+        .catch((err) => console.error("Error:", err));
+    });
+    setTimeout(() => {
+      container.style.display = "none";
+    }, 10000);
+  }
+
+  async function showCameraDetails(templateName) {
     const baseUrl = window.location.origin;
     const endpoints = {
-        'Camera Name': templateName,
-        'Last Screenshot URL': `${baseUrl}/last_screenshot/${templateName}`,
-        'Last Video URL': `${baseUrl}/last_video/${templateName}`,
-        'Stream URL': `${baseUrl}/stream.mjpg?group=${templateName}`,
-        'Motion Stream URL': `${baseUrl}/motion.mjpg?group=${templateName}`,
-        'Caption Stream URL': `${baseUrl}/caption.mjpg?group=${templateName}`,
-        'Motion Caption Stream URL': `${baseUrl}/motion_caption.mjpg?group=${templateName}`,
-        'Template Details URL': `${baseUrl}/templates/${templateName}`
+      "Camera Name": templateName,
+      "Last Screenshot URL": `${baseUrl}/last_screenshot/${templateName}`,
+      "Recent Clip URL": `${baseUrl}/clip/${templateName}`,
+      "Stream URL": `${baseUrl}/stream.mjpg?group=${templateName}`,
+      "Motion Stream URL": `${baseUrl}/motion.mjpg?group=${templateName}`,
+      "Caption Stream URL": `${baseUrl}/caption.mjpg?group=${templateName}`,
+      "Motion Caption Stream URL": `${baseUrl}/motion_caption.mjpg?group=${templateName}`,
+      "Template Details URL": `${baseUrl}/templates/${templateName}`,
     };
 
     const meta = cameraMeta;
     const metadata = {
-        'Last Screenshot Time': meta.last_screenshot_time || 'N/A',
-        'Last Video Time': meta.last_video_time || 'N/A',
-        'Last Caption': meta.last_caption || 'N/A',
-        'Caption Time': meta.last_caption_time || 'N/A',
+      "Last Screenshot Time": meta.last_screenshot_time || "N/A",
+      "Last Video Time": meta.last_video_time || "N/A",
+      "Last Caption": meta.last_caption || "N/A",
+      "Caption Time": meta.last_caption_time || "N/A",
     };
     if (meta.offline_since) {
-        metadata['Offline Since'] = meta.offline_since;
+      metadata["Offline Since"] = meta.offline_since;
     }
     if (meta.capture_failed) {
-        metadata['Capture Failed'] = true;
+      metadata["Capture Failed"] = true;
     }
 
-    let detailsHtml = '<h3>Camera Endpoints</h3><pre>';
+    try {
+      const resp = await fetch(`/camera_diagnostics/${templateName}`);
+      if (resp.ok) {
+        const diag = await resp.json();
+        if (diag.device_type) metadata["Device Type"] = diag.device_type;
+        if (diag.ping_ms) metadata["Ping (ms)"] = diag.ping_ms;
+        if (diag.open_ports)
+          metadata["Open Ports"] = diag.open_ports.join(", ");
+      }
+    } catch (err) {
+      console.error("diagnostics error", err);
+    }
+
+    let detailsHtml = "<h3>Camera Endpoints</h3><pre>";
     for (const [key, value] of Object.entries(endpoints)) {
-        detailsHtml += `${key}: ${value}\n`;
+      detailsHtml += `${key}: ${value}\n`;
     }
-    detailsHtml += '</pre>';
+    detailsHtml += "</pre>";
 
-    detailsHtml += '<h3>Camera Metadata</h3><pre>';
+    detailsHtml += "<h3>Camera Metadata</h3><pre>";
     for (const [key, value] of Object.entries(metadata)) {
-        if (value) {
-            detailsHtml += `${key}: ${value}\n`;
-        }
+      if (value) {
+        detailsHtml += `${key}: ${value}\n`;
+      }
     }
-    detailsHtml += '</pre>';
+    detailsHtml += "</pre>";
 
-    detailsHtml += '<button onclick="copyToClipboard()" title="Copy details to clipboard">Copy to Clipboard</button>';
+    detailsHtml +=
+      '<button onclick="copyToClipboard()" title="Copy details to clipboard">Copy to Clipboard</button>';
 
-    document.getElementById('camera-details-content').innerHTML = detailsHtml;
-    document.getElementById('camera-details-modal').style.display = 'block';
-}
+    document.getElementById("camera-details-content").innerHTML = detailsHtml;
+    document.getElementById("camera-details-modal").style.display = "block";
+  }
 
-function copyToClipboard() {
-    const detailsText = document.querySelector('#camera-details-content pre').innerText;
-    navigator.clipboard.writeText(detailsText).then(() => {
-        alert('Camera details copied to clipboard!');
-    }).catch(err => {
-        console.error('Failed to copy text: ', err);
+  function copyToClipboard() {
+    const detailsText = document.querySelector(
+      "#camera-details-content pre",
+    ).innerText;
+    navigator.clipboard
+      .writeText(detailsText)
+      .then(() => {
+        alert("Camera details copied to clipboard!");
+      })
+      .catch((err) => {
+        console.error("Failed to copy text: ", err);
+      });
+  }
+
+  function closeModal() {
+    document.getElementById("camera-details-modal").style.display = "none";
+  }
+
+  function suggestPrompt(name) {
+    fetch(`/generate_prompt/${name}`, { method: "POST" })
+      .then((resp) => resp.json())
+      .then((data) => {
+        document.getElementById("prompt-text").value = data.prompt || "";
+        document.getElementById("prompt-modal").style.display = "block";
+      });
+  }
+
+  function suggestFix(name) {
+    fetch(`/suggest_fix/${name}`, { method: "POST" })
+      .then((resp) => resp.json())
+      .then((data) => {
+        alert(JSON.stringify(data, null, 2));
+      });
+  }
+
+  function closePromptModal() {
+    document.getElementById("prompt-modal").style.display = "none";
+  }
+
+  function updateBrowserRelated() {
+    const browser = document.getElementById("browser");
+    const headless = document.getElementById("headless");
+    const stealth = document.getElementById("stealth");
+    const popup = document.getElementById("popup_xpath");
+    const dedicated = document.getElementById("dedicated_xpath");
+    const enabled = browser && browser.checked;
+    if (headless) {
+      headless.disabled = !enabled;
+      if (!enabled) headless.checked = false;
+    }
+    if (stealth) {
+      stealth.disabled = !enabled;
+      if (!enabled) stealth.checked = false;
+    }
+    if (popup) {
+      popup.disabled = !enabled;
+    }
+    if (dedicated) {
+      dedicated.disabled = !enabled;
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const browser = document.getElementById("browser");
+    const popup = document.getElementById("popup_xpath");
+    const dedicated = document.getElementById("dedicated_xpath");
+    browser?.addEventListener("change", updateBrowserRelated);
+    popup?.addEventListener("input", () => {
+      if (browser && !browser.checked) {
+        browser.checked = true;
+      }
+      updateBrowserRelated();
     });
-}
+    dedicated?.addEventListener("input", () => {
+      if (browser && !browser.checked) {
+        browser.checked = true;
+      }
+      updateBrowserRelated();
+    });
+    updateBrowserRelated();
+  });
 
-function closeModal() {
-    document.getElementById('camera-details-modal').style.display = 'none';
-}
+  function openModal(id) {
+    const target = document.getElementById(id);
+    if (!target) return;
+    const currentlyVisible = target.style.display === "block";
+    document.querySelectorAll(".modal").forEach((m) => {
+      m.style.display = "none";
+    });
+    if (!currentlyVisible) {
+      target.style.display = "block";
+      if (id === "videos-modal") {
+        const live = document.getElementById("live-video");
+        if (live) {
+          live.dataset.resumeOnClose = live.paused ? "false" : "true";
+          live.pause();
+        }
+      }
+      document.querySelector(".template-actions")?.classList.remove("fade-out");
+    } else {
+      if (id === "videos-modal") {
+        const live = document.getElementById("live-video");
+        if (live && live.dataset.resumeOnClose === "true") {
+          live.play().catch(() => {});
+        }
+      }
+      document.querySelector(".template-actions")?.classList.remove("fade-out");
+    }
+  }
 
-function suggestPrompt(name) {
-    fetch(`/generate_prompt/${name}`, {method: 'POST'})
-        .then(resp => resp.json())
-        .then(data => {
-            document.getElementById('prompt-text').value = data.prompt || '';
-            document.getElementById('prompt-modal').style.display = 'block';
-        });
-}
-
-function suggestFix(name) {
-    fetch(`/suggest_fix/${name}`, {method: 'POST'})
-        .then(resp => resp.json())
-        .then(data => {
-            alert(JSON.stringify(data, null, 2));
-        });
-}
-
-function closePromptModal() {
-    document.getElementById('prompt-modal').style.display = 'none';
-}
+  function closeGenericModal(id) {
+    document.getElementById(id).style.display = "none";
+    if (id === "videos-modal") {
+      const live = document.getElementById("live-video");
+      if (live && live.dataset.resumeOnClose === "true") {
+        live.play().catch(() => {});
+      }
+    }
+    document.querySelector(".template-actions")?.classList.remove("fade-out");
+  }
 </script>
 
+<div class="template-actions fade-out">
+  <button onclick="openModal('videos-modal')" title="Show recent videos">
+    Recent Videos
+  </button>
+  <button onclick="openModal('captures-modal')" title="Show recent screenshots">
+    Recent Captures
+  </button>
+  <button
+    onclick="recordHighSpeed('{{ template_name }}')"
+    title="Record 20 second clip"
+  >
+    Record 20s
+  </button>
+  <button
+    onclick="window.location.href='/logs?search={{ template_name }}'"
+    title="View logs for this camera"
+  >
+    View Logs
+  </button>
+  <button onclick="openModal('edit-template-modal')" title="Edit this template">
+    Edit Template
+  </button>
+  <p title="{{ template_details.last_caption_time }}">
+    <strong>Last Caption:</strong> {{ template_details.last_caption }}
+  </p>
+</div>
 
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const actions = document.querySelector(".template-actions");
+    if (!actions) return;
+    let fadeTimeout;
+    const modalVisible = () =>
+      Array.from(document.querySelectorAll(".modal")).some(
+        (m) => m.style.display === "block",
+      );
+    const show = () => {
+      actions.classList.remove("fade-out");
+      clearTimeout(fadeTimeout);
+      if (!modalVisible()) {
+        fadeTimeout = setTimeout(() => actions.classList.add("fade-out"), 3000);
+      }
+    };
+    ["mouseenter", "mousemove"].forEach((evt) => {
+      actions.addEventListener(evt, show);
+    });
+    actions.addEventListener("mouseleave", () => {
+      if (!modalVisible()) {
+        fadeTimeout = setTimeout(() => actions.classList.add("fade-out"), 3000);
+      }
+    });
+    show();
+  });
+</script>
 
+<div id="camera-details-modal" class="modal">
+  <div class="modal-content">
+    <span onclick="closeModal()" class="close-icon" title="Close dialog"
+      >&times;</span
+    >
+    <div id="camera-details-content"></div>
+  </div>
+</div>
 
-    <button id="instant-screenshot-btn" onclick="takeInstantScreenshot('{{ template_name }}')" title="Take a screenshot of the template immediately">Take Instant Screenshot</button>
-    <button id="update-video-btn" onclick="updateVideo('{{ template_name }}')" title="Update the video for this template">Update Video</button>
-    <button id="show-camera-details-btn" onclick="showCameraDetails('{{ template_name }}')" title="Show camera details and endpoints">Show Camera Details</button>
-    <button id="open-url-btn" onclick="window.open('{{ template_details.url }}', '_blank')" title="Open the monitored page">Open Page</button>
-    <br/>
+<div id="prompt-modal" class="modal">
+  <div class="modal-content">
+    <span onclick="closePromptModal()" class="close-icon" title="Close dialog"
+      >&times;</span
+    >
+    <textarea id="prompt-text" class="prompt-textarea"></textarea>
+  </div>
+</div>
 
-
-
-  <div id="camera-details-modal" class="modal">
-    <div class="modal-content">
-      <span onclick="closeModal()" class="close-icon" title="Close dialog">&times;</span>
-      <div id="camera-details-content"></div>
+<div id="videos-modal" class="modal">
+  <div class="modal-content">
+    <span
+      onclick="closeGenericModal('videos-modal')"
+      class="close-icon"
+      title="Close dialog"
+      >&times;</span
+    >
+    <div class="videos-grid">
+      {% for video in videos %}
+      <div class="video">
+        {% if video == 'last_video.mp4' %}
+        <video
+          src="/last_video/{{template_name}}"
+          data-file="last_video.mp4"
+          height="200"
+          autoplay
+          loop
+          muted
+          title="Recent video capture: last"
+        ></video>
+        {% else %}
+        <video
+          src="/videos/{{template_name}}/{{video}}"
+          data-file="{{ video }}"
+          height="200"
+          autoplay
+          loop
+          muted
+          title="Recent video capture: {{video}}"
+        ></video>
+        {% endif %}
+      </div>
+      {% endfor %}
     </div>
   </div>
+</div>
 
-  <div id="prompt-modal" class="modal">
-    <div class="modal-content">
-      <span onclick="closePromptModal()" class="close-icon" title="Close dialog">&times;</span>
-      <textarea id="prompt-text" class="prompt-textarea"></textarea>
+<div id="captures-modal" class="modal">
+  <div class="modal-content">
+    <span
+      onclick="closeGenericModal('captures-modal')"
+      class="close-icon"
+      title="Close dialog"
+      >&times;</span
+    >
+    <div class="screenshots-grid">
+      {% for screenshot in screenshots %}
+      <div class="screenshot">
+        <a
+          href="/screenshots/{{template_name}}/{{screenshot}}"
+          title="View full-size screenshot"
+          ><img
+            src="/screenshots/{{template_name}}/{{screenshot}}"
+            loading="lazy"
+            alt="Screenshot"
+            height="200"
+            title="Recent screenshot: {{screenshot}}"
+        /></a>
+      </div>
+      {% endfor %}
     </div>
   </div>
+</div>
+
+<div id="edit-template-modal" class="modal">
+  <div class="modal-content edit-template-modal-content">
+    <span
+      onclick="closeGenericModal('edit-template-modal')"
+      class="close-icon"
+      title="Close dialog"
+      >&times;</span
+    >
+    {{ template_form( 'edit-template-form-modal', '/update_template/' ~
+    template_name, template=template_details, preview_src='/stream.mjpg?camera='
+    ~ template_name, preview_id='url-preview', include_name=False,
+    submit_label='Save', object_tokens=object_tokens, clip_model=clip_model,
+    clip_gpu=clip_gpu ) }}
+  </div>
+</div>
+
+<script>
+  window.recentVideos = {{ videos|tojson }};
+</script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/recent_videos.js') }}"
+></script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/url_test.js') }}"
+></script>
 {% endblock %}
-

@@ -1,19 +1,18 @@
 # tests/test_init.py
 
-import unittest
 import os
-import sys
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import unittest
 
 from flask import Flask
-from flask_apscheduler import APScheduler
+
 from app import create_app
 
 
 class TestCreateApp(unittest.TestCase):
     def setUp(self):
-        self.app = create_app(enable_watchdog=False, schedule=False)  # maybe?
+        self.app = create_app(
+            enable_watchdog=False, schedule=False, log_cache=False
+        )  # maybe?
         self.client = self.app.test_client()
 
     def test_app_creation(self):
@@ -23,8 +22,8 @@ class TestCreateApp(unittest.TestCase):
     def test_directory_creation(self):
         from app.config import (
             SCREENSHOT_DIRECTORY,
-            VIDEO_DIRECTORY,
             SUMMARIES_DIRECTORY,
+            VIDEO_DIRECTORY,
         )
 
         self.assertTrue(os.path.exists(SCREENSHOT_DIRECTORY))

@@ -1,14 +1,13 @@
 import os
-import sys
 import unittest
-from flask import Flask
 from unittest.mock import patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from flask import Flask
 
+import app.blueprints.assets as assets
+import app.config as config
 import app.routes as routes
 from app.routes import init_routes
-import app.config as config
 
 
 class TestLastTeaserRoute(unittest.TestCase):

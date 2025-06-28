@@ -6,19 +6,26 @@ This guide provides tips for extending Glimpser, running tests, and contributing
 
 1. Clone the repository and create a virtual environment:
    ```sh
+   ruff check --exit-zero .
    git clone https://github.com/KristopherKubicki/glimpser.git
    cd glimpser
    python -m venv env
    source env/bin/activate
    ```
-2. Install the package in editable mode with development dependencies:
+2. Install Python dependencies:
    ```sh
-   pip install -e ".[dev]"
+   pip install .[dev]
    ```
-3. Install the `pre-commit` tool and set up the Git hooks:
+   Browser automation packages used for screenshots are optional and configured
+   in `pyproject.toml`. A minimal install only requires `wkhtmltoimage` for
+   lightweight captures.
+3. Set up tooling:
    ```sh
-   pip install pre-commit
-   pre-commit install
+   make setup  # installs pre-commit hooks and JS packages
+   ```
+   After installation, verify hooks:
+   ```sh
+   pre-commit run --all-files
    ```
 4. Copy the provided example environment file and update the values. Important
    variables include `SECRET_KEY` for session management, `CHATGPT_KEY` for AI
@@ -33,6 +40,7 @@ This guide provides tips for extending Glimpser, running tests, and contributing
    ```
 
 ## Understanding the Architecture
+
 Before diving into new features, read
 [Architecture Overview](architecture_overview.md). It describes how Flask routes,
 background jobs and utility modules cooperate. The "Data Flow from Camera to UI"
@@ -41,11 +49,14 @@ to the web interface.
 
 ## Running Tests
 
-The project uses `pytest` for testing and `flake8` for linting. After activating your environment, run:
+The project uses `pytest` for testing and lints Python with `ruff` and `flake8`. After activating your environment, run:
+
 ```sh
+ruff check --exit-zero .
 flake8
-pytest
+pytest  # runs in parallel via pytest-xdist
 ```
+
 Running the full test suite helps ensure that your changes do not introduce regressions.
 
 ## Contribution Workflow
@@ -66,6 +77,7 @@ For more details, see [CONTRIBUTING.md](https://github.com/KristopherKubicki/gli
 - Configuration defaults are defined in `app/config.py`.
 
 When adding new features, include corresponding tests under the `tests/` directory.
+
 - Utilities for network testing now have dedicated tests in `tests/test_network_testing_utils.py`.
 - Configuration lookup logic is verified by `tests/test_config_get_setting.py`.
 - Scheduler helpers are tested in `tests/test_scheduling_more.py`.

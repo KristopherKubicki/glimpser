@@ -5,8 +5,28 @@ export function initTooltips() {
     document.body.appendChild(tooltip);
 
     const moveTooltip = (e) => {
-      tooltip.style.left = `${e.pageX + 10}px`;
-      tooltip.style.top = `${e.pageY + 10}px`;
+      const offset = 10;
+      const tooltipWidth = tooltip.offsetWidth;
+      const tooltipHeight = tooltip.offsetHeight;
+
+      const x = e.pageX ?? e.clientX;
+      const y = e.pageY ?? e.clientY;
+      let left = x + offset;
+      if (left + tooltipWidth > window.innerWidth) {
+        left = x - tooltipWidth - offset;
+      }
+
+      let top = y + offset;
+      const viewportBottom = window.scrollY + window.innerHeight;
+      if (top + tooltipHeight > viewportBottom) {
+        top = y - tooltipHeight - offset;
+      }
+      if (top < window.scrollY) {
+        top = window.scrollY;
+      }
+
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
     };
 
     const showTooltip = (e) => {

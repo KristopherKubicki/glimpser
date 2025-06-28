@@ -1,3 +1,137 @@
+import { setCaptionsVisibility } from "./templates.js";
+
+let scrubTooltip;
+
+function createScrubTooltip() {
+  if (!scrubTooltip) {
+    scrubTooltip = document.createElement("div");
+    scrubTooltip.className = "scrub-tooltip";
+    document.body.appendChild(scrubTooltip);
+  }
+}
+
+function updateScrubTooltip(time, e) {
+  if (!scrubTooltip) return;
+  const formatted = new Date(time * 1000).toISOString().substring(11, 19);
+  scrubTooltip.textContent = formatted;
+  const offset = 8;
+  const width = scrubTooltip.offsetWidth;
+  let left = e.pageX + offset;
+  if (left + width > window.innerWidth) {
+    left = e.pageX - width - offset;
+  }
+  scrubTooltip.style.left = `${left}px`;
+  scrubTooltip.style.top = `${e.pageY + offset}px`;
+  scrubTooltip.classList.add("visible");
+}
+
+function hideScrubTooltip() {
+  if (scrubTooltip) scrubTooltip.classList.remove("visible");
+}
+
+// Prefetch queue to avoid loading many clips at once
+let prefetchQueue = [];
+let processing = false;
+let queueDelay = 1000;
+let failStreak = 0;
+const spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+function showSpinner(video) {
+  const spinner = video.parentElement?.querySelector(".loading-spinner");
+  if (!spinner || spinner.dataset.active === "true") return;
+  let i = 0;
+  spinner.textContent = spinnerFrames[i];
+  spinner.classList.add("visible");
+  spinner.dataset.active = "true";
+  const id = setInterval(() => {
+    i = (i + 1) % spinnerFrames.length;
+    spinner.textContent = spinnerFrames[i];
+  }, 100);
+  spinner.dataset.intervalId = id.toString();
+}
+
+function hideSpinner(video) {
+  const spinner = video.parentElement?.querySelector(".loading-spinner");
+  if (!spinner || spinner.dataset.active !== "true") return;
+  clearInterval(Number(spinner.dataset.intervalId));
+  spinner.dataset.active = "false";
+  spinner.classList.remove("visible");
+}
+
+function showErrorIndicator(video) {
+  const spinner = video.parentElement?.querySelector(".loading-spinner");
+  if (!spinner) return;
+  spinner.textContent = "⠿";
+  spinner.classList.add("shake", "visible");
+  clearTimeout(spinner.errorTimeoutId);
+  spinner.errorTimeoutId = setTimeout(() => {
+    spinner.classList.remove("shake", "visible");
+    spinner.textContent = "";
+  }, 2000);
+}
+
+export function setQueueDelay(ms) {
+  queueDelay = ms;
+}
+
+function adjustDelay(success) {
+  failStreak = success
+    ? Math.max(0, failStreak - 1)
+    : Math.min(failStreak + 1, 5);
+  queueDelay = 1000 * (failStreak + 1);
+  if (!success && prefetchQueue.length > failStreak + 1) {
+    prefetchQueue = prefetchQueue.slice(0, failStreak + 1);
+  }
+}
+
+export function enqueueClip(video) {
+  if (!video.dataset.hdSrc || video.dataset.hdLoaded === "true") return;
+  if (prefetchQueue.includes(video)) return;
+  prefetchQueue.push(video);
+  showSpinner(video);
+  if (!processing) processQueue();
+}
+
+export function clearPrefetchQueue() {
+  prefetchQueue = [];
+  processing = false;
+}
+
+function processQueue() {
+  const vid = prefetchQueue.shift();
+  if (!vid) {
+    processing = false;
+    return;
+  }
+  processing = true;
+  const src = vid.querySelector("source");
+  if (src) {
+    src.src = vid.dataset.hdSrc;
+    vid.dataset.hdLoaded = "true";
+    const start =
+      performance && performance.now ? performance.now() : Date.now();
+    vid.addEventListener(
+      "canplay",
+      () => {
+        hideSpinner(vid);
+        adjustDelay(performance.now() - start < 3000);
+      },
+      { once: true },
+    );
+    vid.addEventListener(
+      "error",
+      () => {
+        hideSpinner(vid);
+        showErrorIndicator(vid);
+        adjustDelay(false);
+      },
+      { once: true },
+    );
+    vid.load();
+  }
+  setTimeout(processQueue, queueDelay);
+}
+
 function safePlay(el) {
   const promise = el.play();
   if (promise && typeof promise.catch === "function") {
@@ -12,13 +146,15 @@ function safePlay(el) {
 export function initVideoControls() {
   document.addEventListener("DOMContentLoaded", () => {
     setupStatusPageVideoHover();
+    setupCaptionsPageVideoHover();
     setupVideoControls();
 
     const playAllButton = document.getElementById("play-all-button");
     const liveAllButton = document.getElementById("live-all-button");
     let playAllActive = false;
-    let liveAllActive = false;
     let playAllObserver;
+
+    if (liveAllButton) liveAllButton.style.display = "none";
 
     function handlePlayAll(entries) {
       entries.forEach((entry) => {
@@ -39,11 +175,11 @@ export function initVideoControls() {
           videos.forEach((video) => {
             const name = video.getAttribute("data-name");
             video.pause();
-            video.src = "";
-            video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
-            video.load();
+            video.querySelector("source").src = `/last_video/${name}`;
+            video.dataset.hdLoaded = "false";
           });
           playAllButton.textContent = "Play All";
+          if (liveAllButton) liveAllButton.style.display = "none";
         } else {
           playAllObserver = new IntersectionObserver(handlePlayAll, {
             threshold: 0.25,
@@ -51,12 +187,17 @@ export function initVideoControls() {
           videos.forEach((video) => {
             const name = video.getAttribute("data-name");
             const src = video.querySelector("source");
-            src.src = `/last_video/${name}`;
+            src.src = `/clip/${name}`;
+            video.dataset.hdLoaded = "true";
+            video.removeAttribute("src");
             video.poster = `/last_screenshot/${name}`;
             playAllObserver.observe(video);
+            video.load();
             safePlay(video);
           });
+          setCaptionsVisibility(false);
           playAllButton.textContent = "Pause All";
+          if (liveAllButton) liveAllButton.style.display = "inline-block";
         }
         playAllActive = !playAllActive;
       });
@@ -65,24 +206,17 @@ export function initVideoControls() {
     if (liveAllButton) {
       liveAllButton.addEventListener("click", () => {
         const videos = document.querySelectorAll(".templateDiv video");
+        if (playAllObserver) playAllObserver.disconnect();
         videos.forEach((video) => {
           const name = video.getAttribute("data-name");
-          const source = video.querySelector("source");
-          if (liveAllActive) {
-            source.src = `/last_video/${name}`;
-            video.poster = `/last_screenshot/${name}`;
-            video.load();
-            video.pause();
-            video.currentTime = 0;
-          } else {
-            source.src = `/live_video?camera=${encodeURIComponent(name)}`;
-            video.poster = "";
-            video.load();
-            safePlay(video);
-          }
+          video.pause();
+          video.src = "";
+          video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
+          video.load();
         });
-        liveAllButton.textContent = liveAllActive ? "Live All" : "Stop Live";
-        liveAllActive = !liveAllActive;
+        playAllActive = false;
+        playAllButton.textContent = "Play All";
+        liveAllButton.style.display = "none";
       });
     }
 
@@ -99,8 +233,17 @@ export function updateVideoSources() {
   videos.forEach((video) => {
     const name = video.getAttribute("data-name");
     const timestamp = new Date().getTime();
-    video.querySelector("source").src = `/last_video/${name}?t=${timestamp}`;
+    video.querySelector("source").src = `/clip/${name}?t=${timestamp}`;
     video.poster = `/last_screenshot/${name}?t=${timestamp}`;
+  });
+}
+
+export function initVisibilityHandler() {
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      document.querySelectorAll("video").forEach((v) => v.pause());
+      clearPrefetchQueue();
+    }
   });
 }
 
@@ -114,6 +257,8 @@ export function setupVideoControls() {
   const seekBar = document.getElementById("seek-bar");
   const volumeBar = document.getElementById("volume-bar");
   const castButton = document.getElementById("cast-button");
+  const rotateButton = document.getElementById("rotate-video");
+  let rotateAngle = 0;
 
   if (playPauseButton) {
     playPauseButton.addEventListener("click", () => {
@@ -135,6 +280,13 @@ export function setupVideoControls() {
       else if (video.mozRequestFullScreen) video.mozRequestFullScreen();
       else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
       else if (video.msRequestFullscreen) video.msRequestFullscreen();
+    });
+  }
+  if (rotateButton) {
+    rotateButton.addEventListener("click", () => {
+      rotateAngle = (rotateAngle + 90) % 360;
+      const container = document.querySelector(".video-container");
+      if (container) container.style.transform = `rotate(${rotateAngle}deg)`;
     });
   }
   if (seekBar) {
@@ -206,26 +358,186 @@ export function setupVideoControls() {
         break;
     }
   });
+
+  const container = video.closest(".video-container");
+  const controls = container?.querySelector(".video-controls");
+  const navButtons = container?.querySelectorAll(".clip-nav");
+  let fadeTimeout;
+  let autoplayTimeout;
+
+  const showControls = () => {
+    if (controls) controls.classList.remove("fade-out");
+    navButtons?.forEach((btn) => btn.classList.remove("fade-out"));
+    clearTimeout(fadeTimeout);
+    clearTimeout(autoplayTimeout);
+    fadeTimeout = setTimeout(() => {
+      if (controls) controls.classList.add("fade-out");
+      navButtons?.forEach((btn) => btn.classList.add("fade-out"));
+    }, 3000);
+    autoplayTimeout = setTimeout(() => {
+      video.playbackRate = 0.5;
+      if (video.paused) safePlay(video);
+    }, 60000);
+  };
+
+  if (container) {
+    ["mousemove", "touchstart", "click"].forEach((evt) =>
+      container.addEventListener(evt, showControls),
+    );
+    showControls();
+  }
 }
 
 export function setupStatusPageVideoHover() {
   const thumbnailVideoCells = document.querySelectorAll(".thumbnail-video");
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        const vid = entry.target;
+        if (entry.isIntersecting) {
+          if (!vid.poster && vid.dataset.poster) {
+            vid.poster = vid.dataset.poster;
+          }
+          enqueueClip(vid);
+        }
+      });
+    },
+    { threshold: 0.5 },
+  );
+
   thumbnailVideoCells.forEach((cell) => {
     const img = cell.querySelector("img.thumbnail");
     const video = cell.querySelector("video.hover-video");
     if (img && video) {
-      cell.addEventListener("mouseenter", () => {
+      observer.observe(video);
+      let targetTime = 0;
+      let rafId;
+
+      const step = () => {
+        if (!Number.isNaN(targetTime)) {
+          video.currentTime += (targetTime - video.currentTime) * 0.4;
+        }
+        rafId = requestAnimationFrame(step);
+      };
+
+      const scrub = (e) => {
+        const rect = cell.getBoundingClientRect();
+        const ratio = (e.clientX - rect.left) / rect.width;
+        const clamped = Math.max(0, Math.min(1, ratio));
+        if (!Number.isNaN(video.duration)) {
+          targetTime = video.duration * clamped;
+          updateScrubTooltip(targetTime, e);
+        }
+      };
+
+      let resetTimeout;
+      let hoverTimer;
+
+      cell.addEventListener("mouseenter", (e) => {
+        clearTimeout(resetTimeout);
+        hoverTimer = setTimeout(() => enqueueClip(video), 500);
         img.style.display = "none";
         video.style.display = "block";
-        safePlay(video);
-      });
-      cell.addEventListener("mouseleave", () => {
+        createScrubTooltip();
+        // Load metadata on first hover so currentTime can be set
+        if (video.readyState === 0) {
+          video.load();
+          const onLoad = () => {
+            scrub(e);
+            video.removeEventListener("loadedmetadata", onLoad);
+          };
+          video.addEventListener("loadedmetadata", onLoad);
+        } else {
+          scrub(e);
+        }
         video.pause();
-        video.currentTime = 0;
-        video.style.display = "none";
-        img.style.display = "block";
+        if (!rafId) rafId = requestAnimationFrame(step);
+      });
+
+      cell.addEventListener("mousemove", scrub);
+
+      cell.addEventListener("mouseleave", () => {
+        clearTimeout(hoverTimer);
+        hideScrubTooltip();
+        cancelAnimationFrame(rafId);
+        rafId = null;
+        resetTimeout = setTimeout(() => {
+          video.pause();
+          video.currentTime = 0;
+          video.style.display = "none";
+          img.style.display = "block";
+        }, 1000); // restore screenshot a bit after leaving
       });
     }
+  });
+}
+
+export function setupCaptionsPageVideoHover() {
+  const containers = document.querySelectorAll(
+    ".captions-page .video-container",
+  );
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        const vid = entry.target;
+        if (entry.isIntersecting) {
+          if (!vid.poster && vid.dataset.poster) {
+            vid.poster = vid.dataset.poster;
+          }
+          enqueueClip(vid);
+        }
+      });
+    },
+    { threshold: 0.5 },
+  );
+
+  containers.forEach((container) => {
+    const video = container.querySelector("video.hover-video");
+    if (!video) return;
+    observer.observe(video);
+    let targetTime = 0;
+    let rafId;
+
+    const step = () => {
+      if (!Number.isNaN(targetTime)) {
+        video.currentTime += (targetTime - video.currentTime) * 0.4;
+      }
+      rafId = requestAnimationFrame(step);
+    };
+
+    const scrub = (e) => {
+      const rect = container.getBoundingClientRect();
+      const ratio = (e.clientX - rect.left) / rect.width;
+      const clamped = Math.max(0, Math.min(1, ratio));
+      if (!Number.isNaN(video.duration)) {
+        targetTime = video.duration * clamped;
+      }
+    };
+
+    container.addEventListener("mouseenter", (e) => {
+      if (video.readyState === 0) {
+        video.load();
+        const onLoad = () => {
+          scrub(e);
+          video.removeEventListener("loadedmetadata", onLoad);
+        };
+        video.addEventListener("loadedmetadata", onLoad);
+      } else {
+        scrub(e);
+      }
+      video.pause();
+      if (!rafId) rafId = requestAnimationFrame(step);
+    });
+
+    container.addEventListener("mousemove", scrub);
+
+    container.addEventListener("mouseleave", () => {
+      hideScrubTooltip();
+      cancelAnimationFrame(rafId);
+      rafId = null;
+      video.pause();
+      video.currentTime = 0;
+    });
   });
 }
 
@@ -268,3 +580,9 @@ export function startCasting() {
     );
   }
 }
+
+// expose queue functions for other modules
+window.enqueueClip = enqueueClip;
+window.setQueueDelay = setQueueDelay;
+window.clearPrefetchQueue = clearPrefetchQueue;
+export { showSpinner, hideSpinner, showErrorIndicator };

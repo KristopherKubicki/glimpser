@@ -1,15 +1,12 @@
 # tests/test_screenshot_capture.py
 
-import unittest
-from unittest.mock import patch, MagicMock
-import tempfile
-import os
-import sys
-import logging
 import io
-from PIL import Image
+import os
+import tempfile
+import unittest
+from unittest.mock import MagicMock, patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from PIL import Image
 
 from app.utils.screenshots import capture_screenshot_and_har, download_image
 
@@ -18,8 +15,12 @@ class TestScreenshotCapture(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
         self.output_path = os.path.join(self.temp_dir, "test_screenshot.png")
+        # Speed up tests by skipping sleeps in the screenshot helper
+        self.sleep_patch = patch("app.utils.screenshots.time.sleep", return_value=None)
+        self.sleep_patch.start()
 
     def tearDown(self):
+        self.sleep_patch.stop()
         if os.path.exists(self.output_path):
             os.remove(self.output_path)
         orig = self.output_path + ".orig.png"
@@ -31,8 +32,9 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
     @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
     def test_capture_screenshot_success(
-        self, mock_path, mock_version, mock_launch, mock_finalize
+        self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
     ):
         mock_driver = MagicMock()
         mock_launch.return_value = mock_driver
@@ -50,8 +52,9 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
     @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
     def test_capture_screenshot_with_popup(
-        self, mock_path, mock_version, mock_launch, mock_finalize
+        self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
     ):
         mock_driver = MagicMock()
         mock_launch.return_value = mock_driver
@@ -70,7 +73,8 @@ class TestScreenshotCapture(unittest.TestCase):
         mock_finalize.assert_called_once()
 
     @patch("app.utils.screenshots.webdriver.Chrome")
-    def test_capture_screenshot_failure(self, mock_chrome):
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
+    def test_capture_screenshot_failure(self, mock_online, mock_chrome):
         # Mock the Chrome driver to raise an exception
         mock_chrome.side_effect = Exception("Browser error")
 
@@ -86,8 +90,15 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
     @patch("app.utils.screenshots.create_placeholder")
     @patch("app.utils.screenshots.is_mostly_blank", return_value=True)
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
     def test_capture_screenshot_blank_image(
-        self, mock_blank, mock_placeholder, mock_get_path, mock_get_version, mock_launch
+        self,
+        mock_online,
+        mock_blank,
+        mock_placeholder,
+        mock_get_path,
+        mock_get_version,
+        mock_launch,
     ):
         mock_driver = MagicMock()
         mock_launch.return_value = mock_driver
@@ -117,8 +128,9 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
     @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
     def test_capture_screenshot_with_dark_mode(
-        self, mock_path, mock_version, mock_launch, mock_finalize
+        self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
     ):
         mock_driver = MagicMock()
         mock_launch.return_value = mock_driver

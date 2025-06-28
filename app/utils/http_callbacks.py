@@ -1,6 +1,11 @@
 import logging
+import socket
 import time
+from urllib.parse import urlparse
+
 import requests
+
+from .logging_utils import sanitize_url
 
 
 def send_http_callback(
@@ -35,13 +40,24 @@ def send_http_callback(
     if not url:
         return
 
+    parsed = urlparse(url)
+    host = parsed.hostname
+    if not host:
+        logging.warning("Invalid callback URL: %s", sanitize_url(url))
+        return
+    try:
+        socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        logging.warning("Callback host does not resolve: %s", host)
+        return
+
     data = {"event": event_type, "payload": payload}
     headers = headers or {}
     attempt = 0
     while True:
         try:
             requests.post(url, json=data, timeout=timeout, headers=headers)
-            logging.info("HTTP callback sent to %s", url)
+            logging.info("HTTP callback sent to %s", sanitize_url(url))
             break
         except Exception as exc:
             logging.error("HTTP callback error: %s", exc)

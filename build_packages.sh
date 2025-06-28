@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Exit on error
-set -e
+# Exit on error and undefined variables, fail on pipeline errors
+set -euo pipefail
 
 # Function to check if a command exists
 command_exists() {
@@ -21,9 +21,16 @@ fi
 
 # Build Debian package
 echo "Building Debian package..."
+# Read version from pyproject so the package version matches the Python
+# distribution. tomllib is available from Python 3.11.
+VERSION=$(python3 - <<'EOF'
+import tomllib, pathlib
+data = tomllib.loads(pathlib.Path("pyproject.toml").read_text())
+print(data["project"]["version"])
+EOF
+)
 mkdir -p debian/glimpser/opt/glimpser || { echo "Failed to create directory"; exit 1; }
 rsync -a app/ debian/glimpser/opt/glimpser/app/ || { echo "Failed to sync app directory"; exit 1; }
-cp requirements.txt debian/glimpser/opt/glimpser/ || { echo "Failed to copy requirements.txt"; exit 1; }
 rsync -a data/ debian/glimpser/opt/glimpser/data/ || { echo "Failed to sync data directory"; exit 1; }
 mkdir -p debian/glimpser/etc/systemd/system || { echo "Failed to create systemd directory"; exit 1; }
 cat > debian/glimpser/etc/systemd/system/glimpser.service << EOL || { echo "Failed to create service file"; exit 1; }
@@ -45,7 +52,7 @@ EOL
 mkdir -p debian/glimpser/DEBIAN || { echo "Failed to create DEBIAN directory"; exit 1; }
 cat > debian/glimpser/DEBIAN/control <<EOF
 Package: glimpser
-Version: 1.0.0
+Version: ${VERSION}
 Section: utils
 Priority: optional
 Architecture: all
@@ -61,7 +68,7 @@ if [ -f debian/postinst ]; then
     chmod 755 debian/glimpser/DEBIAN/postinst
 fi
 
-dpkg-deb --build debian/glimpser
+dpkg-deb --build --root-owner-group debian/glimpser
 
 echo "Debian package built successfully."
 

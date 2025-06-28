@@ -17,6 +17,11 @@ def request_with_retry(
     """Send an HTTP request with retries and exponential backoff."""
 
     attempt = 0
+    # Disable proxy use by default to avoid environment interference. Requests
+    # will respect proxies passed explicitly via ``kwargs``.
+    if "proxies" not in kwargs:
+        kwargs["proxies"] = {"http": None, "https": None}
+
     while True:
         try:
             return requests.request(method, url, timeout=timeout, **kwargs)

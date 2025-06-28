@@ -1,14 +1,11 @@
-import unittest
-import tempfile
 import os
-import sys
-from PIL import Image
-from unittest.mock import patch, MagicMock
+import tempfile
+import unittest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from PIL import Image
 
 from app.utils.retention_policy import delete_old_files
-from app.utils.screenshots import add_timestamp, remove_background, is_mostly_blank
+from app.utils.screenshots import add_timestamp, is_mostly_blank, remove_background
 
 
 class TestFileRetention(unittest.TestCase):
@@ -45,6 +42,29 @@ class TestImageProcessing(unittest.TestCase):
             self.assertTrue(os.path.exists(image_path))
         finally:
             os.remove(image_path)
+
+    def test_add_timestamp_truncated_image(self):
+        """Ensure add_timestamp handles truncated PNG files gracefully."""
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
+            image_path = temp_file.name
+            # Save a valid PNG then truncate to simulate an incomplete file
+            with Image.new("RGB", (10, 10), color="white") as img:
+                img.save(temp_file, "PNG")
+            # Remove the last chunk to corrupt the file but leave the header intact
+            with open(image_path, "rb") as f:
+                data = f.read()
+            with open(image_path, "wb") as f:
+                f.write(data[:-10])
+
+        try:
+            add_timestamp(image_path, name="Broken", invert=False)
+            # The function should not raise and should still create an output file
+            self.assertTrue(os.path.exists(image_path))
+        finally:
+            for suffix in ["", ".broken"]:
+                path = image_path.replace(".png", f"{suffix}")
+                if os.path.exists(path):
+                    os.remove(path)
 
     def test_remove_background(self):
         with Image.new("RGBA", (100, 100), color=(14, 14, 14, 255)) as img:

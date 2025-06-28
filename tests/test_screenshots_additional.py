@@ -1,12 +1,10 @@
-import unittest
 import os
-import sys
-import tempfile
 import shutil
+import tempfile
+import unittest
 from unittest.mock import patch
-from PIL import Image
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from PIL import Image
 
 import app.utils.screenshots as ss
 
@@ -53,7 +51,7 @@ class TestScreenshotsExtras(unittest.TestCase):
         self.assertFalse(ss.check_if_modified(url, headers))
 
     def test_auth_helpers(self):
-        url = "http://user:pass@example.com"
+        url = "http://user:pass@example.com"  # pragma: allowlist secret
         basic = ss.get_auth(url)
         digest = ss.get_digest_auth(url)
         self.assertEqual(basic.username, "user")

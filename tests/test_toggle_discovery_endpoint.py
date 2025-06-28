@@ -1,10 +1,8 @@
 import os
-import sys
 import unittest
-from flask import Flask
 from unittest.mock import patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from flask import Flask
 
 from app.routes import init_routes
 
@@ -28,7 +26,9 @@ class TestToggleDiscoveryEndpoint(unittest.TestCase):
         resp = self.client.post("/toggle_discovery")
         self.assertEqual(resp.status_code, 200)
         mock_schedule.assert_called_once()
-        mock_update.assert_called_once_with("DISCOVERY_AUTOSTART", "True")
+        mock_update.assert_called_once_with(
+            "DISCOVERY_AUTOSTART", "True", restart=False
+        )
         self.assertEqual(resp.get_json(), {"status": "running"})
 
     @patch("app.routes.scheduling.scheduler")
@@ -39,7 +39,9 @@ class TestToggleDiscoveryEndpoint(unittest.TestCase):
         resp = self.client.post("/toggle_discovery")
         self.assertEqual(resp.status_code, 200)
         mock_stop.assert_called_once()
-        mock_update.assert_called_once_with("DISCOVERY_AUTOSTART", "False")
+        mock_update.assert_called_once_with(
+            "DISCOVERY_AUTOSTART", "False", restart=False
+        )
         self.assertEqual(resp.get_json(), {"status": "stopped"})
 
 

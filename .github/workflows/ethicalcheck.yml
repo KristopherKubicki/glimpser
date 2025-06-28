@@ -33,9 +33,9 @@ on:
   # Triggers the workflow on push or pull request events but only for the "main" branch
   # Customize trigger events based on your DevSecOps processes.
   push:
-    branches: [ "main" ]
+    branches: [ "main", "staging" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "staging" ]
   schedule:
     - cron: '16 18 * * 2'
 

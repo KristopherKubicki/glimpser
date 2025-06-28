@@ -1,5 +1,6 @@
-{% extends 'base.html' %} {% block content %}
-<div class="captions-page">
+{% extends 'base.html' %} {% from 'components.html' import status_legend,
+template_controls %} {% block content %}
+<div class="captions-page" data-latest-caption="{{ latest_caption }}">
   <script>
     function updateTemplate(templateName) {
       var notes = $("#notes-" + templateName).val();
@@ -24,74 +25,59 @@
             btn.textContent =
               data.speed > 0 ? "Disable Chyron" : "Enable Chyron";
           }
+          if (window.updateChyron) {
+            window.updateChyron(data.speed);
+          }
         });
     }
   </script>
 
   <div class="tabs">
     <button class="tab-link active" data-tab="prompts-tab">Prompts</button>
-    <button class="tab-link" data-tab="history-tab">History</button>
+    <button class="tab-link" data-tab="history-tab">Summaries</button>
     <button class="tab-link" data-tab="bulk-tab">Bulk Tools</button>
   </div>
 
   <div id="prompts-tab" class="tab-content active">
-    <details class="filter-controls">
-      <summary>Search &amp; Filters</summary>
-      <div class="controls-inner">
-        <label for="search-input" title="Search for cameras or groups"
-          >Search:</label
-        >
-        <input
-          type="search"
-          id="search-input"
-          placeholder="Search cameras or groups"
-          title="Enter search terms"
-        />
+    {% call template_controls() %}
+    <select id="sort-date" class="sort-select" aria-label="Sort cameras">
+      <option value="">↕</option>
+      <option value="name_asc">A–Z</option>
+      <option value="name_desc">Z–A</option>
+      <option value="last_desc">Last ↓</option>
+      <option value="last_asc">Last ↑</option>
+      <option value="next_desc">Next ↓</option>
+      <option value="next_asc">Next ↑</option>
+      <option value="error_desc">Error ↓</option>
+      <option value="error_asc">Error ↑</option>
+    </select>
+    <div class="field-toggle">
+      <label>
+        <input type="radio" name="caption-field" value="caption" checked />
+        Caption
+      </label>
+      <label>
+        <input type="radio" name="caption-field" value="prompt" /> Prompt
+      </label>
+    </div>
+    {% endcall %}
 
-        <label for="filter-column" title="KPI to filter">KPI:</label>
-        <select id="filter-column" title="Select KPI">
-          <option value="">All</option>
-          <option value="screenshot_count">Shots</option>
-          <option value="video_count">Videos</option>
-          <option value="storage_usage">Storage</option>
-          <option value="llm_response_count">LLM Resp</option>
-          <option value="llm_cost_estimate">LLM Cost</option>
-        </select>
-        <input
-          type="text"
-          id="filter-value"
-          placeholder="Value"
-          title="Filter value"
-        />
-        <button id="apply-filter" type="button" title="Filter table rows">
-          Apply
-        </button>
-        <input
-          type="range"
-          id="grid-width-slider"
-          min="50"
-          max="3840"
-          value="360"
-          title="Adjust thumbnail width"
-        />
-      </div>
-    </details>
-
-    <h2>Camera Notes</h2>
     <div id="template-list">
       <table id="camera-table" class="camera-table">
         <thead>
           <tr>
             <th class="sortable" data-type="string">Camera</th>
-            <th class="sortable" data-type="date">Last</th>
-            <th class="sortable" data-type="date">Next</th>
-            <th>Caption</th>
+            <th class="sortable view-header" data-type="string">Caption</th>
           </tr>
         </thead>
         <tbody>
           {% for camera in template_details %}
           <tr
             class="camera-row"
+            data-index="{{ loop.index0 }}"
+            data-last="{{ template_details[camera]['last_screenshot'] }}"
+            data-next="{{ template_details[camera]['next_screenshot'] }}"
+            data-error="{{ 1 if template_details[camera]['capture_failed'] else 0 }}"
             data-groups="{{ template_details[camera]['groups'] }}"
             data-screenshot_count="{{ template_details[camera]['screenshot_count'] }}"
             data-video_count="{{ template_details[camera]['video_count'] }}"
@@ -116,7 +102,9 @@
                     class="hover-video"
                     loop
                     muted
-                    poster="/last_screenshot/{{ camera }}"
+                    preload="none"
+                    data-poster="/last_screenshot/{{ camera }}"
+                    data-hd-src="/clip/{{ camera }}"
                   >
                     <source src="/last_video/{{ camera }}" type="video/mp4" />
                     Your browser does not support the video tag.
@@ -124,43 +112,45 @@
                 </div>
               </div>
             </td>
-            <td data-value="{{ template_details[camera]['last_screenshot'] }}">
-              <span
-                class="humanized-time"
-                data-time="{{ template_details[camera]['last_screenshot'] }}"
-                >{{ template_details[camera]['last_screenshot'] }}</span
-              >
-            </td>
-            <td data-value="{{ template_details[camera]['next_screenshot'] }}">
-              <span
-                class="humanized-time"
-                data-time="{{ template_details[camera]['next_screenshot'] }}"
-                >{{ template_details[camera]['next_screenshot'] }}</span
-              >
-            </td>
             <td>
               <form id="form-{{ camera }}" class="notes-form caption-box">
                 <div class="chat-box">
                   <div class="chat-prompt">
-                    <label for="notes-{{ camera }}">Prompt:</label>
-                    <textarea id="notes-{{ camera }}" class="notes-textarea">
+                    <!-- prettier-ignore -->
+                    <label class="sr-only" for="notes-{{ camera }}">Prompt</label>
+                    <textarea
+                      id="notes-{{ camera }}"
+                      class="notes-textarea"
+                      placeholder="Edit caption prompt"
+                    >
 {{ template_details[camera]['notes'] }}</textarea
                     >
+                    <button
+                      class="update-button"
+                      data-template="{{ camera }}"
+                      title="Send updated prompt"
+                      aria-label="Send updated prompt"
+                    >
+                      <svg width="16" height="16" aria-hidden="true">
+                        <use
+                          href="{{ url_for('static', filename='icons/sprite.svg') }}#send"
+                        />
+                      </svg>
+                    </button>
                   </div>
                   <div class="chat-response">
-                    <label>Response:</label>
-                    <div class="last-caption">
+                    <label id="last-caption-label-{{ camera }}" class="sr-only"
+                      >Last caption</label
+                    >
+                    <div
+                      id="last-caption-{{ camera }}"
+                      class="last-caption ellipsis"
+                      aria-labelledby="last-caption-label-{{ camera }}"
+                    >
                       {{ template_details[camera]['last_caption'] }}
                     </div>
                   </div>
                 </div>
-                <button
-                  class="update-button"
-                  data-template="{{ camera }}"
-                  title="Send updated prompt"
-                >
-                  Send
-                </button>
               </form>
             </td>
           </tr>
@@ -179,10 +169,9 @@
         placeholder="Search captions or time"
         title="Filter captions"
       />
-      <label for="caption-start">From:</label>
-      <input type="date" id="caption-start" title="Start date" />
-      <label for="caption-end">To:</label>
-      <input type="date" id="caption-end" title="End date" />
+      <label for="caption-range">Range:</label>
+      <input type="range" id="caption-range" min="1" max="30" value="7" />
+      <span id="caption-range-label">Last 7 days</span>
       <button id="caption-clear" type="button" title="Clear filters">
         Clear
       </button>
@@ -217,20 +206,35 @@
           <td>
             <span class="humanized-time" data-time="{{ lc }}">{{ lc }}</span>
           </td>
-          <td>{{ caption[lc] }}</td>
+
+          <td class="caption-cell">
+            <span class="caption-text">{{ caption[lc] }}</span>
+            <button
+              class="speech-btn"
+              type="button"
+              aria-label="Play caption"
+              title="Play caption"
+            >
+              ▶
+            </button>
+          </td>
         </tr>
         {% endif %} {% endfor %} {% endfor %} {% endif %}
       </tbody>
     </table>
     <div id="chat-modal" class="modal">
       <div class="modal-content">
-        <span id="chat-close" class="close-icon">&times;</span>
+        <span id="chat-close" class="close-icon" title="Close chat"
+          >&times;</span
+        >
         <textarea
           id="chat-question"
           class="prompt-textarea"
           placeholder="Ask a question..."
         ></textarea>
-        <button id="chat-submit" type="button">Ask</button>
+        <button id="chat-submit" type="button" title="Submit question">
+          Ask
+        </button>
         <div id="chat-answer" class="chat-answer"></div>
       </div>
     </div>

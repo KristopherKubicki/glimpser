@@ -1,77 +1,162 @@
 # app/utils/scheduling.py
 
+"""Manage Glimpser's background jobs and scheduler.
+
+This module configures a :class:`GracefulAPScheduler` wrapper around
+``APScheduler`` and provides helpers to run jobs in isolated processes with
+backoff logic. Functions such as ``schedule_crawlers`` and
+``schedule_summarization`` set up periodic crawling, summarization and other
+maintenance tasks.
+"""
+
 import datetime
+import importlib
 import json
 import logging
+import multiprocessing
 import os
 import random
 import re
-import psutil
+import select
+import shutil
+import subprocess
+import sys
+import textwrap
 import threading
 import time
-import multiprocessing
-from collections import deque
-import subprocess
-import shutil
-import textwrap
+from functools import reduce
+from math import gcd
 
+import psutil
+
+try:
+    from setproctitle import setproctitle
+except Exception:  # pragma: no cover - optional dependency
+    setproctitle = None
+import numpy as np
+
+try:  # prefer ONNX for lightweight deployments
+    import onnxruntime as ort
+except Exception:  # pragma: no cover - optional dependency
+    ort = None
+
+import requests
+from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
 from flask_apscheduler import APScheduler
-from PIL import Image, ImageDraw, ImageFont
-from transformers import CLIPProcessor, CLIPModel
+from PIL import Image, ImageDraw
 
+
+class CLIPProcessor:
+    """Lightweight CLIP preprocessor used with ONNX models.
+
+    This avoids the heavy ``transformers`` dependency by providing the
+    minimal functionality needed for object filtering.
+    """
+
+    def __init__(self):
+        pass
+
+    @classmethod
+    def from_pretrained(cls, _name: str) -> "CLIPProcessor":
+        """Return a basic processor instance."""
+
+        return cls()
+
+    def __call__(self, text, images, return_tensors="np", padding=True):
+        token_ids = [ord(c) for c in (text[0] if text else "")][:77]
+        input_ids = np.zeros((1, 77), dtype=np.int64)
+        attention_mask = np.zeros((1, 77), dtype=np.int64)
+        input_ids[0, : len(token_ids)] = token_ids
+        attention_mask[0, : len(token_ids)] = 1
+
+        img = images.convert("RGB").resize((224, 224))
+        img_array = (np.array(img).astype("float32") / 255.0).transpose(2, 0, 1)
+        pixel_values = np.expand_dims(img_array, 0)
+
+        return {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "pixel_values": pixel_values,
+        }
+
+
+from sqlalchemy.orm.exc import ObjectDeletedError
+
+import app.config as config
 from app.config import (
+    AUTO_UPDATE_BRANCH,
+    CLIP_MODEL_NAME,
+    CLIP_MODEL_PATH,
+    CLIP_REFRESH_MAX_CAMERAS,
+    CRAWLER_STARTUP_SPREAD,
     DEBUG,
+    FFMPEG_HWACCEL,
+    FFMPEG_PATH,
+    LOGGING_PATH,
+    PORT,
     SCREENSHOT_DIRECTORY,
     SUMMARIES_DIRECTORY,
     VIDEO_DIRECTORY,
-    CLIP_MODEL_NAME,
-    LOGGING_PATH,
-    FFMPEG_PATH,
-    FFMPEG_HWACCEL,
+    WATCHDOG_CPU_THRESHOLD,
+    WATCHDOG_MEMORY_THRESHOLD,
+    get_setting,
 )
-from app.utils.db import SessionLocal
-from app.models import Summary
-from .network import is_system_online
+from app.models import LogSummary, OfflineJob, Summary
+from app.utils.auto_update import check_for_update
+from app.utils.db import SessionLocal, ensure_column
+from app.utils.logging_utils import sanitize_url
 
+from . import camera_discovery
 from .detect import calculate_difference_fast
+from .email_alerts import email_alert
+from .http_callbacks import send_http_callback
 from .image_processing import chatgpt_compare
 from .llm import summarize
+from .network import is_system_online
 from .screenshots import (
-    capture_or_download,
-    remove_background,
     add_timestamp,
+    capture_or_download,
+    cas_error,
+    check_user_activity,
+    get_cached_status_code,
+    is_chrome_debug_port_open,
     is_mostly_blank,
-    throttle_cache,
     load_font,
+    remove_background,
+    throttle_cache,
 )
+from .sms_alerts import sms_alert
 from .template_manager import (
+    get_llm_cost_estimate,
+    get_llm_response_count,
+    get_screenshot_count,
+    get_storage_usage,
+    get_storage_usage_bytes,
     get_template,
     get_templates,
     get_templates_sorted_by_last_caption_time,
-    save_template,
-    update_last_screenshot_time,
-    mark_offline,
-    set_capture_failed,
-    get_screenshot_count,
     get_video_count,
-    get_storage_usage,
-    get_storage_usage_bytes,
-    get_llm_response_count,
-    get_llm_cost_estimate,
+    mark_offline,
+    save_template,
+    set_capture_failed,
+    update_last_screenshot_time,
 )
-from .email_alerts import email_alert
-from .sms_alerts import sms_alert
-from .http_callbacks import send_http_callback
-from . import camera_discovery
-
-from apscheduler.schedulers.background import BackgroundScheduler
-from concurrent.futures import ProcessPoolExecutor, TimeoutError
+from .validators import validate_template_name
 
 logging.getLogger("apscheduler").setLevel(logging.WARNING)
 
-clip_processor, clip_model = None, None
+clip_processor, clip_session = None, None
+
+# Track currently running jobs to avoid launching duplicates.
+active_jobs: dict[str, multiprocessing.Process] = {}
+# Use an RLock to prevent deadlocks when register_job_failure is invoked
+# while the lock is already held in run_with_timeout.
+active_jobs_lock = threading.RLock()
+# Track failures and backoff time to slow down flapping jobs.
+job_failures: dict[str, int] = {}
+job_backoff_until: dict[str, float] = {}
 
 
 class GracefulAPScheduler(APScheduler):
@@ -93,8 +178,10 @@ class GracefulAPScheduler(APScheduler):
                 # Shutdown the scheduler
                 super().shutdown(wait)
 
-                # Additional cleanup if needed
-                self._scheduler = None
+                # Reinitialize scheduler for future use without requiring a
+                # full application restart. This allows tests or other
+                # components to continue scheduling jobs after shutdown.
+                self.set_scheduler(BackgroundScheduler())
             else:
                 logging.info("Scheduler is not running.")
         except Exception as e:
@@ -104,6 +191,28 @@ class GracefulAPScheduler(APScheduler):
 
 
 scheduler = GracefulAPScheduler()
+
+
+def register_job_failure(key: str) -> None:
+    """Increment failure count and set backoff for ``key``."""
+    with active_jobs_lock:
+        fails = job_failures.get(key, 0) + 1
+        job_failures[key] = fails
+        job_backoff_until[key] = time.time() + min(2**fails, 300)
+
+
+def _run_target(func, args):
+    """Wrapper to set process title before executing ``func``."""
+    if setproctitle:
+        title = getattr(func, "__name__", "job")
+        if args and isinstance(args[0], str):
+            title += f":{args[0]}"
+        setproctitle(f"glimpser {title}")
+    try:
+        func(*args)
+    except Exception:
+        logging.exception("Unhandled exception in %s", getattr(func, "__name__", "job"))
+        sys.exit(1)
 
 
 def run_with_timeout(func, args=(), timeout=300):
@@ -122,10 +231,68 @@ def run_with_timeout(func, args=(), timeout=300):
                 mark_offline(args[0])
             except Exception:
                 pass
+        session = SessionLocal()
+        try:
+            session.add(
+                OfflineJob(
+                    function=f"{func.__module__}.{func.__name__}",
+                    args=json.dumps(list(args)),
+                    timeout=timeout,
+                    timestamp=int(time.time()),
+                )
+            )
+            session.commit()
+        except Exception as exc:
+            session.rollback()
+            logging.error("Failed to queue offline job: %s", exc)
+        finally:
+            session.close()
         return
 
+    cpu_level = psutil.cpu_percent(interval=0.0)
+    if cpu_level > WATCHDOG_CPU_THRESHOLD:
+        logging.info(
+            "High CPU (%.1f%%); skipping job %s",
+            cpu_level,
+            getattr(func, "__name__", "job"),
+        )
+        return
+
+    mem_level = psutil.virtual_memory().percent
+    if mem_level > WATCHDOG_MEMORY_THRESHOLD:
+        logging.info(
+            "High memory (%.1f%%); skipping job %s",
+            mem_level,
+            getattr(func, "__name__", "job"),
+        )
+        return
+
+    # Determine key for tracking active jobs. For camera updates the first
+    # argument is the camera name; otherwise fall back to function name.
+    key = getattr(func, "__name__", "job")
+    if args and isinstance(args[0], str):
+        key = args[0]
+
     try:
-        process = multiprocessing.Process(target=func, args=args)
+        with active_jobs_lock:
+            now = time.time()
+            backoff_until = job_backoff_until.get(key, 0)
+            if now < backoff_until:
+                logging.info("backing off job %s for %.1fs", key, backoff_until - now)
+                return
+            existing = active_jobs.get(key)
+            if existing and existing.is_alive():
+                logging.info("job already running")
+                return
+            proc_title = getattr(func, "__name__", "job")
+            if args and isinstance(args[0], str):
+                proc_title += f":{args[0]}"
+            process = multiprocessing.Process(
+                target=_run_target,
+                args=(func, args),
+                name=f"glimpser {proc_title}",
+            )
+            active_jobs[key] = process
         process.start()
     except OSError as exc:
         logging.error(
@@ -138,145 +305,47 @@ def run_with_timeout(func, args=(), timeout=300):
                 mark_offline(args[0])
             except Exception:
                 pass
+        with active_jobs_lock:
+            active_jobs.pop(key, None)
         return
 
     process.join(timeout)
+    success = True
     if process.is_alive():
         process.terminate()
         process.join()
         logging.warning("Process terminated due to timeout")
-
-
-MAX_IMAGE_TIME_DIFF = datetime.timedelta(minutes=5)
-
-
-def find_closest_image(directory, last_caption_time, max_time_diff=MAX_IMAGE_TIME_DIFF):
-    """Return the closest motion image not older than ``max_time_diff``."""
-    closest_image = None
-    min_time_diff = None
-
-    for filename in os.listdir(directory):
-        if (
-            filename.endswith(".png")
-            and "motion" in filename
-            and not os.path.islink(os.path.join(directory, filename))
-        ):
-            # Extract timestamp from filename
-            timestamp_str = filename.split("_")[0]
+        success = False
+        if args and isinstance(args[0], str):
             try:
-                timestamp = datetime.datetime.strptime(timestamp_str, "%Y%m%d%H%M%S")
-                time_diff = abs(last_caption_time - timestamp)
+                mark_offline(args[0])
+            except Exception:
+                pass
+            try:
+                if len(args) > 1 and isinstance(args[1], dict):
+                    url = args[1].get("url")
+                    if url:
+                        cas_error(url)
+            except Exception:
+                pass
+    elif process.exitcode and process.exitcode != 0:
+        success = False
 
-                # Ignore images outside the allowed time window
-                if time_diff > max_time_diff:
-                    continue
+    with active_jobs_lock:
+        active_jobs.pop(key, None)
+        if success:
+            job_failures.pop(key, None)
+            job_backoff_until.pop(key, None)
 
-                if min_time_diff is None or time_diff < min_time_diff:
-                    closest_image = filename
-                    min_time_diff = time_diff
-            except ValueError:
-                continue  # Skip files with unexpected filename format
-
-    return closest_image
-
-
-def load_image(image_path):
-    """Return an RGB image or ``None`` if loading fails."""
-    try:
-        image = Image.open(image_path)
-        return image.convert("RGB")
-    except Exception as e:  # pragma: no cover - I/O errors are environment specific
-        if DEBUG:
-            os.rename(image_path, image_path.replace(".png", ".broken"))
-        else:
-            os.unlink(image_path)
-        logging.warning("image load issue: %s %s", image_path, e)
-        logging.error("Error saving image: %s %s", image_path, e)
-        return None
+    if not success:
+        register_job_failure(key)
 
 
-def apply_motion_icon(image, draw, font, font_size, top_offset, padding=6):
-    motion_icon = "░"
-    text_w = int(draw.textlength(motion_icon, font=font))
-    text_h = font_size
-    x = int(image.width - text_w - 10)
-    y = int(image.height - int(font_size * 3) - top_offset)
-    background = Image.new(
-        "RGBA",
-        (text_w + padding * 2, text_h + padding * 2),
-        (0, 0, 0, 128),
-    )
-    image.paste(background, (x - padding, y - padding), background)
-    draw.text(
-        (x, y),
-        motion_icon,
-        font=font,
-        fill=(255, 255, 255, 255),
-        stroke_width=1,
-        stroke_fill=(0, 0, 0, 255),
-    )
-
-
-def apply_caption(image, draw, font, font_size, caption, top_offset, padding=6):
-    caption = caption[:64].replace("\n", " ")
-    wrapped = textwrap.fill(caption, width=32)
-    x = padding
-    y = int(image.height - int(font_size * 3) - top_offset)
-    bbox = draw.multiline_textbbox((x, y), wrapped, font=font, stroke_width=1)
-    text_w = bbox[2] - bbox[0]
-    text_h = bbox[3] - bbox[1]
-    background = Image.new(
-        "RGBA",
-        (text_w + padding * 2, text_h + padding * 2),
-        (0, 0, 0, 128),
-    )
-    image.paste(background, (x - padding, y - padding), background)
-    draw.multiline_text(
-        (x, y),
-        wrapped,
-        font=font,
-        fill=(255, 255, 255, 255),
-        stroke_width=1,
-        stroke_fill=(0, 0, 0, 255),
-    )
-
-
-def save_image(image, image_path):
-    image.save(image_path, "PNG")
-    image.close()
-
-
-def add_motion_and_caption(image_path, caption=None, motion=False):
-    if not os.path.exists(image_path):
-        return
-
-    if caption is None and not motion:
-        return
-
-    image = load_image(image_path)
-    if image is None:
-        return
-
-    try:
-        draw = ImageDraw.Draw(image)
-        max_height = min(image.height, image.width * 9 // 16)
-        font_size = int(max_height * 0.05)
-        top_offset = (image.height - max_height) / 2
-
-        # Use the same font loader as timestamps
-        font = load_font(font_size)
-
-        padding = 6
-
-        if motion:
-            apply_motion_icon(image, draw, font, font_size, top_offset, padding)
-
-        if caption is not None:
-            apply_caption(image, draw, font, font_size, caption, top_offset, padding)
-
-        save_image(image, image_path)
-    except Exception as e:  # pragma: no cover - unexpected errors
-        logging.error(f"Error updating image {image_path} : {e}")
+from .image_utils import (
+    MAX_IMAGE_TIME_DIFF,
+    add_motion_and_caption,
+    find_closest_image,
+)
 
 
 def update_camera(name, template, image_file=None, motion=False):
@@ -319,6 +388,10 @@ def update_camera(name, template, image_file=None, motion=False):
         ):
             mark_offline(name)
         set_capture_failed(name, True)
+        clean_url = sanitize_url(url)
+        logging.error("Capture failed for %s (%s)", name, clean_url)
+        register_job_failure(name)
+        return None
 
     if lsuc is True:
         directory = os.path.join(SCREENSHOT_DIRECTORY, name)
@@ -340,7 +413,7 @@ def update_camera(name, template, image_file=None, motion=False):
         lpath = os.path.join(SCREENSHOT_DIRECTORY, "latest_camera.png")
 
         try:
-            if os.path.exists(lpath + ".tmp"):
+            if os.path.lexists(lpath + ".tmp"):
                 os.unlink(os.path.abspath(lpath + ".tmp"))
             os.symlink(
                 os.path.abspath(os.path.join("data/screenshots", name, png_files[-1])),
@@ -349,7 +422,7 @@ def update_camera(name, template, image_file=None, motion=False):
             os.rename(os.path.abspath(lpath + ".tmp"), os.path.abspath(lpath))
 
             lpath = os.path.join(SCREENSHOT_DIRECTORY, name, "latest_camera.png")
-            if os.path.exists(lpath + ".tmp"):
+            if os.path.lexists(lpath + ".tmp"):
                 os.unlink(os.path.abspath(lpath + ".tmp"))
             os.symlink(
                 os.path.abspath(os.path.join("data/screenshots", name, png_files[-1])),
@@ -365,7 +438,7 @@ def update_camera(name, template, image_file=None, motion=False):
                     group_lpath = os.path.join(
                         SCREENSHOT_DIRECTORY, f"{trimmed_group_name}_latest_camera.png"
                     )
-                    if os.path.exists(group_lpath + ".tmp"):
+                    if os.path.lexists(group_lpath + ".tmp"):
                         os.unlink(os.path.abspath(group_lpath + ".tmp"))
                     os.symlink(
                         os.path.abspath(
@@ -396,9 +469,11 @@ def update_camera(name, template, image_file=None, motion=False):
         try:
             with Image.open(latest_image_path) as img:
                 if is_mostly_blank(img):
+                    status = get_cached_status_code(url)
                     logging.info(
-                        "Skipping blank frame for motion detection: %s",
+                        "Skipping blank frame for motion detection: %s (HTTP status: %s)",
                         latest_image_path,
+                        status if status is not None else "unknown",
                     )
                     return
         except Exception as e:
@@ -416,7 +491,6 @@ def update_camera(name, template, image_file=None, motion=False):
             lsum = True
 
         prev_motion = os.path.join(directory, "last_motion.png")
-        # print(" detected motion", lsum, name, template.get('last_caption'))
 
         allow = motion
 
@@ -428,7 +502,6 @@ def update_camera(name, template, image_file=None, motion=False):
         if (template.get("last_caption", "") or "") == "":
             allow = True
             last_caption_trigger = True
-            # print("allowing from no caption", name)
         if (template.get("last_motion_caption", "") or "") == "":
             allow = True
             last_motion_trigger = True
@@ -450,9 +523,7 @@ def update_camera(name, template, image_file=None, motion=False):
                 ):
                     allow = True
                     last_motion_trigger = True
-                    # print("allowing because of an old caption", name)
             except Exception:
-                # print(" parse exception", e) #n1c
                 pass
 
             # at least once a day.
@@ -498,36 +569,63 @@ def update_camera(name, template, image_file=None, motion=False):
         # run the object detect AFTER the motion detetor
         if allow is True and object_filter and object_confidence is not None:
 
-            global clip_model, clip_processor
+            global clip_session, clip_processor
 
-            if clip_model is None:
-                clip_model = CLIPModel.from_pretrained(CLIP_MODEL_NAME)
+            # Prefer the lightweight ONNX backend when available
+            use_onnx = ort is not None
 
-            if clip_processor is None:
-                clip_processor = CLIPProcessor.from_pretrained(CLIP_MODEL_NAME)
+            if use_onnx:
+                if clip_session is None:
+                    # Prefer GPU when available and fall back to CPU. This uses
+                    # the providers reported by onnxruntime so it works even
+                    # when CUDA is not installed.
+                    available = getattr(ort, "get_available_providers", lambda: [])()
+                    providers = (
+                        ["CUDAExecutionProvider"]
+                        if "CUDAExecutionProvider" in available
+                        else ["CPUExecutionProvider"]
+                    )
+                    try:
+                        clip_session = ort.InferenceSession(
+                            CLIP_MODEL_PATH, providers=providers
+                        )
+                    except TypeError:
+                        # Some runtimes (or tests) may not accept the providers
+                        # keyword. Fall back to default initialization.
+                        clip_session = ort.InferenceSession(CLIP_MODEL_PATH)
 
-            # Load the latest image
-            latest_image_path = os.path.join(directory, png_files[-1])
-            image = Image.open(latest_image_path)
+                if clip_processor is None:
+                    clip_processor = CLIPProcessor.from_pretrained(CLIP_MODEL_NAME)
 
-            # Process the image and text
-            inputs = clip_processor(
-                text=[object_filter], images=image, return_tensors="pt", padding=True
-            )
+                # Load the latest image
+                latest_image_path = os.path.join(directory, png_files[-1])
+                image = Image.open(latest_image_path)
 
-            # Get the logits from the model
-            outputs = clip_model(**inputs)
-            logits_per_image = (
-                outputs.logits_per_image
-            )  # this is the image-text similarity score
-            probs = logits_per_image.softmax(
-                dim=1
-            )  # we can take the softmax to get probabilities
+                inputs = clip_processor(
+                    text=[object_filter],
+                    images=image,
+                    return_tensors="np",
+                    padding=True,
+                )
+
+                outputs = clip_session.run(
+                    None,
+                    {
+                        "input_ids": inputs["input_ids"],
+                        "attention_mask": inputs["attention_mask"],
+                        "pixel_values": inputs["pixel_values"],
+                    },
+                )
+                logits = outputs[0]
+                exp = np.exp(logits)
+                probs = exp / exp.sum(axis=1, keepdims=True)
+            else:
+                # Skip detection when onnxruntime is unavailable
+                probs = np.array([[0.0]])
 
             # Check if the object is detected with confidence higher than the threshold
             if probs[0, 0] >= object_confidence:
                 allow = True
-                # print(f"Object '{object_filter}' detected in {name} with confidence {probs[0, 0]}")
 
         if allow:
 
@@ -561,7 +659,6 @@ def update_camera(name, template, image_file=None, motion=False):
                         image_paths.append(closest_image_path)
                 except Exception as e:
                     logging.warning("caption parsing error %s", e)
-                    pass
 
             image_paths.append(os.path.join(directory, png_files[-1]))
 
@@ -599,8 +696,6 @@ def update_camera(name, template, image_file=None, motion=False):
                     lprompt += template["notes"].strip() + "\n---\n"
                 #  use Chatgpt_compare with notes separated for clarity
                 gret = chatgpt_compare(lprompt, image_paths, template_name=name)
-                # print("  oldgpt:", name, template.get('last_caption'))
-                # print("  newgpt:", name, gret)
                 if gret and re.findall(r"(?:sorry|cannot|can not)", gret):
                     template["last_ret"] = gret + "*"
                 elif gret:
@@ -627,7 +722,7 @@ def update_camera(name, template, image_file=None, motion=False):
                 send_http_callback(template.get("callback_url"), event, payload)
 
             if last_motion_trigger or lsum:
-                if os.path.exists(
+                if os.path.lexists(
                     os.path.join(directory, "last_motion_caption.png.tmp")
                 ):
                     os.remove(os.path.join(directory, "last_motion_caption.png.tmp"))
@@ -641,7 +736,7 @@ def update_camera(name, template, image_file=None, motion=False):
                 )
 
             if last_caption_trigger:
-                if os.path.exists(os.path.join(directory, "last_caption.png.tmp")):
+                if os.path.lexists(os.path.join(directory, "last_caption.png.tmp")):
                     os.remove(os.path.join(directory, "last_caption.png.tmp"))
                 os.symlink(
                     png_files[-1], os.path.join(directory, "last_caption.png.tmp")
@@ -651,9 +746,9 @@ def update_camera(name, template, image_file=None, motion=False):
                     os.path.join(directory, "last_caption.png"),
                 )
 
-            if os.path.exists(prev_motion):
+            if os.path.lexists(prev_motion):
                 destination = os.readlink(prev_motion)
-                if os.path.exists(os.path.join(directory, "prev_motion.png.tmp")):
+                if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
                     os.remove(os.path.join(directory, "prev_motion.png.tmp"))
                 os.symlink(destination, os.path.join(directory, "prev_motion.png.tmp"))
                 os.rename(
@@ -661,7 +756,7 @@ def update_camera(name, template, image_file=None, motion=False):
                     os.path.join(directory, "prev_motion.png"),
                 )
                 image_paths.append(os.path.join(directory, "prev_motion.png"))
-            if os.path.exists(os.path.join(directory, "last_motion.png.tmp")):
+            if os.path.lexists(os.path.join(directory, "last_motion.png.tmp")):
                 os.remove(os.path.join(directory, "last_motion.png.tmp"))
             os.symlink(png_files[-1], os.path.join(directory, "last_motion.png.tmp"))
             os.rename(
@@ -689,16 +784,16 @@ def update_camera(name, template, image_file=None, motion=False):
                 }
                 send_http_callback(template.get("callback_url"), "motion", payload)
 
-            if os.path.exists(prev_motion):
+            if os.path.lexists(prev_motion):
                 destination = os.readlink(prev_motion)
-                if os.path.exists(os.path.join(directory, "prev_motion.png.tmp")):
+                if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
                     os.remove(os.path.join(directory, "prev_motion.png.tmp"))
                 os.symlink(destination, os.path.join(directory, "prev_motion.png.tmp"))
                 os.rename(
                     os.path.join(directory, "prev_motion.png.tmp"),
                     os.path.join(directory, "prev_motion.png"),
                 )
-            if os.path.exists(os.path.join(directory, "last_motion.png.tmp")):
+            if os.path.lexists(os.path.join(directory, "last_motion.png.tmp")):
                 os.remove(os.path.join(directory, "last_motion.png.tmp"))
             os.symlink(png_files[-1], os.path.join(directory, "last_motion.png.tmp"))
             os.rename(
@@ -769,8 +864,7 @@ def update_summary():
                 except Exception as e:
                     logging.error("error %s %s", e, template)
                     logging.debug("NOTES: %s", fnotes)
-                    logging.debug("GNTES: %s", fnotes)
-                    pass
+                    logging.debug("GNOTES: %s", gnotes)
 
             lstring += (
                 "name: "
@@ -868,10 +962,61 @@ def schedule_summarization():
         logging.error("job schedule error: %s", e)
 
 
+def lcm(a: int, b: int) -> int:
+    """Return least common multiple of ``a`` and ``b``."""
+
+    return abs(a * b) // gcd(a, b) if a and b else 0
+
+
+def _lcm_many(values) -> int:
+    """Return the LCM of ``values`` using :func:`lcm`."""
+
+    return reduce(lcm, values, 1)
+
+
+def calculate_optimal_offsets(templates: dict, spread_minutes: int) -> dict:
+    """Return startup offsets in seconds for each crawler.
+
+    The algorithm spreads initial runs across ``spread_minutes`` by computing a
+    window based on the LCM of crawler frequencies. Each crawler is then placed
+    within that window at the least-loaded slot to minimize overlapping starts.
+    """
+
+    if not templates:
+        return {}
+
+    frequencies = {
+        name: 60 * int(t.get("frequency", 30)) for name, t in templates.items()
+    }
+    window = max(_lcm_many(frequencies.values()), spread_minutes * 60)
+    window = min(window, 86_400)  # cap at one day to keep arrays manageable
+    step = window // max(len(frequencies), 1)
+    load = [0] * window
+    offsets = {}
+
+    for name, freq in sorted(frequencies.items(), key=lambda x: x[1], reverse=True):
+        best_offset = 0
+        best_count = float("inf")
+        for offset in range(0, window, step or 1):
+            count = sum(load[t] for t in range(offset, window, freq))
+            if count < best_count:
+                best_count = count
+                best_offset = offset
+            if best_count == 0:
+                break
+        for t in range(best_offset, window, freq):
+            load[t] += 1
+        scaled = int(best_offset / window * spread_minutes * 60)
+        offsets[name] = scaled
+
+    return offsets
+
+
 def schedule_crawlers():
     """
-    Fetch templates and schedule them according to their frequency, and schedule init_crawl.
-    Each job will be offset by an additional delay to avoid overloading the system.
+    Fetch templates and schedule them according to their frequency, then schedule
+    ``init_crawl``. Startup jobs are staggered over ``CRAWLER_STARTUP_SPREAD``
+    minutes to keep CPU usage low when many cameras are configured.
     """
     templates = get_templates()
 
@@ -884,15 +1029,14 @@ def schedule_crawlers():
             except Exception:
                 pass
 
-    total_crawlers = len(templates)
-    base_delay = 60  # Base delay of 1 minute in seconds
-    #  consider making this more dynamic, so that the shorter term ones have less of a base
+    # Determine optimized startup offsets for each crawler
+    offsets = calculate_optimal_offsets(templates, CRAWLER_STARTUP_SPREAD)
 
-    # shuffle the template so its not always the same ones
+    # Shuffle templates so the same cameras don't always start first
     shuffled_templates = list(templates.items())
     random.shuffle(shuffled_templates)
 
-    for index, (id, template) in enumerate(shuffled_templates):
+    for id, template in shuffled_templates:
         name = template.get("name")
         if name is None or name == "":
             continue
@@ -910,21 +1054,8 @@ def schedule_crawlers():
             logging.error(f"Error determining frequency for {name}: {e}")
             seconds = 60 * 30  # Fallback to default value if there's an issue
 
-        # Calculate the delay increment dynamically based on the total number of crawlers
-        lbase_delay = base_delay
-        if seconds > 120:
-            lbase_delay *= 2
-        if seconds > 240:
-            lbase_delay *= 2
-        if seconds > 360:
-            lbase_delay *= 2
-        if seconds > 720:
-            lbase_delay *= 2
-
-        delay_increment = lbase_delay / total_crawlers
-
-        # Calculate the offset delay for this crawler
-        offset_delay_seconds = index * delay_increment + index
+        # Look up the pre-calculated startup offset for this crawler
+        offset_delay_seconds = offsets.get(name, 0)
 
         # Apply the incremental delay to space out job scheduling
         try:
@@ -939,18 +1070,6 @@ def schedule_crawlers():
                 replace_existing=True,
             )
 
-            """
-            scheduler.add_job(
-                func=update_camera,
-                trigger="interval",
-                seconds=seconds,
-                start_date=datetime.datetime.now()
-                + datetime.timedelta(seconds=offset_delay_seconds),
-                args=[name, template],
-                id=name,
-                replace_existing=True,
-            )
-            """
         except Exception as e:
             logging.error("job schedule error: %s", e)
             logging.error(f"Error scheduling job for {name}: {e}")
@@ -964,153 +1083,26 @@ def schedule_crawlers():
             args=(init_crawl, (), 300),
             id="init_crawl",
         )
-        """
-        scheduler.add_job(
-            func=init_crawl,
-            trigger="date",
-            run_date=datetime.datetime.now() + datetime.timedelta(minutes=3),
-            id="init_crawl",
-        )
-        """
     except Exception as e:
         logging.error(f"Error scheduling initial crawl: {e}")
 
 
-system_metrics = {
-    "cpu_usage": 0.0,
-    "memory_usage": 0.0,
-    "thread_count": 0,
-    "start_time": time.time(),
-}
-
-
-stop_event = threading.Event()
-metrics_thread = None
-log_caching_thread = None
-
-
-def ffmpeg_version() -> str:
-    """Return the installed FFmpeg version or 'unavailable'."""
-    try:
-        output = subprocess.check_output(
-            [FFMPEG_PATH, "-version"], stderr=subprocess.STDOUT, timeout=2
-        ).decode()
-        first = output.splitlines()[0]
-        match = re.search(r"ffmpeg version\s+([^\s]+)", first)
-        return match.group(1) if match else first
-    except Exception:
-        return "unavailable"
-
-
-def machine_supports_hwaccel() -> bool:
-    """Return ``True`` if GPU devices appear to be available."""
-    return os.path.exists("/dev/dri") or shutil.which("nvidia-smi") is not None
-
-
-def ffmpeg_supports_hwaccel() -> bool:
-    """Return ``True`` if ``ffmpeg`` reports any hardware acceleration methods."""
-    try:
-        output = subprocess.check_output(
-            [FFMPEG_PATH, "-hwaccels"], stderr=subprocess.STDOUT, timeout=2
-        ).decode()
-        lines = [l.strip() for l in output.splitlines() if l.strip()]
-        return len(lines) > 1
-    except Exception:
-        return False
-
-
-def collect_system_metrics():
-    while not stop_event.is_set():
-        system_metrics["cpu_usage"] = psutil.cpu_percent(interval=1)
-        system_metrics["memory_usage"] = psutil.virtual_memory().percent
-        system_metrics["thread_count"] = threading.active_count()
-        time.sleep(5)  # Collect metrics every 5 seconds
-
-
-def start_metrics_collection():
-    global metrics_thread
-    metrics_thread = threading.Thread(target=collect_system_metrics, daemon=True)
-    metrics_thread.start()
-
-
-def get_system_metrics():
-    uptime = time.time() - system_metrics["start_time"]
-    disk_usage = psutil.disk_usage("/").percent
-    open_files = len(psutil.Process().open_files())
-    return {
-        "cpu_usage": round(system_metrics["cpu_usage"], 1),
-        "memory_usage": round(system_metrics["memory_usage"], 1),
-        "disk_usage": round(disk_usage, 1),
-        "open_files": open_files,
-        "thread_count": system_metrics["thread_count"],
-        "uptime": f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s",
-        "ffmpeg_version": ffmpeg_version(),
-        "machine_hwaccel": machine_supports_hwaccel(),
-        "ffmpeg_hwaccel": ffmpeg_supports_hwaccel(),
-        "hwaccel_enabled": bool(FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false"),
-    }
-
-
-log_cache = deque(maxlen=10000)  # Store last 10000 log entries
-log_cache_lock = threading.Lock()
-
-
-def cache_logs():
-    log_file_path = LOGGING_PATH
-    os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
-    open(log_file_path, "a").close()
-
-    try:
-        with open(log_file_path, "r") as file:
-            file.seek(0, os.SEEK_END)  # Start at end of file
-            while not stop_event.is_set():
-                new_log = file.readline()
-                if new_log:
-                    with log_cache_lock:
-                        truncated_log = (
-                            new_log[:500] + "..." if len(new_log) > 500 else new_log
-                        )
-                        log_parts = truncated_log.strip().split(" - ", 3)
-                        if len(log_parts) >= 4:
-                            timestamp_str, log_level, log_source, log_message = (
-                                log_parts
-                            )
-                            try:
-                                timestamp = datetime.datetime.strptime(
-                                    timestamp_str, "%Y-%m-%d %H:%M:%S,%f"
-                                )
-                                log_cache.append(
-                                    {
-                                        "timestamp": timestamp,
-                                        "level": log_level,
-                                        "source": log_source,
-                                        "message": log_message,
-                                    }
-                                )
-                            except ValueError:
-                                continue  # Skip incorrect timestamp format
-                else:
-                    time.sleep(1)  # Sleep briefly to avoid high CPU usage
-    except Exception as e:
-        logging.error(f"Error in cache_logs: {e}")
-
-
-def start_log_caching():
-    global log_caching_thread
-    log_caching_thread = threading.Thread(target=cache_logs, daemon=True)
-    log_caching_thread.start()
-
-    # No longer schedule cache_logs via the APScheduler.  The background thread
-    # itself handles continuous log caching and avoids spawning additional
-    # threads on scheduler restarts.
-
-
-def stop_background_tasks() -> None:
-    """Signal background threads to exit and wait for them."""
-    stop_event.set()
-    for t in (metrics_thread, log_caching_thread):
-        if t is not None:
-            t.join(timeout=1)
+from .system_metrics import (
+    FFMPEG_VERSION,
+    cache_logs,
+    ffmpeg_supports_hwaccel,
+    ffmpeg_version,
+    get_system_metrics,
+    log_cache,
+    log_cache_lock,
+    machine_supports_hwaccel,
+    metrics_thread,
+    start_log_caching,
+    start_metrics_collection,
+    stop_background_tasks,
+    stop_event,
+    system_metrics,
+)
 
 
 def get_feed_status():
@@ -1120,8 +1112,12 @@ def get_feed_status():
     now = datetime.datetime.utcnow()
     feeds = []
 
+    danger_enabled = get_setting("DANGER_MODE", "True") == "True"
+    port_open = is_chrome_debug_port_open("127.0.0.1", 9222)
+    user_idle = not check_user_activity(timeout=1)
+
     def _humanize(ts: str | None) -> str | None:
-        """Return a simple "time ago" string for the given timestamp."""
+        """Return a short "time ago" string like "5m ago"."""
         if not ts:
             return None
         try:
@@ -1133,17 +1129,17 @@ def get_feed_status():
         if diff < 0:
             return "in the future"
         intervals = (
-            ("year", 31536000),
-            ("month", 2592000),
-            ("day", 86400),
-            ("hour", 3600),
-            ("minute", 60),
-            ("second", 1),
+            ("y", 31536000),
+            ("mo", 2592000),
+            ("d", 86400),
+            ("h", 3600),
+            ("m", 60),
+            ("s", 1),
         )
-        for label, seconds in intervals:
+        for short, seconds in intervals:
             count = int(diff // seconds)
             if count >= 1:
-                return f"{count} {label}{'s' if count > 1 else ''} ago"
+                return f"{count}{short} ago"
         return "just now"
 
     def _iso(ts: str | None) -> str | None:
@@ -1167,6 +1163,28 @@ def get_feed_status():
         storage_bytes = get_storage_usage_bytes(name)
         llm_responses = get_llm_response_count(name)
         llm_cost = get_llm_cost_estimate(name)
+        headless = bool(template.get("headless", True))
+        stealth = bool(template.get("stealth", False))
+        browser = bool(template.get("browser", False))
+
+        if browser:
+            camera_type = "browser"
+        elif headless and stealth:
+            camera_type = "headless-stealth"
+        elif headless:
+            camera_type = "headless"
+        elif stealth:
+            camera_type = "stealth"
+        else:
+            camera_type = "standard"
+
+        camera_tooltip = {
+            "browser": "Full browser",
+            "headless-stealth": "Headless with stealth",
+            "headless": "Headless",
+            "stealth": "Stealth",
+            "standard": "Standard",
+        }[camera_type]
 
         status = "ok"
         tooltip_parts: list[str] = []
@@ -1209,6 +1227,27 @@ def get_feed_status():
 
         tooltip = " | ".join(tooltip_parts) if tooltip_parts else "OK"
 
+        danger = bool(template.get("danger", False))
+        danger_reason = None
+        if danger:
+            if not (danger_enabled and port_open):
+                danger_reason = "disabled"
+            elif not user_idle:
+                danger_reason = "user"
+
+        with active_jobs_lock:
+            job = active_jobs.get(name)
+            capturing = bool(job and job.is_alive())
+
+        next_capture = None
+        if frequency and last_shot:
+            try:
+                shot_dt = datetime.datetime.strptime(last_shot, "%Y-%m-%d %H:%M:%S")
+                next_dt = shot_dt + datetime.timedelta(minutes=frequency)
+                next_capture = next_dt.isoformat() + "Z"
+            except Exception:
+                pass
+
         feeds.append(
             {
                 "name": name,
@@ -1218,12 +1257,19 @@ def get_feed_status():
                 "last_caption_display": _humanize(last_caption),
                 "status": status,
                 "tooltip": tooltip,
+                "camera_type": camera_type,
+                "camera_tooltip": camera_tooltip,
                 "screenshot_count": shot_count,
                 "video_count": video_count,
                 "storage_usage": storage,
                 "storage_usage_bytes": storage_bytes,
                 "llm_response_count": llm_responses,
                 "llm_cost_estimate": llm_cost,
+                "danger": danger,
+                "danger_reason": danger_reason,
+                "capturing": capturing,
+                "next_capture_time": next_capture,
+                "frequency": frequency,
             }
         )
 
@@ -1246,6 +1292,105 @@ def get_last_summary_time() -> str | None:
     finally:
         session.close()
     return None
+
+
+def summarize_recent_logs(limit: int = 200) -> str | None:
+    """Summarize log entries from the last day using the LLM."""
+
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+    with log_cache_lock:
+        lines = [
+            f"{e['level']} {e['message']}"
+            for e in list(log_cache)[-limit:]
+            if e.get("timestamp") and e["timestamp"] >= cutoff
+        ]
+
+    if not lines:
+        return None
+
+    text = "\n".join(lines)
+    result = summarize(text)
+    if result:
+        ts = int(datetime.datetime.utcnow().timestamp())
+        session = SessionLocal()
+        try:
+            session.add(LogSummary(timestamp=ts, content=result))
+            session.commit()
+        finally:
+            session.close()
+    return result
+
+
+def get_or_generate_log_summary() -> str | None:
+    """Return a recent log summary or generate one."""
+
+    cutoff = int(
+        (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).timestamp()
+    )
+    session = SessionLocal()
+    try:
+        rec = session.query(LogSummary).order_by(LogSummary.timestamp.desc()).first()
+        if rec and rec.timestamp >= cutoff:
+            return rec.content
+    finally:
+        session.close()
+
+    return summarize_recent_logs()
+
+
+def summarize_camera_logs(name: str, limit: int = 200) -> str | None:
+    """Summarize recent logs mentioning ``name`` using the LLM."""
+
+    ensure_column("log_summaries", "camera", "VARCHAR(255)", "''")
+
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+    with log_cache_lock:
+        lines = [
+            f"{e['level']} {e['message']}"
+            for e in list(log_cache)[-limit:]
+            if e.get("timestamp")
+            and e["timestamp"] >= cutoff
+            and name in e.get("message", "")
+        ]
+
+    if not lines:
+        return None
+
+    text = "\n".join(lines)
+    result = summarize(text)
+    if result:
+        ts = int(datetime.datetime.utcnow().timestamp())
+        session = SessionLocal()
+        try:
+            session.add(LogSummary(timestamp=ts, camera=name, content=result))
+            session.commit()
+        finally:
+            session.close()
+    return result
+
+
+def get_or_generate_camera_log_summary(name: str) -> str | None:
+    """Return a recent log summary for ``name`` or generate one."""
+
+    ensure_column("log_summaries", "camera", "VARCHAR(255)", "''")
+
+    cutoff = int(
+        (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).timestamp()
+    )
+    session = SessionLocal()
+    try:
+        rec = (
+            session.query(LogSummary)
+            .filter_by(camera=name)
+            .order_by(LogSummary.timestamp.desc())
+            .first()
+        )
+        if rec and rec.timestamp >= cutoff:
+            return rec.content
+    finally:
+        session.close()
+
+    return summarize_camera_logs(name)
 
 
 # Background discovery cache
@@ -1338,3 +1483,107 @@ def stop_discovery() -> None:
         scheduler.remove_job("background_discovery")
     except Exception:
         pass
+
+
+def process_offline_jobs() -> None:
+    """Run any jobs queued while the system was offline."""
+
+    if not is_system_online():
+        return
+
+    session = SessionLocal()
+    try:
+        jobs = session.query(OfflineJob).order_by(OfflineJob.id).all()
+        for job in jobs:
+            try:
+                job_id = job.id
+            except ObjectDeletedError:
+                # Job removed after query; skip it gracefully
+                session.rollback()
+                continue
+            try:
+                module_name, func_name = job.function.rsplit(".", 1)
+                mod = importlib.import_module(module_name)
+                func = getattr(mod, func_name)
+                run_with_timeout(
+                    func, args=tuple(json.loads(job.args)), timeout=job.timeout
+                )
+                session.delete(job)
+                session.commit()
+            except ObjectDeletedError:
+                session.rollback()
+                continue
+            except Exception as exc:
+                session.rollback()
+                logging.error("Failed to run offline job %s: %s", job_id, exc)
+    finally:
+        session.close()
+
+
+def schedule_offline_job_processor() -> None:
+    """Schedule periodic processing of queued offline jobs."""
+
+    try:
+        scheduler.add_job(
+            func=process_offline_jobs,
+            trigger="interval",
+            seconds=30,
+            id="process_offline_jobs",
+            replace_existing=True,
+        )
+    except Exception as e:
+        logging.error("job schedule error: %s", e)
+
+
+def schedule_auto_update() -> None:
+    """Schedule periodic auto-update checks."""
+
+    if AUTO_UPDATE_BRANCH == "None":
+        return
+    try:
+        scheduler.add_job(
+            func=check_for_update,
+            trigger="interval",
+            hours=1,
+            id="auto_update",
+            replace_existing=True,
+        )
+    except Exception as e:
+        logging.error("job schedule error: %s", e)
+
+
+def refresh_clips() -> None:
+    """Pre-generate short clips for each camera."""
+    cameras = [
+        name for name in os.listdir(VIDEO_DIRECTORY) if validate_template_name(name)
+    ]
+
+    if CLIP_REFRESH_MAX_CAMERAS and len(cameras) > CLIP_REFRESH_MAX_CAMERAS:
+        logging.info(
+            "Skipping clip refresh for %d cameras (limit %d)",
+            len(cameras),
+            CLIP_REFRESH_MAX_CAMERAS,
+        )
+        return
+
+    base_url = f"http://127.0.0.1:{PORT}"
+    for camera_name in cameras:
+        try:
+            requests.get(f"{base_url}/clip/{camera_name}", timeout=5)
+        except Exception:
+            logging.debug("clip refresh failed for %s", camera_name)
+
+
+def schedule_clip_refresh() -> None:
+    """Schedule periodic clip refresh jobs."""
+
+    try:
+        scheduler.add_job(
+            func=refresh_clips,
+            trigger="interval",
+            minutes=5,
+            id="refresh_clips",
+            replace_existing=True,
+        )
+    except Exception as e:
+        logging.error("job schedule error: %s", e)

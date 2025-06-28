@@ -1,28 +1,32 @@
-{% extends 'base.html' %}
-{% block content %}
-    <h2>Live Camera Feed</h2>
-    <h2>Live Feed
-    </h2>
+{% extends 'base.html' %} {% block content %}
+<h2>Live Camera Feed</h2>
+<h2>Live Feed</h2>
 
-    <div class="video-container" title="Looping video feed from all cameras">
-            <div id="camera-name" class="camera-name" title="Currently playing camera"></div>
-        <video id="live-video" controls autoplay muted title="Video player"></video>
-    </div>
+<div class="video-container" title="Looping video feed from all cameras">
+  <div
+    id="camera-name"
+    class="camera-name"
+    title="Currently playing camera"
+    role="status"
+    aria-live="polite"
+  ></div>
+  <video id="live-video" controls autoplay muted title="Video player"></video>
+</div>
 
-    <script>
+<script>
         const cameras = {{ cameras|tojson }};
         let currentCameraIndex = 0;
 
         function playNextCamera() {
             const videoElement = document.getElementById('live-video');
-		const cameraNameElement = document.getElementById('camera-name');
+  const cameraNameElement = document.getElementById('camera-name');
             if (cameras.length > 0) {
                 const currentCamera = cameras[currentCameraIndex];
-                videoElement.src = `/last_video/${currentCamera}`;
+                videoElement.src = `/clip/${currentCamera}`;
                 videoElement.load();
                 videoElement.playbackRate = 0.25;
                 videoElement.play();
-		    cameraNameElement.textContent = currentCamera;  
+      cameraNameElement.textContent = currentCamera;
                 currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
             }
         }
@@ -38,6 +42,5 @@
 
         // Start playing the first camera
         playNextCamera();
-    </script>
+</script>
 {% endblock %}
-

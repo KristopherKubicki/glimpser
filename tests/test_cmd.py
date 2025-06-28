@@ -1,19 +1,11 @@
-#!env/bin/python3
+#!/usr/bin/env python3
 # tests/test_cmd.py
 
-import unittest
 import json
-import subprocess
-import sys
 import os
-from datetime import datetime, timezone, timedelta
-from unittest.mock import patch, MagicMock
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from app.utils.video_details import get_latest_date
-from app.utils.screenshots import parse_url
-from app.utils.retention_policy import get_files_sorted_by_creation_time
+import subprocess
+import unittest
+from unittest.mock import patch
 
 
 class TestJSONParsing(unittest.TestCase):

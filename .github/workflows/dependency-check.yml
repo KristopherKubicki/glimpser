@@ -1,0 +1,55 @@
+name: Dependency Scan (OWASP Dependency-Check)
+
+on:
+  push:
+    branches: [ "main", "staging" ]
+  pull_request:
+    branches: [ "main", "staging" ]
+  schedule:
+    - cron: '0 6 * * 0'   # every Sunday 06:00 UTC
+
+permissions:
+  contents: read
+  security-events: write     # needed for SARIF upload
+
+jobs:
+  depcheck:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # speeds up repeat runs (~30 s instead of several minutes)
+      - name: Restore NVD DB cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.dependency-check
+          key: depcheck-${{ runner.os }}-${{ hashFiles('**/requirements*.txt',
+                                                      '**/package*.json',
+                                                      '**/pom.xml') }}
+
+      - name: Run Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@main   # <-- switch to main
+        with:
+          project: glimpser
+          path: .
+          format: ALL          # generates HTML, SARIF, CSV, …
+          out: reports         # optional; keeps your old folder layout
+          args: >
+            --enableExperimental
+            --failOnCVSS 7
+        env:
+          # only needed if another step (e.g. setup-java) changed JAVA_HOME
+          JAVA_HOME: /opt/jdk
+
+      - name: Upload human-readable HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-html
+          path: reports/*.html
+
+      - name: Push SARIF to Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/dependency-check-report.sarif
+

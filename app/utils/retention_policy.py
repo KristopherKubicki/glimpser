@@ -1,18 +1,35 @@
 # utils/retention_policy.py
 
-import os
-import time
 import logging
+import os
+import shutil
+import time
 
 from app.config import (
+    CLIPS_DIRECTORY,
+    MAX_CLIP_AGE_MINUTES,
     MAX_COMPRESSED_VIDEO_AGE,
     MAX_RAW_DATA_SIZE,
     SCREENSHOT_DIRECTORY,
     VIDEO_DIRECTORY,
 )
+from app.utils.screenshots import check_user_activity
 
 
 def get_files_sorted_by_creation_time(directory):
+    """Return files in *directory* sorted from oldest to newest.
+
+    Parameters
+    ----------
+    directory : str
+        Path to a directory containing files.
+
+    Returns
+    -------
+    list[str]
+        Ordered list of file paths or ``[]`` if ``directory`` is invalid.
+    """
+
     if not os.path.isdir(directory):
         return []
 
@@ -31,6 +48,24 @@ def get_files_sorted_by_creation_time(directory):
 
 
 def delete_old_files(file_list, max_age, max_size, minimum=10):
+    """Delete files older than ``max_age`` days or when ``max_size`` is exceeded.
+
+    Parameters
+    ----------
+    file_list : list[str]
+        Files sorted from oldest to newest.
+    max_age : int
+        Age in days beyond which a file is removed.
+    max_size : int
+        Maximum cumulative size before pruning begins.
+    minimum : int, optional
+        Number of newest files to preserve. Defaults to 10.
+
+    Returns
+    -------
+    None
+    """
+
     current_time = time.time()
     total_size = 0
 
@@ -49,6 +84,11 @@ def delete_old_files(file_list, max_age, max_size, minimum=10):
             continue
 
         try:
+            if os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+                logging.debug("Deleted directory %s", file_path)
+                continue
+
             file_age = current_time - os.path.getctime(file_path)
             file_size = os.path.getsize(file_path)
             total_size += file_size
@@ -67,6 +107,34 @@ def delete_old_files(file_list, max_age, max_size, minimum=10):
             logging.error("Error processing %s: %s", file_path, e)
 
 
+def cleanup_clips(max_age_minutes: int = MAX_CLIP_AGE_MINUTES) -> None:
+    """Delete stale ``clip.mp4`` files when the user is idle."""
+
+    if not (max_age_minutes and max_age_minutes > 0):
+        return
+
+    if check_user_activity(timeout=1):
+        # User is active; postpone cleanup to avoid disrupting playback.
+        return
+
+    expiry = max_age_minutes * 60
+    if not os.path.isdir(CLIPS_DIRECTORY):
+        return
+
+    for clip_file in os.listdir(CLIPS_DIRECTORY):
+        if not clip_file.endswith(".mp4"):
+            continue
+        clip_path = os.path.join(CLIPS_DIRECTORY, clip_file)
+        if os.path.isfile(clip_path):
+            try:
+                age = time.time() - os.path.getmtime(clip_path)
+                if age > expiry:
+                    os.remove(clip_path)
+                    logging.debug("Deleted expired clip %s", clip_path)
+            except Exception as e:
+                logging.warning("Failed to delete %s: %s", clip_path, e)
+
+
 def retention_cleanup():
     # For each camera, delete old or excess videos
     for camera_name in os.listdir(VIDEO_DIRECTORY):
@@ -79,3 +147,5 @@ def retention_cleanup():
         camera_dir = os.path.join(SCREENSHOT_DIRECTORY, camera_name)
         image_files = get_files_sorted_by_creation_time(camera_dir)
         delete_old_files(image_files, MAX_COMPRESSED_VIDEO_AGE, MAX_RAW_DATA_SIZE)
+
+    cleanup_clips()

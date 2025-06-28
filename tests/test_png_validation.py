@@ -1,12 +1,10 @@
 # tests/test_png_validation.py
 
-import unittest
-import tempfile
 import os
-import sys
-from PIL import Image
+import tempfile
+import unittest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from PIL import Image
 
 from app.utils.screenshots import _is_valid_png
 
@@ -29,6 +27,20 @@ class TestPNGValidation(unittest.TestCase):
             # create an empty file
             with open(path, "wb") as f:
                 f.write(b"")
+            self.assertFalse(_is_valid_png(path))
+        finally:
+            os.remove(path)
+
+    def test_truncated_png(self):
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+            path = tmp.name
+        try:
+            with Image.new("RGB", (10, 10), color="blue") as img:
+                img.save(path)
+            with open(path, "rb+") as f:
+                data = f.read()
+                f.seek(len(data) // 2)
+                f.truncate()
             self.assertFalse(_is_valid_png(path))
         finally:
             os.remove(path)
