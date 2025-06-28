@@ -5,6 +5,36 @@ function safePlay(el) {
   if (p && typeof p.catch === "function") p.catch(() => {});
 }
 
+export function adjustFullHeight() {
+  const container = document.querySelector(".video-container.full-height");
+  if (!container) return;
+  const header = document.querySelector("header");
+  const banner = document.getElementById("network-banner");
+  const footerSpace = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue(
+      "--footer-space",
+    ) || "0",
+  );
+  const headerHeight = header ? header.offsetHeight : 0;
+  const bannerHeight = banner ? banner.offsetHeight : 0;
+  document.documentElement.style.setProperty(
+    "--header-space",
+    `${headerHeight}px`,
+  );
+  document.documentElement.style.setProperty(
+    "--banner-space",
+    `${bannerHeight}px`,
+  );
+  const available =
+    window.innerHeight - headerHeight - bannerHeight - footerSpace;
+  container.style.maxHeight = `${available}px`;
+  if (window.innerWidth >= 768) {
+    container.style.height = `${available}px`;
+  } else {
+    container.style.height = "auto";
+  }
+}
+
 export function initTilePlayer() {
   const video = document.getElementById("live-video");
   if (!video) return;
@@ -192,7 +222,11 @@ export function initTilePlayer() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", initTilePlayer);
+document.addEventListener("DOMContentLoaded", () => {
+  adjustFullHeight();
+  initTilePlayer();
+});
+window.addEventListener("resize", adjustFullHeight);
 
 export function updateCameraOptions(group) {
   const camSelect =
