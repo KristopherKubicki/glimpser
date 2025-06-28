@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
+
 from sqlalchemy.exc import OperationalError
 
 from app.utils.db import commit_with_retry
