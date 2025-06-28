@@ -45,6 +45,8 @@ def main() -> int:
         print("exclude_docs mismatch", file=sys.stderr)
         print(f"mkdocs.yml: {mkdocs_list}", file=sys.stderr)
         print(f"docs/exclude_docs: {expected_list}", file=sys.stderr)
+        DOCS_LIST_FILE.write_text("\n".join(mkdocs_list) + "\n")
+        print("docs/exclude_docs updated", file=sys.stderr)
         return 1
     return 0
 

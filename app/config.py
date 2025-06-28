@@ -165,7 +165,7 @@ def get_setting(name, default=None):
             logging.warning("initialization error %s", e)
     except SQLAlchemyError as e:
         logging.warning("database error %s", e)
-    except Exception as e:  # pragma: no cover - unexpected errors
+    except Exception:  # pragma: no cover - unexpected errors
         logging.exception("unexpected error while fetching setting")
         raise
     finally:
@@ -186,7 +186,7 @@ def backup_config() -> bool:
     except (OperationalError, SQLAlchemyError, sqlite3.OperationalError, OSError) as e:
         logging.warning("backup failed: %s", e)
         success = False
-    except Exception as e:  # pragma: no cover - unexpected errors
+    except Exception:  # pragma: no cover - unexpected errors
         logging.exception("unexpected error during backup")
         raise
     finally:
@@ -196,7 +196,7 @@ def backup_config() -> bool:
 
 def restore_config():
     if os.path.exists(BACKUP_PATH):
-        with open(BACKUP_PATH, "r") as f:
+        with open(BACKUP_PATH) as f:
             config_dict = json.load(f)
 
         session = _get_session()
@@ -240,7 +240,7 @@ def sync_version(pkg_version: str) -> None:
             logging.warning("initialization error %s", e)
     except SQLAlchemyError as e:
         logging.warning("database error %s", e)
-    except Exception as e:  # pragma: no cover - unexpected errors
+    except Exception:  # pragma: no cover - unexpected errors
         logging.exception("unexpected error during version sync")
         raise
     finally:

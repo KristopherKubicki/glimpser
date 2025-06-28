@@ -5,13 +5,12 @@ import shutil
 import socket
 import subprocess
 import time
-from typing import Dict
 
-import app.config as config
+from app import config
 
 # Cache for Chrome versions and GPU capability results
-chrome_version: Dict[str, tuple[int, float]] = {}
-_browser_gl_cache: Dict[str, bool] = {}
+chrome_version: dict[str, tuple[int, float]] = {}
+_browser_gl_cache: dict[str, bool] = {}
 
 
 def get_chrome_path() -> str | None:
@@ -49,7 +48,11 @@ def get_chrome_version(chrome_path: str) -> int:
 
     try:
         result = subprocess.run(
-            [chrome_path, "--version"], capture_output=True, text=True, timeout=3
+            [chrome_path, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
         )
         version_str = result.stdout.strip().split()[-1]
         version = int(version_str.split(".")[0])

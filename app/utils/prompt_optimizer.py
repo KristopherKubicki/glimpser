@@ -1,6 +1,5 @@
 """Utility for generating optimized caption prompts."""
 
-import os
 from pathlib import Path
 
 import app.utils.image_processing as img_proc

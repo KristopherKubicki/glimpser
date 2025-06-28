@@ -1,7 +1,6 @@
 import logging
 import re
 from functools import lru_cache
-from typing import Optional
 
 import requests
 
@@ -16,7 +15,7 @@ def _parse_version(version: str) -> list[int]:
 
 
 @lru_cache(maxsize=1)
-def get_latest_release_version(timeout: int = 3) -> Optional[str]:
+def get_latest_release_version(timeout: int = 3) -> str | None:
     """Return the latest release version from GitHub or ``None`` on failure."""
     try:
         resp = requests.get(GITHUB_RELEASES_URL, timeout=timeout)

@@ -6,7 +6,7 @@ from flask import Blueprint
 def create_blueprint() -> Blueprint:
     """Create and return the main views blueprint."""
 
-    import app.routes as routes
+    from app import routes
 
     bp = Blueprint("views", __name__)
 

@@ -6,7 +6,7 @@ from flask import Blueprint, jsonify
 def create_blueprint() -> Blueprint:
     """Create and return the API blueprint."""
 
-    import app.routes as routes
+    from app import routes
 
     bp = Blueprint("api", __name__)
 

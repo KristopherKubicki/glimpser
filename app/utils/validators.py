@@ -166,18 +166,15 @@ def validate_update_data(data: dict) -> dict:
         frequency = int(data.get("frequency", default_frequency) or default_frequency)
     except (TypeError, ValueError):
         frequency = default_frequency
-    if frequency < 1:
-        frequency = 1
-    if frequency > 525600:
-        frequency = 525600
+    frequency = max(frequency, 1)
+    frequency = min(frequency, 525600)
     sanitized["frequency"] = frequency
 
     try:
         timeout = int(data.get("timeout", default_timeout) or default_timeout)
     except (TypeError, ValueError):
         timeout = default_timeout
-    if timeout < 1:
-        timeout = 1
+    timeout = max(timeout, 1)
     max_timeout = frequency * 60
     if timeout >= max_timeout:
         timeout = max_timeout - 1
@@ -187,8 +184,7 @@ def validate_update_data(data: dict) -> dict:
         rollback = int(data.get("rollback_frames", 0) or 0)
     except (TypeError, ValueError):
         rollback = 0
-    if rollback < 0:
-        rollback = 0
+    rollback = max(rollback, 0)
     sanitized["rollback_frames"] = rollback
 
     try:

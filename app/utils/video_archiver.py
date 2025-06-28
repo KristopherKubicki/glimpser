@@ -66,6 +66,7 @@ def run_ffmpeg(command, timeout: int = 30):
         stderr=subprocess.PIPE,
         text=True,
         timeout=timeout,
+        check=False,
     )
     if result.stdout:
         logging.debug("ffmpeg stdout: %s", result.stdout.strip())
@@ -122,6 +123,7 @@ def get_video_creation_time(video_path):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            check=False,
         )
         if result.stdout.strip():
             ctime = result.stdout.strip().replace("Z", "")
@@ -318,7 +320,6 @@ def create_blank_video(
 
 
 def get_video_duration(video_path):
-
     if not os.path.exists(video_path):  # raise?
         return None
 
@@ -336,7 +337,11 @@ def get_video_duration(video_path):
     duration = 0
     try:
         result = subprocess.run(
-            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
         )
         duration = float(result.stdout.strip())
     except Exception:
@@ -364,7 +369,11 @@ def get_video_resolution(video_path):
     ]
     try:
         result = subprocess.run(
-            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
         )
         if result.stdout.strip():
             w_h = result.stdout.strip().split("x")
@@ -680,7 +689,6 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
             logging.error("FFmpeg command failed: %s", e)
 
         finally:
-
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)  # Clean up the temporary file
 
@@ -707,7 +715,6 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
 
 
 def _old_compile_to_video_inner(camera_path, video_path) -> bool:
-
     os.makedirs(video_path, exist_ok=True)
     os.makedirs(camera_path, exist_ok=True)
 
@@ -895,5 +902,5 @@ def archive_screenshots():
 
         try:
             compile_to_video(camera_path, video_path)
-        except Exception as e:
+        except Exception:
             logging.exception("Failed to compile video for camera %s", camera_name)

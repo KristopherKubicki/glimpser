@@ -6,7 +6,6 @@ import io
 import logging
 import os
 import re
-from typing import List, Optional
 
 from PIL import Image, ImageFile
 
@@ -46,7 +45,7 @@ class ChatGPTImageComparison:
     def compare_images(
         self,
         prompt: str,
-        image_paths: List[str],
+        image_paths: list[str],
         max_size: int = 512,
         low_res: bool = False,
         tokens: int = 48,
@@ -180,8 +179,8 @@ class ChatGPTImageComparison:
 
 
 def chatgpt_compare(
-    prompt: str, image_paths: List[str], template_name: Optional[str] = None
-) -> Optional[str]:
+    prompt: str, image_paths: list[str], template_name: str | None = None
+) -> str | None:
     """Return a caption for images via ChatGPT.
 
     Cached responses are reused and token usage is recorded when

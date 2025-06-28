@@ -122,9 +122,9 @@ package-lock.json
 
 # Packaging artifacts
 debian/glimpser/
+
 *.deb
 *.exe
 release-badges.md
-
 # Documentation build output
 site/

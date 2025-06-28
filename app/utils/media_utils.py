@@ -14,7 +14,6 @@ import time
 from fractions import Fraction
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
 
 from flask import Response, request, send_file
 from werkzeug.http import http_date

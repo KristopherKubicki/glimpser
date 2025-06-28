@@ -9,7 +9,7 @@ from flask import Blueprint, render_template
 def create_blueprint() -> Blueprint:
     """Create and return the timeline blueprint."""
 
-    import app.routes as routes
+    from app import routes
 
     bp = Blueprint("timeline", __name__)
 

@@ -6,7 +6,7 @@ from flask import Blueprint, Response
 def create_blueprint() -> Blueprint:
     """Create and return the streaming blueprint."""
 
-    import app.routes as routes
+    from app import routes
 
     bp = Blueprint("stream", __name__)
 
@@ -429,11 +429,8 @@ def create_blueprint() -> Blueprint:
         group = routes.request.args.get("group")
         if group and routes.re.match(r"^[a-zA-Z0-9_]+$", group):
             lgroup = group
-        else:
-            if group:
-                routes.abort(
-                    400, "Invalid group name. Group name must be alphanumeric."
-                )
+        elif group:
+            routes.abort(400, "Invalid group name. Group name must be alphanumeric.")
 
         lgroup = routes.secure_filename(lgroup)
         video_path = routes.os.path.join(

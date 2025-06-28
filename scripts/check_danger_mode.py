@@ -1,4 +1,4 @@
-import app.config as config
+from app import config
 from app.utils.screenshots import is_chrome_debug_port_open
 from scripts.update_chrome_shortcut import shortcuts_need_patch
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import curses
-from typing import Any
 
 from .scheduling import get_feed_status
 

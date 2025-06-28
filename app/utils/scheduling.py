@@ -17,11 +17,7 @@ import multiprocessing
 import os
 import random
 import re
-import select
-import shutil
-import subprocess
 import sys
-import textwrap
 import threading
 import time
 from functools import reduce
@@ -45,7 +41,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
 from flask_apscheduler import APScheduler
-from PIL import Image, ImageDraw
+from PIL import Image
 
 
 class CLIPProcessor:
@@ -84,17 +80,12 @@ class CLIPProcessor:
 
 from sqlalchemy.orm.exc import ObjectDeletedError
 
-import app.config as config
 from app.config import (
     AUTO_UPDATE_BRANCH,
     CLIP_MODEL_NAME,
     CLIP_MODEL_PATH,
     CLIP_REFRESH_MAX_CAMERAS,
     CRAWLER_STARTUP_SPREAD,
-    DEBUG,
-    FFMPEG_HWACCEL,
-    FFMPEG_PATH,
-    LOGGING_PATH,
     PORT,
     SCREENSHOT_DIRECTORY,
     SUMMARIES_DIRECTORY,
@@ -123,7 +114,6 @@ from .screenshots import (
     get_cached_status_code,
     is_chrome_debug_port_open,
     is_mostly_blank,
-    load_font,
     remove_background,
     throttle_cache,
 )
@@ -341,11 +331,7 @@ def run_with_timeout(func, args=(), timeout=300):
         register_job_failure(key)
 
 
-from .image_utils import (
-    MAX_IMAGE_TIME_DIFF,
-    add_motion_and_caption,
-    find_closest_image,
-)
+from .image_utils import add_motion_and_caption, find_closest_image
 
 
 def safe_symlink(src: str, dst: str) -> None:
@@ -358,7 +344,6 @@ def safe_symlink(src: str, dst: str) -> None:
 
 
 def update_camera(name, template, image_file=None, motion=False):
-
     # just ignore the old
     template = get_template(name)
 
@@ -580,7 +565,6 @@ def update_camera(name, template, image_file=None, motion=False):
 
         # run the object detect AFTER the motion detetor
         if allow is True and object_filter and object_confidence is not None:
-
             global clip_session, clip_processor
 
             # Prefer the lightweight ONNX backend when available
@@ -640,7 +624,6 @@ def update_camera(name, template, image_file=None, motion=False):
                 allow = True
 
         if allow:
-
             # allow this to run one time if we have no detection
             #  generate the symlink. if there is a data/screenshots/<camera>/last_motion.png, please rename the move the symlink to prev_motion.png
             #    then, create the symlink for last_motion.png to point to the new png_files[-1]
@@ -838,7 +821,6 @@ def init_crawl():
 
 
 def update_summary():
-
     # summarize all of htis together
     lstring = "The following are a list of real time dashboards and cameras, and their recent status updates:\n"
     templates = get_templates_sorted_by_last_caption_time()
@@ -1103,22 +1085,7 @@ def schedule_crawlers():
         logging.error(f"Error scheduling initial crawl: {e}")
 
 
-from .system_metrics import (
-    FFMPEG_VERSION,
-    cache_logs,
-    ffmpeg_supports_hwaccel,
-    ffmpeg_version,
-    get_system_metrics,
-    log_cache,
-    log_cache_lock,
-    machine_supports_hwaccel,
-    metrics_thread,
-    start_log_caching,
-    start_metrics_collection,
-    stop_background_tasks,
-    stop_event,
-    system_metrics,
-)
+from .system_metrics import log_cache, log_cache_lock
 
 
 def get_feed_status():

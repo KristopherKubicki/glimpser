@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-import app.config as config
+from app import config
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
