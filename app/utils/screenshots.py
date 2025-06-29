@@ -1893,6 +1893,7 @@ def capture_screenshot_phantom(
     tmpdir = f"/tmp/glimpser_{name}"
     os.makedirs(tmpdir, exist_ok=True)
     if os.path.exists(tmpdir):  # check if writeable too...
+        # Paths for the one-off PhantomJS script and its output
         script_path = os.path.join(tmpdir, "capture.js")
         screenshot_tmp = os.path.join(tmpdir, "phantom_out.png")
 
@@ -1953,9 +1954,11 @@ def capture_screenshot_phantom(
             }});
         """
 
+        # Write the generated script so PhantomJS can execute it
         with open(script_path, "w") as f:
             f.write(phantom_script)
 
+        # Invoke PhantomJS with relaxed security to render the page
         try:
             subprocess.run(
                 [
