@@ -1,7 +1,6 @@
 import os
 import tempfile
 import unittest
-
 from unittest.mock import patch
 
 from app.utils.scheduling import safe_symlink
