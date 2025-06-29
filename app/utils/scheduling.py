@@ -180,6 +180,12 @@ class GracefulAPScheduler(APScheduler):
         except Exception as e:
             logging.error(f"Error during scheduler shutdown: {e}")
         finally:
+            with active_jobs_lock:
+                for proc in active_jobs.values():
+                    if proc.is_alive():
+                        proc.terminate()
+                        proc.join()
+                active_jobs.clear()
             logging.info("Scheduler shutdown complete.")
 
 
