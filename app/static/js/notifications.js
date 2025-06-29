@@ -1,3 +1,10 @@
+/**
+ * Initialize streaming notifications and push subscription.
+ *
+ * Opens an EventSource to `/stream_notifications` and displays
+ * browser notifications when permitted. Registers a push
+ * subscription via the active service worker if available.
+ */
 export function initNotifications() {
   if (!("Notification" in window)) return;
 
