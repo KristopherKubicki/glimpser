@@ -1,4 +1,9 @@
-# app/utils/validators.py
+"""Validate configuration values such as URLs, groups and settings.
+
+The helpers sanitize user supplied data for safe storage and provide
+reasonable defaults.  They are reused across route handlers, CLI tools
+and database updates to keep validation logic consistent.
+"""
 
 import os
 import re

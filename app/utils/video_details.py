@@ -1,3 +1,11 @@
+"""Helper utilities to summarize video and screenshot directories.
+
+Functions return timestamps of the latest files and resolve symlinks like
+``latest_camera.png`` so the UI can quickly display recent activity.
+Errors are logged but not raised to keep dashboards responsive even when
+files are missing.
+"""
+
 import logging
 import os
 from datetime import datetime

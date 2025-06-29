@@ -1,3 +1,12 @@
+"""Discover IP cameras and identify supported endpoints.
+
+The discovery process scans local subnets, probes well known ports and
+paths, and compares MAC addresses against a vendor prefix list.  Helpers
+are included to augment OUI mappings from common system databases and to
+validate open ports via Chrome.  Results provide metadata that other
+modules use for screenshot capture or configuration suggestions.
+"""
+
 import glob
 import logging
 import os

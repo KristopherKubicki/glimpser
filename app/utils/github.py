@@ -1,3 +1,12 @@
+"""Query release information from GitHub for update checks.
+
+The helper functions fetch the latest tagged version of the project and
+compare it against a supplied version string.  Network failures are
+logged and cached results are reused to avoid hitting rate limits.  The
+module is used by the auto-update mechanism and for displaying upgrade
+notifications.
+"""
+
 import logging
 import re
 from functools import lru_cache

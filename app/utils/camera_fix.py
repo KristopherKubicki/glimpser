@@ -1,3 +1,11 @@
+"""Validate camera URLs and offer discovery based replacements.
+
+The :func:`check_camera_template` helper retrieves a camera URL, checks
+for expected elements via optional XPaths, and recommends replacement
+URLs if the request fails.  Replacement candidates come from network
+camera discovery and cover common RTSP, RTMP, HLS or snapshot formats.
+"""
+
 import logging
 from typing import Any
 

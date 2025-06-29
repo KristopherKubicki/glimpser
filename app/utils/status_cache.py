@@ -1,3 +1,11 @@
+"""Cache HTTP status codes for network resources.
+
+The cache stores simple ``{url: (code, time)}`` mappings to avoid
+re-checking unreachable cameras or endpoints too frequently.  Results are
+persisted to disk so that restarts retain historical success or failure
+information.
+"""
+
 import json
 import logging
 import os

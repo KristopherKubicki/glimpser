@@ -1,3 +1,12 @@
+"""Detect user presence through keyboard and mouse events or OS APIs.
+
+This module abstracts platform specific methods to determine idle time
+and exposes helper callbacks used by screenshot capture to avoid running
+when someone is actively using the system.  Support covers Windows,
+macOS, X11 and systemd-logind environments when optional libraries are
+available.
+"""
+
 import ctypes
 import ctypes.util
 import logging

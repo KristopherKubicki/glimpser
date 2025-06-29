@@ -1,3 +1,11 @@
+"""Provide colorized logging and URL sanitization helpers.
+
+The module defines a colored :class:`logging.Formatter` and a simple
+rate limiting filter to prevent log spam.  ``sanitize_url`` strips
+credentials from strings before logging them to avoid leaking secrets in
+diagnostic output.
+"""
+
 import logging
 import time
 from urllib.parse import urlparse

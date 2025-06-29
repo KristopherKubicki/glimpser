@@ -1,3 +1,11 @@
+"""Interact with Chrome binaries for version and networking checks.
+
+This module locates the Chrome or Chromium executable, extracts the
+installed version, tests GPU and debugging capabilities and exposes a
+utility for checking if arbitrary TCP ports are open.  The helpers are
+used by screenshot capture and to validate runtime environments.
+"""
+
 import logging
 import os
 import re
