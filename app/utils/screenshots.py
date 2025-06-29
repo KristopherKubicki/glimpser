@@ -86,6 +86,21 @@ user_active = user_activity.user_active
 
 
 def check_user_activity(timeout: int = 10) -> bool:
+    """Return ``True`` when input is observed within ``timeout``.
+
+    The function delegates to :func:`user_activity.check_user_activity`
+    after wiring its dependencies from this module so tests can stub
+    behaviour.  ``timeout`` specifies how long to wait for input events
+    before concluding the user is inactive.
+
+    Args:
+        timeout: Seconds to wait for keyboard or mouse activity.
+
+    Returns:
+        ``True`` if the user interacted with the system within the
+        timeout window, otherwise ``False``.
+    """
+
     user_activity._safe_import_pynput = _safe_import_pynput
     user_activity.idle_seconds_x11 = idle_seconds_x11
     user_activity.idle_seconds_loginctl = idle_seconds_loginctl
@@ -103,21 +118,29 @@ status_code_cache_time = status_cache.status_code_cache_time
 
 
 def _load_status_cache() -> None:
+    """Load cached status codes using local cache path."""
+
     status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
     status_cache._load_status_cache()
 
 
 def _persist_status_cache() -> None:
+    """Persist status code cache to disk."""
+
     status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
     status_cache._persist_status_cache()
 
 
 def get_cached_status_code(url: str) -> int | None:
+    """Return cached HTTP status code for ``url`` if available."""
+
     status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
     return status_cache.get_cached_status_code(url)
 
 
 def set_cached_status_code(url: str, code: int) -> None:
+    """Store ``code`` for ``url`` in the status code cache."""
+
     status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
     status_cache.set_cached_status_code(url, code)
 
