@@ -2,9 +2,11 @@ import os
 import tempfile
 import unittest
 from unittest.mock import patch
+
 from PIL import Image
 
 import app.utils.scheduling as scheduling
+
 
 class TestUpdateCameraSymlink(unittest.TestCase):
     def test_handles_relative_prev_motion_symlink(self):
