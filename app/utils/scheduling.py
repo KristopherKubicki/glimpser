@@ -45,6 +45,9 @@ from PIL import Image
 
 from . import system_metrics as _system_metrics
 
+# Precompile sentence boundary regex for efficiency
+SENTENCE_SPLIT_RE = re.compile(r"\s*?(.+?[\?\!\.\,])(?: \s?|\t|$)", flags=re.DOTALL)
+
 
 class CLIPProcessor:
     """Lightweight CLIP preprocessor used with ONNX models.
@@ -867,6 +870,8 @@ def init_crawl():
 
 
 def update_summary():
+    """Summarize recent camera activity and store structured results."""
+
     # summarize all of htis together
     lstring = "The following are a list of real time dashboards and cameras, and their recent status updates:\n"
     templates = get_templates_sorted_by_last_caption_time()
@@ -885,16 +890,8 @@ def update_summary():
             if (datetime.datetime.utcnow() - caption_time).total_seconds() > 3 * 3600:
                 continue  # Skip templates older than 3 hours
 
-            fnotes = re.split(
-                r"\s*?(.+?[\?\!\.\,])(?: \s?|\t|$)",
-                template.get("notes", "").strip(),
-                flags=re.DOTALL,
-            )
-            gnotes = re.split(
-                r"\s*?(.+?[\?\!\.\,])(?: \s?|\t|$)",
-                template.get("last_caption", "").strip(),
-                flags=re.DOTALL,
-            )
+            fnotes = SENTENCE_SPLIT_RE.split(template.get("notes", "").strip())
+            gnotes = SENTENCE_SPLIT_RE.split(template.get("last_caption", "").strip())
 
             if len(fnotes) > 0:
                 try:
