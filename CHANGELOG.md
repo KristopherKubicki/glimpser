@@ -63,6 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a crash on the login page caused by missing clock elements in `nav.js`.
 - Prevented undefined camera requests from returning 404 errors when switching
   live sources.
+- Child processes from scheduled jobs are terminated on shutdown, preventing
+  zombie `spawn_main` tasks.
 
 ## [0.2.7] - 2025-06-02
 

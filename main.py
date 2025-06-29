@@ -7,8 +7,12 @@ import subprocess
 import argparse
 import random
 import time
-import signal, sys, threading, atexit
+import signal
+import sys
+import threading
+import atexit
 import socket
+import multiprocessing
 
 import app.config as config
 from app import create_app
@@ -261,6 +265,20 @@ class CleanupManager:
             logging.error("Error shutting down scheduler: %s", e)
 
         stop_background_tasks()
+
+        # Terminate any remaining child processes to avoid zombies
+        for process in multiprocessing.active_children():
+            try:
+                process.terminate()
+                process.join(timeout=1)
+                if process.is_alive():
+                    logging.warning(
+                        "Process %s is still alive after terminate", process.pid
+                    )
+            except Exception as e:
+                logging.error(
+                    "Error terminating process %s: %s", getattr(process, "pid", "?"), e
+                )
 
         time.sleep(0.01)
         for thread in threading.enumerate():
