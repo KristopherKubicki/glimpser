@@ -251,6 +251,10 @@ SCHEDULER_API_ENABLED = get_setting("SCHEDULER_API_ENABLED", "True") == "True"
 
 # be careful when mounting network devices
 SCREENSHOT_DIRECTORY = "data/screenshots/"
+_shot_rel = Path(SCREENSHOT_DIRECTORY)
+SCREENSHOT_DIRECTORY = str(
+    _shot_rel if _shot_rel.is_absolute() else _BASE_DIR / _shot_rel
+)
 VIDEO_DIRECTORY = "data/video/"
 CLIPS_DIRECTORY = "data/clips/"
 SUMMARIES_DIRECTORY = "data/summaries/"
