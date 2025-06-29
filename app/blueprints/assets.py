@@ -256,8 +256,12 @@ def create_blueprint() -> Blueprint:
         return resp
 
     @bp.route("/sw.js")
-    def service_worker():
-        response = routes.make_response(routes.current_app.send_static_file("sw.js"))
+    def service_worker() -> Response:
+        """Return the service-worker script with ``Cache-Control: no-cache``."""
+
+        response = routes.make_response(
+            routes.current_app.send_static_file("sw.js")
+        )
         response.headers["Cache-Control"] = "no-cache"
         return response
 
