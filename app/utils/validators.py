@@ -14,22 +14,32 @@ from zoneinfo import ZoneInfo
 
 from werkzeug.utils import secure_filename
 
+TRUTHY_STRINGS = {"true", "1", "t", "y", "yes", "on"}
+FALSEY_STRINGS = {"false", "0", "f", "n", "no", "off"}
+BOOL_STRINGS = {
+    "true",
+    "false",
+    "on",
+    "off",
+    "yes",
+    "no",
+    "y",
+    "n",
+    "t",
+    "f",
+}
+
+
+def to_bool(value: object) -> bool:
+    """Return ``True`` when *value* represents a truthy string."""
+
+    return str(value).strip().lower() in TRUTHY_STRINGS
+
 
 def is_bool_string(value: object) -> bool:
     """Return ``True`` when ``value`` looks like a boolean string."""
 
-    return str(value).strip().lower() in {
-        "true",
-        "false",
-        "on",
-        "off",
-        "yes",
-        "no",
-        "y",
-        "n",
-        "t",
-        "f",
-    }
+    return str(value).strip().lower() in BOOL_STRINGS
 
 
 def validate_proxy(proxy: str | None) -> str | None:
@@ -48,6 +58,10 @@ def validate_proxy(proxy: str | None) -> str | None:
         return None
 
     if not re.match(r"^https?://", proxy, flags=re.IGNORECASE):
+        return None
+
+    parsed = urlparse(proxy)
+    if not parsed.netloc:
         return None
 
     return proxy
@@ -73,7 +87,11 @@ def validate_url(url: str | None) -> str | None:
     if "\n" in url or "\r" in url:
         return None
 
-    if urlparse(url).scheme not in {"http", "https"}:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        return None
+
+    if not parsed.netloc:
         return None
 
     return url
@@ -134,12 +152,18 @@ def validate_template_name(template_name: str):
 
 
 def validate_group_name(group_name: str | None) -> str | None:
-    """Return sanitized group name if valid, otherwise ``None``."""
+    """Return sanitized group name if valid, otherwise ``None``.
+
+    Group names must be at least two characters after trimming
+    whitespace and replacing it with underscores.
+    """
 
     if group_name is None or not isinstance(group_name, str):
         return None
 
-    sanitized = group_name.strip().replace(" ", "_").lower()
+    sanitized = re.sub(r"\s+", "_", group_name.strip()).lower()
+    if len(sanitized) < 2:
+        return None
     if not sanitized:
         return None
 
@@ -258,7 +282,7 @@ def validate_update_data(data: dict) -> dict:
     # Boolean flags are already converted by the route but we handle them
     # here as a fallback for direct API use.
     def _to_bool(value: object) -> bool:
-        return str(value).lower() in {"true", "1", "t", "y", "yes", "on"}
+        return to_bool(value)
 
     for key in [
         "invert",
@@ -343,16 +367,10 @@ def validate_setting(name: str, value: str) -> str | None:
         return None
 
     if key == "FFMPEG_HWACCEL":
-        return (
-            "auto"
-            if val.lower() in {"true", "1", "t", "y", "yes", "on", "auto"}
-            else "False"
-        )
+        return "auto" if to_bool(val) or val.lower() == "auto" else "False"
 
     if key in BOOLEAN_SETTINGS:
-        return (
-            "True" if val.lower() in {"true", "1", "t", "y", "yes", "on"} else "False"
-        )
+        return "True" if to_bool(val) else "False"
 
     if key in INTEGER_RANGES:
         try:
