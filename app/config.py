@@ -121,13 +121,14 @@ def _get_session():
 
         class _DummySession:
             def execute(self, *args, **kwargs):
+                """Return a dummy result."""
                 return _DummyResult()
 
             def commit(self):
-                pass
+                """Pretend to commit."""
 
             def close(self):
-                pass
+                """Do nothing."""
 
         return _DummySession()
 
