@@ -1,4 +1,10 @@
 # flake8: noqa
+"""HTTP route handlers and helper utilities.
+
+This module registers all Flask endpoints for the application. Routes handle
+authentication, configuration management, media retrieval and other REST
+operations used by the web UI and API.
+"""
 import csv
 import email.utils
 import fcntl
