@@ -153,15 +153,26 @@ job_backoff_until: dict[str, float] = {}
 
 
 class GracefulAPScheduler(APScheduler):
+    """APScheduler wrapper that can restart after shutdown."""
+
     def __init__(self):
+        """Initialize the internal :class:`BackgroundScheduler`."""
         super().__init__()
         self._scheduler = None
         self.set_scheduler(BackgroundScheduler())
 
     def set_scheduler(self, scheduler):
+        """Assign ``scheduler`` as the active scheduler instance."""
+
         self._scheduler = scheduler
 
-    def shutdown(self, wait=True):
+    def shutdown(self, wait: bool = True) -> None:
+        """Stop all jobs and reset the scheduler.
+
+        Args:
+            wait: Whether to wait for running jobs to finish.
+        """
+
         try:
             if self.running:
                 # Stop all running jobs
@@ -361,7 +372,17 @@ def safe_symlink(src: str, dst: str) -> None:
     os.symlink(src_path, dst_path)
 
 
-def update_camera(name, template, image_file=None, motion=False):
+def update_camera(name: str, template: dict, image_file: str | None = None,
+                  motion: bool = False) -> None:
+    """Update screenshots and captions for a camera.
+
+    Args:
+        name: Template name for the camera.
+        template: Template configuration dictionary.
+        image_file: Optional path to an already captured image.
+        motion: ``True`` if motion was previously detected.
+    """
+
     # just ignore the old
     template = get_template(name)
 
@@ -853,19 +874,23 @@ def update_camera(name, template, image_file=None, motion=False):
             add_motion_and_caption(lpath, caption=lcap, motion=lsum)
 
 
-def init_crawl():
-    templates = list(
-        get_templates().items()
-    )  # Make sure to fetch the templates within this function
+def init_crawl() -> None:
+    """Run a single capture for every template."""
+
+    templates = list(get_templates().items())
 
     random.shuffle(templates)
     for name, template in templates:
         update_camera(name, template)
 
 
-def update_summary():
-    # summarize all of htis together
-    lstring = "The following are a list of real time dashboards and cameras, and their recent status updates:\n"
+def update_summary() -> None:
+    """Summarize recent camera activity and store the result."""
+
+    lstring = (
+        "The following are a list of real time dashboards and cameras, and"
+        " their recent status updates:\n"
+    )
     templates = get_templates_sorted_by_last_caption_time()
 
     for id, template in templates:
