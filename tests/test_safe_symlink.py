@@ -2,6 +2,8 @@ import os
 import tempfile
 import unittest
 
+from unittest.mock import patch
+
 from app.utils.scheduling import safe_symlink
 
 
@@ -15,7 +17,8 @@ class TestSafeSymlink(unittest.TestCase):
             open(src2, "w").close()
             os.symlink(src1, dst)
 
-            safe_symlink(src2, dst)
+            with patch("app.utils.scheduling.SCREENSHOT_DIRECTORY", tmp):
+                safe_symlink(src2, dst)
 
             self.assertEqual(os.readlink(dst), src2)
 
@@ -27,11 +30,23 @@ class TestSafeSymlink(unittest.TestCase):
             cwd = os.getcwd()
             os.chdir(tmp)
             try:
-                safe_symlink(src, dst)
+                with patch("app.utils.scheduling.SCREENSHOT_DIRECTORY", tmp):
+                    safe_symlink(src, dst)
             finally:
                 os.chdir(cwd)
 
             self.assertEqual(os.readlink(dst), os.path.abspath(os.path.join(tmp, src)))
+
+    def test_rejects_outside_base(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = os.path.join(tmp, "shots")
+            os.makedirs(base)
+            src = os.path.join(tmp, "f")
+            dst = os.path.join(tmp, "link")
+            open(src, "w").close()
+            with patch("app.utils.scheduling.SCREENSHOT_DIRECTORY", base):
+                with self.assertRaises(ValueError):
+                    safe_symlink(src, dst)
 
 
 if __name__ == "__main__":

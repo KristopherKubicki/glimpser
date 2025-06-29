@@ -335,14 +335,28 @@ def run_with_timeout(func, args=(), timeout=300):
 
 
 from .image_utils import add_motion_and_caption, find_closest_image
+from app.config import SCREENSHOT_DIRECTORY
 
 
 def safe_symlink(src: str, dst: str) -> None:
-    """Create ``dst`` pointing to ``src`` replacing any existing link."""
+    """Create ``dst`` pointing to ``src`` replacing any existing link.
+
+    Both paths must reside under ``SCREENSHOT_DIRECTORY`` to avoid
+    creating links outside the managed tree.
+    """
+
     src_path = os.path.abspath(src)
     dst_path = os.path.abspath(dst)
+
+    base = os.path.abspath(SCREENSHOT_DIRECTORY)
+    # Reject paths outside the screenshot directory to mitigate
+    # symlink attacks on arbitrary locations.
+    if not src_path.startswith(base) or not dst_path.startswith(base):
+        raise ValueError("symlink paths must stay within screenshot directory")
+
     if os.path.lexists(dst_path):
         os.remove(dst_path)
+    os.makedirs(os.path.dirname(dst_path), exist_ok=True)
     os.symlink(src_path, dst_path)
 
 
@@ -416,7 +430,7 @@ def update_camera(name, template, image_file=None, motion=False):
             if os.path.lexists(lpath + ".tmp"):
                 os.unlink(os.path.abspath(lpath + ".tmp"))
             safe_symlink(
-                os.path.abspath(os.path.join("data/screenshots", name, png_files[-1])),
+                os.path.abspath(os.path.join(SCREENSHOT_DIRECTORY, name, png_files[-1])),
                 os.path.abspath(lpath + ".tmp"),
             )
             os.rename(os.path.abspath(lpath + ".tmp"), os.path.abspath(lpath))
@@ -425,7 +439,7 @@ def update_camera(name, template, image_file=None, motion=False):
             if os.path.lexists(lpath + ".tmp"):
                 os.unlink(os.path.abspath(lpath + ".tmp"))
             safe_symlink(
-                os.path.abspath(os.path.join("data/screenshots", name, png_files[-1])),
+                os.path.abspath(os.path.join(SCREENSHOT_DIRECTORY, name, png_files[-1])),
                 os.path.abspath(lpath + ".tmp"),
             )
             os.rename(os.path.abspath(lpath + ".tmp"), os.path.abspath(lpath))
@@ -442,7 +456,7 @@ def update_camera(name, template, image_file=None, motion=False):
                         os.unlink(os.path.abspath(group_lpath + ".tmp"))
                     safe_symlink(
                         os.path.abspath(
-                            os.path.join("data/screenshots", name, png_files[-1])
+                            os.path.join(SCREENSHOT_DIRECTORY, name, png_files[-1])
                         ),
                         os.path.abspath(group_lpath + ".tmp"),
                     )
@@ -725,7 +739,7 @@ def update_camera(name, template, image_file=None, motion=False):
                 ):
                     os.remove(os.path.join(directory, "last_motion_caption.png.tmp"))
                 safe_symlink(
-                    png_files[-1],
+                    os.path.join(directory, png_files[-1]),
                     os.path.join(directory, "last_motion_caption.png.tmp"),
                 )
                 os.rename(
@@ -737,7 +751,8 @@ def update_camera(name, template, image_file=None, motion=False):
                 if os.path.lexists(os.path.join(directory, "last_caption.png.tmp")):
                     os.remove(os.path.join(directory, "last_caption.png.tmp"))
                 safe_symlink(
-                    png_files[-1], os.path.join(directory, "last_caption.png.tmp")
+                    os.path.join(directory, png_files[-1]),
+                    os.path.join(directory, "last_caption.png.tmp"),
                 )
                 os.rename(
                     os.path.join(directory, "last_caption.png.tmp"),
@@ -749,7 +764,8 @@ def update_camera(name, template, image_file=None, motion=False):
                 if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
                     os.remove(os.path.join(directory, "prev_motion.png.tmp"))
                 safe_symlink(
-                    destination, os.path.join(directory, "prev_motion.png.tmp")
+                    destination,
+                    os.path.join(directory, "prev_motion.png.tmp"),
                 )
                 os.rename(
                     os.path.join(directory, "prev_motion.png.tmp"),
@@ -758,7 +774,10 @@ def update_camera(name, template, image_file=None, motion=False):
                 image_paths.append(os.path.join(directory, "prev_motion.png"))
             if os.path.lexists(os.path.join(directory, "last_motion.png.tmp")):
                 os.remove(os.path.join(directory, "last_motion.png.tmp"))
-            safe_symlink(png_files[-1], os.path.join(directory, "last_motion.png.tmp"))
+            safe_symlink(
+                os.path.join(directory, png_files[-1]),
+                os.path.join(directory, "last_motion.png.tmp"),
+            )
             os.rename(
                 os.path.join(directory, "last_motion.png.tmp"),
                 os.path.join(directory, "last_motion.png"),
@@ -789,7 +808,8 @@ def update_camera(name, template, image_file=None, motion=False):
                 if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
                     os.remove(os.path.join(directory, "prev_motion.png.tmp"))
                 safe_symlink(
-                    destination, os.path.join(directory, "prev_motion.png.tmp")
+                    destination,
+                    os.path.join(directory, "prev_motion.png.tmp"),
                 )
                 os.rename(
                     os.path.join(directory, "prev_motion.png.tmp"),
@@ -797,7 +817,10 @@ def update_camera(name, template, image_file=None, motion=False):
                 )
             if os.path.lexists(os.path.join(directory, "last_motion.png.tmp")):
                 os.remove(os.path.join(directory, "last_motion.png.tmp"))
-            safe_symlink(png_files[-1], os.path.join(directory, "last_motion.png.tmp"))
+            safe_symlink(
+                os.path.join(directory, png_files[-1]),
+                os.path.join(directory, "last_motion.png.tmp"),
+            )
             os.rename(
                 os.path.join(directory, "last_motion.png.tmp"),
                 os.path.join(directory, "last_motion.png"),

@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 import requests
 
 from .logging_utils import sanitize_url
+from .validators import is_public_url
 
 
 def send_http_callback(
@@ -18,6 +19,9 @@ def send_http_callback(
     retries=0,
 ):
     """Send an HTTP POST callback if a URL is provided.
+
+    Only public URLs are allowed to prevent SSRF attacks. The call is
+    skipped when *url* points to a private address.
 
     Parameters
     ----------
@@ -38,6 +42,10 @@ def send_http_callback(
     hammering the remote service.
     """
     if not url:
+        return
+
+    if not is_public_url(url):
+        logging.warning("Callback URL not public: %s", sanitize_url(url))
         return
 
     parsed = urlparse(url)
