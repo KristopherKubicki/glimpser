@@ -334,8 +334,6 @@ def run_with_timeout(func, args=(), timeout=300):
         register_job_failure(key)
 
 
-from app.config import SCREENSHOT_DIRECTORY
-
 from .image_utils import add_motion_and_caption, find_closest_image
 
 
