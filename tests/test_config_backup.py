@@ -65,6 +65,31 @@ class TestBackupConfig(unittest.TestCase):
             with self.assertRaises(Exception):
                 self.config.backup_config()
 
+    @patch("app.config.validators.is_public_url", return_value=True)
+    @patch("app.config.requests.post")
+    def test_backup_upload_skips_invalid_url(self, mock_post, _mock_public):
+        with patch.dict(os.environ, {"GLIMPSER_BACKUP_SERVER_URL": "bad"}):
+            import importlib
+            import app.config as config
+
+            importlib.reload(config)
+            config.backup_config()
+        mock_post.assert_not_called()
+
+    @patch("app.config.validators.is_public_url", return_value=True)
+    @patch("app.config.requests.post")
+    def test_backup_upload_valid_url(self, mock_post, _mock_public):
+        with patch.dict(
+            os.environ,
+            {"GLIMPSER_BACKUP_SERVER_URL": "http://example.com/backup"},
+        ):
+            import importlib
+            import app.config as config
+
+            importlib.reload(config)
+            config.backup_config()
+        mock_post.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

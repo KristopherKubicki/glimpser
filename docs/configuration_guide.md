@@ -15,6 +15,7 @@ are used.
 | `GLIMPSER_DATABASE_PATH` | `data/glimpser.db`        | Location of the SQLite database file    |
 | `GLIMPSER_LOGGING_PATH`  | `logs/glimpser.log`       | Path to the main log file               |
 | `GLIMPSER_BACKUP_PATH`   | `data/config_backup.json` | File used when backing up configuration |
+| `GLIMPSER_BACKUP_SERVER_URL` | _(empty)_ | Optional endpoint to receive uploaded backups |
 
 Relative paths are resolved from the application's root directory. Use an
 absolute path if the backup file should reside elsewhere.

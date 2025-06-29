@@ -13,6 +13,7 @@ from importlib.metadata import PackageNotFoundError, version
 from ipaddress import ip_network
 from pathlib import Path
 
+
 from dotenv import find_dotenv, load_dotenv
 
 _ffmpeg_spec = importlib.util.spec_from_file_location(
@@ -101,6 +102,9 @@ _backup_path = Path(_backup_raw)
 BACKUP_PATH = str(
     _backup_path if _backup_path.is_absolute() else _BASE_DIR / _backup_path
 )
+
+# Optional remote backup server
+BACKUP_SERVER_URL = os.getenv("GLIMPSER_BACKUP_SERVER_URL", "")
 
 # ``SessionLocal`` and ``_engine`` are created lazily and cached so repeated
 # imports or function calls don't open additional connections.  Tests may patch
@@ -199,6 +203,23 @@ def backup_config() -> bool:
         os.makedirs(os.path.dirname(BACKUP_PATH), exist_ok=True)
         with open(BACKUP_PATH, "w") as f:
             json.dump(config_dict, f)
+        if BACKUP_SERVER_URL:
+            from app.utils.validators import is_public_url, validate_url
+            import requests
+
+            url = validate_url(BACKUP_SERVER_URL)
+            if url and is_public_url(url):
+                try:
+                    with open(BACKUP_PATH, "rb") as fh:
+                        requests.post(
+                            url,
+                            files={"file": fh},
+                            timeout=5,
+                        )
+                except Exception as exc:  # pragma: no cover - network varies
+                    logging.warning("backup upload failed: %s", exc)
+            else:
+                logging.warning("backup server URL invalid: %s", BACKUP_SERVER_URL)
     except (OperationalError, SQLAlchemyError, sqlite3.OperationalError, OSError) as e:
         logging.warning("backup failed: %s", e)
         success = False
