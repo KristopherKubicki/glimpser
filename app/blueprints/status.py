@@ -19,6 +19,7 @@ def create_blueprint() -> Blueprint:
     @routes.login_required
     @routes.profile_route("/health")
     def health_check():
+        """Return a JSON report on system metrics and status."""
         scheduler_status = "failed"
         free_gb = 0
 
@@ -98,6 +99,7 @@ def create_blueprint() -> Blueprint:
     @routes.login_required
     @routes.profile_route("/danger_status")
     def danger_status():
+        """Return the status of Danger Mode readiness."""
         port_open = routes.is_chrome_debug_port_open(
             "127.0.0.1", routes.config.DANGER_PORT
         )
@@ -125,6 +127,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/captions_status")
     @routes.login_required
     def captions_status():
+        """Return the most recent caption and timestamp."""
         group = request.args.get("group")
         if group and group != "all":
             templates = routes.template_manager.get_templates()
@@ -184,11 +187,13 @@ def create_blueprint() -> Blueprint:
     @routes.login_required
     @routes.profile_route("/discovery_status")
     def discovery_status():
+        """Return the current discovery process state."""
         return jsonify(routes.scheduling.get_discovery_status())
 
     @bp.route("/discover/subnets")
     @routes.login_required
     def discover_subnets():
+        """Return available network subnets for discovery."""
         nets = [str(n) for n in routes.camera_discovery._local_subnets()]
         nets.append("internet")
         return jsonify(nets)
@@ -197,6 +202,7 @@ def create_blueprint() -> Blueprint:
     @routes.login_required
     @routes.profile_route("/toggle_discovery")
     def toggle_discovery():
+        """Start or stop the background discovery job."""
         try:
             job = routes.scheduling.scheduler.get_job("background_discovery")
             if job:
@@ -213,6 +219,7 @@ def create_blueprint() -> Blueprint:
     @routes.login_required
     @routes.profile_route("/toggle_chyron")
     def toggle_chyron():
+        """Enable or disable the chyron overlay."""
         try:
             current = routes.config.get_setting("CHYRON_SPEED", "0")
             new_speed = "0" if str(current) != "0" else "240"

@@ -1,4 +1,10 @@
-# utils/video_archiver.py
+"""Archive captured frames into compressed teaser and long videos.
+
+This module wraps ffmpeg and ffprobe to concatenate in-process footage,
+create blank videos and extract metadata.  It enforces size limits and
+rotates expired clips while generating group-based teasers from recent
+segments.
+"""
 
 import datetime
 import glob
@@ -320,10 +326,17 @@ def create_blank_video(
 
 
 def get_video_duration(video_path):
+    """Return the duration of ``video_path`` in seconds.
+
+    Args:
+        video_path: Path to the video file.
+
+    Returns:
+        float | None: Duration in seconds or ``None`` when missing.
+    """
+
     if not os.path.exists(video_path):  # raise?
         return None
-
-    """Get the duration of a video in seconds."""
     command = [
         FFPROBE_PATH,
         "-v",
@@ -715,6 +728,17 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
 
 
 def _old_compile_to_video_inner(camera_path, video_path) -> bool:
+    """Legacy helper that assembles screenshots into ``in_process.mp4``.
+
+    Args:
+        camera_path: Directory containing screenshot images.
+        video_path: Directory where intermediate videos are stored.
+
+    Returns:
+        bool | None: ``False`` if either directory is invalid, otherwise
+        ``None``.
+    """
+
     os.makedirs(video_path, exist_ok=True)
     os.makedirs(camera_path, exist_ok=True)
 

@@ -52,6 +52,15 @@ from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 # Parse command line arguments when executed directly
 def _parse_cli_args():
+    """Return parsed command line options.
+
+    The arguments include ``--db-path``, ``--log-path`` and
+    ``--backup-path`` when the module is executed directly.
+
+    Returns:
+        argparse.Namespace: The populated arguments namespace.
+    """
+
     parser = argparse.ArgumentParser(description="Glimpser configuration")
     parser.add_argument("--db-path", help="Path to the SQLite database file")
     parser.add_argument("--log-path", help="Path to the log file")
@@ -175,6 +184,13 @@ def get_setting(name, default=None):
 
 
 def backup_config() -> bool:
+    """Back up database settings to ``BACKUP_PATH``.
+
+    Returns:
+        bool: ``True`` when the file was written successfully,
+        ``False`` otherwise.
+    """
+
     session = _get_session()
     success = True
     try:
@@ -195,6 +211,8 @@ def backup_config() -> bool:
 
 
 def restore_config():
+    """Restore configuration from ``BACKUP_PATH`` if it exists."""
+
     if os.path.exists(BACKUP_PATH):
         with open(BACKUP_PATH) as f:
             config_dict = json.load(f)
@@ -251,6 +269,10 @@ SCHEDULER_API_ENABLED = get_setting("SCHEDULER_API_ENABLED", "True") == "True"
 
 # be careful when mounting network devices
 SCREENSHOT_DIRECTORY = "data/screenshots/"
+_shot_rel = Path(SCREENSHOT_DIRECTORY)
+SCREENSHOT_DIRECTORY = str(
+    _shot_rel if _shot_rel.is_absolute() else _BASE_DIR / _shot_rel
+)
 VIDEO_DIRECTORY = "data/video/"
 CLIPS_DIRECTORY = "data/clips/"
 SUMMARIES_DIRECTORY = "data/summaries/"

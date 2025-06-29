@@ -1,3 +1,11 @@
+"""Handle outbound HTTP requests with automatic retries.
+
+The module exposes :func:`request_with_retry` which wraps
+``requests.request`` and implements a simple exponential backoff
+strategy.  Proxy variables are disabled by default to avoid accidental
+environment interference, and the helper logs all retry attempts.
+"""
+
 import logging
 import time
 from typing import Any

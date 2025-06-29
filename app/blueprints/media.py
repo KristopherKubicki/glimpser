@@ -27,6 +27,16 @@ def create_blueprint() -> Blueprint:
     @bp.route("/screenshots/<string:name>/<string:filename>")
     @routes.login_required
     def view_screenshot(name: routes.TemplateName, filename: str):
+        """Serve a screenshot file for a template.
+
+        Args:
+            name: Template name provided in the URL.
+            filename: Name of the screenshot file to return.
+
+        Raises:
+            werkzeug.exceptions.NotFound: If the template name or file is
+                invalid or the directory is missing.
+        """
         template_name = routes.validate_template_name(str(name))
         if template_name is None or not routes.allowed_filename(filename):
             routes.abort(404)
@@ -58,6 +68,16 @@ def create_blueprint() -> Blueprint:
     @bp.route("/videos/<string:name>/<string:filename>")
     @routes.login_required
     def view_video(name: routes.TemplateName, filename: str):
+        """Serve a video file for a template.
+
+        Args:
+            name: Template name provided in the URL.
+            filename: Name of the video file to return.
+
+        Raises:
+            werkzeug.exceptions.NotFound: If the template name or file is
+                invalid or the directory is missing.
+        """
         template_name = routes.validate_template_name(str(name))
         if template_name is None or not routes.allowed_filename(filename):
             routes.abort(404)

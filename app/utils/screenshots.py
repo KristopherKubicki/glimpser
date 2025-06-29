@@ -1,4 +1,10 @@
-# utils/screenshots.py
+"""Capture, annotate and process screenshots from various sources.
+
+The module provides high level helpers to download or grab images using
+Chrome, yt-dlp or ffmpeg, apply overlays and store them in structured
+directories.  It manages caching of HTTP status codes and integrates with
+user activity checks so interactive sessions are not disrupted.
+"""
 
 import datetime
 import io
@@ -86,6 +92,15 @@ user_active = user_activity.user_active
 
 
 def check_user_activity(timeout: int = 10) -> bool:
+    """Return True if the user is active within the timeout.
+
+    Args:
+        timeout (int): Seconds to wait for user input.
+
+    Returns:
+        bool: True if activity is detected.
+    """
+
     user_activity._safe_import_pynput = _safe_import_pynput
     user_activity.idle_seconds_x11 = idle_seconds_x11
     user_activity.idle_seconds_loginctl = idle_seconds_loginctl
@@ -103,21 +118,36 @@ status_code_cache_time = status_cache.status_code_cache_time
 
 
 def _load_status_cache() -> None:
+    """Load cached HTTP status codes from disk."""
+
     status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
     status_cache._load_status_cache()
 
 
 def _persist_status_cache() -> None:
+    """Persist cached HTTP status codes to disk."""
+
     status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
     status_cache._persist_status_cache()
 
 
 def get_cached_status_code(url: str) -> int | None:
+    """Return cached HTTP status for a URL if available.
+
+    Args:
+        url (str): Target URL.
+
+    Returns:
+        int | None: Cached status or ``None`` if missing.
+    """
+
     status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
     return status_cache.get_cached_status_code(url)
 
 
 def set_cached_status_code(url: str, code: int) -> None:
+    """Store the HTTP status code for the given URL."""
+
     status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
     status_cache.set_cached_status_code(url, code)
 
@@ -398,6 +428,19 @@ def is_mostly_blank(
 
 
 def run_cmd(cmd, timeout):
+    """Run a command and return its output.
+
+    Args:
+        cmd (Sequence[str]): Command to execute.
+        timeout (int): Timeout in seconds.
+
+    Returns:
+        bytes: Captured standard output.
+
+    Raises:
+        RuntimeError: If the command fails or times out.
+    """
+
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
         out, err = proc.communicate(timeout=timeout)
@@ -411,6 +454,14 @@ def run_cmd(cmd, timeout):
 
 
 def add_timestamp(image_path, name="unknown", invert=False):
+    """Overlay name and timestamp onto an image.
+
+    Args:
+        image_path (str): Path to the PNG file.
+        name (str): Label to render on the image.
+        invert (bool): Invert text for dark images.
+    """
+
     if os.path.exists(image_path):
         with Image.open(
             image_path
@@ -1794,12 +1845,13 @@ def apply_stealth_options(driver_options):
 
 
 def _purge_driver_cache():
+    """Reset caches after driver errors or Chrome updates.
+
+    Both undetected-chromedriver and webdriver_manager caches
+    are cleared so the active tool fetches a matching driver.
     """
-    Remove the undetected_chromedriver or webdriver_manager cache so that
-    on next run it will download a fresh driver matching the current Chrome version.
-    """
-    # undetected_chromedriver stores its driver at ~/.local/share/undetected_chromedriver
-    # webdriver_manager in ~/.wdm etc. Adjust as needed:
+    # uc driver path: ~/.local/share/undetected_chromedriver
+    # wdm driver path: ~/.wdm
 
     uc_cache_dir = os.path.expanduser("~/.local/share/undetected_chromedriver")
     if os.path.isdir(uc_cache_dir):
@@ -1893,6 +1945,7 @@ def capture_screenshot_phantom(
     tmpdir = f"/tmp/glimpser_{name}"
     os.makedirs(tmpdir, exist_ok=True)
     if os.path.exists(tmpdir):  # check if writeable too...
+        # Paths for the one-off PhantomJS script and its output
         script_path = os.path.join(tmpdir, "capture.js")
         screenshot_tmp = os.path.join(tmpdir, "phantom_out.png")
 
@@ -1953,9 +2006,11 @@ def capture_screenshot_phantom(
             }});
         """
 
+        # Write the generated script so PhantomJS can execute it
         with open(script_path, "w") as f:
             f.write(phantom_script)
 
+        # Invoke PhantomJS with relaxed security to render the page
         try:
             subprocess.run(
                 [

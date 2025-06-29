@@ -1,3 +1,12 @@
+"""Check GitHub for new releases and perform in-place upgrades.
+
+The helper functions compare the running version against the latest
+tagged release.  If an update is available and the target commit's
+continuous integration status is green, ``pip`` installs the new
+package and restarts the process.  Failures are logged and ignored so
+that manual updates remain possible.
+"""
+
 import logging
 import os
 import subprocess

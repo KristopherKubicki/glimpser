@@ -114,6 +114,19 @@ class TestMain(unittest.TestCase):
         main.generate_credentials_if_needed()
         mock_generate.assert_called_once()  # Still only called once
 
+    @patch("generate_credentials.generate_credentials")
+    @patch("setup_wizard.interactive_setup")
+    @patch("os.path.exists")
+    def test_generate_credentials_with_wizard(
+        self, mock_exists, mock_wizard, mock_generate
+    ):
+        mock_exists.return_value = False
+        os.environ["GLIMPSER_SETUP_WIZARD"] = "1"
+        main.generate_credentials_if_needed()
+        mock_wizard.assert_called_once()
+        mock_generate.assert_not_called()
+        del os.environ["GLIMPSER_SETUP_WIZARD"]
+
     @patch("main.create_app")
     @patch("main.ensure_directories")
     @patch("main.generate_credentials_if_needed")

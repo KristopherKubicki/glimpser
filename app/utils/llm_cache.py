@@ -1,3 +1,11 @@
+"""Persist lightweight cache of LLM responses on disk.
+
+Entries map a SHA-256 digest of the prompt and image list to the stored
+text and token count.  The cache avoids repeated OpenAI API calls in
+tests or when captions are requested frequently.  It loads lazily on
+import and writes back automatically when new data is stored.
+"""
+
 import hashlib
 import json
 import logging

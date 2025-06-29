@@ -1,4 +1,10 @@
-# app/utils/image_processing.py
+"""Process screenshots and query the ChatGPT vision API.
+
+Functions handle caption prompts, remove borders, detect blank frames and
+overlay timestamps.  Responses from the LLM are cached on disk to avoid
+repeat charges.  The module supports simplified placeholder generation
+when images are missing.
+"""
 
 import base64
 import datetime

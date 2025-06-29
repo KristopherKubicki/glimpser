@@ -1,3 +1,12 @@
+"""Detect user presence through keyboard and mouse events or OS APIs.
+
+This module abstracts platform specific methods to determine idle time
+and exposes helper callbacks used by screenshot capture to avoid running
+when someone is actively using the system.  Support covers Windows,
+macOS, X11 and systemd-logind environments when optional libraries are
+available.
+"""
+
 import ctypes
 import ctypes.util
 import logging
@@ -40,21 +49,52 @@ user_active = False
 
 # Callback functions to update activity state
 def on_move(x, y):
+    """Set ``user_active`` when the mouse moves.
+
+    Args:
+        x (int): The mouse X coordinate.
+        y (int): The mouse Y coordinate.
+    """
+
     global user_active
     user_active = True
 
 
 def on_click(x, y, button, pressed):
+    """Set ``user_active`` when a mouse button is clicked.
+
+    Args:
+        x (int): The mouse X coordinate.
+        y (int): The mouse Y coordinate.
+        button: The mouse button pressed.
+        pressed (bool): Whether the button is pressed.
+    """
+
     global user_active
     user_active = True
 
 
 def on_scroll(x, y, dx, dy):
+    """Set ``user_active`` when the mouse wheel scrolls.
+
+    Args:
+        x (int): The mouse X coordinate.
+        y (int): The mouse Y coordinate.
+        dx (int): Horizontal scroll delta.
+        dy (int): Vertical scroll delta.
+    """
+
     global user_active
     user_active = True
 
 
 def on_press(key):
+    """Set ``user_active`` when a key is pressed.
+
+    Args:
+        key: The pressed key.
+    """
+
     global user_active
     user_active = True
 
@@ -65,6 +105,8 @@ _xss = None
 
 
 class XScreenSaverInfo(ctypes.Structure):
+    """Structure for XScreenSaverInfo returned by libXss."""
+
     _fields_ = [
         ("window", ctypes.c_ulong),
         ("state", ctypes.c_int),
@@ -191,6 +233,15 @@ def idle_seconds_macos() -> int:
 
 
 def check_user_activity(timeout: int = 10) -> bool:
+    """Return True if recent user interaction is observed.
+
+    Args:
+        timeout (int): Seconds to wait for an input event.
+
+    Returns:
+        bool: ``True`` if the user appears active.
+    """
+
     _safe_import_pynput()
     global user_active
     user_active = False

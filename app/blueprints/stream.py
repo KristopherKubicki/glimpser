@@ -13,6 +13,16 @@ def create_blueprint() -> Blueprint:
     @bp.route("/test.mjpg", methods=["GET"])
     @routes.login_required
     def test_mjpg():
+        """Stream the latest MJPEG frames for quick validation.
+
+        Query Parameters:
+            group: Optional group name used to filter templates.
+            camera: Optional camera name used to filter frames.
+
+        Returns:
+            Response: Multipart MJPEG response of screenshot frames.
+        """
+
         group = routes.request.args.get("group")
         camera = routes.request.args.get("camera")
         if group == "all":
@@ -27,6 +37,16 @@ def create_blueprint() -> Blueprint:
     @bp.route("/stream.mjpg", methods=["GET"])
     @routes.login_required
     def stream_mjpg():
+        """Stream the primary MJPEG feed.
+
+        Query Parameters:
+            group: Optional group filter applied to templates.
+            camera: Optional camera filter applied to frames.
+
+        Returns:
+            Response: Multipart MJPEG response of screenshot frames.
+        """
+
         group = routes.request.args.get("group")
         camera = routes.request.args.get("camera")
         if group == "all":

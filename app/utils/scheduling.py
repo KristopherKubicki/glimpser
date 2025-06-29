@@ -45,6 +45,9 @@ from PIL import Image
 
 from . import system_metrics as _system_metrics
 
+# Precompile sentence boundary regex for efficiency
+SENTENCE_SPLIT_RE = re.compile(r"\s*?(.+?[\?\!\.\,])(?: \s?|\t|$)", flags=re.DOTALL)
+
 
 class CLIPProcessor:
     """Lightweight CLIP preprocessor used with ONNX models.
@@ -136,7 +139,7 @@ from .template_manager import (
     set_capture_failed,
     update_last_screenshot_time,
 )
-from .validators import validate_template_name
+from .validators import validate_group_name, validate_template_name
 
 logging.getLogger("apscheduler").setLevel(logging.WARNING)
 
@@ -334,8 +337,6 @@ def run_with_timeout(func, args=(), timeout=300):
         register_job_failure(key)
 
 
-from app.config import SCREENSHOT_DIRECTORY
-
 from .image_utils import add_motion_and_caption, find_closest_image
 
 
@@ -358,7 +359,12 @@ def safe_symlink(src: str, dst: str) -> None:
     if os.path.lexists(dst_path):
         os.remove(dst_path)
     os.makedirs(os.path.dirname(dst_path), exist_ok=True)
-    os.symlink(src_path, dst_path)
+    try:
+        os.symlink(src_path, dst_path)
+    except FileExistsError:
+        # Another process recreated the link after we removed it.
+        os.remove(dst_path)
+        os.symlink(src_path, dst_path)
 
 
 def update_camera(name, template, image_file=None, motion=False):
@@ -449,13 +455,16 @@ def update_camera(name, template, image_file=None, motion=False):
             )
             os.rename(os.path.abspath(lpath + ".tmp"), os.path.abspath(lpath))
 
-            # Create symlinks for each group
+            # Create symlinks for each valid group
             if "groups" in template:
-                groups = template["groups"].split(",")
+                groups = [g.strip() for g in template["groups"].split(",") if g.strip()]
                 for group in groups:
-                    trimmed_group_name = group.strip()
+                    valid_group = validate_group_name(group)
+                    if not valid_group:
+                        logging.warning("Ignoring invalid group name: %s", group)
+                        continue
                     group_lpath = os.path.join(
-                        SCREENSHOT_DIRECTORY, f"{trimmed_group_name}_latest_camera.png"
+                        SCREENSHOT_DIRECTORY, f"{valid_group}_latest_camera.png"
                     )
                     if os.path.lexists(group_lpath + ".tmp"):
                         os.unlink(os.path.abspath(group_lpath + ".tmp"))
@@ -766,6 +775,12 @@ def update_camera(name, template, image_file=None, motion=False):
 
             if os.path.lexists(prev_motion):
                 destination = os.readlink(prev_motion)
+                if not os.path.isabs(destination):
+                    # ``os.readlink`` may return a relative path when the
+                    # symlink was created with one. Convert it to an absolute
+                    # path relative to the camera directory so ``safe_symlink``
+                    # does not reject it as escaping ``SCREENSHOT_DIRECTORY``.
+                    destination = os.path.abspath(os.path.join(directory, destination))
                 if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
                     os.remove(os.path.join(directory, "prev_motion.png.tmp"))
                 safe_symlink(
@@ -810,6 +825,9 @@ def update_camera(name, template, image_file=None, motion=False):
 
             if os.path.lexists(prev_motion):
                 destination = os.readlink(prev_motion)
+                if not os.path.isabs(destination):
+                    # Normalize relative symlink targets to absolute paths.
+                    destination = os.path.abspath(os.path.join(directory, destination))
                 if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
                     os.remove(os.path.join(directory, "prev_motion.png.tmp"))
                 safe_symlink(
@@ -852,6 +870,8 @@ def init_crawl():
 
 
 def update_summary():
+    """Summarize recent camera activity and store structured results."""
+
     # summarize all of htis together
     lstring = "The following are a list of real time dashboards and cameras, and their recent status updates:\n"
     templates = get_templates_sorted_by_last_caption_time()
@@ -870,16 +890,8 @@ def update_summary():
             if (datetime.datetime.utcnow() - caption_time).total_seconds() > 3 * 3600:
                 continue  # Skip templates older than 3 hours
 
-            fnotes = re.split(
-                r"\s*?(.+?[\?\!\.\,])(?: \s?|\t|$)",
-                template.get("notes", "").strip(),
-                flags=re.DOTALL,
-            )
-            gnotes = re.split(
-                r"\s*?(.+?[\?\!\.\,])(?: \s?|\t|$)",
-                template.get("last_caption", "").strip(),
-                flags=re.DOTALL,
-            )
+            fnotes = SENTENCE_SPLIT_RE.split(template.get("notes", "").strip())
+            gnotes = SENTENCE_SPLIT_RE.split(template.get("last_caption", "").strip())
 
             if len(fnotes) > 0:
                 try:

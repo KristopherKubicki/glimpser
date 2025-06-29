@@ -1,3 +1,7 @@
+/**
+ * Video playback controls and clip prefetch logic.
+ */
+
 import { setCaptionsVisibility } from "./templates.js";
 
 let scrubTooltip;
@@ -70,6 +74,11 @@ function showErrorIndicator(video) {
   }, 2000);
 }
 
+/**
+ * Set delay between clip prefetch attempts.
+ *
+ * @param {number} ms Delay in milliseconds.
+ */
 export function setQueueDelay(ms) {
   queueDelay = ms;
 }
@@ -84,6 +93,11 @@ function adjustDelay(success) {
   }
 }
 
+/**
+ * Queue a video element for HD clip prefetching.
+ *
+ * @param {HTMLVideoElement} video Video element to preload.
+ */
 export function enqueueClip(video) {
   if (!video.dataset.hdSrc || video.dataset.hdLoaded === "true") return;
   if (prefetchQueue.includes(video)) return;
@@ -92,6 +106,9 @@ export function enqueueClip(video) {
   if (!processing) processQueue();
 }
 
+/**
+ * Stop any pending prefetch operations.
+ */
 export function clearPrefetchQueue() {
   prefetchQueue = [];
   processing = false;
@@ -143,6 +160,9 @@ function safePlay(el) {
   }
 }
 
+/**
+ * Initialize video behavior on discovery pages.
+ */
 export function initVideoControls() {
   document.addEventListener("DOMContentLoaded", () => {
     setupStatusPageVideoHover();
@@ -228,6 +248,9 @@ export function initVideoControls() {
   };
 }
 
+/**
+ * Refresh clip and poster URLs to avoid caching.
+ */
 export function updateVideoSources() {
   const videos = document.querySelectorAll(".templateDiv video");
   videos.forEach((video) => {
@@ -238,6 +261,9 @@ export function updateVideoSources() {
   });
 }
 
+/**
+ * Pause videos when the page becomes hidden.
+ */
 export function initVisibilityHandler() {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
@@ -247,6 +273,9 @@ export function initVisibilityHandler() {
   });
 }
 
+/**
+ * Set up live video control elements.
+ */
 export function setupVideoControls() {
   const video = document.getElementById("live-video");
   if (!video) return;
@@ -391,6 +420,9 @@ export function setupVideoControls() {
   }
 }
 
+/**
+ * Lazy-load and scrub preview clips on the status page.
+ */
 export function setupStatusPageVideoHover() {
   const thumbnailVideoCells = document.querySelectorAll(".thumbnail-video");
   const observer = new IntersectionObserver(
@@ -475,6 +507,9 @@ export function setupStatusPageVideoHover() {
   });
 }
 
+/**
+ * Enable hover scrubbing on the captions page.
+ */
 export function setupCaptionsPageVideoHover() {
   const containers = document.querySelectorAll(
     ".captions-page .video-container",
@@ -544,6 +579,9 @@ export function setupCaptionsPageVideoHover() {
   });
 }
 
+/**
+ * Initialize Google Cast API with default options.
+ */
 export function initializeCastApi() {
   cast.framework.CastContext.getInstance().setOptions({
     receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
@@ -551,6 +589,9 @@ export function initializeCastApi() {
   });
 }
 
+/**
+ * Start casting the live video to a receiver.
+ */
 export function startCasting() {
   const castSession =
     cast.framework.CastContext.getInstance().getCurrentSession();
