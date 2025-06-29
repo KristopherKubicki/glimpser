@@ -450,9 +450,11 @@ def update_camera(name, template, image_file=None, motion=False):
             os.rename(os.path.abspath(lpath + ".tmp"), os.path.abspath(lpath))
 
             # Create symlinks for each valid group
-            if "groups" in template:
-                groups = template["groups"].split(",")
+            if template.get("groups"):
+                groups = [g.strip() for g in template["groups"].split(",")]
                 for group in groups:
+                    if not group:
+                        continue
                     valid_group = validate_group_name(group)
                     if not valid_group:
                         logging.warning("Ignoring invalid group name: %s", group)
