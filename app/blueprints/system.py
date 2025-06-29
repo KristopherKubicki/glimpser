@@ -12,12 +12,30 @@ def create_blueprint() -> Blueprint:
 
     @bp.route("/system_metrics")
     def system_metrics():
+        """Redirect to the health check endpoint.
+
+        Returns:
+            Response: Flask redirect response to ``/health``.
+
+        Authentication:
+            None required.
+        """
+
         return redirect(url_for("health_check"))
 
     @bp.route("/toggle_scheduler", methods=["POST"])
     @routes.login_required
     @routes.profile_route("/toggle_scheduler")
     def toggle_scheduler():
+        """Start or stop the scheduler.
+
+        Returns:
+            Response: JSON status message.
+
+        Authentication:
+            Requires a valid session or API key.
+        """
+
         try:
             if routes.scheduling.scheduler.running:
                 routes.scheduling.scheduler.shutdown(wait=True)
@@ -35,6 +53,15 @@ def create_blueprint() -> Blueprint:
     @routes.login_required
     @routes.profile_route("/scheduler_status")
     def scheduler_status():
+        """Return the scheduler running state as JSON.
+
+        Returns:
+            Response: JSON object with ``status`` key.
+
+        Authentication:
+            Requires a valid session or API key.
+        """
+
         return jsonify(
             {
                 "status": (
@@ -46,6 +73,15 @@ def create_blueprint() -> Blueprint:
     @bp.route("/profiling")
     @routes.login_required
     def profiling_data():
+        """Return latency profiling statistics.
+
+        Returns:
+            Response: JSON profiling data.
+
+        Authentication:
+            Requires a valid session or API key.
+        """
+
         return jsonify(routes.get_latency_stats())
 
     return bp
