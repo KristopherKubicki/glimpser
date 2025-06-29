@@ -17,11 +17,7 @@ import multiprocessing
 import os
 import random
 import re
-import select
-import shutil
-import subprocess
 import sys
-import textwrap
 import threading
 import time
 from functools import reduce
@@ -45,7 +41,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
 from flask_apscheduler import APScheduler
-from PIL import Image, ImageDraw
+from PIL import Image
+
+from . import system_metrics as _system_metrics
 
 
 class CLIPProcessor:
@@ -84,7 +82,6 @@ class CLIPProcessor:
 
 from sqlalchemy.orm.exc import ObjectDeletedError
 
-import app.config as config
 from app.config import (
     AUTO_UPDATE_BRANCH,
     CLIP_MODEL_NAME,
@@ -92,9 +89,6 @@ from app.config import (
     CLIP_REFRESH_MAX_CAMERAS,
     CRAWLER_STARTUP_SPREAD,
     DEBUG,
-    FFMPEG_HWACCEL,
-    FFMPEG_PATH,
-    LOGGING_PATH,
     PORT,
     SCREENSHOT_DIRECTORY,
     SUMMARIES_DIRECTORY,
@@ -123,7 +117,6 @@ from .screenshots import (
     get_cached_status_code,
     is_chrome_debug_port_open,
     is_mostly_blank,
-    load_font,
     remove_background,
     throttle_cache,
 )
@@ -341,15 +334,34 @@ def run_with_timeout(func, args=(), timeout=300):
         register_job_failure(key)
 
 
-from .image_utils import (
-    MAX_IMAGE_TIME_DIFF,
-    add_motion_and_caption,
-    find_closest_image,
-)
+from app.config import SCREENSHOT_DIRECTORY
+
+from .image_utils import add_motion_and_caption, find_closest_image
+
+
+def safe_symlink(src: str, dst: str) -> None:
+    """Create ``dst`` pointing to ``src`` replacing any existing link.
+
+    Both paths must reside under ``SCREENSHOT_DIRECTORY`` to avoid
+    creating links outside the managed tree.
+    """
+
+    src_path = os.path.abspath(src)
+    dst_path = os.path.abspath(dst)
+
+    base = os.path.abspath(SCREENSHOT_DIRECTORY)
+    # Reject paths outside the screenshot directory to mitigate
+    # symlink attacks on arbitrary locations.
+    if not src_path.startswith(base) or not dst_path.startswith(base):
+        raise ValueError("symlink paths must stay within screenshot directory")
+
+    if os.path.lexists(dst_path):
+        os.remove(dst_path)
+    os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+    os.symlink(src_path, dst_path)
 
 
 def update_camera(name, template, image_file=None, motion=False):
-
     # just ignore the old
     template = get_template(name)
 
@@ -389,7 +401,10 @@ def update_camera(name, template, image_file=None, motion=False):
             mark_offline(name)
         set_capture_failed(name, True)
         clean_url = sanitize_url(url)
-        logging.error("Capture failed for %s (%s)", name, clean_url)
+        if entry and entry.get("errors", 0) > 2:
+            logging.debug("Capture failed for %s (%s)", name, clean_url)
+        else:
+            logging.error("Capture failed for %s (%s)", name, clean_url)
         register_job_failure(name)
         return None
 
@@ -415,8 +430,10 @@ def update_camera(name, template, image_file=None, motion=False):
         try:
             if os.path.lexists(lpath + ".tmp"):
                 os.unlink(os.path.abspath(lpath + ".tmp"))
-            os.symlink(
-                os.path.abspath(os.path.join("data/screenshots", name, png_files[-1])),
+            safe_symlink(
+                os.path.abspath(
+                    os.path.join(SCREENSHOT_DIRECTORY, name, png_files[-1])
+                ),
                 os.path.abspath(lpath + ".tmp"),
             )
             os.rename(os.path.abspath(lpath + ".tmp"), os.path.abspath(lpath))
@@ -424,8 +441,10 @@ def update_camera(name, template, image_file=None, motion=False):
             lpath = os.path.join(SCREENSHOT_DIRECTORY, name, "latest_camera.png")
             if os.path.lexists(lpath + ".tmp"):
                 os.unlink(os.path.abspath(lpath + ".tmp"))
-            os.symlink(
-                os.path.abspath(os.path.join("data/screenshots", name, png_files[-1])),
+            safe_symlink(
+                os.path.abspath(
+                    os.path.join(SCREENSHOT_DIRECTORY, name, png_files[-1])
+                ),
                 os.path.abspath(lpath + ".tmp"),
             )
             os.rename(os.path.abspath(lpath + ".tmp"), os.path.abspath(lpath))
@@ -440,9 +459,9 @@ def update_camera(name, template, image_file=None, motion=False):
                     )
                     if os.path.lexists(group_lpath + ".tmp"):
                         os.unlink(os.path.abspath(group_lpath + ".tmp"))
-                    os.symlink(
+                    safe_symlink(
                         os.path.abspath(
-                            os.path.join("data/screenshots", name, png_files[-1])
+                            os.path.join(SCREENSHOT_DIRECTORY, name, png_files[-1])
                         ),
                         os.path.abspath(group_lpath + ".tmp"),
                     )
@@ -568,7 +587,6 @@ def update_camera(name, template, image_file=None, motion=False):
 
         # run the object detect AFTER the motion detetor
         if allow is True and object_filter and object_confidence is not None:
-
             global clip_session, clip_processor
 
             # Prefer the lightweight ONNX backend when available
@@ -628,7 +646,6 @@ def update_camera(name, template, image_file=None, motion=False):
                 allow = True
 
         if allow:
-
             # allow this to run one time if we have no detection
             #  generate the symlink. if there is a data/screenshots/<camera>/last_motion.png, please rename the move the symlink to prev_motion.png
             #    then, create the symlink for last_motion.png to point to the new png_files[-1]
@@ -726,8 +743,8 @@ def update_camera(name, template, image_file=None, motion=False):
                     os.path.join(directory, "last_motion_caption.png.tmp")
                 ):
                     os.remove(os.path.join(directory, "last_motion_caption.png.tmp"))
-                os.symlink(
-                    png_files[-1],
+                safe_symlink(
+                    os.path.join(directory, png_files[-1]),
                     os.path.join(directory, "last_motion_caption.png.tmp"),
                 )
                 os.rename(
@@ -738,8 +755,9 @@ def update_camera(name, template, image_file=None, motion=False):
             if last_caption_trigger:
                 if os.path.lexists(os.path.join(directory, "last_caption.png.tmp")):
                     os.remove(os.path.join(directory, "last_caption.png.tmp"))
-                os.symlink(
-                    png_files[-1], os.path.join(directory, "last_caption.png.tmp")
+                safe_symlink(
+                    os.path.join(directory, png_files[-1]),
+                    os.path.join(directory, "last_caption.png.tmp"),
                 )
                 os.rename(
                     os.path.join(directory, "last_caption.png.tmp"),
@@ -750,7 +768,10 @@ def update_camera(name, template, image_file=None, motion=False):
                 destination = os.readlink(prev_motion)
                 if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
                     os.remove(os.path.join(directory, "prev_motion.png.tmp"))
-                os.symlink(destination, os.path.join(directory, "prev_motion.png.tmp"))
+                safe_symlink(
+                    destination,
+                    os.path.join(directory, "prev_motion.png.tmp"),
+                )
                 os.rename(
                     os.path.join(directory, "prev_motion.png.tmp"),
                     os.path.join(directory, "prev_motion.png"),
@@ -758,7 +779,10 @@ def update_camera(name, template, image_file=None, motion=False):
                 image_paths.append(os.path.join(directory, "prev_motion.png"))
             if os.path.lexists(os.path.join(directory, "last_motion.png.tmp")):
                 os.remove(os.path.join(directory, "last_motion.png.tmp"))
-            os.symlink(png_files[-1], os.path.join(directory, "last_motion.png.tmp"))
+            safe_symlink(
+                os.path.join(directory, png_files[-1]),
+                os.path.join(directory, "last_motion.png.tmp"),
+            )
             os.rename(
                 os.path.join(directory, "last_motion.png.tmp"),
                 os.path.join(directory, "last_motion.png"),
@@ -788,14 +812,20 @@ def update_camera(name, template, image_file=None, motion=False):
                 destination = os.readlink(prev_motion)
                 if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
                     os.remove(os.path.join(directory, "prev_motion.png.tmp"))
-                os.symlink(destination, os.path.join(directory, "prev_motion.png.tmp"))
+                safe_symlink(
+                    destination,
+                    os.path.join(directory, "prev_motion.png.tmp"),
+                )
                 os.rename(
                     os.path.join(directory, "prev_motion.png.tmp"),
                     os.path.join(directory, "prev_motion.png"),
                 )
             if os.path.lexists(os.path.join(directory, "last_motion.png.tmp")):
                 os.remove(os.path.join(directory, "last_motion.png.tmp"))
-            os.symlink(png_files[-1], os.path.join(directory, "last_motion.png.tmp"))
+            safe_symlink(
+                os.path.join(directory, png_files[-1]),
+                os.path.join(directory, "last_motion.png.tmp"),
+            )
             os.rename(
                 os.path.join(directory, "last_motion.png.tmp"),
                 os.path.join(directory, "last_motion.png"),
@@ -822,7 +852,6 @@ def init_crawl():
 
 
 def update_summary():
-
     # summarize all of htis together
     lstring = "The following are a list of real time dashboards and cameras, and their recent status updates:\n"
     templates = get_templates_sorted_by_last_caption_time()
@@ -1087,22 +1116,18 @@ def schedule_crawlers():
         logging.error(f"Error scheduling initial crawl: {e}")
 
 
-from .system_metrics import (
-    FFMPEG_VERSION,
-    cache_logs,
-    ffmpeg_supports_hwaccel,
-    ffmpeg_version,
-    get_system_metrics,
-    log_cache,
-    log_cache_lock,
-    machine_supports_hwaccel,
-    metrics_thread,
-    start_log_caching,
-    start_metrics_collection,
-    stop_background_tasks,
-    stop_event,
-    system_metrics,
-)
+from .system_metrics import log_cache, log_cache_lock
+
+# Re-export select attributes for backwards compatibility with older tests
+LOGGING_PATH = _system_metrics.LOGGING_PATH
+cache_logs = _system_metrics.cache_logs
+start_log_caching = _system_metrics.start_log_caching
+stop_background_tasks = _system_metrics.stop_background_tasks
+system_metrics = _system_metrics.system_metrics
+start_metrics_collection = _system_metrics.start_metrics_collection
+stop_event = _system_metrics.stop_event
+get_system_metrics = _system_metrics.get_system_metrics
+DEBUG = DEBUG
 
 
 def get_feed_status():

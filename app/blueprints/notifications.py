@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import time
 from collections import deque
-from typing import Any, Deque
+from typing import Any
 
 from flask import Blueprint, Response, jsonify, request, stream_with_context
 
@@ -11,14 +11,16 @@ from flask import Blueprint, Response, jsonify, request, stream_with_context
 def create_blueprint() -> Blueprint:
     """Create and return the notifications blueprint."""
 
-    import app.routes as routes
+    from app import routes
+    from app.config import NOTIFY_ON_CAPTION, NOTIFY_ON_MOTION
     from app.models import PushSubscription
+    from app.utils.push_alerts import send_push_alert
 
     bp = Blueprint("notifications", __name__)
 
     notifications: list[dict[str, str]] = []
     MAX_NOTIFICATIONS = 100
-    telemetry_events: Deque[dict[str, Any]] = deque(maxlen=1000)
+    telemetry_events: deque[dict[str, Any]] = deque(maxlen=1000)
 
     @bp.route("/send_notification", methods=["POST"])
     @routes.login_required
@@ -26,14 +28,18 @@ def create_blueprint() -> Blueprint:
         """Queue a notification for connected clients."""
 
         data = request.get_json(force=True)
-        notifications.append(
-            {
-                "title": data.get("title", "Notification"),
-                "body": data.get("body", ""),
-            }
-        )
+        event = data.get("event")
+        title = data.get("title", "Notification")
+        body = data.get("body", "")
+        notifications.append({"title": title, "body": body})
         if len(notifications) > MAX_NOTIFICATIONS:
             notifications.pop(0)
+        if (
+            event not in {"motion", "caption"}
+            or (event == "motion" and NOTIFY_ON_MOTION)
+            or (event == "caption" and NOTIFY_ON_CAPTION)
+        ):
+            send_push_alert(title, body)
         return jsonify({"status": "queued"})
 
     @bp.route("/register_push", methods=["POST"])

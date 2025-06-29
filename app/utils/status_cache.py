@@ -2,13 +2,12 @@ import json
 import logging
 import os
 import time
-from typing import Dict
 
 STATUS_CACHE_TTL = 60 * 60  # 1 hour
 STATUS_CACHE_PATH = "data/status_cache.json"
 
-status_code_cache: Dict[str, int] = {}
-status_code_cache_time: Dict[str, float] = {}
+status_code_cache: dict[str, int] = {}
+status_code_cache_time: dict[str, float] = {}
 
 
 def _load_status_cache() -> None:
@@ -16,7 +15,7 @@ def _load_status_cache() -> None:
     if not os.path.exists(STATUS_CACHE_PATH):
         return
     try:
-        with open(STATUS_CACHE_PATH, "r") as f:
+        with open(STATUS_CACHE_PATH) as f:
             data = json.load(f)
     except Exception:
         return

@@ -67,4 +67,22 @@ describe("notifications.js", () => {
       expect.objectContaining({ method: "POST" }),
     );
   });
+
+  test("reconnects when the event stream errors", () => {
+    jest.useFakeTimers();
+    const instances = [];
+    global.EventSource = jest.fn(() => {
+      const es = { onmessage: null, onerror: null, close: jest.fn() };
+      instances.push(es);
+      return es;
+    });
+
+    initNotifications();
+    expect(EventSource).toHaveBeenCalledTimes(1);
+
+    instances[0].onerror(new Event("error"));
+    jest.advanceTimersByTime(3000);
+
+    expect(EventSource).toHaveBeenCalledTimes(2);
+  });
 });

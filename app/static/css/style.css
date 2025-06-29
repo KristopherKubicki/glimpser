@@ -1701,6 +1701,10 @@ input[type="submit"] {
   cursor: pointer;
 }
 
+input[type="submit"].confirm-submit {
+  background-color: #d9534f;
+}
+
 input[type="submit"]:hover {
   background-color: #45a049;
 }
@@ -2158,6 +2162,7 @@ details > summary {
 }
 
 .edit-template-preview {
+  position: relative;
   float: right;
   width: 240px;
   height: 180px;
@@ -2170,6 +2175,23 @@ details > summary {
   object-fit: contain;
   border-radius: 4px;
   border: 1px solid var(--accent-color);
+}
+
+.preview-status {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 0.25rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
 }
 
 .thumbnail-preview {

@@ -14,7 +14,7 @@ def _load_cache() -> None:
     if not os.path.exists(CACHE_PATH):
         return
     try:
-        with open(CACHE_PATH, "r") as f:
+        with open(CACHE_PATH) as f:
             data = json.load(f)
     except Exception:
         return

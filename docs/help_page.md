@@ -29,7 +29,7 @@ Key topics covered include:
 
 On the **Live** page, pick a camera from the drop-down menu. The **Video Source** now defaults to **MJPG** so you immediately see a lightweight stream of the latest frames. Select **Live Video** for a direct real-time feed or **MP4** to scrub through archived footage. Glimpser remembers your last camera, video source, and playback speed to streamline future visits.
 
-Click **Live All** to switch every tile to a real-time feed and **Play All** to toggle between playing or pausing archived clips. When watching a single stream you can drag the jog‑shuttle or time slider to scrub forward or backward.
+Click **Live All** to switch every tile to a real-time feed and **Play All** to toggle between playing or pausing archived clips. When watching a single stream you can drag the jog‑shuttle or time slider to scrub forward or backward. A fullscreen button in the lower-right corner lets you maximize the video. This expand control fades away after a few seconds of inactivity along with the rest of the player tools.
 
 Keyboard shortcuts help you navigate quickly: press `Ctrl+F` or `⌘+F` to jump to the page search box, `Space` or `k` toggles play or pause, `f` enters fullscreen, `[` and `]` change playback speed, and the arrow keys cycle cameras or media types. On phones and tablets, swipe left or right on the video to switch cameras or swipe up or down to change the media type. A vertical speed slider also appears when you hover over the player so you can fine‑tune playback without extra clutter.
 Press `?` at any time to see a quick overlay of these shortcuts and `Esc` to dismiss it.

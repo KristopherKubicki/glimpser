@@ -61,12 +61,18 @@
 
 .video-container.full-height {
   height: auto;
-  max-height: 92vh;
+  max-height: calc(
+    100dvh - var(--header-space, 0px) - var(--banner-space, 0px) -
+      var(--footer-space, 60px)
+  );
 }
 
 @media (min-width: 768px) {
   .video-container.full-height {
-    height: 92vh;
+    height: calc(
+      100dvh - var(--header-space, 0px) - var(--banner-space, 0px) -
+        var(--footer-space, 60px)
+    );
   }
 }
 #live-video,
@@ -226,4 +232,28 @@ video::-moz-volume-control {
 #volume-bar,
 #mute {
   display: none;
+}
+
+#fullscreen-toggle {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  padding: 0.25rem;
+  font-size: 1.25rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+
+#fullscreen-toggle.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#fullscreen-toggle:focus {
+  outline: 2px solid white;
+  outline-offset: 2px;
 }

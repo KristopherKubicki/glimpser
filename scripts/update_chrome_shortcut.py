@@ -7,7 +7,7 @@ try:
 except ImportError:  # pragma: no cover - platform specific
     win32com = None
 
-import app.config as config
+from app import config
 
 FLAG = f"--remote-debugging-port={config.DANGER_PORT}"
 

@@ -68,8 +68,7 @@ SETTINGS_TOOLTIPS = {
         "or CRITICAL."
     ),
     "FFMPEG_PATH": (
-        "Full path to the ffmpeg binary. Override if ffmpeg is not in your "
-        "system PATH."
+        "Full path to the ffmpeg binary. Override if ffmpeg is not in your system PATH."
     ),
     "FFMPEG_HWACCEL": (
         "Enable hardware accelerated encoding when supported by your GPU and "
@@ -83,7 +82,7 @@ SETTINGS_TOOLTIPS = {
         "Increase if your hardware can keep up."
     ),
     "LIVE_MAX_FAILURES": (
-        "Number of ffmpeg errors tolerated in a row before the connection is " "closed."
+        "Number of ffmpeg errors tolerated in a row before the connection is closed."
     ),
     "CHYRON_SPEED": (
         "Number of seconds the caption banner scrolls across the top of the "
@@ -98,8 +97,7 @@ SETTINGS_TOOLTIPS = {
         "configured."
     ),
     "SMS_ENABLED": (
-        "Set to True to send SMS notifications via Twilio. Requires Twilio "
-        "credentials."
+        "Set to True to send SMS notifications via Twilio. Requires Twilio credentials."
     ),
     "CAP_ENABLED": (
         "Enable sending Common Alerting Protocol messages. Requires CAP "
@@ -118,8 +116,7 @@ SETTINGS_TOOLTIPS = {
     "CLOCK_DIGITAL": ("Show the clock as digital text instead of an analog icon."),
     "CLOCK_NAVBAR": ("When enabled, the current time appears in the navigation bar."),
     "HEALTH_STATUS_ALWAYS_VISIBLE": (
-        "Keep the system performance indicator visible even when metrics look "
-        "normal."
+        "Keep the system performance indicator visible even when metrics look normal."
     ),
     "MAX_COMPRESSED_VIDEO_AGE": (
         "Number of days to keep archived videos that have been compressed."
@@ -140,22 +137,19 @@ SETTINGS_TOOLTIPS = {
         "Default interface language. Choices include common locale codes such as "
         "en-US or fr-FR."
     ),
-    "TZ": (
-        "Default time zone used for displaying dates and times in the " "interface."
-    ),
+    "TZ": ("Default time zone used for displaying dates and times in the interface."),
     "NAME": ("Human friendly application name displayed throughout the UI."),
     "DEBUG": ("Enable debug output in the logs for troubleshooting."),
     "DEBUG_MODE": ("Turns on additional debug features useful during development."),
     "FLASK_LOG_LEVEL": ("Logging verbosity for Flask's internal messages."),
     "ENFORCE_DOMAIN_IN_HOST": (
-        "Require a fully qualified domain name in the Host header of incoming "
-        "requests."
+        "Require a fully qualified domain name in the Host header of incoming requests."
     ),
     "LOG_RATE_LIMIT_SEC": (
         "Minimum number of seconds before repeating identical log messages."
     ),
     "LOG_COLOR": (
-        "Colorize log output when viewed in a terminal that supports ANSI " "colors."
+        "Colorize log output when viewed in a terminal that supports ANSI colors."
     ),
     "SESSION_COOKIE_SECURE": (
         "Mark session cookies as secure so they are only sent over HTTPS."
@@ -175,10 +169,10 @@ SETTINGS_TOOLTIPS = {
         "logging in."
     ),
     "ALLOW_BOTS": (
-        "Allow search engines to index the site. Disable for private " "installations."
+        "Allow search engines to index the site. Disable for private installations."
     ),
     "AUTO_UPDATE_BRANCH": (
-        "Git branch to pull automatic updates from when auto update is " "enabled."
+        "Git branch to pull automatic updates from when auto update is enabled."
     ),
     "SCHEDULER_API_ENABLED": (
         "Expose the APScheduler REST API for remote job management."
@@ -236,6 +230,8 @@ SETTINGS_TOOLTIPS = {
     "VAPID_PRIVATE_KEY": (
         "Private key used for Web Push notifications."  # pragma: allowlist secret
     ),
+    "NOTIFY_ON_MOTION": ("Send push notifications whenever motion is detected."),
+    "NOTIFY_ON_CAPTION": ("Send push notifications when a new caption is generated."),
     "CAP_ENDPOINT": ("URL that accepts Common Alerting Protocol messages."),
     "CAP_SENDER": ("Identifier used in the CAP sender field."),
     "MCP_SERVER_COMMAND": ("Command line used to start the MCP server when enabled."),
@@ -279,8 +275,7 @@ SETTINGS_TOOLTIPS = {
         "BCrypt hashed login password stored for the default user."  # pragma: allowlist secret
     ),
     "VERSION": (
-        "Glimpser package version displayed in the footer and used for cache "
-        "busting."
+        "Glimpser package version displayed in the footer and used for cache busting."
     ),
 }
 
@@ -406,6 +401,8 @@ SETTINGS_GROUPS = {
         "CLOCK_NAVBAR",
         "CAP_ENDPOINT",
         "CAP_SENDER",
+        "NOTIFY_ON_MOTION",
+        "NOTIFY_ON_CAPTION",
     ],
 }
 

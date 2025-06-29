@@ -1,6 +1,5 @@
 import logging
 import time
-from typing import Dict
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ class RateLimitFilter(logging.Filter):
     def __init__(self, interval: float = 60.0):
         super().__init__()
         self.interval = interval
-        self.last_emit: Dict[str, float] = {}
+        self.last_emit: dict[str, float] = {}
 
     def filter(self, record: logging.LogRecord) -> bool:
         message = record.getMessage()

@@ -2,7 +2,7 @@
 name            = "glimpser"
 version         = "0.2.8"
 description     = "A real-time monitoring application for capturing and analyzing live data from various sources"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 readme          = "README.md"
 
 authors = [
@@ -73,7 +73,7 @@ dev = [
   "black>=25.1",
   "coverage>=7.9",
   "flake8>=7.2",
-  "isort>=6.0",
+  "isort==6.0.1",
   "mkdocs>=1.6",
   "mypy>=1.16",
   "pre-commit>=4.2",
@@ -102,7 +102,7 @@ agents = [
   "interrogate",
   "yamllint",
   #"pip-install-size",
-  "pre-commit-docker",
+  #"pre-commit-docker",
   #"gitleaks",
   "gitlint",
   "vulture",
@@ -126,6 +126,10 @@ packages = ["app", "scripts"]
 line-length       = 88
 target-version    = ["py311"]
 required-version  = "25.1.0"
+
+[tool.isort]
+profile = "black"
+line_length = 88
 
 # Ruff replaces most flake8 / isort / pylint rules, but you can keep the
 # originals for now; just run Ruff first so they have little to flag.
@@ -169,7 +173,7 @@ dev = [
   "black>=25.1",
   "coverage>=7.9",      # keep for standalone HTML reports
   "flake8>=7.2",
-  "isort>=6.0",         # now mirrors runtime pin
+  "isort==6.0.1",       # now mirrors runtime pin
   "mkdocs>=1.6",
   "mypy>=1.16",
   "pre-commit>=4.2",
@@ -200,9 +204,9 @@ agents = [
   "pytest-benchmark",
   "interrogate",
   "yamllint",
-  "pip-install-size",
-  "pre-commit-docker",
-  "gitleaks",
+  #"pip-install-size",
+  #"pre-commit-docker",
+  #"gitleaks",
   "gitlint",
   "vulture",
   "pytest-socket", # for offline coding

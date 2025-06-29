@@ -7,7 +7,6 @@ import datetime
 import logging
 import os
 import textwrap
-from typing import Optional
 
 from PIL import Image, ImageDraw
 
@@ -21,7 +20,7 @@ def find_closest_image(
     directory: str,
     last_caption_time: datetime.datetime,
     max_time_diff: datetime.timedelta = MAX_IMAGE_TIME_DIFF,
-) -> Optional[str]:
+) -> str | None:
     """Return the closest motion image not older than ``max_time_diff``."""
 
     closest_image = None

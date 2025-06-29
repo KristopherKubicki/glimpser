@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import patch
 
 from app.routes import get_all_settings
-from app.utils.validators import is_bool_string
+from app.utils.validators import BOOLEAN_SETTINGS, is_bool_string
 
 
 class DummySession:
@@ -39,6 +39,10 @@ class TestBoolHelpers(unittest.TestCase):
         found = next((s for s in settings if s["name"] == "MYFLAG"), None)
         self.assertIsNotNone(found)
         self.assertEqual(found["value"], "True")
+
+    def test_new_settings_in_boolean_list(self):
+        self.assertIn("NOTIFY_ON_MOTION", BOOLEAN_SETTINGS)
+        self.assertIn("NOTIFY_ON_CAPTION", BOOLEAN_SETTINGS)
 
 
 if __name__ == "__main__":

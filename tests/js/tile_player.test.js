@@ -121,3 +121,18 @@ test("init does not duplicate live-image", () => {
   init();
   expect(document.querySelectorAll("#live-image").length).toBe(1);
 });
+
+test("fullscreen button requests fullscreen", () => {
+  document.body.innerHTML = `
+    <div id="container">
+      <video id="live-video"><source></source></video>
+      <button id="fullscreen-toggle"></button>
+    </div>
+  `;
+  const container = document.getElementById("container");
+  container.requestFullscreen = jest.fn();
+  window.templateDetails = { cam1: {} };
+  init();
+  document.getElementById("fullscreen-toggle").click();
+  expect(container.requestFullscreen).toHaveBeenCalled();
+});

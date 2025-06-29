@@ -144,6 +144,11 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn('min="0"', components)
         self.assertIn('datalist id="object-filter-options"', components)
 
+    def test_template_form_error_container(self):
+        components = Path("app/templates/components.html").read_text(encoding="utf-8")
+        self.assertIn('id="template-error"', components)
+        self.assertIn('role="alert"', components)
+
     def test_groups_field_has_datalist(self):
         components = Path("app/templates/components.html").read_text(encoding="utf-8")
         self.assertIn('id="groups"', components)
@@ -214,6 +219,15 @@ class TestHtmlTemplates(unittest.TestCase):
         html = Path("app/templates/live.html").read_text(encoding="utf-8")
         self.assertIn('id="video-overlay"', html)
         self.assertIn('id="loading-indicator"', html)
+
+    def test_live_page_has_fullscreen_button(self):
+        html = Path("app/templates/live.html").read_text(encoding="utf-8")
+        self.assertIn('id="fullscreen-toggle"', html)
+
+    def test_timeline_has_nav_buttons(self):
+        html = Path("app/templates/timeline.html").read_text(encoding="utf-8")
+        self.assertIn('id="timeline-prev"', html)
+        self.assertIn('id="timeline-next"', html)
 
 
 if __name__ == "__main__":

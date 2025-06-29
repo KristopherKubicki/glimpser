@@ -39,7 +39,10 @@ def tmp_http_server(tmp_path):
 
 
 def test_url_test_endpoint(tmp_http_server):
-    with patch("app.routes.login_required", lambda x: x):
+    with (
+        patch("app.routes.login_required", lambda x: x),
+        patch("app.routes.validators.is_public_url", return_value=True),
+    ):
         app = create_app(enable_watchdog=False, schedule=False, log_cache=False)
         server = ServerThread(app)
         server.start()
@@ -49,7 +52,10 @@ def test_url_test_endpoint(tmp_http_server):
                 f"http://127.0.0.1:{server.port}/templates/test_url",
                 params={"url": url},
             )
+            data = resp.json()
             assert resp.status_code == 200
-            assert resp.json()["ok"]
+            assert data["ok"]
+            assert data["kind"] == "webpage"
+            assert data["suggestions"]["browser"] is True
         finally:
             server.shutdown()

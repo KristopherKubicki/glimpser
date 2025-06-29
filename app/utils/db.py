@@ -1,6 +1,7 @@
 """Database utilities for initializing the SQLite engine and schema."""
 
 import os
+import time
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
@@ -53,3 +54,18 @@ def ensure_column(
                     f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type} DEFAULT {default}"
                 )
             )
+
+
+def commit_with_retry(session, attempts: int = 3, delay: float = 0.1) -> None:
+    """Commit a session with retries on SQLite locking errors."""
+
+    for attempt in range(attempts):
+        try:
+            session.commit()
+            return
+        except OperationalError as exc:
+            if "database is locked" in str(exc) and attempt < attempts - 1:
+                session.rollback()
+                time.sleep(delay)
+                continue
+            raise

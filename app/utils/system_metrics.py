@@ -12,13 +12,13 @@ import subprocess
 import threading
 import time
 from collections import deque
-from typing import Any, Dict, List
+from typing import Any
 
 import psutil
 
 from app.config import FFMPEG_HWACCEL, FFMPEG_PATH, LOGGING_PATH, get_setting
 
-system_metrics: Dict[str, Any] = {
+system_metrics: dict[str, Any] = {
     "cpu_usage": 0.0,
     "memory_usage": 0.0,
     "thread_count": 0,
@@ -29,12 +29,14 @@ system_metrics: Dict[str, Any] = {
 stop_event = threading.Event()
 metrics_thread: threading.Thread | None = None
 log_caching_thread: threading.Thread | None = None
-thread_cpu_times: Dict[int, float] = {}
+thread_cpu_times: dict[int, float] = {}
 last_thread_sample = time.time()
-child_procs: List[psutil.Process] = []
+child_procs: list[psutil.Process] = []
 
 # Cache ffmpeg version after the first lookup to avoid repeated subprocess calls.
 FFMPEG_VERSION: str | None = None
+# Cache result of ffmpeg hwaccel capability detection
+FFMPEG_GPU_SUPPORT: bool | None = None
 
 log_cache: deque = deque(maxlen=10000)
 log_cache_lock = threading.Lock()
@@ -67,14 +69,18 @@ def machine_supports_hwaccel() -> bool:
 def ffmpeg_supports_hwaccel() -> bool:
     """Return ``True`` if ``ffmpeg`` reports any hardware acceleration methods."""
 
+    global FFMPEG_GPU_SUPPORT
+    if FFMPEG_GPU_SUPPORT is not None:
+        return FFMPEG_GPU_SUPPORT
     try:
         output = subprocess.check_output(
             [FFMPEG_PATH, "-hwaccels"], stderr=subprocess.STDOUT, timeout=2
         ).decode()
         lines = [l.strip() for l in output.splitlines() if l.strip()]
-        return len(lines) > 1
+        FFMPEG_GPU_SUPPORT = len(lines) > 1
     except Exception:
-        return False
+        FFMPEG_GPU_SUPPORT = False
+    return FFMPEG_GPU_SUPPORT
 
 
 def collect_system_metrics() -> None:
@@ -133,7 +139,7 @@ def start_metrics_collection() -> None:
     metrics_thread.start()
 
 
-def get_system_metrics() -> Dict[str, Any]:
+def get_system_metrics() -> dict[str, Any]:
     """Return the current system metrics summary."""
 
     uptime = time.time() - system_metrics["start_time"]
@@ -145,7 +151,9 @@ def get_system_metrics() -> Dict[str, Any]:
         open_files = len(process.open_files())
     ffmpeg_path = shutil.which(FFMPEG_PATH) or FFMPEG_PATH
     ffmpeg_version_str = ffmpeg_version()
-    ffmpeg_gpu_support = ffmpeg_supports_hwaccel()
+    ffmpeg_gpu_support = (
+        ffmpeg_supports_hwaccel() if FFMPEG_GPU_SUPPORT is None else FFMPEG_GPU_SUPPORT
+    )
     return {
         "cpu_usage": round(system_metrics["cpu_usage"], 1),
         "memory_usage": round(system_metrics["memory_usage"], 1),
@@ -176,7 +184,7 @@ def cache_logs() -> None:
     open(log_file_path, "a").close()
 
     try:
-        with open(log_file_path, "r") as file:
+        with open(log_file_path) as file:
             file.seek(0, os.SEEK_END)
             while True:
                 new_log = file.readline()

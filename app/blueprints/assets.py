@@ -12,7 +12,7 @@ from flask import Blueprint, Response
 def create_blueprint() -> Blueprint:
     """Create and return the assets blueprint."""
 
-    import app.routes as routes
+    from app import routes
 
     bp = Blueprint("assets", __name__)
 

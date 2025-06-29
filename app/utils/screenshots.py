@@ -1,10 +1,8 @@
 # utils/screenshots.py
 
-import base64
 import datetime
 import io
 import ipaddress
-import json
 import logging
 import os
 import platform
@@ -16,7 +14,6 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
 import psutil
@@ -33,19 +30,12 @@ logging.getLogger("urllib3").setLevel(logging.ERROR)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 import threading
-from typing import Dict
 
 import numpy as np
 import requests
 import yt_dlp as youtube_dl
 from pdf2image import convert_from_bytes
-from PIL import (
-    Image,
-    ImageDraw,
-    ImageFile,
-    ImageFont,
-    ImageOps,
-)
+from PIL import Image, ImageDraw, ImageFile, ImageFont, ImageOps
 
 # PIL may raise 'image file is truncated' if a screenshot is incomplete.
 # Allow truncated images to load so we can still overlay timestamps and
@@ -58,9 +48,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
-import app.config as config
-import app.utils.status_cache as status_cache
-import app.utils.user_activity as user_activity
+from app import config
 from app.config import (
     ANALYZE_DURATION_DEFAULT,
     ANALYZE_DURATION_OTHER,
@@ -77,6 +65,7 @@ from app.config import (
     TZ,
     UA,
 )
+from app.utils import status_cache, user_activity
 from app.utils.validators import validate_proxy, validate_url
 
 from .network import is_system_online
@@ -135,7 +124,7 @@ def set_cached_status_code(url: str, code: int) -> None:
 
 _load_status_cache()
 
-FFMPEG_AVAILABLE: Optional[bool] = None
+FFMPEG_AVAILABLE: bool | None = None
 
 last_camera_test = {}
 last_camera_test_time = {}
@@ -146,8 +135,6 @@ last_camera_light_time = {}
 lurl_cache = {}
 lurl_cache_time = {}
 throttle_cache = {}
-chrome_version = {}
-_browser_gl_cache: Dict[str, bool] = {}
 last_modified_cache = {}
 etag_cache = {}
 
@@ -207,7 +194,7 @@ def load_font(size):
     for font_name in FONT_CANDIDATES:
         try:
             return ImageFont.truetype(font_name, size)
-        except IOError:
+        except OSError:
             continue
     return ImageFont.load_default()
 
@@ -258,6 +245,11 @@ def _is_valid_png(path: str) -> bool:
         return True
     except Exception:
         return False
+
+
+def _sanitize_path(path: str) -> str:
+    """Return a normalized absolute path."""
+    return os.path.abspath(os.path.normpath(path))
 
 
 def detect_background_color(image: Image.Image, sample_width: int = 10):
@@ -353,12 +345,32 @@ def is_mostly_blank(
     blank_color=(255, 255, 255),
     text_std_threshold: int = 20,
     dark_threshold: int = 10,
+    edge_ratio: float = 0.05,
 ):
-    """
-    True  → we consider the frame “uninteresting” (blank / flat / too dark).
-    False → keep the frame.
+    """Heuristically detect blank or uninteresting frames.
+
+    Args:
+        image: Image to inspect.
+        threshold: Fraction of blank pixels for detection.
+        blank_color: RGB color treated as "blank".
+        text_std_threshold: Minimum global std-dev to consider text present.
+        dark_threshold: Minimum luma value to avoid dark-frame detection.
+        edge_ratio: Fractional border to ignore when analyzing content.
+
+    Returns:
+        True if the image is likely blank; otherwise False.
     """
     arr = np.asarray(image.convert("RGB"), dtype=np.int16)
+
+    if arr.ndim < 2:
+        return False
+
+    if 0 < edge_ratio < 0.5:
+        h, w, _ = arr.shape
+        crop_h = int(h * edge_ratio)
+        crop_w = int(w * edge_ratio)
+        if crop_h > 0 and crop_w > 0:
+            arr = arr[crop_h : h - crop_h, crop_w : w - crop_w]
 
     # Tiny images often have little variance and can trigger false positives.
     # Skip blank detection entirely for images smaller than 50x50 pixels.
@@ -568,10 +580,10 @@ def download_image(
 
     proxy = validate_proxy(proxy)
     clean_url = sanitize_url(url)
+    output_path = _sanitize_path(output_path)
 
     # ideally the timeout should be pretty high, its an image, and it could be real big
-    if timeout < 10:
-        timeout = 10
+    timeout = max(timeout, 10)
 
     response = None
 
@@ -643,9 +655,11 @@ def download_image(
             logging.warning(
                 f"Error downloading image: HTTP status code {status} {clean_url}"
             )
+            cas_error(url)
     except Exception as e:
-        logging.error(f"Error downloading image: {e} {clean_url} {timeout}")
+        logging.warning(f"Error downloading image: {e} {clean_url} {timeout}")
         set_cached_status_code(url, 0)
+        cas_error(url)
     finally:
         if response is not None:
             response.close()  # Ensure the connection is closed
@@ -670,6 +684,7 @@ def download_pdf(
     lsuccess = False
 
     clean_url = sanitize_url(url)
+    output_path = _sanitize_path(output_path)
 
     cached = get_cached_status_code(url)
     if cached is not None and cached != 200:
@@ -678,8 +693,7 @@ def download_pdf(
         )
         return False
 
-    if timeout < 10:
-        timeout = 10
+    timeout = max(timeout, 10)
 
     try:
         # Download the PDF file
@@ -715,7 +729,8 @@ def download_pdf(
         set_cached_status_code(url, response.status_code)
 
         if response.status_code != 200:
-            logging.error(f"Error downloading PDF: HTTP {response.status_code}")
+            logging.warning(f"Error downloading PDF: HTTP {response.status_code}")
+            cas_error(url)
             return False
 
         # Convert the first page to an image directly from the response bytes
@@ -738,14 +753,14 @@ def download_pdf(
             os.replace(tmp_path, output_path)
             logging.debug(f"Successfully saved PDF page to {output_path}")
             lsuccess = True
-        else:
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
+        elif os.path.exists(tmp_path):
+            os.remove(tmp_path)
         return lsuccess
 
     except Exception as e:
-        logging.error(f"Error downloading PDF: {e}")
+        logging.warning(f"Error downloading PDF: {e}")
         set_cached_status_code(url, 0)
+        cas_error(url)
         return False
 
 
@@ -780,12 +795,10 @@ def is_private_ip(ip_address):
 
 
 def is_address_reachable(address, port=80, timeout=5):
-
     if port is None:
         port = 80
 
-    if timeout < 3:
-        timeout = 3
+    timeout = max(timeout, 3)
 
     try:
         # Resolve the domain name to an IP address
@@ -862,7 +875,6 @@ def parse_url(url):
 
 
 def cas_error(url):
-
     entry = throttle_cache.setdefault(url, {"errors": 0, "first": time.time()})
 
     if entry.get("last", 0) > time.time() - 60 * 5:
@@ -1350,6 +1362,7 @@ def capture_frame_with_ytdlp(url, output_path, name="unknown", invert=False):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             timeout=CAPTURE_TIMEOUT,
+            check=False,
         )
 
         # Note! check the result. If the return code isnt 0, then we should fail out.  Why though? Check on that too.
@@ -1447,8 +1460,7 @@ def capture_frame_from_stream(
 
     clean_url = sanitize_url(url)
 
-    if timeout < 5:
-        timeout = 5
+    timeout = max(timeout, 5)
 
     tmpdirname = f"/tmp/glimpser_{name}"
     os.makedirs(tmpdirname, exist_ok=True)
@@ -1613,8 +1625,7 @@ def capture_screenshot_and_har_light(
         logging.warning("wkhtmltoimage is not installed or not in the system path.")
         return False
 
-    if timeout < 10:
-        timeout = 10
+    timeout = max(timeout, 10)
 
     # We'll stage a temporary filename for the "in-progress" PNG
     tmp_path = output_path.replace(".png", ".tmp.png")
@@ -1660,6 +1671,7 @@ def capture_screenshot_and_har_light(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             shell=False,
+            check=False,
         )
 
         if result.returncode != 0:
@@ -1717,125 +1729,16 @@ def capture_screenshot_and_har_light(
                 pass
 
 
-def get_chrome_path():
-    """
-    paths = [
-        "/usr/bin/google-chrome",
-        "/usr/bin/chromium",
-        "/snap/bin/chromium",
-    ]
-    for path in paths:
-        if os.path.exists(path):
-            return path
-    """
-    return (
-        shutil.which("google-chrome")
-        or shutil.which("chromium")
-        or shutil.which("chromium-browser")
-    )
-
-
-def get_chrome_version(chrome_path):
-    # Command to get the installed version of Chrome
-    if (
-        chrome_version.get(chrome_path) is not None
-        and chrome_version[chrome_path][1] > time.time() - 60 * 60
-    ):
-        return int(chrome_version[chrome_path][0])
-
-    try:
-        result = subprocess.run(
-            [chrome_path, "--version"],
-            capture_output=True,
-            text=True,
-            timeout=3,
-        )
-        version = result.stdout.strip().split()[-1]
-        version = int(version.split(".")[0])  # Return the major version
-        chrome_version[chrome_path] = (version, time.time())
-    except Exception as e:
-        logging.error(f"Chrome version exception error: {e}")
-        return chrome_version.get(chrome_path, extract_version(chrome_path))
-
-    return int(version)
-
-
-def extract_version(driver_path):
-    try:
-        # Extract the version using regex to handle different structures
-        match = re.search(r"(\d+)\.(\d+)\.(\d+)\.(\d+)", driver_path)
-        if match:
-            return int(
-                match.group(1)
-            )  # Return the main version part (e.g., 124 from 124.0.6367.207)
-        else:
-            raise ValueError("Version number not found in the path.")
-    except Exception as e:
-        logging.error(
-            "Error extracting version from path: %s, error: %s", driver_path, e
-        )
-        # Default to a known working version if extraction fails
-        return 135
-
-
-def _machine_supports_hwaccel() -> bool:
-    """Return True if GPU devices appear available."""
-    return os.path.exists("/dev/dri") or shutil.which("nvidia-smi") is not None
+from .chrome_utils import (
+    browser_supports_gl,
+    get_chrome_path,
+    get_chrome_version,
+    is_chrome_debug_port_open,
+)
 
 
 def _hwaccel_enabled() -> bool:
     return bool(FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false")
-
-
-def browser_supports_gl(chrome_path: str) -> bool:
-    cached = _browser_gl_cache.get(chrome_path)
-    if cached is not None:
-        return cached
-    try:
-        subprocess.check_call(
-            [
-                chrome_path,
-                "--headless=new",
-                "--use-gl=egl",
-                "--disable-gpu",
-                "about:blank",
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=5,
-        )
-        result = True
-    except Exception:
-        result = False
-    _browser_gl_cache[chrome_path] = result
-    return result
-
-
-def is_port_open(host, port, timeout=5):
-    """Check if a network port is open on the specified host."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(timeout)
-        try:
-            result = sock.connect_ex((host, port))
-        except OSError:
-            return False
-        if result == 0:
-            return True
-        if host in ("google.com", "www.google.com") and port == 80:
-            return True
-        return False
-
-
-def is_chrome_debug_port_open(host="127.0.0.1", port=None, timeout=1):
-    """Return True if Chrome's remote debugging port is reachable."""
-    if port is None:
-        port = config.DANGER_PORT
-    try:
-        sock = socket.create_connection((host, port), timeout=timeout)
-        sock.close()
-        return True
-    except Exception:
-        return False
 
 
 def kill_driver_process(driver):
@@ -1864,7 +1767,6 @@ def kill_driver_process(driver):
 
 
 def launch_headless_chrome(driver_options, version=None):
-
     driver = None
     try:
         # note - version not working
@@ -1942,8 +1844,7 @@ def capture_screenshot_phantom(
     if not (url.lower().startswith("http://") or url.lower().startswith("https://")):
         url = "https://" + url
 
-    if timeout < 15:
-        timeout = 15
+    timeout = max(timeout, 15)
     timeout = int(timeout)
 
     # Safely escape backslashes and quotes in XPaths
@@ -2067,6 +1968,7 @@ def capture_screenshot_phantom(
                 timeout=timeout + 10,
                 stderr=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
+                check=False,
             )
         except subprocess.TimeoutExpired:
             logging.warning(f"PhantomJS timed out for {clean_url}.")
@@ -2170,8 +2072,7 @@ def capture_screenshot_and_har(
         logging.warning("System offline; skipping capture for %s", clean_url)
         return False
 
-    if timeout < 30:
-        timeout = 30
+    timeout = max(timeout, 30)
 
     cleanup_old_tempdirs(prefix="glimpser_", max_age_hours=12)
 
@@ -2240,7 +2141,7 @@ def capture_screenshot_and_har(
         driver_options.add_argument("--disable-gpu")
         if (
             _hwaccel_enabled()
-            and _machine_supports_hwaccel()
+            and config._machine_supports_hwaccel()
             and browser_supports_gl(chrome_path)
         ):
             driver_options.add_argument("--use-gl=egl")
@@ -2333,7 +2234,7 @@ def capture_screenshot_and_har(
         if popup_xpath:
             try:
                 _remove_popup(driver, popup_xpath)
-            except Exception as e:
+            except Exception:
                 # logging.info(f"Could not remove popup={popup_xpath}:")
                 pass
 
@@ -2344,7 +2245,7 @@ def capture_screenshot_and_har(
                 driver.execute_script("arguments[0].scrollIntoView(true);", element)
                 time.sleep(1)
                 element.screenshot(partial_screenshot)
-            except Exception as e:
+            except Exception:
                 pass
 
         # Fallback to entire page if partial didn't get created
@@ -2362,9 +2263,9 @@ def capture_screenshot_and_har(
         if success and not os.path.exists(output_path):
             Path(output_path).touch()
 
-    except TimeoutException as e:
+    except TimeoutException:
         logging.warning(f"[capture_screenshot_and_har] Timeout error for {clean_url}")
-    except WebDriverException as e:
+    except WebDriverException:
         logging.warning(f"[capture_screenshot_and_har] WebDriver error for {clean_url}")
     except Exception as e:
         logging.error(f"[capture_screenshot_and_har] Unexpected error: {clean_url} {e}")
@@ -2404,6 +2305,9 @@ def _finalize_screenshot(tmp_path, final_path, name, invert, dark):
     Checks if tmp_path exists, does some post-processing, and renames to final_path.
     Returns True on success, False otherwise.
     """
+    tmp_path = _sanitize_path(tmp_path)
+    final_path = _sanitize_path(final_path)
+
     if not os.path.exists(tmp_path):
         return False
 
@@ -2434,10 +2338,14 @@ def _finalize_screenshot(tmp_path, final_path, name, invert, dark):
         # Now add a timestamp overlay. If this fails the file may be removed.
         add_timestamp(tmp_path, name=name, invert=invert)
 
-        # Finally rename if the temp file still exists. Timestamp overlay may
-        # delete corrupt images, so verify before moving.
+        # If the timestamp step removed the screenshot, replace it with a
+        # placeholder image rather than failing outright.
         if not os.path.exists(tmp_path):
-            logging.error("Temporary screenshot missing after timestamp overlay")
+            logging.warning("Timestamp overlay failed; creating placeholder instead")
+            create_placeholder(tmp_path, name)
+
+        # Finally rename after verifying the file exists.
+        if not os.path.exists(tmp_path):
             return False
 
         os.makedirs(os.path.dirname(final_path), exist_ok=True)

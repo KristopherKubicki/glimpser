@@ -212,6 +212,8 @@ class TestGetSystemMetrics(unittest.TestCase):
         mock_machine,
         mock_psutil,
     ):
+        # Ensure cached results don't leak between tests
+        system_metrics.FFMPEG_GPU_SUPPORT = None
         scheduling.system_metrics.update(
             {
                 "cpu_usage": 1.234,

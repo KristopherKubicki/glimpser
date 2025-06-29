@@ -1,7 +1,7 @@
 import { jest } from "@jest/globals";
 
 const formHtml =
-  '<form><input id="url" data-default-url="http://example.com/test"><span id="url-status"></span><img id="url-preview" data-placeholder="blank.jpg"><input type="submit"></form>';
+  '<form><input id="url" data-default-url="http://example.com/test"><span id="url-status"></span><img id="url-preview" data-placeholder="blank.jpg"><div class="preview-status"></div><input type="submit"></form>';
 
 beforeEach(() => {
   document.body.innerHTML = formHtml;
@@ -43,6 +43,8 @@ describe("url_test", () => {
     expect(status.classList.contains("ok")).toBe(true);
     const preview = document.getElementById("url-preview");
     expect(preview.src).toContain("http://example.com");
+    const overlay = document.querySelector(".preview-status");
+    expect(overlay.style.display).toBe("none");
   });
 
   test("paste triggers check and enables submit", async () => {
@@ -102,6 +104,9 @@ describe("url_test", () => {
     expect(status.classList.contains("bad")).toBe(true);
     expect(status.title).toBe("HTTP 404");
     expect(preview.src).toContain("blank.jpg");
+    const overlay = document.querySelector(".preview-status");
+    expect(overlay.textContent).toBe("HTTP 404");
+    expect(overlay.style.display).toBe("flex");
   });
 
   test("uses placeholder when fetch fails", async () => {
@@ -118,16 +123,106 @@ describe("url_test", () => {
     jest.runAllTimers();
     await Promise.resolve();
     expect(preview.src).toContain("blank.jpg");
+    const overlay = document.querySelector(".preview-status");
+    expect(overlay.textContent).toBe("Unreachable");
+    expect(overlay.style.display).toBe("flex");
+  });
+
+  test("adds confirm class on url failure", async () => {
+    const res = Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ ok: false }),
+    });
+    global.fetch = jest.fn(() => res);
+    initUrlTester();
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+    jest.clearAllTimers();
+    const input = document.getElementById("url");
+    const submit = document.querySelector("input[type='submit']");
+    input.value = "http://bad";
+    input.dispatchEvent(new Event("input"));
+    jest.advanceTimersByTime(500);
+    await Promise.resolve();
+    jest.runAllTimers();
+    await Promise.resolve();
+    expect(submit.classList.contains("confirm-submit")).toBe(true);
+    expect(submit.disabled).toBe(false);
+  });
+
+  test("stops player on url error", async () => {
+    const html = `
+      <form><input id="url"><span id="url-status"></span><img id="url-preview" data-placeholder="blank.jpg"><div class="preview-status"></div><input type="submit"></form>
+      <video id="live-video"><source src="old.mp4"></video>`;
+    document.body.innerHTML = html;
+    const res = Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ ok: false, status: 404 }),
+    });
+    global.fetch = jest.fn(() => res);
+    initUrlTester();
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+    jest.clearAllTimers();
+    const input = document.getElementById("url");
+    const video = document.getElementById("live-video");
+    input.value = "http://bad";
+    input.dispatchEvent(new Event("input"));
+    jest.advanceTimersByTime(500);
+    await Promise.resolve();
+    jest.runAllTimers();
+    await Promise.resolve();
+    const source = video.querySelector("source");
+    expect(source.hasAttribute("src")).toBe(false);
+    expect(video.paused).toBe(true);
+    const overlay = document.querySelector(".preview-status");
+    expect(overlay.textContent).toBe("HTTP 404");
+  });
+
+  test("applies checkbox suggestions", async () => {
+    document.body.innerHTML = `
+      <form>
+        <input id="url" />
+        <span id="url-status"></span>
+        <img id="url-preview" data-placeholder="blank.jpg">
+        <div class="preview-status"></div>
+        <input type="submit">
+      </form>
+      <input id="browser">
+      <input id="headless">
+      <input id="stealth">
+    `;
+    const res = Promise.resolve({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          ok: true,
+          suggestions: { browser: true, headless: true, stealth: false },
+        }),
+    });
+    global.fetch = jest.fn(() => res);
+    initUrlTester();
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+    const input = document.getElementById("url");
+    input.value = "http://ex";
+    input.dispatchEvent(new Event("input"));
+    jest.advanceTimersByTime(500);
+    await Promise.resolve();
+    jest.runAllTimers();
+    await Promise.resolve();
+    expect(document.getElementById("browser").checked).toBe(true);
+    expect(document.getElementById("headless").checked).toBe(true);
+    expect(document.getElementById("stealth").checked).toBe(false);
   });
 
   test("initializes multiple forms", async () => {
     const multiHtml = `
       <div class="edit-template-container">
         <img id="p1" data-placeholder="blank.jpg">
+        <div class="preview-status"></div>
         <form><input id="url" data-default-url="http://a"><span id="url-status"></span><input type="submit"></form>
       </div>
       <div class="edit-template-container">
         <img id="p2" data-placeholder="blank.jpg">
+        <div class="preview-status"></div>
         <form><input id="url" data-default-url="http://b"><span id="url-status"></span><input type="submit"></form>
       </div>`;
     document.body.innerHTML = multiHtml;
@@ -152,5 +247,9 @@ describe("url_test", () => {
     jest.advanceTimersByTime(500);
     await Promise.resolve();
     expect(previews[1].src).toContain("http://cam");
+    const overlay = previews[1]
+      .closest(".edit-template-container")
+      .querySelector(".preview-status");
+    expect(overlay.style.display).toBe("none");
   });
 });

@@ -7,20 +7,15 @@ import queue
 from ipaddress import ip_network
 from threading import Thread
 
-from flask import (
-    Blueprint,
-    Response,
-    jsonify,
-    render_template,
-    request,
-    stream_with_context,
-)
+from flask import Blueprint, Response, jsonify, request, stream_with_context
+
+from app.utils import screenshots
 
 
 def create_blueprint() -> Blueprint:
     """Create and return the camera discovery blueprint."""
 
-    import app.routes as routes
+    from app import routes
 
     bp = Blueprint("discovery", __name__)
 
@@ -187,7 +182,7 @@ def create_blueprint() -> Blueprint:
 
         url = request.args.get("url") or ""
         url = routes.validators.validate_url(url)
-        if not url:
+        if not url or not routes.validators.is_public_url(url):
             return jsonify({"ok": False, "error": "invalid"}), 400
 
         def attempt(method: str) -> tuple[bool, dict]:
@@ -217,6 +212,23 @@ def create_blueprint() -> Blueprint:
                 return jsonify({"ok": False, "error": "unreachable"}), 400
 
         info["ok"] = info.get("status", 500) < 400
+
+        content_type = info.get("content_type", "")
+        kind = "webpage"
+        if screenshots.is_image_url(url, content_type):
+            kind = "image"
+        elif screenshots.is_pdf_url(url, content_type):
+            kind = "pdf"
+        elif screenshots.is_video_stream_url(url, content_type):
+            kind = "video"
+
+        suggestions = {
+            "browser": kind in {"webpage", "pdf"},
+            "headless": kind in {"webpage", "pdf"},
+            "stealth": False,
+        }
+
+        info.update({"kind": kind, "suggestions": suggestions})
         return jsonify(info)
 
     @bp.route("/discover/export", methods=["POST"])

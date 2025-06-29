@@ -61,12 +61,13 @@ Running the full test suite helps ensure that your changes do not introduce regr
 
 ## Contribution Workflow
 
-We follow a standard GitHub Flow:
+We follow a staged GitHub Flow:
 
 1. Fork the repository and create a feature branch from `main`.
+   Open a pull request targeting the `staging` branch once the feature is ready.
 2. Make your changes and commit them with clear messages.
 3. Ensure all tests pass and linting succeeds.
-4. Open a pull request describing your changes.
+4. Open a pull request describing your changes and merge it into `staging` after review.
 
 For more details, see [CONTRIBUTING.md](https://github.com/KristopherKubicki/glimpser/blob/main/CONTRIBUTING.md).
 

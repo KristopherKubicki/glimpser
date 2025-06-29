@@ -17,8 +17,8 @@ import psutil
 
 from app.utils.api_utils import request_with_retry
 
+from .chrome_utils import is_port_open
 from .oui_map import OUI_MAP as BUILTIN_OUI_MAP
-from .screenshots import is_port_open
 
 # Minimal OUI mapping for MAC manufacturer lookup.  The bulk of prefixes lives
 # in ``app.utils.oui_map`` which avoids pulling in external dependencies.
@@ -354,7 +354,9 @@ def _trace_upstream(ip: str, timeout: int = 3) -> str | None:
     if not cmd:
         return None
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout, check=False
+        )
         lines = proc.stdout.splitlines()
         if len(lines) >= 2:
             parts = lines[1].split()
@@ -377,7 +379,9 @@ def _ping_latency(ip: str, timeout: int = 1) -> float | None:
     if not cmd:
         return None
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 1)
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout + 1, check=False
+        )
         out = proc.stdout
         match = re.search(r"time[=<]([0-9.]+)", out)
         if not match:
@@ -460,7 +464,7 @@ def _probe_onvif(timeout=2):
         while True:
             try:
                 data, addr = sock.recvfrom(4096)
-            except socket.timeout:
+            except TimeoutError:
                 break
             ip = addr[0]
             info = {}
@@ -557,7 +561,7 @@ def _probe_ssdp(timeout: int = 2, max_duration: int = 5) -> list[dict]:
                 break
             try:
                 resp, addr = sock.recvfrom(1024)
-            except socket.timeout:
+            except TimeoutError:
                 continue
             ip = addr[0]
             port = 80

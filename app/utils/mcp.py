@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 try:
     from openai_agents_python import (
@@ -22,7 +22,7 @@ class _StubMCPServer:
     """Fallback server used when ``openai-agents`` is unavailable."""
 
     def __init__(self) -> None:
-        self._tools: Dict[str, Dict[str, Any]] = {}
+        self._tools: dict[str, dict[str, Any]] = {}
         self.register_tool(
             "echo",
             "Return the provided text",
@@ -33,15 +33,15 @@ class _StubMCPServer:
         """Register a callable as a stub MCP tool."""
         self._tools[name] = {"description": description, "func": func}
 
-    async def list_tools(self) -> List[Dict[str, Any]]:
+    async def list_tools(self) -> list[dict[str, Any]]:
         return [
             {"name": name, "description": info["description"]}
             for name, info in self._tools.items()
         ]
 
     async def call_tool(
-        self, name: str, params: Dict[str, Any] | None = None
-    ) -> Dict[str, Any]:
+        self, name: str, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         info = self._tools.get(name)
         if not info:
             return {"error": f"Unknown tool: {name}"}
@@ -72,13 +72,13 @@ class MCPClient:
             logging.warning("openai-agents not installed, using stub MCP server")
             self._server = _StubMCPServer()
 
-    async def list_tools(self) -> List[Dict[str, Any]]:
+    async def list_tools(self) -> list[dict[str, Any]]:
         await self._ensure_server()
         return await self._server.list_tools()
 
     async def call_tool(
-        self, name: str, params: Dict[str, Any] | None = None
-    ) -> Dict[str, Any]:
+        self, name: str, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         await self._ensure_server()
         return await self._server.call_tool(name, params)
 
@@ -112,13 +112,13 @@ def register_local_tool(name: str, description: str, func) -> None:
         client._server.register_tool(name, description, func)
 
 
-def list_tools_sync() -> List[Dict[str, Any]]:
+def list_tools_sync() -> list[dict[str, Any]]:
     """Return the list of tools from the configured MCP server."""
     client = _get_default_client()
     return asyncio.run(client.list_tools())
 
 
-def call_tool_sync(name: str, params: Dict[str, Any] | None = None) -> Dict[str, Any]:
+def call_tool_sync(name: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Call a tool on the configured MCP server."""
     client = _get_default_client()
     return asyncio.run(client.call_tool(name, params))

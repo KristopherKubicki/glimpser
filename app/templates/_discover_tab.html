@@ -36,106 +36,126 @@
       Discover
     </button>
   </div>
-  {% endcall %} {% call card('Scan Progress') %}
-  <div class="wizard-step" title="Progress of the discovery scan">
-    <progress
-      id="discover-progress"
-      class="discovery-progress hidden"
-      max="100"
-      title="Discovery progress"
-      role="progressbar"
-      aria-live="polite"
-    ></progress>
-    <span
-      id="discover-message"
-      title="Status messages"
-      role="status"
-      aria-live="polite"
-    ></span>
-  </div>
-  {% endcall %} {% call card('Results') %}
-  <div class="wizard-step" title="Review results and export if desired">
-    <div class="export-buttons">
-      <button
-        id="export-json"
-        class="btn btn-primary"
-        title="Download results as JSON"
-      >
-        Export JSON
-      </button>
-      <button
-        id="export-csv"
-        class="btn btn-primary"
-        title="Download results as CSV"
-      >
-        Export CSV
-      </button>
+  {% endcall %}
+  <div id="progress-card" class="hidden">
+    {% call card('Scan Progress') %}
+    <div class="wizard-step" title="Progress of the discovery scan">
+      <progress
+        id="discover-progress"
+        class="discovery-progress hidden"
+        max="100"
+        title="Discovery progress"
+        role="progressbar"
+        aria-live="polite"
+      ></progress>
+      <span
+        id="discover-message"
+        title="Status messages"
+        role="status"
+        aria-live="polite"
+      ></span>
     </div>
-    <table id="discover-table" class="camera-table">
-      <thead>
-        <tr>
-          <th class="sortable" title="Camera IP address">IP</th>
-          <th class="sortable" title="Protocol type">Protocol</th>
-          <th class="sortable" data-type="number" title="Port number">Port</th>
-          <th class="sortable" title="MAC address">MAC</th>
-          <th class="sortable" title="Device manufacturer">Manufacturer</th>
-          <th title="Device details"></th>
-          <th title="Add camera"></th>
-        </tr>
-      </thead>
-      <tbody id="discover-body">
-        {% for cam in cameras %} {% set url = cam.url or (cam.protocol ~ '://' ~
-        cam.ip ~ ':' ~ cam.port) %}
-        <tr>
-          <td>{{ cam.ip }}</td>
-          <td>{{ cam.protocol }}</td>
-          <td>{{ cam.port }}</td>
-          <td>{{ cam.info.mac }}</td>
-          <td>{{ cam.info.manufacturer }}</td>
-          <td>
-            <svg class="camera-icon" width="12" height="12" aria-hidden="true">
-              <use
-                href="{{ url_for('static', filename='icons/sprite.svg') }}#camera"
-              ></use>
-            </svg>
-            {% if show_info(cam.info) %}
-            <span class="info-icon" title="{{ show_info(cam.info) }}">ℹ️</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if url in existing_urls %}
-            {# use blueprint prefix for template details route #}
-            <a
-              href="{{ url_for('ui.template_details', template_name=existing_urls[url]) }}"
-              class="btn btn-primary"
-              title="View this camera"
-              >View</a
-            >
-            {% else %}
-            <form action="/discover/add" method="post">
-              <input type="hidden" name="ip" value="{{ cam.ip }}" />
-              <input type="hidden" name="protocol" value="{{ cam.protocol }}" />
-              <input type="hidden" name="port" value="{{ cam.port }}" />
-              {% if cam.url %}
-              <input type="hidden" name="url" value="{{ cam.url }}" />
-              {% endif %}
-              <input type="hidden" name="name" value="{{ cam.ip }}" />
-              <button
-                class="btn btn-primary"
-                type="submit"
-                title="Add this camera"
-              >
-                Add
-              </button>
-            </form>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    {% endcall %}
   </div>
-  {% endcall %} {% call card('Add Camera
+  <div id="results-card" class="hidden">
+    {% call card('Results') %}
+    <div class="wizard-step" title="Review results and export if desired">
+      <div class="export-buttons">
+        <button
+          id="export-json"
+          class="btn btn-primary"
+          title="Download results as JSON"
+        >
+          Export JSON
+        </button>
+        <button
+          id="export-csv"
+          class="btn btn-primary"
+          title="Download results as CSV"
+        >
+          Export CSV
+        </button>
+      </div>
+      <table id="discover-table" class="camera-table">
+        <thead>
+          <tr>
+            <th class="sortable" title="Camera IP address">IP</th>
+            <th class="sortable" title="Protocol type">Protocol</th>
+            <th class="sortable" data-type="number" title="Port number">
+              Port
+            </th>
+            <th class="sortable" title="MAC address">MAC</th>
+            <th class="sortable" title="Device manufacturer">Manufacturer</th>
+            <th title="Device details"></th>
+            <th title="Add camera"></th>
+          </tr>
+        </thead>
+        <tbody id="discover-body">
+          {% for cam in cameras %} {% set url = cam.url or (cam.protocol ~ '://'
+          ~ cam.ip ~ ':' ~ cam.port) %}
+          <tr>
+            <td>{{ cam.ip }}</td>
+            <td>{{ cam.protocol }}</td>
+            <td>{{ cam.port }}</td>
+            <td>{{ cam.info.mac }}</td>
+            <td>{{ cam.info.manufacturer }}</td>
+            <td>
+              <svg
+                class="camera-icon"
+                width="12"
+                height="12"
+                aria-hidden="true"
+              >
+                <use
+                  href="{{ url_for('static', filename='icons/sprite.svg') }}#camera"
+                ></use>
+              </svg>
+              {% if show_info(cam.info) %}
+              <span class="info-icon" title="{{ show_info(cam.info) }}"
+                >ℹ️</span
+              >
+              {% endif %}
+            </td>
+            <td>
+              {% if url in existing_urls %} {# use blueprint prefix for template
+              details route #}
+              <a
+                href="{{ url_for('ui.template_details', template_name=existing_urls[url]) }}"
+                class="btn btn-primary"
+                title="View this camera"
+                >View</a
+              >
+              {% else %}
+              <form action="/discover/add" method="post">
+                <input type="hidden" name="ip" value="{{ cam.ip }}" />
+                <input
+                  type="hidden"
+                  name="protocol"
+                  value="{{ cam.protocol }}"
+                />
+                <input type="hidden" name="port" value="{{ cam.port }}" />
+                {% if cam.url %}
+                <input type="hidden" name="url" value="{{ cam.url }}" />
+                {% endif %}
+                <input type="hidden" name="name" value="{{ cam.ip }}" />
+                <button
+                  class="btn btn-primary"
+                  type="submit"
+                  title="Add this camera"
+                >
+                  Add
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endcall %}
+  </div>
+  {% call card('Add Camera
   <span
     class="info-icon"
     title="Enter the camera or dashboard URL and tab out to verify it works. The live preview updates automatically. Use Advanced Options for XPaths, callbacks and credentials."
@@ -159,6 +179,8 @@
     const msg = document.getElementById("discover-message");
     const progress = document.getElementById("discover-progress");
     const body = document.getElementById("discover-body");
+    const progressCard = document.getElementById("progress-card");
+    const resultsCard = document.getElementById("results-card");
     const exportJson = document.getElementById("export-json");
     const exportCsv = document.getElementById("export-csv");
 
@@ -198,6 +220,8 @@
         } catch (e) {
           console.warn("Unable to start background discovery", e);
         }
+        if (progressCard) progressCard.classList.remove("hidden");
+        if (resultsCard) resultsCard.classList.remove("hidden");
         progress.classList.remove("hidden");
         progress.value = 0;
         body.innerHTML = "";
@@ -207,14 +231,22 @@
         const url = cidr
           ? `/discover/scan_stream?cidr=${encodeURIComponent(cidr)}`
           : "/discover/scan_stream";
-        const source = new EventSource(url);
-        const known = new Set();
-        const addRow = (cam) => {
-          const key = cam.ip ? `${cam.ip}-${cam.protocol}-${cam.port}` : cam.url;
-          if (known.has(key)) return;
-          known.add(key);
-          results.push(cam);
-          updateExportState();
+
+        let source;
+        let reconnectTimer;
+
+        const startStream = () => {
+          if (source) source.close();
+          source = new EventSource(url);
+
+          const known = new Set();
+
+          const addRow = (cam) => {
+            const key = cam.ip ? `${cam.ip}-${cam.protocol}-${cam.port}` : cam.url;
+            if (known.has(key)) return;
+            known.add(key);
+            results.push(cam);
+            updateExportState();
           const tr = document.createElement("tr");
           let url = cam.url || `${cam.protocol}://${cam.ip}:${cam.port}`;
           const existing = existingMap[url];
@@ -249,58 +281,59 @@
                     <td>${action}</td>`;
           body.appendChild(tr);
         };
-        let plan = [];
-        source.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          if (data.error) {
-            console.error("Discovery error", data.error);
-            msg.textContent = `Error discovering cameras: ${data.error}`;
-            progress.classList.add("hidden");
-            source.close();
-            return;
-          }
-          if (data.total) {
-            progress.max = 100;
-            progress.value = 0;
-            plan = data.stages || [];
-            if (data.subnets) {
-              msg.textContent = `Scanning networks: ${data.subnets.join(", ")}. Plan: ${plan.join(", ")}`;
+          let plan = [];
+          source.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.error) {
+              console.error("Discovery error", data.error);
+              msg.textContent = `Error discovering cameras: ${data.error}`;
+              progress.classList.add("hidden");
+              source.close();
+              return;
             }
-            return;
-          }
-          if (data.done) {
-            msg.textContent = `Found ${known.size} cameras.`;
+            if (data.total) {
+              progress.max = 100;
+              progress.value = 0;
+              plan = data.stages || [];
+              if (data.subnets) {
+                msg.textContent = `Scanning networks: ${data.subnets.join(", ")}. Plan: ${plan.join(", ")}`;
+              }
+              return;
+            }
+            if (data.done) {
+              msg.textContent = `Found ${known.size} cameras.`;
+              progress.classList.add("hidden");
+              source.close();
+              return;
+            }
+            if (typeof data.progress === "number") {
+              progress.value = data.progress;
+            } else {
+              progress.value += 1;
+            }
+            if (plan.length && plan[0] === data.stage) {
+              plan.shift();
+            }
+            const eta = data.eta ? ` ~${Math.round(data.eta)}s left` : "";
+            msg.textContent =
+              `Scanning ${data.stage} (${data.count} found)...` +
+              (plan.length ? ` Next: ${plan[0]}` : "") +
+              eta;
+            if (data.cameras) {
+              data.cameras.forEach(addRow);
+            }
+          };
+          source.onerror = (e) => {
+            console.error("Discovery error", e);
+            msg.textContent = "Connection lost. Reconnecting...";
             progress.classList.add("hidden");
             source.close();
-            return;
-          }
-          if (typeof data.progress === "number") {
-            progress.value = data.progress;
-          } else {
-            progress.value += 1;
-          }
-          if (plan.length && plan[0] === data.stage) {
-            plan.shift();
-          }
-          const eta = data.eta ? ` ~${Math.round(data.eta)}s left` : "";
-          msg.textContent =
-            `Scanning ${data.stage} (${data.count} found)...` +
-            (plan.length ? ` Next: ${plan[0]}` : "") +
-            eta;
-          if (data.cameras) {
-            data.cameras.forEach(addRow);
-          }
+            clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(startStream, 3000);
+          };
         };
-        source.onerror = (e) => {
-          console.error("Discovery error", e);
-          let text = "Error discovering cameras";
-          if (e && e.message) {
-            text += `: ${e.message}`;
-          }
-          msg.textContent = text;
-          progress.classList.add("hidden");
-          source.close();
-        };
+
+        startStream();
       });
     }
 

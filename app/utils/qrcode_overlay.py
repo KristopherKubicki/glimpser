@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import hashlib
-from typing import List
 
 from PIL import Image, ImageDraw
 
 
-def generate_micro_barcode(data: str) -> List[bool]:
+def generate_micro_barcode(data: str) -> list[bool]:
     """Return a boolean list representing a tiny 1D barcode."""
     bits = "".join(f"{b:08b}" for b in hashlib.sha1(data.encode()).digest())
     return [b == "1" for b in bits[:64]]

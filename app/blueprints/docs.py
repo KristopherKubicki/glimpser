@@ -8,7 +8,7 @@ from flask import Blueprint, send_from_directory
 def create_blueprint() -> Blueprint:
     """Create and return the documentation blueprint."""
 
-    import app.routes as routes
+    from app import routes
 
     bp = Blueprint("docs", __name__)
 
