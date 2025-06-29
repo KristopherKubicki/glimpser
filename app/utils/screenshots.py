@@ -1964,11 +1964,14 @@ def is_chrome_debug_port_open(host="127.0.0.1", port=9222, timeout=1):
 
 
 def kill_driver_process(driver):
-    """Kills the Chrome process associated with the given driver."""
+    """Terminate Chrome spawned by ``driver`` if still active."""
+
     try:
         time.sleep(5)
-        if driver.service.process and driver.service.process.pid:
-            pid = driver.service.process.pid
+        service = getattr(driver, "service", None)
+        process = getattr(service, "process", None)
+        pid = getattr(process, "pid", None)
+        if pid:
             chrome_process = psutil.Process(pid)
             for child in chrome_process.children(recursive=True):
                 if psutil.pid_exists(child.pid):
@@ -1979,11 +1982,10 @@ def kill_driver_process(driver):
                 logging.debug("TERMINATE %s", driver)
                 chrome_process.wait(timeout=5)
     except psutil.NoSuchProcess:
-        logging.debug(f"Process {pid} already exited before termination attempt.")
+        logging.debug("Process %s already exited before termination attempt.", pid)
     except Exception as e:
-        logging.error(f"Error killing Chrome process: {e}")
+        logging.error("Error killing Chrome process: %s", e)
     finally:
-        # Ensure future calls create a new driver
         global _DRIVER
         _DRIVER = None
 

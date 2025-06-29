@@ -50,6 +50,18 @@ class TestGetDriver(unittest.TestCase):
             mock_install.assert_called_once()
             mock_chrome.assert_called_once()
 
+    def test_kill_driver_process_handles_missing_proc(self):
+        class DummyService:
+            process = None
+
+        class DummyDriver:
+            service = DummyService()
+
+        ss._DRIVER = object()
+        # Should not raise when process attribute is None
+        ss.kill_driver_process(DummyDriver())
+        self.assertIsNone(ss._DRIVER)
+
 
 if __name__ == "__main__":
     unittest.main()
