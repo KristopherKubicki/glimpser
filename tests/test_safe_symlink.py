@@ -47,6 +47,28 @@ class TestSafeSymlink(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     safe_symlink(src, dst)
 
+    def test_recovers_from_race(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, "f")
+            dst = os.path.join(tmp, "link")
+            open(src, "w").close()
+
+            def flaky_symlink(s, d):
+                if not hasattr(flaky_symlink, "called"):
+                    flaky_symlink.called = True
+                    original(s, d)
+                    raise FileExistsError
+                return original(s, d)
+
+            original = os.symlink
+            with (
+                patch("app.utils.scheduling.SCREENSHOT_DIRECTORY", tmp),
+                patch("os.symlink", side_effect=flaky_symlink) as m,
+            ):
+                safe_symlink(src, dst)
+            self.assertEqual(m.call_count, 2)
+            self.assertEqual(os.readlink(dst), os.path.abspath(src))
+
 
 if __name__ == "__main__":
     unittest.main()
