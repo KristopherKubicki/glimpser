@@ -136,7 +136,7 @@ from .template_manager import (
     set_capture_failed,
     update_last_screenshot_time,
 )
-from .validators import validate_template_name
+from .validators import validate_group_name, validate_template_name
 
 logging.getLogger("apscheduler").setLevel(logging.WARNING)
 
@@ -444,13 +444,16 @@ def update_camera(name, template, image_file=None, motion=False):
             )
             os.rename(os.path.abspath(lpath + ".tmp"), os.path.abspath(lpath))
 
-            # Create symlinks for each group
+            # Create symlinks for each valid group
             if "groups" in template:
                 groups = template["groups"].split(",")
                 for group in groups:
-                    trimmed_group_name = group.strip()
+                    valid_group = validate_group_name(group)
+                    if not valid_group:
+                        logging.warning("Ignoring invalid group name: %s", group)
+                        continue
                     group_lpath = os.path.join(
-                        SCREENSHOT_DIRECTORY, f"{trimmed_group_name}_latest_camera.png"
+                        SCREENSHOT_DIRECTORY, f"{valid_group}_latest_camera.png"
                     )
                     if os.path.lexists(group_lpath + ".tmp"):
                         os.unlink(os.path.abspath(group_lpath + ".tmp"))
