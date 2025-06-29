@@ -6,7 +6,6 @@ from PIL import Image
 
 import app.utils.scheduling as scheduling
 
-
 class TestUpdateCameraSymlink(unittest.TestCase):
     def test_handles_relative_prev_motion_symlink(self):
         with tempfile.TemporaryDirectory() as tmp:
