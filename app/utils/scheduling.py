@@ -769,6 +769,12 @@ def update_camera(name, template, image_file=None, motion=False):
 
             if os.path.lexists(prev_motion):
                 destination = os.readlink(prev_motion)
+                if not os.path.isabs(destination):
+                    # ``os.readlink`` may return a relative path when the
+                    # symlink was created with one. Convert it to an absolute
+                    # path relative to the camera directory so ``safe_symlink``
+                    # does not reject it as escaping ``SCREENSHOT_DIRECTORY``.
+                    destination = os.path.abspath(os.path.join(directory, destination))
                 if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
                     os.remove(os.path.join(directory, "prev_motion.png.tmp"))
                 safe_symlink(
@@ -813,6 +819,9 @@ def update_camera(name, template, image_file=None, motion=False):
 
             if os.path.lexists(prev_motion):
                 destination = os.readlink(prev_motion)
+                if not os.path.isabs(destination):
+                    # Normalize relative symlink targets to absolute paths.
+                    destination = os.path.abspath(os.path.join(directory, destination))
                 if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
                     os.remove(os.path.join(directory, "prev_motion.png.tmp"))
                 safe_symlink(
