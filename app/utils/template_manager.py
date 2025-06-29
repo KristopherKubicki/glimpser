@@ -1,4 +1,10 @@
-# app/utils/template_manager.py
+"""Manage screenshot templates stored in the SQLite database.
+
+The :class:`TemplateManager` exposes CRUD operations for template records
+and tracks token usage for LLM captions.  It validates paths and names to
+avoid security issues and lazily initializes the underlying database on
+first use.
+"""
 
 import json
 import logging

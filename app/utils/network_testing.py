@@ -1,3 +1,11 @@
+"""Assist Selenium tests by monitoring network traffic.
+
+Functions use Chrome's performance log to detect request statuses and
+expose wait helpers that block until the page settles or errors occur.
+They integrate with threads or external stop events so other modules can
+abort the wait early.
+"""
+
 import json
 import threading
 import time

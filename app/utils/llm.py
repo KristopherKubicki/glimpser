@@ -1,4 +1,11 @@
-# app/utils/llm.py
+"""Interact with the OpenAI API to generate text summaries.
+
+The :func:`summarize` helper sends chat prompts along with optional
+conversation history and caches responses to reduce token usage.  Basic
+rate limiting ensures we honor ``429`` errors by pausing subsequent
+requests for a short period.  Cost information is logged for budgeting
+purposes.
+"""
 
 import datetime
 import json

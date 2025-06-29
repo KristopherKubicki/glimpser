@@ -1,3 +1,11 @@
+"""Check network connectivity using both HTTP and TCP probes.
+
+Utilities in this module attempt to reach well known endpoints to judge
+whether the system has outbound network access.  These checks avoid
+network operations in tests and handle custom hosts provided via
+environment variables.
+"""
+
 import logging
 import os
 import socket

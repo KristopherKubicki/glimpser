@@ -1,4 +1,10 @@
-# app/utils/detect.py
+"""Compute perceptual differences between still images.
+
+The module provides :func:`calculate_difference_fast` which quickly
+downsamples two images and returns a normalized mean squared error
+score.  It is primarily used to detect duplicate screenshots while
+avoiding expensive full resolution comparisons.
+"""
 
 import logging
 

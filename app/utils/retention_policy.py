@@ -1,4 +1,9 @@
-# utils/retention_policy.py
+"""Implement cleanup routines for stored videos and screenshots.
+
+Helpers inspect configured directories and remove files based on age and
+total size limits.  The logic also prunes temporary clip outputs when the
+user is idle so disk usage stays within bounds on unattended systems.
+"""
 
 import logging
 import os

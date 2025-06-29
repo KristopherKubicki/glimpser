@@ -1,3 +1,11 @@
+"""Send webhook-like callbacks while blocking unsafe destinations.
+
+Only public HTTP(S) addresses are allowed to protect against SSRF.
+Utilities validate the target host and optionally retry failed
+requests with exponential backoff.  Responses are logged for auditing
+and ignored on error.
+"""
+
 import logging
 import socket
 import time

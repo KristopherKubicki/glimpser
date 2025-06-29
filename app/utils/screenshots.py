@@ -1,4 +1,10 @@
-# utils/screenshots.py
+"""Capture, annotate and process screenshots from various sources.
+
+The module provides high level helpers to download or grab images using
+Chrome, yt-dlp or ffmpeg, apply overlays and store them in structured
+directories.  It manages caching of HTTP status codes and integrates with
+user activity checks so interactive sessions are not disrupted.
+"""
 
 import datetime
 import io

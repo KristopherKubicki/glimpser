@@ -1,4 +1,10 @@
-# utils/video_archiver.py
+"""Archive captured frames into compressed teaser and long videos.
+
+This module wraps ffmpeg and ffprobe to concatenate in-process footage,
+create blank videos and extract metadata.  It enforces size limits and
+rotates expired clips while generating group-based teasers from recent
+segments.
+"""
 
 import datetime
 import glob
