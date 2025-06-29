@@ -1,3 +1,4 @@
+"""Tests for fast mjpg route."""
 import os
 import shutil
 import unittest

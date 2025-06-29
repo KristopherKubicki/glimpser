@@ -1,3 +1,4 @@
+"""Tests for search suggestions."""
 import os
 import unittest
 from pathlib import Path

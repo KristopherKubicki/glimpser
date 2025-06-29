@@ -1,3 +1,4 @@
+"""Tests for video dates."""
 import datetime
 import types
 

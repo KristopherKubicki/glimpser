@@ -1,3 +1,4 @@
+"""Tests for clip config."""
 import os
 import tempfile
 import types

@@ -1,3 +1,4 @@
+"""Tests for file location metrics."""
 import os
 import tempfile
 import unittest

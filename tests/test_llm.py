@@ -1,3 +1,4 @@
+"""Tests for llm."""
 # tests/test_llm.py
 
 import datetime

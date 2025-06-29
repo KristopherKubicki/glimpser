@@ -1,3 +1,4 @@
+"""Tests for e2e screenshot route."""
 import os
 from threading import Thread
 from types import SimpleNamespace

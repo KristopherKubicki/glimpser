@@ -1,3 +1,4 @@
+"""Tests for mjpg route."""
 import os
 import unittest
 from unittest.mock import patch

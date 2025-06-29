@@ -1,3 +1,4 @@
+"""Tests for blank frame logging."""
 import os
 import tempfile
 import unittest

@@ -1,3 +1,4 @@
+"""Tests for video details."""
 import importlib.util
 import os
 from datetime import datetime, timedelta, timezone

@@ -1,3 +1,4 @@
+"""Tests for find closest image."""
 import os
 import tempfile
 import unittest

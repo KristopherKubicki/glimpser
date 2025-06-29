@@ -1,3 +1,4 @@
+"""Tests for screenshot capture."""
 # tests/test_screenshot_capture.py
 
 import io

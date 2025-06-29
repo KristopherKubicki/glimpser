@@ -1,3 +1,4 @@
+"""Tests for system metrics."""
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch

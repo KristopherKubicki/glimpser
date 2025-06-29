@@ -1,3 +1,4 @@
+"""Tests for summary storage."""
 import importlib
 import os
 import tempfile

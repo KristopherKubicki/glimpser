@@ -1,3 +1,4 @@
+"""Tests for log summary."""
 import datetime
 import importlib
 import os

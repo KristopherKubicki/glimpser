@@ -1,3 +1,4 @@
+"""Tests for status cache."""
 import os
 import shutil
 import tempfile

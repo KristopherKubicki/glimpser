@@ -1,3 +1,4 @@
+"""Tests for generate credentials."""
 import argparse
 import os
 import sqlite3

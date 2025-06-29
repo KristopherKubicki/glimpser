@@ -1,3 +1,4 @@
+"""Tests for screenshot light."""
 import os
 import tempfile
 import unittest

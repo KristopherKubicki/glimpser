@@ -1,3 +1,4 @@
+"""Tests for camera discovery ouis."""
 import os
 import tempfile
 import unittest

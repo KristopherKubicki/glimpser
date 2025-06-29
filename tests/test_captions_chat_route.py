@@ -1,3 +1,4 @@
+"""Tests for captions chat route."""
 import os
 import unittest
 from unittest.mock import MagicMock, patch

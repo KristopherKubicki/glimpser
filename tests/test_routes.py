@@ -1,3 +1,4 @@
+"""Tests for routes."""
 # tests/test_routes.py
 
 import importlib

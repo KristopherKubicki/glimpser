@@ -1,3 +1,4 @@
+"""Tests for config backup."""
 import importlib
 import os
 import sqlite3

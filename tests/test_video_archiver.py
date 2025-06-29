@@ -1,3 +1,4 @@
+"""Tests for video archiver."""
 import os
 import subprocess
 import tempfile

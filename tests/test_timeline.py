@@ -1,3 +1,4 @@
+"""Tests for timeline."""
 import unittest
 from types import SimpleNamespace
 from unittest import mock

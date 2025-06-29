@@ -1,3 +1,4 @@
+"""Tests for internet cameras."""
 import unittest
 
 from app.utils.internet_cameras import INTERNET_CAMERAS

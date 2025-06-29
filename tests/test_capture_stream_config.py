@@ -1,3 +1,4 @@
+"""Tests for capture stream config."""
 import importlib
 import os
 import tempfile

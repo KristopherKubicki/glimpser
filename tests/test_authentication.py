@@ -1,3 +1,4 @@
+"""Tests for authentication."""
 # tests/test_authentication.py
 
 import datetime

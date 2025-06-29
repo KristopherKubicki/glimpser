@@ -1,3 +1,4 @@
+"""Tests for settings download route."""
 import os
 import tempfile
 import unittest

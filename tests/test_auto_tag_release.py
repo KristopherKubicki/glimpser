@@ -1,3 +1,4 @@
+"""Tests for auto tag release."""
 import os
 import tempfile
 import unittest

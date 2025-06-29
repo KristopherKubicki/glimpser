@@ -1,3 +1,4 @@
+"""Tests for live connectivity."""
 import unittest
 from unittest.mock import patch
 

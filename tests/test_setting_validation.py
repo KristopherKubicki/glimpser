@@ -1,3 +1,4 @@
+"""Tests for setting validation."""
 import os
 import socket
 import unittest

@@ -1,3 +1,4 @@
+"""Tests for config sync version."""
 import importlib
 import os
 import sqlite3

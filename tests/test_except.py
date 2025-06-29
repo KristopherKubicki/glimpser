@@ -1,3 +1,4 @@
+"""Tests for except."""
 # tests/test_except.py
 
 import os

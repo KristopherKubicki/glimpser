@@ -1,3 +1,4 @@
+"""Tests for chatgpt compare."""
 import os
 import unittest
 from unittest.mock import patch

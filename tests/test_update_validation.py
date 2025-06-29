@@ -1,3 +1,4 @@
+"""Tests for update validation."""
 import os
 import unittest
 

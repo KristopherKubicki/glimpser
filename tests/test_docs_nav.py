@@ -1,3 +1,4 @@
+"""Tests for docs nav."""
 from scripts import check_docs_nav
 
 

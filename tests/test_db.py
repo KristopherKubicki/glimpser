@@ -1,3 +1,4 @@
+"""Tests for db."""
 import importlib
 import os
 import tempfile

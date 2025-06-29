@@ -1,3 +1,4 @@
+"""Tests for e2e web."""
 import argparse
 import importlib
 import os

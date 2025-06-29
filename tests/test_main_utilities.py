@@ -1,3 +1,4 @@
+"""Tests for main utilities."""
 import os
 import signal
 import unittest

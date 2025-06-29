@@ -1,3 +1,4 @@
+"""Tests for suggest fix route."""
 import unittest
 from unittest.mock import patch
 

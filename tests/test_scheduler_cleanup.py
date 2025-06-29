@@ -1,3 +1,4 @@
+"""Tests for scheduler cleanup."""
 from app.utils.scheduling import scheduler
 
 

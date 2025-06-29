@@ -1,3 +1,4 @@
+"""Tests for log caching."""
 import datetime
 import os
 import threading

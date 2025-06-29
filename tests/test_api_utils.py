@@ -1,3 +1,4 @@
+"""Tests for api utils."""
 import unittest
 import unittest.mock
 from unittest.mock import MagicMock, patch

@@ -1,3 +1,4 @@
+"""Tests for take screenshot route."""
 import os
 import shutil
 import unittest

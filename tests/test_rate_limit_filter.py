@@ -1,3 +1,4 @@
+"""Tests for rate limit filter."""
 import io
 import logging
 import os

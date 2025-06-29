@@ -1,3 +1,4 @@
+"""Tests for import integrity."""
 import ast
 import importlib.util
 from pathlib import Path

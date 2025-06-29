@@ -1,3 +1,4 @@
+"""Tests for micro barcode."""
 import os
 import tempfile
 

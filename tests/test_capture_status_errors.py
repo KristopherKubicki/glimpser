@@ -1,3 +1,4 @@
+"""Tests for capture status errors."""
 import os
 import shutil
 import tempfile

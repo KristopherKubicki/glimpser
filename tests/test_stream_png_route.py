@@ -1,3 +1,4 @@
+"""Tests for stream png route."""
 import os
 import shutil
 import tempfile

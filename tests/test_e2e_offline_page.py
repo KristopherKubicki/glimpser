@@ -1,3 +1,4 @@
+"""Tests for e2e offline page."""
 import argparse
 import importlib
 import os

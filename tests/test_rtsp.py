@@ -1,3 +1,4 @@
+"""Tests for rtsp."""
 import os
 import unittest
 from unittest.mock import patch

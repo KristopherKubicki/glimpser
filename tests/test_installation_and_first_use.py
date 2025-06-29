@@ -1,3 +1,4 @@
+"""Tests for installation and first use."""
 import os
 import shutil
 import tempfile

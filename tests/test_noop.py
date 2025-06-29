@@ -1,3 +1,4 @@
+"""Tests for noop."""
 import unittest
 
 

@@ -1,3 +1,4 @@
+"""Tests for docs endpoint."""
 import os
 import tempfile
 import unittest

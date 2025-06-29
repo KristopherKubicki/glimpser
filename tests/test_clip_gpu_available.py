@@ -1,3 +1,4 @@
+"""Tests for clip gpu available."""
 import unittest
 from unittest.mock import MagicMock, patch
 

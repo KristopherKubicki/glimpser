@@ -1,3 +1,4 @@
+"""Tests for mkdocs nav."""
 import unittest
 from pathlib import Path
 

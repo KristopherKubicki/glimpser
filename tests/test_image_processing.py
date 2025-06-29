@@ -1,3 +1,4 @@
+"""Tests for image processing."""
 # Integration tests for image processing utilities and ChatGPT comparison
 
 import datetime

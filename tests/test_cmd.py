@@ -1,3 +1,4 @@
+"""Tests for cmd."""
 #!/usr/bin/env python3
 # tests/test_cmd.py
 

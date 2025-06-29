@@ -1,3 +1,4 @@
+"""Tests for fuzz update summary."""
 import datetime
 import importlib
 import json

@@ -1,3 +1,4 @@
+"""Tests for retention policy."""
 # Integration tests for retention_policy cleanup logic
 
 import os

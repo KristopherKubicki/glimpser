@@ -1,3 +1,4 @@
+"""Tests for screenshots utils."""
 import os
 import shutil
 import tempfile

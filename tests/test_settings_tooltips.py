@@ -1,3 +1,4 @@
+"""Tests for settings tooltips."""
 import os
 import unittest
 

@@ -1,3 +1,4 @@
+"""Tests for safe redirect url."""
 import unittest
 
 from app.routes import is_safe_redirect_url

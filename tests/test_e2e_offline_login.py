@@ -1,3 +1,4 @@
+"""Tests for e2e offline login."""
 import importlib
 import os
 from types import SimpleNamespace

@@ -1,3 +1,4 @@
+"""Tests for wsgi."""
 import importlib
 import unittest
 from unittest.mock import patch

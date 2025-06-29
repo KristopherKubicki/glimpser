@@ -1,3 +1,4 @@
+"""Tests for submit image route."""
 import io
 import os
 import shutil

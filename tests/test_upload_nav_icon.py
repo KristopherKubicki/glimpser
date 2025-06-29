@@ -1,3 +1,4 @@
+"""Tests for upload nav icon."""
 import io
 import os
 import shutil

@@ -1,3 +1,4 @@
+"""Tests for png validation."""
 # tests/test_png_validation.py
 
 import os

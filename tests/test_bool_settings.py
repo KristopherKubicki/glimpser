@@ -1,3 +1,4 @@
+"""Tests for bool settings."""
 import os
 import unittest
 from unittest.mock import patch

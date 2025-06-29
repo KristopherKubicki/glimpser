@@ -1,3 +1,4 @@
+"""Tests for throttle routes."""
 import os
 import tempfile
 import unittest

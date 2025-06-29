@@ -1,3 +1,4 @@
+"""Tests for robots txt endpoint."""
 import os
 import unittest
 from unittest.mock import patch

@@ -1,3 +1,4 @@
+"""Tests for routes utils."""
 import hashlib
 import os
 import sys

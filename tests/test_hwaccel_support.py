@@ -1,3 +1,4 @@
+"""Tests for hwaccel support."""
 import unittest
 from unittest.mock import patch
 

@@ -1,3 +1,4 @@
+"""Tests for init."""
 # tests/test_init.py
 
 import os

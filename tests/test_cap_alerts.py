@@ -1,3 +1,4 @@
+"""Tests for cap alerts."""
 import os
 import unittest
 from unittest.mock import patch

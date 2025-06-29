@@ -1,3 +1,4 @@
+"""Tests for settings route."""
 import importlib
 import os
 import sqlite3

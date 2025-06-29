@@ -1,3 +1,4 @@
+"""Tests for login flow."""
 import importlib
 import os
 from types import SimpleNamespace

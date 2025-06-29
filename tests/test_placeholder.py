@@ -1,3 +1,4 @@
+"""Tests for placeholder."""
 import os
 import tempfile
 import unittest

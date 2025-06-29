@@ -1,3 +1,4 @@
+"""Tests for github utils."""
 import unittest
 from unittest.mock import MagicMock, patch
 

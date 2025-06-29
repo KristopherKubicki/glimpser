@@ -1,3 +1,4 @@
+"""Tests for commit with retry."""
 import unittest
 from unittest.mock import MagicMock, patch
 

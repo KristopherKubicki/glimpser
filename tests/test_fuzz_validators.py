@@ -1,3 +1,4 @@
+"""Tests for fuzz validators."""
 import os
 import string
 

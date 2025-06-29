@@ -1,3 +1,4 @@
+"""Tests for dir."""
 import os
 import tempfile
 import unittest

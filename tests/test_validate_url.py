@@ -1,3 +1,4 @@
+"""Tests for validate url."""
 import os
 import unittest
 

@@ -1,3 +1,4 @@
+"""Tests for get screenshots for template."""
 import os
 import shutil
 import unittest
