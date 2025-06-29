@@ -41,6 +41,8 @@ def is_snapshot_url(url: str) -> bool:
 
 
 class Template(db.Base):
+    """Database model describing a camera template."""
+
     __tablename__ = "templates"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -82,12 +84,16 @@ class Template(db.Base):
 
     @validates("frequency")
     def validate_frequency(self, key, frequency):
+        """Validate ``frequency`` is within a reasonable range."""
+
         if frequency > 525600:
             raise ValueError("Frequency cannot be greater than 525600 (1 year)")
         return frequency
 
     @validates("timeout")
     def validate_timeout(self, key, timeout):
+        """Ensure ``timeout`` is positive and not longer than frequency."""
+
         if timeout < 1:
             logging.warning("negative timeout")
             timeout = 10
@@ -98,12 +104,16 @@ class Template(db.Base):
 
     @validates("popup_xpath", "dedicated_xpath")
     def validate_xpath(self, key, xpath):
+        """Verify XPath expressions start with ``//``."""
+
         if xpath and not xpath.startswith("//"):
             raise ValueError(f"{key} must start with '//'")
         return xpath
 
     @validates("object_confidence")
     def validate_object_confidence(self, key, confidence):
+        """Check object detection confidence is between 0 and 1."""
+
         if self.object_filter and (confidence < 0 or confidence > 1):
             raise ValueError("Object confidence must be between 0 and 1")
         return confidence
@@ -119,6 +129,8 @@ class TemplateManager:
     """
 
     def __init__(self):
+        """Initialize the database and upgrade missing columns."""
+
         init_db()
         # Ensure the templates table exists even when Base has been reloaded
         Template.__table__.create(db.engine, checkfirst=True)
