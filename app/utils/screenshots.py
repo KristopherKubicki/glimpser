@@ -86,6 +86,8 @@ user_active = user_activity.user_active
 
 
 def check_user_activity(timeout: int = 10) -> bool:
+    """Return ``True`` if the user interacted with the system."""
+
     user_activity._safe_import_pynput = _safe_import_pynput
     user_activity.idle_seconds_x11 = idle_seconds_x11
     user_activity.idle_seconds_loginctl = idle_seconds_loginctl
@@ -103,21 +105,29 @@ status_code_cache_time = status_cache.status_code_cache_time
 
 
 def _load_status_cache() -> None:
+    """Load cached HTTP status codes from disk."""
+
     status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
     status_cache._load_status_cache()
 
 
 def _persist_status_cache() -> None:
+    """Persist cached HTTP status codes to disk."""
+
     status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
     status_cache._persist_status_cache()
 
 
 def get_cached_status_code(url: str) -> int | None:
+    """Return the cached status code for *url*, if available."""
+
     status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
     return status_cache.get_cached_status_code(url)
 
 
 def set_cached_status_code(url: str, code: int) -> None:
+    """Store *code* for *url* in the status cache."""
+
     status_cache.STATUS_CACHE_PATH = STATUS_CACHE_PATH
     status_cache.set_cached_status_code(url, code)
 
@@ -398,6 +408,8 @@ def is_mostly_blank(
 
 
 def run_cmd(cmd, timeout):
+    """Execute *cmd* and return its stdout bytes."""
+
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
         out, err = proc.communicate(timeout=timeout)
@@ -411,11 +423,14 @@ def run_cmd(cmd, timeout):
 
 
 def add_timestamp(image_path, name="unknown", invert=False):
+    """Overlay timestamps and ``name`` onto the screenshot."""
+
     if os.path.exists(image_path):
         with Image.open(
             image_path
         ) as image:  # consider unlinking if this fails to open
-            # Convert the image to RGBA mode in case it's a format that doesn't support transparency
+            # Convert the image to RGBA mode in case it's a format that doesn't
+            # support transparency
             try:
                 image = image.convert("RGB")
             except Exception as e:
