@@ -14,7 +14,6 @@ from zoneinfo import ZoneInfo
 
 from werkzeug.utils import secure_filename
 
-
 TRUTHY_STRINGS = {"true", "1", "t", "y", "yes", "on"}
 FALSEY_STRINGS = {"false", "0", "f", "n", "no", "off"}
 BOOL_STRINGS = {
