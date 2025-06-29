@@ -1,3 +1,4 @@
+"""Tests for validate group name."""
 import unittest
 
 from app.utils.validators import validate_group_name

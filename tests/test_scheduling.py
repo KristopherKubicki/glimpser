@@ -1,3 +1,4 @@
+"""Tests for scheduling."""
 # test/test_scheduling.py
 
 import os

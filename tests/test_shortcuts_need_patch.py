@@ -1,3 +1,4 @@
+"""Tests for shortcuts need patch."""
 import os
 import tempfile
 import unittest

@@ -1,3 +1,4 @@
+"""Tests for safe symlink."""
 import os
 import tempfile
 import unittest

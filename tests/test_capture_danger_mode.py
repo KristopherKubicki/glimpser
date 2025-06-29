@@ -1,3 +1,4 @@
+"""Tests for capture danger mode."""
 import os
 import tempfile
 import unittest

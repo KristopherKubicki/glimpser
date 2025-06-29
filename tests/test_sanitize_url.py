@@ -1,3 +1,4 @@
+"""Tests for sanitize url."""
 import unittest
 from unittest.mock import patch
 

@@ -1,3 +1,4 @@
+"""Tests for image."""
 import os
 import tempfile
 import unittest

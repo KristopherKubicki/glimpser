@@ -1,3 +1,4 @@
+"""Tests for config singleton."""
 import importlib
 import os
 import tempfile

@@ -1,3 +1,4 @@
+"""Tests for check danger mode."""
 import importlib
 import os
 import unittest

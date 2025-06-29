@@ -1,3 +1,4 @@
+"""Tests for clip route."""
 import os
 import tempfile
 import unittest

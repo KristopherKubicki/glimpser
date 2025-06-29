@@ -1,3 +1,4 @@
+"""Tests for utils misc."""
 import socket
 import unittest
 from collections import namedtuple

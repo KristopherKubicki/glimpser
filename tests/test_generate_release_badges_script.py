@@ -1,3 +1,4 @@
+"""Tests for generate release badges script."""
 import os
 from pathlib import Path
 

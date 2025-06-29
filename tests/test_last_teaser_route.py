@@ -1,3 +1,4 @@
+"""Tests for last teaser route."""
 import os
 import unittest
 from unittest.mock import patch

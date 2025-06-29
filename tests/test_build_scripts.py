@@ -1,3 +1,4 @@
+"""Tests for build scripts."""
 import subprocess
 from pathlib import Path
 from unittest import TestCase

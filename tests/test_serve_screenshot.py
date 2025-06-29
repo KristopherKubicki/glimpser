@@ -1,3 +1,4 @@
+"""Tests for serve screenshot."""
 import io
 import os
 import shutil

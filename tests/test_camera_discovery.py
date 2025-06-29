@@ -1,3 +1,4 @@
+"""Tests for camera discovery."""
 import os
 import socket
 import tempfile

@@ -1,3 +1,4 @@
+"""Tests for db ensure column."""
 import os
 import unittest
 from unittest.mock import patch

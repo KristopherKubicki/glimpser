@@ -1,3 +1,4 @@
+"""Tests for auto update."""
 import unittest
 from unittest.mock import MagicMock, patch
 

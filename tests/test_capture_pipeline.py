@@ -1,3 +1,4 @@
+"""Tests for capture pipeline."""
 import os
 import shutil
 import threading

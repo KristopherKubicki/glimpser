@@ -1,3 +1,4 @@
+"""Tests for profiling."""
 import json
 import os
 import tempfile

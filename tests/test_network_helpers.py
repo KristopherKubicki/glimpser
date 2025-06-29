@@ -1,3 +1,4 @@
+"""Tests for network helpers."""
 import unittest
 from unittest.mock import patch
 

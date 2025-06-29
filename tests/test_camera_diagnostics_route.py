@@ -1,3 +1,4 @@
+"""Tests for camera diagnostics route."""
 import unittest
 from unittest.mock import patch
 

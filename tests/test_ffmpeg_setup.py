@@ -1,3 +1,4 @@
+"""Tests for ffmpeg setup."""
 import os
 import unittest
 from unittest.mock import patch

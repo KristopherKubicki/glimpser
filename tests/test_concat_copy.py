@@ -1,3 +1,4 @@
+"""Tests for concat copy."""
 import os
 import subprocess
 import tempfile

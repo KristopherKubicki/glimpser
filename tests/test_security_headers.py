@@ -1,3 +1,4 @@
+"""Tests for security headers."""
 import os
 import unittest
 

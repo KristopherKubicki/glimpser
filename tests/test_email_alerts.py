@@ -1,3 +1,4 @@
+"""Tests for email alerts."""
 import os
 import unittest
 from unittest.mock import MagicMock, patch

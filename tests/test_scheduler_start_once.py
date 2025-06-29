@@ -1,3 +1,4 @@
+"""Tests for scheduler start once."""
 import os
 import time
 from unittest.mock import patch

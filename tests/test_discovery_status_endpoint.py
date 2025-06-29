@@ -1,3 +1,4 @@
+"""Tests for discovery status endpoint."""
 import os
 import unittest
 from unittest.mock import patch

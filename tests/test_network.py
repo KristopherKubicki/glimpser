@@ -1,3 +1,4 @@
+"""Tests for network."""
 # tests/test_network.py
 
 import os

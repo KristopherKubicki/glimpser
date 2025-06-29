@@ -1,3 +1,4 @@
+"""Tests for pattern."""
 import datetime
 import hashlib
 import io

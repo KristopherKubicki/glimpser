@@ -1,3 +1,4 @@
+"""Tests for validate proxy."""
 import os
 import unittest
 

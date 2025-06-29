@@ -1,3 +1,4 @@
+"""Tests for log filter."""
 import datetime
 import os
 import unittest

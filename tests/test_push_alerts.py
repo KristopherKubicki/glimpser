@@ -1,3 +1,4 @@
+"""Tests for push alerts."""
 import os
 import unittest
 from unittest.mock import call, patch

@@ -1,3 +1,4 @@
+"""Tests for jinja macros."""
 import unittest
 
 from jinja2 import Environment, FileSystemLoader

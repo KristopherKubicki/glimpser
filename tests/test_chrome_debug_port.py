@@ -1,3 +1,4 @@
+"""Tests for chrome debug port."""
 import os
 import socket
 import unittest

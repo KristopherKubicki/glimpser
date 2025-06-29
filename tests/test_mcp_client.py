@@ -1,3 +1,4 @@
+"""Tests for mcp client."""
 import asyncio
 import os
 import unittest

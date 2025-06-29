@@ -1,3 +1,4 @@
+"""Tests for clip refresh."""
 import unittest
 from unittest.mock import patch
 

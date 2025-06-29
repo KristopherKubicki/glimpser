@@ -1,3 +1,4 @@
+"""Tests for capture file url."""
 import os
 import tempfile
 import unittest

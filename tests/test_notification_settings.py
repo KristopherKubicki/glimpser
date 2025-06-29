@@ -1,3 +1,4 @@
+"""Tests for notification settings."""
 import unittest
 from unittest.mock import patch
 

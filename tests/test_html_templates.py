@@ -1,3 +1,4 @@
+"""Tests for html templates."""
 import os
 import unittest
 from html.parser import HTMLParser

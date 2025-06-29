@@ -1,3 +1,4 @@
+"""Tests for clean logs."""
 import io
 
 from scripts.clean_logs import _read_lines, clean_lines

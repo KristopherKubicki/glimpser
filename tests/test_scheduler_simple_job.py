@@ -1,3 +1,4 @@
+"""Tests for scheduler simple job."""
 import time
 from datetime import datetime
 from unittest.mock import patch

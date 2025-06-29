@@ -1,3 +1,4 @@
+"""Tests for screenshots misc."""
 import os
 import unittest
 from unittest.mock import MagicMock, patch, sentinel

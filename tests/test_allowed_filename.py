@@ -1,3 +1,4 @@
+"""Tests for allowed filename."""
 import unittest
 
 from app.routes import allowed_filename

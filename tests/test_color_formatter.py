@@ -1,3 +1,4 @@
+"""Tests for color formatter."""
 import io
 import logging
 import os

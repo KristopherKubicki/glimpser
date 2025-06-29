@@ -1,3 +1,4 @@
+"""Tests for feed status tooltip."""
 import datetime
 import os
 import unittest

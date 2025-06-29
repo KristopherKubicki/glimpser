@@ -1,3 +1,4 @@
+"""Tests for discover subnets endpoint."""
 import os
 import unittest
 from unittest.mock import patch

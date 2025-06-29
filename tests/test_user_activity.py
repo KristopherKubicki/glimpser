@@ -1,3 +1,4 @@
+"""Tests for user activity."""
 import unittest
 from unittest.mock import patch
 

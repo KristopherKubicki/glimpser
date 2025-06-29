@@ -1,3 +1,4 @@
+"""Tests for template validators."""
 import pytest
 
 from app.utils.template_manager import Template, is_snapshot_url

@@ -1,3 +1,4 @@
+"""Tests for cli module."""
 from unittest.mock import patch
 
 import pytest

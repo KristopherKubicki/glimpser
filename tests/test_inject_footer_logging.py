@@ -1,3 +1,4 @@
+"""Tests for inject footer logging."""
 import unittest
 from unittest.mock import patch
 

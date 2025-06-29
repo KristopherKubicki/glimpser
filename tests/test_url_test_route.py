@@ -1,3 +1,4 @@
+"""Tests for url route."""
 import http.server
 import os
 import threading

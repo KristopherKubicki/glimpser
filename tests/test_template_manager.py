@@ -1,3 +1,4 @@
+"""Tests for template manager."""
 import os
 import tempfile
 import unittest

@@ -1,3 +1,4 @@
+"""Tests for push routes."""
 import unittest
 from unittest.mock import patch
 

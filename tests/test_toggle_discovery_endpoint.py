@@ -1,3 +1,4 @@
+"""Tests for toggle discovery endpoint."""
 import os
 import unittest
 from unittest.mock import patch

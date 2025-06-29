@@ -1,3 +1,4 @@
+"""Tests for update camera symlink."""
 import os
 import tempfile
 import unittest

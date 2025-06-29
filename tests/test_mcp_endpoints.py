@@ -1,3 +1,4 @@
+"""Tests for mcp endpoints."""
 import os
 import unittest
 from unittest.mock import patch
