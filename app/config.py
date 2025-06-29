@@ -52,6 +52,12 @@ from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 # Parse command line arguments when executed directly
 def _parse_cli_args():
+    """Parse command line options.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
+
     parser = argparse.ArgumentParser(description="Glimpser configuration")
     parser.add_argument("--db-path", help="Path to the SQLite database file")
     parser.add_argument("--log-path", help="Path to the log file")
@@ -175,6 +181,12 @@ def get_setting(name, default=None):
 
 
 def backup_config() -> bool:
+    """Save configuration values to ``BACKUP_PATH``.
+
+    Returns:
+        bool: True if backup succeeds, otherwise False.
+    """
+
     session = _get_session()
     success = True
     try:
@@ -195,6 +207,12 @@ def backup_config() -> bool:
 
 
 def restore_config():
+    """Populate settings from ``BACKUP_PATH`` if it exists.
+
+    Returns:
+        None
+    """
+
     if os.path.exists(BACKUP_PATH):
         with open(BACKUP_PATH) as f:
             config_dict = json.load(f)
