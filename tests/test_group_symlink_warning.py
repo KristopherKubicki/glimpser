@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 from unittest.mock import patch
+
 from PIL import Image
 
 import app.utils.scheduling as scheduling
