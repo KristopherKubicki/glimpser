@@ -1794,12 +1794,13 @@ def apply_stealth_options(driver_options):
 
 
 def _purge_driver_cache():
+    """Reset caches after driver errors or Chrome updates.
+
+    Both undetected-chromedriver and webdriver_manager caches
+    are cleared so the active tool fetches a matching driver.
     """
-    Remove the undetected_chromedriver or webdriver_manager cache so that
-    on next run it will download a fresh driver matching the current Chrome version.
-    """
-    # undetected_chromedriver stores its driver at ~/.local/share/undetected_chromedriver
-    # webdriver_manager in ~/.wdm etc. Adjust as needed:
+    # uc driver path: ~/.local/share/undetected_chromedriver
+    # wdm driver path: ~/.wdm
 
     uc_cache_dir = os.path.expanduser("~/.local/share/undetected_chromedriver")
     if os.path.isdir(uc_cache_dir):
