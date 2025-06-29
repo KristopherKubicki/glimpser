@@ -18,6 +18,15 @@ class ColorFormatter(logging.Formatter):
     RESET = "\033[0m"
 
     def format(self, record: logging.LogRecord) -> str:
+        """Return formatted record with level name colorized.
+
+        Args:
+            record: Log record to format.
+
+        Returns:
+            Formatted log message including ANSI color codes.
+        """
+
         level_color = self.COLORS.get(record.levelno, "")
         record.levelname = f"{level_color}{record.levelname}{self.RESET}"
         return super().format(record)
@@ -27,11 +36,26 @@ class RateLimitFilter(logging.Filter):
     """Filter that suppresses duplicate log messages for a period of time."""
 
     def __init__(self, interval: float = 60.0):
+        """Initialize rate limiting filter.
+
+        Args:
+            interval: Seconds to suppress duplicate messages.
+        """
+
         super().__init__()
         self.interval = interval
         self.last_emit: dict[str, float] = {}
 
     def filter(self, record: logging.LogRecord) -> bool:
+        """Return ``True`` if ``record`` should be emitted.
+
+        Args:
+            record: Log record being considered.
+
+        Returns:
+            ``True`` when message is not rate-limited.
+        """
+
         message = record.getMessage()
         now = time.monotonic()
         last_time = self.last_emit.get(message, 0.0)
