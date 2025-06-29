@@ -125,9 +125,14 @@ def generate_credentials_if_needed():
     to create new credentials.
     """
     if not os.path.exists(config.DATABASE_PATH):
-        from generate_credentials import generate_credentials
+        if os.environ.get("GLIMPSER_SETUP_WIZARD") == "1":
+            from setup_wizard import interactive_setup
 
-        generate_credentials(args=None)
+            interactive_setup()
+        else:
+            from generate_credentials import generate_credentials
+
+            generate_credentials(args=None)
 
 
 def create_application(args=None):

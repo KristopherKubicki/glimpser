@@ -30,7 +30,9 @@ This guide will walk you through the process of setting up Glimpser and running 
    python3 main.py
    ```
 
-4. Follow the prompts to create a secret key and initialize the local SQLite database.
+4. Set `GLIMPSER_SETUP_WIZARD=1` to launch the setup wizard on first run.
+   Otherwise follow the prompts to create a secret key and initialize the
+   local SQLite database.
 
 5. Open your web browser and navigate to `http://127.0.0.1:8082` to complete the setup.
 
