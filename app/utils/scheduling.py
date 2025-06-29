@@ -334,8 +334,9 @@ def run_with_timeout(func, args=(), timeout=300):
         register_job_failure(key)
 
 
-from .image_utils import add_motion_and_caption, find_closest_image
 from app.config import SCREENSHOT_DIRECTORY
+
+from .image_utils import add_motion_and_caption, find_closest_image
 
 
 def safe_symlink(src: str, dst: str) -> None:
@@ -430,7 +431,9 @@ def update_camera(name, template, image_file=None, motion=False):
             if os.path.lexists(lpath + ".tmp"):
                 os.unlink(os.path.abspath(lpath + ".tmp"))
             safe_symlink(
-                os.path.abspath(os.path.join(SCREENSHOT_DIRECTORY, name, png_files[-1])),
+                os.path.abspath(
+                    os.path.join(SCREENSHOT_DIRECTORY, name, png_files[-1])
+                ),
                 os.path.abspath(lpath + ".tmp"),
             )
             os.rename(os.path.abspath(lpath + ".tmp"), os.path.abspath(lpath))
@@ -439,7 +442,9 @@ def update_camera(name, template, image_file=None, motion=False):
             if os.path.lexists(lpath + ".tmp"):
                 os.unlink(os.path.abspath(lpath + ".tmp"))
             safe_symlink(
-                os.path.abspath(os.path.join(SCREENSHOT_DIRECTORY, name, png_files[-1])),
+                os.path.abspath(
+                    os.path.join(SCREENSHOT_DIRECTORY, name, png_files[-1])
+                ),
                 os.path.abspath(lpath + ".tmp"),
             )
             os.rename(os.path.abspath(lpath + ".tmp"), os.path.abspath(lpath))
