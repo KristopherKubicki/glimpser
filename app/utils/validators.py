@@ -128,6 +128,32 @@ def validate_template_name(template_name: str):
     return sanitized_name
 
 
+def validate_group_name(group_name: str | None) -> str | None:
+    """Return sanitized group name if valid, otherwise ``None``."""
+
+    if group_name is None or not isinstance(group_name, str):
+        return None
+
+    sanitized = group_name.strip().replace(" ", "_").lower()
+    if not sanitized:
+        return None
+
+    allowed = set("abcdefghijklmnopqrstuvwxyz0123456789_-")
+    if not all(ch in allowed for ch in sanitized):
+        return None
+
+    if sanitized[0] in "-_" or sanitized[-1] in "-_":
+        return None
+    if ".." in sanitized or "--" in sanitized or "__" in sanitized:
+        return None
+
+    secure = secure_filename(sanitized)
+    if secure != sanitized or len(secure) > 32:
+        return None
+
+    return secure
+
+
 def validate_update_data(data: dict) -> dict:
     """Validate and normalize template update data.
 
