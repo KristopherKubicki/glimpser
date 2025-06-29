@@ -38,6 +38,12 @@ class ChatGPTImageComparison:
     """Helper for caption prompts using the ChatGPT vision API."""
 
     def __init__(self) -> None:
+        """Initialize API credentials for ChatGPT vision requests.
+
+        Sets the authorization header and endpoint URL from project
+        configuration.
+        """
+
         self.api_key = CHATGPT_KEY
         self.headers = {"Authorization": f"Bearer {self.api_key}"}
         self.url = "https://api.openai.com/v1/chat/completions"
