@@ -20,6 +20,9 @@ class TestValidateProxy(unittest.TestCase):
     def test_valid_https(self):
         self.assertEqual(validate_proxy("https://example.com"), "https://example.com")
 
+    def test_missing_netloc(self):
+        self.assertIsNone(validate_proxy("http:///"))
+
 
 if __name__ == "__main__":
     unittest.main()

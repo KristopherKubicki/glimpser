@@ -29,6 +29,9 @@ class TestValidateURL(unittest.TestCase):
             "https://example.com",
         )
 
+    def test_missing_netloc(self):
+        self.assertIsNone(validate_url("http:///path"))
+
 
 if __name__ == "__main__":
     unittest.main()
