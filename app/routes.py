@@ -291,21 +291,43 @@ class TemplateName:
     """
 
     def __init__(self, name: str):
+        """Initialize with a validated template name.
+
+        Args:
+            name: Candidate template name.
+
+        Raises:
+            ValueError: If ``name`` fails validation.
+        """
+
         if not self.validate(name):
             raise ValueError(f"Invalid template name: {name}")
         self._name = name
 
     @staticmethod
     def validate(name: str) -> bool:
+        """Return ``True`` when ``name`` passes validation.
+
+        Args:
+            name: Candidate template name.
+
+        Returns:
+            bool: ``True`` if ``name`` is valid, ``False`` otherwise.
+        """
+
         name = validate_template_name(name)
         if name is None:
             return False
         return True
 
     def __str__(self):
+        """Return the stored template name."""
+
         return self._name
 
     def __repr__(self):
+        """Return a representation useful for debugging."""
+
         return f"TemplateName({self._name!r})"
 
 
