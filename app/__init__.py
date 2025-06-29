@@ -1,4 +1,9 @@
-# app/__init__.py
+"""Initialize the Flask application and background services.
+
+This module defines :func:`create_app`, which configures logging,
+directories, the task scheduler and health watchdog. It returns the fully
+initialized :class:`flask.Flask` instance used by the application.
+"""
 
 import logging
 import os
