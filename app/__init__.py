@@ -254,7 +254,7 @@ def create_app(
                             logging.info("Forcing application restart...")
                             last_restart_time = current_time
                             failure_count = 0
-                            sys.exit(1)  # Force restart the application gracefully
+                            os._exit(1)  # Force restart the entire process
                         else:
                             logging.warning(
                                 "Restart cooldown in effect. Skipping restart."
