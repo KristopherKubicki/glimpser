@@ -22,7 +22,7 @@ PyPI.
 
 Tags are normally created automatically when the version in `pyproject.toml` is bumped
 on the `main` branch. The `Tag Release` workflow runs
-`scripts/auto_tag_release.py` to create a tag like `v0.2.8` and push it to
+`scripts/auto_tag_release.py` to create a tag like `v0.2.9` and push it to
 GitHub, which then triggers the build jobs above. Before tagging, the workflow
 runs `scripts/update_version_files.py` so that `CITATION.cff` and the fallback
 version in `app/config.py` stay aligned with the version from `pyproject.toml`.
@@ -33,8 +33,8 @@ permissions so that the subsequent release workflow is triggered.
 You can still trigger a release manually by creating and pushing a tag:
 
 ```sh
-git tag v0.2.8
-git push origin v0.2.8
+git tag v0.2.9
+git push origin v0.2.9
 ```
 
 Alternatively, run `scripts/auto_tag_release.py` to create and push the tag
