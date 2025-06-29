@@ -1,3 +1,9 @@
+// Manage dropdowns showing available camera groups
+
+/**
+ * Populate group selectors with options from the server.
+ * @returns {Promise<void>} Resolved when options are loaded.
+ */
 export async function loadGroups() {
   const groupDropdown =
     document.getElementById("group-dropdown") ||
@@ -50,6 +56,10 @@ export async function loadGroups() {
   }
 }
 
+/**
+ * Determine the group currently selected by the user.
+ * @returns {string} Selected group name or 'all' when none.
+ */
 export function getSelectedGroup() {
   const dropdown = document.getElementById("group-dropdown");
   if (dropdown && dropdown.value) return dropdown.value;

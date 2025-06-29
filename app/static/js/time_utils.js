@@ -1,5 +1,11 @@
+// Utilities for humanizing timestamps and displaying elapsed time
 export const NO_TIMESTAMP_PLACEHOLDER = "no timestamp";
 
+/**
+ * Convert an ISO timestamp to a short relative string.
+ * @param {string|Date} dateString - Timestamp value.
+ * @returns {string} Human readable elapsed time.
+ */
 export function timeAgo(dateString) {
   if (!dateString) return "just now";
   const now = new Date();
@@ -32,6 +38,11 @@ export function timeAgo(dateString) {
   return "just now";
 }
 
+/**
+ * Format a timestamp into a readable string.
+ * @param {string|Date} dateString - Timestamp value.
+ * @returns {string} Browser-formatted date string.
+ */
 export function formatExactTime(dateString) {
   const date =
     dateString instanceof Date
@@ -46,6 +57,10 @@ export function formatExactTime(dateString) {
   return date.toString();
 }
 
+/**
+ * Update all elements that display humanized times.
+ * @returns {void}
+ */
 export function updateHumanizedTimes() {
   document.querySelectorAll(".humanized-time").forEach((element) => {
     const timestamp = element.getAttribute("data-time");

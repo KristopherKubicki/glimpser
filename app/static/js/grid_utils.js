@@ -1,9 +1,20 @@
+// Utilities for building and managing the camera grid layout
 import { timeAgo, NO_TIMESTAMP_PLACEHOLDER } from "./time_utils.js";
 
+/**
+ * Detect if the current viewport is considered mobile.
+ * @returns {boolean} True when running on a small screen.
+ */
 export function isMobile() {
   return window.matchMedia("(hover: none) and (max-width: 767px)").matches;
 }
 
+/**
+ * Compute border color based on screenshot age and error state.
+ * @param {number} ageMinutes - Minutes since last screenshot.
+ * @param {boolean} isError - Whether capture failed.
+ * @returns {string} RGBA color string.
+ */
 export function computeBorderColor(ageMinutes, isError) {
   const base = isError ? [128, 128, 128] : [26, 115, 232];
   let step = 0;
@@ -14,6 +25,14 @@ export function computeBorderColor(ageMinutes, isError) {
   return `rgba(${base[0]}, ${base[1]}, ${base[2]}, ${alpha})`;
 }
 
+/**
+ * Build a DOM node representing a camera template card.
+ * @param {string} name - Camera name.
+ * @param {Record<string, any>} template - Metadata for the camera.
+ * @param {number} index - Position in the list.
+ * @param {boolean} mobile - Whether to add mobile styling.
+ * @returns {HTMLDivElement} Constructed card element.
+ */
 export function createTemplateCard(name, template, index, mobile) {
   const lastScreenshotTime =
     template.last_screenshot_time || NO_TIMESTAMP_PLACEHOLDER;
@@ -62,6 +81,10 @@ export function createTemplateCard(name, template, index, mobile) {
 
 let captionsVisible = localStorage.getItem("showCaptions") !== "false";
 
+/**
+ * Persist and apply caption visibility toggle.
+ * @param {boolean} value - Desired visibility state.
+ */
 export function setCaptionsVisibility(value) {
   const slider = document.getElementById("grid-width-slider");
   captionsVisible = value;
@@ -70,10 +93,18 @@ export function setCaptionsVisibility(value) {
   updateTableLayout(parseFloat(slider?.value || "0"));
 }
 
+/**
+ * Current caption visibility state.
+ * @returns {boolean} Whether captions are shown.
+ */
 export function getCaptionsVisibility() {
   return captionsVisible;
 }
 
+/**
+ * Apply caption visibility based on tile width.
+ * @param {number} width - Current tile width.
+ */
 export function applyCaptionVisibility(width) {
   const templateList = document.getElementById("template-list");
   const captionToggle = document.getElementById("caption-toggle");
@@ -95,6 +126,10 @@ export function applyCaptionVisibility(width) {
   }
 }
 
+/**
+ * Align table rows with preview card heights.
+ * @param {number} width - Current tile width.
+ */
 export function updateTableLayout(width) {
   const rows = document.querySelectorAll("#camera-table .camera-row");
   rows.forEach((row) => {
@@ -113,6 +148,9 @@ export function updateTableLayout(width) {
   });
 }
 
+/**
+ * Recompute the responsive grid column layout.
+ */
 export function updateGridLayout() {
   const templateList = document.getElementById("template-list");
   if (!templateList) return;
@@ -124,6 +162,10 @@ export function updateGridLayout() {
   }
 }
 
+/**
+ * Enable dragging to resize the grid slider.
+ * @param {HTMLInputElement} slider - Range input controlling tile width.
+ */
 export function setupTileResizeDrag(slider) {
   if (!slider) return;
   const handle = document.createElement("div");

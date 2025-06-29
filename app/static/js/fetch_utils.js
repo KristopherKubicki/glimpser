@@ -1,5 +1,12 @@
+// Lightweight fetch wrapper returning parsed JSON
+
+/**
+ * Fetch JSON from a URL with error handling.
+ * @param {string} url - Target endpoint.
+ * @param {RequestInit} [options] - Fetch options.
+ * @returns {Promise<unknown>} Parsed response body.
+ */
 export async function fetchJson(url, options = {}) {
-  // Wrapper to fetch JSON with basic error handling
   try {
     const res = await fetch(url, options);
     if (!res.ok) {
