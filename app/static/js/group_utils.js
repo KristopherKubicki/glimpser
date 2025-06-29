@@ -1,3 +1,12 @@
+/**
+ * Helpers for loading and selecting camera groups.
+ */
+
+/**
+ * Fetch available groups and populate dropdowns.
+ *
+ * @returns {Promise<void>} Promise resolving when groups are loaded.
+ */
 export async function loadGroups() {
   const groupDropdown =
     document.getElementById("group-dropdown") ||
@@ -50,6 +59,11 @@ export async function loadGroups() {
   }
 }
 
+/**
+ * Determine the currently selected camera group.
+ *
+ * @returns {string} Selected group name or "all".
+ */
 export function getSelectedGroup() {
   const dropdown = document.getElementById("group-dropdown");
   if (dropdown && dropdown.value) return dropdown.value;
