@@ -22,6 +22,8 @@ class _StubMCPServer:
     """Fallback server used when ``openai-agents`` is unavailable."""
 
     def __init__(self) -> None:
+        """Initialize stub server with an always-available echo tool."""
+
         self._tools: dict[str, dict[str, Any]] = {}
         self.register_tool(
             "echo",
@@ -52,6 +54,13 @@ class MCPClient:
     """Wrapper around an MCP server."""
 
     def __init__(self, command: str | None = None, url: str | None = None):
+        """Create a client for communicating with an MCP server.
+
+        Args:
+            command: Command used to spawn a local MCP server.
+            url: Remote server URL when using SSE or HTTP streaming.
+        """
+
         self.command = command
         self.url = url
         self._server = None
@@ -93,6 +102,8 @@ _default_client: MCPClient | None = None
 
 
 def _get_default_client() -> MCPClient:
+    """Return a cached MCP client configured from app settings."""
+
     global _default_client
     if _default_client is None:
         from app import config
