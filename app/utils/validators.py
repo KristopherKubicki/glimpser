@@ -134,12 +134,18 @@ def validate_template_name(template_name: str):
 
 
 def validate_group_name(group_name: str | None) -> str | None:
-    """Return sanitized group name if valid, otherwise ``None``."""
+    """Return sanitized group name if valid, otherwise ``None``.
+
+    Group names must be at least two characters after trimming
+    whitespace and replacing it with underscores.
+    """
 
     if group_name is None or not isinstance(group_name, str):
         return None
 
-    sanitized = group_name.strip().replace(" ", "_").lower()
+    sanitized = re.sub(r"\s+", "_", group_name.strip()).lower()
+    if len(sanitized) < 2:
+        return None
     if not sanitized:
         return None
 
