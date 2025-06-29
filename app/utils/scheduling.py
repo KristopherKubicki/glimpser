@@ -356,7 +356,12 @@ def safe_symlink(src: str, dst: str) -> None:
     if os.path.lexists(dst_path):
         os.remove(dst_path)
     os.makedirs(os.path.dirname(dst_path), exist_ok=True)
-    os.symlink(src_path, dst_path)
+    try:
+        os.symlink(src_path, dst_path)
+    except FileExistsError:
+        # Another process recreated the link after we removed it.
+        os.remove(dst_path)
+        os.symlink(src_path, dst_path)
 
 
 def update_camera(name, template, image_file=None, motion=False):
