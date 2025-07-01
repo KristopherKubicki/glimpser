@@ -37,7 +37,7 @@ dependencies = [
   "jinja2==3.1.6",
   "numpy>=1.26,<2.0",
   "pdf2image==1.17.0",
-  "pillow==11.2.1",
+  "pillow==11.3.0",
   "psutil~=7.0.0",
   "pynput==1.8.1",
   "python-dateutil>=2.9.0.post0",
