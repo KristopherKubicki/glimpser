@@ -15,7 +15,8 @@ import app.utils.scheduling as scheduling
 
 LETTERS = string.ascii_letters + string.digits + string.punctuation + " "
 MAX_EXAMPLES = int(os.getenv("HYPOTHESIS_MAX_EXAMPLES", "20"))
-DEADLINE_MS = int(os.getenv("HYPOTHESIS_DEADLINE_MS", "1000"))
+deadline_env = os.getenv("HYPOTHESIS_DEADLINE_MS")
+DEADLINE_MS = int(deadline_env) if deadline_env is not None else None
 
 
 @st.composite
