@@ -6,8 +6,8 @@ import unittest
 from unittest import mock
 from unittest.mock import MagicMock, patch
 
-import app.config as config
 import main
+from app import config
 
 
 class TestMain(unittest.TestCase):

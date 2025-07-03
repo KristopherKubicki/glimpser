@@ -1,6 +1,5 @@
 import io
 import logging
-import os
 import unittest
 
 from app.utils.logging_utils import ColorFormatter

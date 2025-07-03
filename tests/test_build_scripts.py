@@ -33,6 +33,7 @@ def test_build_packages_missing_deps(tmp_path):
         ["bash", "-c", f"PATH={tmp_path} ./{script.name}"],
         capture_output=True,
         text=True,
+        check=False,
     )
     assert result.returncode == 1
     assert "dpkg-deb is not installed" in result.stdout

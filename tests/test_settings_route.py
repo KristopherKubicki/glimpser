@@ -25,9 +25,8 @@ class TestSettingsRoute(unittest.TestCase):
 
         # Reload modules so they pick up the new environment
         import app
-        import app.config as config
-        import app.routes as routes
-        import app.utils.db as db
+        from app import config, routes
+        from app.utils import db
 
         importlib.reload(config)
         importlib.reload(db)
@@ -66,9 +65,8 @@ class TestSettingsRoute(unittest.TestCase):
 
         # Reload modules back to default environment
         import app
-        import app.config as config
-        import app.routes as routes
-        import app.utils.db as db
+        from app import config, routes
+        from app.utils import db
 
         importlib.reload(config)
         importlib.reload(db)
@@ -144,7 +142,7 @@ class TestSettingsRoute(unittest.TestCase):
         self.assertTrue(os.path.exists(self.backup_path))
 
         # Prepare upload with modified value
-        with open(self.backup_path, "r") as f:
+        with open(self.backup_path) as f:
             data = f.read()
         import json
 

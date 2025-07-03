@@ -55,9 +55,11 @@ self.addEventListener("push", (event) => {
 function networkFirst(request) {
   return promiseTimeout(fetch(request), 5000)
     .then((response) => {
-      caches
-        .open(CACHE_NAME)
-        .then((cache) => cache.put(request, response.clone()));
+      if (response.ok) {
+        caches
+          .open(CACHE_NAME)
+          .then((cache) => cache.put(request, response.clone()));
+      }
       return response;
     })
     .catch(() => caches.match(request));

@@ -1,9 +1,7 @@
-import os
 import unittest
 from unittest.mock import patch
 
-import app.routes as routes
-from app import create_app
+from app import create_app, routes
 
 
 class TestRTSP(unittest.TestCase):

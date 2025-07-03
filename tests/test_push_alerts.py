@@ -1,6 +1,5 @@
-import os
 import unittest
-from unittest.mock import call, patch
+from unittest.mock import patch
 
 from app.utils.push_alerts import send_push_alert
 

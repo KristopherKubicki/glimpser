@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 #  main.py
 
-import argparse
 import atexit
 import logging
 import os
@@ -12,8 +11,7 @@ import sys
 import threading
 import time
 
-import app.config as config
-from app import create_app, scheduler
+from app import config, create_app, scheduler
 from app.utils.cli import build_argument_parser, cli_help_text
 from app.utils.logging_utils import ColorFormatter, RateLimitFilter
 from app.utils.scheduling import get_system_metrics, stop_background_tasks

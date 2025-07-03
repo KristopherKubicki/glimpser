@@ -6,8 +6,7 @@ from importlib import reload
 
 from flask import Flask
 
-import app.config as config
-from app import create_app
+from app import config, create_app
 from app.utils import db
 from app.utils.template_manager import TemplateManager
 

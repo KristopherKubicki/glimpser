@@ -1,6 +1,4 @@
-import os
 import unittest
-from pathlib import Path
 
 from scripts import check_exclude_docs  # noqa: E402
 

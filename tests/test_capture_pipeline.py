@@ -1,4 +1,3 @@
-import os
 import shutil
 import threading
 from functools import partial

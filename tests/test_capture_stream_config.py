@@ -9,8 +9,8 @@ class TestCaptureStreamConfig(unittest.TestCase):
     def _reload_modules(self, env):
         patcher = patch.dict(os.environ, env)
         patcher.start()
-        import app.config as config
         import app.utils.screenshots as ss
+        from app import config
 
         importlib.reload(config)
         importlib.reload(ss)

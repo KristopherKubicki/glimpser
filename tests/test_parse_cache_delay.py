@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
-import app.routes as routes
+from app import routes
 
 
 class TestParseCacheDelay(unittest.TestCase):
