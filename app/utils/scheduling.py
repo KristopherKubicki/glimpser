@@ -357,13 +357,20 @@ def safe_symlink(src: str, dst: str) -> None:
         raise ValueError("symlink paths must stay within screenshot directory")
 
     if os.path.lexists(dst_path):
-        os.remove(dst_path)
+        try:
+            os.remove(dst_path)
+        except FileNotFoundError:
+            # The link vanished after the existence check
+            pass
     os.makedirs(os.path.dirname(dst_path), exist_ok=True)
     try:
         os.symlink(src_path, dst_path)
     except FileExistsError:
         # Another process recreated the link after we removed it.
-        os.remove(dst_path)
+        try:
+            os.remove(dst_path)
+        except FileNotFoundError:
+            pass
         os.symlink(src_path, dst_path)
 
 

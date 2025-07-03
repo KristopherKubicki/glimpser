@@ -69,6 +69,30 @@ class TestSafeSymlink(unittest.TestCase):
             self.assertEqual(m.call_count, 2)
             self.assertEqual(os.readlink(dst), os.path.abspath(src))
 
+    def test_ignores_missing_unlink(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, "f")
+            dst = os.path.join(tmp, "link")
+            open(src, "w").close()
+            os.symlink(src, dst)
+
+            calls = []
+
+            def flaky_remove(path):
+                calls.append(path)
+                if len(calls) == 1:
+                    raise FileNotFoundError
+                os.unlink(path)
+
+            with (
+                patch("app.utils.scheduling.SCREENSHOT_DIRECTORY", tmp),
+                patch("os.remove", side_effect=flaky_remove),
+            ):
+                # should not raise despite FileNotFoundError
+                safe_symlink(src, dst)
+
+            self.assertEqual(os.readlink(dst), os.path.abspath(src))
+
 
 if __name__ == "__main__":
     unittest.main()
