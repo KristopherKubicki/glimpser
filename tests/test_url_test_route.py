@@ -1,5 +1,4 @@
 import http.server
-import os
 import threading
 from unittest.mock import patch
 

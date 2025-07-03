@@ -17,10 +17,9 @@ def test_client(tmp_path):
     secure_patch = patch("app.config.SESSION_COOKIE_SECURE", False)
     secure_patch.start()
 
-    import app.config as config
-    import app.routes as routes
-    import app.utils.db as db
     import generate_credentials
+    from app import config, routes
+    from app.utils import db
 
     importlib.reload(config)
     importlib.reload(db)

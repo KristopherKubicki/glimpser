@@ -28,7 +28,7 @@ class TestLLMCostTracking(unittest.TestCase):
     def test_cost_date_range(self):
         record_llm_usage("cam1", 1000)
         # rewrite timestamp of the first entry to an old date
-        with open(LLM_USAGE_PATH, "r") as f:
+        with open(LLM_USAGE_PATH) as f:
             data = json.load(f)
         data["cam1"]["entries"][0]["time"] = "2000-01-01"
         with open(LLM_USAGE_PATH, "w") as f:

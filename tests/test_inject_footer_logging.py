@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from flask import Flask
 
-import app.routes as routes
+from app import routes
 
 
 class TestInjectFooterLogging(unittest.TestCase):

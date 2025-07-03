@@ -1,6 +1,5 @@
 # tests/test_except.py
 
-import os
 import unittest
 
 

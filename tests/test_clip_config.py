@@ -7,7 +7,7 @@ from unittest.mock import patch
 import numpy as np
 from PIL import Image
 
-import app.utils.scheduling as scheduling
+from app.utils import scheduling
 
 
 class TestClipModelSetting(unittest.TestCase):

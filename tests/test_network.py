@@ -1,7 +1,5 @@
 # tests/test_network.py
 
-import os
-import socket
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -53,7 +51,7 @@ class TestUtils(unittest.TestCase):
     @patch("socket.socket")
     def test_is_port_open(self, mock_socket):
         mock_instance = mock_socket.return_value.__enter__.return_value
-        mock_instance.connect.side_effect = [None, socket.timeout(), socket.timeout()]
+        mock_instance.connect.side_effect = [None, TimeoutError(), TimeoutError()]
 
         self.assertTrue(is_port_open("google.com", 80))
         self.assertFalse(is_port_open("google.com", 12345))

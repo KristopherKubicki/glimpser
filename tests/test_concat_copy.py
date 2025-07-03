@@ -1,11 +1,10 @@
-import os
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import app.routes as routes
+from app import routes
 
 
 class TestConcatCopy(unittest.TestCase):
@@ -24,7 +23,6 @@ class TestConcatCopy(unittest.TestCase):
                     last = cmd[-1]
                     if isinstance(last, (str, Path)) and str(last).endswith(".mp4"):
                         Path(str(last)).touch()
-                return None
 
             with (
                 patch.object(routes, "_duration", return_value=1),
@@ -65,7 +63,6 @@ class TestConcatCopy(unittest.TestCase):
                     last = cmd[-1]
                     if isinstance(last, (str, Path)) and str(last).endswith(".mp4"):
                         Path(str(last)).touch()
-                return None
 
             with (
                 patch.object(routes, "_duration", return_value=2),
@@ -95,7 +92,6 @@ class TestConcatCopy(unittest.TestCase):
                     last = cmd[-1]
                     if isinstance(last, (str, Path)) and str(last).endswith(".mp4"):
                         Path(str(last)).touch()
-                return None
 
             with (
                 patch.object(routes, "_duration", return_value=1),
