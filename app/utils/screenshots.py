@@ -258,7 +258,7 @@ def http_session():
     global _session
     if _session is None:
         _session = requests.Session()
-        _session.verify = False
+        _session.verify = config.REQUEST_VERIFY_SSL
         _session.headers.update({"user-agent": UA})
         _session.headers.update({"Accept": "*/*"})
         _session.mount("http://", requests.adapters.HTTPAdapter(pool_maxsize=20))
@@ -654,7 +654,7 @@ def download_image(
         request_kwargs = dict(
             stream=True,
             timeout=(timeout, timeout * 3),
-            verify=False,
+            verify=config.REQUEST_VERIFY_SSL,
             headers=headers,
             auth=auth,
         )
@@ -667,7 +667,7 @@ def download_image(
             request_kwargs = dict(
                 stream=True,
                 timeout=(timeout, timeout * 3),
-                verify=False,
+                verify=config.REQUEST_VERIFY_SSL,
                 headers=headers,
                 auth=auth,
             )
@@ -759,7 +759,7 @@ def download_pdf(
             url,
             stream=True,
             timeout=timeout,
-            verify=False,
+            verify=config.REQUEST_VERIFY_SSL,
             headers=headers,
             auth=auth,
             allow_redirects=True,
@@ -772,7 +772,7 @@ def download_pdf(
                 url,
                 stream=True,
                 timeout=timeout,
-                verify=False,
+                verify=config.REQUEST_VERIFY_SSL,
                 headers=headers,
                 auth=auth,
                 allow_redirects=True,
@@ -1259,7 +1259,7 @@ def get_content_type(
                 url,
                 stream=True,
                 timeout=5,
-                verify=False,
+                verify=config.REQUEST_VERIFY_SSL,
                 headers=headers,
                 auth=auth,
                 allow_redirects=True,
@@ -1270,7 +1270,7 @@ def get_content_type(
                 response = method(
                     url,
                     timeout=5,
-                    verify=False,
+                    verify=config.REQUEST_VERIFY_SSL,
                     headers=headers,
                     auth=auth,
                     allow_redirects=True,
