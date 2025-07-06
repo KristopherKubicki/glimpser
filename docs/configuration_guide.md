@@ -194,5 +194,7 @@ Additional variables control AI behaviour and external tools:
   This setting is read-only until Advanced Options are enabled.
 - `CLIP_MODEL_PATH` – path to the ONNX model used for object filtering (default `models/clip-vit-b-32.onnx`). The runtime automatically selects CUDA or CPU providers when available. Non-macOS systems install `onnxruntime-gpu~=1.18` by default, while macOS falls back to the CPU-only `onnxruntime` package.
 - `SCHEDULER_API_ENABLED` – toggle the APScheduler REST API (default `True`)
+- `REQUEST_VERIFY_SSL` – verify HTTPS certificates for outbound downloads
+  (default `False`)
 
 Refer to the code comments in `app/config.py` for full details on each setting.

@@ -147,6 +147,7 @@ class TestScreenshotCapture(unittest.TestCase):
         )
         mock_finalize.assert_called_once()
 
+    @patch("app.utils.screenshots.config.REQUEST_VERIFY_SSL", False)
     @patch("app.utils.screenshots.http_session")
     def test_download_image_uses_proxy(self, mock_session_factory):
         mock_session = MagicMock()
@@ -172,6 +173,7 @@ class TestScreenshotCapture(unittest.TestCase):
             {"http": "http://proxy:8080", "https": "http://proxy:8080"},
         )
 
+    @patch("app.utils.screenshots.config.REQUEST_VERIFY_SSL", False)
     @patch("app.utils.screenshots.http_session")
     def test_download_image_skips_invalid_proxy(self, mock_session_factory):
         mock_session = MagicMock()
