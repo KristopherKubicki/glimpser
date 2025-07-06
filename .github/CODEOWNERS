@@ -1,0 +1,10 @@
+# CODEOWNERS automatically assigns reviewers
+
+# Source code
+/app/ @OpenAI @KristopherKubicki
+
+# Documentation
+/docs/ @OpenAI @KristopherKubicki
+
+# Tests
+/tests/ @OpenAI @KristopherKubicki
