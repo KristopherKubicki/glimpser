@@ -201,7 +201,6 @@ agents = [
   # various tools for agents to utilize in offline environments
   "pytest-benchmark",
   "pytest-xdist",
-  "pytest-benchmark",
   "interrogate",
   "yamllint",
   #"pip-install-size",
