@@ -268,6 +268,7 @@ def sync_version(pkg_version: str) -> None:
 
 
 SCHEDULER_API_ENABLED = get_setting("SCHEDULER_API_ENABLED", "True") == "True"
+REQUEST_VERIFY_SSL = get_setting("REQUEST_VERIFY_SSL", "False") == "True"
 
 # be careful when mounting network devices
 SCREENSHOT_DIRECTORY = "data/screenshots/"

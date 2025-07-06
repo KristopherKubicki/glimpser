@@ -125,20 +125,28 @@ def create_blueprint() -> Blueprint:
                             try:
                                 dt = datetime.utcfromtimestamp(int(ts))
                                 iso_ts = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-                            except Exception:
+                            except (
+                                ValueError,
+                                OSError,
+                                TypeError,
+                                OverflowError,
+                            ) as exc:
+                                logging.warning("Invalid timestamp %s: %s", ts, exc)
                                 iso_ts = ts
                             entries.append({iso_ts: text})
                     except Exception as exc:  # pragma: no cover - log parse issue
                         logging.error("Failed to parse captions: %s", exc)
             finally:
                 session_db.close()
-        except Exception:  # pragma: no cover - db unavailable
+        except Exception as exc:  # pragma: no cover - db unavailable
+            logging.error("Failed to query captions: %s", exc)
             entries = []
 
         if entries:
             try:
                 latest_caption = next(iter(entries[0].values()))
-            except Exception:
+            except Exception as exc:  # pragma: no cover - unexpected parse issue
+                logging.error("Failed to obtain latest caption: %s", exc)
                 latest_caption = ""
 
         templates = routes.template_manager.get_templates()
@@ -283,7 +291,8 @@ def create_blueprint() -> Blueprint:
                 try:
                     jdata = json.loads(rec.content)
                     captions.extend(jdata.values())
-                except Exception:
+                except json.JSONDecodeError as exc:
+                    logging.error("Invalid summary JSON for %s: %s", rec.timestamp, exc)
                     captions.append(rec.content)
         finally:
             session_db.close()
@@ -402,8 +411,9 @@ def create_blueprint() -> Blueprint:
                     os.unlink(temp_file.name)
                     routes.flash("Invalid aspect ratio", "error")
                     return redirect(url_for("ui.settings")), 400
-            except Exception:
+            except (OSError, ValueError) as exc:
                 os.unlink(temp_file.name)
+                logging.error("Failed to process uploaded logo: %s", exc)
                 routes.flash("Invalid image file", "error")
                 return redirect(url_for("ui.settings")), 400
             dest_dir = os.path.join(routes.current_app.static_folder, "img")
@@ -435,8 +445,8 @@ def create_blueprint() -> Blueprint:
                         data["url"] = endpoints["snapshot"]
                     elif endpoints.get("stream"):
                         data["url"] = endpoints["stream"]
-                except Exception:
-                    pass
+                except Exception as exc:  # pragma: no cover - network issues
+                    logging.error("ONVIF autodetect failed for %s: %s", url, exc)
             if routes.template_manager.save_template(template_name, data):
                 return jsonify({"status": "success", "message": "Template saved"})
         elif request.method == "GET":
@@ -545,7 +555,8 @@ def create_blueprint() -> Blueprint:
         host = urlparse(url).hostname or url
         try:
             ip = routes.socket.gethostbyname(host)
-        except Exception:
+        except routes.socket.gaierror as exc:
+            logging.warning("Hostname resolution failed for %s: %s", host, exc)
             ip = host
         data: dict[str, routes.typing.Any] = {"ip": ip}
         latency = routes.camera_discovery._ping_latency(ip)
@@ -881,8 +892,8 @@ def create_blueprint() -> Blueprint:
         routes.template_manager.save_template(template_name, updated_data)
         try:
             routes.scheduling.scheduler.remove_job(template_name)
-        except Exception:
-            pass
+        except LookupError as exc:
+            logging.warning("Job removal failed for %s: %s", template_name, exc)
         routes.screenshots.create_blank_frame(template_name)
         routes.template_manager.get_template(template_name)
         try:
