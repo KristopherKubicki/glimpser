@@ -42,6 +42,16 @@ class TestUploadNavIcon(unittest.TestCase):
         self.assertTrue(os.path.exists(saved))
         self.mock_update.assert_called_with("NAV_ICON", "img/logo.png")
 
+    @patch("app.routes.Image.open", side_effect=OSError("bad"))
+    def test_upload_nav_icon_invalid_image(self, mock_open):
+        img_bytes = io.BytesIO(b"invalid")
+        data = {"logo_file": (img_bytes, "logo.png")}
+        resp = self.client.post(
+            "/upload_nav_icon", data=data, content_type="multipart/form-data"
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.mock_update.assert_not_called()
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
