@@ -26,7 +26,6 @@ def tag_exists(tag):
         ],
         capture_output=True,
         text=True,
-        check=False,
     )
     return tag in result.stdout.split()
 
