@@ -8,7 +8,7 @@
 # Glimpser
 
 [![Python application](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml)
-[![Pylint 3.8 - 3.13](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.8)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
+[![Pylint 3.10 - 3.13](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.10)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
 [![CodeQL](https://github.com/KristopherKubicki/glimpser/actions/workflows/codeql.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/codeql.yml)
 [![Docs Build](https://github.com/KristopherKubicki/glimpser/actions/workflows/docs-build.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/docs-build.yml)
 [![GitHub release](https://img.shields.io/github/v/release/KristopherKubicki/glimpser)](https://github.com/KristopherKubicki/glimpser/releases/latest)
@@ -61,7 +61,7 @@ See [OpenSSF Scorecard](docs/scorecard.md) for details on the security badge.
 
 ### Prerequisites
 
-- Python 3.8 to 3.13
+- Python 3.10 to 3.13
 
 ### Steps
 
