@@ -48,10 +48,12 @@ _load_dotenv_once()
 
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
+from sqlalchemy.orm import Session
+from typing import cast
 
 
 # Parse command line arguments when executed directly
-def _parse_cli_args():
+def _parse_cli_args() -> argparse.Namespace:
     """Return parsed command line options.
 
     The arguments include ``--db-path``, ``--log-path`` and
@@ -109,7 +111,7 @@ SessionLocal = None
 _engine = None
 
 
-def _get_session():
+def _get_session() -> Session:
     """Return a new database session.
 
     When ``SessionLocal`` has been patched (e.g. during testing) the patched
@@ -138,7 +140,7 @@ def _get_session():
             def close(self):
                 pass
 
-        return _DummySession()
+        return cast(Session, _DummySession())
 
     if SessionLocal is not None:
         return SessionLocal()
