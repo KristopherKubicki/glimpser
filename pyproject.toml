@@ -194,13 +194,11 @@ dev = [
   "commitizen>=3.12",     # conventional commits / changelog
   # safety intentionally NOT included (paid)
   "pytest-socket", # for offline testing
-  "pytest-xdist",
 ]
 
 agents = [
   # various tools for agents to utilize in offline environments
   "pytest-benchmark",
-  "pytest-xdist",
   "pytest-benchmark",
   "interrogate",
   "yamllint",
