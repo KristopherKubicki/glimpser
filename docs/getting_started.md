@@ -22,9 +22,8 @@ This guide will walk you through the process of setting up Glimpser and running 
    pip install -r requirements.txt
    ```
 
-   The repository also provides a helper script that installs Python
-   packages, sets up a virtual environment, and grabs Node
-   dependencies.
+   The repository also provides a helper script that installs Python and
+   Node dependencies and performs Git LFS housekeeping.
 
    ```
    ./.codex/setup.sh
