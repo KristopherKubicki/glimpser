@@ -10,17 +10,28 @@ This guide will walk you through the process of setting up Glimpser and running 
 ## Installation
 
 1. Clone the Glimpser repository:
+
    ```
    git clone https://github.com/KristopherKubicki/glimpser.git
    cd glimpser
    ```
 
 2. Install the required dependencies:
+
    ```
    pip install -r requirements.txt
    ```
 
+   The repository also provides a helper script that installs Python
+   packages, sets up a virtual environment, and grabs Node
+   dependencies.
+
+   ```
+   ./.codex/setup.sh
+   ```
+
 3. Run the application:
+
    ```
    python3 main.py
    ```
