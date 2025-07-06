@@ -34,6 +34,22 @@ class TestCaptionsChatRoute(unittest.TestCase):
         self.assertEqual(resp.get_json(), {"answer": "Answer", "truncated": False})
         mock_ask.assert_called_once()
 
+    @patch("app.routes.ask_question", return_value="Answer")
+    @patch("app.routes.SessionLocal")
+    def test_chat_bad_json(self, mock_session, mock_ask):
+        session = MagicMock()
+        mock_session.return_value = session
+        summary = MagicMock()
+        summary.content = "not-json"
+        query = MagicMock()
+        query.order_by.return_value = query
+        query.limit.return_value.all.return_value = [summary]
+        session.query.return_value = query
+
+        resp = self.client.post("/captions_chat", json={"question": "Hi"})
+        self.assertEqual(resp.status_code, 200)
+        mock_ask.assert_called_once_with("Hi", "not-json")
+
     def test_chat_missing_question(self):
         resp = self.client.post("/captions_chat", json={})
         self.assertEqual(resp.status_code, 400)
