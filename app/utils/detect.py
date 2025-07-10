@@ -29,13 +29,14 @@ def calculate_difference_fast(image_path_a, image_path_b, downsample_size=(100, 
         the images are identical.
     """
     try:
-        # Open and resize the images
-        image_a = Image.open(image_path_a).resize(downsample_size).convert("L")
-        image_b = Image.open(image_path_b).resize(downsample_size).convert("L")
-
-        # Convert images to float arrays for calculation
-        array_a = np.array(image_a, dtype=np.float32)
-        array_b = np.array(image_b, dtype=np.float32)
+        # Open and resize the images while ensuring files close promptly
+        with Image.open(image_path_a) as im_a, Image.open(image_path_b) as im_b:
+            array_a = np.asarray(
+                im_a.resize(downsample_size).convert("L"), dtype=np.float32
+            )
+            array_b = np.asarray(
+                im_b.resize(downsample_size).convert("L"), dtype=np.float32
+            )
 
         # Compute mean squared error and normalize to the range [0, 1]
         mse = np.mean((array_a - array_b) ** 2)

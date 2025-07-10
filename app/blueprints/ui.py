@@ -405,8 +405,8 @@ def create_blueprint() -> Blueprint:
         with routes.tempfile.NamedTemporaryFile(delete=False) as temp_file:
             logo_file.save(temp_file.name)
             try:
-                img = routes.Image.open(temp_file.name)
-                w, h = img.size
+                with routes.Image.open(temp_file.name) as img:
+                    w, h = img.size
                 if h == 0 or not 2 <= w / h <= 10:
                     os.unlink(temp_file.name)
                     routes.flash("Invalid aspect ratio", "error")
