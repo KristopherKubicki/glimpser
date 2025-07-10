@@ -25,6 +25,13 @@ class TestLogSummary(unittest.TestCase):
 
     def tearDown(self):
         patch.stopall()
+        import importlib
+
+        importlib.reload(db)
+        importlib.reload(scheduling)
+        import app.utils.template_manager as template_manager
+
+        importlib.reload(template_manager)
         self.tmpdir.cleanup()
 
     @patch("app.utils.scheduling.summarize", return_value='{"1": "ok"}')
