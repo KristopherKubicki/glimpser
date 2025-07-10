@@ -448,6 +448,12 @@ def run_cmd(cmd, timeout):
         proc.kill()  # SIGKILL
         out, err = proc.communicate()
         raise RuntimeError(f"timeout: {' '.join(cmd)}")
+    finally:
+        if proc.stdout:
+            proc.stdout.close()
+        if proc.stderr:
+            proc.stderr.close()
+        proc.wait(timeout=5)
     if proc.returncode:
         raise RuntimeError(err.decode()[:300])
     return out
@@ -2524,8 +2530,12 @@ def _capture_danger_mode(
                     f"Could not switch to original window in danger mode: {ex}"
                 )
 
-        # DO NOT do driver.quit() in Danger mode: that kills the user's entire Chrome
-        driver = None
+        # Always shut down the Chrome driver to avoid FD leaks
+        if driver:
+            try:
+                driver.quit()
+            except Exception as ex:
+                logging.debug(f"driver.quit() failed in danger mode: {ex}")
 
 
 def _remove_popup(driver, popup_xpath):

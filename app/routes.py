@@ -872,10 +872,18 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
                 return
             finally:
                 if process:
+                    if process.stdout:
+                        process.stdout.close()
+                    if process.stderr:
+                        process.stderr.close()
                     process.kill()
                     process.wait(timeout=1)
         except GeneratorExit:
             if process:
+                if process.stdout:
+                    process.stdout.close()
+                if process.stderr:
+                    process.stderr.close()
                 process.kill()
                 process.wait(timeout=1)
             return

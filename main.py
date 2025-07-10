@@ -81,18 +81,18 @@ def setup_logging(args=None):
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     color_formatter = ColorFormatter("%(asctime)s - %(levelname)s - %(message)s")
     logger = logging.getLogger()
-    logger.handlers.clear()
     logger.setLevel(getattr(logging, args.log_level if args else config.LOG_LEVEL))
 
     # Ensure log directory exists
     os.makedirs(os.path.dirname(config.LOGGING_PATH), exist_ok=True)
 
-    # Set up file logging
-    file_handler = logging.FileHandler(config.LOGGING_PATH)
-    file_handler.setFormatter(formatter)
-    rate_filter = RateLimitFilter(config.LOG_RATE_LIMIT_SEC)
-    file_handler.addFilter(rate_filter)
-    logger.addHandler(file_handler)
+    # Set up file logging if not already configured
+    if not any(isinstance(h, logging.FileHandler) for h in logger.handlers):
+        file_handler = logging.FileHandler(config.LOGGING_PATH)
+        file_handler.setFormatter(formatter)
+        rate_filter = RateLimitFilter(config.LOG_RATE_LIMIT_SEC)
+        file_handler.addFilter(rate_filter)
+        logger.addHandler(file_handler)
 
     # Set up console logging if requested
     if args and args.console_log:
