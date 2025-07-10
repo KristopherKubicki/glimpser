@@ -1,6 +1,6 @@
 import importlib.util
 import os
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Dynamically load the module to avoid importing heavy app dependencies
@@ -21,7 +21,7 @@ def _make_file(tmp_path, name: str, days_ago: int = 0):
 def test_get_latest_video_date(tmp_path):
     _make_file(tmp_path, "old.mp4", days_ago=2)
     latest = _make_file(tmp_path, "new.mp4", days_ago=0)
-    expected = datetime.fromtimestamp(latest.stat().st_mtime, UTC).strftime(
+    expected = datetime.fromtimestamp(latest.stat().st_mtime, timezone.utc).strftime(
         "%Y-%m-%d %H:%M:%S"
     )
     assert video_details.get_latest_video_date(str(tmp_path)) == expected
@@ -30,7 +30,7 @@ def test_get_latest_video_date(tmp_path):
 def test_get_latest_screenshot_date(tmp_path):
     _make_file(tmp_path, "shot1.png", days_ago=1)
     latest = _make_file(tmp_path, "shot2.png", days_ago=0)
-    expected = datetime.fromtimestamp(latest.stat().st_mtime, UTC).strftime(
+    expected = datetime.fromtimestamp(latest.stat().st_mtime, timezone.utc).strftime(
         "%Y-%m-%d %H:%M:%S"
     )
     assert video_details.get_latest_screenshot_date(str(tmp_path)) == expected
@@ -49,7 +49,7 @@ def test_get_latest_file(tmp_path):
 def test_get_latest_date(tmp_path):
     _make_file(tmp_path, "a.txt", days_ago=2)
     latest = _make_file(tmp_path, "b.txt", days_ago=0)
-    expected = datetime.fromtimestamp(latest.stat().st_mtime, UTC).strftime(
+    expected = datetime.fromtimestamp(latest.stat().st_mtime, timezone.utc).strftime(
         "%Y-%m-%d %H:%M:%S"
     )
     assert video_details.get_latest_date(str(tmp_path), ext="txt") == expected
