@@ -193,8 +193,8 @@ Glimpser writes logs to the console and exposes them via the _Status_ tab. If so
 - Use the **System Monitoring and Logs** guide to access live logs.
 - Increase the `LOG_LEVEL` or `FLASK_LOG_LEVEL` environment variable to `DEBUG` for more details.
 - Review recent entries for stack traces or connection errors.
-- If logs show "Failed to open last shot ... invalid image", the screenshot file
-  is corrupted. Delete the file so a new capture can replace it.
+- If logs show "Failed to open last shot ... invalid image", the corrupted
+  screenshot is now removed automatically, along with any cached copy.
 
 ## 10. Upgrade Issues
 

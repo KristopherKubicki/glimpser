@@ -1239,6 +1239,14 @@ def generate(
                                     most_recent_file,
                                     remove_exc,
                                 )
+                            try:
+                                os.remove(last_path)
+                            except OSError as exc2:  # pragma: no cover - cleanup failures are ok
+                                logging.debug(
+                                    "Failed to remove cached screenshot %s: %s",
+                                    last_path,
+                                    exc2,
+                                )
                             frame = None
 
         if not frame:
