@@ -73,6 +73,7 @@ nav:
       - Caption Overlay Toggle: caption_overlay_toggle.md
       - Caption or Prompt Toggle: caption_prompt_toggle.md
       - Caption Prefix Issue: caption_prefix.md
+      - Baseline Captions: baseline_caption.md
       - Captions Chatbot: chatbot.md
       - Continuous Integration Checks: ci_checks.md
       - Staged GitHub Flow: staged_github_flow.md
