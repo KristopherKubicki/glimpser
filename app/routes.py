@@ -1174,15 +1174,20 @@ def generate(
                         else:
                             # fall back to the oldest screenshot so the MJPEG
                             # stream always has an initial frame
-                            pngs = [
-                                os.path.join(path, f)
-                                for f in os.listdir(path)
-                                if f.endswith(".png")
-                                and os.path.isfile(os.path.join(path, f))
-                            ]
+                            pngs = []
+                            for f in os.listdir(path):
+                                full = os.path.join(path, f)
+                                if f.endswith(".png") and os.path.isfile(full):
+                                    try:
+                                        ctime = os.path.getctime(full)
+                                    except FileNotFoundError:
+                                        # file vanished between listdir and stat
+                                        continue
+                                    pngs.append((ctime, full))
+
                             if pngs:
-                                pngs.sort(key=os.path.getctime)
-                                lfiles = [pngs[0]]
+                                pngs.sort(key=lambda t: t[0])
+                                lfiles = [pngs[0][1]]
 
                         last_file = lfiles[-1] if lfiles else None
                         if (
