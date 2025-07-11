@@ -1174,15 +1174,20 @@ def generate(
                         else:
                             # fall back to the oldest screenshot so the MJPEG
                             # stream always has an initial frame
-                            pngs = [
-                                os.path.join(path, f)
-                                for f in os.listdir(path)
-                                if f.endswith(".png")
-                                and os.path.isfile(os.path.join(path, f))
-                            ]
+                            pngs = []
+                            for f in os.listdir(path):
+                                full = os.path.join(path, f)
+                                if f.endswith(".png") and os.path.isfile(full):
+                                    try:
+                                        ctime = os.path.getctime(full)
+                                    except FileNotFoundError:
+                                        # file vanished between listdir and stat
+                                        continue
+                                    pngs.append((ctime, full))
+
                             if pngs:
-                                pngs.sort(key=os.path.getctime)
-                                lfiles = [pngs[0]]
+                                pngs.sort(key=lambda t: t[0])
+                                lfiles = [pngs[0][1]]
 
                         last_file = lfiles[-1] if lfiles else None
                         if (
@@ -1202,30 +1207,15 @@ def generate(
                         last_shot = most_recent_file
 
                         try:
-                            if screenshots._is_valid_png(most_recent_file):
-                                with Image.open(most_recent_file) as img:
-                                    img = resize_and_pad(img, (1280, 720))
-                                    buffer = io.BytesIO()
-                                    img.save(buffer, format="JPEG")
-                                    frame = buffer.getvalue()
-                            else:
-                                logging.error(
-                                    "Failed to open last shot %s: invalid image",
-                                    most_recent_file,
-                                )
-                                try:
-                                    os.remove(most_recent_file)
-                                except OSError as exc:
-                                    logging.warning(
-                                        "Failed to remove invalid screenshot %s: %s",
-                                        most_recent_file,
-                                        exc,
-                                    )
-                                frame = None
+                            with open(most_recent_file, "rb") as f:
+                                data = f.read()
+                            with Image.open(io.BytesIO(data)) as img:
+                                img = resize_and_pad(img, (1280, 720))
+                                buffer = io.BytesIO()
+                                img.save(buffer, format="JPEG")
+                                frame = buffer.getvalue()
 
                             if frame is not None:
-                                # file sizes the same size?  maybe just touch the file instead?
-
                                 # Write to a temporary file first, then atomically
                                 # replace the cached JPEG. This avoids serving
                                 # partially written files when new screenshots
@@ -1249,6 +1239,7 @@ def generate(
                                     most_recent_file,
                                     remove_exc,
                                 )
+                            frame = None
 
         if not frame:
             frame = _placeholder_frame()
