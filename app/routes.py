@@ -1207,6 +1207,9 @@ def generate(
                         last_shot = most_recent_file
 
                         try:
+                            if not screenshots._is_valid_png(most_recent_file):
+                                raise ValueError("invalid screenshot")
+
                             with open(most_recent_file, "rb") as f:
                                 data = f.read()
                             with Image.open(io.BytesIO(data)) as img:
