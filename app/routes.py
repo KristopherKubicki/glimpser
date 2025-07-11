@@ -58,7 +58,7 @@ from flask import (
     stream_with_context,
     url_for,
 )
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, UnidentifiedImageError
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
@@ -1207,6 +1207,9 @@ def generate(
                         last_shot = most_recent_file
 
                         try:
+                            if not screenshots._is_valid_png(most_recent_file):
+                                raise UnidentifiedImageError("invalid image")
+
                             with open(most_recent_file, "rb") as f:
                                 data = f.read()
                             with Image.open(io.BytesIO(data)) as img:
