@@ -1207,30 +1207,15 @@ def generate(
                         last_shot = most_recent_file
 
                         try:
-                            if screenshots._is_valid_png(most_recent_file):
-                                with Image.open(most_recent_file) as img:
-                                    img = resize_and_pad(img, (1280, 720))
-                                    buffer = io.BytesIO()
-                                    img.save(buffer, format="JPEG")
-                                    frame = buffer.getvalue()
-                            else:
-                                logging.error(
-                                    "Failed to open last shot %s: invalid image",
-                                    most_recent_file,
-                                )
-                                try:
-                                    os.remove(most_recent_file)
-                                except OSError as exc:
-                                    logging.warning(
-                                        "Failed to remove invalid screenshot %s: %s",
-                                        most_recent_file,
-                                        exc,
-                                    )
-                                frame = None
+                            with open(most_recent_file, "rb") as f:
+                                data = f.read()
+                            with Image.open(io.BytesIO(data)) as img:
+                                img = resize_and_pad(img, (1280, 720))
+                                buffer = io.BytesIO()
+                                img.save(buffer, format="JPEG")
+                                frame = buffer.getvalue()
 
                             if frame is not None:
-                                # file sizes the same size?  maybe just touch the file instead?
-
                                 # Write to a temporary file first, then atomically
                                 # replace the cached JPEG. This avoids serving
                                 # partially written files when new screenshots
@@ -1254,6 +1239,7 @@ def generate(
                                     most_recent_file,
                                     remove_exc,
                                 )
+                            frame = None
 
         if not frame:
             frame = _placeholder_frame()
