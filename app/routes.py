@@ -58,7 +58,7 @@ from flask import (
     stream_with_context,
     url_for,
 )
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, UnidentifiedImageError
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
@@ -1225,6 +1225,20 @@ def generate(
                                     f.write(frame)
                                 # Atomically move the temp file into place
                                 os.replace(temp_path, last_path)
+                        except UnidentifiedImageError:
+                            logging.warning(
+                                "Discarding invalid screenshot %s",
+                                most_recent_file,
+                            )
+                            try:
+                                os.remove(most_recent_file)
+                            except OSError as remove_exc:
+                                logging.warning(
+                                    "Failed to remove invalid screenshot %s: %s",
+                                    most_recent_file,
+                                    remove_exc,
+                                )
+                            frame = None
                         except Exception as exc:
                             logging.error(
                                 "Failed to update screenshot cache: %s",
