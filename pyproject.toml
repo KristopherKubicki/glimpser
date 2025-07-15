@@ -28,7 +28,7 @@ classifiers = [
 # ─────────────────────────────────────────────────────────────────────────────
 dependencies = [
   # ✂︎  your existing runtime libs  ✂︎
-  "alembic==1.16.1",
+  "alembic==1.16.4",
   "apscheduler==3.11.0",
   "fake-useragent==2.2.0",
   "flask==3.1.1",
