@@ -45,7 +45,7 @@ dependencies = [
   "pyvirtualdisplay==3.0",
   "pywebpush==2.0.3",
   "selenium==4.33.0",
-  "sqlalchemy==2.0.41",
+  "sqlalchemy==2.0.42",
   "undetected-chromedriver==3.5.5",
   "webdriver-manager==4.0.2",
   "werkzeug==3.1.3",
