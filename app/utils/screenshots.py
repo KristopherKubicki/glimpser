@@ -2272,8 +2272,8 @@ def capture_screenshot_and_har(
             _purge_driver_cache()
             driver = launch_headless_chrome(driver_options, version)
             if driver is None:
-                logging.error("missing driver!")
-                raise ValueError("missing driver!")
+                logging.warning("missing driver; skipping screenshot capture")
+                return False
 
         driver.set_page_load_timeout(timeout)
         # Attempt dark mode for the loaded page, if desired

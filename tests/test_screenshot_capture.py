@@ -85,6 +85,18 @@ class TestScreenshotCapture(unittest.TestCase):
         self.assertFalse(result)
         self.assertFalse(os.path.exists(self.output_path))
 
+    @patch("app.utils.screenshots.launch_headless_chrome", return_value=None)
+    @patch("app.utils.screenshots._purge_driver_cache")
+    @patch("app.utils.screenshots.get_chrome_version", return_value=120)
+    @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
+    def test_capture_screenshot_missing_driver(
+        self, mock_online, mock_path, mock_version, mock_purge, mock_launch
+    ):
+        result = capture_screenshot_and_har("http://example.com", self.output_path)
+        self.assertFalse(result)
+        mock_purge.assert_called_once()
+
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
     @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
