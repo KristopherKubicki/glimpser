@@ -4,10 +4,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import app.config as config
-import app.utils.db as db
-import app.utils.scheduling as scheduling
+from app import config
 from app.models import Summary
+from app.utils import db, scheduling
 
 
 class TestSummaryStorage(unittest.TestCase):
@@ -22,7 +21,7 @@ class TestSummaryStorage(unittest.TestCase):
         importlib.reload(config)
         importlib.reload(db)
         importlib.reload(scheduling)
-        import app.models as models
+        from app import models
 
         importlib.reload(models)
         importlib.reload(models.summary)
@@ -33,7 +32,7 @@ class TestSummaryStorage(unittest.TestCase):
         importlib.reload(config)
         importlib.reload(db)
         importlib.reload(scheduling)
-        import app.models as models
+        from app import models
 
         importlib.reload(models)
         importlib.reload(models.summary)

@@ -77,6 +77,7 @@ class Template(db.Base):
     url = Column(String, default="")
     thumbnail = Column(String, default="")
     groups = Column(String, default="")
+    baseline_caption = Column(Text, default="")
     invert = Column(Boolean, default=False)
     dark = Column(Boolean, default=False)
     headless = Column(Boolean, default=True)
@@ -145,6 +146,7 @@ class TemplateManager:
         ensure_column("templates", "auth_username", "VARCHAR(255)", "''")
         ensure_column("templates", "auth_password", "VARCHAR(255)", "''")
         ensure_column("templates", "thumbnail", "VARCHAR(255)", "''")
+        ensure_column("templates", "baseline_caption", "TEXT", "''")
 
     def get_session(self):
         """Return a new SQLAlchemy session bound to the app database."""

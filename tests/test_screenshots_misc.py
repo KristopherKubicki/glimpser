@@ -1,4 +1,3 @@
-import os
 import unittest
 from unittest.mock import MagicMock, patch, sentinel
 
@@ -8,6 +7,7 @@ import app.utils.screenshots as ss
 
 
 class TestHttpSession(unittest.TestCase):
+    @patch("app.utils.screenshots.config.REQUEST_VERIFY_SSL", True)
     @patch("app.utils.screenshots.requests.Session")
     def test_http_session_singleton_and_headers(self, mock_session_cls):
         session_instance = MagicMock()
@@ -23,6 +23,7 @@ class TestHttpSession(unittest.TestCase):
         mock_session_cls.assert_called_once()
         self.assertIn("User-Agent", sess1.headers)
         self.assertIn("Accept", sess1.headers)
+        self.assertTrue(sess1.verify)
 
 
 class TestGetDriver(unittest.TestCase):

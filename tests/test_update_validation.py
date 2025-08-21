@@ -1,4 +1,3 @@
-import os
 import unittest
 
 from app.utils.validators import validate_update_data

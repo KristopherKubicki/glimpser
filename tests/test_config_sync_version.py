@@ -17,8 +17,8 @@ class TestSyncVersion(unittest.TestCase):
         self.env_patch = patch.dict(os.environ, env)
         self.env_patch.start()
 
-        import app.config as config
-        import app.utils.db as db
+        from app import config
+        from app.utils import db
 
         importlib.reload(config)
         importlib.reload(db)
@@ -37,8 +37,8 @@ class TestSyncVersion(unittest.TestCase):
 
     def tearDown(self):
         self.env_patch.stop()
-        import app.config as config
-        import app.utils.db as db
+        from app import config
+        from app.utils import db
 
         importlib.reload(config)
         importlib.reload(db)

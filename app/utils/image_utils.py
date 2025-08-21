@@ -7,6 +7,8 @@ import datetime
 import logging
 import os
 import textwrap
+from contextlib import contextmanager
+from typing import Iterator
 
 from PIL import Image, ImageDraw
 
@@ -47,12 +49,13 @@ def find_closest_image(
     return closest_image
 
 
-def load_image(image_path: str) -> Image.Image | None:
-    """Return an RGB image or ``None`` if loading fails."""
+@contextmanager
+def load_image(image_path: str) -> Iterator[Image.Image]:
+    """Yield an RGB image loaded from ``image_path``."""
 
     try:
-        image = Image.open(image_path)
-        return image.convert("RGB")
+        with Image.open(image_path) as img:
+            yield img.convert("RGB")
     except Exception as e:  # pragma: no cover - I/O errors depend on env
         if DEBUG:
             os.rename(image_path, image_path.replace(".png", ".broken"))
@@ -60,7 +63,7 @@ def load_image(image_path: str) -> Image.Image | None:
             os.unlink(image_path)
         logging.warning("image load issue: %s %s", image_path, e)
         logging.error("Error saving image: %s %s", image_path, e)
-        return None
+        yield None
 
 
 def _apply_motion_icon(
@@ -137,20 +140,20 @@ def add_motion_and_caption(
     if caption is None and not motion:
         return
 
-    image = load_image(image_path)
-    if image is None:
-        return
+    with load_image(image_path) as image:
+        if image is None:
+            return
 
-    try:
-        draw = ImageDraw.Draw(image)
-        max_height = min(image.height, image.width * 9 // 16)
-        font_size = int(max_height * 0.05)
-        top_offset = (image.height - max_height) / 2
-        font = load_font(font_size)
-        if motion:
-            _apply_motion_icon(image, draw, font, font_size, top_offset)
-        if caption is not None:
-            _apply_caption(image, draw, font, font_size, caption, top_offset)
-        save_image(image, image_path)
-    except Exception as e:  # pragma: no cover - unexpected errors
-        logging.error("Error updating image %s : %s", image_path, e)
+        try:
+            draw = ImageDraw.Draw(image)
+            max_height = min(image.height, image.width * 9 // 16)
+            font_size = int(max_height * 0.05)
+            top_offset = (image.height - max_height) / 2
+            font = load_font(font_size)
+            if motion:
+                _apply_motion_icon(image, draw, font, font_size, top_offset)
+            if caption is not None:
+                _apply_caption(image, draw, font, font_size, caption, top_offset)
+            save_image(image, image_path)
+        except Exception as e:  # pragma: no cover - unexpected errors
+            logging.error("Error updating image %s : %s", image_path, e)

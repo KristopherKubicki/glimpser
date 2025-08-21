@@ -98,6 +98,12 @@ def pipe_ffmpeg_frames(command, frame_files):
             process.stdin.write(img.read())
     process.stdin.close()
     stdout, stderr = process.communicate()
+    if process.stdin:
+        process.stdin.close()
+    if process.stdout:
+        process.stdout.close()
+    if process.stderr:
+        process.stderr.close()
     if stdout:
         logging.debug("ffmpeg stdout: %s", stdout.decode().strip())
     if stderr:
@@ -106,6 +112,7 @@ def pipe_ffmpeg_frames(command, frame_files):
         raise subprocess.CalledProcessError(
             process.returncode, command, output=stdout, stderr=stderr
         )
+    process.wait(timeout=5)
     return process
 
 

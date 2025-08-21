@@ -64,6 +64,7 @@ def create_tables(conn: sqlite3.Connection) -> None:
             url TEXT DEFAULT '',
             thumbnail TEXT DEFAULT '',
             groups TEXT DEFAULT '',
+            baseline_caption TEXT DEFAULT '',
             invert BOOLEAN DEFAULT 0,
             dark BOOLEAN DEFAULT 0,
             headless BOOLEAN DEFAULT 1,

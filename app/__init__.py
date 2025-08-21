@@ -31,6 +31,7 @@ from app.utils.retention_policy import cleanup_clips, retention_cleanup
 from app.utils.scheduling import (
     refresh_clips,
     schedule_auto_update,
+    schedule_baseline_updates,
     schedule_clip_refresh,
     schedule_crawlers,
     schedule_discovery,
@@ -174,6 +175,7 @@ def create_app(
             )
             schedule_summarization()
             schedule_offline_job_processor()
+            schedule_baseline_updates()
             schedule_clip_refresh()
             schedule_auto_update()
             if DISCOVERY_AUTOSTART:
@@ -306,6 +308,7 @@ def create_app(
                 )
                 schedule_summarization()
                 schedule_offline_job_processor()
+                schedule_baseline_updates()
                 if DISCOVERY_AUTOSTART:
                     schedule_discovery()
 

@@ -20,8 +20,8 @@ class TestBackupConfig(unittest.TestCase):
         )
         self.env_patch.start()
 
-        import app.config as config
-        import app.utils.db as db
+        from app import config
+        from app.utils import db
 
         importlib.reload(config)
         importlib.reload(db)
@@ -41,8 +41,8 @@ class TestBackupConfig(unittest.TestCase):
 
     def tearDown(self):
         self.env_patch.stop()
-        import app.config as config
-        import app.utils.db as db
+        from app import config
+        from app.utils import db
 
         importlib.reload(config)
         importlib.reload(db)

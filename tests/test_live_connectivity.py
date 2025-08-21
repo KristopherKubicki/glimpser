@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-import app.routes as routes
+from app import routes
 
 
 class TestLiveConnectivity(unittest.TestCase):

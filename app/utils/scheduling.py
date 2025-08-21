@@ -128,6 +128,7 @@ from .template_manager import (
     get_llm_cost_estimate,
     get_llm_response_count,
     get_screenshot_count,
+    get_screenshots_for_template,
     get_storage_usage,
     get_storage_usage_bytes,
     get_template,
@@ -1627,6 +1628,42 @@ def schedule_clip_refresh() -> None:
             trigger="interval",
             minutes=5,
             id="refresh_clips",
+            replace_existing=True,
+        )
+    except Exception as e:
+        logging.error("job schedule error: %s", e)
+
+
+def update_baselines(count: int = 10) -> None:
+    """Generate baseline captions for each template."""
+
+    templates = get_templates()
+    for name in templates:
+        shots = get_screenshots_for_template(name)
+        if not shots:
+            continue
+        step = max(len(shots) // count, 1)
+        selected = [shots[i] for i in range(0, len(shots), step)][:count]
+        image_paths = [os.path.join(SCREENSHOT_DIRECTORY, name, s) for s in selected]
+        caption = chatgpt_compare(
+            "Describe the typical baseline view.",
+            image_paths,
+            template_name=name,
+        )
+        if caption:
+            tmpl = get_template(name)
+            tmpl["baseline_caption"] = caption
+            save_template(name, tmpl)
+
+
+def schedule_baseline_updates() -> None:
+    """Run ``update_baselines`` once per day."""
+
+    try:
+        scheduler.add_job(
+            func=update_baselines,
+            trigger=CronTrigger(hour=0),
+            id="baseline_update",
             replace_existing=True,
         )
     except Exception as e:

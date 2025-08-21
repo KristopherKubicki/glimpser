@@ -1,7 +1,6 @@
-import os
 import unittest
 
-import app.config as config
+from app import config
 from app.utils.settings_tooltips import SETTINGS_CHOICES, SETTINGS_TOOLTIPS
 
 

@@ -1,8 +1,6 @@
 import datetime
 import types
 
-import pytest
-
 from app.utils import video_archiver
 
 
