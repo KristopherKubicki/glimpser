@@ -31,7 +31,7 @@ dependencies = [
   "alembic==1.16.1",
   "apscheduler==3.11.0",
   "fake-useragent==2.2.0",
-  "flask==3.1.1",
+  "flask==3.1.2",
   "flask-apscheduler==1.13.1",
   "flask-login==0.6.3",
   "jinja2==3.1.6",
