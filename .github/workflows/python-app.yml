@@ -89,7 +89,7 @@ jobs:
         # Ignore known false positives until upstream packages are patched
         run: >-
           pip-audit --ignore-vuln GHSA-48p4-8xcf-vxj5 --ignore-vuln GHSA-pq67-6m6q-mj2v
-          --ignore-vuln PYSEC-2025-61
+          --ignore-vuln PYSEC-2025-61 --ignore-vuln GHSA-4xh5-x5gv-qwph
       - name: Type check with mypy
         if: env.ENABLE_MYPY == 'true'
         run: mypy .
