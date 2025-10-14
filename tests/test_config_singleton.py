@@ -13,7 +13,7 @@ class TestConfigSingleton(unittest.TestCase):
                 "GLIMPSER_BACKUP_PATH": os.path.join(tmp, "b.json"),
             }
             with patch.dict(os.environ, env):
-                import app.config as config
+                from app import config
 
                 importlib.reload(config)
 

@@ -14,9 +14,8 @@ class TestInitDb(unittest.TestCase):
         )
         self.env_patch.start()
 
-        import app.config as config
-        import app.models as models
-        import app.utils.db as db
+        from app import config, models
+        from app.utils import db
 
         importlib.reload(config)
         importlib.reload(db)
@@ -29,9 +28,8 @@ class TestInitDb(unittest.TestCase):
 
     def tearDown(self):
         self.env_patch.stop()
-        import app.config as config
-        import app.models as models
-        import app.utils.db as db
+        from app import config, models
+        from app.utils import db
 
         importlib.reload(config)
         importlib.reload(db)

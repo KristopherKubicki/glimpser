@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from PIL import Image
 
-import app.utils.scheduling as scheduling
+from app.utils import scheduling
 
 
 class TestUpdateCameraSymlink(unittest.TestCase):

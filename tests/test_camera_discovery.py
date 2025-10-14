@@ -1,4 +1,3 @@
-import os
 import socket
 import tempfile
 import unittest
@@ -522,7 +521,7 @@ class TestCameraDiscovery(unittest.TestCase):
             def recvfrom(self, n):
                 if self.responses:
                     return self.responses.pop(0)
-                raise socket.timeout
+                raise TimeoutError
 
             def close(self):
                 pass

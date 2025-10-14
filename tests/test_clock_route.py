@@ -6,8 +6,7 @@ import unittest
 from unittest.mock import patch
 
 import app
-import app.config as config
-import app.routes as routes
+from app import config, routes
 
 
 class TestClockRoute(unittest.TestCase):

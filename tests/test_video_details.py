@@ -3,8 +3,6 @@ import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pytest
-
 # Dynamically load the module to avoid importing heavy app dependencies
 MODULE_PATH = Path(__file__).resolve().parents[1] / "app" / "utils" / "video_details.py"
 spec = importlib.util.spec_from_file_location("video_details", MODULE_PATH)

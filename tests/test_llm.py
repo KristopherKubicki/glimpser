@@ -2,7 +2,6 @@
 
 import datetime
 import json
-import os
 import time
 import unittest
 from unittest.mock import MagicMock, patch

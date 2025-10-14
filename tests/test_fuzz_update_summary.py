@@ -9,9 +9,8 @@ from unittest.mock import patch
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-import app.config as config
-import app.utils.db as db
-import app.utils.scheduling as scheduling
+from app import config
+from app.utils import db, scheduling
 
 LETTERS = string.ascii_letters + string.digits + string.punctuation + " "
 MAX_EXAMPLES = int(os.getenv("HYPOTHESIS_MAX_EXAMPLES", "20"))
@@ -90,7 +89,7 @@ def test_fuzz_update_summary(templates, summary):
         with patch.dict(os.environ, {"GLIMPSER_DATABASE_PATH": db_path}):
             importlib.reload(config)
             importlib.reload(db)
-            import app.models as models
+            from app import models
 
             importlib.reload(models)
             importlib.reload(models.summary)
@@ -124,7 +123,7 @@ def test_fuzz_update_summary_edge_cases(templates, summary):
         with patch.dict(os.environ, {"GLIMPSER_DATABASE_PATH": db_path}):
             importlib.reload(config)
             importlib.reload(db)
-            import app.models as models
+            from app import models
 
             importlib.reload(models)
             importlib.reload(models.summary)

@@ -50,8 +50,8 @@ class TestVersionSync(unittest.TestCase):
             return real_version(pkg)
 
         with patch("importlib.metadata.version", side_effect=fake_version):
-            import app.config as config
-            import app.utils.db as db
+            from app import config
+            from app.utils import db
 
             importlib.reload(config)
             importlib.reload(db)

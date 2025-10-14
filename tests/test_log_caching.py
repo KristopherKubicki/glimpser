@@ -1,12 +1,10 @@
 import datetime
-import os
 import threading
 import time
 from collections import deque
 from unittest.mock import MagicMock, patch
 
-import app.utils.scheduling as scheduling
-from app.utils import system_metrics
+from app.utils import scheduling, system_metrics
 
 
 class DummyFile:
