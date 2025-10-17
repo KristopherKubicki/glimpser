@@ -7,7 +7,7 @@ import unittest
 from itertools import count
 from unittest.mock import patch
 
-import app.utils.retention_policy as retention_policy
+from app.utils import retention_policy
 from app.utils.retention_policy import (
     cleanup_clips,
     delete_old_files,

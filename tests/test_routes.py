@@ -2,7 +2,6 @@
 
 import importlib
 import os
-import sys
 import unittest
 from types import SimpleNamespace
 from unittest import mock
@@ -10,15 +9,13 @@ from unittest.mock import patch
 
 from flask import Flask
 
-import app.routes as routes
+from app import routes
 from app.models import Summary
-from app.routes import init_routes
 from app.utils.template_manager import clear_template_cache
 
 
 class TestRoutes(unittest.TestCase):
     def setUp(self):
-        import app.routes as routes
 
         importlib.reload(routes)
 

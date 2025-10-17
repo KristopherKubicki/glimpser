@@ -258,7 +258,7 @@ def http_session():
     global _session
     if _session is None:
         _session = requests.Session()
-        _session.verify = False
+        _session.verify = config.REQUEST_VERIFY_SSL
         _session.headers.update({"user-agent": UA})
         _session.headers.update({"Accept": "*/*"})
         _session.mount("http://", requests.adapters.HTTPAdapter(pool_maxsize=20))
@@ -448,6 +448,12 @@ def run_cmd(cmd, timeout):
         proc.kill()  # SIGKILL
         out, err = proc.communicate()
         raise RuntimeError(f"timeout: {' '.join(cmd)}")
+    finally:
+        if proc.stdout:
+            proc.stdout.close()
+        if proc.stderr:
+            proc.stderr.close()
+        proc.wait(timeout=5)
     if proc.returncode:
         raise RuntimeError(err.decode()[:300])
     return out
@@ -654,7 +660,7 @@ def download_image(
         request_kwargs = dict(
             stream=True,
             timeout=(timeout, timeout * 3),
-            verify=False,
+            verify=config.REQUEST_VERIFY_SSL,
             headers=headers,
             auth=auth,
         )
@@ -667,7 +673,7 @@ def download_image(
             request_kwargs = dict(
                 stream=True,
                 timeout=(timeout, timeout * 3),
-                verify=False,
+                verify=config.REQUEST_VERIFY_SSL,
                 headers=headers,
                 auth=auth,
             )
@@ -759,7 +765,7 @@ def download_pdf(
             url,
             stream=True,
             timeout=timeout,
-            verify=False,
+            verify=config.REQUEST_VERIFY_SSL,
             headers=headers,
             auth=auth,
             allow_redirects=True,
@@ -772,7 +778,7 @@ def download_pdf(
                 url,
                 stream=True,
                 timeout=timeout,
-                verify=False,
+                verify=config.REQUEST_VERIFY_SSL,
                 headers=headers,
                 auth=auth,
                 allow_redirects=True,
@@ -1259,7 +1265,7 @@ def get_content_type(
                 url,
                 stream=True,
                 timeout=5,
-                verify=False,
+                verify=config.REQUEST_VERIFY_SSL,
                 headers=headers,
                 auth=auth,
                 allow_redirects=True,
@@ -1270,7 +1276,7 @@ def get_content_type(
                 response = method(
                     url,
                     timeout=5,
-                    verify=False,
+                    verify=config.REQUEST_VERIFY_SSL,
                     headers=headers,
                     auth=auth,
                     allow_redirects=True,
@@ -2524,8 +2530,12 @@ def _capture_danger_mode(
                     f"Could not switch to original window in danger mode: {ex}"
                 )
 
-        # DO NOT do driver.quit() in Danger mode: that kills the user's entire Chrome
-        driver = None
+        # Always shut down the Chrome driver to avoid FD leaks
+        if driver:
+            try:
+                driver.quit()
+            except Exception as ex:
+                logging.debug(f"driver.quit() failed in danger mode: {ex}")
 
 
 def _remove_popup(driver, popup_xpath):

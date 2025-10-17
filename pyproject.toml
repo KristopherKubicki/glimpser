@@ -84,8 +84,8 @@ dev = [
   "prettier",
   "pytest-socket", # for offline test passing
   "pytest-xdist",
-  
-  
+
+
   # “Super-human” goodies, not required for building
   "ruff>=0.4.4",
   "pytest-cov>=6.1",
@@ -183,7 +183,7 @@ dev = [
   "pylint>=3.3.7",
   "pip-audit",
   "setuptools>=78.1.1",
-  
+
   # ──────── NEW “super-human” goodies ────────
   "ruff>=0.4.4",          # lightning-fast linter/formatter
   "pytest-cov>=6.1",      # coverage plugin
@@ -201,7 +201,6 @@ agents = [
   # various tools for agents to utilize in offline environments
   "pytest-benchmark",
   "pytest-xdist",
-  "pytest-benchmark",
   "interrogate",
   "yamllint",
   #"pip-install-size",

@@ -5,8 +5,8 @@ import tempfile
 import unittest
 from unittest.mock import call, patch
 
-import app.config as config  # noqa: E402
 import generate_credentials  # noqa: E402
+from app import config  # noqa: E402
 
 
 class TestGenerateCredentials(unittest.TestCase):

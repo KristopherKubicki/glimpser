@@ -5,9 +5,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import app.utils.scheduling as scheduling
 from app.models import LogSummary
-from app.utils import db
+from app.utils import db, scheduling
 
 
 class TestLogSummary(unittest.TestCase):
@@ -15,7 +14,7 @@ class TestLogSummary(unittest.TestCase):
         self.tmpdir = tempfile.TemporaryDirectory()
         self.db_path = os.path.join(self.tmpdir.name, "test.db")
         patch.dict(os.environ, {"GLIMPSER_DATABASE_PATH": self.db_path}).start()
-        import app.models as models
+        from app import models
 
         importlib.reload(db)
         importlib.reload(models)

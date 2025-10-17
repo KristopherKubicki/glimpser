@@ -18,8 +18,8 @@ class TestGetSetting(unittest.TestCase):
         }
         patcher = patch.dict(os.environ, env)
         patcher.start()
-        import app.config as config
-        import app.utils.db as db
+        from app import config
+        from app.utils import db
 
         importlib.reload(config)
         importlib.reload(db)

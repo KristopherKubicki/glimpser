@@ -7,7 +7,7 @@ from setuptools import find_packages, setup
 
 BASE_DIR = Path(__file__).resolve().parent
 
-with open(BASE_DIR / "README.md", "r", encoding="utf-8") as fh:
+with open(BASE_DIR / "README.md", encoding="utf-8") as fh:
     long_description = fh.read()
 
 with open(BASE_DIR / "pyproject.toml", "rb") as fh:

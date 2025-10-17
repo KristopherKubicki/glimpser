@@ -1,5 +1,4 @@
 import json
-import os
 import threading
 import unittest
 from unittest.mock import patch

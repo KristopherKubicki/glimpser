@@ -1,0 +1,10 @@
+# CODEOWNERS automatically assigns reviewers
+
+# Source code
+/app/ @KristopherKubicki
+
+# Documentation
+/docs/ @KristopherKubicki
+
+# Tests
+/tests/ @KristopherKubicki

@@ -2,7 +2,6 @@
 # tests/test_cmd.py
 
 import json
-import os
 import subprocess
 import unittest
 from unittest.mock import patch
