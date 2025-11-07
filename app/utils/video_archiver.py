@@ -286,7 +286,9 @@ def compile_videos(input_file, output_file):
         if os.path.exists(output_file) and os.path.getsize(output_file) > 300:
             if is_video_expired(output_file, MAX_COMPRESSED_VIDEO_AGE):
                 logging.info("Rotating expired output %s", output_file)
-            os.rename(output_file, output_file.replace(".tmp", ""))
+            target_output = output_file.removesuffix(".tmp")
+            if target_output != output_file:
+                os.rename(output_file, target_output)
             return True
         # otherwise, do something? clean up the file maybe?
     except Exception as e:

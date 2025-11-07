@@ -94,6 +94,31 @@ class TestVideoArchiver(unittest.TestCase):
         self.assertTrue(result)
 
     @patch("subprocess.run")
+    def test_compile_videos_no_rename_for_final_output(self, mock_subprocess_run):
+        mock_subprocess_run.return_value.returncode = 0
+        with tempfile.NamedTemporaryFile(mode="w+") as temp_file:
+            temp_file.write("dummy content")
+            temp_file.flush()
+            output_path = os.path.join(VIDEO_DIRECTORY, "all_in_process.mp4")
+
+            def exists_side_effect(path):
+                if path == temp_file.name:
+                    return True
+                if path == output_path:
+                    return True
+                return False
+
+            with (
+                patch("os.path.exists", side_effect=exists_side_effect),
+                patch("os.path.getsize", return_value=500),
+                patch("os.rename") as mock_rename,
+            ):
+                result = compile_videos(temp_file.name, output_path)
+
+        self.assertTrue(result)
+        mock_rename.assert_not_called()
+
+    @patch("subprocess.run")
     def test_compile_videos_missing_input(self, mock_subprocess_run):
         result = compile_videos("missing.txt", "out.mp4")
         self.assertFalse(result)
