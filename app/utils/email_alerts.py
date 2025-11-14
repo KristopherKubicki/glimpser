@@ -36,7 +36,15 @@ def send_email_alert(subject: str, body: str) -> None:
         return
 
     sender_email = EMAIL_SENDER
-    receiver_emails = EMAIL_RECIPIENTS.split(",")
+    receiver_emails = [
+        recipient.strip()
+        for recipient in EMAIL_RECIPIENTS.split(",")
+        if recipient.strip()
+    ]
+
+    if not receiver_emails:
+        logging.warning("No valid email recipients configured.")
+        return
 
     message = MIMEMultipart()
     message["From"] = sender_email
