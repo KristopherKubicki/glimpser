@@ -35,9 +35,14 @@ class ColorFormatter(logging.Formatter):
             Formatted log message including ANSI color codes.
         """
 
+        original_levelname = record.levelname
         level_color = self.COLORS.get(record.levelno, "")
-        record.levelname = f"{level_color}{record.levelname}{self.RESET}"
-        return super().format(record)
+        if level_color:
+            record.levelname = f"{level_color}{record.levelname}{self.RESET}"
+        try:
+            return super().format(record)
+        finally:
+            record.levelname = original_levelname
 
 
 class RateLimitFilter(logging.Filter):
