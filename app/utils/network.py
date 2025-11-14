@@ -37,12 +37,19 @@ def _check_url(url: str, timeout: int) -> bool:
 def _try_connect(target: str, timeout: int, default_port: int) -> bool:
     """Return ``True`` if ``target`` can be reached via TCP."""
     host, port = _parse_target(target, default_port)
+    sock: socket.socket | None = None
     try:
-        socket.create_connection((host, port), timeout=timeout)
+        sock = socket.create_connection((host, port), timeout=timeout)
         return True
     except OSError as exc:  # pragma: no cover - network depends on environment
         logging.debug("offline check failed for %s:%s: %s", host, port, exc)
         return False
+    finally:
+        if sock is not None:
+            try:
+                sock.close()
+            except OSError:  # pragma: no cover - close failures should not bubble
+                logging.debug("offline check close failed for %s:%s", host, port)
 
 
 def _get_test_hosts():

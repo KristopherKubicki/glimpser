@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from app.utils import network
 
@@ -27,10 +27,12 @@ class TestParseTarget(unittest.TestCase):
 class TestTryConnect(unittest.TestCase):
     @patch("app.utils.network.socket.create_connection")
     def test_try_connect_success(self, mock_conn):
-        mock_conn.return_value = None
+        mock_socket = MagicMock()
+        mock_conn.return_value = mock_socket
         result = network._try_connect("host.com:443", timeout=1, default_port=80)
         self.assertTrue(result)
         mock_conn.assert_called_once_with(("host.com", 443), timeout=1)
+        mock_socket.close.assert_called_once()
 
     @patch("app.utils.network.socket.create_connection", side_effect=OSError())
     def test_try_connect_failure(self, mock_conn):
