@@ -1,4 +1,4 @@
-import os
+import os  # Needed for os.unlink cleanup
 import tempfile
 import unittest
 from unittest.mock import patch
