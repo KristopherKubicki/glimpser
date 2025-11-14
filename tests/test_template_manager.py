@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from contextlib import ExitStack
 from unittest.mock import MagicMock, patch
 
 from app.utils.template_manager import (
@@ -10,6 +11,7 @@ from app.utils.template_manager import (
     get_storage_usage,
     get_storage_usage_bytes,
     get_templates,
+    save_template,
     mark_offline,
     set_capture_failed,
     update_last_screenshot_time,
@@ -432,6 +434,116 @@ class TestSchedulerUpdates(unittest.TestCase):
         mock_sess.commit.assert_called_once()
         mock_sched.remove_job.assert_called_with("cam1")
         mock_sched.add_job.assert_called_once()
+
+
+class TestTemplateCacheInvalidation(unittest.TestCase):
+    def test_cache_cleared_after_template_mutation(self):
+        """``get_templates`` should refresh after saving a template."""
+
+        class SimpleTemplate:
+            def __init__(self, **attrs):
+                for key, value in attrs.items():
+                    setattr(self, key, value)
+                self._sa_instance_state = object()
+
+        template = SimpleTemplate(
+            name="cam1",
+            frequency=30,
+            timeout=10,
+            browser=False,
+            stealth=False,
+            object_filter="",
+            object_confidence=0.5,
+        )
+        store = [template]
+
+        class FakeFilter:
+            def __init__(self, matches):
+                self._matches = matches
+
+            def first(self):
+                return self._matches[0] if self._matches else None
+
+            def all(self):
+                return list(self._matches)
+
+        class FakeQuery:
+            def __init__(self, templates):
+                self._templates = templates
+
+            def all(self):
+                for tmpl in self._templates:
+                    if not hasattr(tmpl, "_sa_instance_state"):
+                        tmpl._sa_instance_state = object()
+                return list(self._templates)
+
+            def filter_by(self, **kwargs):
+                matches = [
+                    tmpl
+                    for tmpl in self._templates
+                    if all(getattr(tmpl, key) == value for key, value in kwargs.items())
+                ]
+                return FakeFilter(matches)
+
+        class FakeSession:
+            def __init__(self, templates):
+                self._templates = templates
+
+            def query(self, model):
+                return FakeQuery(self._templates)
+
+            def add(self, template_obj):
+                if template_obj not in self._templates:
+                    self._templates.append(template_obj)
+
+            def delete(self, template_obj):
+                if template_obj in self._templates:
+                    self._templates.remove(template_obj)
+
+            def commit(self):
+                pass
+
+            def close(self):
+                pass
+
+        original_get = TemplateManager.get_templates
+
+        with tempfile.TemporaryDirectory() as screenshot_dir, tempfile.TemporaryDirectory() as video_dir:
+            with ExitStack() as stack:
+                stack.enter_context(patch.object(TemplateManager, "__init__", return_value=None))
+                stack.enter_context(
+                    patch(
+                        "app.utils.template_manager.SessionLocal",
+                        new=lambda: FakeSession(store),
+                    )
+                )
+                stack.enter_context(patch("app.utils.template_manager._update_scheduler_job"))
+                stack.enter_context(
+                    patch("app.utils.template_manager.SCREENSHOT_DIRECTORY", screenshot_dir)
+                )
+                stack.enter_context(
+                    patch("app.utils.template_manager.VIDEO_DIRECTORY", video_dir)
+                )
+                wrapped_get = stack.enter_context(
+                    patch.object(TemplateManager, "get_templates", autospec=True)
+                )
+                wrapped_get.side_effect = lambda self: original_get(self)
+
+                clear_template_cache()
+
+                first = get_templates()
+                self.assertEqual(first["cam1"]["frequency"], 30)
+                self.assertEqual(wrapped_get.call_count, 1)
+
+                second = get_templates()
+                self.assertIs(second, first)
+                self.assertEqual(wrapped_get.call_count, 1)
+
+                save_template("cam1", {"frequency": 45})
+
+                third = get_templates()
+                self.assertEqual(wrapped_get.call_count, 2)
+                self.assertEqual(third["cam1"]["frequency"], 45)
 
 
 if __name__ == "__main__":

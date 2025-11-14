@@ -323,6 +323,7 @@ class TemplateManager:
                         ldelta = True
             if ldelta is True:
                 session.commit()
+                clear_template_cache()
                 # Recreate the scheduler job so the new settings take effect
                 _update_scheduler_job(name, template.frequency)
             return True
@@ -386,6 +387,7 @@ class TemplateManager:
             if template:
                 session.delete(template)
                 session.commit()
+                clear_template_cache()
                 return True
             return False
         finally:
@@ -495,13 +497,15 @@ def save_template(name: str, template_data) -> bool:
         return False
 
     manager = TemplateManager()
-    manager.save_template(name, template_data)
+    success = manager.save_template(name, template_data)
+    if success:
+        clear_template_cache()
     screenshot_full_path = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(name))
     os.makedirs(screenshot_full_path, exist_ok=True)
     video_full_path = os.path.join(VIDEO_DIRECTORY, secure_filename(name))
     os.makedirs(video_full_path, exist_ok=True)
 
-    return True
+    return bool(success)
 
 
 def delete_template(name: str) -> bool:
@@ -525,6 +529,7 @@ def delete_template(name: str) -> bool:
     manager = TemplateManager()
     success = manager.delete_template(name)
     if success:
+        clear_template_cache()
         screenshot_full_path = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(name))
         if os.path.exists(screenshot_full_path) and os.path.isdir(screenshot_full_path):
             shutil.rmtree(screenshot_full_path)
@@ -943,6 +948,7 @@ def update_last_screenshot_time(name: str) -> None:
             template.offline_since = ""
             template.capture_failed = False
             commit_with_retry(session)
+            clear_template_cache()
     finally:
         session.close()
 
@@ -960,6 +966,7 @@ def mark_offline(name: str) -> None:
         if template and not template.offline_since:
             template.offline_since = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
             session.commit()
+            clear_template_cache()
     finally:
         session.close()
 
@@ -977,6 +984,7 @@ def set_capture_failed(name: str, failed: bool) -> None:
         if template:
             template.capture_failed = bool(failed)
             session.commit()
+            clear_template_cache()
     finally:
         session.close()
 
