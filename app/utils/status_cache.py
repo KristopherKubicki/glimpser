@@ -37,7 +37,8 @@ def _load_status_cache() -> None:
 
 def _persist_status_cache() -> None:
     """Write ``status_code_cache`` to ``STATUS_CACHE_PATH``."""
-    os.makedirs(os.path.dirname(STATUS_CACHE_PATH), exist_ok=True)
+    dir_name = os.path.dirname(STATUS_CACHE_PATH) or "."
+    os.makedirs(dir_name, exist_ok=True)
     data = {
         url: {"code": code, "time": status_code_cache_time.get(url, 0)}
         for url, code in status_code_cache.items()

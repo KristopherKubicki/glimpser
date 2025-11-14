@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import tempfile
@@ -5,6 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from app.utils import screenshots as ss
+from app.utils import status_cache as sc
 
 
 class TestStatusCodeCache(unittest.TestCase):
@@ -52,6 +54,35 @@ class TestStatusCodeCache(unittest.TestCase):
         ss.status_code_cache_time.clear()
         ss._load_status_cache()
         self.assertEqual(ss.get_cached_status_code("u"), 500)
+
+
+class TestStatusCachePersistenceNoDirectory(unittest.TestCase):
+    def test_persist_status_cache_without_directory_component(self):
+        original_cache = sc.status_code_cache.copy()
+        original_time_cache = sc.status_code_cache_time.copy()
+        original_cwd = os.getcwd()
+
+        sc.status_code_cache.clear()
+        sc.status_code_cache_time.clear()
+
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                os.chdir(tmpdir)
+                try:
+                    with patch("app.utils.status_cache.STATUS_CACHE_PATH", "cache.json"):
+                        sc.status_code_cache["example"] = 201
+                        sc.status_code_cache_time["example"] = 123.0
+                        sc._persist_status_cache()
+                        with open("cache.json") as cache_file:
+                            data = json.load(cache_file)
+                    self.assertEqual(data["example"]["code"], 201)
+                finally:
+                    os.chdir(original_cwd)
+        finally:
+            sc.status_code_cache.clear()
+            sc.status_code_cache.update(original_cache)
+            sc.status_code_cache_time.clear()
+            sc.status_code_cache_time.update(original_time_cache)
 
 
 if __name__ == "__main__":
