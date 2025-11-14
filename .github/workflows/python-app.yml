@@ -33,8 +33,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install pip 24.3.1 to avoid GHSA-4xh5-x5gv-qwph
-        run: python -m pip install --upgrade "pip==24.3.1"
+      - name: Install patched pip for GHSA-4xh5-x5gv-qwph
+        # Install the first patched release to ensure the vulnerability remains fixed.
+        run: python -m pip install --upgrade "pip>=24.3.2"
       - name: Cache uv
         uses: actions/cache@v4
         with:
@@ -89,7 +90,7 @@ jobs:
         # Ignore known false positives until upstream packages are patched
         run: >-
           pip-audit --ignore-vuln GHSA-48p4-8xcf-vxj5 --ignore-vuln GHSA-pq67-6m6q-mj2v
-          --ignore-vuln PYSEC-2025-61 --ignore-vuln GHSA-4xh5-x5gv-qwph
+          --ignore-vuln PYSEC-2025-61
       - name: Type check with mypy
         if: env.ENABLE_MYPY == 'true'
         run: mypy .
