@@ -31,12 +31,10 @@ jobs:
         run: python -m pip install --upgrade uv
       - name: Install dependencies with uv
         run: uv pip install --system --editable . --group dev
-      - name: Lint with flake8
-        run: |
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-      - name: Lint with ruff
-        run: ruff check --exit-zero .
+      - name: Check formatting with Ruff
+        run: uv run ruff format --check .
+      - name: Lint with Ruff
+        run: uv run ruff check .
       - name: Test with pytest
         run: |
           pytest

@@ -1,4 +1,4 @@
-# flake8: noqa
+# ruff: noqa
 """HTTP route handlers and helper utilities.
 
 This module registers all Flask endpoints for the application. Routes handle

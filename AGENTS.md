@@ -1,7 +1,7 @@
 Keep commits small and focused.
 Use conventional commit messages.
-Format code with `black` and/or `prettier`
-Run `flake8` for lint checks.
+Format Python code with `ruff format` and front-end assets with `prettier`.
+Run `ruff check` for linting.
 Run `pre-commit run --all-files`.
 Run tests with `pytest`.
 Use `pyproject.toml` for dependencies; do not use requirements files.

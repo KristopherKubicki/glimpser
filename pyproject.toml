@@ -70,10 +70,7 @@ glimpser-dashboard = "app.utils.console_dashboard:main"
 [project.optional-dependencies]
 dev = [
   # Core dev tooling - all required for building
-  "black>=25.1",
   "coverage>=7.9",
-  "flake8>=7.2",
-  "isort==6.0.1",
   "mkdocs>=1.6",
   "mypy>=1.16",
   "pre-commit>=4.2",
@@ -122,24 +119,18 @@ packages = ["app", "scripts"]
 # ─────────────────────────────────────────────────────────────────────────────
 # Tooling configuration
 # ─────────────────────────────────────────────────────────────────────────────
-[tool.black]
-line-length       = 88
-target-version    = ["py311"]
-required-version  = "25.1.0"
-
-[tool.isort]
-profile = "black"
-line_length = 88
-
-# Ruff replaces most flake8 / isort / pylint rules, but you can keep the
-# originals for now; just run Ruff first so they have little to flag.
 [tool.ruff]
 line-length    = 88
 target-version = "py311"
 exclude = [".git", "__pycache__", "build", "dist", "node_modules", "env", ".venv"]
 
-# Enable Ruff’s equivalents of common Flake8 & Pylint rules + isort style
-extend-select = ["E", "F", "I", "UP", "PL"]     # E=pycodestyle, F=pyflakes, I=isort, UP=pyupgrade, PL=pylint
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "PL"]     # E=pycodestyle, F=pyflakes, I=isort, UP=pyupgrade, PL=pylint
 
 # MyPy stays as-is
 [tool.mypy]
@@ -170,10 +161,7 @@ tag_format = "v$version"
 # Everything here installs with `pip install .[dev]`
 dev = [
   # ✂︎ existing dev deps kept (versions bumped where useful) ✂︎
-  "black>=25.1",
   "coverage>=7.9",      # keep for standalone HTML reports
-  "flake8>=7.2",
-  "isort==6.0.1",       # now mirrors runtime pin
   "mkdocs>=1.6",
   "mypy>=1.16",
   "pre-commit>=4.2",
