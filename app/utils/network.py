@@ -6,6 +6,7 @@ network operations in tests and handle custom hosts provided via
 environment variables.
 """
 
+import ipaddress
 import logging
 import os
 import socket
@@ -15,13 +16,43 @@ from app.utils.api_utils import request_with_retry
 
 def _parse_target(target: str, default_port: int) -> tuple[str, int]:
     """Return ``(host, port)`` tuple for ``target``."""
-    if ":" in target:
-        host, p = target.rsplit(":", 1)
-        try:
-            return host, int(p)
-        except ValueError:
+
+    if target.startswith("["):
+        end = target.find("]")
+        if end != -1:
+            host = target[1:end]
+            port_candidate = target[end + 1 :]
+            if port_candidate.startswith(":"):
+                port_str = port_candidate[1:]
+                if port_str:
+                    try:
+                        return host, int(port_str)
+                    except ValueError:
+                        return host, default_port
             return host, default_port
+
+    if ":" in target:
+        host_candidate, port_candidate = target.rsplit(":", 1)
+        if port_candidate.isdigit():
+            if ":" not in host_candidate or _is_ipv6_literal(host_candidate):
+                try:
+                    return host_candidate, int(port_candidate)
+                except ValueError:
+                    return host_candidate, default_port
+            return target, default_port
+        if ":" not in host_candidate:
+            return host_candidate, default_port
     return target, default_port
+
+
+def _is_ipv6_literal(value: str) -> bool:
+    """Return ``True`` if ``value`` is a valid IPv6 literal."""
+
+    try:
+        ipaddress.IPv6Address(value)
+    except ValueError:
+        return False
+    return True
 
 
 def _check_url(url: str, timeout: int) -> bool:

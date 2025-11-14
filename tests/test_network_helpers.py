@@ -23,6 +23,11 @@ class TestParseTarget(unittest.TestCase):
             network._parse_target("2001:db8::1:8443", 443), ("2001:db8::1", 8443)
         )
 
+    def test_ipv6_literal_without_port_uses_default(self):
+        self.assertEqual(
+            network._parse_target("2001:db8::1", 443), ("2001:db8::1", 443)
+        )
+
 
 class TestTryConnect(unittest.TestCase):
     @patch("app.utils.network.socket.create_connection")
