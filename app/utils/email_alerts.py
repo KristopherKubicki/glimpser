@@ -36,7 +36,15 @@ def send_email_alert(subject: str, body: str) -> None:
         return
 
     sender_email = EMAIL_SENDER
-    receiver_emails = EMAIL_RECIPIENTS.split(",")
+    receiver_emails = [
+        email.strip()
+        for email in EMAIL_RECIPIENTS.split(",")
+        if email.strip()
+    ]
+
+    if not receiver_emails:
+        logging.info("No email recipients configured; skipping email alert.")
+        return
 
     message = MIMEMultipart()
     message["From"] = sender_email

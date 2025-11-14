@@ -50,6 +50,26 @@ class TestEmailAlerts(unittest.TestCase):
             self.assertIn("Subject: Subject", args[2])
             self.assertIn("Body", args[2])
 
+    def test_send_email_alert_no_recipients(self):
+        with (
+            patch("smtplib.SMTP") as mock_smtp,
+            patch("app.utils.email_alerts.EMAIL_ENABLED", "True"),
+            patch("app.utils.email_alerts.EMAIL_SENDER", "sender@example.com"),
+            patch("app.utils.email_alerts.EMAIL_RECIPIENTS", " , ,  "),
+            patch("app.utils.email_alerts.EMAIL_SMTP_SERVER", "smtp.example.com"),
+            patch("app.utils.email_alerts.EMAIL_SMTP_PORT", "587"),
+            patch("app.utils.email_alerts.EMAIL_SMTP_TIMEOUT", 5),
+            patch("app.utils.email_alerts.EMAIL_USE_TLS", "true"),
+            patch("app.utils.email_alerts.EMAIL_USERNAME", "user"),
+            patch("app.utils.email_alerts.EMAIL_PASSWORD", "pass"),
+            patch("logging.info") as mock_log_info,
+        ):
+            send_email_alert("Subject", "Body")
+            mock_smtp.assert_not_called()
+            mock_log_info.assert_called_once_with(
+                "No email recipients configured; skipping email alert."
+            )
+
     def test_send_email_alert_timeout(self):
         smtp_mock = MagicMock()
         mock_cm = MagicMock()
