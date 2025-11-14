@@ -397,6 +397,32 @@ def get_port_usage(port: int) -> str:
     return ""
 
 
+def wait_for_port_to_become_available(
+    port: int, timeout: float = 15.0, interval: float = 0.5
+) -> bool:
+    """Wait for a TCP port to become available.
+
+    Args:
+        port: TCP port to check.
+        timeout: Maximum seconds to wait for the port to free.
+        interval: Seconds to sleep between checks.
+
+    Returns:
+        bool: ``True`` if the port became available within the timeout.
+    """
+
+    if os.environ.get("IN_DOCKER"):
+        return True
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not is_port_in_use(port):
+            return True
+        time.sleep(interval)
+
+    return not is_port_in_use(port)
+
+
 def main(argv=None):
     """Entry point for the ``glimpser`` command."""
     # Clear the console before starting
@@ -415,19 +441,26 @@ def main(argv=None):
     display_startup_info(args)
 
     if is_port_in_use(config.PORT) and config.DEBUG_MODE is False:
-        logging.error(
-            "Error: Port %s is already in use. Please choose a different port.",
+        logging.warning(
+            "Port %s is already in use. Waiting for it to become available...",
             config.PORT,
         )
-        usage = get_port_usage(config.PORT)
-        if usage:
-            logging.error("Processes using port %s:\n%s", config.PORT, usage)
+        if wait_for_port_to_become_available(config.PORT):
+            logging.info("Port %s became available. Continuing startup.", config.PORT)
         else:
             logging.error(
-                "Could not determine which process is using port %s.",
+                "Error: Port %s is already in use. Please choose a different port.",
                 config.PORT,
             )
-        sys.exit(1)
+            usage = get_port_usage(config.PORT)
+            if usage:
+                logging.error("Processes using port %s:\n%s", config.PORT, usage)
+            else:
+                logging.error(
+                    "Could not determine which process is using port %s.",
+                    config.PORT,
+                )
+            sys.exit(1)
 
     try:
         logging.info(

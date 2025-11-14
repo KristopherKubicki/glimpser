@@ -170,6 +170,36 @@ class TestMainUtilities(unittest.TestCase):
         self.assertEqual(mock_run.call_args_list, expected_calls)
         self.assertEqual(output, "fuser output")
 
+    @patch("main.time.sleep")
+    @patch("main.time.monotonic")
+    @patch("main.is_port_in_use")
+    def test_wait_for_port_to_become_available_success(
+        self, mock_in_use, mock_monotonic, mock_sleep
+    ):
+        mock_monotonic.side_effect = [0.0, 0.0, 0.6]
+        mock_in_use.side_effect = [True, False]
+
+        result = main.wait_for_port_to_become_available(8082, timeout=1.0, interval=0.5)
+
+        self.assertTrue(result)
+        self.assertEqual(mock_in_use.call_count, 2)
+        self.assertEqual(mock_sleep.call_args_list, [call(0.5)])
+
+    @patch("main.time.sleep")
+    @patch("main.time.monotonic")
+    @patch("main.is_port_in_use")
+    def test_wait_for_port_to_become_available_timeout(
+        self, mock_in_use, mock_monotonic, mock_sleep
+    ):
+        mock_monotonic.side_effect = [0.0, 0.0, 0.6, 1.2]
+        mock_in_use.side_effect = [True, True, True]
+
+        result = main.wait_for_port_to_become_available(8082, timeout=1.0, interval=0.5)
+
+        self.assertFalse(result)
+        self.assertEqual(mock_in_use.call_count, 3)
+        self.assertEqual(mock_sleep.call_args_list, [call(0.5), call(0.5)])
+
 
 if __name__ == "__main__":
     unittest.main()
