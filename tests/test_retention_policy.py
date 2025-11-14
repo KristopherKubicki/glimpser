@@ -84,11 +84,12 @@ class TestRetentionPolicy(unittest.TestCase):
             # Symlinks are excluded and files are sorted oldest -> newest
             self.assertEqual(result, file_paths)
 
+    @patch("app.utils.retention_policy.os.path.isdir", return_value=True)
     @patch("app.utils.retention_policy.os.listdir")
     @patch("app.utils.retention_policy.get_files_sorted_by_creation_time")
     @patch("app.utils.retention_policy.delete_old_files")
     def test_retention_cleanup_invokes_deletion(
-        self, mock_delete, mock_get_files, mock_listdir
+        self, mock_delete, mock_get_files, mock_listdir, _mock_isdir
     ):
         mock_listdir.side_effect = [["cam1"], ["cam1"], ["cam1"]]
         mock_get_files.return_value = ["f1", "f2"]
@@ -145,6 +146,22 @@ class TestRetentionPolicy(unittest.TestCase):
                 len(os.listdir(os.path.join(shot_dir, "cam1"))),
                 10,
             )
+
+    def test_retention_cleanup_missing_directories_no_error(self):
+        with tempfile.TemporaryDirectory() as base_dir:
+            missing_video = os.path.join(base_dir, "video")
+            missing_shots = os.path.join(base_dir, "shots")
+
+            self.assertFalse(os.path.exists(missing_video))
+            self.assertFalse(os.path.exists(missing_shots))
+
+            with (
+                patch.object(retention_policy, "VIDEO_DIRECTORY", missing_video),
+                patch.object(
+                    retention_policy, "SCREENSHOT_DIRECTORY", missing_shots
+                ),
+            ):
+                self.assertIsNone(retention_cleanup())
 
     def test_cleanup_clips_removes_expired(self):
         with tempfile.TemporaryDirectory() as clip_dir:

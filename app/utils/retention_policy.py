@@ -142,15 +142,21 @@ def cleanup_clips(max_age_minutes: int = MAX_CLIP_AGE_MINUTES) -> None:
 
 def retention_cleanup():
     # For each camera, delete old or excess videos
-    for camera_name in os.listdir(VIDEO_DIRECTORY):
-        camera_dir = os.path.join(VIDEO_DIRECTORY, camera_name)
-        video_files = get_files_sorted_by_creation_time(camera_dir)
-        delete_old_files(video_files, MAX_COMPRESSED_VIDEO_AGE, MAX_RAW_DATA_SIZE)
+    if os.path.isdir(VIDEO_DIRECTORY):
+        for camera_name in os.listdir(VIDEO_DIRECTORY):
+            camera_dir = os.path.join(VIDEO_DIRECTORY, camera_name)
+            video_files = get_files_sorted_by_creation_time(camera_dir)
+            delete_old_files(
+                video_files, MAX_COMPRESSED_VIDEO_AGE, MAX_RAW_DATA_SIZE
+            )
 
     # For each camera, delete old or excess screenshots
-    for camera_name in os.listdir(SCREENSHOT_DIRECTORY):
-        camera_dir = os.path.join(SCREENSHOT_DIRECTORY, camera_name)
-        image_files = get_files_sorted_by_creation_time(camera_dir)
-        delete_old_files(image_files, MAX_COMPRESSED_VIDEO_AGE, MAX_RAW_DATA_SIZE)
+    if os.path.isdir(SCREENSHOT_DIRECTORY):
+        for camera_name in os.listdir(SCREENSHOT_DIRECTORY):
+            camera_dir = os.path.join(SCREENSHOT_DIRECTORY, camera_name)
+            image_files = get_files_sorted_by_creation_time(camera_dir)
+            delete_old_files(
+                image_files, MAX_COMPRESSED_VIDEO_AGE, MAX_RAW_DATA_SIZE
+            )
 
     cleanup_clips()
