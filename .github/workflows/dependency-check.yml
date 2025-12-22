@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # speeds up repeat runs (~30 s instead of several minutes)
       - name: Restore NVD DB cache
