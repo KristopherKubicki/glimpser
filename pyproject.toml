@@ -73,7 +73,7 @@ dev = [
   "black>=25.1",
   "coverage>=7.9",
   "flake8>=7.2",
-  "isort==6.0.1",
+  "isort==6.1.0",
   "mkdocs>=1.6",
   "mypy>=1.16",
   "pre-commit>=4.2",
@@ -173,7 +173,7 @@ dev = [
   "black>=25.1",
   "coverage>=7.9",      # keep for standalone HTML reports
   "flake8>=7.2",
-  "isort==6.0.1",       # now mirrors runtime pin
+  "isort==6.1.0",       # now mirrors runtime pin
   "mkdocs>=1.6",
   "mypy>=1.16",
   "pre-commit>=4.2",
