@@ -561,13 +561,26 @@ def update_camera(name, template, image_file=None, motion=False):
         now = time.monotonic()
         last_log = _capture_fail_last_log.get(name, 0.0)
         reason = entry.get("reason") if entry else None
+        backoff_active = bool(entry and entry.get("timeout", 0) > time.time())
         rate_limit = LOG_RATE_LIMIT_SEC
         if reason == "lan_offline":
+            rate_limit = max(rate_limit, 300)
+        if backoff_active:
+            # Avoid repeating noisy "Capture failed" logs for sources that are
+            # already in an explicit backoff/quarantine window.
             rate_limit = max(rate_limit, 300)
         if now - last_log >= rate_limit:
             _capture_fail_last_log[name] = now
             prefix = "[LAN_OFFLINE] " if reason == "lan_offline" else ""
-            if entry and entry.get("errors", 0) > 2:
+            if backoff_active:
+                logging.debug(
+                    "%sCapture paused for %s (%s) due to %s backoff",
+                    prefix,
+                    name,
+                    clean_url,
+                    reason or "active",
+                )
+            elif entry and entry.get("errors", 0) > 2:
                 logging.debug("%sCapture failed for %s (%s)", prefix, name, clean_url)
             else:
                 logging.error("%sCapture failed for %s (%s)", prefix, name, clean_url)

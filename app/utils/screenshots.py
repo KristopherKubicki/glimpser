@@ -260,6 +260,7 @@ domain_backoff_cache = {}
 local_quarantine_cache = {}
 danger_fallback_cache = {}
 danger_session_cache = {}
+_local_quarantine_log_cache: dict[str, float] = {}
 
 PREFLIGHT_CACHE_PATH = "data/preflight_cache.json"
 PREFLIGHT_CACHE_PERSIST_EVERY = 60
@@ -287,6 +288,7 @@ IMAGE_HASH_MAX_BYTES = int(os.getenv("IMAGE_HASH_MAX_BYTES", str(256 * 1024)))
 MAX_REDIRECTS = 5
 DOMAIN_CONCURRENCY_LIMIT = int(os.getenv("DOMAIN_CONCURRENCY_LIMIT", "2"))
 PRELIGHT_LATENCY_THRESHOLD = float(os.getenv("PREFLIGHT_LATENCY_THRESHOLD", "5.0"))
+LOCAL_QUARANTINE_LOG_INTERVAL = int(os.getenv("LOCAL_QUARANTINE_LOG_INTERVAL", "60"))
 _preflight_cache_last_persist = 0.0
 
 
@@ -2423,7 +2425,7 @@ def _capture_or_download_inner(
     if domain and _is_private_host(domain):
         quarantined, remaining = _local_quarantine_active(url)
         if quarantined:
-            logging.info(
+            logging.debug(
                 "Local quarantine active for %s: %ds",
                 clean_url,
                 remaining,
@@ -3065,6 +3067,7 @@ def capture_or_download(name: str, template: dict) -> bool:
     username = template.get("auth_username")
     password = template.get("auth_password")
     clean_url = sanitize_url(url)
+    domain, _ = parse_url(url)
 
     # Disallow local file paths to avoid unintended file disclosure
     parsed = urlparse(url)
@@ -3072,6 +3075,29 @@ def capture_or_download(name: str, template: dict) -> bool:
         logging.error("Unsupported URL scheme: %s", parsed.scheme)
         _record_tier_failure(url, TIER_OFFLINE, "unsupported_scheme")
         return False
+
+    # Short-circuit quickly when a private-host source is currently quarantined.
+    # This avoids repeated expensive capture attempts while the backoff window
+    # is active.
+    if domain and _is_private_host(domain):
+        quarantined, remaining = _local_quarantine_active(url)
+        if quarantined:
+            now = time.time()
+            key = _domain_key(url) or clean_url
+            last = _local_quarantine_log_cache.get(key, 0.0)
+            if now - last >= LOCAL_QUARANTINE_LOG_INTERVAL:
+                _local_quarantine_log_cache[key] = now
+                logging.info(
+                    "Local quarantine active for %s: %ds",
+                    clean_url,
+                    remaining,
+                )
+            entry = throttle_cache.get(url, {})
+            entry["timeout"] = max(entry.get("timeout", 0), now + max(remaining, 1))
+            entry["reason"] = "local_quarantine"
+            throttle_cache[url] = entry
+            _record_tier_failure(url, TIER_OFFLINE, "local_quarantine")
+            return False
     entry = throttle_cache.get(url)
     if entry and entry.get("timeout", 0) > time.time():
         remaining = int(entry["timeout"] - time.time())
