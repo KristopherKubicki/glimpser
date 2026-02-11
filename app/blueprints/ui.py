@@ -892,6 +892,7 @@ def create_blueprint() -> Blueprint:
             return redirect(url_for("ui.settings"))
 
         settings = routes.get_all_settings()
+        settings_map = {s["name"]: str(s["value"]) for s in settings}
         grouped_settings: dict[str, list[dict[str, str]]] = {
             group: [] for group in routes.SETTINGS_GROUPS
         }
@@ -950,6 +951,21 @@ def create_blueprint() -> Blueprint:
         tooltips = dict(routes.SETTINGS_TOOLTIPS)
         if not metrics.get("ffmpeg_gpu_support"):
             tooltips["FFMPEG_HWACCEL"] = "Hardware acceleration not available"
+
+        # Display runtime-effective values when low CPU mode clamps settings.
+        effective_settings: dict[str, str] = {}
+        if routes.config.LOW_CPU_MODE:
+            computed = {
+                "MAX_WORKERS": str(routes.config.MAX_WORKERS),
+                "FFMPEG_THREADS": str(routes.config.FFMPEG_THREADS),
+                "LIVE_FALLBACK_FPS": str(routes.config.LIVE_FALLBACK_FPS),
+                "ARCHIVE_INTERVAL_MINUTES": str(
+                    max(int(routes.config.ARCHIVE_INTERVAL_MINUTES), 5)
+                ),
+            }
+            for name, value in computed.items():
+                if settings_map.get(name) != value:
+                    effective_settings[name] = value
         return render_template(
             "settings.html",
             grouped_settings=grouped_settings,
@@ -975,6 +991,7 @@ def create_blueprint() -> Blueprint:
             file_info=file_info,
             existing_urls=existing_urls,
             placeholders=routes.SETTINGS_PLACEHOLDERS,
+            effective_settings=effective_settings,
             last_backup=last_backup,
             page_title="Settings",
         )

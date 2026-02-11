@@ -56,6 +56,7 @@ from app.config import (
     LAN_OFFLINE_DISABLE_ERRORS,
     LAN_OFFLINE_DISABLE_WINDOW_MINUTES,
     LOG_RATE_LIMIT_SEC,
+    LOW_CPU_MODE,
     PORT,
     SCREENSHOT_DIRECTORY,
     SUMMARIES_DIRECTORY,
@@ -1846,12 +1847,16 @@ def schedule_offline_job_processor() -> None:
     """Schedule periodic processing of queued offline jobs."""
 
     try:
+        interval_seconds = 60 if LOW_CPU_MODE else 30
         scheduler.add_job(
             func=process_offline_jobs,
             trigger="interval",
-            seconds=30,
+            seconds=interval_seconds,
             id="process_offline_jobs",
             replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=max(interval_seconds, 30),
         )
     except Exception as e:
         logging.error("job schedule error: %s", e)

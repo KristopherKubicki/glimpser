@@ -14,6 +14,7 @@ from app.utils.scheduling import (
     add_motion_and_caption,
     process_offline_jobs,
     run_with_timeout,
+    schedule_offline_job_processor,
 )
 from app.utils.system_metrics import get_system_metrics
 
@@ -342,6 +343,38 @@ class TestOfflineJobQueue(unittest.TestCase):
 
         mock_run.assert_called_once()
         self.assertIn(job, session.deleted)
+
+
+class TestOfflineJobScheduler(unittest.TestCase):
+    @patch("app.utils.scheduling.scheduler.add_job")
+    @patch("app.utils.scheduling.LOW_CPU_MODE", False)
+    def test_schedule_offline_job_processor_default_interval(self, mock_add_job):
+        schedule_offline_job_processor()
+        mock_add_job.assert_called_once_with(
+            func=process_offline_jobs,
+            trigger="interval",
+            seconds=30,
+            id="process_offline_jobs",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=30,
+        )
+
+    @patch("app.utils.scheduling.scheduler.add_job")
+    @patch("app.utils.scheduling.LOW_CPU_MODE", True)
+    def test_schedule_offline_job_processor_low_cpu_interval(self, mock_add_job):
+        schedule_offline_job_processor()
+        mock_add_job.assert_called_once_with(
+            func=process_offline_jobs,
+            trigger="interval",
+            seconds=60,
+            id="process_offline_jobs",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=60,
+        )
 
 
 if __name__ == "__main__":

@@ -1514,10 +1514,7 @@ video.hover-video[data-timestamp] {
 video.hover-video[data-timestamp]::after {
   content: attr(data-timestamp);
   position: absolute;
-  bottom: var(
-    --timestamp-offset,
-    calc(var(--timestamp-font-size) + 4px)
-  );
+  bottom: var(--timestamp-offset, calc(var(--timestamp-font-size) + 4px));
   right: 0;
   padding: 5px;
   background-color: rgba(0, 0, 0, 0.5);
@@ -2075,6 +2072,12 @@ body.advanced-enabled .advanced-only {
 .settings-table th,
 .cost-table th {
   background-color: var(--table-header-bg-color);
+}
+
+.setting-effective {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--text-muted, #9aa0a6);
 }
 
 /* Indicate sortable KPI columns */
