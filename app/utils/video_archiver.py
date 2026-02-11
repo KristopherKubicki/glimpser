@@ -257,6 +257,7 @@ def compile_to_teaser():
 
     os.makedirs(VIDEO_DIRECTORY, exist_ok=True)
     final_videos = {}
+    group_latest_mtime = {}
 
     if not os.path.isdir(VIDEO_DIRECTORY):
         return False
@@ -264,6 +265,8 @@ def compile_to_teaser():
     with tempfile.NamedTemporaryFile(mode="w+") as temp_file:
         templates = get_templates()
 
+        all_sources = []
+        all_latest_mtime = 0.0
         for camera, template in templates.items():
             camera_path = os.path.join(VIDEO_DIRECTORY, camera)
             os.makedirs(camera_path, exist_ok=True)
@@ -277,6 +280,14 @@ def compile_to_teaser():
                 ldur = get_video_duration(latest_video)
                 if ldur < 1:  # not much going on...
                     continue
+                try:
+                    source_mtime = os.path.getmtime(latest_video)
+                except OSError:
+                    # Tests and transient file churn may reference paths that no
+                    # longer exist. Fall back to immediate rebuild semantics.
+                    source_mtime = time.time()
+                all_sources.append(latest_video)
+                all_latest_mtime = max(all_latest_mtime, source_mtime)
 
                 # Extract the last 5 seconds of the video
                 temp_file.write(f"file '{os.path.abspath(latest_video)}'\n")
@@ -290,27 +301,44 @@ def compile_to_teaser():
                     if trimmed_group_name:
                         if trimmed_group_name not in final_videos:
                             final_videos[trimmed_group_name] = []
+                            group_latest_mtime[trimmed_group_name] = 0.0
                         final_videos[trimmed_group_name].append(
                             os.path.abspath(latest_video)
                         )
+                        group_latest_mtime[trimmed_group_name] = max(
+                            group_latest_mtime[trimmed_group_name], source_mtime
+                        )
 
         # Concatenate the videos without re-encoding for all cameras
-        compile_videos(
-            temp_file.name, os.path.join(VIDEO_DIRECTORY, "all_in_process.mp4")
-        )
+        all_output = os.path.join(VIDEO_DIRECTORY, "all_in_process.mp4")
+        try:
+            all_output_mtime = os.path.getmtime(all_output)
+        except OSError:
+            all_output_mtime = 0.0
+        if all_output_mtime < all_latest_mtime:
+            compile_videos(temp_file.name, all_output)
+        else:
+            logging.debug(
+                "Skipping teaser compile for all cameras; no new source video"
+            )
 
         # Concatenate the videos for each group
         for group, videos in final_videos.items():
+            group_output = os.path.join(VIDEO_DIRECTORY, f"{group}_in_process.mp4")
+            try:
+                group_output_mtime = os.path.getmtime(group_output)
+            except OSError:
+                group_output_mtime = 0.0
+            if group_output_mtime >= group_latest_mtime.get(group, 0):
+                logging.debug("Skipping teaser compile for group %s; up to date", group)
+                continue
             with tempfile.NamedTemporaryFile(
                 mode="w+"
             ) as group_temp_file:  # should be cleaning up automatically...
                 for video in videos:
                     group_temp_file.write(f"file '{video}'\n")
                 group_temp_file.flush()
-                compile_videos(
-                    group_temp_file.name,
-                    os.path.join(VIDEO_DIRECTORY, f"{group}_in_process.mp4"),
-                )
+                compile_videos(group_temp_file.name, group_output)
 
 
 def compile_videos(input_file, output_file):
@@ -763,7 +791,7 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:  # noqa: PLR0912, 
         create_command.extend(
             [
                 "-threads",
-                "5",
+                str(FFMPEG_THREADS),
                 "-f",
                 "concat",
                 "-r",
@@ -969,7 +997,7 @@ def _old_compile_to_video_inner(  # noqa: PLR0912, PLR0915
         create_command.extend(
             [
                 "-threads",
-                "5",
+                str(FFMPEG_THREADS),
                 "-f",
                 "image2pipe",
                 "-r",
@@ -1099,6 +1127,18 @@ def archive_screenshots():
                 video_path = os.path.join(VIDEO_DIRECTORY, camera_name)
                 os.makedirs(camera_path, exist_ok=True)
                 os.makedirs(video_path, exist_ok=True)
+                in_process_video = os.path.join(video_path, "in_process.mp4")
+
+                # Skip encode work when the screenshot directory has not changed
+                # since the current in-process segment was written.
+                if os.path.exists(in_process_video):
+                    try:
+                        if os.path.getmtime(camera_path) <= os.path.getmtime(
+                            in_process_video
+                        ):
+                            continue
+                    except OSError:
+                        pass
 
                 try:
                     compile_to_video(camera_path, video_path)

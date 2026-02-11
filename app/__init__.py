@@ -19,6 +19,7 @@ from flask import Flask
 from app.config import (
     DISCOVERY_AUTOSTART,
     LOG_LEVEL,
+    LOW_CPU_MODE,
     WATCHDOG_CPU_THRESHOLD,
     WATCHDOG_FAILURE_THRESHOLD,
     WATCHDOG_MAX_FILE_HANDLES,
@@ -127,6 +128,11 @@ def create_app(
 
     init_routes(app)
 
+    archive_interval_minutes = max(ARCHIVE_INTERVAL_MINUTES, 5 if LOW_CPU_MODE else 1)
+    compile_teaser_minutes = 15 if LOW_CPU_MODE else 3
+    cleanup_interval_minutes = 15 if LOW_CPU_MODE else 5
+    enable_clip_refresh = not LOW_CPU_MODE
+
     def _scheduler_executor_type() -> str:
         forced = os.environ.get("SCHEDULER_EXECUTOR")
         if forced:
@@ -151,7 +157,11 @@ def create_app(
             }
         }
         app.config["SCHEDULER_API_ENABLED"] = SCHEDULER_API_ENABLED
-        logging.info("Starting with %s workers" % str(MAX_WORKERS))
+        logging.info(
+            "Starting with %s workers (low_cpu_mode=%s)",
+            MAX_WORKERS,
+            LOW_CPU_MODE,
+        )
         if not scheduler.running:
             scheduler.init_app(app)
 
@@ -176,13 +186,13 @@ def create_app(
                 id="compile_to_teaser",
                 func=compile_to_teaser,
                 trigger="interval",
-                minutes=3,
+                minutes=compile_teaser_minutes,
             )
             scheduler.add_job(
                 id="archive_screenshots",
                 func=archive_screenshots,
                 trigger="interval",
-                minutes=ARCHIVE_INTERVAL_MINUTES,
+                minutes=archive_interval_minutes,
                 max_instances=1,
                 coalesce=True,
                 misfire_grace_time=60,
@@ -191,7 +201,7 @@ def create_app(
                 id="cleanup_clips",
                 func=cleanup_clips,
                 trigger="interval",
-                minutes=5,
+                minutes=cleanup_interval_minutes,
             )
             scheduler.add_job(
                 id="retention_cleanup", func=retention_cleanup, trigger="cron", day="*"
@@ -199,7 +209,8 @@ def create_app(
             schedule_summarization()
             schedule_offline_job_processor()
             schedule_baseline_updates()
-            schedule_clip_refresh()
+            if enable_clip_refresh:
+                schedule_clip_refresh()
             schedule_auto_update()
             if DISCOVERY_AUTOSTART:
                 schedule_discovery()
@@ -207,7 +218,8 @@ def create_app(
         # Perform initial cleanup
         retention_cleanup()
         cleanup_clips()
-        refresh_clips()
+        if enable_clip_refresh:
+            refresh_clips()
         logging.info("Initialization complete")
 
     # Backup the current configuration
@@ -315,16 +327,22 @@ def create_app(
                     id="compile_to_teaser",
                     func=compile_to_teaser,
                     trigger="interval",
-                    minutes=3,
+                    minutes=compile_teaser_minutes,
                 )
                 scheduler.add_job(
                     id="archive_screenshots",
                     func=archive_screenshots,
                     trigger="interval",
-                    minutes=ARCHIVE_INTERVAL_MINUTES,
+                    minutes=archive_interval_minutes,
                     max_instances=1,
                     coalesce=True,
                     misfire_grace_time=60,
+                )
+                scheduler.add_job(
+                    id="cleanup_clips",
+                    func=cleanup_clips,
+                    trigger="interval",
+                    minutes=cleanup_interval_minutes,
                 )
                 scheduler.add_job(
                     id="retention_cleanup",
@@ -335,11 +353,15 @@ def create_app(
                 schedule_summarization()
                 schedule_offline_job_processor()
                 schedule_baseline_updates()
+                if enable_clip_refresh:
+                    schedule_clip_refresh()
                 if DISCOVERY_AUTOSTART:
                     schedule_discovery()
 
             retention_cleanup()
             cleanup_clips()
+            if enable_clip_refresh:
+                refresh_clips()
             logging.info("Initialization complete")
 
         if enable_watchdog:

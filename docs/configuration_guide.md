@@ -39,6 +39,8 @@ can modify them in the application interface or directly in the database.
 - `DEBUG` – enable debug mode (default `False`)
 - `DEBUG_MODE` – runtime alias of `DEBUG` used by the command-line interface
 - `MAX_WORKERS` – number of worker threads (default `8`). Limited to twice the CPU count.
+- `LOW_CPU_MODE` – when `True`, Glimpser reduces worker concurrency and slows
+  non-critical rendering jobs to lower CPU usage (default `False`).
 - `LOG_LEVEL` – logging level (`INFO`, `WARN`, `DEBUG`, etc.)
 - `FLASK_LOG_LEVEL` – logging level used by the Flask app logger (defaults to `LOG_LEVEL`)
 - `LLM_429_LOG_INTERVAL_SECONDS` – minimum seconds between logged LLM 429 warnings
@@ -90,6 +92,7 @@ user table in sync.
 - `ARCHIVE_BATCH_SIZE` – number of camera folders to process per archive run
   (default `25`, set `0` to process all cameras each run)
 - `ARCHIVE_INTERVAL_MINUTES` – minutes between archive runs (default `1`)
+  In `LOW_CPU_MODE`, Glimpser enforces a minimum interval of 5 minutes.
 - `LAN_OFFLINE_DISABLE_ERRORS` – LAN failures within the window before a source
   is marked offline (default `6`)
 - `LAN_OFFLINE_DISABLE_WINDOW_MINUTES` – minutes to track LAN failures before
@@ -163,6 +166,7 @@ Settings controlling how frames are captured from video sources:
 - `ANALYZE_DURATION_RTSP` – analyzeduration for RTSP streams (default `10M`)
 - `ANALYZE_DURATION_OTHER` – analyzeduration for other protocols (default `20M`)
 - `LIVE_FALLBACK_FPS` – still-frame refresh rate when live video fails (default `1`)
+  In `LOW_CPU_MODE`, this is capped at `1` FPS.
 - `LIVE_MAX_FAILURES` – maximum consecutive ffmpeg failures before live view stops (default `10`)
 - `LIVE_BACKOFF_MAX` – maximum seconds between live stream restart attempts (default `30`)
 - `CHYRON_SPEED` – seconds the caption chyron scrolls; set to `0` to disable (default `0`)
@@ -208,6 +212,7 @@ Additional variables control AI behaviour and external tools:
 - When hardware acceleration is enabled and Chrome supports OpenGL, Glimpser
   automatically launches Chrome with `--use-gl=egl` for improved GPU use.
 - `FFMPEG_THREADS` – number of threads ffmpeg uses when encoding (default half the CPU cores)
+  In `LOW_CPU_MODE`, this is capped at `2`.
 - `CRAWLER_STARTUP_SPREAD` – minutes to stagger initial crawler runs at startup (default `10`)
 - `CLIP_MODEL_NAME` – CLIP model used for object filtering (default `openai/clip-vit-base-patch32`)
   Example: `openai/clip-vit-large-patch14`

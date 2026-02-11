@@ -41,6 +41,10 @@ SETTINGS_TOOLTIPS = {
         "Number of worker threads allowed to run capture jobs in parallel. "
         "Set close to your camera count."
     ),
+    "LOW_CPU_MODE": (
+        "Reduce worker concurrency and background rendering cadence to lower CPU "
+        "usage on constrained hosts."
+    ),
     "LLM_CAPTION_PROMPT": (
         "System prompt used for image captions. Supports the $datetime token "
         "and can span multiple lines."
@@ -371,6 +375,7 @@ SETTINGS_GROUPS = {
         "DANGER_PORT",
         "DEBUG",
         "DEBUG_MODE",
+        "LOW_CPU_MODE",
         "MAX_WORKERS",
         "LOG_LEVEL",
         "FLASK_LOG_LEVEL",

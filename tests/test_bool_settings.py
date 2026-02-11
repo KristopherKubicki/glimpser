@@ -42,6 +42,7 @@ class TestBoolHelpers(unittest.TestCase):
     def test_new_settings_in_boolean_list(self):
         self.assertIn("NOTIFY_ON_MOTION", BOOLEAN_SETTINGS)
         self.assertIn("NOTIFY_ON_CAPTION", BOOLEAN_SETTINGS)
+        self.assertIn("LOW_CPU_MODE", BOOLEAN_SETTINGS)
 
 
 if __name__ == "__main__":

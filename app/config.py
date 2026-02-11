@@ -301,7 +301,14 @@ ENFORCE_DOMAIN_IN_HOST = get_setting("ENFORCE_DOMAIN_IN_HOST", "False") == "True
 DEBUG = get_setting("DEBUG", "False") == "True"
 # Provide a separate attribute for runtime checks
 DEBUG_MODE = DEBUG
-MAX_WORKERS = get_setting("MAX_WORKERS", 8)
+LOW_CPU_MODE = get_setting("LOW_CPU_MODE", "False") == "True"
+_max_workers_cfg = int(get_setting("MAX_WORKERS", 8))
+if LOW_CPU_MODE:
+    # Keep a single-digit worker pool to avoid CPU saturation on weaker hosts.
+    _low_cpu_cap = max(1, min(2, (os.cpu_count() or 1) // 2))
+    MAX_WORKERS = max(1, min(_max_workers_cfg, _low_cpu_cap))
+else:
+    MAX_WORKERS = _max_workers_cfg
 
 # Thresholds
 MAX_RAW_DATA_SIZE = int(get_setting("MAX_RAW_DATA_SIZE", 500 * 1024 * 1024))  # 500 MB
@@ -453,7 +460,12 @@ else:
     FFMPEG_HWACCEL = _hwaccel_cfg
 
 # Number of threads FFmpeg should use when encoding/decoding
-FFMPEG_THREADS = int(get_setting("FFMPEG_THREADS", max(1, (os.cpu_count() or 1) // 2)))
+_ffmpeg_threads_cfg = int(
+    get_setting("FFMPEG_THREADS", max(1, (os.cpu_count() or 1) // 2))
+)
+FFMPEG_THREADS = (
+    max(1, min(_ffmpeg_threads_cfg, 2)) if LOW_CPU_MODE else _ffmpeg_threads_cfg
+)
 
 # CLIP model used for object filtering in scheduling
 CLIP_MODEL_NAME = get_setting(
@@ -485,7 +497,10 @@ ANALYZE_DURATION_OTHER = get_setting("ANALYZE_DURATION_OTHER", PROBE_SIZE_OTHER)
 # Frame rate used when `generate_live_stream` falls back to
 # still image capture. Increase to get smoother previews if
 # your hardware can handle the extra load.
-LIVE_FALLBACK_FPS = int(get_setting("LIVE_FALLBACK_FPS", 1))
+_live_fallback_fps_cfg = int(get_setting("LIVE_FALLBACK_FPS", 1))
+LIVE_FALLBACK_FPS = (
+    max(1, min(_live_fallback_fps_cfg, 1)) if LOW_CPU_MODE else _live_fallback_fps_cfg
+)
 
 # Stop restarting live streams endlessly when ffmpeg repeatedly fails. If the
 # live view fails this many times in a row without producing any output,
