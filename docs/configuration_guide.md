@@ -41,6 +41,8 @@ can modify them in the application interface or directly in the database.
 - `MAX_WORKERS` – number of worker threads (default `8`). Limited to twice the CPU count.
 - `LOG_LEVEL` – logging level (`INFO`, `WARN`, `DEBUG`, etc.)
 - `FLASK_LOG_LEVEL` – logging level used by the Flask app logger (defaults to `LOG_LEVEL`)
+- `LLM_429_LOG_INTERVAL_SECONDS` – minimum seconds between logged LLM 429 warnings
+  across processes (default `300`)
 
 ## User Credentials
 
@@ -48,7 +50,6 @@ Glimpser stores login details in the settings database. These values can be
 updated with `generate_credentials.py` or through the web interface.
 
 - `USER_NAME` – default login name (default `admin`)
-- `USER_PASSWORD_HASH` – hashed password string (empty by default)
 - `SECRET_KEY` – secret key used for session management (default
   `default_secret_key`)
 - `API_KEY` – key used to access the API (empty by default)
@@ -66,6 +67,10 @@ updated with `generate_credentials.py` or through the web interface.
   (default `30`)
 - `SKIP_LOGIN_SUBNETS` – comma-separated list of IPv4 or IPv6 subnets allowed
   to browse non-admin pages without logging in (empty by default)
+- `LAN_GUEST_MODE` – controls LAN guest access for subnets in `SKIP_LOGIN_SUBNETS`.
+  Use `read_only` to allow viewing without login while requiring authentication
+  for changes, `full` to allow all non-admin access, or `disabled` to ignore the
+  subnet list (default `full`)
 
 User accounts are stored in the `users` table. Each record contains the
 `username`, `password_hash`, and an optional `role` that can be used for future
@@ -82,6 +87,21 @@ user table in sync.
 - `SUMMARIES_DIRECTORY` – **deprecated**; summaries are now stored in the database.
 
   Older deployments may still reference this path but it is no longer used.
+- `ARCHIVE_BATCH_SIZE` – number of camera folders to process per archive run
+  (default `25`, set `0` to process all cameras each run)
+- `ARCHIVE_INTERVAL_MINUTES` – minutes between archive runs (default `1`)
+- `LAN_OFFLINE_DISABLE_ERRORS` – LAN failures within the window before a source
+  is marked offline (default `6`)
+- `LAN_OFFLINE_DISABLE_WINDOW_MINUTES` – minutes to track LAN failures before
+  marking a source offline (default `60`)
+- `LAN_OFFLINE_BACKOFF_SECONDS` – seconds to back off LAN sources after repeated
+  offline failures (default `1800`)
+- `RTSP_PREFLIGHT_FAIL_THRESHOLD` – RTSP preflight failures within the window
+  before a longer backoff is applied (default `3`)
+- `RTSP_PREFLIGHT_FAIL_WINDOW_SECONDS` – seconds to track RTSP preflight failures
+  before applying the longer backoff (default `900`)
+- `RTSP_PREFLIGHT_BACKOFF_SECONDS` – seconds to back off RTSP sources after repeated
+  preflight failures (default `3600`)
 
 You can change these paths via the settings table or by editing `app/config.py` if you maintain a custom build.
 
@@ -173,7 +193,7 @@ skip validation adhere to the safer defaults.
 
 Additional variables control AI behaviour and external tools:
 
-- `LLM_MODEL_VERSION` – language model version to use (default `gpt-4.1-mini`). Supported models: `gpt-4.1-mini`, `gpt-4.1`, `gpt-4`
+- `LLM_MODEL_VERSION` – language model version to use (default `gpt-5-mini`). Supported models: `gpt-5-mini`, `gpt-4.1`, `gpt-4`
 - `LLM_SUMMARY_PROMPT` – system prompt for log summaries. See [LLM Prompt Settings](llm_prompts.md)
   for the default text and `$datetime` token details.
 - `LLM_CAPTION_PROMPT` – system prompt for image captions. Refer to

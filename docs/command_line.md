@@ -39,6 +39,16 @@ This helper script creates or updates the credentials stored in the database.
 | `--secret-key`      | Custom secret key; a new one is generated if not provided. |
 | `--update-key`      | Replace the stored secret key.                             |
 
+### Headless Startup Bootstrapping
+
+When running Glimpser without a TTY (for example under systemd), Glimpser will
+not auto-generate a random admin password. To bootstrap credentials on first
+run, set:
+
+- `GLIMPSER_BOOTSTRAP_PASSWORD` (required)
+- `GLIMPSER_BOOTSTRAP_USERNAME` (optional, default `admin`)
+- `GLIMPSER_BOOTSTRAP_TEMP_PASSWORD=1` (optional, forces reset on first login)
+
 ## config.py
 
 When invoked directly, `app/config.py` accepts a few path options to override the

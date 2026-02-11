@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #  main.py
 
+import argparse
 import atexit
 import logging
 import os
@@ -10,11 +11,16 @@ import subprocess
 import sys
 import threading
 import time
+from pathlib import Path
 
 from app import config, create_app, scheduler
 from app.utils.cli import build_argument_parser, cli_help_text
 from app.utils.logging_utils import ColorFormatter, RateLimitFilter
-from app.utils.scheduling import get_system_metrics, stop_background_tasks
+from app.utils.scheduling import (
+    get_system_metrics,
+    mark_shutdown,
+    stop_background_tasks,
+)
 
 banner = f"""\033[96m
           ____  _  _
@@ -55,18 +61,31 @@ def setup_config(args=None):
         return
 
     # Update variables based on command-line arguments
-    config.DATABASE_PATH = args.db_path
+    base_dir = Path(__file__).resolve().parent
+
+    def _resolve_project_path(value: str) -> str:
+        """Resolve relative paths against the project root.
+
+        Glimpser is frequently started under process managers (screen/systemd)
+        where the working directory can change. Keeping paths project-root
+        relative avoids accidentally creating a new DB/log file somewhere else,
+        which can look like credentials "reset" on restart.
+        """
+        raw = Path(value).expanduser()
+        return str(raw if raw.is_absolute() else base_dir / raw)
+
+    config.DATABASE_PATH = _resolve_project_path(args.db_path)
     config.HOST = args.host
     if config.ENFORCE_DOMAIN_IN_HOST and "." not in config.HOST:
         raise ValueError(
             "HOST must include a domain when ENFORCE_DOMAIN_IN_HOST is enabled"
         )
     config.PORT = args.port
-    config.LOGGING_PATH = args.log_path
+    config.LOGGING_PATH = _resolve_project_path(args.log_path)
     config.DEBUG_MODE = args.debug
-    config.SCREENSHOT_DIRECTORY = args.screenshot_dir
-    config.VIDEO_DIRECTORY = args.video_dir
-    config.SUMMARIES_DIRECTORY = args.summaries_dir
+    config.SCREENSHOT_DIRECTORY = _resolve_project_path(args.screenshot_dir)
+    config.VIDEO_DIRECTORY = _resolve_project_path(args.video_dir)
+    config.SUMMARIES_DIRECTORY = _resolve_project_path(args.summaries_dir)
 
 
 def setup_logging(args=None):
@@ -130,7 +149,35 @@ def generate_credentials_if_needed():
         else:
             from generate_credentials import generate_credentials
 
-            generate_credentials(args=None)
+            if not sys.stdin.isatty():
+                username = os.environ.get("GLIMPSER_BOOTSTRAP_USERNAME", "admin")
+                password = os.environ.get("GLIMPSER_BOOTSTRAP_PASSWORD")
+                temp_password = (
+                    os.environ.get("GLIMPSER_BOOTSTRAP_TEMP_PASSWORD") == "1"
+                )
+                secret_key = os.environ.get("GLIMPSER_BOOTSTRAP_SECRET_KEY")
+
+                if not password:
+                    raise SystemExit(
+                        "Database is missing and stdin is not a TTY. "
+                        "Refusing to auto-generate a random admin password. "
+                        "Set GLIMPSER_BOOTSTRAP_PASSWORD (and optionally "
+                        "GLIMPSER_BOOTSTRAP_USERNAME, GLIMPSER_BOOTSTRAP_TEMP_PASSWORD=1) "
+                        "or run with GLIMPSER_SETUP_WIZARD=1."
+                    )
+
+                args = argparse.Namespace(
+                    db_path=config.DATABASE_PATH,
+                    username=username,
+                    password=password,
+                    update_password=False,
+                    secret_key=secret_key,
+                    update_key=False,
+                    temp_password=temp_password,
+                )
+                generate_credentials(args=args)
+            else:
+                generate_credentials(args=None)
 
 
 def create_application(args=None):
@@ -246,6 +293,8 @@ class CleanupManager:
 
 
 shutdown_manager = CleanupManager()
+_shutdown_signal_lock = threading.Lock()
+_shutdown_signaled = False
 
 
 def cleanup_resources():
@@ -255,7 +304,23 @@ def cleanup_resources():
 
 def graceful_shutdown(signum, frame):
     """Handle termination signals by cleaning up and exiting."""
-    logging.info("Received signal %s. Shutting down...", signum)
+    global _shutdown_signaled
+    with _shutdown_signal_lock:
+        if _shutdown_signaled:
+            return
+        _shutdown_signaled = True
+    mark_shutdown()
+    try:
+        scheduler.pause()
+    except Exception:
+        pass
+    try:
+        logging.info("Received signal %s. Shutting down...", signum)
+    except RuntimeError:
+        try:
+            os.write(2, f"Received signal {signum}. Shutting down...\n".encode())
+        except Exception:
+            pass
     cleanup_resources()
     time.sleep(0.01)
     sys.exit(0)

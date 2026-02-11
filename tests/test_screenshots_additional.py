@@ -19,6 +19,9 @@ class TestScreenshotsExtras(unittest.TestCase):
         self.patcher.start()
         ss.status_code_cache.clear()
         ss.status_code_cache_time.clear()
+        ss.last_modified_cache.clear()
+        ss.etag_cache.clear()
+        ss.etag_flip_cache.clear()
         ss._persist_status_cache()
 
     def tearDown(self):

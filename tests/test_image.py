@@ -9,7 +9,6 @@ from app.utils.screenshots import add_timestamp, is_mostly_blank, remove_backgro
 
 
 class TestFileRetention(unittest.TestCase):
-
     def test_delete_old_files(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create some dummy files
@@ -29,7 +28,6 @@ class TestFileRetention(unittest.TestCase):
 
 
 class TestImageProcessing(unittest.TestCase):
-
     def test_add_timestamp(self):
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
             image_path = temp_file.name

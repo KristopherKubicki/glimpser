@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="980" viewBox="0 0 1500 980" role="img" aria-label="Glimpser escalation tiers v2 without arrows">
+  <defs>
+    <style>
+      .title { font: 700 28px system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #111; }
+      .sub   { font: 500 15px system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #333; }
+      .h     { font: 700 16px system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #111; }
+      .t     { font: 500 13px system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #222; }
+      .tiny  { font: 500 12px system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #444; }
+      .muted { fill: #666; }
+      .card  { fill: #fff; stroke: #111; stroke-width: 1.2; rx: 14; }
+      .tier0 { fill: #f8fafc; stroke: #0f172a; }
+      .tier1 { fill: #f4f4f5; stroke: #52525b; }
+      .tier2 { fill: #eef2ff; stroke: #3730a3; }
+      .tier3 { fill: #ecfeff; stroke: #155e75; }
+      .tier4 { fill: #fff7ed; stroke: #9a3412; }
+      .tier5 { fill: #fef2f2; stroke: #991b1b; }
+      .tier6 { fill: #fae8ff; stroke: #86198f; }
+      .tier7 { fill: #f1f5f9; stroke: #334155; }
+      .tier8 { fill: #ecfccb; stroke: #3f6212; }
+      .chip { fill: #111; }
+      .chipText { font: 700 11px system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #fff; }
+    </style>
+  </defs>
+
+  <!-- Header -->
+  <text x="40" y="52" class="title">Glimpser escalation tiers (v2, start at 0)</text>
+  <text x="40" y="82" class="sub">
+    Prepare offline first, probe cheaply, render only when required. Every tier records peak RSS, time, and escalation reason.
+  </text>
+
+  <text x="40" y="118" class="tiny muted">Cheap / low RAM</text>
+  <text x="1330" y="118" class="tiny muted">Expensive / high RAM</text>
+
+  <!-- Tier 0 -->
+  <rect x="40" y="140" width="700" height="150" class="card tier0"></rect>
+  <text x="62" y="170" class="h">Tier 0: offline prep (no network)</text>
+  <rect x="62" y="188" width="120" height="20" rx="10" class="chip"></rect>
+  <text x="72" y="203" class="chipText">RAM</text>
+  <text x="190" y="203" class="t">1 to 20 MB</text>
+  <text x="62" y="230" class="t">• URL normalization and canonicalization</text>
+  <text x="62" y="250" class="t">• blocklists, allowlists, policy routing</text>
+  <text x="62" y="270" class="t">• cached history: failures, best tier, RSS</text>
+
+  <!-- Tier 1 -->
+  <rect x="780" y="140" width="680" height="150" class="card tier1"></rect>
+  <text x="802" y="170" class="h">Tier 1: DNS and socket preflight</text>
+  <rect x="802" y="188" width="120" height="20" rx="10" class="chip"></rect>
+  <text x="812" y="203" class="chipText">RAM</text>
+  <text x="930" y="203" class="t">1 to 30 MB</text>
+  <text x="802" y="230" class="t">• DNS A/AAAA/CNAME, TTLs, resolver choice</text>
+  <text x="802" y="250" class="t">• TCP latency, port reachability</text>
+  <text x="802" y="270" class="t">• TLS handshake, cert, ALPN</text>
+
+  <!-- Tier 2 -->
+  <rect x="40" y="320" width="700" height="170" class="card tier2"></rect>
+  <text x="62" y="350" class="h">Tier 2: HTTP surface probes and caching hints</text>
+  <rect x="62" y="368" width="120" height="20" rx="10" class="chip"></rect>
+  <text x="72" y="383" class="chipText">RAM</text>
+  <text x="190" y="383" class="t">5 to 60 MB</text>
+  <text x="62" y="410" class="t">• HEAD then minimal GET</text>
+  <text x="62" y="430" class="t">• redirect graph, cookies, auth detection</text>
+  <text x="62" y="450" class="t">• cache hints: ETag, Age, Cache-Control</text>
+  <text x="62" y="470" class="tiny muted">Includes 2.1 media-direct downloads (image/video/pdf)</text>
+
+  <!-- Tier 3 -->
+  <rect x="780" y="320" width="680" height="170" class="card tier3"></rect>
+  <text x="802" y="350" class="h">Tier 3: ultra-light renderers (basic JS, PDF)</text>
+  <rect x="802" y="368" width="120" height="20" rx="10" class="chip"></rect>
+  <text x="812" y="383" class="chipText">RAM</text>
+  <text x="930" y="383" class="t">30 to 250 MB</text>
+  <text x="802" y="410" class="t">• HTML/CSS render, partial DOM</text>
+  <text x="802" y="430" class="t">• 3.0 no-JS, 3.1 minimal JS, 3.2 fuller JS</text>
+  <text x="802" y="450" class="t">• PDF rasterize if downloaded</text>
+  <text x="802" y="470" class="tiny muted">Ultralight, mini WebKit, fastrender class</text>
+
+  <!-- Tier 4 -->
+  <rect x="40" y="520" width="700" height="170" class="card tier4"></rect>
+  <text x="62" y="550" class="h">Tier 4: headless browsers (Chromium class)</text>
+  <rect x="62" y="568" width="120" height="20" rx="10" class="chip"></rect>
+  <text x="72" y="583" class="chipText">RAM</text>
+  <text x="190" y="583" class="t">500 MB to 2.5 GB</text>
+  <text x="62" y="610" class="t">• full JS, canvas, WebGL</text>
+  <text x="62" y="630" class="t">• minimal control (CLI, CDP, RDP-style)</text>
+  <text x="62" y="650" class="t">• avoid heavy frameworks by default</text>
+
+  <!-- Tier 5 -->
+  <rect x="780" y="520" width="680" height="170" class="card tier5"></rect>
+  <text x="802" y="550" class="h">Tier 5: VM or container controlled browser</text>
+  <rect x="802" y="568" width="120" height="20" rx="10" class="chip"></rect>
+  <text x="812" y="583" class="chipText">RAM</text>
+  <text x="930" y="583" class="t">2 to 8 GB</text>
+  <text x="802" y="610" class="t">• full OS boundary (Windows/Linux)</text>
+  <text x="802" y="630" class="t">• remote control via VNC/RDP/WebRTC</text>
+  <text x="802" y="650" class="t">• reduced fingerprint coupling</text>
+
+  <!-- Tier 6 -->
+  <rect x="40" y="720" width="700" height="170" class="card tier6"></rect>
+  <text x="62" y="750" class="h">Tier 6: physical hardware browser farms</text>
+  <rect x="62" y="768" width="120" height="20" rx="10" class="chip"></rect>
+  <text x="72" y="783" class="chipText">RAM</text>
+  <text x="190" y="783" class="t">8 to 32 GB (device-side)</text>
+  <text x="62" y="810" class="t">• Mac mini, iPhone, Android devices</text>
+  <text x="62" y="830" class="t">• robotic screen + input control</text>
+  <text x="62" y="850" class="t">• strongest real-device entropy</text>
+
+  <!-- Tier 7 -->
+  <rect x="780" y="720" width="680" height="170" class="card tier7"></rect>
+  <text x="802" y="750" class="h">Tier 7: human-in-the-loop danger mode</text>
+  <rect x="802" y="768" width="120" height="20" rx="10" class="chip"></rect>
+  <text x="812" y="783" class="chipText">RAM</text>
+  <text x="930" y="783" class="t">human time constrained</text>
+  <text x="802" y="810" class="t">• AI copilots inside live human sessions</text>
+  <text x="802" y="830" class="t">• MFA, unpredictable flows</text>
+  <text x="802" y="850" class="t">• highest success, highest cost</text>
+
+  <!-- Global policy -->
+  <rect x="40" y="910" width="1420" height="50" class="card tier8"></rect>
+  <text x="62" y="942" class="t">
+    Global policy: outcomes feed back into Tier 0 routing. Never escalate twice for the same domain without learning.
+  </text>
+</svg>

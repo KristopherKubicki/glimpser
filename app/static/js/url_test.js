@@ -10,6 +10,9 @@ export function initUrlTester() {
       const status = container
         ? container.querySelector("#url-status")
         : document.getElementById("url-status");
+      const statusText = container
+        ? container.querySelector("[data-url-status-text]")
+        : document.querySelector("[data-url-status-text]");
       const preview = container
         ? container.querySelector("img")
         : document.getElementById("url-preview");
@@ -62,6 +65,10 @@ export function initUrlTester() {
         status.textContent = "";
         status.className = "url-status" + (cls ? ` ${cls}` : "");
         status.title = title || "URL test result";
+        if (statusText) {
+          statusText.textContent = title || "Waiting for URL";
+          statusText.className = "url-status-text" + (cls ? ` ${cls}` : "");
+        }
       };
 
       const showOverlay = (msg) => {
@@ -90,6 +97,17 @@ export function initUrlTester() {
         if (preview) preview.src = url || defaultSrc;
         if (submit) submit.disabled = true;
         if (!url) return;
+        if (url.toLowerCase().startsWith("rtsp://")) {
+          urlOk = true;
+          setStatus("pending", "RTSP will be validated during capture");
+          showOverlay("RTSP preflight runs during capture");
+          if (submit) {
+            submit.disabled = false;
+            submit.classList.remove("confirm-submit");
+            submit.dataset.urlOk = "true";
+          }
+          return;
+        }
         controller?.abort();
         controller = new AbortController();
         setStatus("pending", "Testing...");

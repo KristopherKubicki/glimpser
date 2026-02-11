@@ -1,6 +1,6 @@
 """Database model for application users."""
 
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Boolean, Column, Integer, String
 
 from app.utils.db import Base
 
@@ -12,6 +12,7 @@ class User(Base):
     username = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
     role = Column(String, nullable=True)
+    temp_password_required = Column(Boolean, nullable=False, default=False)
 
     def __repr__(self) -> str:
         return f"<User id={self.id} username={self.username}>"

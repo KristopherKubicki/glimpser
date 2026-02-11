@@ -17,7 +17,7 @@
   data-speed="{{ CHYRON_SPEED }}"
 ></div>
 <nav>
-  {% if session.get('user_id') %}
+  {% if session.get('user_id') or LAN_GUEST %}
   <div class="nav-left">
     {% if template_details is defined %} {% if template_details.get('groups') %}
     {% set __back_url = '/group/' ~
@@ -47,7 +47,7 @@
   </div>
 
   <div class="nav-right">
-    {% if session.get('user_id') %}
+    {% if session.get('user_id') or LAN_GUEST %}
     <a
       id="health-status"
       href="/settings?tab=status-tab"
@@ -154,6 +154,8 @@
       class="settings-icon"
       title="Update settings"
       aria-label="Update settings"
+      data-requires-login="true"
+      data-login-next="/settings"
     >
       <svg width="20" height="20">
         <use href="{{ url_for('static', filename='icons/sprite.svg') }}#gear" />

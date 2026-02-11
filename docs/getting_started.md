@@ -33,6 +33,10 @@ This guide will walk you through the process of setting up Glimpser and running 
 4. Set `GLIMPSER_SETUP_WIZARD=1` to launch the setup wizard on first run.
    Otherwise follow the prompts to create a secret key and initialize the
    local SQLite database.
+   If you're running non-interactively (for example under systemd), set
+   `GLIMPSER_BOOTSTRAP_PASSWORD` for the initial admin password. Optionally set
+   `GLIMPSER_BOOTSTRAP_USERNAME` and `GLIMPSER_BOOTSTRAP_TEMP_PASSWORD=1` to
+   force a password reset on first login.
 
 5. Open your web browser and navigate to `http://127.0.0.1:8082` to complete the setup.
 

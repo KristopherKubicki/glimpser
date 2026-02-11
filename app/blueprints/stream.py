@@ -88,7 +88,11 @@ def create_blueprint() -> Blueprint:
             routes.abort(404)
 
         if group:
-            group = routes.secure_filename(group)
+            from app.utils.validators import validate_group_name
+
+            group = validate_group_name(group)
+            if group is None:
+                routes.abort(400, "Invalid group name")
             group_path = routes.os.path.join(
                 routes.os.path.dirname(routes.os.path.abspath(__file__)),
                 "..",
@@ -131,7 +135,7 @@ def create_blueprint() -> Blueprint:
         templates = routes.template_manager.get_templates()
         sorted_templates = sorted(
             templates.items(),
-            key=lambda x: (x[1].get("last_video_time", 0) or 0),
+            key=lambda x: x[1].get("last_screenshot_time", 0) or 0,
             reverse=True,
         )
 
@@ -538,7 +542,7 @@ def create_blueprint() -> Blueprint:
 
         sorted_templates = sorted(
             filtered_templates,
-            key=lambda x: (x[1].get("last_video_time", 0) or 0),
+            key=lambda x: x[1].get("last_video_time", 0) or 0,
             reverse=True,
         )
 

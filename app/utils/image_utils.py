@@ -7,8 +7,8 @@ import datetime
 import logging
 import os
 import textwrap
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 from PIL import Image, ImageDraw
 

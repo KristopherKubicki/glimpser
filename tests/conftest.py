@@ -13,7 +13,7 @@ if str(ROOT_DIR) not in sys.path:
 # Avoid expensive FFmpeg setup during imports
 os.environ.setdefault("FFMPEG_PATH", "ffmpeg")
 
-from app.utils.scheduling import scheduler
+from app.utils.scheduling import scheduler  # noqa: E402
 
 # Skip end-to-end tests unless explicitly enabled
 os.environ.setdefault("SKIP_E2E", "1")

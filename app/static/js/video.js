@@ -195,6 +195,8 @@ export function initVideoControls() {
           videos.forEach((video) => {
             const name = video.getAttribute("data-name");
             video.pause();
+            video.loop = false;
+            video.playbackRate = 1;
             video.querySelector("source").src = `/last_video/${name}`;
             video.dataset.hdLoaded = "false";
           });
@@ -211,6 +213,9 @@ export function initVideoControls() {
             video.dataset.hdLoaded = "true";
             video.removeAttribute("src");
             video.poster = `/last_screenshot/${name}`;
+            // Make movement more obvious, and avoid "stuck" end frames.
+            video.loop = true;
+            video.playbackRate = 0.5;
             playAllObserver.observe(video);
             video.load();
             safePlay(video);
@@ -230,6 +235,8 @@ export function initVideoControls() {
         videos.forEach((video) => {
           const name = video.getAttribute("data-name");
           video.pause();
+          video.loop = false;
+          video.playbackRate = 1;
           video.src = "";
           video.poster = `/last_screenshot/${name}?t=${Date.now()}`;
           video.load();

@@ -31,9 +31,9 @@ def test_internal_imports_resolvable():
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     if alias.name.startswith(f"{BASE_PACKAGE}."):
-                        assert _module_exists(
-                            alias.name
-                        ), f"{alias.name} missing (from {py_file})"
+                        assert _module_exists(alias.name), (
+                            f"{alias.name} missing (from {py_file})"
+                        )
             elif isinstance(node, ast.ImportFrom):
                 module = node.module
                 if node.level:

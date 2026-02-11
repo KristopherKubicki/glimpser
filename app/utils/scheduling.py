@@ -37,16 +37,96 @@ except Exception:  # pragma: no cover - optional dependency
     ort = None
 
 import requests
+from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, EVENT_JOB_SUBMITTED
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
 from flask_apscheduler import APScheduler
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm.exc import ObjectDeletedError
 
+from app.config import (
+    AUTO_UPDATE_BRANCH,
+    CLIP_MODEL_NAME,
+    CLIP_MODEL_PATH,
+    CLIP_REFRESH_MAX_CAMERAS,
+    CRAWLER_STARTUP_SPREAD,
+    LAN_OFFLINE_BACKOFF_SECONDS,
+    LAN_OFFLINE_DISABLE_ERRORS,
+    LAN_OFFLINE_DISABLE_WINDOW_MINUTES,
+    LOG_RATE_LIMIT_SEC,
+    PORT,
+    SCREENSHOT_DIRECTORY,
+    SUMMARIES_DIRECTORY,
+    VIDEO_DIRECTORY,
+    WATCHDOG_CPU_THRESHOLD,
+    WATCHDOG_MEMORY_THRESHOLD,
+    get_setting,
+)
+from app.config import (
+    DEBUG as CONFIG_DEBUG,
+)
+from app.models import LogSummary, OfflineJob, Summary
+from app.utils.auto_update import check_for_update
+from app.utils.db import SessionLocal, ensure_column
+from app.utils.logging_utils import sanitize_url
+
+from . import camera_discovery
 from . import system_metrics as _system_metrics
+from .detect import calculate_difference_fast
+from .email_alerts import email_alert
+from .http_callbacks import send_http_callback
+from .image_processing import chatgpt_compare
+from .image_utils import add_motion_and_caption, find_closest_image
+from .llm import summarize
+from .network import is_system_online, network_state
+from .screenshots import (
+    add_timestamp,
+    capture_or_download,
+    cas_error,
+    check_user_activity,
+    get_cached_status_code,
+    is_chrome_debug_port_open,
+    is_mostly_blank,
+    remove_background,
+    throttle_cache,
+)
+from .sms_alerts import sms_alert
+from .template_manager import (
+    get_llm_cost_estimate,
+    get_llm_response_count,
+    get_screenshot_count,
+    get_screenshots_for_template,
+    get_storage_usage,
+    get_storage_usage_bytes,
+    get_template,
+    get_templates,
+    get_templates_sorted_by_last_caption_time,
+    get_video_count,
+    mark_offline,
+    save_template,
+    set_capture_failed,
+    update_last_screenshot_time,
+)
+from .validators import validate_group_name, validate_template_name
 
 # Precompile sentence boundary regex for efficiency
 SENTENCE_SPLIT_RE = re.compile(r"\s*?(.+?[\?\!\.\,])(?: \s?|\t|$)", flags=re.DOTALL)
+SUMMARY_MAX_LINES = 50
+
+# Re-export select attributes for backwards compatibility with older tests.
+LOGGING_PATH = _system_metrics.LOGGING_PATH
+cache_logs = _system_metrics.cache_logs
+start_log_caching = _system_metrics.start_log_caching
+stop_background_tasks = _system_metrics.stop_background_tasks
+system_metrics = _system_metrics.system_metrics
+start_metrics_collection = _system_metrics.start_metrics_collection
+stop_event = _system_metrics.stop_event
+get_system_metrics = _system_metrics.get_system_metrics
+log_cache = _system_metrics.log_cache
+log_cache_lock = _system_metrics.log_cache_lock
+DEBUG = CONFIG_DEBUG
 
 
 class CLIPProcessor:
@@ -83,68 +163,9 @@ class CLIPProcessor:
         }
 
 
-from sqlalchemy.orm.exc import ObjectDeletedError
-
-from app.config import (
-    AUTO_UPDATE_BRANCH,
-    CLIP_MODEL_NAME,
-    CLIP_MODEL_PATH,
-    CLIP_REFRESH_MAX_CAMERAS,
-    CRAWLER_STARTUP_SPREAD,
-    DEBUG,
-    PORT,
-    SCREENSHOT_DIRECTORY,
-    SUMMARIES_DIRECTORY,
-    VIDEO_DIRECTORY,
-    WATCHDOG_CPU_THRESHOLD,
-    WATCHDOG_MEMORY_THRESHOLD,
-    get_setting,
-)
-from app.models import LogSummary, OfflineJob, Summary
-from app.utils.auto_update import check_for_update
-from app.utils.db import SessionLocal, ensure_column
-from app.utils.logging_utils import sanitize_url
-
-from . import camera_discovery
-from .detect import calculate_difference_fast
-from .email_alerts import email_alert
-from .http_callbacks import send_http_callback
-from .image_processing import chatgpt_compare
-from .llm import summarize
-from .network import is_system_online
-from .screenshots import (
-    add_timestamp,
-    capture_or_download,
-    cas_error,
-    check_user_activity,
-    get_cached_status_code,
-    is_chrome_debug_port_open,
-    is_mostly_blank,
-    remove_background,
-    throttle_cache,
-)
-from .sms_alerts import sms_alert
-from .template_manager import (
-    get_llm_cost_estimate,
-    get_llm_response_count,
-    get_screenshot_count,
-    get_screenshots_for_template,
-    get_storage_usage,
-    get_storage_usage_bytes,
-    get_template,
-    get_templates,
-    get_templates_sorted_by_last_caption_time,
-    get_video_count,
-    mark_offline,
-    save_template,
-    set_capture_failed,
-    update_last_screenshot_time,
-)
-from .validators import validate_group_name, validate_template_name
-
 logging.getLogger("apscheduler").setLevel(logging.WARNING)
 
-clip_processor, clip_session = None, None
+_clip_state = {"processor": None, "session": None}
 
 # Track currently running jobs to avoid launching duplicates.
 active_jobs: dict[str, multiprocessing.Process] = {}
@@ -154,6 +175,14 @@ active_jobs_lock = threading.RLock()
 # Track failures and backoff time to slow down flapping jobs.
 job_failures: dict[str, int] = {}
 job_backoff_until: dict[str, float] = {}
+_shutdown_event = threading.Event()
+_shutdown_grace_seconds = int(os.getenv("SCHEDULER_SHUTDOWN_GRACE_SECONDS", "5"))
+_capture_fail_last_log: dict[str, float] = {}
+
+
+def mark_shutdown() -> None:
+    """Signal that shutdown has begun to block new job launches."""
+    _shutdown_event.set()
 
 
 class GracefulAPScheduler(APScheduler):
@@ -161,19 +190,62 @@ class GracefulAPScheduler(APScheduler):
         super().__init__()
         self._scheduler = None
         self.set_scheduler(BackgroundScheduler())
+        self._running_jobs = 0
+        self._running_jobs_lock = threading.Lock()
+        self._all_jobs_done = threading.Event()
+        self._all_jobs_done.set()
+        self._shutdown_called = False
 
     def set_scheduler(self, scheduler):
         self._scheduler = scheduler
+        self._shutdown_called = False
+        _shutdown_event.clear()
+        self._scheduler.add_listener(
+            self._track_job_state,
+            EVENT_JOB_SUBMITTED | EVENT_JOB_EXECUTED | EVENT_JOB_ERROR,
+        )
+
+    def _track_job_state(self, event) -> None:
+        if event.code == EVENT_JOB_SUBMITTED:
+            with self._running_jobs_lock:
+                self._running_jobs += 1
+                self._all_jobs_done.clear()
+            return
+        with self._running_jobs_lock:
+            if self._running_jobs > 0:
+                self._running_jobs -= 1
+            if self._running_jobs == 0:
+                self._all_jobs_done.set()
 
     def shutdown(self, wait=True):
         try:
+            if self._shutdown_called:
+                return
+            self._shutdown_called = True
             if self.running:
+                _shutdown_event.set()
+                try:
+                    self._scheduler.pause()
+                except Exception:
+                    pass
                 # Stop all running jobs
                 for job in self._scheduler.get_jobs():
                     job.remove()
+                if wait and self._running_jobs:
+                    self._all_jobs_done.wait(timeout=_shutdown_grace_seconds)
 
                 # Shutdown the scheduler
-                super().shutdown(wait)
+                scheduler_thread = getattr(self._scheduler, "_thread", None)
+                if (
+                    scheduler_thread is not None
+                    and scheduler_thread is threading.current_thread()
+                ):
+                    wait = False
+                try:
+                    super().shutdown(wait)
+                except RuntimeError as exc:
+                    if "cannot join current thread" not in str(exc):
+                        raise
 
                 # Reinitialize scheduler for future use without requiring a
                 # full application restart. This allows tests or other
@@ -218,10 +290,21 @@ def run_with_timeout(func, args=(), timeout=300):
     If the system appears offline or process creation fails, the job is skipped
     and the associated template is marked offline when possible.
     """
+    if _shutdown_event.is_set():
+        logging.info(
+            "Shutdown in progress; skipping job %s",
+            getattr(func, "__name__", "unknown"),
+        )
+        return
 
     if not is_system_online():
+        state = network_state()
         logging.warning(
-            "System offline, skipping job %s", getattr(func, "__name__", "unknown")
+            "System offline (lan_ok=%s wan_ok=%s dns_ok=%s), skipping job %s",
+            state.get("lan_ok"),
+            state.get("wan_ok"),
+            state.get("dns_ok"),
+            getattr(func, "__name__", "unknown"),
         )
         if args and isinstance(args[0], str):
             try:
@@ -310,7 +393,12 @@ def run_with_timeout(func, args=(), timeout=300):
     success = True
     if process.is_alive():
         process.terminate()
-        process.join()
+        process.join(5)
+        if process.is_alive():
+            if hasattr(process, "kill"):
+                process.kill()
+                process.join(5)
+            logging.warning("Process kill required after timeout")
         logging.warning("Process terminated due to timeout")
         success = False
         if args and isinstance(args[0], str):
@@ -336,9 +424,6 @@ def run_with_timeout(func, args=(), timeout=300):
 
     if not success:
         register_job_failure(key)
-
-
-from .image_utils import add_motion_and_caption, find_closest_image
 
 
 def safe_symlink(src: str, dst: str) -> None:
@@ -375,6 +460,37 @@ def safe_symlink(src: str, dst: str) -> None:
         os.symlink(src_path, dst_path)
 
 
+def _validate_latest_screenshot(path: str, name: str, url: str | None) -> bool:
+    """Verify the latest screenshot looks readable before updating symlinks."""
+    try:
+        size = os.path.getsize(path)
+        if size <= 0:
+            raise ValueError("file size is zero")
+        with Image.open(path) as img:
+            img.verify()
+        return True
+    except (FileNotFoundError, UnidentifiedImageError, OSError, ValueError) as exc:
+        status = get_cached_status_code(url) if url else None
+        try:
+            age_seconds = time.time() - os.path.getmtime(path)
+        except OSError:
+            age_seconds = None
+        logging.warning(
+            "Discarding invalid screenshot %s for %s (size=%s, age=%s, status=%s): %s",
+            path,
+            name,
+            os.path.getsize(path) if os.path.exists(path) else "missing",
+            f"{age_seconds:.1f}s" if age_seconds is not None else "unknown",
+            status if status is not None else "unknown",
+            exc,
+        )
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        return False
+
+
 def update_camera(name, template, image_file=None, motion=False):
     # just ignore the old
     template = get_template(name)
@@ -407,6 +523,33 @@ def update_camera(name, template, image_file=None, motion=False):
         set_capture_failed(name, False)
     else:
         entry = throttle_cache.get(url)
+        if entry and entry.get("reason") in {"lan_offline", "local_unreachable"}:
+            now = time.time()
+            window = LAN_OFFLINE_DISABLE_WINDOW_MINUTES * 60
+            first = entry.get("first")
+            if not first or now - first > window:
+                entry["first"] = now
+                entry["errors"] = 1
+            else:
+                entry["errors"] = entry.get("errors", 0) + 1
+            if entry["errors"] >= 2:
+                entry["timeout"] = max(
+                    entry.get("timeout", 0),
+                    now + LAN_OFFLINE_BACKOFF_SECONDS,
+                )
+            if entry["errors"] >= LAN_OFFLINE_DISABLE_ERRORS and not entry.get(
+                "lan_offline_marked"
+            ):
+                mark_offline(name)
+                entry["lan_offline_marked"] = True
+                clean_url = sanitize_url(url)
+                logging.warning(
+                    "Auto-marking %s offline after %d LAN failures in %d minutes (%s)",
+                    name,
+                    entry["errors"],
+                    LAN_OFFLINE_DISABLE_WINDOW_MINUTES,
+                    clean_url,
+                )
         if (
             entry
             and entry.get("errors", 0) >= 10
@@ -415,10 +558,19 @@ def update_camera(name, template, image_file=None, motion=False):
             mark_offline(name)
         set_capture_failed(name, True)
         clean_url = sanitize_url(url)
-        if entry and entry.get("errors", 0) > 2:
-            logging.debug("Capture failed for %s (%s)", name, clean_url)
-        else:
-            logging.error("Capture failed for %s (%s)", name, clean_url)
+        now = time.monotonic()
+        last_log = _capture_fail_last_log.get(name, 0.0)
+        reason = entry.get("reason") if entry else None
+        rate_limit = LOG_RATE_LIMIT_SEC
+        if reason == "lan_offline":
+            rate_limit = max(rate_limit, 300)
+        if now - last_log >= rate_limit:
+            _capture_fail_last_log[name] = now
+            prefix = "[LAN_OFFLINE] " if reason == "lan_offline" else ""
+            if entry and entry.get("errors", 0) > 2:
+                logging.debug("%sCapture failed for %s (%s)", prefix, name, clean_url)
+            else:
+                logging.error("%sCapture failed for %s (%s)", prefix, name, clean_url)
         register_job_failure(name)
         return None
 
@@ -440,6 +592,9 @@ def update_camera(name, template, image_file=None, motion=False):
 
         # link for other processes to use
         lpath = os.path.join(SCREENSHOT_DIRECTORY, "latest_camera.png")
+        latest_image_path = os.path.join(directory, png_files[-1])
+        if not _validate_latest_screenshot(latest_image_path, name, url):
+            return None
 
         try:
             if os.path.lexists(lpath + ".tmp"):
@@ -501,7 +656,6 @@ def update_camera(name, template, image_file=None, motion=False):
         lsum = motion
         percentage_difference = 0
 
-        latest_image_path = os.path.join(directory, png_files[-1])
         try:
             with Image.open(latest_image_path) as img:
                 if is_mostly_blank(img):
@@ -604,13 +758,13 @@ def update_camera(name, template, image_file=None, motion=False):
 
         # run the object detect AFTER the motion detetor
         if allow is True and object_filter and object_confidence is not None:
-            global clip_session, clip_processor
+            clip_state = _clip_state
 
             # Prefer the lightweight ONNX backend when available
             use_onnx = ort is not None
 
             if use_onnx:
-                if clip_session is None:
+                if clip_state["session"] is None:
                     # Prefer GPU when available and fall back to CPU. This uses
                     # the providers reported by onnxruntime so it works even
                     # when CUDA is not installed.
@@ -621,29 +775,31 @@ def update_camera(name, template, image_file=None, motion=False):
                         else ["CPUExecutionProvider"]
                     )
                     try:
-                        clip_session = ort.InferenceSession(
+                        clip_state["session"] = ort.InferenceSession(
                             CLIP_MODEL_PATH, providers=providers
                         )
                     except TypeError:
                         # Some runtimes (or tests) may not accept the providers
                         # keyword. Fall back to default initialization.
-                        clip_session = ort.InferenceSession(CLIP_MODEL_PATH)
+                        clip_state["session"] = ort.InferenceSession(CLIP_MODEL_PATH)
 
-                if clip_processor is None:
-                    clip_processor = CLIPProcessor.from_pretrained(CLIP_MODEL_NAME)
+                if clip_state["processor"] is None:
+                    clip_state["processor"] = CLIPProcessor.from_pretrained(
+                        CLIP_MODEL_NAME
+                    )
 
                 # Load the latest image
                 latest_image_path = os.path.join(directory, png_files[-1])
                 image = Image.open(latest_image_path)
 
-                inputs = clip_processor(
+                inputs = clip_state["processor"](
                     text=[object_filter],
                     images=image,
                     return_tensors="np",
                     padding=True,
                 )
 
-                outputs = clip_session.run(
+                outputs = clip_state["session"].run(
                     None,
                     {
                         "input_ids": inputs["input_ids"],
@@ -663,9 +819,10 @@ def update_camera(name, template, image_file=None, motion=False):
                 allow = True
 
         if allow:
-            # allow this to run one time if we have no detection
-            #  generate the symlink. if there is a data/screenshots/<camera>/last_motion.png, please rename the move the symlink to prev_motion.png
-            #    then, create the symlink for last_motion.png to point to the new png_files[-1]
+            # Allow this to run one time if we have no detection. If there is a
+            # data/screenshots/<camera>/last_motion.png, rename the symlink to
+            # prev_motion.png, then create the last_motion.png symlink to point
+            # to the new png_files[-1].
             image_paths = []
             # add reference image if available
             if os.path.exists(os.path.join(directory, "reference.png")):
@@ -708,7 +865,8 @@ def update_camera(name, template, image_file=None, motion=False):
             # archictecture:
             #  check to see if there are any image in the object filter
             #  check to see if there are differences in the image
-            #  check to see if there are alerts in the image -> no? use the llava caption
+            #  check to see if there are alerts in the image -> no? use the
+            #  llava caption
             #     yes?  use the gpt caption
             #
 
@@ -877,18 +1035,21 @@ def init_crawl():
         update_camera(name, template)
 
 
-def update_summary():
+def update_summary():  # noqa: PLR0912, PLR0915
     """Summarize recent camera activity and store structured results."""
 
     # summarize all of htis together
-    lstring = "The following are a list of real time dashboards and cameras, and their recent status updates:\n"
+    lstring = (
+        "The following are a list of real time dashboards and cameras, and their "
+        "recent status updates:\n"
+    )
     templates = get_templates_sorted_by_last_caption_time()
 
     for id, template in templates:
         name = template.get("name")
         if "private" in template.get("groups", ""):
             continue
-        if lstring.count("\n") > 50:
+        if lstring.count("\n") > SUMMARY_MAX_LINES:
             break
 
         if template.get("last_caption_time"):
@@ -935,7 +1096,13 @@ def update_summary():
     history = None
     session = SessionLocal()
     try:
-        summaries = session.query(Summary).order_by(Summary.timestamp.desc()).all()
+        try:
+            summaries = session.query(Summary).order_by(Summary.timestamp.desc()).all()
+        except OperationalError as exc:
+            # If the DB path is misconfigured/unavailable at startup, avoid crashing
+            # the scheduler thread; we'll try again on the next interval.
+            logging.warning("Summary update skipped: database unavailable: %s", exc)
+            return
         entries = []
         steps = [1, 3, 8, 24]
         for step in steps:
@@ -961,11 +1128,12 @@ def update_summary():
     # Generate timestamp for entry key
     timestamp = int(datetime.datetime.utcnow().timestamp())
 
-    if type(lsum) != str:
-        # print(" WARNING -- missing transcript") # this only matters if we have a CHATGPT KEY set
+    if not isinstance(lsum, str):
+        # WARNING: missing transcript. This only matters if we have a CHATGPT KEY set.
         return
 
-    # for leach in re.findall(r'({.+?\})',lsum):  # if we don't find this, then we wasted money...
+    # for leach in re.findall(r'({.+?\})',lsum):
+    # if we don't find this, then we wasted money...
     lsuc = False
     session = SessionLocal()
     for leach in re.findall(
@@ -977,6 +1145,10 @@ def update_summary():
             session.add(Summary(timestamp=timestamp, content=leach))
             session.commit()
             lsuc = True
+        except OperationalError as exc:
+            logging.warning("Failed to persist summary: database unavailable: %s", exc)
+            session.rollback()
+            break
         except Exception:
             session.rollback()
     session.close()
@@ -1136,21 +1308,7 @@ def schedule_crawlers():
         logging.error(f"Error scheduling initial crawl: {e}")
 
 
-from .system_metrics import log_cache, log_cache_lock
-
-# Re-export select attributes for backwards compatibility with older tests
-LOGGING_PATH = _system_metrics.LOGGING_PATH
-cache_logs = _system_metrics.cache_logs
-start_log_caching = _system_metrics.start_log_caching
-stop_background_tasks = _system_metrics.stop_background_tasks
-system_metrics = _system_metrics.system_metrics
-start_metrics_collection = _system_metrics.start_metrics_collection
-stop_event = _system_metrics.stop_event
-get_system_metrics = _system_metrics.get_system_metrics
-DEBUG = DEBUG
-
-
-def get_feed_status():
+def get_feed_status():  # noqa: PLR0912, PLR0915
     """Return a list of status dictionaries for each configured feed."""
 
     templates = get_templates()
@@ -1383,6 +1541,109 @@ def get_or_generate_log_summary() -> str | None:
     return summarize_recent_logs()
 
 
+def get_top_failures(
+    limit: int = 10, window_hours: int = 24
+) -> list[dict[str, object]]:
+    """Return the most frequent failure sources within the time window."""
+
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(hours=window_hours)
+    with log_cache_lock:
+        recent_logs = [
+            entry
+            for entry in list(log_cache)
+            if entry.get("timestamp") and entry["timestamp"] >= cutoff
+        ]
+
+    templates = get_templates()
+    url_to_templates: dict[str, list[str]] = {}
+    for name, template in templates.items():
+        url = template.get("url") or ""
+        if not url:
+            continue
+        clean_url = sanitize_url(url)
+        url_to_templates.setdefault(clean_url, []).append(name)
+
+    failures: dict[tuple[str, str, str], dict[str, object]] = {}
+    for entry in recent_logs:
+        message = entry.get("message", "")
+        if not message:
+            continue
+        timestamp = entry.get("timestamp")
+        if timestamp is None:
+            continue
+
+        name = None
+        url = None
+        reason = None
+
+        if "Capture failed for " in message:
+            idx = message.find("Capture failed for ")
+            remainder = message[idx + len("Capture failed for ") :].strip()
+            if remainder.endswith(")") and " (" in remainder:
+                name_part, url_part = remainder.rsplit(" (", 1)
+                name = name_part.strip()
+                url = url_part[:-1].strip()
+            else:
+                name = remainder
+            reason = "capture failed"
+            if "[LAN_OFFLINE]" in message:
+                reason = "capture failed (LAN offline)"
+        elif message.startswith("RTSP preflight blocked "):
+            remainder = message[len("RTSP preflight blocked ") :].strip()
+            if remainder.endswith(")") and " (" in remainder:
+                url_part, reason_part = remainder.rsplit(" (", 1)
+                url = url_part.strip()
+                reason = reason_part[:-1].strip()
+            else:
+                url = remainder
+                reason = "rtsp preflight blocked"
+        else:
+            continue
+
+        template_name = None
+        display_name = name or url or "Unknown"
+        if name and name in templates:
+            template_name = name
+        elif url:
+            candidates = url_to_templates.get(url, [])
+            if len(candidates) == 1:
+                template_name = candidates[0]
+                display_name = candidates[0]
+            elif len(candidates) > 1:
+                display_name = f"{candidates[0]} (+{len(candidates) - 1})"
+
+        key = (display_name, reason or "unknown", url or "")
+        if key in failures:
+            failures[key]["count"] = int(failures[key]["count"]) + 1
+            if timestamp > failures[key]["last_seen_dt"]:
+                failures[key]["last_seen_dt"] = timestamp
+        else:
+            log_query = template_name or url or ""
+            failures[key] = {
+                "name": display_name,
+                "template_name": template_name,
+                "reason": reason or "unknown",
+                "url": url,
+                "log_query": log_query,
+                "count": 1,
+                "last_seen_dt": timestamp,
+            }
+
+    results = list(failures.values())
+    results.sort(
+        key=lambda item: (
+            int(item["count"]),
+            item["last_seen_dt"],
+        ),
+        reverse=True,
+    )
+    trimmed = results[:limit]
+    for item in trimmed:
+        ts = item.pop("last_seen_dt")
+        item["last_seen"] = ts.strftime("%Y-%m-%d %H:%M:%S") if ts else ""
+    return trimmed
+
+
 def summarize_camera_logs(name: str, limit: int = 200) -> str | None:
     """Summarize recent logs mentioning ``name`` using the LLM."""
 
@@ -1534,6 +1795,9 @@ def process_offline_jobs() -> None:
     """Run any jobs queued while the system was offline."""
 
     if not is_system_online():
+        return
+    state = network_state()
+    if not state.get("wan_ok", True) and not state.get("dns_ok", True):
         return
 
     session = SessionLocal()

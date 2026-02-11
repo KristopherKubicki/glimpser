@@ -19,6 +19,7 @@ SETTINGS_TOOLTIPS = {
         "OpenAI key required for AI captioning and summarization features. "
         "Leave blank to disable these integrations."
     ),
+    "RECOVERY_SEARCH_MODEL": ("OpenAI model used for camera recovery web searches."),
     "DATABASE_PATH": (
         "Filesystem location of the SQLite database. Change it if you move the "
         "database file."
@@ -168,6 +169,11 @@ SETTINGS_TOOLTIPS = {
         "Comma-separated CIDR blocks that can access non-admin pages without "
         "logging in."
     ),
+    "LAN_GUEST_MODE": (
+        "Controls LAN guest access when SKIP_LOGIN_SUBNETS is set. "
+        "Use 'read_only' to allow viewing without login while requiring "
+        "authentication for changes."
+    ),
     "ALLOW_BOTS": (
         "Allow search engines to index the site. Disable for private installations."
     ),
@@ -181,6 +187,30 @@ SETTINGS_TOOLTIPS = {
         "Directory on disk where captured screenshots are stored."
     ),
     "VIDEO_DIRECTORY": ("Directory used to store downloaded video files."),
+    "ARCHIVE_BATCH_SIZE": (
+        "Number of camera folders to process per archive_screenshots run "
+        "(0 processes all cameras)."
+    ),
+    "ARCHIVE_INTERVAL_MINUTES": ("Minutes between archive_screenshots runs."),
+    "LAN_OFFLINE_DISABLE_ERRORS": (
+        "Number of LAN offline failures within the window before a source is "
+        "marked offline."
+    ),
+    "LAN_OFFLINE_DISABLE_WINDOW_MINUTES": (
+        "Minutes to track LAN offline failures before marking a source offline."
+    ),
+    "LAN_OFFLINE_BACKOFF_SECONDS": (
+        "Seconds to back off LAN sources after repeated offline failures."
+    ),
+    "RTSP_PREFLIGHT_FAIL_THRESHOLD": (
+        "RTSP preflight failures within the window before a longer backoff is applied."
+    ),
+    "RTSP_PREFLIGHT_FAIL_WINDOW_SECONDS": (
+        "Seconds to track RTSP preflight failures before longer backoff."
+    ),
+    "RTSP_PREFLIGHT_BACKOFF_SECONDS": (
+        "Seconds to back off RTSP sources after repeated preflight failures."
+    ),
     "CLIPS_DIRECTORY": ("Directory containing generated video clips for sharing."),
     "SUMMARIES_DIRECTORY": (
         "Deprecated path for summary files, kept for backward compatibility."
@@ -271,8 +301,17 @@ SETTINGS_TOOLTIPS = {
     "SSO_USERNAME": (
         "Default username provided to the SSO system when authenticating."
     ),
-    "USER_PASSWORD_HASH": (
-        "BCrypt hashed login password stored for the default user."  # pragma: allowlist secret
+    "LAST_PASSWORD_RESET_REQUIRED_AT": (
+        "Timestamp when a forced password reset was triggered."
+    ),
+    "LAST_PASSWORD_RESET_REQUIRED_BY": (
+        "Username that triggered the most recent forced password reset."
+    ),
+    "LAST_PASSWORD_RESET_COMPLETED_AT": (
+        "Timestamp when the last password reset was completed."
+    ),
+    "LAST_PASSWORD_RESET_COMPLETED_BY": (
+        "Username that completed the last password reset."
     ),
     "VERSION": (
         "Glimpser package version displayed in the footer and used for cache busting."
@@ -314,6 +353,7 @@ SETTINGS_CHOICES = {
     ],
     "LOG_LEVEL": ["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
     "FLASK_LOG_LEVEL": ["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
+    "LAN_GUEST_MODE": ["full", "read_only", "disabled"],
     "TZ": sorted(available_timezones()),
 }
 
@@ -340,7 +380,10 @@ SETTINGS_GROUPS = {
     ],
     "Admin": [
         "USER_NAME",
-        "USER_PASSWORD_HASH",
+        "LAST_PASSWORD_RESET_REQUIRED_AT",
+        "LAST_PASSWORD_RESET_REQUIRED_BY",
+        "LAST_PASSWORD_RESET_COMPLETED_AT",
+        "LAST_PASSWORD_RESET_COMPLETED_BY",
         "SECRET_KEY",
         "API_KEY",
         "SSO_TOKEN",
@@ -350,6 +393,7 @@ SETTINGS_GROUPS = {
         "SESSION_COOKIE_HTTPONLY",
         "SESSION_TIMEOUT_MINUTES",
         "SKIP_LOGIN_SUBNETS",
+        "LAN_GUEST_MODE",
     ],
     "Capture": [
         "DATABASE_PATH",
@@ -374,6 +418,14 @@ SETTINGS_GROUPS = {
         "WATCHDOG_MAX_FILE_HANDLES",
         "CRAWLER_STARTUP_SPREAD",
         "DISCOVERY_AUTOSTART",
+        "ARCHIVE_BATCH_SIZE",
+        "ARCHIVE_INTERVAL_MINUTES",
+        "LAN_OFFLINE_DISABLE_ERRORS",
+        "LAN_OFFLINE_DISABLE_WINDOW_MINUTES",
+        "LAN_OFFLINE_BACKOFF_SECONDS",
+        "RTSP_PREFLIGHT_FAIL_THRESHOLD",
+        "RTSP_PREFLIGHT_FAIL_WINDOW_SECONDS",
+        "RTSP_PREFLIGHT_BACKOFF_SECONDS",
         "CLIP_MODEL_NAME",
         "FFMPEG_PATH",
         "FFPROBE_PATH",
@@ -394,6 +446,7 @@ SETTINGS_GROUPS = {
         "TWILIO_SID",
         "TWILIO_TOKEN",
         "TWILIO_NUMBER",
+        "RECOVERY_SEARCH_MODEL",
         "MCP_SERVER_COMMAND",
         "MCP_SERVER_URL",
         "CLOCK_OVERLAY",
@@ -424,7 +477,13 @@ EMAIL_FIELDS = {"EMAIL_SENDER", "EMAIL_RECIPIENTS"}
 
 # Settings that are hidden behind the advanced toggle on the UI. Their
 # corresponding form inputs are disabled unless advanced mode is enabled.
-LOCKED_SETTINGS = {"CLIP_MODEL_NAME"}
+LOCKED_SETTINGS = {
+    "CLIP_MODEL_NAME",
+    "LAST_PASSWORD_RESET_REQUIRED_AT",
+    "LAST_PASSWORD_RESET_REQUIRED_BY",
+    "LAST_PASSWORD_RESET_COMPLETED_AT",
+    "LAST_PASSWORD_RESET_COMPLETED_BY",
+}
 
 # Example placeholders displayed in the settings form.
 SETTINGS_PLACEHOLDERS = {

@@ -30,7 +30,7 @@
     <link
       rel="preload"
       href="{{ url_for('static', filename='icons/sprite.svg') }}"
-      as="image"
+      as="fetch"
       type="image/svg+xml"
       crossorigin
     />
@@ -40,9 +40,10 @@
       href="{{ url_for('static', filename='favicon.ico') }}"
     />
     <script>
-      window.IS_LOGGED_IN = {{ 'true' if session.get('user_id') else 'false' }};
+      window.IS_LOGGED_IN = {{ 'true' if session.get('user_id') or LAN_GUEST else 'false' }};
+      window.IS_LAN_GUEST = {{ 'true' if LAN_GUEST else 'false' }};
     </script>
-    {% if session.get('user_id') %}
+    {% if session.get('user_id') or LAN_GUEST %}
     <script
       type="module"
       src="{{ url_for('static', filename='js/script.js') }}"

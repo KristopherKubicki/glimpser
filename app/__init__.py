@@ -6,6 +6,7 @@ initialized :class:`flask.Flask` instance used by the application.
 """
 
 import logging
+import multiprocessing
 import os
 import sys
 import threading
@@ -92,6 +93,7 @@ def create_app(
     """
     from app.config import (
         API_KEY,
+        ARCHIVE_INTERVAL_MINUTES,
         CLIPS_DIRECTORY,
         MAX_WORKERS,
         SCHEDULER_API_ENABLED,
@@ -125,10 +127,28 @@ def create_app(
 
     init_routes(app)
 
+    def _scheduler_executor_type() -> str:
+        forced = os.environ.get("SCHEDULER_EXECUTOR")
+        if forced:
+            return forced
+        try:
+            lock = multiprocessing.get_context().Lock()
+            lock.acquire()
+            lock.release()
+        except (PermissionError, OSError) as exc:
+            logging.warning(
+                "Process pool unavailable (%s); falling back to threadpool.", exc
+            )
+            return "threadpool"
+        return "processpool"
+
     # Configure the scheduler executor
     if schedule is True:
         app.config["SCHEDULER_EXECUTORS"] = {
-            "default": {"type": "processpool", "max_workers": MAX_WORKERS}
+            "default": {
+                "type": _scheduler_executor_type(),
+                "max_workers": MAX_WORKERS,
+            }
         }
         app.config["SCHEDULER_API_ENABLED"] = SCHEDULER_API_ENABLED
         logging.info("Starting with %s workers" % str(MAX_WORKERS))
@@ -162,7 +182,10 @@ def create_app(
                 id="archive_screenshots",
                 func=archive_screenshots,
                 trigger="interval",
-                minutes=1,
+                minutes=ARCHIVE_INTERVAL_MINUTES,
+                max_instances=1,
+                coalesce=True,
+                misfire_grace_time=60,
             )
             scheduler.add_job(
                 id="cleanup_clips",
@@ -298,7 +321,10 @@ def create_app(
                     id="archive_screenshots",
                     func=archive_screenshots,
                     trigger="interval",
-                    minutes=1,
+                    minutes=ARCHIVE_INTERVAL_MINUTES,
+                    max_instances=1,
+                    coalesce=True,
+                    misfire_grace_time=60,
                 )
                 scheduler.add_job(
                     id="retention_cleanup",

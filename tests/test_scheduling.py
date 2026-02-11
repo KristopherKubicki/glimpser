@@ -12,7 +12,6 @@ from app.utils.scheduling import find_closest_image, scheduler, start_log_cachin
 
 
 class TestScheduler(unittest.TestCase):
-
     @patch("time.sleep", return_value=None)  # Corrected patch target
     def test_schedule_job(self, mock_sleep):
         job = MagicMock()

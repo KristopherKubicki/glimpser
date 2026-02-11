@@ -220,7 +220,8 @@ To set up the project for development:
 
    ```sh
    uv run pre-commit run --all-files
-   uv run flake8
+   uv run ruff check --exit-zero .
+   uv run ruff format --check .
    uv run pytest
    npm test -- --coverage
    ```

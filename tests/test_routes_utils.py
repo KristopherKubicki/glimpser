@@ -58,7 +58,6 @@ if "app.config" not in sys.modules:
     config_mock.API_KEY = "dummy"  # pragma: allowlist secret
     config_mock.SCREENSHOT_DIRECTORY = ""
     config_mock.USER_NAME = ""
-    config_mock.USER_PASSWORD_HASH = ""
     config_mock.VIDEO_DIRECTORY = ""
     config_mock.VERSION = 0
     config_mock.BACKUP_PATH = ""
@@ -109,7 +108,11 @@ for sub in [
         if sub == "email_alerts":
             mod.email_alert = lambda *a, **k: None
 
-from app.routes import generate_timed_hash, generate_video_stream, is_hash_valid
+from app.routes import (  # noqa: E402, I001
+    generate_timed_hash,
+    generate_video_stream,
+    is_hash_valid,
+)
 
 
 class TestRoutesUtils(unittest.TestCase):

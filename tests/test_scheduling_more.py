@@ -106,6 +106,10 @@ class TestRunWithTimeout(unittest.TestCase):
     def test_timeout_marks_offline(
         self, mock_proc, _sleep, mock_offline, mock_cas_error, _online, _cpu
     ):
+        scheduling.active_jobs.clear()
+        scheduling.job_backoff_until.clear()
+        scheduling.job_failures.clear()
+
         class DummyProc:
             def __init__(self, *args, **kwargs):
                 self.alive = False
@@ -174,6 +178,10 @@ class TestRunWithTimeout(unittest.TestCase):
     def test_process_title_set(self, _online, _cpu):
         def my_job(name):
             return name
+
+        scheduling.active_jobs.clear()
+        scheduling.job_backoff_until.clear()
+        scheduling.job_failures.clear()
 
         with patch("app.utils.scheduling.multiprocessing.Process") as mock_proc:
             run_with_timeout(my_job, args=("cam1",), timeout=1)

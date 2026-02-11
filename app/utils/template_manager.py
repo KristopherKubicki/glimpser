@@ -808,6 +808,28 @@ def get_llm_cost_estimate(
             tokens += int(e.get("tokens", 0))
         if not start_date and not end_date:
             tokens = entry.get("total", tokens)
+    elif isinstance(entry, list):
+        sd = datetime.fromisoformat(start_date).date() if start_date else None
+        ed = datetime.fromisoformat(end_date).date() if end_date else None
+        if entry and isinstance(entry[0], dict):
+            for e in entry:
+                try:
+                    dt = datetime.fromisoformat(e.get("time", "")).date()
+                except Exception:
+                    continue
+                if sd and dt < sd:
+                    continue
+                if ed and dt > ed:
+                    continue
+                tokens += int(e.get("tokens", 0))
+        elif not start_date and not end_date:
+            for e in entry:
+                try:
+                    tokens += int(e)
+                except Exception:
+                    continue
+    elif isinstance(entry, dict):
+        tokens = int(entry.get("total", 0))
     else:
         tokens = entry if isinstance(entry, int) else 0
 
@@ -959,6 +981,24 @@ def mark_offline(name: str) -> None:
         template = session.query(Template).filter_by(name=name).first()
         if template and not template.offline_since:
             template.offline_since = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            session.commit()
+    finally:
+        session.close()
+
+
+def clear_offline(name: str) -> None:
+    """Clear the offline status for ``name`` without changing capture times."""
+
+    name = validate_template_name(name)
+    if name is None:
+        return
+
+    manager = TemplateManager()
+    session = manager.get_session()
+    try:
+        template = session.query(Template).filter_by(name=name).first()
+        if template and template.offline_since:
+            template.offline_since = ""
             session.commit()
     finally:
         session.close()

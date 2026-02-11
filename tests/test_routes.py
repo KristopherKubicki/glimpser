@@ -16,7 +16,6 @@ from app.utils.template_manager import clear_template_cache
 
 class TestRoutes(unittest.TestCase):
     def setUp(self):
-
         importlib.reload(routes)
 
         template_dir = os.path.join(
@@ -50,87 +49,6 @@ class TestRoutes(unittest.TestCase):
 
             def first(self):
                 return dummy_user
-
-        def order_by(self, *args, **kwargs):
-            return self
-
-        def limit(self, *args, **kwargs):
-            return self
-
-        def all(self):
-            return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
 
             def order_by(self, *args, **kwargs):
                 return self

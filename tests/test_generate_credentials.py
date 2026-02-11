@@ -75,6 +75,13 @@ class TestGenerateCredentials(unittest.TestCase):
         cursor.execute("SELECT password_hash, role FROM users WHERE username='alice'")
         self.assertEqual(cursor.fetchone(), ("hash2", "user"))
 
+    @patch("generate_credentials.sys.stdin.isatty", return_value=False)
+    def test_generate_credentials_non_interactive_refuses_random_password(
+        self, mock_isatty
+    ):
+        with self.assertRaises(RuntimeError):
+            generate_credentials.generate_credentials(args=None)
+
     @patch("generate_credentials.logging.info")
     @patch("generate_credentials.sys.stdin.isatty", return_value=True)
     @patch("generate_credentials.generate_password_hash")
@@ -109,8 +116,6 @@ class TestGenerateCredentials(unittest.TestCase):
         cur = self.conn.cursor()
         cur.execute("SELECT value FROM settings WHERE name='USER_NAME'")
         self.assertEqual(cur.fetchone()[0], "testuser")
-        cur.execute("SELECT value FROM settings WHERE name='USER_PASSWORD_HASH'")
-        self.assertEqual(cur.fetchone()[0], "hashed_password")
         cur.execute("SELECT value FROM settings WHERE name='SECRET_KEY'")
         self.assertEqual(cur.fetchone()[0], "secretkey")
         cur.execute(
@@ -150,8 +155,6 @@ class TestGenerateCredentials(unittest.TestCase):
         cur = self.conn.cursor()
         cur.execute("SELECT value FROM settings WHERE name='USER_NAME'")
         self.assertEqual(cur.fetchone()[0], "bob")
-        cur.execute("SELECT value FROM settings WHERE name='USER_PASSWORD_HASH'")
-        self.assertEqual(cur.fetchone()[0], "h")
         cur.execute("SELECT value FROM settings WHERE name='SECRET_KEY'")
         self.assertEqual(cur.fetchone()[0], "xyz")
         cur.execute("SELECT username, password_hash FROM users WHERE username='bob'")
@@ -186,6 +189,8 @@ class TestGenerateCredentials(unittest.TestCase):
     def test_update_key_only(self, mock_get, mock_hash):
         """Updating only the secret key should still update the users table."""
         generate_credentials.create_settings(self.conn)
+        generate_credentials.create_users(self.conn)
+        generate_credentials.upsert_user("admin", "pw_hash", "admin", self.conn)
         args = argparse.Namespace(
             db_path=config.DATABASE_PATH,
             username=None,
@@ -200,6 +205,8 @@ class TestGenerateCredentials(unittest.TestCase):
         cur = self.conn.cursor()
         cur.execute("SELECT username FROM users")
         self.assertEqual(cur.fetchone()[0], "admin")
+        cur.execute("SELECT password_hash FROM users WHERE username='admin'")
+        self.assertEqual(cur.fetchone()[0], "pw_hash")
 
 
 if __name__ == "__main__":

@@ -10,15 +10,56 @@ purposes.
 import datetime
 import json
 import logging
+import os
 import re
 import time
 
 from app.config import CHATGPT_KEY, LLM_MODEL_VERSION, LLM_SUMMARY_PROMPT
 from app.utils import llm_cache
+from app.utils.logging_utils import shared_log_allowed
 
 from .api_utils import request_with_retry
 
+RATE_LIMIT_BACKOFF_MINUTES = 15
+LLM_429_WINDOW_SECONDS = int(os.getenv("LLM_429_WINDOW_SECONDS", "600"))
+LLM_429_HARD_LIMIT = int(os.getenv("LLM_429_HARD_LIMIT", "6"))
+LLM_429_HARD_BACKOFF_MINUTES = int(os.getenv("LLM_429_HARD_BACKOFF_MINUTES", "60"))
+LLM_429_LOG_INTERVAL_SECONDS = int(os.getenv("LLM_429_LOG_INTERVAL_SECONDS", "300"))
 last_429_error_time = None
+last_429_log_time = None
+_backoff_until = None
+_recent_429s: list[float] = []
+_last_429_warn_time: float | None = None
+
+
+def _log_backoff(reason: str, model: str, remaining_seconds: float) -> None:
+    global last_429_log_time
+    now = datetime.datetime.now()
+    if last_429_log_time and (now - last_429_log_time).total_seconds() < 300:
+        return
+    last_429_log_time = now
+    logging.warning(
+        "LLM backoff active (%s); skipping summaries for %ds. model=%s",
+        reason,
+        int(remaining_seconds),
+        model,
+    )
+
+
+def _record_429(now: datetime.datetime) -> int:
+    global _recent_429s
+    cutoff = now.timestamp() - LLM_429_WINDOW_SECONDS
+    _recent_429s = [ts for ts in _recent_429s if ts >= cutoff]
+    _recent_429s.append(now.timestamp())
+    return len(_recent_429s)
+
+
+def _should_warn_429(now: datetime.datetime) -> bool:
+    global _last_429_warn_time
+    if _last_429_warn_time and (now - _last_429_warn_time).total_seconds() < 300:
+        return False
+    _last_429_warn_time = now
+    return True
 
 
 def summarize(
@@ -46,13 +87,20 @@ def summarize(
     Returns:
         str: JSON content with the summary or a message if generation fails.
     """
-    global last_429_error_time
+    global last_429_error_time, _backoff_until
 
-    # Rate limiting: Check if a 429 error occurred in the last 15 minutes
-    if last_429_error_time and (
-        datetime.datetime.now() - last_429_error_time
-    ) < datetime.timedelta(minutes=15):
+    # Rate limiting: Check if a 429 error occurred in the last window.
+    now = datetime.datetime.now()
+    if _backoff_until and now < _backoff_until:
+        remaining = (_backoff_until - now).total_seconds()
+        _log_backoff("rate_limited", LLM_MODEL_VERSION or "gpt-4.1", remaining)
         return None
+    if last_429_error_time:
+        elapsed = (now - last_429_error_time).total_seconds()
+        if elapsed < RATE_LIMIT_BACKOFF_MINUTES * 60:
+            remaining = RATE_LIMIT_BACKOFF_MINUTES * 60 - elapsed
+            _log_backoff("recent_429", LLM_MODEL_VERSION or "gpt-4.1", remaining)
+            return None
 
     if CHATGPT_KEY is None or len(CHATGPT_KEY) < 1 or len(CHATGPT_KEY) > 128:
         return None
@@ -113,8 +161,25 @@ def summarize(
             retries=retries,
         )
         if response.status_code == 429:
-            last_429_error_time = datetime.datetime.now()
-            logging.warning("429 error encountered. Blocking requests for 15 minutes.")
+            last_429_error_time = now
+            count = _record_429(now)
+            retry_after = response.headers.get("Retry-After")
+            extra = f" retry_after={retry_after}" if retry_after else ""
+            backoff_minutes = RATE_LIMIT_BACKOFF_MINUTES
+            if count >= LLM_429_HARD_LIMIT:
+                backoff_minutes = max(backoff_minutes, LLM_429_HARD_BACKOFF_MINUTES)
+            _backoff_until = now + datetime.timedelta(minutes=backoff_minutes)
+            if _should_warn_429(now) and shared_log_allowed(
+                "llm_429_summary", LLM_429_LOG_INTERVAL_SECONDS
+            ):
+                logging.warning(
+                    "LLM rate limit (HTTP 429) from OpenAI; pausing summaries for %d minutes (count=%d/%d). model=%s.%s",
+                    backoff_minutes,
+                    count,
+                    LLM_429_HARD_LIMIT,
+                    model_version,
+                    extra,
+                )
             return None
         result = response.json()
     except Exception as e:

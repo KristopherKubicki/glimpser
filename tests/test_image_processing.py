@@ -8,7 +8,11 @@ from unittest.mock import MagicMock, patch
 
 from PIL import Image
 
-from app.utils.image_processing import ChatGPTImageComparison, chatgpt_compare
+from app.utils.image_processing import (
+    ChatGPTImageComparison,
+    chatgpt_compare,
+    clean_caption,
+)
 from app.utils.screenshots import (
     add_timestamp,
     adjust_bbox_to_aspect_ratio,
@@ -19,7 +23,6 @@ from app.utils.screenshots import (
 
 
 class TestImageProcessing(unittest.TestCase):
-
     def test_add_timestamp(self):
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
             image_path = temp_file.name
@@ -147,7 +150,7 @@ class TestChatGPTImageComparison(unittest.TestCase):
                 call_args["headers"]["Authorization"], f"Bearer {comparison.api_key}"
             )
             self.assertEqual(
-                call_args["json"]["model"], "gpt-4.1-mini"
+                call_args["json"]["model"], "gpt-5-mini"
             )  # Assuming this is the default model
             self.assertIn("Test prompt", str(call_args["json"]["messages"]))
 
@@ -225,16 +228,12 @@ class TestChatGPTCompareIntegration(unittest.TestCase):
 
 class TestCleanCaption(unittest.TestCase):
     def test_clean_caption_removes_headers_and_formatting(self):
-        from app.utils.image_processing import clean_caption
-
         self.assertEqual(
             clean_caption("Caption: **A bird**"),
             "A bird",
         )
 
     def test_clean_caption_handles_title(self):
-        from app.utils.image_processing import clean_caption
-
         self.assertEqual(clean_caption("Title: **Scene**"), "Scene")
 
 

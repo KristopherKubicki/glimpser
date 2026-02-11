@@ -288,4 +288,116 @@
 </div>
 
 <p>Last summary generated: {{ last_summary or 'N/A' }}</p>
-{% endcall %} {% include 'logs.html' %}
+{% endcall %} {% call card('Top Failures (last 24h)') %} {% if top_failures %}
+<div class="top-failures-controls">
+  <label for="top-failures-search">Search</label>
+  <input
+    id="top-failures-search"
+    type="text"
+    placeholder="Filter by source, reason, or URL"
+    title="Filter by source, reason, or URL"
+  />
+  <label for="top-failures-reason">Reason</label>
+  <select id="top-failures-reason" title="Filter by failure reason">
+    <option value="">All Reasons</option>
+  </select>
+  <label for="top-failures-window">Last Seen</label>
+  <select id="top-failures-window" title="Filter by last seen time">
+    <option value="">Any time</option>
+    <option value="3600">1 hour</option>
+    <option value="21600">6 hours</option>
+    <option value="86400">24 hours</option>
+    <option value="604800">7 days</option>
+  </select>
+  <span class="top-failures-count" id="top-failures-count"></span>
+</div>
+<p class="top-failures-note">
+  Counts reflect the last 24 hours; filters narrow what you see.
+</p>
+<div class="table-container">
+  <table id="top-failures" class="feed-status top-failures">
+    <thead>
+      <tr>
+        <th class="sortable" data-type="string" title="Template or URL">
+          Source
+        </th>
+        <th class="sortable" data-type="string" title="Failure reason">
+          Reason
+        </th>
+        <th class="sortable" data-type="number" title="Failure count">Count</th>
+        <th class="sortable" data-type="date" title="Most recent failure">
+          Last Seen
+        </th>
+        <th title="Sanitized URL">URL</th>
+        <th title="Open logs">Logs</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for failure in top_failures %}
+      <tr
+        data-reason="{{ failure.reason }}"
+        data-last-seen="{{ failure.last_seen }}"
+        data-name="{{ failure.name }}"
+        data-url="{{ failure.url or '' }}"
+      >
+        <td
+          class="name-col"
+          data-label="Source"
+          data-value="{{ failure.name }}"
+        >
+          {% if failure.template_name %}
+          <a
+            href="{{ url_for('ui.template_details', template_name=failure.template_name) }}"
+            title="View template details"
+            >{{ failure.name }}</a
+          >
+          {% else %} {{ failure.name }} {% endif %}
+        </td>
+        <td
+          class="reason-col"
+          data-label="Reason"
+          data-value="{{ failure.reason }}"
+        >
+          {{ failure.reason }}
+        </td>
+        <td data-label="Count" data-value="{{ failure.count }}">
+          {{ failure.count }}
+        </td>
+        <td
+          class="time-col"
+          data-label="Last Seen"
+          data-value="{{ failure.last_seen }}"
+        >
+          {% if failure.last_seen %}
+          <span
+            class="humanized-time"
+            data-time="{{ failure.last_seen }}"
+            title="{{ failure.last_seen }}"
+            >{{ failure.last_seen }}</span
+          >
+          {% else %}
+          <span>N/A</span>
+          {% endif %}
+        </td>
+        <td class="url-col" data-label="URL">
+          {{ failure.url or '' }}
+        </td>
+        <td class="logs-col" data-label="Logs">
+          {% if failure.log_query %}
+          <a
+            href="{{ url_for('ui.logs') }}?search={{ failure.log_query|urlencode }}"
+            title="View logs for this source"
+            >Logs</a
+          >
+          {% else %}
+          <span>N/A</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p>No failures found in the last 24 hours.</p>
+{% endif %} {% endcall %} {% include 'logs.html' %}

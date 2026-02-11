@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
@@ -37,7 +38,7 @@ class TestDangerModeCapture(unittest.TestCase):
 
     @patch("app.utils.screenshots._send_input_event")
     @patch("app.utils.screenshots._finalize_screenshot")
-    @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.get_chrome_path", return_value=sys.executable)
     @patch("app.utils.screenshots.is_system_online", return_value=True)
     @patch("app.utils.screenshots.webdriver.Chrome")
     @patch("app.utils.screenshots.check_user_activity", return_value=False)
@@ -57,7 +58,7 @@ class TestDangerModeCapture(unittest.TestCase):
         driver = self._mock_driver()
         mock_webdriver.return_value = driver
 
-        def finalize(partial, final, name, invert, dark):
+        def finalize(partial, final, name, invert, dark, **_kwargs):
             os.rename(partial, final)
             return True
 
@@ -74,7 +75,7 @@ class TestDangerModeCapture(unittest.TestCase):
 
     @patch("app.utils.screenshots._send_input_event")
     @patch("app.utils.screenshots._finalize_screenshot")
-    @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.get_chrome_path", return_value=sys.executable)
     @patch("app.utils.screenshots.is_system_online", return_value=True)
     @patch("app.utils.screenshots.webdriver.Chrome")
     @patch("app.utils.screenshots.check_user_activity", return_value=True)
@@ -99,7 +100,7 @@ class TestDangerModeCapture(unittest.TestCase):
 
     @patch("app.utils.screenshots._send_input_event")
     @patch("app.utils.screenshots._finalize_screenshot")
-    @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.get_chrome_path", return_value=sys.executable)
     @patch("app.utils.screenshots.is_system_online", return_value=True)
     @patch("app.utils.screenshots.webdriver.Chrome")
     @patch("app.utils.screenshots.check_user_activity", return_value=False)

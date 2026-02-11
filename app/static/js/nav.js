@@ -145,8 +145,16 @@ export function initNav() {
 
     if (cameraDropdown) {
       cameraDropdown.addEventListener("change", () => {
-        // Avoid navigation when adjusting the live view
-        if (window.location.pathname.startsWith("/live")) return;
+        // On the live page, switch the live player in-place.
+        if (window.location.pathname.startsWith("/live")) {
+          if (
+            cameraDropdown.value &&
+            typeof window.changeCamera === "function"
+          ) {
+            window.changeCamera(cameraDropdown.value);
+          }
+          return;
+        }
         if (cameraDropdown.value) {
           window.location.href = `/templates/${encodeURIComponent(
             cameraDropdown.value,

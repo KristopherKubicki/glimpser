@@ -1,14 +1,13 @@
 .PHONY: format format-yaml lint test test-js precommit setup
 
 format:
-	uv run black .
+	uv run ruff format .
 	prettier --write app/static/js/**/*.js app/static/css/**/*.css
 
 format-yaml:
         prettier --write '*.yml'
 
 lint:
-	uv run flake8
 	uv run ruff check --exit-zero .
 	eslint 'app/static/js/**/*.js'
 

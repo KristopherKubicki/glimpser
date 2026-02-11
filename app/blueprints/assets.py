@@ -457,6 +457,37 @@ def create_blueprint() -> Blueprint:
         )
 
     @bp.route(
+        "/clear_quarantine/<string:template_name>",
+        methods=["POST"],
+        endpoint="clear_quarantine",
+    )
+    @routes.login_required
+    def clear_quarantine(template_name: routes.TemplateName):
+        """Clear local quarantine and offline status for a template."""
+
+        template_name = routes.validate_template_name(str(template_name))
+        if template_name is None:
+            routes.abort(404)
+
+        templates = routes.template_manager.get_templates()
+        template = templates.get(template_name)
+        if template is None:
+            routes.abort(404)
+
+        url = template.get("url", "")
+        cleared = False
+        if url:
+            cleared = routes.screenshots.clear_local_quarantine(url)
+        routes.template_manager.clear_offline(template_name)
+        return routes.jsonify(
+            {
+                "status": "success",
+                "cleared": cleared,
+                "message": f"Quarantine cleared for {template_name}",
+            }
+        )
+
+    @bp.route(
         "/update_video/<string:template_name>",
         methods=["POST"],
         endpoint="update_video",

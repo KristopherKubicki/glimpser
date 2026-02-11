@@ -193,16 +193,20 @@ class TestCameraDiscovery(unittest.TestCase):
     @patch("app.utils.camera_discovery._probe_onvif")
     @patch("app.utils.camera_discovery.is_port_open")
     @patch("app.utils.camera_discovery._check_http_endpoint")
+    @patch("app.utils.camera_discovery._fetch_snmp_sysdescr", return_value=None)
     @patch("app.utils.camera_discovery._fetch_snmp_sysname")
     @patch("app.utils.camera_discovery._fetch_sdp")
+    @patch("app.utils.camera_discovery.psutil.net_if_stats")
     @patch("app.utils.camera_discovery.psutil.net_if_addrs")
     @patch("app.utils.camera_discovery._local_video_devices", return_value=[])
     def test_discover_cameras_merge(
         self,
         mock_local_video_devices,
         mock_addrs,
+        mock_stats,
         mock_fetch_sdp,
         mock_fetch_snmp,
+        mock_fetch_snmp_descr,
         mock_check_http,
         mock_port_open,
         mock_onvif,
@@ -210,6 +214,7 @@ class TestCameraDiscovery(unittest.TestCase):
         mock_ssdp,
         mock_trace,
     ):
+        mock_stats.return_value = self._mock_stats()
         mock_addrs.return_value = self._mock_interfaces()
         mock_port_open.side_effect = self._port_open_side_effect
         mock_fetch_sdp.return_value = "v=0"
@@ -574,7 +579,26 @@ class TestCameraDiscovery(unittest.TestCase):
             if "GetCapabilities" in data:
                 xml = "<Envelope><Body><Capabilities><Media><XAddr>http://1.2.3.4/onvif/media_service</XAddr></Media></Capabilities></Body></Envelope>"
             elif "GetProfiles" in data:
-                xml = "<Envelope><Body><trt:GetProfilesResponse xmlns:trt='http://www.onvif.org/ver10/media/wsdl'><trt:Profiles token='p0'/></trt:GetProfilesResponse></Body></Envelope>"
+                xml = (
+                    "<Envelope><Body>"
+                    "<trt:GetProfilesResponse xmlns:trt='http://www.onvif.org/ver10/media/wsdl' xmlns:tt='http://www.onvif.org/ver10/schema'>"
+                    "<trt:Profiles token='main'><tt:Name>Main</tt:Name>"
+                    "<tt:VideoEncoderConfiguration>"
+                    "<tt:Encoding>H264</tt:Encoding>"
+                    "<tt:Resolution><tt:Width>1920</tt:Width><tt:Height>1080</tt:Height></tt:Resolution>"
+                    "<tt:RateControl><tt:FrameRateLimit>30</tt:FrameRateLimit><tt:BitrateLimit>5000</tt:BitrateLimit></tt:RateControl>"
+                    "</tt:VideoEncoderConfiguration>"
+                    "</trt:Profiles>"
+                    "<trt:Profiles token='sub'><tt:Name>Sub</tt:Name>"
+                    "<tt:VideoEncoderConfiguration>"
+                    "<tt:Encoding>H264</tt:Encoding>"
+                    "<tt:Resolution><tt:Width>640</tt:Width><tt:Height>360</tt:Height></tt:Resolution>"
+                    "<tt:RateControl><tt:FrameRateLimit>5</tt:FrameRateLimit><tt:BitrateLimit>500</tt:BitrateLimit></tt:RateControl>"
+                    "</tt:VideoEncoderConfiguration>"
+                    "</trt:Profiles>"
+                    "</trt:GetProfilesResponse>"
+                    "</Body></Envelope>"
+                )
             elif "GetStreamUri" in data:
                 xml = "<Envelope><Body><tt:Uri xmlns:tt='http://www.onvif.org/ver10/schema'>rtsp://1.2.3.4/stream</tt:Uri></Body></Envelope>"
             else:
@@ -585,6 +609,24 @@ class TestCameraDiscovery(unittest.TestCase):
         res = camera_discovery.autodetect_onvif_endpoints("http://1.2.3.4")
         self.assertEqual(res["stream"], "rtsp://1.2.3.4/stream")
         self.assertEqual(res["snapshot"], "http://1.2.3.4/snap.jpg")
+        # We should prefer the Glimpser-friendly sub profile.
+        self.assertEqual(res.get("profile_token"), "sub")
+
+    @patch("app.utils.camera_discovery.request_with_retry")
+    def test_autodetect_onvif_endpoints_includes_wsse_when_credentials_provided(
+        self, mock_post
+    ):
+        mock_post.return_value = SimpleNamespace(ok=True, content=b"<Envelope/>")
+        camera_discovery.autodetect_onvif_endpoints(
+            "http://1.2.3.4/onvif/device_service",
+            username="user",
+            password="pass",
+        )
+        sent = "\n".join(
+            str(c.kwargs.get("data") or "") for c in mock_post.call_args_list
+        )
+        self.assertIn("<wsse:Username>user</wsse:Username>", sent)
+        self.assertIn("<wsse:Password", sent)
 
     def test_mac_for_ip_parses_arp(self):
         arp = (

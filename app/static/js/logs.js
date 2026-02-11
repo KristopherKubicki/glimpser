@@ -53,8 +53,13 @@ export function initLogs() {
     const status = document.getElementById("log-connection-status");
     const summaryEl = document.getElementById("daily-summary");
 
+    const params = new URLSearchParams(window.location.search);
+    const initialSearch = params.get("search") || "";
+    if (searchInput && initialSearch) {
+      searchInput.value = initialSearch;
+    }
+
     async function fetchSummary() {
-      const params = new URLSearchParams(window.location.search);
       const camera = params.get("search");
       if (!camera) return;
       try {

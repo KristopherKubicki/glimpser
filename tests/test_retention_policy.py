@@ -17,7 +17,6 @@ from app.utils.retention_policy import (
 
 
 class TestRetentionPolicy(unittest.TestCase):
-
     @patch("app.utils.retention_policy.os.path.getctime")
     @patch("time.sleep", return_value=None)
     def test_delete_old_files(self, _sleep, mock_getctime):

@@ -44,15 +44,18 @@ class TestCaptureStatusErrors(unittest.TestCase):
         mock_session.request.return_value = resp
         mock_session_factory.return_value = mock_session
 
-        ctype, modified = ss.get_content_type(url, False)
+        ctype, modified, preflight_ok, reason = ss.get_content_type(url, False)
         self.assertEqual(ctype, "")
         self.assertFalse(modified)
+        self.assertFalse(preflight_ok)
+        self.assertEqual(reason, "http_500")
         self.assertEqual(ss.get_cached_status_code(url), 500)
 
     @patch("app.utils.screenshots.http_session")
     @patch("app.utils.screenshots.is_system_online", return_value=True)
+    @patch("app.utils.screenshots.network_state", return_value={"dns_ok": True})
     def test_get_content_type_head_403_fallback(
-        self, mock_online, mock_session_factory
+        self, mock_state, mock_online, mock_session_factory
     ):
         url = "http://example.com"
         mock_session = MagicMock()
@@ -65,9 +68,11 @@ class TestCaptureStatusErrors(unittest.TestCase):
         mock_session.request.side_effect = [head_resp, get_resp]
         mock_session_factory.return_value = mock_session
 
-        ctype, modified = ss.get_content_type(url, False)
+        ctype, modified, preflight_ok, reason = ss.get_content_type(url, False)
         self.assertEqual(ctype, "video/mp4")
         self.assertTrue(modified)
+        self.assertTrue(preflight_ok)
+        self.assertEqual(reason, "ok")
 
 
 if __name__ == "__main__":

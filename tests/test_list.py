@@ -2,7 +2,6 @@ import unittest
 
 
 class TestListOperations(unittest.TestCase):
-
     def test_list_sorting(self):
         data = [3, 1, 4, 1, 5, 9, 2]
         data.sort()

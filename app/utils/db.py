@@ -46,12 +46,20 @@ def ensure_column(
     """Add a column to a table if it doesn't already exist."""
 
     with engine.begin() as conn:
+        table_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name=:name"),
+            {"name": table_name},
+        ).fetchone()
+        if not table_exists:
+            return
         result = conn.execute(text(f"PRAGMA table_info({table_name})"))
         columns = [row[1] for row in result]
         if column_name not in columns:
             conn.execute(
                 text(
-                    f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type} DEFAULT {default}"
+                    "ALTER TABLE "
+                    f"{table_name} ADD COLUMN {column_name} {column_type} "
+                    f"DEFAULT {default}"
                 )
             )
 

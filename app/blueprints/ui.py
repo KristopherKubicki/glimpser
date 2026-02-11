@@ -16,6 +16,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    send_file,
     url_for,
 )
 
@@ -24,6 +25,7 @@ def create_blueprint() -> Blueprint:
     """Create and return the UI blueprint with web routes."""
 
     from app import routes
+    from app.utils import recovery
 
     bp = Blueprint("ui", __name__)
 
@@ -416,8 +418,17 @@ def create_blueprint() -> Blueprint:
                 logging.error("Failed to process uploaded logo: %s", exc)
                 routes.flash("Invalid image file", "error")
                 return redirect(url_for("ui.settings")), 400
-            dest_dir = os.path.join(routes.current_app.static_folder, "img")
-            os.makedirs(dest_dir, exist_ok=True)
+            static_root = routes.current_app.static_folder
+            dest_dir = os.path.join(static_root, "img")
+            # Tests run in parallel and use a shared `test_static/` path; a
+            # different worker may delete the directory between steps.
+            for _ in range(3):
+                try:
+                    os.makedirs(static_root, exist_ok=True)
+                    os.makedirs(dest_dir, exist_ok=True)
+                    break
+                except FileNotFoundError:
+                    continue
             dest_name = routes.secure_filename(logo_file.filename)
             dest_path = os.path.join(dest_dir, dest_name)
             routes.shutil.move(temp_file.name, dest_path)
@@ -438,9 +449,28 @@ def create_blueprint() -> Blueprint:
             if template_name is None:
                 routes.abort(404)
             url = data.get("url", "")
+            # If credentials were provided in the URL, move them into the
+            # template auth fields (so we don't persist passwords in URLs).
+            parsed = urlparse(url or "")
+            if parsed.username and not data.get("auth_username"):
+                data["auth_username"] = parsed.username
+            if parsed.password and not data.get("auth_password"):
+                data["auth_password"] = parsed.password
+            if parsed.username or parsed.password:
+                host = parsed.hostname or ""
+                netloc = host
+                if parsed.port:
+                    netloc = f"{host}:{parsed.port}"
+                url = parsed._replace(netloc=netloc).geturl()
+                data["url"] = url
+
             if url and ("onvif" in url or urlparse(url).path in {"", "/"}):
                 try:
-                    endpoints = routes.camera_discovery.autodetect_onvif_endpoints(url)
+                    endpoints = routes.camera_discovery.autodetect_onvif_endpoints(
+                        url,
+                        username=data.get("auth_username") or None,
+                        password=data.get("auth_password") or None,
+                    )
                     if endpoints.get("snapshot"):
                         data["url"] = endpoints["snapshot"]
                     elif endpoints.get("stream"):
@@ -486,6 +516,16 @@ def create_blueprint() -> Blueprint:
         template_details = templates.get(template_name)
         if template_details is None:
             routes.abort(404)
+        quarantine_active = False
+        quarantine_remaining = 0
+        quarantine_reason = None
+        template_url = template_details.get("url", "")
+        if template_url:
+            (
+                quarantine_active,
+                quarantine_remaining,
+                quarantine_reason,
+            ) = routes.screenshots.local_quarantine_status(template_url)
         lscreenshots = routes.template_manager.get_screenshots_for_template(
             template_name
         )
@@ -495,6 +535,9 @@ def create_blueprint() -> Blueprint:
             "template_details.html",
             template_name=template_name,
             template_details=template_details,
+            quarantine_active=quarantine_active,
+            quarantine_remaining=quarantine_remaining,
+            quarantine_reason=quarantine_reason,
             screenshots=lscreenshots,
             videos=lvideos,
             object_tokens=object_tokens,
@@ -502,6 +545,108 @@ def create_blueprint() -> Blueprint:
             clip_gpu=routes.clip_gpu_available(),
             page_title="Camera Details",
         )
+
+    @bp.route(
+        "/recovery/search/<string:template_name>",
+        methods=["POST"],
+        endpoint="recovery_search",
+    )
+    @routes.login_required
+    def recovery_search(template_name: routes.TemplateName):
+        template_name = routes.validate_template_name(str(template_name))
+        if template_name is None:
+            routes.abort(404)
+        template = routes.template_manager.get_template(template_name)
+        if not template:
+            routes.abort(404)
+        data = request.get_json(force=True) or {}
+        description = str(data.get("description") or "")
+        exclude_urls = data.get("exclude_urls") or []
+        try:
+            candidates, prompt = recovery.search_alternatives(
+                {"name": template_name, **template},
+                description,
+                exclude_urls=exclude_urls,
+            )
+        except Exception as exc:
+            logging.warning("Recovery search failed for %s: %s", template_name, exc)
+            return jsonify({"error": "recovery_search_failed"}), 502
+        logging.info(
+            "Recovery search for %s returned %d candidates",
+            template_name,
+            len(candidates),
+        )
+        return jsonify({"candidates": candidates, "prompt": prompt})
+
+    @bp.route("/recovery/preview", methods=["POST"], endpoint="recovery_preview")
+    @routes.login_required
+    def recovery_preview():
+        data = request.get_json(force=True) or {}
+        url = str(data.get("url") or "")
+        template_name = str(data.get("template_name") or "")
+        if not url or not template_name:
+            return jsonify({"error": "missing_fields"}), 400
+        if routes.validate_template_name(template_name) is None:
+            return jsonify({"error": "invalid_template"}), 400
+        path, preview_type, error = recovery.generate_preview(url, template_name)
+        if not path:
+            return jsonify({"ok": False, "error": error or "preview_failed"}), 400
+        filename = Path(path).name
+        preview_url = url_for("ui.recovery_preview_file", filename=filename)
+        return jsonify(
+            {"ok": True, "preview_url": preview_url, "preview_type": preview_type}
+        )
+
+    @bp.route(
+        "/recovery/preview/<string:filename>",
+        methods=["GET"],
+        endpoint="recovery_preview_file",
+    )
+    @routes.login_required
+    def recovery_preview_file(filename: str):
+        safe_name = Path(filename).name
+        path = recovery.RECOVERY_DIR / safe_name
+        if not path.exists():
+            routes.abort(404)
+        mimetype = "image/png" if path.suffix == ".png" else "video/mp4"
+        return send_file(path, mimetype=mimetype, max_age=0)
+
+    @bp.route(
+        "/recovery/apply/<string:template_name>",
+        methods=["POST"],
+        endpoint="recovery_apply",
+    )
+    @routes.login_required
+    def recovery_apply(template_name: routes.TemplateName):
+        template_name = routes.validate_template_name(str(template_name))
+        if template_name is None:
+            routes.abort(404)
+        data = request.get_json(force=True) or {}
+        url = str(data.get("url") or "").strip()
+        url = recovery.validate_recovery_url(url)
+        if not url:
+            return jsonify({"error": "invalid_url"}), 400
+        routes.template_manager.save_template(template_name, {"url": url})
+        template = routes.template_manager.get_template(template_name) or {}
+        try:
+            routes.scheduling.scheduler.remove_job(template_name)
+        except LookupError as exc:
+            logging.warning("Job removal failed for %s: %s", template_name, exc)
+        routes.screenshots.create_blank_frame(template_name)
+        try:
+            seconds = int(template.get("frequency", 30 * 60))
+            routes.scheduling.scheduler.add_job(
+                func=routes.scheduling.update_camera,
+                trigger="interval",
+                seconds=seconds,
+                args=[template_name, template],
+                id=template_name,
+                replace_existing=True,
+            )
+        except Exception as exc:  # pragma: no cover - scheduler failure
+            logging.error("job schedule error: %s", exc)
+        logging.info("Recovery applied for %s -> %s", template_name, url)
+        return jsonify({"ok": True})
 
     @bp.route(
         "/generate_prompt/<string:template_name>",
@@ -616,7 +761,6 @@ def create_blueprint() -> Blueprint:
                 "EMAIL_USERNAME",
                 "EMAIL_PASSWORD",
             ]
-            notification_settings = ["SMS_ENABLED", "CAP_ENABLED"]
             action = request.form.get("action")
             if action == "add":
                 new_name = (request.form.get("new_name") or "").strip()
@@ -776,6 +920,7 @@ def create_blueprint() -> Blueprint:
         feeds = routes.scheduling.get_feed_status()
         last_summary = routes.scheduling.get_last_summary_time()
         log_summary = routes.scheduling.get_or_generate_log_summary()
+        top_failures = routes.scheduling.get_top_failures()
         danger_enabled = routes.config.get_setting("DANGER_MODE", "True") == "True"
         cost_summary, total_tokens, total_cost, total_calls = (
             routes.template_manager.get_llm_cost_summary()
@@ -814,6 +959,7 @@ def create_blueprint() -> Blueprint:
             feeds=feeds,
             last_summary=last_summary,
             log_summary=log_summary,
+            top_failures=top_failures,
             cost_summary=cost_summary,
             total_tokens=total_tokens,
             total_cost=total_cost,
@@ -879,6 +1025,39 @@ def create_blueprint() -> Blueprint:
             "danger": request.form.get("danger", "false").lower()
             in ["true", "1", "t", "y", "yes", "on"],
         }
+
+        # If credentials were provided in the URL, move them into the template
+        # auth fields so we don't persist passwords in URLs.
+        url = updated_data.get("url") or ""
+        parsed = urlparse(url)
+        if parsed.username and not updated_data.get("auth_username"):
+            updated_data["auth_username"] = parsed.username
+        if parsed.password and not updated_data.get("auth_password"):
+            updated_data["auth_password"] = parsed.password
+        if parsed.username or parsed.password:
+            host = parsed.hostname or ""
+            netloc = host
+            if parsed.port:
+                netloc = f"{host}:{parsed.port}"
+            updated_data["url"] = parsed._replace(netloc=netloc).geturl()
+            url = updated_data["url"] or ""
+
+        # If the submitted URL looks like an ONVIF device or base host, attempt
+        # to autodetect the best snapshot/stream endpoint.
+        if url and ("onvif" in url or urlparse(url).path in {"", "/"}):
+            try:
+                endpoints = routes.camera_discovery.autodetect_onvif_endpoints(
+                    url,
+                    username=updated_data.get("auth_username") or None,
+                    password=updated_data.get("auth_password") or None,
+                )
+                if endpoints.get("snapshot"):
+                    updated_data["url"] = endpoints["snapshot"]
+                elif endpoints.get("stream"):
+                    updated_data["url"] = endpoints["stream"]
+            except Exception as exc:  # pragma: no cover - network issues
+                logging.error("ONVIF autodetect failed for %s: %s", url, exc)
+
         for key in list(updated_data.keys()):
             if updated_data.get(key) is None:
                 del updated_data[key]

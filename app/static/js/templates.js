@@ -67,8 +67,11 @@ export function initTemplates() {
           return;
         }
 
-        const templateCount =
-          templateList?.querySelectorAll(".templateDiv").length || 1;
+        const totalTemplates =
+          Number(window.templatesTotalCount) ||
+          templateList?.querySelectorAll(".templateDiv:not(.skeleton-card)")
+            .length ||
+          1;
 
         const gap = parseFloat(getComputedStyle(templateList).gap || "0") || 0;
 
@@ -87,12 +90,12 @@ export function initTemplates() {
         const availableHeight =
           window.innerHeight - headerHeight - bannerHeight - footerSpace;
 
-        for (let cols = 1; cols <= templateCount; cols++) {
+        for (let cols = 1; cols <= totalTemplates; cols++) {
           const maxWidthForCols = Math.floor(
             (window.innerWidth - gap * (cols - 1)) / cols,
           );
           if (maxWidthForCols < 50) break;
-          const rows = Math.ceil(templateCount / cols);
+          const rows = Math.ceil(totalTemplates / cols);
           const tileHeight = maxWidthForCols * ASPECT_RATIO;
           const totalHeight = rows * tileHeight + gap * (rows - 1);
           if (totalHeight <= availableHeight && maxWidthForCols > bestWidth) {
@@ -109,12 +112,15 @@ export function initTemplates() {
         );
 
         slider.min = computedMin;
-        slider.value = computedMin;
-        document.documentElement.style.setProperty(
-          "--tile-size",
-          `${slider.value}px`,
-        );
-        slider.dispatchEvent(new Event("input"));
+        const currentValue = parseFloat(slider.value || "0") || computedMin;
+        if (currentValue < computedMin) {
+          slider.value = computedMin;
+          document.documentElement.style.setProperty(
+            "--tile-size",
+            `${slider.value}px`,
+          );
+          slider.dispatchEvent(new Event("input"));
+        }
       };
 
       updateSliderLimits();
@@ -652,6 +658,11 @@ export async function loadTemplates() {
       }
     });
 
+    // Some pages virtualize tiles for performance, which means
+    // `querySelectorAll(".templateDiv")` is not a reliable count.
+    // Persist the real count so the slider can compute a correct "fit on one page" size.
+    window.templatesTotalCount = templateCount;
+
     if (isIndexPage && cards.length) {
       virtualizeElements(templateList, cards);
     }
@@ -746,6 +757,7 @@ export function setupTableSorting(tableId) {
 export function setupSorting() {
   setupTableSorting("camera-table");
   setupTableSorting("feed-status");
+  setupTableSorting("top-failures");
   setupTableSorting("captions-table");
 }
 

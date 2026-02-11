@@ -24,7 +24,7 @@ class TestRateLimitFilter(unittest.TestCase):
         finally:
             logger.removeHandler(handler)
 
-        output = [l for l in stream.getvalue().splitlines() if l]
+        output = [line for line in stream.getvalue().splitlines() if line]
         self.assertEqual(len(output), 2)
 
 

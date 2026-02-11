@@ -1,9 +1,11 @@
 # tests/test_network.py
 
+import socket
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import app.utils.screenshots as ss
 from app.utils.chrome_utils import is_port_open
 from app.utils.retention_policy import get_files_sorted_by_creation_time
 from app.utils.screenshots import (
@@ -15,6 +17,10 @@ from app.utils.screenshots import (
 
 
 class TestUtils(unittest.TestCase):
+    def setUp(self):
+        ss.reachability_cache.clear()
+        ss.dns_resolve_cache.clear()
+        ss.dns_resolve_cache_time.clear()
 
     def test_get_files_sorted_by_creation_time_empty(self):
         # Test an empty directory
@@ -47,6 +53,55 @@ class TestUtils(unittest.TestCase):
         self.assertFalse(is_address_reachable("nonexistent.domain.com"))
         self.assertTrue(is_address_reachable("google.com", port=443))
         self.assertFalse(is_address_reachable("10.255.255.255", timeout=1))
+
+    @patch("app.utils.screenshots.get_arp_output")
+    @patch("socket.gethostbyname")
+    @patch("socket.socket")
+    @patch("psutil.net_if_addrs")
+    def test_is_address_reachable_does_not_require_arp(
+        self, mock_if_addrs, mock_socket, mock_gethostbyname, mock_arp
+    ):
+        mock_gethostbyname.return_value = "192.168.1.57"
+        mock_arp.return_value = b"No entry"
+        mock_instance = mock_socket.return_value
+        mock_instance.connect_ex.return_value = 0
+        mock_if_addrs.return_value = {}
+
+        self.assertTrue(is_address_reachable("cam.local", port=80, timeout=1))
+
+    @patch("app.utils.screenshots.get_arp_output")
+    @patch("socket.gethostbyname")
+    @patch("socket.socket")
+    @patch("psutil.net_if_addrs")
+    def test_is_address_reachable_tries_alternate_source_ips_on_private_networks(
+        self, mock_if_addrs, mock_socket, mock_gethostbyname, mock_arp
+    ):
+        # Simulate a multi-homed host where the default connect fails, but
+        # binding to an alternate local IPv4 address works.
+        mock_gethostbyname.return_value = "192.168.1.57"
+        mock_arp.return_value = b"No entry"
+
+        # psutil uses snicaddr; fabricate a minimal compatible object.
+        class Addr:
+            def __init__(self, address):
+                self.family = socket.AF_INET
+                self.address = address
+                self.netmask = "255.255.255.0"
+
+        mock_if_addrs.return_value = {
+            "enp6s0": [Addr("192.168.1.137"), Addr("192.168.2.137")]
+        }
+
+        # Each connect attempt creates a new socket. First attempt fails; second
+        # attempt succeeds (after bind).
+        sock1 = MagicMock()
+        sock2 = MagicMock()
+        sock1.connect_ex.return_value = 1
+        sock2.connect_ex.return_value = 0
+        mock_socket.side_effect = [sock1, sock2]
+
+        assert is_address_reachable("cam.local", port=80, timeout=1) is True
+        assert sock2.bind.called
 
     @patch("socket.socket")
     def test_is_port_open(self, mock_socket):

@@ -59,6 +59,7 @@ let liveSwitchFunction;
 let hlsInstance = null;
 let loopHandler = null;
 const speedContainer = document.getElementById("speed-container");
+const controlsWrapper = document.getElementById("controls-wrapper");
 const videoOverlay = document.getElementById("video-overlay");
 const loadingIndicator = document.getElementById("loading-indicator");
 const playPauseIndicator = document.getElementById("play-pause-indicator");
@@ -308,7 +309,13 @@ video.addEventListener("canplay", () => {
 // Hide the loading overlay when a PNG frame successfully loads so the
 // viewer immediately sees the latest snapshot instead of an indefinite
 // "Loading" message.
-image.addEventListener("load", hideLoadingIndicator);
+image.addEventListener("load", () => {
+  // When switching cameras/groups, we first show a still "last good" frame to
+  // avoid a blank player. Keep the spinner visible until the actual stream
+  // produces a frame.
+  if (image.dataset.mode === "snapshot") return;
+  hideLoadingIndicator();
+});
 video.addEventListener("play", () => showPlayPauseIndicator(false));
 video.addEventListener("pause", () => showPlayPauseIndicator(true));
 video.addEventListener("error", (e) => {
@@ -485,7 +492,6 @@ function updateFeed() {
     hideLoadingIndicator();
     video.pause();
     video.src = "";
-    image.src = "";
     showLastScreenshot();
     updateSeekBar();
     updateJogShuttle();
@@ -496,7 +502,6 @@ function updateFeed() {
     hideLoadingIndicator();
     video.pause();
     video.src = "";
-    image.src = "";
     showLastScreenshot();
     updateSeekBar();
     updateJogShuttle();
@@ -686,6 +691,7 @@ function setTimestampVisibility(show) {
 }
 
 function refreshPNG() {
+  image.dataset.mode = "png";
   image.src =
     "/last_screenshot/" +
     encodeURIComponent(currentCamera) +
@@ -695,23 +701,28 @@ function refreshPNG() {
 }
 
 function showLastScreenshot() {
-  const ts = "?time=" + new Date().getTime();
   let url;
   if (currentCamera === "All") {
     // Show the most recent screenshot across all cameras
-    url = "/stream.png" + ts;
+    url = "/stream.png?time=" + new Date().getTime();
+  } else if (currentCamera.startsWith("group-")) {
+    // Group views use a dedicated group screenshot generated server-side.
+    const groupName = currentCamera.split("group-")[1];
+    url = `/stream.png?group=${encodeURIComponent(groupName)}&time=${new Date().getTime()}`;
   } else {
-    // Display the latest screenshot for the selected camera or group
-    url = "/last_screenshot/" + encodeURIComponent(currentCamera) + ts;
+    // Display the latest screenshot for the selected camera
+    url = `/stream.png?camera=${encodeURIComponent(currentCamera)}&time=${new Date().getTime()}`;
   }
 
   // Preload the image so the viewer always sees a frame when switching
   const pre = new Image();
   pre.onload = () => {
+    image.dataset.mode = "snapshot";
     image.src = pre.src;
-    hideLoadingIndicator();
   };
-  pre.onerror = hideLoadingIndicator;
+  // If the snapshot isn't available yet (404/timeout), keep showing the prior
+  // frame and keep the spinner visible while the stream connects.
+  pre.onerror = () => {};
   pre.src = url;
   image.style.display = "block";
   updateFrameTimestamp();
@@ -909,6 +920,7 @@ function playMJPG() {
   stopPNG();
   video.style.display = "none";
   image.style.display = "block";
+  image.dataset.mode = "mjpg";
   // MJPEG streams are continuous images, disable scrubbing
   const seekBar = document.getElementById("seek-bar");
   if (seekBar) {
@@ -942,6 +954,7 @@ function playMotion() {
   stopPNG();
   video.style.display = "none";
   image.style.display = "block";
+  image.dataset.mode = "motion";
   const seekBar = document.getElementById("seek-bar");
   if (seekBar) {
     seekBar.style.display = "none";
@@ -1097,6 +1110,9 @@ function updateSpeedContainer() {
   speedContainer.style.pointerEvents = show ? "auto" : "none";
   const slider = document.getElementById("speed-slider");
   if (slider) slider.disabled = !show;
+  if (controlsWrapper) {
+    controlsWrapper.style.display = show ? "block" : "none";
+  }
 }
 
 function updateSeekBar() {

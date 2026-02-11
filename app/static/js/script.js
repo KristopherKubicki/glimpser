@@ -32,6 +32,25 @@ import { initVideoZoom } from "./zoom.js";
 import { initSearchShortcut } from "./search_shortcut.js";
 import { initUrlTester } from "./url_test.js";
 
+function initGuestGuard() {
+  if (!window.IS_LAN_GUEST) return;
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-requires-login]");
+    if (!target) return;
+    event.preventDefault();
+    const nextUrl =
+      target.getAttribute("data-login-next") ||
+      target.getAttribute("href") ||
+      window.location.pathname;
+    const confirmed = window.confirm(
+      "Login required for this action. Continue to the login screen?",
+    );
+    if (confirmed) {
+      window.location.href = `/login?next=${encodeURIComponent(nextUrl)}`;
+    }
+  });
+}
+
 initTemplates();
 initVideoControls();
 initVisibilityHandler();
@@ -67,3 +86,4 @@ initVideoZoom();
 initSearchShortcut();
 initHotkeys();
 initUrlTester();
+initGuestGuard();

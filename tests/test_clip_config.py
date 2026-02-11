@@ -75,9 +75,7 @@ class TestClipModelSetting(unittest.TestCase):
                     "app.utils.scheduling.ort",
                     types.SimpleNamespace(InferenceSession=DummySession),
                 ),
-                patch(
-                    "app.utils.scheduling.CLIPProcessor", DummyProcessor
-                ) as mock_processor_class,
+                patch("app.utils.scheduling.CLIPProcessor", DummyProcessor),
             ):
                 scheduling.clip_session = None
                 scheduling.clip_processor = None

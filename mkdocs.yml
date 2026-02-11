@@ -15,6 +15,7 @@ nav:
       - Architecture Overview: architecture_overview.md
       - Camera Discovery: camera_discovery.md
       - Camera Fix: camera_fix.md
+      - Camera Recovery: recovery.md
       - Capture Process: capture_process.md
       - Capture Summary Sequence: capture_summary_sequence.md
       - Browser Driver Management: driver_pool.md

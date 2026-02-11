@@ -42,8 +42,6 @@ test("group change updates image src", () => {
   init();
   changeGroup("kitchen");
   const img = document.getElementById("live-image");
-  expect(img.src).toMatch(/\/stream\.mjpg\?group=all&time=\d+$/);
-  jest.advanceTimersByTime(30000);
   expect(img.src).toMatch(/\/stream\.mjpg\?group=kitchen&time=\d+$/);
 });
 
@@ -62,8 +60,6 @@ test("fallback to nav camera dropdown", () => {
   init();
   changeGroup("foo");
   const img = document.getElementById("live-image");
-  expect(img.src).toMatch(/\/stream\.mjpg\?group=all&time=\d+$/);
-  jest.advanceTimersByTime(30000);
   expect(img.src).toMatch(/\/stream\.mjpg\?group=foo&time=\d+$/);
 });
 

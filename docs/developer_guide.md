@@ -49,11 +49,10 @@ to the web interface.
 
 ## Running Tests
 
-The project uses `pytest` for testing and lints Python with `ruff` and `flake8`. After activating your environment, run:
+The project uses `pytest` for testing and lints Python with `ruff`. After activating your environment, run:
 
 ```sh
 ruff check --exit-zero .
-flake8
 pytest  # runs in parallel via pytest-xdist
 ```
 

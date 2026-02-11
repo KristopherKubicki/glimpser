@@ -2,6 +2,7 @@ import os
 import subprocess
 import tempfile
 import unittest
+from contextlib import nullcontext
 from unittest.mock import MagicMock, patch
 
 from app.config import VIDEO_DIRECTORY
@@ -83,7 +84,7 @@ class TestVideoArchiver(unittest.TestCase):
     def test_compile_videos(self, mock_subprocess_run):
         mock_subprocess_run.return_value.returncode = 0
         with tempfile.NamedTemporaryFile(mode="w+") as temp_file:
-            temp_file.write("dummy content")
+            temp_file.write("file 'example.mp4'\n")
             temp_file.flush()
             with (
                 patch("os.path.exists", return_value=True),
@@ -155,7 +156,7 @@ class TestVideoArchiver(unittest.TestCase):
             patch(
                 "app.utils.video_archiver.handle_concat_error",
                 return_value=ConcatStatus.RETRY,
-            ) as mock_handle,
+            ),
             patch("os.path.exists", return_value=True),
             patch("os.path.getsize", return_value=1),
             patch("os.rename"),
@@ -163,7 +164,7 @@ class TestVideoArchiver(unittest.TestCase):
             patch("os.path.getmtime", return_value=100),
             patch("time.time", return_value=105),
         ):
-            result = concatenate_videos("in.mp4", "tmp.mp4", self.temp_dir)
+            concatenate_videos("in.mp4", "tmp.mp4", self.temp_dir)
         self.assertEqual(mock_subprocess_run.call_count, 2)
 
     @patch("app.utils.video_archiver.logging.warning")
@@ -191,6 +192,7 @@ class TestVideoArchiver(unittest.TestCase):
 
     def test_handle_concat_error(self):
         with (
+            patch("os.path.exists", return_value=True),
             patch("os.path.getsize", return_value=100),
             patch("os.rename") as mock_rename,
         ):
@@ -213,6 +215,7 @@ class TestVideoArchiver(unittest.TestCase):
             self.assertEqual(status, ConcatStatus.RETRY)
 
         with (
+            patch("os.path.exists", return_value=True),
             patch("os.path.getsize", return_value=100),
             patch("os.rename") as mock_rename,
         ):
@@ -225,17 +228,19 @@ class TestVideoArchiver(unittest.TestCase):
     @patch("app.utils.video_archiver.get_video_duration")
     @patch("app.utils.video_archiver.concatenate_videos")
     @patch("app.utils.video_archiver.Image.open")
+    @patch("app.utils.video_archiver._is_valid_png", return_value=True)
     @patch("app.utils.video_archiver.is_mostly_blank", return_value=False)
     @patch("glob.glob")
-    def test_compile_to_video(
+    def test_compile_to_video(  # noqa: PLR0913
         self,
         mock_glob,
         mock_blank,
+        mock_is_valid,
         mock_open,
         mock_concatenate_videos,
         mock_get_video_duration,
     ):
-        mock_glob.return_value = ["frame_2.png", "frame_2.png"]
+        mock_glob.return_value = ["frame_2.png", "frame_2.png", "frame_2.png"]
         mock_get_video_duration.return_value = 5
         mock_concatenate_videos.return_value = True
 
@@ -244,7 +249,7 @@ class TestVideoArchiver(unittest.TestCase):
             patch("os.path.isfile", return_value=False),
             patch("os.path.getmtime", return_value=1724516114),
             patch("os.path.getctime", return_value=1724516115),
-            patch("os.path.getsize", return_value=1000),
+            patch("os.path.getsize", return_value=2048),
             patch("os.rename"),
             patch("app.utils.video_archiver.run_ffmpeg") as mock_run_ffmpeg,
         ):
@@ -258,9 +263,10 @@ class TestVideoArchiver(unittest.TestCase):
 
     @patch("app.utils.video_archiver.pipe_ffmpeg_frames")
     @patch("app.utils.video_archiver.Image.open")
+    @patch("app.utils.video_archiver._is_valid_png", return_value=True)
     @patch("glob.glob")
     def test_compile_to_video_ignores_blank_frames(
-        self, mock_glob, mock_open, mock_pipe
+        self, mock_glob, mock_is_valid, mock_open, mock_pipe
     ):
         mock_glob.return_value = ["shot_blank.png", "shot_2.png"]
 
@@ -294,16 +300,23 @@ class TestVideoArchiver(unittest.TestCase):
 
     @patch("app.utils.video_archiver.run_ffmpeg")
     @patch("app.utils.video_archiver.Image.open")
+    @patch("app.utils.video_archiver._is_valid_png", return_value=True)
+    @patch("app.utils.video_archiver.is_mostly_blank", return_value=False)
     @patch("glob.glob")
     def test_compile_to_video_skips_missing_files(
-        self, mock_glob, mock_open, mock_run_ffmpeg
+        self, mock_glob, mock_blank, mock_is_valid, mock_open, mock_run_ffmpeg
     ):
-        mock_glob.return_value = ["frame1_2.png", "frame2_2.png"]
+        mock_glob.return_value = [
+            "frame1_2.png",
+            "frame2_2.png",
+            "frame3_2.png",
+            "frame4_2.png",
+        ]
 
         def size_side_effect(path):
             if "frame1" in path:
                 raise FileNotFoundError
-            return 1000
+            return 2048
 
         with (
             patch("os.path.exists", return_value=True),
@@ -323,6 +336,8 @@ class TestVideoArchiver(unittest.TestCase):
     @patch("app.utils.video_archiver.compile_to_video")
     def test_archive_screenshots(self, mock_compile_to_video):
         with (
+            patch("app.utils.video_archiver.ARCHIVE_BATCH_SIZE", 0),
+            patch("app.utils.video_archiver.FileLock", return_value=nullcontext()),
             patch("os.listdir", return_value=["camera1", "camera2"]),
             patch("os.path.isdir", return_value=True),
         ):
@@ -333,6 +348,8 @@ class TestVideoArchiver(unittest.TestCase):
     @patch("app.utils.video_archiver.compile_to_video", side_effect=Exception("fail"))
     def test_archive_screenshots_logs_error(self, mock_compile_to_video, mock_log):
         with (
+            patch("app.utils.video_archiver.ARCHIVE_BATCH_SIZE", 0),
+            patch("app.utils.video_archiver.FileLock", return_value=nullcontext()),
             patch("os.listdir", return_value=["camera1"]),
             patch("os.path.isdir", return_value=True),
         ):

@@ -8,6 +8,7 @@ segments.
 
 import datetime
 import glob
+import json
 import logging
 import os
 import subprocess
@@ -15,10 +16,11 @@ import tempfile
 import time
 from enum import Enum, auto
 
-from filelock import FileLock
+from filelock import FileLock, Timeout
 from PIL import Image
 
 from app.config import (
+    ARCHIVE_BATCH_SIZE,
     FFMPEG_HWACCEL,
     FFMPEG_PATH,
     FFMPEG_THREADS,
@@ -30,7 +32,7 @@ from app.config import (
     VERSION,
     VIDEO_DIRECTORY,
 )
-from app.utils.screenshots import is_mostly_blank
+from app.utils.screenshots import _is_valid_png, is_mostly_blank
 
 from .template_manager import get_templates
 from .validators import validate_template_name
@@ -44,6 +46,18 @@ class ConcatStatus(Enum):
     FATAL = auto()
 
 
+MIN_VALID_MP4_BYTES = 300
+MIN_DURATION_SECONDS = 10
+STALE_TIMESTAMP_SECONDS = 10
+MIN_VALID_PNG_BYTES = 1024
+MIN_VALID_FRAME_BYTES = 10
+MIN_FRAME_COUNT = 3
+EXPECTED_RESOLUTION_PARTS = 2
+ARCHIVE_LOCK_TIMEOUT = int(os.getenv("ARCHIVE_LOCK_TIMEOUT", "0"))
+ARCHIVE_LOCK_STALE_SECONDS = int(os.getenv("ARCHIVE_LOCK_STALE_SECONDS", "1800"))
+ARCHIVE_CURSOR_FILENAME = ".archive_screenshots.cursor"
+
+
 def touch(fname, times=None):
     """Create ``fname`` if missing and update its modification time."""
 
@@ -52,7 +66,7 @@ def touch(fname, times=None):
 
 
 def trim_group_name(group_name):
-    """Normalize a group name by replacing spaces with underscores and converting to lowercase."""
+    """Normalize a group name by replacing spaces and lowercasing."""
     return group_name.replace(" ", "_").lower()
 
 
@@ -68,8 +82,7 @@ def run_ffmpeg(command, timeout: int = 30):
     """
     result = subprocess.run(
         command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
         timeout=timeout,
         check=False,
@@ -83,6 +96,73 @@ def run_ffmpeg(command, timeout: int = 30):
             result.returncode, command, output=result.stdout, stderr=result.stderr
         )
     return result
+
+
+def _has_dts_warnings(stderr: str) -> bool:
+    if not stderr:
+        return False
+    lowered = stderr.lower()
+    return (
+        "non-monotonic dts" in lowered or "non monotonically increasing dts" in lowered
+    )
+
+
+def _reencode_concat(input_path: str, output_path: str) -> None:
+    """Re-encode concatenated video to normalize timestamps."""
+    command = [FFMPEG_PATH]
+    if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
+        command.extend(["-hwaccel", FFMPEG_HWACCEL])
+    command.extend(
+        [
+            "-fflags",
+            "+genpts",
+            "-i",
+            os.path.abspath(input_path),
+            "-an",
+            "-dn",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "23",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            "-y",
+            os.path.abspath(output_path),
+        ]
+    )
+    run_ffmpeg(command, timeout=60)
+
+
+def _concat_list_has_entries(path: str) -> bool:
+    """Return True when the concat list contains at least one file entry."""
+
+    try:
+        with open(path) as handle:
+            for line in handle:
+                if line.lstrip().startswith("file "):
+                    return True
+    except OSError:
+        return False
+    return False
+
+
+def _log_ffmpeg_failure(prefix: str, exc: Exception) -> None:
+    """Log ffmpeg errors with stderr when available."""
+
+    details = ""
+    if isinstance(exc, subprocess.CalledProcessError):
+        if exc.stderr:
+            details = exc.stderr.strip()
+        elif exc.output:
+            details = exc.output.strip()
+    if details:
+        logging.error("%s: %s", prefix, details)
+    else:
+        logging.error("%s: %s", prefix, exc)
 
 
 def pipe_ffmpeg_frames(command, frame_files):
@@ -133,8 +213,7 @@ def get_video_creation_time(video_path):
     try:
         result = subprocess.run(
             command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
             check=False,
         )
@@ -252,6 +331,9 @@ def compile_videos(input_file, output_file):
 
     if not os.path.exists(input_file):
         return False
+    if not _concat_list_has_entries(input_file):
+        logging.warning("FFmpeg concat list empty: %s", input_file)
+        return False
 
     create_command = [FFMPEG_PATH]
     if FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false":
@@ -283,14 +365,17 @@ def compile_videos(input_file, output_file):
 
     try:
         run_ffmpeg(create_command, timeout=30)
-        if os.path.exists(output_file) and os.path.getsize(output_file) > 300:
+        if (
+            os.path.exists(output_file)
+            and os.path.getsize(output_file) > MIN_VALID_MP4_BYTES
+        ):
             if is_video_expired(output_file, MAX_COMPRESSED_VIDEO_AGE):
                 logging.info("Rotating expired output %s", output_file)
             os.rename(output_file, output_file.replace(".tmp", ""))
             return True
         # otherwise, do something? clean up the file maybe?
     except Exception as e:
-        logging.error("FFmpeg command failed: %s", e)
+        _log_ffmpeg_failure("FFmpeg command failed", e)
         if os.path.exists(output_file):
             os.unlink(output_file)
 
@@ -358,8 +443,7 @@ def get_video_duration(video_path):
     try:
         result = subprocess.run(
             command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
             check=False,
         )
@@ -390,21 +474,22 @@ def get_video_resolution(video_path):
     try:
         result = subprocess.run(
             command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
             check=False,
         )
         if result.stdout.strip():
             w_h = result.stdout.strip().split("x")
-            if len(w_h) == 2:
+            if len(w_h) == EXPECTED_RESOLUTION_PARTS:
                 return int(w_h[0]), int(w_h[1])
     except Exception:
         pass
     return None, None
 
 
-def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> bool:
+def concatenate_videos(  # noqa: PLR0912, PLR0915
+    in_process_video, temp_video, video_path, retries=1
+) -> bool:
     """Concatenate the temporary video with the existing in-process video."""
     file_updated = False
 
@@ -452,8 +537,16 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
                     ]
                 )
                 try:
-                    run_ffmpeg(concat_command)
-                    os.rename(concat_video, in_process_video)
+                    result = run_ffmpeg(concat_command)
+                    concat_output = concat_video
+                    if _has_dts_warnings(result.stderr):
+                        reencoded = os.path.join(video_path, "in_process.reencoded.mp4")
+                        logging.info("Re-encoding concat output to fix DTS warnings.")
+                        _reencode_concat(concat_output, reencoded)
+                        concat_output = reencoded
+                    os.rename(concat_output, in_process_video)
+                    if os.path.exists(concat_video) and concat_video != concat_output:
+                        os.remove(concat_video)
                     file_updated = True
                     output_video = os.path.join(VIDEO_DIRECTORY, "latest_camera.mp4")
                     if os.path.exists(output_video + ".tmp"):
@@ -468,6 +561,7 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
                     )
 
                 except Exception as e:
+                    _log_ffmpeg_failure("FFmpeg concat failed", e)
                     status = handle_concat_error(e, temp_video, in_process_video)
                     if status == ConcatStatus.RETRY and retries > 0:
                         logging.info("Retrying concatenation due to transient error")
@@ -493,7 +587,7 @@ def concatenate_videos(in_process_video, temp_video, video_path, retries=1) -> b
     if os.path.exists(in_process_video):
         if file_updated:
             mod_time = os.path.getmtime(in_process_video)
-            if abs(time.time() - mod_time) > 10:
+            if abs(time.time() - mod_time) > STALE_TIMESTAMP_SECONDS:
                 logging.warning(
                     "in_process video timestamp stale: %s", in_process_video
                 )
@@ -512,7 +606,7 @@ def handle_concat_error(e, temp_video, in_process_video) -> ConcatStatus:
 
     if "Invalid data found" in message:
         logging.warning("invalid in_process file %s", message)
-        if os.path.getsize(temp_video) > 0:
+        if os.path.exists(temp_video) and os.path.getsize(temp_video) > 0:
             os.rename(temp_video, in_process_video)
         return ConcatStatus.RECOVERED
 
@@ -521,7 +615,7 @@ def handle_concat_error(e, temp_video, in_process_video) -> ConcatStatus:
         return ConcatStatus.RETRY
 
     logging.error("FFmpeg concat command failed: %s", message)
-    if os.path.getsize(temp_video) > 0:
+    if os.path.exists(temp_video) and os.path.getsize(temp_video) > 0:
         os.rename(temp_video, in_process_video)
     return ConcatStatus.FATAL
 
@@ -538,7 +632,7 @@ def compile_to_video(camera_path, video_path):
         _compile_to_video_inner(camera_path, video_path)
 
 
-def _compile_to_video_inner(camera_path, video_path) -> bool:
+def _compile_to_video_inner(camera_path, video_path) -> bool:  # noqa: PLR0912, PLR0915
     """Internal helper that encodes screenshots into ``in_process.mp4``.
 
     Parameters
@@ -588,7 +682,7 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
         video_mod_time = os.path.getmtime(in_process_video)
         ldur = get_video_duration(in_process_video)
         if (
-            ldur < 10 and time.time() - video_mod_time > 60 * 60
+            ldur < MIN_DURATION_SECONDS and time.time() - video_mod_time > 60 * 60
         ):  # could be a waste of 300 frames...
             video_mod_time = 0
             # go bigger...
@@ -639,14 +733,21 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
         with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_file:
             for file in new_files[-300:]:  # keep it short for now
                 try:
-                    if os.path.getsize(os.path.abspath(file)) > 10 and "_2" in file:
+                    if os.path.getsize(os.path.abspath(file)) < MIN_VALID_PNG_BYTES:
+                        continue
+                    if not _is_valid_png(file):
+                        continue
+                    if (
+                        os.path.getsize(os.path.abspath(file)) > MIN_VALID_FRAME_BYTES
+                        and "_2" in file
+                    ):
                         temp_file.write(f"file '{os.path.abspath(file)}'\n")
                         lcount += 1
                 except FileNotFoundError:
                     # Screenshot was removed concurrently; ignore it
                     continue
             temp_file_path = temp_file.name
-        if lcount == 0:
+        if lcount < MIN_FRAME_COUNT:
             # nothing to do
             os.remove(temp_file_path)
             return
@@ -692,27 +793,29 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
             ]
         )
         create_command.extend(
-            ["-metadata", "creation_time=%sZ" % datetime.datetime.utcnow()]
+            ["-metadata", f"creation_time={datetime.datetime.utcnow()}Z"]
         )
-        create_command.extend(["-metadata", "encoded_by=%s" % NAME])
-        create_command.extend(["-metadata", "version=%s" % VERSION])
+        create_command.extend(["-metadata", f"encoded_by={NAME}"])
+        create_command.extend(["-metadata", f"version={VERSION}"])
         create_command.extend(
             ["-y", os.path.abspath(temp_video)]
         )  # Overwrite if exists
 
-        lout, lerr = None, None
         try:
             run_ffmpeg(create_command)
             if is_video_expired(temp_video, MAX_COMPRESSED_VIDEO_AGE):
                 logging.warning("creation time mismatch for %s", temp_video)
         except Exception as e:
-            logging.error("FFmpeg command failed: %s", e)
+            _log_ffmpeg_failure("FFmpeg command failed", e)
 
         finally:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)  # Clean up the temporary file
 
             # Concatenate the temporary video with the existing in-process video
+            if not os.path.exists(temp_video):
+                logging.warning("FFmpeg did not create %s", temp_video)
+                return
             if os.path.getsize(temp_video) > 0 and video_mod_time == 0:
                 os.rename(temp_video, in_process_video)
             else:
@@ -725,16 +828,17 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:
                     concatenate_videos(in_process_video, temp_video, video_path)
                 else:
                     # this means a lot of frame drops
-                    ltest = concatenate_videos(in_process_video, temp_video, video_path)
+                    concatenate_videos(in_process_video, temp_video, video_path)
 
-    # Add new screenshots to the "in-process" video
-    # Assuming screenshots are added at a regular interval, they can be appended in order
-    # Here, you would add logic to append new screenshots to the "in-process" video using ffmpeg
-    # This part can be complex because ffmpeg doesn't natively append to videos without re-encoding
-    # You may want to consider alternative methods of video assembly if frequent appending is required
+    # Add new screenshots to the "in-process" video. Assuming screenshots are
+    # added at a regular interval, they can be appended in order. FFmpeg does
+    # not natively append to videos without re-encoding; consider alternative
+    # assembly methods if frequent appending is required.
 
 
-def _old_compile_to_video_inner(camera_path, video_path) -> bool:
+def _old_compile_to_video_inner(  # noqa: PLR0912, PLR0915
+    camera_path, video_path
+) -> bool:
     """Legacy helper that assembles screenshots into ``in_process.mp4``.
 
     Args:
@@ -781,7 +885,7 @@ def _old_compile_to_video_inner(camera_path, video_path) -> bool:
         video_mod_time = os.path.getmtime(in_process_video)
         ldur = get_video_duration(in_process_video)
         if (
-            ldur < 10 and time.time() - video_mod_time > 60 * 60
+            ldur < MIN_DURATION_SECONDS and time.time() - video_mod_time > 60 * 60
         ):  # could be a waste of 300 frames...
             # print("  skipping ", in_process_video, ldur, time.time() - video_mod_time)
             video_mod_time = 0
@@ -836,7 +940,7 @@ def _old_compile_to_video_inner(camera_path, video_path) -> bool:
         candidate = []
         for f in new_files[-300:]:
             try:
-                if os.path.getsize(f) > 10 and "_2" in f:
+                if os.path.getsize(f) > MIN_VALID_FRAME_BYTES and "_2" in f:
                     candidate.append(f)
             except FileNotFoundError:
                 # Screenshot was removed concurrently; ignore it
@@ -885,7 +989,7 @@ def _old_compile_to_video_inner(camera_path, video_path) -> bool:
             ]
         )
         create_command.extend(
-            ["-metadata", "creation_time=%sZ" % datetime.datetime.utcnow()]
+            ["-metadata", f"creation_time={datetime.datetime.utcnow()}Z"]
         )
         create_command.extend(["-metadata", f"encoded_by={NAME}"])
         create_command.extend(["-metadata", f"version={VERSION}"])
@@ -921,17 +1025,86 @@ def archive_screenshots():
     os.makedirs(VIDEO_DIRECTORY, exist_ok=True)
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)
 
-    for camera_name in os.listdir(SCREENSHOT_DIRECTORY):
-        if not validate_template_name(camera_name):
-            continue
-        camera_path = os.path.join(SCREENSHOT_DIRECTORY, camera_name)
-        if not os.path.isdir(camera_path):  # just a file
-            continue
-        video_path = os.path.join(VIDEO_DIRECTORY, camera_name)
-        os.makedirs(camera_path, exist_ok=True)
-        os.makedirs(video_path, exist_ok=True)
-
+    lock_path = os.path.join(VIDEO_DIRECTORY, ".archive_screenshots.lock")
+    if os.path.exists(lock_path):
         try:
-            compile_to_video(camera_path, video_path)
-        except Exception:
-            logging.exception("Failed to compile video for camera %s", camera_name)
+            age = time.time() - os.path.getmtime(lock_path)
+            if age > ARCHIVE_LOCK_STALE_SECONDS:
+                logging.warning(
+                    "archive_screenshots lock stale (age=%.0fs); removing %s",
+                    age,
+                    lock_path,
+                )
+                os.remove(lock_path)
+        except OSError:
+            pass
+
+    lock = FileLock(lock_path, timeout=ARCHIVE_LOCK_TIMEOUT)
+    try:
+        with lock:
+            cameras = [
+                name
+                for name in os.listdir(SCREENSHOT_DIRECTORY)
+                if validate_template_name(name)
+                and os.path.isdir(os.path.join(SCREENSHOT_DIRECTORY, name))
+            ]
+            cameras.sort()
+            if not cameras:
+                return
+
+            batch_size = max(int(ARCHIVE_BATCH_SIZE), 0)
+            if batch_size == 0 or batch_size >= len(cameras):
+                batch = cameras
+                next_index = 0
+            else:
+                cursor_path = os.path.join(VIDEO_DIRECTORY, ARCHIVE_CURSOR_FILENAME)
+                start_index = 0
+                try:
+                    if os.path.exists(cursor_path):
+                        with open(cursor_path, "r", encoding="utf-8") as handle:
+                            payload = json.load(handle)
+                        start_index = int(payload.get("index", 0)) % len(cameras)
+                except Exception:
+                    start_index = 0
+
+                batch = cameras[start_index : start_index + batch_size]
+                if len(batch) < batch_size:
+                    remainder = batch_size - len(batch)
+                    batch.extend(cameras[:remainder])
+                next_index = (start_index + len(batch)) % len(cameras)
+                try:
+                    tmp_path = f"{cursor_path}.tmp"
+                    with open(tmp_path, "w", encoding="utf-8") as handle:
+                        json.dump(
+                            {
+                                "index": next_index,
+                                "updated_at": datetime.datetime.utcnow().isoformat(),
+                            },
+                            handle,
+                        )
+                    os.replace(tmp_path, cursor_path)
+                except Exception:
+                    logging.debug("Failed to update archive cursor", exc_info=True)
+
+            logging.info(
+                "Archiving screenshots batch %d/%d",
+                len(batch),
+                len(cameras),
+            )
+
+            for camera_name in batch:
+                camera_path = os.path.join(SCREENSHOT_DIRECTORY, camera_name)
+                if not os.path.isdir(camera_path):  # just a file
+                    continue
+                video_path = os.path.join(VIDEO_DIRECTORY, camera_name)
+                os.makedirs(camera_path, exist_ok=True)
+                os.makedirs(video_path, exist_ok=True)
+
+                try:
+                    compile_to_video(camera_path, video_path)
+                except Exception:
+                    logging.exception(
+                        "Failed to compile video for camera %s", camera_name
+                    )
+    except Timeout:
+        logging.warning("archive_screenshots already running; skipping this cycle")

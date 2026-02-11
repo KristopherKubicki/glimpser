@@ -19,10 +19,20 @@ keyboard = None
 mouse = None
 
 
+def _env_flag(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() not in {"0", "false", "no", "off"}
+
+
 def _safe_import_pynput() -> None:
     """Import pynput when input libraries are available."""
     global keyboard, mouse
     if keyboard is not None and mouse is not None:
+        return
+    if not _env_flag("ENABLE_PYNPUT", default=True):
+        logging.debug("Skipping pynput import: disabled by ENABLE_PYNPUT")
         return
     display = os.environ.get("DISPLAY")
     system = platform.system()
@@ -38,7 +48,7 @@ def _safe_import_pynput() -> None:
     except Exception as e:  # pragma: no cover - optional dependency
         mouse = None
         keyboard = None
-        logging.warning("pynput not available: %s", e)
+        logging.debug("Skipping pynput import: %s", e)
 
 
 _safe_import_pynput()
@@ -190,7 +200,7 @@ def idle_seconds_loginctl() -> int:
         ).splitlines()
     except subprocess.SubprocessError:
         raise RuntimeError("loginctl unavailable")
-    props = dict(l.split("=", 1) for l in out if "=" in l)
+    props = dict(line.split("=", 1) for line in out if "=" in line)
     if props.get("IdleHint", "no") != "yes":
         return 0
     idle_us = int(props["IdleSinceHintMonotonicUSec"])
@@ -308,9 +318,19 @@ def check_user_activity(timeout: int = 10) -> bool:
     if keyboard_listener:
         keyboard_listener.stop()
     if mouse_listener:
-        mouse_listener.join()
+        try:
+            mouse_listener.join(timeout=1)
+            if mouse_listener.is_alive():
+                logging.debug("mouse listener did not stop within timeout")
+        except Exception as e:
+            logging.debug("mouse listener join failed: %s", e)
     if keyboard_listener:
-        keyboard_listener.join()
+        try:
+            keyboard_listener.join(timeout=1)
+            if keyboard_listener.is_alive():
+                logging.debug("keyboard listener did not stop within timeout")
+        except Exception as e:
+            logging.debug("keyboard listener join failed: %s", e)
     return user_active
 
 

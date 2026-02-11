@@ -76,7 +76,7 @@ def ffmpeg_supports_hwaccel() -> bool:
         output = subprocess.check_output(
             [FFMPEG_PATH, "-hwaccels"], stderr=subprocess.STDOUT, timeout=2
         ).decode()
-        lines = [l.strip() for l in output.splitlines() if l.strip()]
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
         FFMPEG_GPU_SUPPORT = len(lines) > 1
     except Exception:
         FFMPEG_GPU_SUPPORT = False

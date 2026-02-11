@@ -4,7 +4,7 @@
   max-width: 100vw;
   width: 100%;
   height: auto;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--media-aspect, 16 / 9);
   max-height: 92vh;
   position: relative;
   /* Hide scroll bars for a cleaner live view */
@@ -13,6 +13,28 @@
 
 .video-container.live-mode {
   border: 2px solid #4ade80;
+  animation: live-breath 1.8s ease-in-out infinite;
+}
+
+@keyframes live-breath {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(74, 222, 128, 0.0),
+      0 0 0 0 rgba(74, 222, 128, 0.0);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(74, 222, 128, 0.25),
+      0 0 18px 2px rgba(74, 222, 128, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video-container.live-mode {
+    animation: none;
+    box-shadow: none;
+  }
 }
 
 .clip-nav {
@@ -83,8 +105,91 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  max-width: 100vw;
-  max-height: 92vh;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.live-clock {
+  position: absolute;
+  right: 10px;
+  bottom: 70px;
+  z-index: 6;
+  display: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.video-container.live-mode .live-clock {
+  display: block;
+}
+
+.go-live-btn {
+  position: absolute;
+  right: 10px;
+  bottom: 110px;
+  z-index: 7;
+  display: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.go-live-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.clip-controls {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 18px;
+  z-index: 7;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.clip-controls .clip-seek {
+  width: 100%;
+  flex: 1;
+}
+
+.clip-controls .clip-time {
+  min-width: 56px;
+  text-align: right;
+  color: #fff;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  pointer-events: none;
+}
+
+@media (max-width: 600px) {
+  .live-clock {
+    bottom: 54px;
+    font-size: 0.8rem;
+  }
+  .go-live-btn {
+    bottom: 92px;
+    font-size: 0.85rem;
+  }
+  .clip-controls {
+    bottom: 12px;
+    padding: 7px 9px;
+  }
 }
 .video-controls {
   position: absolute;
@@ -225,6 +330,10 @@ video::-webkit-media-controls-volume-control-container {
   display: none;
 }
 
+video::-webkit-media-controls-fullscreen-button {
+  display: none;
+}
+
 video::-moz-volume-control {
   display: none;
 }
@@ -245,12 +354,21 @@ video::-moz-volume-control {
   font-size: 1.25rem;
   border-radius: 4px;
   cursor: pointer;
-  transition: opacity 0.3s;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 0.3s,
+    visibility 0s linear 0s;
 }
 
 #fullscreen-toggle.fade-out {
   opacity: 0;
-  pointer-events: none;
+  /* Keep the button clickable while it is still fading out.
+     Once fully hidden, remove it from hit-testing via visibility. */
+  visibility: hidden;
+  transition:
+    opacity 0.3s,
+    visibility 0s linear 0.3s;
 }
 
 #fullscreen-toggle:focus {

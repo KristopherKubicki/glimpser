@@ -1,10 +1,11 @@
-# flake8: noqa
+# ruff: noqa
 """HTTP route handlers and helper utilities.
 
 This module registers all Flask endpoints for the application. Routes handle
 authentication, configuration management, media retrieval and other REST
 operations used by the web UI and API.
 """
+
 import csv
 import email.utils
 import fcntl
@@ -47,6 +48,7 @@ from flask import (
     abort,
     current_app,
     flash,
+    has_request_context,
     jsonify,
     make_response,
     redirect,
@@ -146,7 +148,7 @@ from typing import Any, Callable, Dict, Generator, List, Optional
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 import app.utils.media_utils as media_utils
-from app.utils.db import SessionLocal, engine
+from app.utils.db import SessionLocal, engine, ensure_column, init_db
 
 # Clip caching constants
 CACHE_TTL_SEC = 120
@@ -388,12 +390,39 @@ def login_required(f: Callable) -> Callable:
             ip_obj = ip_address(ip) if ip else None
         except ValueError:
             ip_obj = None
-        if (
-            ip_obj
-            and any(ip_obj in net for net in config.SKIP_LOGIN_SUBNETS)
-            and not request.path.startswith("/settings")
-        ):
-            return f(*args, **kwargs)
+        lan_guest = False
+        if ip_obj and any(ip_obj in net for net in config.SKIP_LOGIN_SUBNETS):
+            lan_guest = True
+
+        if lan_guest and not request.path.startswith("/settings"):
+            mode = (config.LAN_GUEST_MODE or "full").lower()
+            if mode not in {"full", "read_only", "disabled"}:
+                mode = "full"
+            if mode == "disabled":
+                lan_guest = False
+            elif mode == "full":
+                return f(*args, **kwargs)
+            else:
+                safe_methods = {"GET", "HEAD", "OPTIONS"}
+                blocked_prefixes = (
+                    "/settings",
+                    "/authentication",
+                    "/api",
+                    "/discover",
+                    "/system",
+                    "/mcp",
+                    "/notifications",
+                )
+                blocked_paths = {
+                    "/logs",
+                    "/stream_logs",
+                    "/cost_summary",
+                }
+                if request.method not in safe_methods or request.path in blocked_paths:
+                    return _lan_guest_denied()
+                if any(request.path.startswith(prefix) for prefix in blocked_prefixes):
+                    return _lan_guest_denied()
+                return f(*args, **kwargs)
         # Check for API key in headers, GET parameters, or POST form data
         api_key = (
             request.headers.get("X-API-Key")
@@ -470,6 +499,22 @@ def login_required(f: Callable) -> Callable:
                     flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
 
+            if is_temp_password_required(user):
+                session["force_password_reset"] = True
+
+            if session.get("force_password_reset"):
+                allowed_endpoints = {
+                    "authentication.reset_password",
+                    "authentication.logout",
+                    "logout",
+                }
+                if request.endpoint in allowed_endpoints:
+                    return f(*args, **kwargs)
+                if request.path.startswith("/api") or request.is_json:
+                    return jsonify({"error": "password_reset_required"}), 403
+                flash("Password reset required to continue.", "warning")
+                return redirect(url_for("authentication.reset_password"))
+
             # Optional role checks could be added here
             return f(*args, **kwargs)
 
@@ -503,6 +548,25 @@ def login_required(f: Callable) -> Callable:
                 return redirect(url_for("login", next=request.url))
 
     return decorated_function
+
+
+def _lan_guest_denied() -> Response:
+    if request.path.startswith("/api") or request.is_json:
+        return jsonify({"error": "lan_guest_restricted"}), 403
+    if current_app.secret_key:
+        flash("Login required for this action.", "error")
+    return redirect(url_for("login", next=request.url))
+
+
+def is_temp_password_required(user: Any) -> bool:
+    """Return True when a user has a temporary password flag set."""
+
+    value = getattr(user, "temp_password_required", False)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value == 1
+    return False
 
 
 # Function to read logs from the local text file and filter them based on query parameters
@@ -1031,6 +1095,36 @@ def _overlay_stream_timestamp(frame: bytes) -> bytes:
 
 
 lock = Lock()
+latest_shot_cache = {}
+
+
+def _cache_key(group: Optional[str], camera: Optional[str], filename: str) -> tuple:
+    return (group or "", camera or "", filename)
+
+
+def _get_cached_latest_shot(
+    group: Optional[str], camera: Optional[str], filename: str, ttl: float = 1.0
+) -> Optional[str]:
+    key = _cache_key(group, camera, filename)
+    entry = latest_shot_cache.get(key, {})
+    cached_at = entry.get("time", 0)
+    path = entry.get("path")
+    if not path:
+        return None
+    if time.time() - cached_at > ttl:
+        return None
+    if not os.path.exists(path):
+        return None
+    return path
+
+
+def _set_cached_latest_shot(
+    group: Optional[str], camera: Optional[str], filename: str, path: str
+) -> None:
+    latest_shot_cache[_cache_key(group, camera, filename)] = {
+        "time": time.time(),
+        "path": path,
+    }
 
 
 def generate(
@@ -1129,82 +1223,108 @@ def generate(
                         last_shot = None
 
                 if frame is None:
-                    # Replace this with your actual template manager code
-                    templates = template_manager.get_templates()
+                    cached = _get_cached_latest_shot(group, camera, filename)
+                    if cached:
+                        most_recent_file = cached
+                    else:
+                        most_recent_file = None
 
-                    # sorted_templates = sorted(templates.items(), key=lambda x: int(x[1].get('last_video_time', 0) or 0), reverse=True)
-                    sorted_templates = (
-                        templates.items()
-                    )  # there is a problem with the sort..
+                    if most_recent_file is None:
+                        # Replace this with your actual template manager code
+                        templates = template_manager.get_templates()
 
-                    most_recent_time = 0
-                    most_recent_file = None
-                    # there is some kind of bug in here where we will sometimes pick an image before we should (like if its not captioned yet)
-                    for template_id, template_details in sorted_templates:
-                        template_name = validate_template_name(
-                            template_details.get("name")
-                        )
-                        if template_name is None:
-                            continue
+                        # sorted_templates = sorted(templates.items(), key=lambda x: int(x[1].get('last_video_time', 0) or 0), reverse=True)
+                        sorted_templates = (
+                            templates.items()
+                        )  # there is a problem with the sort..
 
-                        if camera and template_name != camera:
-                            continue
-
-                        template_groups = []
-                        if group and "groups" in template_details:
-                            template_groups = [
-                                g.strip() for g in template_details["groups"].split(",")
-                            ]
-                            if group not in template_groups:
-                                continue
-                        elif group:
-                            continue
-
-                        path = os.path.join(
-                            os.path.dirname(os.path.abspath(__file__)),
-                            "..",
-                            SCREENSHOT_DIRECTORY,
-                            template_name,
-                        )
-                        # no need to loop through the directory if we find the symlink file
-                        lfiles = []
-                        file_path = os.path.join(path, filename)
-                        if os.path.exists(file_path):
-                            lfiles = [file_path]
-                        else:
-                            # fall back to the oldest screenshot so the MJPEG
-                            # stream always has an initial frame
-                            pngs = []
-                            for f in os.listdir(path):
-                                full = os.path.join(path, f)
-                                if f.endswith(".png") and os.path.isfile(full):
-                                    try:
-                                        ctime = os.path.getctime(full)
-                                    except FileNotFoundError:
-                                        # file vanished between listdir and stat
-                                        continue
-                                    pngs.append((ctime, full))
-
-                            if pngs:
-                                pngs.sort(key=lambda t: t[0])
-                                lfiles = [pngs[0][1]]
-
-                        last_file = lfiles[-1] if lfiles else None
-                        if (
-                            last_file
-                            and os.path.exists(last_file)
-                            and (
-                                os.path.getmtime(last_file) > most_recent_time
-                                or most_recent_file is None
+                        most_recent_time = 0
+                        # there is some kind of bug in here where we will sometimes pick an image before we should (like if its not captioned yet)
+                        for template_id, template_details in sorted_templates:
+                            template_name = validate_template_name(
+                                template_details.get("name")
                             )
-                        ):
-                            most_recent_file = last_file
-                            most_recent_time = os.path.getmtime(last_file)
+                            if template_name is None:
+                                continue
+
+                            if camera and template_name != camera:
+                                continue
+
+                            template_groups = []
+                            if group and "groups" in template_details:
+                                template_groups = [
+                                    g.strip()
+                                    for g in template_details["groups"].split(",")
+                                ]
+                                if group not in template_groups:
+                                    continue
+                            elif group:
+                                continue
+
+                            path = os.path.join(
+                                os.path.dirname(os.path.abspath(__file__)),
+                                "..",
+                                SCREENSHOT_DIRECTORY,
+                                template_name,
+                            )
+                            # no need to loop through the directory if we find the symlink file
+                            lfiles = []
+                            file_path = os.path.join(path, filename)
+                            if os.path.exists(file_path):
+                                lfiles = [file_path]
+                            else:
+                                # Fall back to the newest screenshot so the MJPEG
+                                # stream starts with the most recent frame.
+                                try:
+                                    entries = os.listdir(path)
+                                except FileNotFoundError:
+                                    # If a camera is configured but its screenshot directory
+                                    # hasn't been created yet, avoid turning the stream into a 500.
+                                    logging.warning(
+                                        "Missing screenshot directory for template %s: %s",
+                                        template_name,
+                                        path,
+                                    )
+                                    continue
+
+                                pngs = []
+                                for f in entries:
+                                    # Ignore temporary/backup files that may be created during
+                                    # atomic screenshot updates. These can disappear between
+                                    # listdir/stat/open and should never be selected as a
+                                    # "latest" frame for streaming.
+                                    if f.endswith(".tmp.png") or f.endswith(
+                                        ".png.orig"
+                                    ):
+                                        continue
+                                    full = os.path.join(path, f)
+                                    if f.endswith(".png") and os.path.isfile(full):
+                                        try:
+                                            mtime = os.path.getmtime(full)
+                                        except FileNotFoundError:
+                                            # file vanished between listdir and stat
+                                            continue
+                                        pngs.append((mtime, full))
+
+                                if pngs:
+                                    pngs.sort(key=lambda t: t[0], reverse=True)
+                                    lfiles = [pngs[0][1]]
+
+                            last_file = lfiles[-1] if lfiles else None
+                            if last_file and os.path.exists(last_file):
+                                last_mtime = os.path.getmtime(last_file)
+                                if (
+                                    last_mtime > most_recent_time
+                                    or most_recent_file is None
+                                ):
+                                    most_recent_file = last_file
+                                    most_recent_time = last_mtime
 
                     frame = None
                     if most_recent_file:
                         last_time = time.time()
                         last_shot = most_recent_file
+                        _set_cached_latest_shot(group, camera, filename, last_shot)
 
                         try:
                             with open(most_recent_file, "rb") as f:
@@ -1225,10 +1345,27 @@ def generate(
                                     f.write(frame)
                                 # Atomically move the temp file into place
                                 os.replace(temp_path, last_path)
+                        except FileNotFoundError:
+                            # The selected file can disappear if it was replaced/cleaned up
+                            # between selection and open (for example, a temp file during an
+                            # atomic write). Treat as a transient miss rather than a server error.
+                            frame = None
                         except UnidentifiedImageError:
+                            try:
+                                size = os.path.getsize(most_recent_file)
+                                age_seconds = time.time() - os.path.getmtime(
+                                    most_recent_file
+                                )
+                            except OSError:
+                                size = "unknown"
+                                age_seconds = None
                             logging.warning(
-                                "Discarding invalid screenshot %s",
+                                "Discarding invalid screenshot %s (size=%s, age=%s)",
                                 most_recent_file,
+                                size,
+                                f"{age_seconds:.1f}s"
+                                if age_seconds is not None
+                                else "unknown",
                             )
                             try:
                                 os.remove(most_recent_file)
@@ -1385,6 +1522,8 @@ def allowed_filename(filename: str) -> bool:
 
 def init_routes(app: Flask) -> None:
     """Register all route handlers on the given ``app``."""
+    init_db()
+    ensure_column("users", "temp_password_required", "BOOLEAN", "0")
     from app.blueprints.api import create_blueprint as create_api_blueprint
     from app.blueprints.assets import create_blueprint as create_assets_blueprint
     from app.blueprints.authentication import create_blueprint as create_auth_blueprint
@@ -1510,6 +1649,19 @@ def init_routes(app: Flask) -> None:
 
     @app.context_processor
     def inject_footer_data():
+        lan_guest = False
+        if has_request_context():
+            ip = request.remote_addr
+            if ip:
+                try:
+                    ip_obj = ip_address(ip)
+                except ValueError:
+                    ip_obj = None
+                if ip_obj and any(ip_obj in net for net in config.SKIP_LOGIN_SUBNETS):
+                    mode = (config.LAN_GUEST_MODE or "full").lower()
+                    if mode not in {"full", "read_only", "disabled"}:
+                        mode = "full"
+                    lan_guest = mode != "disabled"
         outdated = False
         try:
             from app.utils.github import is_update_available
@@ -1529,4 +1681,5 @@ def init_routes(app: Flask) -> None:
             CLOCK_OVERLAY=CLOCK_OVERLAY,
             CLOCK_DIGITAL=CLOCK_DIGITAL,
             CLOCK_NAVBAR=CLOCK_NAVBAR,
+            LAN_GUEST=lan_guest,
         )

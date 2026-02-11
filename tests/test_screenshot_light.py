@@ -34,7 +34,7 @@ class TestScreenshotLight(unittest.TestCase):
             patch("app.utils.screenshots.remove_background", return_value=mock_image),
             patch("app.utils.screenshots.apply_dark_mode", return_value=mock_image),
             patch("app.utils.screenshots.add_timestamp"),
-            patch("app.utils.screenshots.os.rename"),
+            patch("app.utils.screenshots.os.replace"),
         ):
             mock_open.return_value.__enter__.return_value = mock_image
             mock_open.return_value.__exit__.return_value = None
@@ -65,7 +65,7 @@ class TestScreenshotLight(unittest.TestCase):
             patch("app.utils.screenshots.remove_background", return_value=mock_image),
             patch("app.utils.screenshots.apply_dark_mode", return_value=mock_image),
             patch("app.utils.screenshots.add_timestamp"),
-            patch("app.utils.screenshots.os.rename") as mock_rename,
+            patch("app.utils.screenshots.os.replace") as mock_replace,
         ):
             mock_open.return_value.__enter__.return_value = mock_image
             mock_open.return_value.__exit__.return_value = None
@@ -73,7 +73,7 @@ class TestScreenshotLight(unittest.TestCase):
             result = capture_screenshot_and_har_light(url, self.output_path)
 
         mock_valid.assert_called_once_with(tmp_path)
-        mock_rename.assert_called_once_with(tmp_path, self.output_path)
+        mock_replace.assert_called_once_with(tmp_path, self.output_path)
         self.assertTrue(result)
 
 

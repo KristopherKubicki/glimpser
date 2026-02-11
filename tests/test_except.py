@@ -4,24 +4,22 @@ import unittest
 
 
 class TestExceptionHandling(unittest.TestCase):
-
     def test_zero_division(self):
         with self.assertRaises(ZeroDivisionError):
-            result = 1 / 0
+            1 / 0
 
     def test_key_error(self):
         test_dict = {"key1": "value1"}
         with self.assertRaises(KeyError):
-            value = test_dict["non_existent_key"]
+            test_dict["non_existent_key"]
 
     def test_index_error(self):
         test_list = [1, 2, 3]
         with self.assertRaises(IndexError):
-            value = test_list[10]
+            test_list[10]
 
 
 class TestListOperations(unittest.TestCase):
-
     def test_list_append(self):
         test_list = [1, 2, 3]
         test_list.append(4)
@@ -39,7 +37,6 @@ class TestListOperations(unittest.TestCase):
 
 
 class TestDictionaryOperations(unittest.TestCase):
-
     def test_dict_add_key(self):
         test_dict = {"key1": "value1"}
         test_dict["key2"] = "value2"

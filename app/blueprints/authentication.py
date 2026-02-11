@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from ipaddress import ip_address as ip_address_module
 
 from flask import Blueprint, current_app, request, session
+from werkzeug.security import generate_password_hash
 
 
 def create_blueprint() -> Blueprint:
@@ -81,6 +82,29 @@ def create_blueprint() -> Blueprint:
                 session.permanent = True
                 routes.login_attempts.pop(ip_address, None)
                 logging.info("Successful login for %s from %s", username, ip_address)
+                if routes.is_temp_password_required(user):
+                    session["force_password_reset"] = True
+                    stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    routes.update_setting(
+                        "LAST_PASSWORD_RESET_REQUIRED_AT", stamp, restart=False
+                    )
+                    routes.update_setting(
+                        "LAST_PASSWORD_RESET_REQUIRED_BY",
+                        user.username,
+                        restart=False,
+                    )
+                    logging.warning(
+                        "Temp password login for %s from %s; forcing reset",
+                        username,
+                        ip_address,
+                    )
+                    routes.flash(
+                        "Password reset required. Please set a new password.",
+                        "warning",
+                    )
+                    return routes.redirect(
+                        routes.url_for("authentication.reset_password")
+                    )
                 target = (
                     next_url
                     if routes.is_safe_redirect_url(next_url)
@@ -166,5 +190,62 @@ def create_blueprint() -> Blueprint:
         session.pop("user_id", None)
         routes.flash("You have been logged out successfully.", "success")
         return routes.redirect(routes.url_for("login", logout="1"))
+
+    @bp.route("/reset-password", methods=["GET", "POST"], endpoint="reset_password")
+    @routes.login_required
+    def reset_password():
+        db_session = routes.SessionLocal()
+        try:
+            user = db_session.query(User).filter_by(id=session.get("user_id")).first()
+            if not user:
+                session.pop("user_id", None)
+                routes.flash("Session expired. Please log in again.", "error")
+                return routes.redirect(routes.url_for("login"))
+
+            if request.method == "POST":
+                password = (request.form.get("password") or "").strip()
+                confirm = (request.form.get("confirm_password") or "").strip()
+
+                if not password or not confirm:
+                    routes.flash("Password and confirmation are required.", "error")
+                elif len(password) < 8:
+                    routes.flash("Password must be at least 8 characters.", "error")
+                elif password != confirm:
+                    routes.flash("Passwords do not match.", "error")
+                elif routes.check_password_hash(user.password_hash, password):
+                    routes.flash(
+                        "New password must be different from the old password.",
+                        "error",
+                    )
+                else:
+                    user.password_hash = generate_password_hash(password)
+                    user.temp_password_required = False
+                    db_session.commit()
+                    session.pop("force_password_reset", None)
+
+                    stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    routes.update_setting(
+                        "LAST_PASSWORD_RESET_COMPLETED_AT", stamp, restart=False
+                    )
+                    routes.update_setting(
+                        "LAST_PASSWORD_RESET_COMPLETED_BY",
+                        user.username,
+                        restart=False,
+                    )
+                    logging.info(
+                        "Password reset completed for %s from %s",
+                        user.username,
+                        request.remote_addr,
+                    )
+                    routes.flash("Password updated successfully.", "success")
+                    return routes.redirect(routes.url_for("index"))
+
+            return routes.render_template(
+                "reset_password.html",
+                page_title="Reset Password",
+                force_reset=session.get("force_password_reset", False),
+            )
+        finally:
+            db_session.close()
 
     return bp

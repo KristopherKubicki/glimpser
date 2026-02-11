@@ -117,7 +117,15 @@ template_form, settings_row with context %} {% block content %}
           {% for setting in items %} {{ settings_row(setting) }} {% endfor %}
         </tbody>
       </table>
-      {% endcall %} {% if group == 'Admin' %} {% call card('Configuration
+      {% endcall %} {% if group == 'Admin' %} {% call card('Account Security') %}
+      <p>Use this link to reset your password.</p>
+      <a
+        href="{{ url_for('authentication.reset_password') }}"
+        class="doc-link"
+        title="Reset your password"
+        >Reset Password</a
+      >
+      {% endcall %} {% call card('Configuration
       Management') %}
       <div class="checkbox-row">
         <span>Advanced Options</span>
@@ -270,6 +278,10 @@ template_form, settings_row with context %} {% block content %}
 <script
   type="module"
   src="{{ url_for('static', filename='js/capture_status.js') }}"
+></script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/top_failures.js') }}"
 ></script>
 <script
   type="module"

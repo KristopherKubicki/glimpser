@@ -1,5 +1,5 @@
 {% include 'header.html' %}
-<body>
+<body class="{% block body_class %}{% endblock %}">
     <a href="#main-content" class="skip-link" title="Jump to main area">Skip to main content</a>
     <header>
         {% include 'nav.html' %}

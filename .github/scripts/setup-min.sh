@@ -30,7 +30,7 @@ uv pip install --system -q \
   selenium==4.33.0 sqlalchemy==2.0.41 undetected-chromedriver==3.5.5 \
   webdriver-manager==4.0.2 werkzeug==3.1.3 yt-dlp==2025.5.22 \
   setproctitle==1.3.3 "filelock>=3.12" "PyYAML>=6.0" "${ORT_PKG}" \
-  black>=25.1 coverage>=7.9 flake8>=7.2 isort>=6.0 mkdocs>=1.6 \
+  coverage>=7.9 mkdocs>=1.6 \
   mypy>=1.16 pre-commit>=4.2 "pytest>=8.3,<8.5" pytest-xdist>=3.6 \
   pyinstaller>=6.14.1 pylint>=3.3.7 prettier pytest-socket ruff>=0.4.4 \
   pytest-cov>=6.1 hypothesis>=6.135 nox>=2025.2 bandit>=1.7 py-spy>=0.4 \

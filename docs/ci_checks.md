@@ -6,7 +6,7 @@ and on pull requests targeting those branches.
 The workflow located at `.github/workflows/python-app.yml` performs the
 following tasks:
 
-- Formats Python code with `black`, sorts imports with `isort`, and lints with `ruff` and `flake8`.
+- Formats Python code with `ruff format`, sorts imports with `ruff check --fix`, and lints with `ruff`.
 - Checks type hints with `mypy`.
 - Lints JavaScript with `eslint` and verifies formatting with `prettier`.
 - Executes `pytest` and `jest` test suites and uploads coverage.
@@ -15,8 +15,8 @@ following tasks:
 - Caches Python, Node, and pre-commit dependencies to speed up builds.
 - Skips the workflow when only documentation files change.
 
-Running `pre-commit run --all-files` locally will execute the same Black,
-isort, Flake8, and mypy checks before they fail in CI. These checks help catch
+Running `pre-commit run --all-files` locally will execute the same Ruff
+and mypy checks before they fail in CI. These checks help catch
 regressions and security issues before code is merged.
 On pull requests the workflow lints only the files that changed, while pushes
 to `staging` or `main` run the linter across the entire repository.

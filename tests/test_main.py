@@ -105,7 +105,10 @@ class TestMain(unittest.TestCase):
 
     @patch("generate_credentials.generate_credentials")
     @patch("os.path.exists")
-    def test_generate_credentials_if_needed(self, mock_exists, mock_generate):
+    @patch("main.sys.stdin.isatty", return_value=True)
+    def test_generate_credentials_if_needed(
+        self, mock_isatty, mock_exists, mock_generate
+    ):
         mock_exists.return_value = False
         main.generate_credentials_if_needed()
         mock_generate.assert_called_once()
@@ -138,7 +141,8 @@ class TestMain(unittest.TestCase):
         self.assertEqual(result, mock_create_app.return_value)
 
     @patch("main.create_app")
-    def test_create_application_scheduler_flag(self, mock_create_app):
+    @patch("main.generate_credentials_if_needed")
+    def test_create_application_scheduler_flag(self, mock_generate, mock_create_app):
         args = MagicMock()
         args.db_path = config.DATABASE_PATH
         args.host = config.HOST
@@ -165,7 +169,8 @@ class TestMain(unittest.TestCase):
         )
 
     @patch("main.create_app")
-    def test_create_application_no_log_cache_flag(self, mock_create_app):
+    @patch("main.generate_credentials_if_needed")
+    def test_create_application_no_log_cache_flag(self, mock_generate, mock_create_app):
         args = MagicMock()
         args.db_path = config.DATABASE_PATH
         args.host = config.HOST

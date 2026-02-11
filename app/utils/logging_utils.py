@@ -6,11 +6,18 @@ credentials from strings before logging them to avoid leaking secrets in
 diagnostic output.
 """
 
+import json
 import logging
+import os
 import time
+from pathlib import Path
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
+
+_LOG_THROTTLE_PATH = os.getenv(
+    "GLIMPSER_LOG_THROTTLE_PATH", "/tmp/glimpser_log_throttle.json"
+)
 
 
 class ColorFormatter(logging.Formatter):
@@ -70,6 +77,40 @@ class RateLimitFilter(logging.Filter):
         if now - last_time < self.interval:
             return False
         self.last_emit[message] = now
+        return True
+
+
+def shared_log_allowed(key: str, interval: float) -> bool:
+    """Return True if a shared log key is allowed within a time interval.
+
+    Uses a file on disk to coordinate log suppression across processes.
+    """
+
+    now = time.time()
+    path = Path(_LOG_THROTTLE_PATH)
+    lock_path = path.with_suffix(path.suffix + ".lock")
+    try:
+        from filelock import FileLock, Timeout
+
+        lock = FileLock(str(lock_path), timeout=0)
+        try:
+            with lock:
+                data = {}
+                if path.exists():
+                    try:
+                        data = json.loads(path.read_text() or "{}")
+                    except Exception:
+                        data = {}
+                last = float(data.get(key, 0))
+                if now - last < interval:
+                    return False
+                data[key] = now
+                path.write_text(json.dumps(data))
+                return True
+        except Timeout:
+            return False
+    except Exception as exc:
+        logger.debug("Shared log throttle failure for %s: %s", key, exc)
         return True
 
 

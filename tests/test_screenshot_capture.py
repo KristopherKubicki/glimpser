@@ -2,6 +2,7 @@
 
 import io
 import os
+import sys
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
@@ -31,7 +32,7 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots._finalize_screenshot", return_value=True)
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
-    @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.get_chrome_path", return_value=sys.executable)
     @patch("app.utils.screenshots.is_system_online", return_value=True)
     def test_capture_screenshot_success(
         self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
@@ -51,7 +52,7 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots._finalize_screenshot", return_value=True)
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
-    @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.get_chrome_path", return_value=sys.executable)
     @patch("app.utils.screenshots.is_system_online", return_value=True)
     def test_capture_screenshot_with_popup(
         self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
@@ -87,7 +88,7 @@ class TestScreenshotCapture(unittest.TestCase):
 
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
-    @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.get_chrome_path", return_value=sys.executable)
     @patch("app.utils.screenshots.create_placeholder")
     @patch("app.utils.screenshots.is_mostly_blank", return_value=True)
     @patch("app.utils.screenshots.is_system_online", return_value=True)
@@ -127,7 +128,7 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots._finalize_screenshot", return_value=True)
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
-    @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.get_chrome_path", return_value=sys.executable)
     @patch("app.utils.screenshots.is_system_online", return_value=True)
     def test_capture_screenshot_with_dark_mode(
         self, mock_online, mock_path, mock_version, mock_launch, mock_finalize

@@ -1,7 +1,7 @@
 <!-- app/templates/template_details.html -->
 
 {% extends 'base.html' %} {% from 'components.html' import confirm_modal,
-template_form %} {% block content %}
+template_form %} {% block body_class %}player-screen{% endblock %} {% block content %}
 <script>
   const cameraMeta = {{ template_details|tojson }};
   window.templateDetails = { "{{ template_name }}": cameraMeta };
@@ -54,7 +54,93 @@ template_form %} {% block content %}
 ></script>
 
 <script>
+  let refreshLogSource = null;
+  let refreshPreviewTimer = null;
+
+  function closeRefreshModal() {
+    const modal = document.getElementById("refresh-modal");
+    if (modal) modal.style.display = "none";
+    if (refreshLogSource) {
+      refreshLogSource.close();
+      refreshLogSource = null;
+    }
+    if (refreshPreviewTimer) {
+      clearInterval(refreshPreviewTimer);
+      refreshPreviewTimer = null;
+    }
+  }
+
+  function startRefreshLogStream(templateName) {
+    const logContainer = document.getElementById("refresh-log");
+    if (!logContainer) return;
+    logContainer.textContent = "";
+    if (refreshLogSource) {
+      refreshLogSource.close();
+      refreshLogSource = null;
+    }
+    const params = new URLSearchParams({ search: templateName });
+    refreshLogSource = new EventSource(`/stream_logs?${params.toString()}`);
+    refreshLogSource.onmessage = (event) => {
+      let entries = [];
+      try {
+        entries = JSON.parse(event.data || "[]");
+      } catch (_) {
+        return;
+      }
+      if (!Array.isArray(entries)) return;
+      logContainer.textContent = "";
+      entries
+        .slice()
+        .reverse()
+        .forEach((entry) => {
+          const line = document.createElement("div");
+          const ts = entry.timestamp || "";
+          const level = entry.level || "";
+          const msg = entry.message || "";
+          line.textContent = `${ts} ${level} ${msg}`.trim();
+          logContainer.appendChild(line);
+        });
+      logContainer.scrollTop = logContainer.scrollHeight;
+    };
+    refreshLogSource.onerror = () => {
+      const status = document.getElementById("refresh-status");
+      if (status) status.textContent = "Log stream disconnected.";
+    };
+  }
+
+  function startRefreshPreview(templateName) {
+    const preview = document.getElementById("refresh-preview");
+    const spinner = document.getElementById("refresh-spinner");
+    if (!preview) return;
+    const updatePreview = () => {
+      if (spinner) spinner.style.display = "block";
+      preview.src = `/last_screenshot/${encodeURIComponent(templateName)}?time=${Date.now()}`;
+    };
+    preview.onload = () => {
+      if (spinner) spinner.style.display = "none";
+    };
+    updatePreview();
+    if (refreshPreviewTimer) clearInterval(refreshPreviewTimer);
+    refreshPreviewTimer = setInterval(updatePreview, 5000);
+    setTimeout(() => {
+      if (refreshPreviewTimer) {
+        clearInterval(refreshPreviewTimer);
+        refreshPreviewTimer = null;
+      }
+    }, 120000);
+  }
+
   function takeInstantScreenshot(templateName) {
+    const modal = document.getElementById("refresh-modal");
+    if (modal) modal.style.display = "block";
+    const status = document.getElementById("refresh-status");
+    const spinner = document.getElementById("refresh-spinner");
+    if (status) {
+      status.textContent = "Preparing capture...";
+    }
+    if (spinner) spinner.style.display = "block";
+    startRefreshLogStream(templateName);
+    startRefreshPreview(templateName);
     fetch(`/take_screenshot/${templateName}`, {
       method: "POST",
       headers: {
@@ -65,13 +151,45 @@ template_form %} {% block content %}
       .then((response) => response.json())
       .then((data) => {
         if (data.status === "success") {
-          // Optionally refresh the page or update the UI to show the new screenshot
-          location.reload(); // Simple page refresh
+          if (status) {
+            status.textContent =
+              "Capture triggered. Waiting for the newest frame...";
+          }
+          setTimeout(() => startRefreshPreview(templateName), 3000);
+        } else if (status) {
+          status.textContent = "Capture request failed.";
         }
       })
-      .catch((error) =>
-        console.error("Error taking instant screenshot:", error),
-      );
+      .catch((error) => {
+        if (status) status.textContent = "Capture request failed.";
+        console.error("Error taking instant screenshot:", error);
+      });
+  }
+
+  function setActionStatus(message) {
+    const status = document.getElementById("template-action-status");
+    if (!status) return;
+    status.textContent = message || "";
+  }
+
+  function clearQuarantine(templateName) {
+    setActionStatus("Clearing quarantine...");
+    fetch(`/clear_quarantine/${templateName}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.status === "success") {
+          setActionStatus("Quarantine cleared.");
+        } else {
+          setActionStatus("Failed to clear quarantine.");
+        }
+      })
+      .catch(() => setActionStatus("Failed to clear quarantine."));
   }
 
   function updateVideo(templateName) {
@@ -105,31 +223,7 @@ template_form %} {% block content %}
       container.classList.remove("recording");
     }, 20000);
   }
-</script>
-<details title="Edit the details of this template" class="hidden">
-  <summary>Edit Template</summary>
-  <div id="edit-template">
-    <h3>Edit Template Details</h3>
-    {{ template_form( 'edit-template-form', '/update_template/' ~ template_name,
-    template=template_details, preview_src='/stream.mjpg?camera=' ~
-    template_name, preview_id='url-preview', include_name=False,
-    submit_label='Update Template', object_tokens=object_tokens,
-    clip_model=clip_model, clip_gpu=clip_gpu ) }}
-  </div>
-  <div id="delete-template" class="form-actions">
-    <button
-      id="delete-btn"
-      onclick="confirmDelete('{{ template_name }}')"
-      title="Delete this template permanently"
-      class="advanced-only"
-    >
-      Delete Template
-    </button>
-  </div>
-  <div id="undo-container" style="display: none" class="form-actions"></div>
-  {{ confirm_modal('delete-template', 'Delete this template?', 'Delete',
-  'Cancel') }}
-</details>
+{# legacy hidden edit form removed to avoid duplicate field IDs #}
 
 <script>
   function validateForm() {
@@ -406,6 +500,12 @@ template_form %} {% block content %}
           live.dataset.resumeOnClose = live.paused ? "false" : "true";
           live.pause();
         }
+        document.querySelectorAll("#videos-modal video[data-src]").forEach((vid) => {
+          if (!vid.getAttribute("src")) {
+            vid.setAttribute("src", vid.getAttribute("data-src"));
+            vid.load();
+          }
+        });
       }
       document.querySelector(".template-actions")?.classList.remove("fade-out");
     } else {
@@ -439,8 +539,23 @@ template_form %} {% block content %}
     Recent Captures
   </button>
   <button
+    onclick="takeInstantScreenshot('{{ template_name }}')"
+    title="Force an immediate screenshot capture"
+    data-requires-login="true"
+  >
+    Refresh Now
+  </button>
+  <button
+    onclick="clearQuarantine('{{ template_name }}')"
+    title="Clear local quarantine and offline status"
+    data-requires-login="true"
+  >
+    Clear Quarantine
+  </button>
+  <button
     onclick="recordHighSpeed('{{ template_name }}')"
     title="Record 20 second clip"
+    data-requires-login="true"
   >
     Record 20s
   </button>
@@ -450,12 +565,58 @@ template_form %} {% block content %}
   >
     View Logs
   </button>
-  <button onclick="openModal('edit-template-modal')" title="Edit this template">
+  <button
+    onclick="openRecoveryModal()"
+    title="Find an alternative feed"
+    data-requires-login="true"
+  >
+    Recovery
+  </button>
+  <button
+    onclick="openModal('edit-template-modal')"
+    title="Edit this template"
+    data-requires-login="true"
+  >
     Edit Template
   </button>
   <p title="{{ template_details.last_caption_time }}">
     <strong>Last Caption:</strong> {{ template_details.last_caption }}
   </p>
+  <p id="template-action-status" style="opacity: 0.8"></p>
+  {% if quarantine_active %}
+  <p>
+    <strong>Quarantine:</strong> active ({{ quarantine_remaining }}s remaining)
+    {% if quarantine_reason %}— {{ quarantine_reason }}{% endif %}
+  </p>
+  {% else %}
+  <p><strong>Quarantine:</strong> not active</p>
+  {% endif %}
+</div>
+
+<div id="refresh-modal" class="modal">
+  <div class="modal-content">
+    <h3>Capture Refresh</h3>
+    <p id="refresh-status">Waiting for capture...</p>
+    <div style="margin-bottom: 0.75rem; position: relative">
+      <img
+        id="refresh-preview"
+        alt="Latest screenshot preview"
+        style="width: 100%; max-height: 240px; object-fit: contain"
+      />
+      <div
+        id="refresh-spinner"
+        class="loading-spinner"
+        style="position: absolute; inset: 0; margin: auto"
+      ></div>
+    </div>
+    <div
+      id="refresh-log"
+      style="max-height: 280px; overflow-y: auto; font-family: monospace"
+    ></div>
+    <button onclick="closeRefreshModal()" style="margin-top: 0.75rem">
+      Close
+    </button>
+  </div>
 </div>
 
 <script>
@@ -504,6 +665,63 @@ template_form %} {% block content %}
   </div>
 </div>
 
+<div id="recovery-modal" class="modal">
+  <div class="modal-content">
+    <span
+      onclick="closeGenericModal('recovery-modal')"
+      class="close-icon"
+      title="Close dialog"
+      >&times;</span
+    >
+    <h3>Camera Recovery</h3>
+    <p>
+      Search for a public replacement feed. You can preview results before
+      applying.
+    </p>
+    <label for="recovery-description" class="sr-only"
+      >Recovery description</label
+    >
+    <textarea
+      id="recovery-description"
+      class="prompt-textarea"
+      placeholder="Describe the camera (location, name, context)."
+    ></textarea>
+    <div class="form-actions">
+      <button id="recovery-search" type="button">Search</button>
+      <button id="recovery-reroll" type="button" disabled>Re-roll</button>
+    </div>
+    <div id="recovery-results" class="modal-list"></div>
+    <div class="edit-template-preview">
+      <img
+        id="recovery-preview-image"
+        alt="Recovery preview"
+        src="/last_screenshot/{{ template_name }}"
+      />
+      <video
+        id="recovery-preview-video"
+        class="hidden"
+        controls
+        muted
+        loop
+        playsinline
+      >
+        <source src="" type="video/mp4" />
+      </video>
+      <div
+        id="recovery-preview-status"
+        class="preview-status"
+        role="status"
+        aria-live="polite"
+      ></div>
+    </div>
+    <div class="form-actions">
+      <button id="recovery-apply" type="button" disabled>
+        Apply Selected
+      </button>
+    </div>
+  </div>
+</div>
+
 <div id="videos-modal" class="modal">
   <div class="modal-content">
     <span
@@ -517,7 +735,7 @@ template_form %} {% block content %}
       <div class="video">
         {% if video == 'last_video.mp4' %}
         <video
-          src="/last_video/{{template_name}}"
+          data-src="/last_video/{{template_name}}"
           data-file="last_video.mp4"
           height="200"
           autoplay
@@ -527,7 +745,7 @@ template_form %} {% block content %}
         ></video>
         {% else %}
         <video
-          src="/videos/{{template_name}}/{{video}}"
+          data-src="/videos/{{template_name}}/{{video}}"
           data-file="{{ video }}"
           height="200"
           autoplay
@@ -585,6 +803,11 @@ template_form %} {% block content %}
   </div>
 </div>
 
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/recovery.js') }}"
+></script>
+
 <script>
   window.recentVideos = {{ videos|tojson }};
 </script>
@@ -595,5 +818,9 @@ template_form %} {% block content %}
 <script
   type="module"
   src="{{ url_for('static', filename='js/url_test.js') }}"
+></script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/template_form.js') }}"
 ></script>
 {% endblock %}

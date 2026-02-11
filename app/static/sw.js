@@ -1,4 +1,4 @@
-const CACHE_NAME = "glimpser-offline-v1";
+const CACHE_NAME = "glimpser-offline-v3";
 const MAX_SHOTS = 20;
 const OFFLINE_URLS = [
   "/",

@@ -1,4 +1,5 @@
 import shutil
+import sys
 import threading
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -78,9 +79,7 @@ def test_capture_pipeline(browser, http_server, tmp_path, monkeypatch):
         "app.utils.screenshots.launch_headless_chrome", lambda *a, **k: browser
     )
     monkeypatch.setattr("app.utils.screenshots.get_chrome_version", lambda p: 120)
-    monkeypatch.setattr(
-        "app.utils.screenshots.get_chrome_path", lambda: "/usr/bin/chrome"
-    )
+    monkeypatch.setattr("app.utils.screenshots.get_chrome_path", lambda: sys.executable)
     monkeypatch.setattr(
         "app.utils.screenshots._finalize_screenshot", lambda *a, **k: True
     )

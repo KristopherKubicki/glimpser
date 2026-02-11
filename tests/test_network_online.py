@@ -2,10 +2,25 @@ import os
 import unittest
 from unittest.mock import patch
 
-from app.utils.network import _get_test_hosts, is_system_online
+from app.utils.network import _get_test_hosts, _state, is_system_online
 
 
 class TestIsSystemOnline(unittest.TestCase):
+    def setUp(self):
+        _state.update(
+            {
+                "last_online_time": None,
+                "last_online_reason": None,
+                "last_offline_log": None,
+                "last_dns_ok_time": None,
+                "last_wan_ok_time": None,
+                "last_lan_ok_time": None,
+                "last_dns_ok_reason": None,
+                "last_wan_ok_reason": None,
+                "last_lan_ok_reason": None,
+            }
+        )
+
     @patch("socket.create_connection")
     def test_first_host_success(self, mock_conn):
         mock_conn.return_value = None

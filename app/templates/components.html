@@ -107,6 +107,10 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
 <div class="edit-template-container">
   {% if preview_src or preview_id %}
   <div class="edit-template-preview">
+    <div class="preview-header">
+      <span>Live Preview</span>
+      <span class="preview-pill">Auto-updates</span>
+    </div>
     <img
       src="{{ preview_src }}"
       data-placeholder="{{ preview_src }}"
@@ -120,6 +124,32 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
       alt="Live preview"
     />
     <div class="preview-status" role="status" aria-live="polite"></div>
+    <div class="preview-meta" aria-label="Camera summary">
+      <div class="preview-meta-row">
+        <span>URL</span>
+        <span class="preview-value" data-preview="url">—</span>
+      </div>
+      <div class="preview-meta-row">
+        <span>Mode</span>
+        <span class="preview-value" data-preview="mode">—</span>
+      </div>
+      <div class="preview-meta-row">
+        <span>Frequency</span>
+        <span class="preview-value" data-preview="frequency">—</span>
+      </div>
+      <div class="preview-meta-row">
+        <span>Timeout</span>
+        <span class="preview-value" data-preview="timeout">—</span>
+      </div>
+      <div class="preview-meta-row">
+        <span>Group</span>
+        <span class="preview-value" data-preview="group">—</span>
+      </div>
+      <div class="preview-meta-row">
+        <span>Auth</span>
+        <span class="preview-value" data-preview="auth">—</span>
+      </div>
+    </div>
   </div>
   {% endif %}
   <form
@@ -129,29 +159,44 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
     onsubmit="window.sendTelemetry && sendTelemetry('template_submit'); return validateForm()"
     title="Enter template details"
   >
+    <div class="editor-header">
+      <h3>Camera Editor</h3>
+      <p>
+        Build a reliable camera feed with live preview, presets, and
+        guardrails.
+      </p>
+    </div>
     <div
       id="template-error"
       class="form-error hidden"
       role="alert"
       aria-live="assertive"
     ></div>
-    {% if include_name %}
-    <div class="form-row">
-      <label for="name" title="Name of the template">Name:</label>
-      <input
-        type="text"
-        id="name"
-        name="name"
-        value="{{ template.name if template else '' }}"
-        required
-        placeholder="My Camera"
-        title="Enter a unique name for this template"
-      />
-    </div>
-    {% endif %}
-    <div class="form-row">
-      <label for="url" title="URL to monitor">URL:</label>
-      <div class="url-input-container">
+    <div class="template-section">
+      <div class="section-header">Camera Basics</div>
+      <div class="section-help">
+        Give it a clear name, paste the URL, and describe the camera for easier
+        recovery later.
+      </div>
+      {% if include_name %}
+      <div class="form-row">
+        <label for="name" class="required" title="Name of the template"
+          >Name:</label
+        >
+        <input
+          type="text"
+          id="name"
+          name="name"
+          value="{{ template.name if template else '' }}"
+          required
+          placeholder="My Camera"
+          title="Enter a unique name for this template"
+        />
+      </div>
+      {% endif %}
+      <div class="form-row">
+        <label for="url" class="required" title="URL to monitor">URL:</label>
+        <div class="url-input-container">
         <input
           type="url"
           id="url"
@@ -159,62 +204,102 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
           class="url-input"
           value="{{ template.url if template else '' }}"
           required
-          pattern="https?://.+"
-          placeholder="{{ url_for('stream.test_pattern_mjpg', _external=True) }}"
-          title="Enter the URL to monitor"
-          data-default-url="{{ default_url or '' }}"
-        />
-        <span id="url-status" class="url-status" title="URL test result"></span>
+          pattern="(https?|rtsp)://.+"
+            placeholder="{{ url_for('stream.test_pattern_mjpg', _external=True) }}"
+            title="Enter the URL to monitor"
+            data-default-url="{{ default_url or '' }}"
+          />
+          <button type="button" class="url-test-btn" title="Test URL now">
+            Test
+          </button>
+          <span id="url-status" class="url-status" title="URL test result"></span>
+          <span class="url-status-text" data-url-status-text>Waiting</span>
+        </div>
+        <div class="field-hint">
+          Supports RTSP, MJPEG, snapshots, and public web pages.
+        </div>
+      </div>
+      <div class="form-row">
+        <label for="notes" title="Short description for recovery"
+          >Description:</label
+        >
+        <textarea
+          id="notes"
+          name="notes"
+          placeholder="Location, name, and context (e.g., 'Union Station train cam, south platform')."
+          title="Short description for recovery and search"
+        >{{ template.notes if template else '' }}</textarea>
       </div>
     </div>
-    <div class="form-row double-row">
-      <label for="frequency" title="How often to check the URL (minutes)"
-        >Freq. (m):</label
-      >
-      <input
-        type="number"
-        id="frequency"
-        name="frequency"
-        value="{{ template.frequency if template else 5 }}"
-        min="0"
-        max="43200"
-        step="1"
-        list="frequency-options"
-        class="short-input"
-        required
-        placeholder="Minutes"
-        title="How often to check the URL (minutes)"
-      />
-      <!-- suggestions only; users may enter any value -->
-      <datalist id="frequency-options">
-        <option value="5"></option>
-        <option value="15"></option>
-        <option value="30"></option>
-        <option value="60"></option>
-        <option value="360"></option>
-        <option value="1440"></option>
-      </datalist>
-      <label for="groups" title="Select or create a group">Group:</label>
-      <!-- prettier-ignore -->
-      <input
-        id="groups"
-        name="groups"
-        list="group-options"
-        class="sm-select"
-        title="Choose or enter a group"
-      />
-      <datalist id="group-options"></datalist>
+    <div class="template-section">
+      <div class="section-header">Schedule & Grouping</div>
+      <div class="section-help">
+        Set how often to capture and how this camera is grouped.
+      </div>
+      <div class="form-row double-row">
+        <label
+          for="frequency"
+          class="required"
+          title="How often to check the URL (minutes)"
+          >Freq. (m):</label
+        >
+        <input
+          type="number"
+          id="frequency"
+          name="frequency"
+          value="{{ template.frequency if template else 5 }}"
+          min="0"
+          max="43200"
+          step="1"
+          list="frequency-options"
+          class="short-input"
+          required
+          placeholder="Minutes"
+          title="How often to check the URL (minutes)"
+        />
+        <!-- suggestions only; users may enter any value -->
+        <datalist id="frequency-options">
+          <option value="5"></option>
+          <option value="15"></option>
+          <option value="30"></option>
+          <option value="60"></option>
+          <option value="360"></option>
+          <option value="1440"></option>
+        </datalist>
+        <label for="groups" title="Select or create a group">Group:</label>
+        <!-- prettier-ignore -->
+        <input
+          id="groups"
+          name="groups"
+          list="group-options"
+          class="sm-select"
+          title="Choose or enter a group"
+        />
+        <datalist id="group-options"></datalist>
+      </div>
+      <div class="preset-row">
+        <span class="preset-label">Quick presets:</span>
+        <button type="button" class="preset-btn" data-frequency="1" data-timeout="5">
+          1m
+        </button>
+        <button type="button" class="preset-btn" data-frequency="5" data-timeout="10">
+          5m
+        </button>
+        <button type="button" class="preset-btn" data-frequency="15" data-timeout="20">
+          15m
+        </button>
+        <button type="button" class="preset-btn" data-frequency="60" data-timeout="30">
+          60m
+        </button>
+      </div>
     </div>
-    <input
-      type="hidden"
-      id="notes"
-      name="notes"
-      value="{{ template.notes if template else '' }}"
-    />
     <details class="advanced-settings">
       <summary title="Show additional fields">Advanced Options</summary>
       <div class="form-row">
-        <label for="timeout" title="Maximum time to wait for a response"
+        <label
+          for="timeout"
+          class="required"
+          title="Maximum time to wait for a response"
           >Timeout:</label
         >
         <input
@@ -238,6 +323,21 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
           <option value="30"></option>
           <option value="45"></option>
         </datalist>
+      </div>
+      <div class="template-section compact">
+        <div class="section-header">Capture Mode</div>
+        <div class="section-help">
+          Choose direct streams for cameras or browser mode for complex web
+          pages.
+        </div>
+        <div class="mode-toggle">
+          <button type="button" class="mode-btn" data-mode="stream">
+            Direct Stream
+          </button>
+          <button type="button" class="mode-btn" data-mode="web">
+            Web Page
+          </button>
+        </div>
       </div>
       <div class="form-row double-row">
         <label
@@ -353,7 +453,22 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
           title="Enter proxy server address (optional)"
         />
       </div>
-      <div class="form-row hidden">
+      <div class="form-row">
+        <label
+          for="auth_enabled"
+          title="Enable authentication fields for this camera"
+          >Auth:</label
+        >
+        <label class="switch">
+          <input
+            type="checkbox"
+            id="auth_enabled"
+            {% if template and (template.auth_username or template.auth_password) %}checked{% endif %}
+          />
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <div class="form-row auth-fields hidden" data-auth-fields>
         <label for="auth_username" title="Username for camera authentication"
           >Username:</label
         >
@@ -364,10 +479,9 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
           value="{{ template.auth_username if template else '' }}"
           placeholder="user"
           title="Camera username"
-          disabled
         />
       </div>
-      <div class="form-row hidden">
+      <div class="form-row auth-fields hidden" data-auth-fields>
         <label for="auth_password" title="Password for camera authentication"
           >Password:</label
         >
@@ -378,7 +492,6 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
           value="{{ template.auth_password if template else '' }}"
           placeholder="pass"
           title="Camera password"
-          disabled
         />
       </div>
       <div class="form-row hidden">

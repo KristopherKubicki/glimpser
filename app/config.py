@@ -14,6 +14,8 @@ from ipaddress import ip_network
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 _ffmpeg_spec = importlib.util.spec_from_file_location(
     "app.utils.ffmpeg_setup",
@@ -45,9 +47,6 @@ def _load_dotenv_once() -> None:
 # ensures we do not re-read the file unnecessarily should this module somehow
 # be imported more than once.
 _load_dotenv_once()
-
-from sqlalchemy import text
-from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 
 # Parse command line arguments when executed directly
@@ -312,6 +311,20 @@ MAX_COMPRESSED_VIDEO_AGE = int(get_setting("MAX_COMPRESSED_VIDEO_AGE", 7))  # da
 MAX_IN_PROCESS_VIDEO_SIZE = int(
     get_setting("MAX_IN_PROCESS_VIDEO_SIZE", 100 * 1024 * 1024)
 )  # 100 MB
+ARCHIVE_BATCH_SIZE = int(get_setting("ARCHIVE_BATCH_SIZE", 25))
+ARCHIVE_INTERVAL_MINUTES = int(get_setting("ARCHIVE_INTERVAL_MINUTES", 1))
+LAN_OFFLINE_DISABLE_ERRORS = int(get_setting("LAN_OFFLINE_DISABLE_ERRORS", 6))
+LAN_OFFLINE_DISABLE_WINDOW_MINUTES = int(
+    get_setting("LAN_OFFLINE_DISABLE_WINDOW_MINUTES", 60)
+)
+LAN_OFFLINE_BACKOFF_SECONDS = int(get_setting("LAN_OFFLINE_BACKOFF_SECONDS", 1800))
+RTSP_PREFLIGHT_FAIL_THRESHOLD = int(get_setting("RTSP_PREFLIGHT_FAIL_THRESHOLD", 3))
+RTSP_PREFLIGHT_FAIL_WINDOW_SECONDS = int(
+    get_setting("RTSP_PREFLIGHT_FAIL_WINDOW_SECONDS", 900)
+)
+RTSP_PREFLIGHT_BACKOFF_SECONDS = int(
+    get_setting("RTSP_PREFLIGHT_BACKOFF_SECONDS", 3600)
+)
 
 LOG_LEVEL = get_setting("LOG_LEVEL", "WARN")
 FLASK_LOG_LEVEL = get_setting("FLASK_LOG_LEVEL", LOG_LEVEL)
@@ -331,6 +344,7 @@ for _sub in [s.strip() for s in _login_subnets_raw.split(",") if s.strip()]:
         SKIP_LOGIN_SUBNETS.append(ip_network(_sub))
     except ValueError:
         logging.warning("Invalid subnet in SKIP_LOGIN_SUBNETS: %s", _sub)
+LAN_GUEST_MODE = get_setting("LAN_GUEST_MODE", "full").lower()
 
 # Clock configuration
 CLOCK_OVERLAY = get_setting("CLOCK_OVERLAY", "False") == "True"
@@ -340,19 +354,23 @@ CLOCK_NAVBAR = get_setting("CLOCK_NAVBAR", "True") == "True"
 # Load settings from the database
 SECRET_KEY = get_setting("SECRET_KEY", "default_secret_key")
 USER_NAME = get_setting("USER_NAME", "admin")
-USER_PASSWORD_HASH = get_setting("USER_PASSWORD_HASH", "")
 API_KEY = get_setting("API_KEY", "")
 SSO_TOKEN = get_setting("SSO_TOKEN", "")
 SSO_USERNAME = get_setting("SSO_USERNAME", USER_NAME)
 CHATGPT_KEY = get_setting("CHATGPT_KEY", "")  # maybe generalize as LLM_KEY ?
+RECOVERY_SEARCH_MODEL = get_setting("RECOVERY_SEARCH_MODEL", "gpt-4.1")
 
 ALLOWED_LLM_MODELS = [
-    "gpt-4.1-mini",
+    "gpt-5-mini",
     "gpt-4.1",
     "gpt-4",
 ]
 
-LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-4.1-mini")
+LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-5-mini")
+
+if LLM_MODEL_VERSION == "gpt-4.1-mini":
+    logging.warning("Deprecated LLM model gpt-4.1-mini; defaulting to gpt-5-mini.")
+    LLM_MODEL_VERSION = "gpt-5-mini"
 
 if LLM_MODEL_VERSION not in ALLOWED_LLM_MODELS:
     raise ValueError(f"Invalid LLM model: {LLM_MODEL_VERSION}")
@@ -391,7 +409,7 @@ def _ffmpeg_supports_hwaccel() -> bool:
         output = subprocess.check_output(
             [FFMPEG_PATH, "-hwaccels"], stderr=subprocess.STDOUT, timeout=2
         ).decode()
-        lines = [l.strip() for l in output.splitlines() if l.strip()]
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
         return len(lines) > 1
     except Exception:
         return False
@@ -570,7 +588,6 @@ if AUTO_UPDATE_BRANCH not in {"None", "Main", "Staging"}:
 # Settings that should never be displayed in the UI
 SENSITIVE_SETTINGS = [
     "SECRET_KEY",
-    "USER_PASSWORD_HASH",
     "DATABASE_URL",
     "VERSION",
 ]

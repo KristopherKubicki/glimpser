@@ -1,4 +1,5 @@
 {% extends 'base.html' %} {% from 'components.html' import template_controls %}
+{% block body_class %}templates-screen{% endblock %}
 {% block content %} {% call template_controls() %}
 <select id="sort-date" class="sort-select" aria-label="Sort cameras">
   <option value="">↕</option>
