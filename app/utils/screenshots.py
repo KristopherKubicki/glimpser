@@ -534,6 +534,7 @@ PREFLIGHT_LOCAL_QUARANTINE_BACKOFF = int(
     os.getenv("PREFLIGHT_LOCAL_QUARANTINE_BACKOFF", "3600")
 )
 STREAM_PROBE_TIMEOUT = 5
+HDHOMERUN_URL_RE = re.compile(r"/auto/v\d+(?:\.\d+)?(?:$|[/?#])", re.IGNORECASE)
 
 TIER_OFFLINE = 0
 TIER_NETWORK = 1
@@ -670,6 +671,19 @@ def _check_ffprobe() -> bool:
     return FFPROBE_AVAILABLE
 
 
+def _is_hdhomerun_like_stream_url(url: str) -> bool:
+    """Return ``True`` when *url* looks like an HDHomeRun stream endpoint."""
+
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+    host = (parsed.hostname or "").lower()
+    if "hdhomerun" in host:
+        return True
+    return bool(HDHOMERUN_URL_RE.search(parsed.path or ""))
+
+
 def _probe_stream_with_ffprobe(url: str, timeout: int, name: str) -> bool:
     """Return True when ffprobe can read stream metadata."""
 
@@ -683,6 +697,11 @@ def _probe_stream_with_ffprobe(url: str, timeout: int, name: str) -> bool:
     if scheme == "rtsp":
         analyze_duration = ANALYZE_DURATION_RTSP
         probe_size = PROBE_SIZE_RTSP
+    elif _is_hdhomerun_like_stream_url(url):
+        # HDHomeRun streams are MPEG-TS and often need a larger probe window
+        # than generic HTTP image/video endpoints.
+        analyze_duration = ANALYZE_DURATION_OTHER
+        probe_size = PROBE_SIZE_OTHER
     elif scheme not in {"http", "https"}:
         analyze_duration = ANALYZE_DURATION_OTHER
         probe_size = PROBE_SIZE_OTHER
@@ -785,6 +804,9 @@ def _ffmpeg_null_probe(
     if scheme == "rtsp":
         analyze_duration = ANALYZE_DURATION_RTSP
         probe_size = PROBE_SIZE_RTSP
+    elif _is_hdhomerun_like_stream_url(url):
+        analyze_duration = ANALYZE_DURATION_OTHER
+        probe_size = PROBE_SIZE_OTHER
     elif scheme not in {"http", "https"}:
         analyze_duration = ANALYZE_DURATION_OTHER
         probe_size = PROBE_SIZE_OTHER
@@ -5068,8 +5090,12 @@ def capture_frame_from_stream(
             return False
 
     clean_url = sanitize_url(url)
+    is_hdhomerun_stream = _is_hdhomerun_like_stream_url(url)
 
     timeout = max(timeout, 5)
+    if is_hdhomerun_stream:
+        # Give tuner-backed streams extra startup room before declaring failure.
+        timeout = max(timeout, 15)
 
     tmpdirname = f"/tmp/glimpser_{name}"
     os.makedirs(tmpdirname, exist_ok=True)
@@ -5120,6 +5146,9 @@ def capture_frame_from_stream(
                 # command.extend(['-timeout', str(CAPTURE_TIMEOUT-1)])  # not sure why, but this causes us a lot of issues, dont set a timetout
                 probe_size = PROBE_SIZE_DEFAULT
                 analyze_duration = ANALYZE_DURATION_DEFAULT
+                if is_hdhomerun_stream:
+                    probe_size = PROBE_SIZE_OTHER
+                    analyze_duration = ANALYZE_DURATION_OTHER
             elif scheme == "rtsp":
                 if transport:
                     command.extend(["-rtsp_transport", transport])
@@ -5137,6 +5166,11 @@ def capture_frame_from_stream(
             # Use configured analyze duration and probe size values
             command.extend(["-analyzeduration", analyze_duration])
             command.extend(["-probesize", probe_size])
+            frames_to_capture = NUM_FRAMES
+            if is_hdhomerun_stream:
+                # HDHomeRun feeds may have sparse keyframes; decode non-key
+                # frames too and keep capture burst short for responsiveness.
+                frames_to_capture = max(1, min(NUM_FRAMES, 2))
             command.extend(
                 [
                     "-use_wallclock_as_timestamps",
@@ -5144,8 +5178,6 @@ def capture_frame_from_stream(
                     #'-ec', '15',
                     "-threads",
                     "1",
-                    "-skip_frame",
-                    "nokey",
                     "-sn",
                     "-an",
                     #'-err_detect','aggressive',
@@ -5156,7 +5188,7 @@ def capture_frame_from_stream(
                     "-pix_fmt",
                     "rgb24",
                     "-frames:v",
-                    str(NUM_FRAMES),  # Capture 'NUM_FRAMES' frames
+                    str(frames_to_capture),  # Capture burst and keep last frame
                     "-fflags",
                     "+igndts+ignidx+genpts+fastseek+discardcorrupt",
                     "-q:v",
@@ -5167,6 +5199,8 @@ def capture_frame_from_stream(
                     temp_output_pattern,  # Temporary output file pattern
                 ]
             )
+            if not is_hdhomerun_stream:
+                command.extend(["-skip_frame", "nokey"])
 
             try:
                 subprocess.run(
