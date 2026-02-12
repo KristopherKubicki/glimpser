@@ -356,7 +356,7 @@ class TestOfflineJobScheduler(unittest.TestCase):
             seconds=30,
             id="process_offline_jobs",
             replace_existing=True,
-            max_instances=1,
+            max_instances=3,
             coalesce=True,
             misfire_grace_time=30,
         )
@@ -371,7 +371,7 @@ class TestOfflineJobScheduler(unittest.TestCase):
             seconds=60,
             id="process_offline_jobs",
             replace_existing=True,
-            max_instances=1,
+            max_instances=3,
             coalesce=True,
             misfire_grace_time=60,
         )

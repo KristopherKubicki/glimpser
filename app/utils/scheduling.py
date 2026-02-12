@@ -182,6 +182,7 @@ job_backoff_until: dict[str, float] = {}
 _shutdown_event = threading.Event()
 _shutdown_grace_seconds = int(os.getenv("SCHEDULER_SHUTDOWN_GRACE_SECONDS", "5"))
 _capture_fail_last_log: dict[str, float] = {}
+_offline_jobs_run_lock = threading.Lock()
 
 
 def mark_shutdown() -> None:
@@ -1292,6 +1293,13 @@ def schedule_crawlers():
             logging.error(f"Error determining frequency for {name}: {e}")
             seconds = 60 * 30  # Fallback to default value if there's an issue
 
+        # The APScheduler job calls run_with_timeout() and blocks while waiting
+        # for the worker process. If we block nearly the entire interval, jobs
+        # will frequently overlap and APScheduler will log noisy skip warnings.
+        # Keep some slack so normal drift doesn't cause overlap.
+        max_timeout = 60 if LOW_CPU_MODE else 120
+        timeout_seconds = max(10, min(max_timeout, max(10, seconds - 5)))
+
         # Look up the pre-calculated startup offset for this crawler
         offset_delay_seconds = offsets.get(name, 0)
 
@@ -1311,9 +1319,15 @@ def schedule_crawlers():
                 seconds=seconds,
                 start_date=datetime.datetime.now()
                 + datetime.timedelta(seconds=start_delay_seconds),
-                args=(update_camera, (name, template), seconds - 1),
+                args=(update_camera, (name, template), timeout_seconds),
                 id=name,
                 replace_existing=True,
+                # Allow a few scheduler invocations while a previous run is
+                # still waiting on a worker process; run_with_timeout() will
+                # no-op when the template is already active.
+                max_instances=3,
+                coalesce=True,
+                misfire_grace_time=max(30, seconds),
             )
 
         except Exception as e:
@@ -1824,6 +1838,8 @@ def process_offline_jobs() -> None:
     state = network_state()
     if not state.get("wan_ok", True) and not state.get("dns_ok", True):
         return
+    if not _offline_jobs_run_lock.acquire(blocking=False):
+        return
 
     session = SessionLocal()
     try:
@@ -1852,6 +1868,11 @@ def process_offline_jobs() -> None:
                 logging.error("Failed to run offline job %s: %s", job_id, exc)
     finally:
         session.close()
+        try:
+            _offline_jobs_run_lock.release()
+        except RuntimeError:
+            # Should not happen, but avoid taking down the scheduler thread.
+            pass
 
 
 def schedule_offline_job_processor() -> None:
@@ -1865,7 +1886,10 @@ def schedule_offline_job_processor() -> None:
             seconds=interval_seconds,
             id="process_offline_jobs",
             replace_existing=True,
-            max_instances=1,
+            # Allow the scheduler thread to trigger again even if a previous run
+            # is still working. process_offline_jobs() uses a non-blocking lock
+            # to ensure only one worker is active at a time.
+            max_instances=3,
             coalesce=True,
             misfire_grace_time=max(interval_seconds, 30),
         )

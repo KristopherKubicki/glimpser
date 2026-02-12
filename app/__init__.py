@@ -193,9 +193,12 @@ def create_app(
                 func=archive_screenshots,
                 trigger="interval",
                 minutes=archive_interval_minutes,
-                max_instances=1,
+                # The archiver implements its own lock file; allow APScheduler
+                # to trigger without logging noisy "max instances reached"
+                # warnings when a run takes longer than the interval.
+                max_instances=3,
                 coalesce=True,
-                misfire_grace_time=60,
+                misfire_grace_time=max(60, int(archive_interval_minutes * 60)),
             )
             scheduler.add_job(
                 id="cleanup_clips",
@@ -334,9 +337,9 @@ def create_app(
                     func=archive_screenshots,
                     trigger="interval",
                     minutes=archive_interval_minutes,
-                    max_instances=1,
+                    max_instances=3,
                     coalesce=True,
-                    misfire_grace_time=60,
+                    misfire_grace_time=max(60, int(archive_interval_minutes * 60)),
                 )
                 scheduler.add_job(
                     id="cleanup_clips",
