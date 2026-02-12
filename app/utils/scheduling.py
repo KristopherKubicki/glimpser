@@ -128,6 +128,9 @@ get_system_metrics = _system_metrics.get_system_metrics
 log_cache = _system_metrics.log_cache
 log_cache_lock = _system_metrics.log_cache_lock
 DEBUG = CONFIG_DEBUG
+CRAWLER_SCHEDULE_JITTER_SECONDS = max(
+    0, int(os.getenv("CRAWLER_SCHEDULE_JITTER_SECONDS", "15"))
+)
 
 
 class CLIPProcessor:
@@ -1292,14 +1295,22 @@ def schedule_crawlers():
         # Look up the pre-calculated startup offset for this crawler
         offset_delay_seconds = offsets.get(name, 0)
 
-        # Apply the incremental delay to space out job scheduling
+        # Apply incremental delay plus a small jitter to avoid synchronized
+        # retries when network/service recovers.
+        jitter_seconds = (
+            random.randint(0, CRAWLER_SCHEDULE_JITTER_SECONDS)
+            if CRAWLER_SCHEDULE_JITTER_SECONDS > 0
+            else 0
+        )
+        start_delay_seconds = offset_delay_seconds + jitter_seconds
+
         try:
             scheduler.add_job(
                 func=run_with_timeout,
                 trigger="interval",
                 seconds=seconds,
                 start_date=datetime.datetime.now()
-                + datetime.timedelta(seconds=offset_delay_seconds),
+                + datetime.timedelta(seconds=start_delay_seconds),
                 args=(update_camera, (name, template), seconds - 1),
                 id=name,
                 replace_existing=True,

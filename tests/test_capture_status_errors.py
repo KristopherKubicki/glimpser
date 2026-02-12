@@ -17,6 +17,9 @@ class TestCaptureStatusErrors(unittest.TestCase):
         self.patcher.start()
         ss.status_code_cache.clear()
         ss.status_code_cache_time.clear()
+        ss.throttle_cache.clear()
+        ss.source_circuit_cache.clear()
+        ss.domain_retry_budget_cache.clear()
         ss._persist_status_cache()
 
     def tearDown(self):
@@ -120,6 +123,45 @@ class TestCaptureStatusErrors(unittest.TestCase):
 
         self.assertTrue(result)
         mock_inner.assert_called_once()
+
+    @patch(
+        "app.utils.screenshots.network_state",
+        return_value={"dns_ok": True, "wan_ok": True, "lan_ok": True},
+    )
+    @patch("app.utils.screenshots._capture_or_download_inner")
+    def test_source_circuit_open_skips_capture(self, mock_inner, _mock_state):
+        url = "http://example.com/image.png"
+        ss.source_circuit_cache[url.lower()] = {
+            "open_until": ss.time.time() + 60,
+            "count": 99,
+            "window_start": ss.time.time(),
+        }
+
+        result = ss.capture_or_download("test", {"url": url})
+
+        self.assertFalse(result)
+        mock_inner.assert_not_called()
+
+    @patch(
+        "app.utils.screenshots.network_state",
+        return_value={"dns_ok": True, "wan_ok": True, "lan_ok": True},
+    )
+    @patch("app.utils.screenshots._capture_or_download_inner")
+    def test_retry_budget_exhausted_blocks_capture(self, mock_inner, _mock_state):
+        url = "http://example.com/image.png"
+        key = "example.com"
+        ss.domain_retry_budget_cache[key] = {
+            "count": ss.DOMAIN_RETRY_BUDGET_LIMIT,
+            "window_start": ss.time.time(),
+            "blocked_until": 0,
+        }
+
+        result = ss.capture_or_download("test", {"url": url})
+
+        self.assertFalse(result)
+        mock_inner.assert_not_called()
+        entry = ss.throttle_cache.get(url, {})
+        self.assertEqual(entry.get("reason"), "retry_budget_exhausted")
 
 
 if __name__ == "__main__":

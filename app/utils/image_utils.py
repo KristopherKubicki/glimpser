@@ -6,6 +6,7 @@ from __future__ import annotations
 import datetime
 import logging
 import os
+import tempfile
 import textwrap
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -125,9 +126,21 @@ def _apply_caption(
 
 def save_image(image: Image.Image, image_path: str) -> None:
     """Persist ``image`` to ``image_path`` in PNG format."""
-
-    image.save(image_path, "PNG")
-    image.close()
+    directory = os.path.dirname(image_path) or "."
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=".imgtmp_", suffix=".png", dir=directory, text=False
+    )
+    os.close(fd)
+    try:
+        image.save(tmp_path, "PNG")
+        os.replace(tmp_path, image_path)
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+        image.close()
 
 
 def add_motion_and_caption(

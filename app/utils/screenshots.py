@@ -263,6 +263,9 @@ danger_session_cache = {}
 _local_quarantine_log_cache: dict[str, float] = {}
 _domain_backoff_log_cache: dict[str, float] = {}
 _wan_offline_log_cache: dict[str, float] = {}
+source_circuit_cache = {}
+_source_circuit_log_cache: dict[str, float] = {}
+domain_retry_budget_cache = {}
 
 PREFLIGHT_CACHE_PATH = "data/preflight_cache.json"
 PREFLIGHT_CACHE_PERSIST_EVERY = 60
@@ -295,6 +298,19 @@ DOMAIN_BACKOFF_LOG_INTERVAL = int(os.getenv("DOMAIN_BACKOFF_LOG_INTERVAL", "90")
 WAN_OFFLINE_LOG_INTERVAL = int(os.getenv("WAN_OFFLINE_LOG_INTERVAL", "120"))
 PREFLIGHT_BACKOFF_WAN_OFFLINE = int(
     os.getenv("PREFLIGHT_BACKOFF_WAN_OFFLINE", str(60 * 10))
+)
+SOURCE_CIRCUIT_THRESHOLD = int(os.getenv("SOURCE_CIRCUIT_THRESHOLD", "5"))
+SOURCE_CIRCUIT_WINDOW_SECONDS = int(os.getenv("SOURCE_CIRCUIT_WINDOW_SECONDS", "900"))
+SOURCE_CIRCUIT_COOLDOWN_SECONDS = int(
+    os.getenv("SOURCE_CIRCUIT_COOLDOWN_SECONDS", "1800")
+)
+SOURCE_CIRCUIT_LOG_INTERVAL = int(os.getenv("SOURCE_CIRCUIT_LOG_INTERVAL", "120"))
+DOMAIN_RETRY_BUDGET_LIMIT = int(os.getenv("DOMAIN_RETRY_BUDGET_LIMIT", "12"))
+DOMAIN_RETRY_BUDGET_WINDOW_SECONDS = int(
+    os.getenv("DOMAIN_RETRY_BUDGET_WINDOW_SECONDS", "300")
+)
+DOMAIN_RETRY_BUDGET_BACKOFF_SECONDS = int(
+    os.getenv("DOMAIN_RETRY_BUDGET_BACKOFF_SECONDS", "300")
 )
 _preflight_cache_last_persist = 0.0
 
@@ -391,6 +407,8 @@ def _load_preflight_cache() -> None:
     reachability_cache.update(data.get("reachability_cache", {}))
     domain_backoff_cache.update(data.get("domain_backoff_cache", {}))
     local_quarantine_cache.update(data.get("local_quarantine_cache", {}))
+    source_circuit_cache.update(data.get("source_circuit_cache", {}))
+    domain_retry_budget_cache.update(data.get("domain_retry_budget_cache", {}))
     danger_fallback_cache.update(data.get("danger_fallback_cache", {}))
     danger_session_cache.update(data.get("danger_session_cache", {}))
     tier_cache.update(data.get("tier_cache", {}))
@@ -491,6 +509,8 @@ def _persist_preflight_cache(force: bool = False) -> None:
         "reachability_cache": reachability_cache,
         "domain_backoff_cache": domain_backoff_cache,
         "local_quarantine_cache": local_quarantine_cache,
+        "source_circuit_cache": source_circuit_cache,
+        "domain_retry_budget_cache": domain_retry_budget_cache,
         "danger_fallback_cache": danger_fallback_cache,
         "danger_session_cache": danger_session_cache,
         "tier_cache": tier_cache,
@@ -941,6 +961,86 @@ def _domain_backoff_active(url: str) -> tuple[bool, str | None, int]:
     return False, None, 0
 
 
+def _source_circuit_key(url: str) -> str:
+    return url.lower()
+
+
+def _source_circuit_active(url: str) -> tuple[bool, int]:
+    key = _source_circuit_key(url)
+    entry = source_circuit_cache.get(key, {})
+    until = entry.get("open_until", 0)
+    now = time.time()
+    if until > now:
+        return True, int(until - now)
+    return False, 0
+
+
+def _record_source_failure(url: str) -> None:
+    key = _source_circuit_key(url)
+    now = time.time()
+    entry = source_circuit_cache.setdefault(key, {"count": 0, "window_start": now})
+    window_start = entry.get("window_start", now)
+    if now - window_start > SOURCE_CIRCUIT_WINDOW_SECONDS:
+        entry["count"] = 0
+        entry["window_start"] = now
+    entry["count"] = int(entry.get("count", 0)) + 1
+    entry["last_failure"] = now
+    if entry["count"] >= SOURCE_CIRCUIT_THRESHOLD:
+        entry["open_until"] = max(
+            float(entry.get("open_until", 0)),
+            now + SOURCE_CIRCUIT_COOLDOWN_SECONDS,
+        )
+    source_circuit_cache[key] = entry
+
+
+def _record_source_success(url: str) -> None:
+    key = _source_circuit_key(url)
+    if key not in source_circuit_cache:
+        return
+    source_circuit_cache.pop(key, None)
+
+
+def _consume_domain_retry_budget(url: str) -> tuple[bool, int]:
+    key = _domain_key(url)
+    if not key:
+        return True, 0
+    now = time.time()
+    entry = domain_retry_budget_cache.setdefault(
+        key, {"count": 0, "window_start": now, "blocked_until": 0}
+    )
+    blocked_until = float(entry.get("blocked_until", 0))
+    if blocked_until > now:
+        return False, int(blocked_until - now)
+
+    window_start = float(entry.get("window_start", now))
+    if now - window_start > DOMAIN_RETRY_BUDGET_WINDOW_SECONDS:
+        entry["count"] = 0
+        entry["window_start"] = now
+
+    if int(entry.get("count", 0)) >= DOMAIN_RETRY_BUDGET_LIMIT:
+        entry["blocked_until"] = now + DOMAIN_RETRY_BUDGET_BACKOFF_SECONDS
+        domain_retry_budget_cache[key] = entry
+        return False, DOMAIN_RETRY_BUDGET_BACKOFF_SECONDS
+
+    entry["count"] = int(entry.get("count", 0)) + 1
+    entry["last"] = now
+    domain_retry_budget_cache[key] = entry
+    return True, 0
+
+
+def _refund_domain_retry_budget(url: str) -> None:
+    key = _domain_key(url)
+    if not key:
+        return
+    entry = domain_retry_budget_cache.get(key)
+    if not entry:
+        return
+    entry["count"] = max(int(entry.get("count", 0)) - 1, 0)
+    entry["last_success"] = time.time()
+    entry["blocked_until"] = 0
+    domain_retry_budget_cache[key] = entry
+
+
 def _set_domain_backoff(url: str, reason: str, backoff_seconds: int) -> None:
     key = _domain_key(url)
     if not key:
@@ -1058,6 +1158,8 @@ def _record_tier_success(url: str, tier: int, detail: str) -> None:
     entry["last_time"] = time.time()
     entry.pop("max_tier", None)
     entry.pop("lock_until", None)
+    _record_source_success(url)
+    _refund_domain_retry_budget(url)
     _persist_preflight_cache()
 
 
@@ -1080,6 +1182,8 @@ def _record_tier_failure(
     if _is_private_host(hostname) and detail in LOCAL_FAILURE_REASONS:
         _set_domain_backoff(url, f"local_{detail}", PREFLIGHT_BACKOFF_DOMAIN_LOCAL_FAIL)
         _record_local_failure(url, detail)
+    if detail not in {"source_circuit_open", "retry_budget_exhausted"}:
+        _record_source_failure(url)
     logging.info(
         "Tier %s failed for %s: %s",
         TIER_NAMES.get(tier, str(tier)),
@@ -3151,7 +3255,21 @@ def capture_or_download(name: str, template: dict) -> bool:
             throttle_cache[url] = entry
             _record_tier_failure(url, TIER_OFFLINE, "local_quarantine")
             return False
-    elif domain:
+    source_open, source_remaining = _source_circuit_active(url)
+    if source_open:
+        now = time.time()
+        key = _source_circuit_key(url)
+        last = _source_circuit_log_cache.get(key, 0.0)
+        if now - last >= SOURCE_CIRCUIT_LOG_INTERVAL:
+            _source_circuit_log_cache[key] = now
+            logging.warning(
+                "Source circuit open for %s (%ds remaining)",
+                clean_url,
+                source_remaining,
+            )
+        _record_tier_failure(url, TIER_OFFLINE, "source_circuit_open")
+        return False
+    if domain and not _is_lan_target(domain):
         # For public/external targets, avoid thrashing every source when WAN/DNS
         # is unstable. This system is mostly periodic snapshots, so a short
         # global pause is safer than repeated expensive failures.
@@ -3200,6 +3318,18 @@ def capture_or_download(name: str, template: dict) -> bool:
 
     if not _tier_allowed(url, TIER_OFFLINE):
         logging.debug("Tier lockout for %s at offline tier", clean_url)
+        return False
+
+    budget_ok, budget_remaining = _consume_domain_retry_budget(url)
+    if not budget_ok:
+        _set_domain_backoff(url, "retry_budget_exhausted", budget_remaining)
+        entry = throttle_cache.get(url, {})
+        entry["timeout"] = max(
+            entry.get("timeout", 0), time.time() + max(budget_remaining, 1)
+        )
+        entry["reason"] = "retry_budget_exhausted"
+        throttle_cache[url] = entry
+        _record_tier_failure(url, TIER_OFFLINE, "retry_budget_exhausted")
         return False
 
     if not _try_acquire_domain(url):
