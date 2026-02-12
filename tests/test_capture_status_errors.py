@@ -89,6 +89,40 @@ class TestCaptureStatusErrors(unittest.TestCase):
         self.assertTrue(preflight_ok)
         self.assertEqual(reason, "ok")
 
+    @patch("app.utils.screenshots.http_session")
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
+    @patch(
+        "app.utils.screenshots.network_state",
+        return_value={"dns_ok": True, "wan_ok": True, "lan_ok": True},
+    )
+    def test_get_content_type_ignores_https_redirect_pin_for_lan_http(
+        self, _mock_state, _mock_online, mock_session_factory
+    ):
+        url = "http://192.168.1.66/ISAPI/Streaming/channels/101/picture"
+        ss.redirect_pin_cache[url] = (
+            "https://192.168.1.66/ISAPI/Streaming/channels/101/picture"
+        )
+        ss.redirect_pin_cache_time[url] = 9999999999
+
+        mock_session = MagicMock()
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.headers = {"Content-Type": "image/jpeg"}
+        resp.history = []
+        resp.url = url
+        resp.cookies = None
+        resp.raw = MagicMock()
+        resp.raw.read.return_value = b"\xff\xd8\xff" * 1000
+        mock_session.request.return_value = resp
+        mock_session_factory.return_value = mock_session
+
+        ctype, _modified, preflight_ok, _reason = ss.get_content_type(url, False)
+        self.assertTrue(preflight_ok)
+        self.assertEqual(ctype, "image/jpeg")
+        # Ensure we didn't follow the https pin for a private host.
+        called_url = mock_session.request.call_args[0][1]
+        self.assertEqual(called_url, url)
+
     @patch("app.utils.screenshots.network_state")
     @patch("app.utils.screenshots._capture_or_download_inner")
     def test_capture_pauses_external_when_wan_or_dns_offline(

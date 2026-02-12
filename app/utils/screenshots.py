@@ -4647,6 +4647,17 @@ def get_content_type(
 
     accept_ranges = _get_accept_ranges(url)
     probe_url = _get_redirect_pin(url) or _get_cached_redirect(url) or url
+    # Don't "upgrade" LAN hosts from http -> https just because we observed a
+    # prior redirect. Many cameras expose only one of 80/443, and pinning to
+    # https can cause repeated connection-refused failures (port 443) even when
+    # the original http URL is correct.
+    if parsed.scheme == "http" and _is_private_host(parsed.hostname):
+        try:
+            pinned_scheme = urlparse(probe_url).scheme.lower()
+        except Exception:
+            pinned_scheme = ""
+        if pinned_scheme == "https":
+            probe_url = url
     for verb in ("HEAD", "GET"):  # fallback to GET if HEAD blocked
         try:
             # extra header only for the GET probe
