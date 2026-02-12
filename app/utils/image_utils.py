@@ -63,7 +63,6 @@ def load_image(image_path: str) -> Iterator[Image.Image]:
         else:
             os.unlink(image_path)
         logging.warning("image load issue: %s %s", image_path, e)
-        logging.error("Error saving image: %s %s", image_path, e)
         yield None
 
 
