@@ -148,12 +148,19 @@ def add_motion_and_caption(
 ) -> None:
     """Overlay ``caption`` and/or motion indicator onto ``image_path``."""
 
-    if not os.path.exists(image_path):
+    # Many callers pass a "latest" symlink (global or per-camera). We must edit
+    # the underlying PNG and leave the symlink intact, otherwise we can replace
+    # the symlink with a regular file and/or create partial reads.
+    target_path = image_path
+    if os.path.islink(image_path):
+        target_path = os.path.realpath(image_path)
+
+    if not os.path.exists(target_path):
         return
     if caption is None and not motion:
         return
 
-    with load_image(image_path) as image:
+    with load_image(target_path) as image:
         if image is None:
             return
 
@@ -167,6 +174,6 @@ def add_motion_and_caption(
                 _apply_motion_icon(image, draw, font, font_size, top_offset)
             if caption is not None:
                 _apply_caption(image, draw, font, font_size, caption, top_offset)
-            save_image(image, image_path)
+            save_image(image, target_path)
         except Exception as e:  # pragma: no cover - unexpected errors
             logging.error("Error updating image %s : %s", image_path, e)
