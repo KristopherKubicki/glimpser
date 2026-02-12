@@ -261,6 +261,8 @@ local_quarantine_cache = {}
 danger_fallback_cache = {}
 danger_session_cache = {}
 _local_quarantine_log_cache: dict[str, float] = {}
+_domain_backoff_log_cache: dict[str, float] = {}
+_wan_offline_log_cache: dict[str, float] = {}
 
 PREFLIGHT_CACHE_PATH = "data/preflight_cache.json"
 PREFLIGHT_CACHE_PERSIST_EVERY = 60
@@ -289,6 +291,11 @@ MAX_REDIRECTS = 5
 DOMAIN_CONCURRENCY_LIMIT = int(os.getenv("DOMAIN_CONCURRENCY_LIMIT", "2"))
 PRELIGHT_LATENCY_THRESHOLD = float(os.getenv("PREFLIGHT_LATENCY_THRESHOLD", "5.0"))
 LOCAL_QUARANTINE_LOG_INTERVAL = int(os.getenv("LOCAL_QUARANTINE_LOG_INTERVAL", "60"))
+DOMAIN_BACKOFF_LOG_INTERVAL = int(os.getenv("DOMAIN_BACKOFF_LOG_INTERVAL", "90"))
+WAN_OFFLINE_LOG_INTERVAL = int(os.getenv("WAN_OFFLINE_LOG_INTERVAL", "120"))
+PREFLIGHT_BACKOFF_WAN_OFFLINE = int(
+    os.getenv("PREFLIGHT_BACKOFF_WAN_OFFLINE", str(60 * 10))
+)
 _preflight_cache_last_persist = 0.0
 
 
@@ -2134,6 +2141,25 @@ def _is_private_host(hostname: str | None) -> bool:
     return ip.is_private or ip.is_loopback or ip.is_link_local
 
 
+def _is_probably_local_hostname(hostname: str | None) -> bool:
+    """Return ``True`` for hostnames that are likely LAN-only names."""
+
+    if not hostname:
+        return False
+    host = hostname.strip().lower().rstrip(".")
+    if host in {"localhost"}:
+        return True
+    if "." not in host:
+        return True
+    return host.endswith((".local", ".lan", ".home", ".arpa"))
+
+
+def _is_lan_target(hostname: str | None) -> bool:
+    """Return ``True`` when *hostname* points to likely LAN/private target."""
+
+    return _is_private_host(hostname) or _is_probably_local_hostname(hostname)
+
+
 def _danger_chrome_available() -> bool:
     try:
         from .chrome_utils import is_chrome_debug_port_open
@@ -2444,7 +2470,7 @@ def _capture_or_download_inner(
     rtsp_preflight_ok = False
     rtsp_preflight_url = None
 
-    if domain and _is_private_host(domain):
+    if domain and _is_lan_target(domain):
         quarantined, remaining = _local_quarantine_active(url)
         if quarantined:
             logging.debug(
@@ -2509,16 +2535,21 @@ def _capture_or_download_inner(
         rtsp_preflight_ok = True
         rtsp_preflight_url = rtsp_url
 
-    if parsed.scheme in {"http", "https"}:
-        active, reason, remaining = _domain_backoff_active(url)
-        if active:
-            logging.info(
-                "Domain backoff active for %s (%s): %ds",
-                clean_url,
-                reason or "unknown",
-                remaining,
-            )
-            return False
+        if parsed.scheme in {"http", "https"}:
+            active, reason, remaining = _domain_backoff_active(url)
+            if active:
+                now = time.time()
+                key = _domain_key(url) or clean_url
+                last = _domain_backoff_log_cache.get(key, 0.0)
+                if now - last >= DOMAIN_BACKOFF_LOG_INTERVAL:
+                    _domain_backoff_log_cache[key] = now
+                    logging.info(
+                        "Domain backoff active for %s (%s): %ds",
+                        clean_url,
+                        reason or "unknown",
+                        remaining,
+                    )
+                return False
 
     if domain:
         if not _tier_allowed(url, TIER_NETWORK):
@@ -3101,7 +3132,7 @@ def capture_or_download(name: str, template: dict) -> bool:
     # Short-circuit quickly when a private-host source is currently quarantined.
     # This avoids repeated expensive capture attempts while the backoff window
     # is active.
-    if domain and _is_private_host(domain):
+    if domain and _is_lan_target(domain):
         quarantined, remaining = _local_quarantine_active(url)
         if quarantined:
             now = time.time()
@@ -3119,6 +3150,28 @@ def capture_or_download(name: str, template: dict) -> bool:
             entry["reason"] = "local_quarantine"
             throttle_cache[url] = entry
             _record_tier_failure(url, TIER_OFFLINE, "local_quarantine")
+            return False
+    elif domain:
+        # For public/external targets, avoid thrashing every source when WAN/DNS
+        # is unstable. This system is mostly periodic snapshots, so a short
+        # global pause is safer than repeated expensive failures.
+        state = network_state()
+        dns_ok = bool(state.get("dns_ok", True))
+        wan_ok = bool(state.get("wan_ok", True))
+        if not (dns_ok and wan_ok):
+            reason = "dns_offline" if not dns_ok else "wan_offline"
+            record_preflight_backoff(url, reason, PREFLIGHT_BACKOFF_WAN_OFFLINE)
+            now = time.time()
+            key = _domain_key(url) or clean_url
+            last = _wan_offline_log_cache.get(key, 0.0)
+            if now - last >= WAN_OFFLINE_LOG_INTERVAL:
+                _wan_offline_log_cache[key] = now
+                logging.warning(
+                    "Network degraded; pausing external capture for %s (%s)",
+                    clean_url,
+                    reason,
+                )
+            _record_tier_failure(url, TIER_NETWORK, reason)
             return False
     entry = throttle_cache.get(url)
     if entry and entry.get("timeout", 0) > time.time():

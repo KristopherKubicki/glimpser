@@ -23,9 +23,15 @@ class TestCaptureStatusErrors(unittest.TestCase):
         self.patcher.stop()
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
+    @patch(
+        "app.utils.screenshots.network_state",
+        return_value={"dns_ok": True, "wan_ok": True, "lan_ok": True},
+    )
     @patch("app.utils.screenshots.is_address_reachable")
     @patch("app.utils.screenshots.download_image")
-    def test_capture_skips_on_cached_error(self, mock_download, mock_reachable):
+    def test_capture_skips_on_cached_error(
+        self, mock_download, mock_reachable, _mock_state
+    ):
         url = "http://example.com/image.png"
         ss.set_cached_status_code(url, 403)
         result = ss.capture_or_download("test", {"url": url})
@@ -33,9 +39,15 @@ class TestCaptureStatusErrors(unittest.TestCase):
         mock_download.assert_not_called()
         mock_reachable.assert_not_called()
 
+    @patch(
+        "app.utils.screenshots.network_state",
+        return_value={"dns_ok": True, "wan_ok": True, "lan_ok": True},
+    )
     @patch("app.utils.screenshots.http_session")
     @patch("app.utils.screenshots.is_system_online", return_value=True)
-    def test_get_content_type_caches_error(self, mock_online, mock_session_factory):
+    def test_get_content_type_caches_error(
+        self, mock_online, mock_session_factory, _mock_state
+    ):
         url = "http://example.com"
         mock_session = MagicMock()
         resp = MagicMock()
@@ -73,6 +85,41 @@ class TestCaptureStatusErrors(unittest.TestCase):
         self.assertTrue(modified)
         self.assertTrue(preflight_ok)
         self.assertEqual(reason, "ok")
+
+    @patch("app.utils.screenshots.network_state")
+    @patch("app.utils.screenshots._capture_or_download_inner")
+    def test_capture_pauses_external_when_wan_or_dns_offline(
+        self, mock_inner, mock_network_state
+    ):
+        url = "http://example.com/image.png"
+        mock_network_state.return_value = {"dns_ok": False, "wan_ok": False}
+
+        result = ss.capture_or_download("test", {"url": url})
+
+        self.assertFalse(result)
+        mock_inner.assert_not_called()
+        entry = ss.throttle_cache.get(url, {})
+        self.assertEqual(entry.get("reason"), "dns_offline")
+        self.assertGreater(entry.get("timeout", 0), 0)
+
+    @patch("app.utils.screenshots.network_state")
+    @patch("app.utils.screenshots._release_domain")
+    @patch("app.utils.screenshots._try_acquire_domain", return_value=True)
+    @patch("app.utils.screenshots._capture_or_download_inner", return_value=True)
+    def test_capture_allows_lan_hostname_when_wan_offline(
+        self,
+        mock_inner,
+        _mock_acquire,
+        _mock_release,
+        mock_network_state,
+    ):
+        url = "http://camera.lan/snapshot.jpg"
+        mock_network_state.return_value = {"dns_ok": False, "wan_ok": False}
+
+        result = ss.capture_or_download("cam", {"url": url})
+
+        self.assertTrue(result)
+        mock_inner.assert_called_once()
 
 
 if __name__ == "__main__":
