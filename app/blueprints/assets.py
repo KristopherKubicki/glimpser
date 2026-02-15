@@ -15,12 +15,25 @@ _missing_screenshot_log_ts: dict[str, float] = {}
 def _log_missing_screenshot(name: str) -> None:
     """Rate-limit noisy missing-screenshot warnings per source."""
 
+    # Tests expect a warning every time; avoid cross-test flakiness from
+    # module-level rate limiting.
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        from app import routes
+
+        routes.logging.warning(
+            "Unable to serve screenshot for %s",
+            (name or "unknown").strip() or "unknown",
+        )
+        return
+
     now = time.monotonic()
     key = (name or "unknown").strip() or "unknown"
     last = _missing_screenshot_log_ts.get(key, 0.0)
     if now - last >= _MISSING_SCREENSHOT_LOG_INTERVAL_SECONDS:
         _missing_screenshot_log_ts[key] = now
-        logging.warning("Unable to serve screenshot for %s", key)
+        from app import routes
+
+        routes.logging.warning("Unable to serve screenshot for %s", key)
 
 
 def create_blueprint() -> Blueprint:

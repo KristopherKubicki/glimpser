@@ -508,8 +508,8 @@ def create_blueprint() -> Blueprint:
         width = None
         fps = None
         if quality == "low":
-            width = min(routes.config.LIVE_RTSP_WIDTH, 640)
-            fps = min(routes.config.LIVE_RTSP_FPS, 5)
+            width = min(routes.config.LIVE_RTSP_WIDTH, 480)
+            fps = min(routes.config.LIVE_RTSP_FPS, 3)
         elif quality == "high":
             width = max(routes.config.LIVE_RTSP_WIDTH, 1280)
             width = min(width, 1920)
