@@ -509,6 +509,52 @@ class TestRoutes(unittest.TestCase):
         mock_render_template.assert_called_with(
             "live.html",
             template_details={"cam1": mock_get_template.return_value},
+            selected_camera="cam1",
+            selected_group=None,
+            page_title="Live View",
+        )
+
+    @patch("app.routes.SessionLocal")
+    @patch("app.routes.session", {"user_id": 1})
+    @patch("app.routes.template_manager.get_templates")
+    @patch("app.blueprints.ui.render_template")
+    def test_live_group_filters_templates(
+        self, mock_render_template, mock_get_templates, mock_session_local
+    ):
+        """The live route should honor an explicit group selection."""
+
+        mock_get_templates.return_value = {
+            "cam1": {"groups": "g1, g2"},
+            "cam2": {"groups": "g2"},
+            "cam3": {"groups": "other"},
+        }
+
+        class DummyQuery:
+            def filter_by(self, **kwargs):
+                return self
+
+            def first(self):
+                return SimpleNamespace(id=1)
+
+        class DummySession:
+            def query(self, model):
+                return DummyQuery()
+
+            def close(self):
+                pass
+
+        mock_session_local.return_value = DummySession()
+
+        response = self.client.get("/live?group=g2")
+        self.assertEqual(response.status_code, 200)
+        mock_render_template.assert_called_with(
+            "live.html",
+            template_details={
+                "cam1": {"groups": "g1, g2"},
+                "cam2": {"groups": "g2"},
+            },
+            selected_camera=None,
+            selected_group="g2",
             page_title="Live View",
         )
 

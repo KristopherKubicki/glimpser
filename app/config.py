@@ -145,8 +145,19 @@ def _get_session():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    if _engine is None:
-        _engine = create_engine(f"sqlite:///{DATABASE_PATH}")
+    effective_db_path = os.getenv("GLIMPSER_DATABASE_PATH", DATABASE_PATH)
+    needs_engine = _engine is None
+    if not needs_engine:
+        try:
+            needs_engine = str(_engine.url) != f"sqlite:///{effective_db_path}"
+        except Exception:
+            needs_engine = True
+
+    if needs_engine:
+        db_dir = os.path.dirname(effective_db_path)
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
+        _engine = create_engine(f"sqlite:///{effective_db_path}")
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
 
     return SessionLocal()
@@ -365,7 +376,7 @@ API_KEY = get_setting("API_KEY", "")
 SSO_TOKEN = get_setting("SSO_TOKEN", "")
 SSO_USERNAME = get_setting("SSO_USERNAME", USER_NAME)
 CHATGPT_KEY = get_setting("CHATGPT_KEY", "")  # maybe generalize as LLM_KEY ?
-RECOVERY_SEARCH_MODEL = get_setting("RECOVERY_SEARCH_MODEL", "gpt-4.1")
+RECOVERY_SEARCH_MODEL = get_setting("RECOVERY_SEARCH_MODEL", "gpt-5-mini")
 
 ALLOWED_LLM_MODELS = [
     "gpt-5-mini",
@@ -374,6 +385,16 @@ ALLOWED_LLM_MODELS = [
 ]
 
 LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-5-mini")
+
+LOCAL_LLM_FALLBACK = get_setting("LOCAL_LLM_FALLBACK", "False") == "True"
+LOCAL_LLM_BASE_URL = get_setting("LOCAL_LLM_BASE_URL", "http://127.0.0.1:11434")
+LOCAL_LLM_VISION_MODEL = get_setting("LOCAL_LLM_VISION_MODEL", "moondream:latest")
+LOCAL_LLM_TEXT_MODEL = get_setting("LOCAL_LLM_TEXT_MODEL", "qwen2.5:3b")
+LOCAL_LLM_TIMEOUT_SECONDS = int(get_setting("LOCAL_LLM_TIMEOUT_SECONDS", 90))
+
+# Keep local helper defaults in sync with configured settings.
+os.environ.setdefault("LOCAL_LLM_BASE_URL", LOCAL_LLM_BASE_URL)
+os.environ.setdefault("LOCAL_LLM_TIMEOUT_SECONDS", str(LOCAL_LLM_TIMEOUT_SECONDS))
 
 if LLM_MODEL_VERSION == "gpt-4.1-mini":
     logging.warning("Deprecated LLM model gpt-4.1-mini; defaulting to gpt-5-mini.")
@@ -501,6 +522,23 @@ _live_fallback_fps_cfg = int(get_setting("LIVE_FALLBACK_FPS", 1))
 LIVE_FALLBACK_FPS = (
     max(1, min(_live_fallback_fps_cfg, 1)) if LOW_CPU_MODE else _live_fallback_fps_cfg
 )
+
+# Live RTSP playback: optionally transcode to a smaller H.264 stream so browsers
+# start quickly (and so 4K camera feeds don't overwhelm the client/network).
+LIVE_TRANSCODE_RTSP = get_setting("LIVE_TRANSCODE_RTSP", "True") == "True"
+_live_rtsp_width_cfg = int(get_setting("LIVE_RTSP_WIDTH", 1280))
+LIVE_RTSP_WIDTH = max(320, min(_live_rtsp_width_cfg, 3840))
+_live_rtsp_fps_cfg = int(get_setting("LIVE_RTSP_FPS", 10))
+LIVE_RTSP_FPS = max(1, min(_live_rtsp_fps_cfg, 30))
+
+# In low CPU mode, be more conservative with live playback.
+if LOW_CPU_MODE:
+    LIVE_RTSP_WIDTH = min(LIVE_RTSP_WIDTH, 640)
+    LIVE_RTSP_FPS = min(LIVE_RTSP_FPS, 5)
+
+# Socket / IO timeouts (microseconds) for live stream startup/read.
+LIVE_RTSP_RW_TIMEOUT_US = int(get_setting("LIVE_RTSP_RW_TIMEOUT_US", 15000000))
+LIVE_RTSP_SOCKET_TIMEOUT_US = int(get_setting("LIVE_RTSP_SOCKET_TIMEOUT_US", 15000000))
 
 # Stop restarting live streams endlessly when ffmpeg repeatedly fails. If the
 # live view fails this many times in a row without producing any output,

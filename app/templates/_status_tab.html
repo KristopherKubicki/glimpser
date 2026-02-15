@@ -288,6 +288,45 @@
 </div>
 
 <p>Last summary generated: {{ last_summary or 'N/A' }}</p>
+{% endcall %} {% call card('Scheduler Health') %}
+<p>
+  Running jobs now: {{ scheduler_health.running_jobs if scheduler_health else 0 }}
+  &nbsp;|&nbsp; Max-instance skips since start:
+  {{ scheduler_health.max_instance_skips_total if scheduler_health else 0 }}
+</p>
+<p>
+  Last max-instance skip:
+  {% if scheduler_health and scheduler_health.last_max_instance_at %}
+  <span
+    class="humanized-time"
+    data-time="{{ scheduler_health.last_max_instance_at }}"
+    title="{{ scheduler_health.last_max_instance_at }}"
+    >{{ scheduler_health.last_max_instance_at }}</span
+  >
+  {% else %}N/A{% endif %}
+</p>
+{% if scheduler_health and scheduler_health.top_skipped_jobs %}
+<div class="table-container">
+  <table class="feed-status top-failures">
+    <thead>
+      <tr>
+        <th>Job</th>
+        <th>Skip Count</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in scheduler_health.top_skipped_jobs %}
+      <tr>
+        <td data-label="Job">{{ row.job_id }}</td>
+        <td data-label="Skip Count">{{ row.count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p>No max-instance saturation recorded since restart.</p>
+{% endif %}
 {% endcall %} {% call card('Top Failures (last 24h)') %} {% if top_failures %}
 <div class="top-failures-controls">
   <label for="top-failures-search">Search</label>

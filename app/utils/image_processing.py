@@ -15,9 +15,17 @@ import re
 
 from PIL import Image, ImageFile
 
-from app.config import CHATGPT_KEY, LLM_CAPTION_PROMPT, LLM_MODEL_VERSION
+from app.config import (
+    CHATGPT_KEY,
+    LLM_CAPTION_PROMPT,
+    LLM_MODEL_VERSION,
+    LOCAL_LLM_BASE_URL,
+    LOCAL_LLM_FALLBACK,
+    LOCAL_LLM_VISION_MODEL,
+)
 from app.utils import llm_cache
 from app.utils.api_utils import request_with_retry
+from app.utils.local_llm import caption_with_ollama
 from app.utils.logging_utils import shared_log_allowed
 from app.utils.screenshots import _is_valid_png
 
@@ -80,6 +88,29 @@ def _should_warn_429(now: datetime.datetime) -> bool:
     return True
 
 
+def _local_caption_fallback(
+    prompt: str, image_paths: list[str], llm_prompt: str
+) -> tuple[str | None, int]:
+    """Best-effort local caption fallback using Ollama-compatible API."""
+
+    if not LOCAL_LLM_FALLBACK:
+        return None, 0
+    result = caption_with_ollama(
+        model=LOCAL_LLM_VISION_MODEL,
+        system_prompt=llm_prompt,
+        prompt=prompt,
+        image_paths=image_paths,
+    )
+    if result:
+        logging.info(
+            "Local LLM fallback produced caption via %s (%s)",
+            LOCAL_LLM_VISION_MODEL,
+            LOCAL_LLM_BASE_URL,
+        )
+        return clean_caption(result), 0
+    return None, 0
+
+
 class ChatGPTImageComparison:
     """Helper for caption prompts using the ChatGPT vision API."""
 
@@ -122,12 +153,21 @@ class ChatGPTImageComparison:
         global last_429_error_time, _backoff_until
 
         if not self.api_key:
-            return None, 0
+            llm_prompt = LLM_CAPTION_PROMPT.replace(
+                "$datetime", str(datetime.datetime.utcnow())
+            )
+            return _local_caption_fallback(prompt, image_paths, llm_prompt)
         # Check if a 429 error occurred in the last window.
         now = datetime.datetime.now()
         if _backoff_until and now < _backoff_until:
             remaining = (_backoff_until - now).total_seconds()
             _log_backoff("rate_limited", LLM_MODEL_VERSION, remaining)
+            llm_prompt = LLM_CAPTION_PROMPT.replace(
+                "$datetime", str(datetime.datetime.utcnow())
+            )
+            local = _local_caption_fallback(prompt, image_paths, llm_prompt)
+            if local[0]:
+                return local
             return None, 0
 
         detail = "high"
@@ -216,10 +256,16 @@ class ChatGPTImageComparison:
                         LLM_MODEL_VERSION,
                         extra,
                     )
+                local = _local_caption_fallback(prompt, image_paths, llm_prompt)
+                if local[0]:
+                    return local
                 return None, 0
             result = response.json()
         except Exception as e:
             logging.warning("API response issue: %s", e)
+            local = _local_caption_fallback(prompt, image_paths, llm_prompt)
+            if local[0]:
+                return local
 
         # Process the response
         # For demonstration, we'll just return the text response
@@ -237,6 +283,9 @@ class ChatGPTImageComparison:
             )
             return response_text, ltokens
         except Exception:
+            local = _local_caption_fallback(prompt, image_paths, llm_prompt)
+            if local[0]:
+                return local
             return None, 0
 
 
@@ -256,7 +305,7 @@ def chatgpt_compare(
             return "Missing image"
 
     # Use the ChatGPT API for comparison
-    if len(CHATGPT_KEY) < 1:
+    if len(CHATGPT_KEY) < 1 and not LOCAL_LLM_FALLBACK:
         return "Missing ChatGPT key"
 
     cached = llm_cache.get(prompt, image_paths)

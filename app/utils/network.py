@@ -12,7 +12,7 @@ import os
 import socket
 import time
 
-from app.utils.api_utils import request_with_retry
+from app.utils.http_probe import probe_url_with_range
 
 DEFAULT_GRACE_SECONDS = 300
 OFFLINE_LOG_THROTTLE_SECONDS = 300
@@ -54,13 +54,12 @@ def _parse_target(target: str, default_port: int) -> tuple[str, int]:
 
 
 def _check_url(url: str, timeout: int) -> bool:
-    """Return ``True`` if ``url`` responds to a HEAD request."""
-    try:
-        resp = request_with_retry("HEAD", url, timeout=timeout)
-        return bool(resp and resp.ok)
-    except Exception as exc:  # pragma: no cover - network depends on environment
-        logging.debug("offline check failed for %s: %s", url, exc)
-        return False
+    """Return ``True`` if ``url`` responds to a tiny ranged GET probe."""
+    ok, info = probe_url_with_range(url, timeout=timeout, preconnect=True)
+    if ok:
+        return bool(info.get("ok"))
+    logging.debug("offline check failed for %s", url)
+    return False
 
 
 def _try_connect(target: str, timeout: int, default_port: int) -> bool:

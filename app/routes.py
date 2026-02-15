@@ -37,7 +37,7 @@ from functools import lru_cache, wraps
 from ipaddress import ip_address
 from pathlib import Path
 from threading import Lock, Thread
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import psutil
 import requests
@@ -102,6 +102,7 @@ from app.utils import (
     test_pattern,
     video_archiver,
 )
+from app.utils.http_probe import probe_url_with_range
 from app.utils.llm import ask_question
 from app.utils.screenshots import (
     capture_frame_from_stream,
@@ -787,13 +788,95 @@ def generate_video_stream(
 
 
 def check_url_accessible(url: str) -> bool:
-    """Return ``True`` if the URL responds to a HEAD request."""
-    try:
-        resp = requests.head(url, timeout=5)
-        return resp.ok
-    except Exception as exc:  # pragma: no cover
-        logging.error("Connectivity check failed for %s: %s", url, exc)
-        return False
+    """Return ``True`` if the URL responds to a tiny ranged GET probe."""
+    ok, info = probe_url_with_range(url, timeout=5, preconnect=True)
+    if ok:
+        return bool(info.get("ok"))
+    logging.error("Connectivity check failed for %s", url)
+    return False
+
+
+def _hikvision_channel_for_profile(channel: str, profile: str = "main") -> str:
+    """Return Hikvision channel id adjusted for ``profile`` preference."""
+
+    ch = str(channel or "").strip()
+    if not ch.isdigit() or len(ch) < 3:
+        return ch
+    base = ch[:-2]
+    stream = ch[-2:]
+    if profile == "sub":
+        return f"{base}02"
+    if profile == "main":
+        return f"{base}01"
+    return f"{base}{stream}"
+
+
+def resolve_live_stream_url(
+    details: dict[str, typing.Any], profile: str = "main"
+) -> str | None:
+    """Resolve a low-latency live stream URL for a template when possible."""
+
+    if not isinstance(details, dict):
+        return None
+
+    raw_url = str(details.get("url") or "").strip()
+    if not raw_url:
+        return None
+
+    lower_url = raw_url.lower()
+    if lower_url.startswith(("rtsp://", "rtsps://")):
+        m = re.search(r"/Streaming/Channels/(\d+)", raw_url, flags=re.IGNORECASE)
+        if m:
+            ch = _hikvision_channel_for_profile(m.group(1), profile=profile)
+            return re.sub(
+                r"/Streaming/Channels/\d+",
+                f"/Streaming/Channels/{ch}",
+                raw_url,
+                flags=re.IGNORECASE,
+            )
+        return raw_url
+
+    parsed = urlparse(raw_url)
+    if parsed.scheme not in {"http", "https"}:
+        return None
+
+    # Keep native HTTP media formats as-is.
+    if any(ext in lower_url for ext in (".m3u8", ".mjpg", ".mjpeg")):
+        return raw_url
+
+    m = re.search(
+        r"/ISAPI/Streaming/channels/(\d+)(?:/picture)?",
+        parsed.path,
+        flags=re.IGNORECASE,
+    )
+    if not m:
+        m = re.search(r"/Streaming/Channels/(\d+)", parsed.path, flags=re.IGNORECASE)
+    if not m:
+        return None
+
+    channel = _hikvision_channel_for_profile(m.group(1), profile=profile)
+
+    host = parsed.hostname
+    if not host:
+        return None
+    port = parsed.port or 554
+
+    username = parsed.username or str(details.get("auth_username") or "").strip()
+    password = parsed.password or str(details.get("auth_password") or "").strip()
+
+    auth = ""
+    if username:
+        u = quote(username, safe="")
+        if password:
+            pword = quote(password, safe="")
+            auth = f"{u}:{pword}@"
+        else:
+            auth = f"{u}@"
+
+    return (
+        f"rtsp://{auth}{host}:{port}/Streaming/Channels/{channel}"
+        "?transportmode=unicast&profile=Profile_1"
+    )
 
 
 def parse_cache_delay(headers: typing.Mapping[str, str]) -> float:
@@ -816,7 +899,13 @@ def parse_cache_delay(headers: typing.Mapping[str, str]) -> float:
     return 0.0
 
 
-def generate_live_stream(url: str) -> Generator[bytes, None, None]:
+def generate_live_stream(
+    url: str,
+    *,
+    width: int | None = None,
+    fps: int | None = None,
+    transcode_rtsp: bool | None = None,
+) -> Generator[bytes, None, None]:
     """Yield video data directly from a remote URL using ``ffmpeg``.
 
     Some camera APIs expose JPEG snapshots rather than a continuous video
@@ -878,25 +967,87 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
         command.extend(["-headers", f"referer: {base_url}\r\n"])
         command.extend(["-headers", f"origin: {base_url}\r\n"])
         command.extend(["-seekable", "0"])
+    if parsed.scheme in ("http", "https"):
+        command.extend(
+            [
+                "-reconnect",
+                "1",
+                "-reconnect_streamed",
+                "1",
+                "-reconnect_delay_max",
+                "2",
+            ]
+        )
+    elif parsed.scheme in ("rtsp", "rtsps"):
+        # Keep RTSP startup stable and latency low for true camera streams.
+        command.extend(
+            [
+                "-rtsp_transport",
+                "tcp",
+                "-rw_timeout",
+                str(config.LIVE_RTSP_RW_TIMEOUT_US),
+                "-timeout",
+                str(config.LIVE_RTSP_SOCKET_TIMEOUT_US),
+            ]
+        )
+
     command.extend(
         [
-            "-reconnect",
-            "1",
-            "-reconnect_streamed",
-            "1",
-            "-reconnect_delay_max",
-            "2",
             "-i",
             url,
             "-loglevel",
             "error",
             "-an",
-            "-c:v",
-            "copy",
+        ]
+    )
+
+    # Browser-friendly defaults for RTSP streams: downscale + transcode to H.264
+    # so playback starts reliably (many cameras default to very high-res feeds).
+    # HTTP sources keep stream-copy to stay cheap.
+    do_transcode_rtsp = (
+        config.LIVE_TRANSCODE_RTSP if transcode_rtsp is None else bool(transcode_rtsp)
+    )
+
+    if parsed.scheme in ("rtsp", "rtsps") and do_transcode_rtsp:
+        command.extend(["-fflags", "nobuffer", "-flags", "low_delay"])
+        vf_parts = []
+        live_fps = fps if fps is not None else config.LIVE_RTSP_FPS
+        live_width = width if width is not None else config.LIVE_RTSP_WIDTH
+        if live_fps:
+            vf_parts.append(f"fps={int(live_fps)}")
+        if live_width:
+            # Preserve aspect ratio; never upscale beyond the camera feed.
+            vf_parts.append(f"scale=min(iw\\,{int(live_width)}):-2")
+        if vf_parts:
+            command.extend(["-vf", ",".join(vf_parts)])
+        gop = max(10, int(live_fps or 10) * 2)
+        command.extend(
+            [
+                "-c:v",
+                "libx264",
+                "-preset",
+                "ultrafast",
+                "-tune",
+                "zerolatency",
+                "-pix_fmt",
+                "yuv420p",
+                "-g",
+                str(gop),
+                "-keyint_min",
+                str(gop),
+                "-sc_threshold",
+                "0",
+            ]
+        )
+    else:
+        command.extend(["-c:v", "copy"])
+
+    command.extend(
+        [
             "-f",
             "mp4",
             "-movflags",
-            "frag_keyframe+empty_moov",
+            "frag_keyframe+empty_moov+default_base_moof",
             "pipe:1",
         ]
     )

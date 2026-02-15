@@ -129,3 +129,8 @@ release-badges.md
 # Documentation build output
 site/
 pytest-report.xml
+
+# Local dev cache
+.pre-commit-cache/
+logs/
+logs

@@ -483,13 +483,49 @@ def create_blueprint() -> Blueprint:
         details = routes.template_manager.get_template(camera)
         if not details:
             routes.abort(404)
-        url = details.get("url")
+
+        profile = (routes.request.args.get("profile") or "main").strip().lower()
+
+        quality = (routes.request.args.get("quality") or "auto").strip().lower()
+        if quality not in {"auto", "low", "high"}:
+            quality = "auto"
+
+        if profile not in {"main", "sub", "auto"}:
+            profile = "main"
+
+        stream_url = routes.resolve_live_stream_url(details, profile=profile)
+        url = stream_url or details.get("url")
         if not url:
             routes.abort(404)
-        return Response(
-            routes.stream_with_context(routes.generate_live_stream(url)),
+
+        routes.logging.info(
+            "live_video request camera=%s profile=%s source=%s",
+            camera,
+            profile,
+            "stream" if stream_url else "fallback",
+        )
+
+        width = None
+        fps = None
+        if quality == "low":
+            width = min(routes.config.LIVE_RTSP_WIDTH, 640)
+            fps = min(routes.config.LIVE_RTSP_FPS, 5)
+        elif quality == "high":
+            width = max(routes.config.LIVE_RTSP_WIDTH, 1280)
+            width = min(width, 1920)
+            fps = max(routes.config.LIVE_RTSP_FPS, 10)
+            fps = min(fps, 15)
+
+        resp = Response(
+            routes.stream_with_context(
+                routes.generate_live_stream(url, width=width, fps=fps)
+            ),
             mimetype="video/mp4",
         )
+        resp.headers["X-Live-Source"] = "stream" if stream_url else "fallback"
+        resp.headers["X-Live-Profile"] = profile
+        resp.headers["X-Live-Quality"] = quality
+        return resp
 
     @bp.route("/stream.m3u8")
     @routes.login_required

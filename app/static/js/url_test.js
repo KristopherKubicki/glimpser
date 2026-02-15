@@ -78,16 +78,23 @@ export function initUrlTester() {
       };
 
       const formatTitle = (data) => {
+        const parts = [];
         if (!data.ok) {
-          return (
-            data.error || (data.status ? `HTTP ${data.status}` : "Unreachable")
+          parts.push(
+            data.error || (data.status ? `HTTP ${data.status}` : "Unreachable"),
           );
+        } else {
+          parts.push(data.status ? `HTTP ${data.status}` : "OK");
         }
-        let t = data.status ? `HTTP ${data.status}` : "OK";
-        if (data.content_type) {
-          t += ` \u00b7 ${data.content_type}`;
-        }
-        return t;
+        if (data.content_type) parts.push(data.content_type);
+        if (data.accept_ranges) parts.push(`ranges:${data.accept_ranges}`);
+        if (data.content_range)
+          parts.push(`content-range:${data.content_range}`);
+        const chain = Array.isArray(data.redirect_chain)
+          ? data.redirect_chain.filter(Boolean)
+          : [];
+        if (chain.length > 1) parts.push(`redirects:${chain.length - 1}`);
+        return parts.join(" · ");
       };
 
       const check = async () => {
@@ -140,7 +147,14 @@ export function initUrlTester() {
           } else {
             urlOk = false;
             setStatus("bad", title);
-            showOverlay(title);
+            const chain = Array.isArray(data.redirect_chain)
+              ? data.redirect_chain.filter(Boolean)
+              : [];
+            if (chain.length > 1) {
+              showOverlay(`${title}\n${chain.join(" -> ")}`);
+            } else {
+              showOverlay(title);
+            }
             if (preview) preview.src = defaultSrc;
             if (player) {
               player.pause();

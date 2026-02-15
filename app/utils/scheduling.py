@@ -10,6 +10,7 @@ maintenance tasks.
 """
 
 import datetime
+import hashlib
 import importlib
 import json
 import logging
@@ -20,6 +21,7 @@ import re
 import sys
 import threading
 import time
+from collections import OrderedDict
 from functools import reduce
 from math import gcd
 
@@ -37,7 +39,12 @@ except Exception:  # pragma: no cover - optional dependency
     ort = None
 
 import requests
-from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, EVENT_JOB_SUBMITTED
+from apscheduler.events import (
+    EVENT_JOB_ERROR,
+    EVENT_JOB_EXECUTED,
+    EVENT_JOB_MAX_INSTANCES,
+    EVENT_JOB_SUBMITTED,
+)
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
@@ -131,6 +138,168 @@ DEBUG = CONFIG_DEBUG
 CRAWLER_SCHEDULE_JITTER_SECONDS = max(
     0, int(os.getenv("CRAWLER_SCHEDULE_JITTER_SECONDS", "15"))
 )
+JOB_CIRCUIT_FAILURE_THRESHOLD = max(
+    2, int(os.getenv("JOB_CIRCUIT_FAILURE_THRESHOLD", "6"))
+)
+JOB_CIRCUIT_COOLDOWN_SECONDS = max(
+    30, int(os.getenv("JOB_CIRCUIT_COOLDOWN_SECONDS", "900"))
+)
+JOB_CIRCUIT_PROBE_SECONDS = max(30, int(os.getenv("JOB_CIRCUIT_PROBE_SECONDS", "120")))
+SCENE_CAPTION_CACHE_MAX = max(1, int(os.getenv("SCENE_CAPTION_CACHE_MAX", "25")))
+
+
+def _scene_caption_cache_path(directory: str) -> str:
+    """Return path to per-camera scene caption cache file."""
+
+    return os.path.join(directory, ".scene_caption_cache.json")
+
+
+def _load_scene_caption_cache(directory: str) -> "OrderedDict[str, str]":
+    """Load scene-signature caption cache for a camera directory."""
+
+    path = _scene_caption_cache_path(directory)
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except Exception:
+        return OrderedDict()
+
+    if not isinstance(data, dict):
+        return OrderedDict()
+
+    items: list[tuple[str, str]] = []
+    for k, v in data.items():
+        if isinstance(k, str) and isinstance(v, str) and k and v:
+            items.append((k, v))
+    if len(items) > SCENE_CAPTION_CACHE_MAX:
+        items = items[-SCENE_CAPTION_CACHE_MAX:]
+    return OrderedDict(items)
+
+
+def _save_scene_caption_cache(directory: str, cache: "OrderedDict[str, str]") -> None:
+    """Persist scene-signature caption cache atomically."""
+
+    if not cache:
+        return
+    while len(cache) > SCENE_CAPTION_CACHE_MAX:
+        cache.popitem(last=False)
+
+    path = _scene_caption_cache_path(directory)
+    tmp_path = f"{path}.tmp"
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as fh:
+            json.dump(dict(cache), fh)
+        os.replace(tmp_path, path)
+    except Exception as exc:
+        logging.debug("Unable to persist scene caption cache %s: %s", path, exc)
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except Exception:
+            pass
+
+
+def _scene_caption_cache_key(scene_signature: str, prompt: str) -> str:
+    """Return a stable cache key combining scene signature and prompt."""
+
+    prompt_hash = hashlib.sha1(prompt.encode("utf-8", errors="ignore")).hexdigest()[:12]
+    return f"{scene_signature}:{prompt_hash}"
+
+
+def _caption_cache_get(
+    directory: str, scene_signature: str | None, prompt: str
+) -> str | None:
+    """Return cached caption for scene+prompt if present."""
+
+    if not scene_signature:
+        return None
+    cache = _load_scene_caption_cache(directory)
+    key = _scene_caption_cache_key(scene_signature, prompt)
+    value = cache.get(key)
+    if not value:
+        return None
+    # LRU touch
+    cache.move_to_end(key)
+    _save_scene_caption_cache(directory, cache)
+    return value
+
+
+def _caption_cache_set(
+    directory: str, scene_signature: str | None, prompt: str, caption: str | None
+) -> None:
+    """Store caption for scene+prompt in per-camera LRU cache."""
+
+    if not scene_signature or not caption:
+        return
+    cache = _load_scene_caption_cache(directory)
+    key = _scene_caption_cache_key(scene_signature, prompt)
+    cache[key] = caption
+    cache.move_to_end(key)
+    _save_scene_caption_cache(directory, cache)
+
+
+def _compute_scene_signature(image_path: str, hash_size: int = 8) -> str | None:
+    """Return a lightweight dHash-style signature for scene-change gating."""
+
+    try:
+        with Image.open(image_path) as img:
+            resampling = getattr(Image, "Resampling", Image)
+            gray = img.convert("L").resize(
+                (hash_size + 1, hash_size), resampling.LANCZOS
+            )
+            pixels = list(gray.getdata())
+        bits: list[int] = []
+        row_width = hash_size + 1
+        for row in range(hash_size):
+            offset = row * row_width
+            for col in range(hash_size):
+                left = pixels[offset + col]
+                right = pixels[offset + col + 1]
+                bits.append(1 if left > right else 0)
+        value = 0
+        for bit in bits:
+            value = (value << 1) | bit
+        return f"{value:016x}"
+    except Exception:
+        return None
+
+
+def _scene_hamming_distance(a: str, b: str) -> int | None:
+    """Return Hamming distance between two same-size hex scene signatures."""
+
+    if not a or not b or len(a) != len(b):
+        return None
+    try:
+        return int((int(a, 16) ^ int(b, 16)).bit_count())
+    except Exception:
+        return None
+
+
+def _scene_change_threshold(template: dict) -> int:
+    """Return the scene-change threshold for caption triggering."""
+
+    try:
+        threshold = int(
+            template.get("scene_change_hamming", get_setting("SCENE_CHANGE_HAMMING", 4))
+        )
+    except Exception:
+        threshold = 4
+    return max(1, threshold)
+
+
+def _scene_changed(
+    previous_signature: str | None, current_signature: str | None, threshold: int
+) -> tuple[bool, int | None]:
+    """Return whether scene changed plus computed distance."""
+
+    if not current_signature:
+        return True, None
+    if not previous_signature:
+        return True, None
+    distance = _scene_hamming_distance(previous_signature, current_signature)
+    if distance is None:
+        return True, None
+    return distance >= max(1, threshold), distance
 
 
 class CLIPProcessor:
@@ -179,10 +348,20 @@ active_jobs_lock = threading.RLock()
 # Track failures and backoff time to slow down flapping jobs.
 job_failures: dict[str, int] = {}
 job_backoff_until: dict[str, float] = {}
+# Long cooldown for persistently failing jobs.
+job_circuit_open_until: dict[str, float] = {}
+job_circuit_next_probe: dict[str, float] = {}
+_circuit_log_last: dict[str, float] = {}
 _shutdown_event = threading.Event()
 _shutdown_grace_seconds = int(os.getenv("SCHEDULER_SHUTDOWN_GRACE_SECONDS", "5"))
 _capture_fail_last_log: dict[str, float] = {}
 _offline_jobs_run_lock = threading.Lock()
+
+# Lightweight scheduler saturation telemetry (in-memory, resets on restart).
+_scheduler_health_lock = threading.Lock()
+_scheduler_max_instance_skips_total = 0
+_scheduler_last_max_instance_at: str | None = None
+_scheduler_job_max_instance_skips: dict[str, int] = {}
 
 
 def mark_shutdown() -> None:
@@ -207,10 +386,25 @@ class GracefulAPScheduler(APScheduler):
         _shutdown_event.clear()
         self._scheduler.add_listener(
             self._track_job_state,
-            EVENT_JOB_SUBMITTED | EVENT_JOB_EXECUTED | EVENT_JOB_ERROR,
+            EVENT_JOB_SUBMITTED
+            | EVENT_JOB_EXECUTED
+            | EVENT_JOB_ERROR
+            | EVENT_JOB_MAX_INSTANCES,
         )
 
     def _track_job_state(self, event) -> None:
+        global _scheduler_last_max_instance_at, _scheduler_max_instance_skips_total
+
+        if event.code == EVENT_JOB_MAX_INSTANCES:
+            job_id = getattr(event, "job_id", "unknown")
+            with _scheduler_health_lock:
+                _scheduler_max_instance_skips_total += 1
+                _scheduler_last_max_instance_at = datetime.datetime.now().isoformat()
+                _scheduler_job_max_instance_skips[job_id] = (
+                    _scheduler_job_max_instance_skips.get(job_id, 0) + 1
+                )
+            return
+
         if event.code == EVENT_JOB_SUBMITTED:
             with self._running_jobs_lock:
                 self._running_jobs += 1
@@ -267,12 +461,76 @@ class GracefulAPScheduler(APScheduler):
 scheduler = GracefulAPScheduler()
 
 
+def get_scheduler_health(top_n: int = 10) -> dict:
+    """Return lightweight scheduler saturation telemetry."""
+
+    with _scheduler_health_lock:
+        top_jobs = sorted(
+            _scheduler_job_max_instance_skips.items(),
+            key=lambda item: item[1],
+            reverse=True,
+        )[: max(1, int(top_n))]
+        total = _scheduler_max_instance_skips_total
+        last_at = _scheduler_last_max_instance_at
+
+    with scheduler._running_jobs_lock:  # noqa: SLF001 - internal telemetry only
+        running_jobs = scheduler._running_jobs  # noqa: SLF001 - internal telemetry only
+
+    return {
+        "max_instance_skips_total": total,
+        "last_max_instance_at": last_at,
+        "running_jobs": running_jobs,
+        "top_skipped_jobs": [
+            {"job_id": job_id, "count": count} for job_id, count in top_jobs
+        ],
+    }
+
+
+def _rate_limited_job_log(level: str, key: str, message: str) -> None:
+    """Log at most once per LOG_RATE_LIMIT_SEC per key."""
+
+    now = time.time()
+    if now - _circuit_log_last.get(key, 0) < LOG_RATE_LIMIT_SEC:
+        return
+    _circuit_log_last[key] = now
+    getattr(logging, level, logging.info)(message)
+
+
+def _circuit_remaining_seconds(key: str) -> float:
+    """Return remaining open-circuit cooldown for *key* in seconds."""
+
+    return max(0.0, job_circuit_open_until.get(key, 0.0) - time.time())
+
+
 def register_job_failure(key: str) -> None:
-    """Increment failure count and set backoff for ``key``."""
+    """Increment failure count, backoff, and optional open-circuit cooldown."""
+
     with active_jobs_lock:
         fails = job_failures.get(key, 0) + 1
         job_failures[key] = fails
         job_backoff_until[key] = time.time() + min(2**fails, 300)
+        if fails >= JOB_CIRCUIT_FAILURE_THRESHOLD:
+            now = time.time()
+            until = now + JOB_CIRCUIT_COOLDOWN_SECONDS
+            prior_until = job_circuit_open_until.get(key, 0.0)
+            job_circuit_open_until[key] = max(prior_until, until)
+            # Half-open probe cadence so recovery is detected without hammering.
+            job_circuit_next_probe[key] = max(
+                job_circuit_next_probe.get(key, 0.0), now + JOB_CIRCUIT_PROBE_SECONDS
+            )
+            try:
+                mark_offline(key)
+            except Exception:
+                pass
+            _rate_limited_job_log(
+                "warning",
+                f"circuit-open:{key}",
+                (
+                    f"Circuit opened for {key}: {fails} consecutive failures "
+                    f"(cooldown {JOB_CIRCUIT_COOLDOWN_SECONDS}s, "
+                    f"probe every {JOB_CIRCUIT_PROBE_SECONDS}s)"
+                ),
+            )
 
 
 def _run_target(func, args):
@@ -361,6 +619,31 @@ def run_with_timeout(func, args=(), timeout=300):
     try:
         with active_jobs_lock:
             now = time.time()
+            circuit_remaining = _circuit_remaining_seconds(key)
+            if circuit_remaining > 0:
+                now = time.time()
+                next_probe = job_circuit_next_probe.get(
+                    key, now + JOB_CIRCUIT_PROBE_SECONDS
+                )
+                if now < next_probe:
+                    _rate_limited_job_log(
+                        "info",
+                        f"circuit-skip:{key}",
+                        (
+                            f"Circuit open for {key}; skipping for {circuit_remaining:.0f}s "
+                            f"(next probe in {max(0, int(next_probe - now))}s)"
+                        ),
+                    )
+                    return
+                job_circuit_next_probe[key] = now + JOB_CIRCUIT_PROBE_SECONDS
+                _rate_limited_job_log(
+                    "info",
+                    f"circuit-probe:{key}",
+                    (
+                        f"Circuit half-open probe for {key} "
+                        f"({circuit_remaining:.0f}s cooldown remaining)"
+                    ),
+                )
             backoff_until = job_backoff_until.get(key, 0)
             if now < backoff_until:
                 logging.info("backing off job %s for %.1fs", key, backoff_until - now)
@@ -426,6 +709,8 @@ def run_with_timeout(func, args=(), timeout=300):
         if success:
             job_failures.pop(key, None)
             job_backoff_until.pop(key, None)
+            job_circuit_open_until.pop(key, None)
+            job_circuit_next_probe.pop(key, None)
 
     if not success:
         register_job_failure(key)
@@ -698,6 +983,21 @@ def update_camera(name, template, image_file=None, motion=False):
         elif len(png_files) == 1:
             lsum = True
 
+        scene_signature = _compute_scene_signature(latest_image_path)
+        previous_scene_signature = (template.get("last_scene_signature") or "").strip()
+        scene_threshold = _scene_change_threshold(template)
+        scene_changed, scene_distance = _scene_changed(
+            previous_scene_signature, scene_signature, scene_threshold
+        )
+        if scene_signature:
+            template["last_scene_signature"] = scene_signature
+        if scene_distance is not None:
+            template["last_scene_hamming"] = str(scene_distance)
+        if scene_changed:
+            template["last_scene_change_time"] = datetime.datetime.utcnow().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+
         prev_motion = os.path.join(directory, "last_motion.png")
 
         allow = motion
@@ -765,6 +1065,21 @@ def update_camera(name, template, image_file=None, motion=False):
             except Exception:
                 # print(" parse exception", e) #n1c
                 pass
+
+        scene_change_gate = (
+            template.get("scene_change_gate", "true") or "true"
+        ).lower() == "true"
+        live_caption_enabled = (template.get("livecaption", "") or "").lower() == "true"
+        if (
+            scene_change_gate
+            and not live_caption_enabled
+            and not scene_changed
+            and last_caption_trigger
+            and (template.get("last_caption", "") or "") != ""
+            and not motion
+        ):
+            # No meaningful frame change since last scene signature; keep previous caption.
+            last_caption_trigger = False
 
         # Implement a filter using CLIP
         object_filter = template.get("object_filter", "")
@@ -904,8 +1219,17 @@ def update_camera(name, template, image_file=None, motion=False):
                 lprompt = ""
                 if template.get("notes"):
                     lprompt += template["notes"].strip() + "\n---\n"
-                #  use Chatgpt_compare with notes separated for clarity
-                gret = chatgpt_compare(lprompt, image_paths, template_name=name)
+
+                cached_caption = _caption_cache_get(directory, scene_signature, lprompt)
+                if cached_caption:
+                    gret = cached_caption
+                    logging.debug("Reused cached scene caption for %s", name)
+                else:
+                    #  use Chatgpt_compare with notes separated for clarity
+                    gret = chatgpt_compare(lprompt, image_paths, template_name=name)
+                    if gret and not re.findall(r"(?:sorry|cannot|can not)", gret):
+                        _caption_cache_set(directory, scene_signature, lprompt, gret)
+
                 if gret and re.findall(r"(?:sorry|cannot|can not)", gret):
                     template["last_ret"] = gret + "*"
                 elif gret:
@@ -1293,6 +1617,16 @@ def schedule_crawlers():
             logging.error(f"Error determining frequency for {name}: {e}")
             seconds = 60 * 30  # Fallback to default value if there's an issue
 
+        # In low-CPU mode, clamp very short capture intervals so workers
+        # are less likely to overlap and thrash.
+        if LOW_CPU_MODE and seconds < 120:
+            logging.debug(
+                "LOW_CPU_MODE: clamping '%s' interval from %ss to 120s",
+                name,
+                seconds,
+            )
+            seconds = 120
+
         # The APScheduler job calls run_with_timeout() and blocks while waiting
         # for the worker process. If we block nearly the entire interval, jobs
         # will frequently overlap and APScheduler will log noisy skip warnings.
@@ -1452,7 +1786,7 @@ def get_feed_status():  # noqa: PLR0912, PLR0915
                 shot_time = datetime.datetime.strptime(last_shot, "%Y-%m-%d %H:%M:%S")
                 diff = int((now - shot_time).total_seconds())
                 tooltip_parts.append(
-                    f"Last shot {diff // 60}m ago; expected every {frequency}s"
+                    f"Last shot {diff // 60}m ago; expected every {frequency}m"
                 )
             except Exception:
                 pass
@@ -1467,8 +1801,6 @@ def get_feed_status():  # noqa: PLR0912, PLR0915
         if last_log:
             tooltip_parts.append(f"Last log: {last_log[:120]}")
 
-        tooltip = " | ".join(tooltip_parts) if tooltip_parts else "OK"
-
         danger = bool(template.get("danger", False))
         danger_reason = None
         if danger:
@@ -1480,6 +1812,27 @@ def get_feed_status():  # noqa: PLR0912, PLR0915
         with active_jobs_lock:
             job = active_jobs.get(name)
             capturing = bool(job and job.is_alive())
+            failures = job_failures.get(name, 0)
+            backoff_remaining = max(0.0, job_backoff_until.get(name, 0) - time.time())
+            circuit_remaining = max(
+                0.0, job_circuit_open_until.get(name, 0) - time.time()
+            )
+            next_probe_remaining = max(
+                0.0, job_circuit_next_probe.get(name, 0) - time.time()
+            )
+
+        if circuit_remaining > 0:
+            if status != "error":
+                status = "slow"
+            tooltip_parts.append(
+                f"Circuit cooldown {int(circuit_remaining)}s ({failures} fails, next probe {int(next_probe_remaining)}s)"
+            )
+        elif backoff_remaining > 0:
+            if status == "ok":
+                status = "slow"
+            tooltip_parts.append(
+                f"Retry backoff {int(backoff_remaining)}s ({failures} fails)"
+            )
 
         next_capture = None
         if frequency and last_shot:
@@ -1489,6 +1842,8 @@ def get_feed_status():  # noqa: PLR0912, PLR0915
                 next_capture = next_dt.isoformat() + "Z"
             except Exception:
                 pass
+
+        tooltip = " | ".join(tooltip_parts) if tooltip_parts else "OK"
 
         feeds.append(
             {
@@ -1512,6 +1867,10 @@ def get_feed_status():  # noqa: PLR0912, PLR0915
                 "capturing": capturing,
                 "next_capture_time": next_capture,
                 "frequency": frequency,
+                "failure_count": failures,
+                "retry_backoff_seconds": int(backoff_remaining),
+                "circuit_cooldown_seconds": int(circuit_remaining),
+                "circuit_next_probe_seconds": int(next_probe_remaining),
             }
         )
 
@@ -1879,7 +2238,7 @@ def schedule_offline_job_processor() -> None:
     """Schedule periodic processing of queued offline jobs."""
 
     try:
-        interval_seconds = 60 if LOW_CPU_MODE else 30
+        interval_seconds = 120 if LOW_CPU_MODE else 30
         scheduler.add_job(
             func=process_offline_jobs,
             trigger="interval",

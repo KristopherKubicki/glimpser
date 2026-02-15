@@ -108,6 +108,7 @@ def create_app(
     )
 
     app = Flask(__name__)
+    app.jinja_env.globals["LOW_CPU_MODE"] = LOW_CPU_MODE
     app.secret_key = SECRET_KEY
     app.config["SESSION_COOKIE_SECURE"] = SESSION_COOKIE_SECURE
     app.config["SESSION_COOKIE_HTTPONLY"] = SESSION_COOKIE_HTTPONLY

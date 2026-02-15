@@ -42,6 +42,7 @@
     <script>
       window.IS_LOGGED_IN = {{ 'true' if session.get('user_id') or LAN_GUEST else 'false' }};
       window.IS_LAN_GUEST = {{ 'true' if LAN_GUEST else 'false' }};
+      window.LOW_CPU_MODE = {{ 'true' if LOW_CPU_MODE else 'false' }};
     </script>
     {% if session.get('user_id') or LAN_GUEST %}
     <script

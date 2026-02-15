@@ -8,6 +8,20 @@ from pathlib import Path
 
 from flask import Blueprint, Response
 
+_MISSING_SCREENSHOT_LOG_INTERVAL_SECONDS = 300
+_missing_screenshot_log_ts: dict[str, float] = {}
+
+
+def _log_missing_screenshot(name: str) -> None:
+    """Rate-limit noisy missing-screenshot warnings per source."""
+
+    now = time.monotonic()
+    key = (name or "unknown").strip() or "unknown"
+    last = _missing_screenshot_log_ts.get(key, 0.0)
+    if now - last >= _MISSING_SCREENSHOT_LOG_INTERVAL_SECONDS:
+        _missing_screenshot_log_ts[key] = now
+        logging.warning("Unable to serve screenshot for %s", key)
+
 
 def create_blueprint() -> Blueprint:
     """Create and return the assets blueprint."""
@@ -194,7 +208,7 @@ def create_blueprint() -> Blueprint:
         raw_name = template_name
         template_name = routes.validate_template_name(str(template_name))
         if template_name is None:
-            logging.warning("Unable to serve screenshot for %s", raw_name)
+            _log_missing_screenshot(str(raw_name))
             resp = routes.send_conditional_file(
                 routes._placeholder_screenshot(),
                 cache_seconds=routes.PNG_TTL_SEC,
@@ -212,7 +226,7 @@ def create_blueprint() -> Blueprint:
             )
             if os.path.exists(path):
                 return routes.send_conditional_file(path, routes.PNG_TTL_SEC)
-            logging.warning("Unable to serve screenshot for %s", template_name)
+            _log_missing_screenshot(str(template_name))
             resp = routes.send_conditional_file(
                 routes._placeholder_screenshot(),
                 cache_seconds=routes.PNG_TTL_SEC,
@@ -228,7 +242,7 @@ def create_blueprint() -> Blueprint:
             str(template_name),
         )
         if not os.path.exists(path):
-            logging.warning("Unable to serve screenshot for %s", template_name)
+            _log_missing_screenshot(str(template_name))
             resp = routes.send_conditional_file(
                 routes._placeholder_screenshot(),
                 cache_seconds=routes.PNG_TTL_SEC,
@@ -246,7 +260,7 @@ def create_blueprint() -> Blueprint:
             except OSError:
                 continue
 
-        logging.warning("Unable to serve screenshot for %s", template_name)
+        _log_missing_screenshot(str(template_name))
         resp = routes.send_conditional_file(
             routes._placeholder_screenshot(),
             cache_seconds=routes.PNG_TTL_SEC,
@@ -285,7 +299,7 @@ def create_blueprint() -> Blueprint:
         raw_name = template_name
         template_name = routes.validate_template_name(str(template_name))
         if template_name is None:
-            routes.logging.warning("Unable to serve screenshot for %s", raw_name)
+            routes._log_missing_screenshot(str(raw_name))
             resp = routes.send_conditional_file(
                 routes._placeholder_screenshot(),
                 cache_seconds=routes.PNG_TTL_SEC,

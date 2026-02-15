@@ -6,7 +6,6 @@
 >
   <video
     id="live-video"
-    controls
     autoplay
     muted
     preload="none"
@@ -26,6 +25,14 @@
   <div id="stream-error-message"></div>
   <div id="error-message" role="status" aria-live="polite"></div>
   <div id="controls-wrapper" class="fade-out">
+    <div id="live-quality-container" class="live-quality">
+      <label for="live-quality" class="sr-only">Live quality</label>
+      <select id="live-quality" aria-label="Live quality" title="Live quality">
+        <option value="auto">Auto</option>
+        <option value="low">Low</option>
+        <option value="high">High</option>
+      </select>
+    </div>
     <div id="speed-container">
       <label for="speed-slider" class="sr-only">Speed</label>
       <input
@@ -51,6 +58,12 @@
 </div>
 <script>
   window.templateDetails = {{ template_details|tojson }};
+  {% if selected_camera %}
+  window.currentCamera = {{ selected_camera|tojson }};
+  {% endif %}
+  {% if selected_group %}
+  window.currentGroup = {{ selected_group|tojson }};
+  {% endif %}
 </script>
 
 <script

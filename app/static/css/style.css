@@ -164,14 +164,20 @@ body.templates-screen {
 body.templates-screen main {
   flex: 1 1 auto;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 body.templates-screen #template-list-section {
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 body.templates-screen #template-list {
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   scrollbar-width: none;
 }
@@ -314,6 +320,22 @@ h2 {
   opacity: 0;
 }
 
+.live-quality {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+#live-quality {
+  background: rgba(20, 20, 20, 0.9);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+
 #template-controls input[type="text"],
 #template-controls select {
   padding: 5px;
@@ -389,7 +411,7 @@ h2 {
 
   gap: 3px;
   padding: 5px;
-  justify-content: center;
+  place-content: start center;
   max-width: 100%;
 }
 
@@ -1417,6 +1439,19 @@ body.advanced-enabled .settings-table input[data-locked] {
   transition: opacity 0.5s;
   z-index: 1000;
 }
+
+
+/* Keep action overlays off the native video control bar on player pages. */
+body.player-screen .template-actions {
+  bottom: calc(var(--footer-space, 60px) + 3.75rem);
+}
+
+@media (pointer: coarse) {
+  body.player-screen .template-actions {
+    bottom: calc(var(--footer-space, 60px) + 4.5rem);
+  }
+}
+
 
 .template-actions.fade-out {
   opacity: 0;
@@ -2926,6 +2961,58 @@ details > summary {
   display: block;
 }
 
+
+.live-source-badge {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 7;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #d1fae5;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  pointer-events: none;
+  font-variant: small-caps;
+}
+
+.live-source-badge[data-state="probing"] {
+  color: #fef3c7;
+}
+
+.live-source-badge[data-state="fallback"] {
+  color: #fca5a5;
+}
+
+
+
+.clip-controls {
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: calc(var(--footer-space, 60px) + 0.5rem);
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.clip-seek {
+  flex: 1;
+  min-width: 120px;
+}
+
+.clip-time {
+  min-width: 4.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  opacity: 0.9;
+}
 /* Braille loading spinner */
 .loading-spinner {
   position: absolute;

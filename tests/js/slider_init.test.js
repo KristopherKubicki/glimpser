@@ -60,6 +60,25 @@ describe("slider initialization", () => {
       global.fetch = jest.fn(() => new Promise(() => {}));
 
       const list = document.getElementById("template-list");
+      // The real app sizes the grid to the template-list viewport (not full window).
+      // Simulate that in jsdom so the auto-fit math is realistic.
+      const headerH = document.querySelector("header")?.offsetHeight || 0;
+      const bannerH = document.getElementById("network-banner")?.offsetHeight || 0;
+      const footerSpace = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--footer-space") ||
+          "0",
+      );
+      list.getBoundingClientRect = () => ({
+        x: 0,
+        y: headerH + bannerH,
+        top: headerH + bannerH,
+        left: 0,
+        width: window.innerWidth,
+        height: Math.max(0, window.innerHeight - headerH - bannerH - footerSpace),
+        right: window.innerWidth,
+        bottom: window.innerHeight - footerSpace,
+        toJSON: () => ({}),
+      });
       list.innerHTML = new Array(count)
         .fill('<div class="templateDiv"></div>')
         .join("");

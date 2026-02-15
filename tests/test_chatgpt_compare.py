@@ -12,11 +12,26 @@ class TestChatGPTCompare(unittest.TestCase):
 
     @patch("app.utils.image_processing.ChatGPTImageComparison.compare_images")
     @patch("app.utils.image_processing.os.path.exists", return_value=True)
+    @patch("app.utils.image_processing.LOCAL_LLM_FALLBACK", False)
     @patch("app.utils.image_processing.CHATGPT_KEY", "")
     def test_missing_key(self, mock_exists, mock_compare):
         result = chatgpt_compare("p", ["img.png"])
         self.assertEqual(result, "Missing ChatGPT key")
         mock_compare.assert_not_called()
+
+    @patch("app.utils.llm_cache.store")
+    @patch("app.utils.llm_cache.get", return_value=None)
+    @patch("app.utils.image_processing.ChatGPTImageComparison.compare_images")
+    @patch("app.utils.image_processing.os.path.exists", return_value=True)
+    @patch("app.utils.image_processing.LOCAL_LLM_FALLBACK", True)
+    @patch("app.utils.image_processing.CHATGPT_KEY", "")
+    def test_missing_key_uses_local_fallback(
+        self, mock_exists, mock_compare, mock_get, mock_store
+    ):
+        mock_compare.return_value = ("local caption", 0)
+        result = chatgpt_compare("p", ["img.png"])
+        self.assertEqual(result, "local caption")
+        mock_compare.assert_called_once()
 
     @patch("app.utils.llm_cache.store")
     @patch("app.utils.llm_cache.get", return_value=None)

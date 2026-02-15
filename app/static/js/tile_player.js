@@ -55,12 +55,44 @@ export function initTilePlayer() {
 
   const preferredCamera =
     typeof window.currentCamera === "string" ? window.currentCamera : "";
+  const preferredGroup =
+    typeof window.currentGroup === "string" ? window.currentGroup : "";
+  const realCameras = Object.keys(window.templateDetails || {}).filter(
+    (name) => name !== "All",
+  );
+  const singleCamera = realCameras.length === 1 ? realCameras[0] : "";
   let current =
     preferredCamera && window.templateDetails?.[preferredCamera]
       ? preferredCamera
-      : camSelect && camSelect.value
-        ? camSelect.value
-        : "All";
+      : preferredGroup && preferredGroup !== "all"
+        ? `group-${preferredGroup}`
+        : isLivePage && singleCamera
+          ? singleCamera
+          : camSelect && camSelect.value
+            ? camSelect.value
+            : "All";
+
+  function syncLiveContext(selection) {
+    let camera = null;
+    let group = null;
+    if (selection && selection !== "All") {
+      if (selection.startsWith("group-")) {
+        group = selection.slice(6);
+      } else {
+        camera = selection;
+        const navGroup = document.getElementById("nav-group-dropdown");
+        if (navGroup?.value && navGroup.value !== "all") {
+          group = navGroup.value;
+        }
+      }
+    }
+    if (typeof window.setLiveNavContext === "function") {
+      window.setLiveNavContext({ camera, group });
+    } else {
+      window.currentCamera = camera;
+      window.currentGroup = group;
+    }
+  }
 
   let abortCtl;
   let liveTimer;
@@ -91,6 +123,29 @@ export function initTilePlayer() {
     container.appendChild(liveClock);
   }
 
+  let liveSourceBadge = container?.querySelector("#live-source-badge");
+  if (!liveSourceBadge && container) {
+    liveSourceBadge = document.createElement("div");
+    liveSourceBadge.id = "live-source-badge";
+    liveSourceBadge.className = "live-source-badge";
+    liveSourceBadge.setAttribute("aria-hidden", "true");
+    liveSourceBadge.style.display = "none";
+    container.appendChild(liveSourceBadge);
+  }
+
+  function setLiveSourceBadge(text, state = "ok") {
+    if (!liveSourceBadge) return;
+    if (!text) {
+      liveSourceBadge.style.display = "none";
+      liveSourceBadge.textContent = "";
+      liveSourceBadge.dataset.state = "";
+      return;
+    }
+    liveSourceBadge.textContent = text;
+    liveSourceBadge.dataset.state = state;
+    liveSourceBadge.style.display = "block";
+  }
+
   const timeFmt = new Intl.DateTimeFormat(undefined, {
     hour: "2-digit",
     minute: "2-digit",
@@ -109,6 +164,24 @@ export function initTilePlayer() {
     spinner.className = "loading-spinner";
     spinner.setAttribute("aria-hidden", "true");
     container.appendChild(spinner);
+  }
+
+  const liveQualitySelect = document.getElementById("live-quality");
+  let liveQuality =
+    liveQualitySelect?.value ||
+    localStorage.getItem("liveQuality") ||
+    (window.LOW_CPU_MODE ? "low" : "auto");
+  if (!{ auto: 1, low: 1, high: 1 }[liveQuality]) liveQuality = "auto";
+  if (liveQualitySelect) {
+    liveQualitySelect.value = liveQuality;
+    liveQualitySelect.addEventListener("change", () => {
+      liveQuality = liveQualitySelect.value;
+      localStorage.setItem("liveQuality", liveQuality);
+      // Restart the live stream immediately with the new quality.
+      if (current && shouldUseLiveVideo(current)) {
+        play(current);
+      }
+    });
   }
 
   const speedSlider = document.getElementById("speed-slider");
@@ -131,6 +204,16 @@ export function initTilePlayer() {
   let clipIsSeeking = false;
   let clipSeekRaf = null;
   let clipTargetTime = null;
+  let liveVideoCleanup = null;
+  let liveProfileRetryTimer = null;
+  let liveConnectTimer = null;
+
+  const speedContainer = document.getElementById("speed-container");
+
+  function setSpeedControlsVisible(visible) {
+    if (!speedContainer) return;
+    speedContainer.style.display = visible ? "" : "none";
+  }
 
   function updateSpeedLabel() {
     if (!speedValue || !speedSlider) return;
@@ -152,11 +235,15 @@ export function initTilePlayer() {
   }
 
   image.dataset.mode = image.dataset.mode || "preview";
+  let activeStreamToken = 0;
   image.addEventListener("load", () => {
     setMediaAspect(image.naturalWidth, image.naturalHeight);
-    // Only hide the spinner when we're receiving actual stream frames.
-    // When switching cameras, we often show a "last screenshot" preview first.
-    if (image.dataset.mode === "stream") {
+    // Only hide the spinner for the most recent stream load. Older in-flight
+    // requests can complete out of order during rapid switching.
+    if (
+      image.dataset.mode === "stream" &&
+      image.dataset.streamToken === String(activeStreamToken)
+    ) {
       const remaining = spinnerMinUntil - Date.now();
       if (remaining > 0) {
         setTimeout(() => hideSpinner(video), remaining);
@@ -165,12 +252,33 @@ export function initTilePlayer() {
       }
     }
   });
+  image.addEventListener("error", () => {
+    if (
+      image.dataset.mode !== "stream" ||
+      image.dataset.streamToken !== String(activeStreamToken)
+    ) {
+      return;
+    }
+    hideSpinner(video);
+    showErrorIndicator(video);
+  });
 
   const fsButton = document.getElementById("fullscreen-toggle");
   if (fsButton) {
-    // Avoid showing both the browser's native fullscreen control (inside the
-    // video controls) and our custom overlay button.
-    video.setAttribute("controlsList", "nofullscreen");
+    const controlsList = video.controlsList;
+    const supportsNoFullscreen = Boolean(
+      controlsList &&
+        typeof controlsList.supports === "function" &&
+        controlsList.supports("nofullscreen"),
+    );
+    // Keep exactly one fullscreen affordance: either native controls OR our
+    // custom overlay button depending on browser capability.
+    if (supportsNoFullscreen) {
+      video.setAttribute("controlsList", "nofullscreen");
+      fsButton.style.display = "block";
+    } else {
+      fsButton.style.display = "none";
+    }
     fsButton.addEventListener("click", () => {
       const target = container || video;
       if (!document.fullscreenElement) {
@@ -197,6 +305,8 @@ export function initTilePlayer() {
   const hasClipSource = Boolean(source && source.src);
   const CLIP_DURATION_SEC = 120;
   const CLIP_LOOP_COUNT = 3;
+  const LIVE_CONNECT_TIMEOUT_MS = 15000;
+  const LIVE_PROFILE_RECOVERY_MS = 45000;
 
   function showClip() {
     if (pngTimer) {
@@ -313,6 +423,9 @@ export function initTilePlayer() {
     const wrapper = document.getElementById("controls-wrapper");
     if (wrapper) wrapper.style.display = active ? "none" : "";
     if (isLivePage) {
+      // Avoid double scrub bars on /live: use custom clip controls only
+      // while playing archived clips.
+      video.controls = !active;
       ensureClipControls();
       if (clipControls) clipControls.style.display = active ? "flex" : "none";
     }
@@ -549,11 +662,187 @@ export function initTilePlayer() {
     return `/stream.png?${param}=${encodeURIComponent(target)}&time=${Date.now()}`;
   }
 
-  function playPng(target, isCamera = false) {
+  function isLikelyRealtimeStreamCamera(name) {
+    if (!name || name === "All" || name.startsWith("group-")) return false;
+    const details = window.templateDetails?.[name] || {};
+    const rawUrl = String(details.url || "").trim();
+    if (!rawUrl) return false;
+    const url = rawUrl.toLowerCase();
+    if (url.startsWith("rtsp://") || url.startsWith("rtsps://")) return true;
+    if (
+      url.includes(".m3u8") ||
+      url.includes(".mjpg") ||
+      url.includes(".mjpeg")
+    ) {
+      return true;
+    }
+    if (url.includes("/isapi/streaming/channels/")) return true;
+    if (url.includes("/streaming/channels/")) return true;
+    return false;
+  }
+
+  function shouldUseLiveVideo(name) {
+    return (
+      isLivePage &&
+      !hasClipSource &&
+      name &&
+      name !== "All" &&
+      !name.startsWith("group-") &&
+      isLikelyRealtimeStreamCamera(name)
+    );
+  }
+
+  function stopLiveVideoMode() {
+    if (liveVideoCleanup) {
+      liveVideoCleanup();
+      liveVideoCleanup = null;
+    }
+    if (liveProfileRetryTimer) {
+      clearTimeout(liveProfileRetryTimer);
+      liveProfileRetryTimer = null;
+    }
+    if (liveConnectTimer) {
+      clearTimeout(liveConnectTimer);
+      liveConnectTimer = null;
+    }
+    setLiveSourceBadge("");
+    setSpeedControlsVisible(true);
+    if (!hasClipSource) {
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+    }
+  }
+
+  function playLiveVideo(camera, streamToken = 0) {
+    if (!camera) return;
+    if (pngTimer) {
+      clearInterval(pngTimer);
+      pngTimer = null;
+    }
+    stopLiveVideoMode();
+
+    showSpinner(video);
+    image.dataset.mode = "preview";
+    image.dataset.streamToken = String(streamToken);
+    image.style.display = "none";
+
+    setClipUiActive(false);
+    setSpeedControlsVisible(false);
+
+    if (container) container.classList.remove(LIVE_CLASS);
+    video.style.display = "block";
+    video.loop = false;
+    video.preload = "none";
+
+    const profilePlan =
+      liveQuality === "low" ? ["sub", "main"] : ["main", "sub"];
+    let profileIndex = 0;
+    let failedThisAttempt = false;
+
+    const startAttempt = () => {
+      if (streamToken !== activeStreamToken) return;
+      failedThisAttempt = false;
+      const profile = profilePlan[profileIndex] || "main";
+      setLiveSourceBadge(`Live RTSP (${profile}, ${liveQuality})`, "probing");
+      setVideoSrc(
+        `/live_video?camera=${encodeURIComponent(camera)}&profile=${profile}&quality=${encodeURIComponent(liveQuality)}&time=${Date.now()}`,
+      );
+      video.load();
+      safePlay(video);
+      if (liveConnectTimer) clearTimeout(liveConnectTimer);
+      liveConnectTimer = setTimeout(() => {
+        if (streamToken !== activeStreamToken || failedThisAttempt) return;
+        onAttemptFailure("timeout");
+      }, LIVE_CONNECT_TIMEOUT_MS);
+    };
+
+    const scheduleMainRecovery = () => {
+      if (profileIndex === 0) return;
+      if (liveProfileRetryTimer) clearTimeout(liveProfileRetryTimer);
+      liveProfileRetryTimer = setTimeout(() => {
+        if (streamToken !== activeStreamToken) return;
+        profileIndex = 0;
+        showSpinner(video);
+        startAttempt();
+      }, LIVE_PROFILE_RECOVERY_MS);
+    };
+
+    const onAttemptFailure = () => {
+      if (streamToken !== activeStreamToken || failedThisAttempt) return;
+      failedThisAttempt = true;
+      if (liveConnectTimer) {
+        clearTimeout(liveConnectTimer);
+        liveConnectTimer = null;
+      }
+      if (profileIndex + 1 < profilePlan.length) {
+        profileIndex += 1;
+        startAttempt();
+        return;
+      }
+      stopLiveVideoMode();
+      playMjpg(camera, true, streamToken);
+    };
+
+    const onReady = () => {
+      if (streamToken !== activeStreamToken) return;
+      if (liveConnectTimer) {
+        clearTimeout(liveConnectTimer);
+        liveConnectTimer = null;
+      }
+      const profile = profilePlan[profileIndex] || "main";
+      setLiveSourceBadge(`Live RTSP (${profile}, ${liveQuality})`, "ok");
+      hideSpinner(video);
+      scheduleMainRecovery();
+    };
+
+    const onError = () => {
+      onAttemptFailure();
+    };
+
+    const onStalled = () => {
+      if (streamToken !== activeStreamToken) return;
+      // Keep waiting until connect timeout before failing over.
+      setLiveSourceBadge(`Live RTSP (buffering, ${liveQuality})`, "probing");
+    };
+
+    video.addEventListener("canplay", onReady);
+    video.addEventListener("loadedmetadata", onReady);
+    video.addEventListener("loadeddata", onReady);
+    video.addEventListener("playing", onReady);
+    video.addEventListener("error", onError);
+    video.addEventListener("stalled", onStalled);
+    liveVideoCleanup = () => {
+      video.removeEventListener("canplay", onReady);
+      video.removeEventListener("loadedmetadata", onReady);
+      video.removeEventListener("loadeddata", onReady);
+      video.removeEventListener("playing", onReady);
+      video.removeEventListener("error", onError);
+      video.removeEventListener("stalled", onStalled);
+      if (liveProfileRetryTimer) {
+        clearTimeout(liveProfileRetryTimer);
+        liveProfileRetryTimer = null;
+      }
+      if (liveConnectTimer) {
+        clearTimeout(liveConnectTimer);
+        liveConnectTimer = null;
+      }
+    };
+
+    startAttempt();
+  }
+
+  function playPng(target, isCamera = false, streamToken = 0) {
     if (!target) return;
+    stopLiveVideoMode();
+    if (isCamera && isLivePage) {
+      setLiveSourceBadge("Live PNG fallback", "fallback");
+    }
     showSpinner(video);
     image.dataset.mode = "stream";
+    image.dataset.streamToken = String(streamToken);
     setClipUiActive(false);
+    setSpeedControlsVisible(true);
     video.preload = "none";
     video.style.display = "none";
     image.style.display = "block";
@@ -561,19 +850,26 @@ export function initTilePlayer() {
     if (container) container.classList.add(LIVE_CLASS);
     if (pngTimer) clearInterval(pngTimer);
     pngTimer = setInterval(() => {
+      if (image.dataset.streamToken !== String(streamToken)) return;
       image.src = setPngSrc(target, isCamera);
     }, refreshSeconds * 1000);
   }
 
-  function playMjpg(target, isCamera = false) {
+  function playMjpg(target, isCamera = false, streamToken = 0) {
     if (!target) return;
+    stopLiveVideoMode();
+    if (isCamera && isLivePage) {
+      setLiveSourceBadge("Live MJPEG fallback", "fallback");
+    }
     if (pngTimer) {
       clearInterval(pngTimer);
       pngTimer = null;
     }
     showSpinner(video);
     image.dataset.mode = "stream";
+    image.dataset.streamToken = String(streamToken);
     setClipUiActive(false);
+    setSpeedControlsVisible(true);
     video.preload = "none";
     video.style.display = "none";
     image.style.display = "block";
@@ -633,21 +929,36 @@ export function initTilePlayer() {
   function play(name) {
     if (!name) return;
     current = name;
+    syncLiveContext(name);
     hideBounce();
+    const streamToken = ++activeStreamToken;
+
+    if (shouldUseLiveVideo(name)) {
+      playLiveVideo(name, streamToken);
+      return;
+    }
+
     const usePng = refreshSeconds > 1;
     if (name === "All") {
-      usePng ? playPng("all") : playMjpg("all");
+      usePng
+        ? playPng("all", false, streamToken)
+        : playMjpg("all", false, streamToken);
     } else if (name.startsWith("group-")) {
       const group = name.slice(6);
-      usePng ? playPng(group) : playMjpg(group);
+      usePng
+        ? playPng(group, false, streamToken)
+        : playMjpg(group, false, streamToken);
     } else {
-      usePng ? playPng(name, true) : playMjpg(name, true);
+      usePng
+        ? playPng(name, true, streamToken)
+        : playMjpg(name, true, streamToken);
     }
   }
 
   if (camSelect) {
     camSelect.addEventListener("change", async () => {
       current = camSelect.value;
+      syncLiveContext(current);
       if (!hasClipSource) {
         // /live: show a still preview for the new target immediately, then
         // kick off capture and connect to the stream.
@@ -679,6 +990,8 @@ export function initTilePlayer() {
       if (container?.classList.contains(LIVE_CLASS)) play(current);
     });
   }
+
+  syncLiveContext(current);
 
   if (source && source.src) {
     const onInteract = () => {
@@ -750,11 +1063,33 @@ export function changeGroup(group) {
   }
   if (navGroup) navGroup.value = group;
   updateCameraOptions(group);
+  window.currentCamera = null;
+  window.currentGroup = group && group !== "all" ? group : null;
+  if (typeof window.setLiveNavContext === "function") {
+    window.setLiveNavContext({
+      camera: null,
+      group: window.currentGroup,
+    });
+  }
   const camSelect =
     document.getElementById("camera-selector") ||
     document.getElementById("nav-camera-dropdown");
   if (camSelect) camSelect.dispatchEvent(new Event("change"));
 }
 
+export function changeCamera(selectedValue) {
+  const camSelect =
+    document.getElementById("camera-selector") ||
+    document.getElementById("nav-camera-dropdown");
+  if (!camSelect || !selectedValue) return;
+  if (camSelect.value !== selectedValue) camSelect.value = selectedValue;
+  // If this is the same control currently dispatching a change event,
+  // the tile player listener will already run. Otherwise trigger it.
+  if (camSelect.id !== "nav-camera-dropdown") {
+    camSelect.dispatchEvent(new Event("change"));
+  }
+}
+
 window.changeGroup = changeGroup;
+window.changeCamera = changeCamera;
 window.updateCameraOptions = updateCameraOptions;

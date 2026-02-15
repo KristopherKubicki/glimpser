@@ -88,6 +88,29 @@ window.detailsVisible = false;
 let lastErrorMessage = "";
 let lastErrorTime = 0;
 
+function setOverlayState(kind, message = "") {
+  const isLoading = kind === "loading";
+  const isOffline = kind === "offline";
+  const isCaptureError = kind === "capture-error";
+  const isStreamError = kind === "stream-error";
+
+  loadingIndicator.style.display = isLoading ? "block" : "none";
+  playPauseIndicator.style.display = "none";
+
+  offlineIndicator.style.display = isOffline ? "block" : "none";
+  offlineMessage.textContent = isOffline ? message : "";
+
+  errorIndicator.style.display = isCaptureError ? "block" : "none";
+  errorIndicatorMessage.textContent = isCaptureError ? message : "";
+
+  streamErrorIndicator.style.display = isStreamError ? "block" : "none";
+  streamErrorMessage.textContent = isStreamError ? message : "";
+
+  const shouldShowOverlay =
+    isLoading || isOffline || isCaptureError || isStreamError;
+  videoOverlay.style.display = shouldShowOverlay ? "block" : "none";
+}
+
 function updateCameraOptions(group) {
   const camSelect = document.getElementById("camera-selector");
   if (!camSelect) return;
@@ -196,16 +219,20 @@ function resetVideo() {
 }
 
 function showLoadingIndicator() {
-  videoOverlay.style.display = "block";
-  loadingIndicator.style.display = "block";
-  playPauseIndicator.style.display = "none";
+  setOverlayState("loading");
 }
 
 function hideLoadingIndicator() {
   loadingIndicator.style.display = "none";
   if (videoOverlay.style.display === "block") {
     setTimeout(() => {
-      videoOverlay.style.display = "none";
+      const hasActiveStatus =
+        offlineIndicator.style.display !== "none" ||
+        errorIndicator.style.display !== "none" ||
+        streamErrorIndicator.style.display !== "none";
+      if (!hasActiveStatus && playPauseIndicator.style.display === "none") {
+        videoOverlay.style.display = "none";
+      }
     }, 500);
   }
 }
@@ -241,63 +268,32 @@ function showError(message) {
 }
 
 function showOfflineIndicator(message) {
-  videoOverlay.style.display = "block";
-  offlineIndicator.style.display = "block";
-  offlineMessage.textContent = message;
-  loadingIndicator.style.display = "none";
-  playPauseIndicator.style.display = "none";
+  setOverlayState("offline", message);
 }
 
 function hideOfflineIndicator() {
-  offlineIndicator.style.display = "none";
-  offlineMessage.textContent = "";
-  if (
-    loadingIndicator.style.display === "none" &&
-    playPauseIndicator.style.display === "none"
-  ) {
-    videoOverlay.style.display = "none";
+  if (offlineIndicator.style.display !== "none") {
+    setOverlayState("none");
   }
 }
 
 function showCaptureErrorIndicator(cameraName) {
-  videoOverlay.style.display = "block";
-  errorIndicator.style.display = "block";
-  errorIndicatorMessage.textContent = `Capture failed for ${cameraName}`;
-  loadingIndicator.style.display = "none";
-  playPauseIndicator.style.display = "none";
+  setOverlayState("capture-error", `Capture failed for ${cameraName}`);
 }
 
 function hideCaptureErrorIndicator() {
-  errorIndicator.style.display = "none";
-  errorIndicatorMessage.textContent = "";
-  if (
-    loadingIndicator.style.display === "none" &&
-    playPauseIndicator.style.display === "none" &&
-    offlineIndicator.style.display === "none" &&
-    streamErrorIndicator.style.display === "none"
-  ) {
-    videoOverlay.style.display = "none";
+  if (errorIndicator.style.display !== "none") {
+    setOverlayState("none");
   }
 }
 
 function showStreamErrorIndicator(message) {
-  videoOverlay.style.display = "block";
-  streamErrorIndicator.style.display = "block";
-  streamErrorMessage.textContent = message;
-  loadingIndicator.style.display = "none";
-  playPauseIndicator.style.display = "none";
+  setOverlayState("stream-error", message);
 }
 
 function hideStreamErrorIndicator() {
-  streamErrorIndicator.style.display = "none";
-  streamErrorMessage.textContent = "";
-  if (
-    loadingIndicator.style.display === "none" &&
-    playPauseIndicator.style.display === "none" &&
-    offlineIndicator.style.display === "none" &&
-    errorIndicator.style.display === "none"
-  ) {
-    videoOverlay.style.display = "none";
+  if (streamErrorIndicator.style.display !== "none") {
+    setOverlayState("none");
   }
 }
 

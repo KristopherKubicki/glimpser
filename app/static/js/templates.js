@@ -52,8 +52,18 @@ export function initTemplates() {
     const MAX_THUMBNAIL_HEIGHT = 1080;
     const ASPECT_RATIO = 9 / 16;
     const MAX_THUMBNAIL_WIDTH = Math.round(MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO);
+    const isGroupWall =
+      typeof window !== "undefined" &&
+      Boolean(window.currentGroup) &&
+      window.currentGroup !== "all";
 
     if (slider) {
+      // Auto-fit makes the templates view behave like a video wall (fill the viewport).
+      // Default ON; moving the slider manually will turn it off.
+      slider.dataset.autofit = localStorage.getItem("gridAutofit") || "1";
+      if (isGroupWall) slider.dataset.autofit = "1";
+      let sliderInitialized = false;
+      let isProgrammaticSliderUpdate = false;
       const updateSliderLimits = () => {
         slider.max = Math.min(window.innerWidth, MAX_THUMBNAIL_WIDTH);
         if (isMobile) {
@@ -67,32 +77,48 @@ export function initTemplates() {
           return;
         }
 
+        // When we're in a dedicated group view ("/templates/<group>"), prefer a
+        // "video wall" fit: use the *visible* tile count and resize to fill the viewport.
+        // The index view virtualizes tiles for performance; in that case use the
+        // server-provided total count so sizing remains stable while scrolling.
+        const list = templateList;
+        const isVirtualized = list?.dataset.virtualized === "1";
+        const allTiles = list
+          ? Array.from(
+              list.querySelectorAll(".templateDiv:not(.skeleton-card)"),
+            )
+          : [];
+        const visibleTiles = allTiles.filter((el) => {
+          if (el.style.display === "none") return false;
+          return el.offsetParent !== null;
+        });
         const totalTemplates =
+          (isVirtualized
+            ? Number(window.templatesTotalCount)
+            : visibleTiles.length || allTiles.length) ||
           Number(window.templatesTotalCount) ||
-          templateList?.querySelectorAll(".templateDiv:not(.skeleton-card)")
-            .length ||
           1;
 
-        const gap = parseFloat(getComputedStyle(templateList).gap || "0") || 0;
+        const gap = list
+          ? parseFloat(getComputedStyle(list).gap || "0") || 0
+          : 0;
 
         // Iterate over possible column counts to find the largest tile width
         // that fits the viewport horizontally and vertically.
         let bestWidth = 50;
-        const headerHeight =
-          document.querySelector("header")?.offsetHeight || 0;
-        const bannerHeight =
-          document.getElementById("network-banner")?.offsetHeight || 0;
-        const footerSpace = parseFloat(
-          getComputedStyle(document.documentElement).getPropertyValue(
-            "--footer-space",
-          ) || "0",
-        );
-        const availableHeight =
-          window.innerHeight - headerHeight - bannerHeight - footerSpace;
+        // Prefer measuring the actual grid viewport instead of approximating via
+        // window size - headers/footers/overlays differ per page.
+        let availableWidth = window.innerWidth;
+        let availableHeight = window.innerHeight;
+        if (list) {
+          const rect = list.getBoundingClientRect();
+          if (rect.width > 0) availableWidth = rect.width;
+          if (rect.height > 0) availableHeight = rect.height;
+        }
 
         for (let cols = 1; cols <= totalTemplates; cols++) {
           const maxWidthForCols = Math.floor(
-            (window.innerWidth - gap * (cols - 1)) / cols,
+            (availableWidth - gap * (cols - 1)) / cols,
           );
           if (maxWidthForCols < 50) break;
           const rows = Math.ceil(totalTemplates / cols);
@@ -113,14 +139,28 @@ export function initTemplates() {
 
         slider.min = computedMin;
         const currentValue = parseFloat(slider.value || "0") || computedMin;
-        if (currentValue < computedMin) {
-          slider.value = computedMin;
+        const shouldInitializeToFit = !sliderInitialized;
+        const shouldAutoFit = slider.dataset.autofit === "1" || isGroupWall;
+        const clampedValue = Math.max(computedMin, currentValue);
+        if (
+          shouldAutoFit ||
+          shouldInitializeToFit ||
+          clampedValue !== currentValue
+        ) {
+          isProgrammaticSliderUpdate = true;
+          slider.value = shouldAutoFit
+            ? computedMin
+            : shouldInitializeToFit
+              ? computedMin
+              : clampedValue;
           document.documentElement.style.setProperty(
             "--tile-size",
             `${slider.value}px`,
           );
           slider.dispatchEvent(new Event("input"));
+          isProgrammaticSliderUpdate = false;
         }
+        sliderInitialized = true;
       };
 
       updateSliderLimits();
@@ -664,7 +704,24 @@ export async function loadTemplates() {
     window.templatesTotalCount = templateCount;
 
     if (isIndexPage && cards.length) {
-      virtualizeElements(templateList, cards);
+      const isGroupWall =
+        typeof window !== "undefined" &&
+        Boolean(window.currentGroup) &&
+        window.currentGroup !== "all";
+      const slider = document.getElementById("grid-width-slider");
+      const shouldVirtualize =
+        !isGroupWall &&
+        cards.length > 60 &&
+        !(slider && slider.dataset.autofit === "1");
+      if (shouldVirtualize) {
+        templateList.dataset.virtualized = "1";
+        virtualizeElements(templateList, cards);
+      } else {
+        templateList.dataset.virtualized = "0";
+        cards.forEach((el) => templateList.appendChild(el));
+      }
+    } else if (isIndexPage) {
+      templateList.dataset.virtualized = "0";
     }
 
     if (!hasTemplates) {
@@ -685,7 +742,7 @@ export async function loadTemplates() {
     }
     if (window.updateSliderLimits) {
       window.updateSliderLimits();
-      if (slider) {
+      if (slider && slider.dataset.autofit === "1") {
         slider.value = slider.min;
         slider.dispatchEvent(new Event("input"));
       }

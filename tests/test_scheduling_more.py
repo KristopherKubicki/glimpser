@@ -5,7 +5,7 @@ import tempfile
 import time
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 from PIL import Image
 
@@ -207,6 +207,70 @@ class TestAddMotionAndCaption(unittest.TestCase):
                 Image.open(path).verify()
 
 
+class TestSceneChangeGating(unittest.TestCase):
+    def test_scene_signature_and_distance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p1 = os.path.join(tmp, "a.png")
+            p2 = os.path.join(tmp, "b.png")
+            img1 = Image.new("RGB", (64, 64), color="black")
+            img2 = Image.new("RGB", (64, 64), color="black")
+            for x in range(8, 32):
+                for y in range(8, 32):
+                    img1.putpixel((x, y), (255, 255, 255))
+            for x in range(32, 56):
+                for y in range(32, 56):
+                    img2.putpixel((x, y), (255, 255, 255))
+            img1.save(p1)
+            img2.save(p2)
+
+            sig1 = scheduling._compute_scene_signature(p1)
+            sig2 = scheduling._compute_scene_signature(p2)
+            self.assertIsInstance(sig1, str)
+            self.assertIsInstance(sig2, str)
+            self.assertEqual(len(sig1), 16)
+            self.assertEqual(len(sig2), 16)
+
+            distance = scheduling._scene_hamming_distance(sig1, sig2)
+            self.assertIsNotNone(distance)
+            self.assertGreaterEqual(distance, 1)
+
+    def test_scene_changed_threshold(self):
+        changed, distance = scheduling._scene_changed("0" * 16, "0" * 16, threshold=1)
+        self.assertFalse(changed)
+        self.assertEqual(distance, 0)
+
+        changed, distance = scheduling._scene_changed("0" * 16, "f" * 16, threshold=1)
+        self.assertTrue(changed)
+        self.assertIsNotNone(distance)
+        self.assertGreater(distance, 0)
+
+
+class TestSceneCaptionCache(unittest.TestCase):
+    def test_scene_caption_cache_roundtrip_and_limit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            old_max = scheduling.SCENE_CAPTION_CACHE_MAX
+            scheduling.SCENE_CAPTION_CACHE_MAX = 2
+            try:
+                scheduling._caption_cache_set(tmp, "sig1", "prompt", "caption-1")
+                scheduling._caption_cache_set(tmp, "sig2", "prompt", "caption-2")
+                scheduling._caption_cache_set(tmp, "sig3", "prompt", "caption-3")
+
+                cache = scheduling._load_scene_caption_cache(tmp)
+                self.assertEqual(len(cache), 2)
+                self.assertNotIn(
+                    "sig1:"
+                    + scheduling.hashlib.sha1("prompt".encode()).hexdigest()[:12],
+                    cache,
+                )
+
+                hit = scheduling._caption_cache_get(tmp, "sig3", "prompt")
+                self.assertEqual(hit, "caption-3")
+                miss = scheduling._caption_cache_get(tmp, "missing", "prompt")
+                self.assertIsNone(miss)
+            finally:
+                scheduling.SCENE_CAPTION_CACHE_MAX = old_max
+
+
 class TestGetSystemMetrics(unittest.TestCase):
     @patch("app.utils.system_metrics.psutil")
     @patch.object(system_metrics, "FFMPEG_VERSION", "6.0")
@@ -265,9 +329,13 @@ class TestOfflineJobQueue(unittest.TestCase):
 
     @patch("app.utils.scheduling.multiprocessing.Process")
     @patch("app.utils.scheduling.SessionLocal")
+    @patch(
+        "app.utils.scheduling.network_state",
+        return_value={"wan_ok": True, "dns_ok": True},
+    )
     @patch("app.utils.scheduling.is_system_online", return_value=False)
     def test_queue_created_when_offline(
-        self, _online, mock_session_local, mock_process
+        self, _online, _state, mock_session_local, mock_process
     ):
         class DummySession:
             def __init__(self):
@@ -296,8 +364,12 @@ class TestOfflineJobQueue(unittest.TestCase):
         mock_process.assert_not_called()
 
     @patch("app.utils.scheduling.is_system_online", return_value=True)
+    @patch(
+        "app.utils.scheduling.network_state",
+        return_value={"wan_ok": True, "dns_ok": True},
+    )
     @patch("app.utils.scheduling.SessionLocal")
-    def test_process_runs_and_clears_jobs(self, mock_session_local, _online):
+    def test_process_runs_and_clears_jobs(self, mock_session_local, _state, _online):
         class DummyQuery:
             def __init__(self, session):
                 self.session = session
@@ -345,13 +417,99 @@ class TestOfflineJobQueue(unittest.TestCase):
         self.assertIn(job, session.deleted)
 
 
+class TestSchedulerHealthTelemetry(unittest.TestCase):
+    def setUp(self):
+        with scheduling._scheduler_health_lock:  # noqa: SLF001
+            scheduling._scheduler_max_instance_skips_total = 0  # noqa: SLF001
+            scheduling._scheduler_last_max_instance_at = None  # noqa: SLF001
+            scheduling._scheduler_job_max_instance_skips.clear()  # noqa: SLF001
+
+    def test_tracks_max_instance_events(self):
+        event = SimpleNamespace(
+            code=scheduling.EVENT_JOB_MAX_INSTANCES,
+            job_id="cam1",
+        )
+        scheduling.scheduler._track_job_state(event)  # noqa: SLF001
+
+        health = scheduling.get_scheduler_health()
+        self.assertEqual(health["max_instance_skips_total"], 1)
+        self.assertEqual(health["top_skipped_jobs"][0]["job_id"], "cam1")
+        self.assertEqual(health["top_skipped_jobs"][0]["count"], 1)
+
+
+class TestCircuitBreaker(unittest.TestCase):
+    def setUp(self):
+        scheduling.active_jobs.clear()
+        scheduling.job_failures.clear()
+        scheduling.job_backoff_until.clear()
+        scheduling.job_circuit_open_until.clear()
+        scheduling.job_circuit_next_probe.clear()
+
+    @patch("app.utils.scheduling.JOB_CIRCUIT_FAILURE_THRESHOLD", 3)
+    @patch("app.utils.scheduling.JOB_CIRCUIT_COOLDOWN_SECONDS", 120)
+    def test_register_job_failure_opens_circuit(self):
+        scheduling.register_job_failure("cam1")
+        scheduling.register_job_failure("cam1")
+        scheduling.register_job_failure("cam1")
+
+        self.assertEqual(scheduling.job_failures["cam1"], 3)
+        self.assertGreater(
+            scheduling.job_circuit_open_until.get("cam1", 0), time.time()
+        )
+
+    @patch("app.utils.scheduling.psutil.virtual_memory")
+    @patch("app.utils.scheduling.psutil.cpu_percent", return_value=1)
+    @patch("app.utils.scheduling.multiprocessing.Process")
+    @patch("app.utils.scheduling.is_system_online", return_value=True)
+    def test_run_with_timeout_skips_when_circuit_open(
+        self, _online, mock_process, _cpu, mock_mem
+    ):
+        mock_mem.return_value.percent = 1
+        scheduling.job_circuit_open_until["cam1"] = time.time() + 60
+
+        scheduling.run_with_timeout(lambda *_a: None, args=("cam1",), timeout=1)
+
+        mock_process.assert_not_called()
+
+    @patch("app.utils.scheduling.psutil.virtual_memory")
+    @patch("app.utils.scheduling.psutil.cpu_percent", return_value=1)
+    @patch("app.utils.scheduling.multiprocessing.Process")
+    @patch("app.utils.scheduling.is_system_online", return_value=True)
+    def test_run_with_timeout_allows_half_open_probe(
+        self, _online, mock_process, _cpu, mock_mem
+    ):
+        mock_mem.return_value.percent = 1
+
+        class DummyProc:
+            def __init__(self, *args, **kwargs):
+                self.exitcode = 0
+
+            def start(self):
+                pass
+
+            def join(self, timeout=None):
+                pass
+
+            def is_alive(self):
+                return False
+
+        mock_process.side_effect = DummyProc
+
+        scheduling.job_circuit_open_until["cam1"] = time.time() + 60
+        scheduling.job_circuit_next_probe["cam1"] = time.time() - 1
+
+        scheduling.run_with_timeout(lambda *_a: None, args=("cam1",), timeout=1)
+
+        mock_process.assert_called_once()
+
+
 class TestOfflineJobScheduler(unittest.TestCase):
     @patch("app.utils.scheduling.scheduler.add_job")
     @patch("app.utils.scheduling.LOW_CPU_MODE", False)
     def test_schedule_offline_job_processor_default_interval(self, mock_add_job):
         schedule_offline_job_processor()
         mock_add_job.assert_called_once_with(
-            func=process_offline_jobs,
+            func=ANY,
             trigger="interval",
             seconds=30,
             id="process_offline_jobs",
@@ -360,21 +518,48 @@ class TestOfflineJobScheduler(unittest.TestCase):
             coalesce=True,
             misfire_grace_time=30,
         )
+        self.assertEqual(
+            mock_add_job.call_args.kwargs["func"].__name__, "process_offline_jobs"
+        )
 
     @patch("app.utils.scheduling.scheduler.add_job")
     @patch("app.utils.scheduling.LOW_CPU_MODE", True)
     def test_schedule_offline_job_processor_low_cpu_interval(self, mock_add_job):
         schedule_offline_job_processor()
         mock_add_job.assert_called_once_with(
-            func=process_offline_jobs,
+            func=ANY,
             trigger="interval",
-            seconds=60,
+            seconds=120,
             id="process_offline_jobs",
             replace_existing=True,
             max_instances=3,
             coalesce=True,
-            misfire_grace_time=60,
+            misfire_grace_time=120,
         )
+        self.assertEqual(
+            mock_add_job.call_args.kwargs["func"].__name__, "process_offline_jobs"
+        )
+
+
+class TestLowCpuCrawlerScheduling(unittest.TestCase):
+    @patch("app.utils.scheduling.LOW_CPU_MODE", True)
+    @patch("app.utils.scheduling.get_templates")
+    @patch("app.utils.scheduling.calculate_optimal_offsets", return_value={"cam1": 0})
+    def test_low_cpu_clamps_short_intervals(self, _offsets, mock_get_templates):
+        mock_get_templates.return_value = {"cam1": {"name": "cam1", "frequency": 1}}
+
+        with patch("app.utils.scheduling.scheduler") as mock_scheduler:
+            mock_scheduler.get_jobs.return_value = []
+            scheduling.schedule_crawlers()
+
+        camera_call = None
+        for call in mock_scheduler.add_job.call_args_list:
+            if call.kwargs.get("id") == "cam1":
+                camera_call = call
+                break
+
+        self.assertIsNotNone(camera_call)
+        self.assertEqual(camera_call.kwargs["seconds"], 120)
 
 
 if __name__ == "__main__":

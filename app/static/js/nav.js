@@ -17,11 +17,18 @@ export function initNav() {
     const nav = document.querySelector("nav");
     const groupDropdown = document.getElementById("nav-group-dropdown");
     const cameraDropdown = document.getElementById("nav-camera-dropdown");
-    const currentGroup = window.currentGroup || null;
-    const currentCamera = window.currentCamera || null;
+    let currentGroup =
+      typeof window.currentGroup === "string" && window.currentGroup
+        ? window.currentGroup
+        : null;
+    let currentCamera =
+      typeof window.currentCamera === "string" && window.currentCamera
+        ? window.currentCamera
+        : null;
     const liveLink = document.getElementById("live");
 
-    if (liveLink) {
+    const updateLiveLinkHref = () => {
+      if (!liveLink) return;
       if (currentCamera) {
         liveLink.href = `/live?camera=${encodeURIComponent(currentCamera)}`;
       } else if (currentGroup && currentGroup !== "all") {
@@ -29,7 +36,33 @@ export function initNav() {
       } else {
         liveLink.href = "/live";
       }
-    }
+    };
+
+    const syncNavSelections = () => {
+      if (groupDropdown && currentGroup) {
+        const hasGroup = Array.from(groupDropdown.options || []).some(
+          (opt) => opt.value === currentGroup,
+        );
+        if (hasGroup) groupDropdown.value = currentGroup;
+      }
+      if (cameraDropdown && currentCamera) {
+        const hasCamera = Array.from(cameraDropdown.options || []).some(
+          (opt) => opt.value === currentCamera,
+        );
+        if (hasCamera) cameraDropdown.value = currentCamera;
+      }
+    };
+
+    window.setLiveNavContext = ({ camera = null, group = null } = {}) => {
+      currentCamera = camera || null;
+      currentGroup = group && group !== "all" ? group : null;
+      window.currentCamera = currentCamera;
+      window.currentGroup = currentGroup;
+      updateLiveLinkHref();
+      syncNavSelections();
+    };
+
+    updateLiveLinkHref();
     const menuToggle = document.getElementById("menu-toggle");
 
     if (nav && menuToggle) {
@@ -77,6 +110,7 @@ export function initNav() {
             window.updateCameraOptions(currentGroup);
           }
         }
+        updateLiveLinkHref();
       } catch (error) {
         console.error("Error loading groups:", error);
       } finally {
@@ -125,6 +159,9 @@ export function initNav() {
     if (groupDropdown) {
       groupDropdown.addEventListener("change", () => {
         const selected = groupDropdown.value || "all";
+        currentGroup = selected === "all" ? null : selected;
+        currentCamera = null;
+        updateLiveLinkHref();
         if (
           window.location.pathname.startsWith("/live") &&
           typeof window.changeGroup === "function"
@@ -145,20 +182,28 @@ export function initNav() {
 
     if (cameraDropdown) {
       cameraDropdown.addEventListener("change", () => {
-        // On the live page, switch the live player in-place.
+        const selectedCamera = cameraDropdown.value || null;
+        currentCamera = selectedCamera;
+        if (!currentCamera) {
+          updateLiveLinkHref();
+        } else {
+          const activeGroup = groupDropdown ? groupDropdown.value : null;
+          currentGroup =
+            activeGroup && activeGroup !== "all" ? activeGroup : currentGroup;
+          updateLiveLinkHref();
+        }
+
+        // On the live page, tile_player.js is attached to the same select and
+        // handles switching directly. Avoid re-dispatching the same event.
         if (window.location.pathname.startsWith("/live")) {
-          if (
-            cameraDropdown.value &&
-            typeof window.changeCamera === "function"
-          ) {
-            window.changeCamera(cameraDropdown.value);
+          const pageSelector = document.getElementById("camera-selector");
+          if (pageSelector && typeof window.changeCamera === "function") {
+            window.changeCamera(selectedCamera);
           }
           return;
         }
-        if (cameraDropdown.value) {
-          window.location.href = `/templates/${encodeURIComponent(
-            cameraDropdown.value,
-          )}`;
+        if (selectedCamera) {
+          window.location.href = `/templates/${encodeURIComponent(selectedCamera)}`;
         }
       });
     }

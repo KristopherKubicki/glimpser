@@ -20,6 +20,20 @@ from flask import (
     url_for,
 )
 
+_MISSING_SCREENSHOT_LOG_INTERVAL_SECONDS = 300
+_missing_screenshot_log_ts: dict[str, float] = {}
+
+
+def _log_missing_screenshot(name: str) -> None:
+    """Rate-limit noisy missing-screenshot warnings per source."""
+
+    now = time.monotonic()
+    key = (name or "unknown").strip() or "unknown"
+    last = _missing_screenshot_log_ts.get(key, 0.0)
+    if now - last >= _MISSING_SCREENSHOT_LOG_INTERVAL_SECONDS:
+        _missing_screenshot_log_ts[key] = now
+        logging.warning("Unable to serve screenshot for %s", key)
+
 
 def create_blueprint() -> Blueprint:
     """Create and return the UI blueprint with web routes."""
@@ -327,6 +341,9 @@ def create_blueprint() -> Blueprint:
         """Render the live view page."""
 
         camera = request.args.get("camera")
+        group = request.args.get("group")
+        selected_camera = None
+        selected_group = None
         if camera:
             camera = routes.validate_template_name(camera)
             if camera is None:
@@ -335,10 +352,23 @@ def create_blueprint() -> Blueprint:
             if not details:
                 routes.abort(404)
             templates = {camera: details}
+            selected_camera = camera
         else:
             templates = routes.template_manager.get_templates()
+            if group and group != "all":
+                selected_group = group
+                templates = {
+                    name: template
+                    for name, template in templates.items()
+                    if group
+                    in [g.strip() for g in str(template.get("groups", "")).split(",")]
+                }
         return render_template(
-            "live.html", template_details=templates, page_title="Live View"
+            "live.html",
+            template_details=templates,
+            selected_camera=selected_camera,
+            selected_group=selected_group,
+            page_title="Live View",
         )
 
     @bp.route("/clock", endpoint="clock_page")
@@ -356,7 +386,7 @@ def create_blueprint() -> Blueprint:
         raw_name = template_name
         template_name = routes.validate_template_name(str(template_name))
         if template_name is None:
-            logging.warning("Unable to serve screenshot for %s", raw_name)
+            _log_missing_screenshot(str(raw_name))
             resp = routes.send_conditional_file(
                 routes._placeholder_screenshot(),
                 cache_seconds=routes.PNG_TTL_SEC,
@@ -922,6 +952,7 @@ def create_blueprint() -> Blueprint:
         last_summary = routes.scheduling.get_last_summary_time()
         log_summary = routes.scheduling.get_or_generate_log_summary()
         top_failures = routes.scheduling.get_top_failures()
+        scheduler_health = routes.scheduling.get_scheduler_health()
         danger_enabled = routes.config.get_setting("DANGER_MODE", "True") == "True"
         cost_summary, total_tokens, total_cost, total_calls = (
             routes.template_manager.get_llm_cost_summary()
@@ -976,6 +1007,7 @@ def create_blueprint() -> Blueprint:
             last_summary=last_summary,
             log_summary=log_summary,
             top_failures=top_failures,
+            scheduler_health=scheduler_health,
             cost_summary=cost_summary,
             total_tokens=total_tokens,
             total_cost=total_cost,

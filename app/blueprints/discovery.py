@@ -10,6 +10,7 @@ from threading import Thread
 from flask import Blueprint, Response, jsonify, request, stream_with_context
 
 from app.utils import screenshots
+from app.utils.http_probe import probe_url_with_range
 
 
 def create_blueprint() -> Blueprint:
@@ -185,31 +186,19 @@ def create_blueprint() -> Blueprint:
         if not url or not routes.validators.is_public_url(url):
             return jsonify({"ok": False, "error": "invalid"}), 400
 
-        def attempt(method: str) -> tuple[bool, dict]:
-            """Try a request and return success with info."""
-            try:
-                headers = {"Range": "bytes=0-512"} if method == "GET" else {}
-                resp = routes.requests.request(
-                    method,
-                    url,
-                    timeout=3,
-                    allow_redirects=True,
-                    headers=headers,
-                )
-                return True, {
-                    "status": resp.status_code,
-                    "content_type": resp.headers.get("Content-Type", ""),
-                    "url": resp.url,
-                }
-            except Exception as exc:  # pragma: no cover - network
-                routes.logging.debug("%s probe failed for %s: %s", method, url, exc)
-                return False, {}
-
-        ok, info = attempt("HEAD")
-        if not ok or info["status"] >= 400 or info["status"] in {403, 405}:
-            ok, info = attempt("GET")
+        def attempt() -> tuple[bool, dict]:
+            """Try a ranged GET probe and return status details."""
+            ok, info = probe_url_with_range(url, timeout=3, preconnect=True)
             if not ok:
-                return jsonify({"ok": False, "error": "unreachable"}), 400
+                routes.logging.debug("GET probe failed for %s", url)
+                return False, info if isinstance(info, dict) else {}
+            return True, info
+
+        ok, info = attempt()
+        if not ok:
+            return jsonify(
+                {"ok": False, "error": info.get("preconnect") or "unreachable"}
+            ), 400
 
         info["ok"] = info.get("status", 500) < 400
 

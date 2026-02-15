@@ -13,6 +13,17 @@ export function applyStatusFilter() {
       else if (activeStatus === "error") show = isError;
       wrapper.style.display = show ? "" : "none";
     });
+
+  // If we're in auto-fit mode (group video-wall), re-fit after visibility changes
+  // so the grid expands to use the viewport.
+  if (window.updateSliderLimits) {
+    window.updateSliderLimits();
+    const slider = document.getElementById("grid-width-slider");
+    if (slider && slider.dataset.autofit === "1") {
+      slider.value = slider.min;
+      slider.dispatchEvent(new Event("input"));
+    }
+  }
 }
 
 export function updateStatusCounts() {

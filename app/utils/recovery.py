@@ -16,6 +16,7 @@ import requests
 
 from app import config
 from app.utils import validators
+from app.utils.http_probe import probe_url_with_range
 from app.utils.screenshots import (
     CAPTURE_TIMEOUT,
     FFMPEG_HWACCEL,
@@ -223,16 +224,12 @@ def generate_preview(
 def _probe_url_kind(url: str) -> tuple[bool, dict[str, Any]]:
     """Lightweight probe to identify content type for recovery previews."""
 
-    try:
-        resp = requests.head(url, timeout=3, allow_redirects=True)
-        status = resp.status_code
-        content_type = resp.headers.get("Content-Type", "")
-        if status >= 400 or status in {403, 405}:
-            resp = requests.get(url, timeout=3, allow_redirects=True)
-            status = resp.status_code
-            content_type = resp.headers.get("Content-Type", "")
-    except Exception:  # pragma: no cover - network
+    ok, info = probe_url_with_range(url, timeout=3, preconnect=True)
+    if not ok:
         return False, {}
+
+    status = int(info.get("status", 0) or 0)
+    content_type = str(info.get("content_type", ""))
 
     kind = "webpage"
     if is_image_url(url, content_type):

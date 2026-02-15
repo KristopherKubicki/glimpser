@@ -28,7 +28,7 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qs, unquote, urlencode, urlparse, urlunparse
 
 import numpy as np
 import psutil
@@ -559,6 +559,15 @@ PREFLIGHT_LOCAL_QUARANTINE_WINDOW = int(
 )
 PREFLIGHT_LOCAL_QUARANTINE_BACKOFF = int(
     os.getenv("PREFLIGHT_LOCAL_QUARANTINE_BACKOFF", "3600")
+)
+PREFLIGHT_LAN_FAST_PROBE_TIMEOUT = float(
+    os.getenv("PREFLIGHT_LAN_FAST_PROBE_TIMEOUT", "1.0")
+)
+PREFLIGHT_LOW_CPU_LOCAL_BUDGET_SECONDS = int(
+    os.getenv("PREFLIGHT_LOW_CPU_LOCAL_BUDGET_SECONDS", "3")
+)
+PREFLIGHT_LOW_CPU_WAN_BUDGET_SECONDS = int(
+    os.getenv("PREFLIGHT_LOW_CPU_WAN_BUDGET_SECONDS", "5")
 )
 STREAM_PROBE_TIMEOUT = 5
 HDHOMERUN_URL_RE = re.compile(r"/auto/v\d+(?:\.\d+)?(?:$|[/?#])", re.IGNORECASE)
@@ -2573,6 +2582,7 @@ def _capture_or_download_inner(
 
     rtsp_preflight_ok = False
     rtsp_preflight_url = None
+    lan_fast_reachable: bool | None = None
 
     if domain and _is_lan_target(domain):
         quarantined, remaining = _local_quarantine_active(url)
@@ -2589,6 +2599,39 @@ def _capture_or_download_inner(
                 url, "lan_offline", PREFLIGHT_BACKOFF_LOCAL_UNREACHABLE
             )
             _record_tier_failure(url, TIER_NETWORK, "lan_offline")
+            return False
+        # Quick LAN probe to fail fast on dead ports and reduce preflight CPU
+        # churn under unstable local networks.
+        candidate_ports: list[int] = []
+        if scheme == "http":
+            candidate_ports = [80]
+        elif scheme == "https":
+            candidate_ports = [443]
+        elif scheme == "rtsp":
+            candidate_ports = [554]
+        elif port is not None:
+            candidate_ports = [int(port)]
+        if port is not None and int(port) not in candidate_ports:
+            candidate_ports.append(int(port))
+
+        fast_timeout = max(0.2, float(PREFLIGHT_LAN_FAST_PROBE_TIMEOUT))
+        lan_fast_reachable = False
+        for probe_port in candidate_ports:
+            if is_address_reachable(domain, port=probe_port, timeout=fast_timeout):
+                lan_fast_reachable = True
+                break
+        if not lan_fast_reachable:
+            logging.info(
+                "Fast LAN preflight blocked %s (ports=%s)",
+                clean_url,
+                ",".join(str(p) for p in candidate_ports),
+            )
+            record_preflight_backoff(
+                url,
+                "local_unreachable_fast",
+                PREFLIGHT_BACKOFF_LOCAL_UNREACHABLE,
+            )
+            _record_tier_failure(url, TIER_NETWORK, "unreachable")
             return False
 
     if scheme == "rtsp":
@@ -2664,7 +2707,10 @@ def _capture_or_download_inner(
             if not dns_tls_ok:
                 _record_tier_failure(url, TIER_NETWORK, dns_tls_reason)
                 return False
-        lreach = is_address_reachable(domain, port=port)
+        if lan_fast_reachable is True:
+            lreach = True
+        else:
+            lreach = is_address_reachable(domain, port=port)
         if lreach is False:
             logging.debug(f"Could not reach host: {name} {clean_url}")
             cas_error(url)
@@ -2689,8 +2735,16 @@ def _capture_or_download_inner(
         logging.debug("Tier lockout for %s at HTTP tier", clean_url)
         return False
     if _has_redirect_loop(url):
-        _record_tier_failure(url, TIER_HTTP, "redirect_loop")
-        return False
+        auth = get_preferred_auth(url, username, password)
+        if auth:
+            # Redirect-loop cache can get stuck on camera/login flows.
+            # If we have credentials, clear it and attempt once.
+            redirect_loop_cache.pop(url, None)
+            redirect_loop_cache_time.pop(url, None)
+            _persist_preflight_cache()
+        else:
+            _record_tier_failure(url, TIER_HTTP, "redirect_loop")
+            return False
     cached_http_error = _get_http_error(url)
     if cached_http_error in {403, 404, 410}:
         _record_tier_failure(url, TIER_HTTP, f"http_{cached_http_error}")
@@ -4029,7 +4083,7 @@ def _rtsp_keepalive_probe(url: str, timeout: int = 2) -> bool:
 def _rtsp_credentials(url: str) -> tuple[str | None, str | None]:
     parsed = urlparse(url)
     if parsed.username and parsed.password:
-        return parsed.username, parsed.password
+        return unquote(parsed.username), unquote(parsed.password)
     return None, None
 
 
@@ -4181,13 +4235,9 @@ def _rtsp_describe_probe(url: str, timeout: int = 3) -> tuple[bool, str | None]:
     has_video = False
     for line in response.splitlines():
         if line.startswith("m=video"):
-            parts = line.split()
-            if len(parts) > 1:
-                try:
-                    if int(parts[1]) > 0:
-                        has_video = True
-                except ValueError:
-                    pass
+            # Some cameras announce recvonly SDP with media port 0 but still
+            # provide playable video tracks. Presence of m=video is enough.
+            has_video = True
         if line.startswith("a=rtpmap:"):
             parts = line.split(" ", 1)
             if len(parts) == 2:
@@ -4482,28 +4532,47 @@ def _set_redirect_chain(url: str) -> None:
 
 
 def _has_redirect_loop(url: str) -> bool:
-    if (
-        redirect_loop_cache.get(url)
-        and redirect_loop_cache_time.get(url, 0) > time.time() - 60 * 60
-    ):
-        return True
-    return False
+    entry = redirect_loop_cache.get(url)
+    if not entry:
+        return False
+    if redirect_loop_cache_time.get(url, 0) <= time.time() - 60 * 60:
+        return False
+    # Only treat explicit markers as "loop". Dict entries track redirect
+    # fingerprints and should not hard-block future probes.
+    return isinstance(entry, str) and entry in {"redirect_loop", "redirect_chain"}
 
 
 def _is_redirect_loop(history, final_url: str, limit: int = 8) -> bool:
     if not history:
         return False
-    if len(history) >= limit:
-        return True
-    seen = set()
+
+    # Only treat actual HTTP redirects as part of redirect-loop detection.
+    # requests' auth handling can place 401 responses in resp.history, which
+    # would otherwise be misclassified as a redirect loop.
+    redirects = []
     for resp in history:
-        if not hasattr(resp, "url") or not resp.url:
+        code = getattr(resp, "status_code", None)
+        if code in {301, 302, 303, 307, 308}:
+            redirects.append(resp)
+
+    if not redirects:
+        return False
+
+    if len(redirects) >= limit:
+        return True
+
+    seen = set()
+    for resp in redirects:
+        url = getattr(resp, "url", None)
+        if not url:
             continue
-        if resp.url in seen:
+        if url in seen:
             return True
-        seen.add(resp.url)
+        seen.add(url)
+
     if final_url in seen:
         return True
+
     return False
 
 
@@ -4586,7 +4655,7 @@ def get_content_type(
     """
     Determine the content type of the URL.
 
-    This function attempts to get the content type using HEAD and GET requests,
+    This function determines content type with a tiny ranged GET probe,
     and caches the result for an hour to reduce unnecessary requests.
 
     Args:
@@ -4627,6 +4696,29 @@ def get_content_type(
             logging.info("DNS offline; skipping external URL %s", clean_url)
             return "", False, False, "dns_offline"
 
+    is_local_target = _is_private_host(parsed.hostname) or _is_lan_target(
+        parsed.hostname
+    )
+    request_timeout_seconds = 5.0
+    preflight_deadline = None
+    if getattr(config, "LOW_CPU_MODE", False):
+        budget_seconds = (
+            PREFLIGHT_LOW_CPU_LOCAL_BUDGET_SECONDS
+            if is_local_target
+            else PREFLIGHT_LOW_CPU_WAN_BUDGET_SECONDS
+        )
+        budget_seconds = max(1, int(budget_seconds))
+        preflight_deadline = time.monotonic() + float(budget_seconds)
+        request_timeout_seconds = min(request_timeout_seconds, float(budget_seconds))
+
+    def _next_preflight_timeout() -> float:
+        if preflight_deadline is None:
+            return request_timeout_seconds
+        remaining = preflight_deadline - time.monotonic()
+        if remaining <= 0:
+            return 0.0
+        return max(0.25, min(request_timeout_seconds, remaining))
+
     lua = UA
     if stealth:
         lua = random_user_agent()
@@ -4658,10 +4750,16 @@ def get_content_type(
             pinned_scheme = ""
         if pinned_scheme == "https":
             probe_url = url
-    for verb in ("HEAD", "GET"):  # fallback to GET if HEAD blocked
+    for verb in ("GET",):  # prefer a tiny ranged GET probe over HEAD
         try:
+            attempt_timeout = _next_preflight_timeout()
+            if attempt_timeout <= 0:
+                return "", False, False, "preflight_budget_exceeded"
             # extra header only for the GET probe
-            hdrs = {"User-Agent": lua}
+            hdrs = {
+                "User-Agent": lua,
+                "Accept": "audio/*, application/octet-stream;q=0.9, */*;q=0.1",
+            }
             if _h2_downgrade_active(url):
                 hdrs["Connection"] = "close"
                 hdrs["Accept-Encoding"] = "identity"
@@ -4682,7 +4780,7 @@ def get_content_type(
                     headers=hdrs,
                     auth=auth,
                     allow_redirects=True,
-                    timeout=5,
+                    timeout=attempt_timeout,
                     stream=(verb == "GET"),
                 )
                 if resp.history and resp.cookies:
@@ -4717,7 +4815,7 @@ def get_content_type(
                         headers=hdrs,
                         auth=auth,
                         allow_redirects=True,
-                        timeout=5,
+                        timeout=_next_preflight_timeout() or attempt_timeout,
                         stream=(verb == "GET"),
                     )
                     if resp.history and resp.cookies:
@@ -4763,7 +4861,7 @@ def get_content_type(
                         headers=hdrs,
                         auth=auth,
                         allow_redirects=True,
-                        timeout=5,
+                        timeout=_next_preflight_timeout() or attempt_timeout,
                         stream=(verb == "GET"),
                     )
                     if resp.history and resp.cookies:
@@ -4800,10 +4898,6 @@ def get_content_type(
                 _set_h3_downgrade(url, f"http_{resp.status_code}")
                 _set_h2_downgrade(url, f"http_{resp.status_code}")
             if resp.status_code >= 400:
-                if verb == "HEAD" and resp.status_code == 403:
-                    # some cameras block HEAD; retry with GET before failing
-                    logging.debug("HEAD 403 for %s; retrying with GET", clean_url)
-                    continue
                 if resp.status_code == 401 and not auth:
                     _set_auth_hint(url)
                     _set_domain_backoff(url, "http_401", PREFLIGHT_BACKOFF_DOMAIN_AUTH)
@@ -4831,18 +4925,22 @@ def get_content_type(
 
             history = resp.history if isinstance(resp.history, (list, tuple)) else []
             final_url = resp.url if isinstance(resp.url, str) else None
-            if history and final_url:
-                if len(history) >= MAX_REDIRECTS:
+            redirects = [
+                h
+                for h in history
+                if getattr(h, "status_code", None) in {301, 302, 303, 307, 308}
+                and getattr(h, "url", None)
+            ]
+            if redirects and final_url:
+                if len(redirects) >= MAX_REDIRECTS:
                     _set_redirect_chain(url)
                     return "", False, False, "redirects_exceeded"
-                if _is_redirect_loop(history, final_url):
+                if _is_redirect_loop(redirects, final_url):
                     _set_redirect_loop(url)
                     return "", False, False, "redirect_loop"
                 _set_cached_redirect(url, final_url)
                 _set_redirect_pin(url, final_url)
-                chain_urls = [h.url for h in history if getattr(h, "url", None)] + [
-                    final_url
-                ]
+                chain_urls = [h.url for h in redirects] + [final_url]
                 fingerprint = " -> ".join(chain_urls)
                 chain_entry = redirect_loop_cache.get(url)
                 if (
@@ -4860,7 +4958,6 @@ def get_content_type(
                 }
                 redirect_loop_cache_time[url] = time.time()
                 _persist_preflight_cache()
-
             modified = check_if_modified(url, resp.headers)
             content_type = resp.headers.get("Content-Type", "").lower()
             if resp.status_code == 206 or resp.headers.get("Content-Range"):

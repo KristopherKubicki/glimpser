@@ -89,23 +89,26 @@ class TestIsSystemOnline(unittest.TestCase):
             self.assertTrue(is_system_online(timeout=1))
             mock_conn.assert_called_once_with(("example.com", 444), timeout=1)
 
-    @patch("app.utils.network.request_with_retry")
-    def test_url_success(self, mock_head):
-        mock_head.return_value.ok = True
+    @patch("app.utils.network.probe_url_with_range")
+    def test_url_success(self, mock_probe):
+        mock_probe.return_value = (True, {"ok": True})
         with patch.dict(os.environ, {"ONLINE_TEST_URLS": "http://example.com"}):
             self.assertTrue(is_system_online(timeout=1))
-            mock_head.assert_called_once_with("HEAD", "http://example.com", timeout=1)
+            mock_probe.assert_called_once_with(
+                "http://example.com", timeout=1, preconnect=True
+            )
 
     @patch("socket.create_connection")
-    @patch("app.utils.network.request_with_retry", side_effect=Exception("fail"))
-    def test_url_failure_falls_back_to_hosts(self, mock_head, mock_conn):
+    @patch("app.utils.network.probe_url_with_range")
+    def test_url_failure_falls_back_to_hosts(self, mock_probe, mock_conn):
         mock_conn.return_value = None
+        mock_probe.return_value = (False, {"ok": False})
         with patch.dict(
             os.environ,
             {"ONLINE_TEST_URLS": "http://bad", "ONLINE_TEST_HOSTS": "1.1.1.1"},
         ):
             self.assertTrue(is_system_online(timeout=1))
-            mock_head.assert_called_once_with("HEAD", "http://bad", timeout=1)
+            mock_probe.assert_called_once_with("http://bad", timeout=1, preconnect=True)
             mock_conn.assert_called_once_with(("1.1.1.1", 443), timeout=1)
 
     @patch("app.utils.network.logging.warning")
