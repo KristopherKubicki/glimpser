@@ -99,6 +99,123 @@ export function initTilePlayer() {
 
   const container = video.parentElement;
 
+  // Smooth camera switching: cross-fade + optional contrast/brightness guard.
+  const FLASH_GUARD_ENABLED = localStorage.getItem("flashGuard") !== "0";
+  const FLASH_TARGET_LUMA = Math.min(
+    0.8,
+    Math.max(
+      0.2,
+      parseFloat(localStorage.getItem("flashTargetLuma") || "0.55"),
+    ),
+  );
+
+  let flashShield = container?.querySelector("#flash-shield") || null;
+  if (!flashShield && container) {
+    flashShield = document.createElement("div");
+    flashShield.id = "flash-shield";
+    flashShield.className = "flash-shield";
+    container.appendChild(flashShield);
+  }
+
+  let _lumaCanvas = null;
+  let _lumaCtx = null;
+
+  function _clamp(min, v, max) {
+    return Math.max(min, Math.min(max, v));
+  }
+
+  function _ensureLumaCtx() {
+    if (_lumaCtx) return _lumaCtx;
+    _lumaCanvas = document.createElement("canvas");
+    _lumaCanvas.width = 24;
+    _lumaCanvas.height = 24;
+    _lumaCtx = _lumaCanvas.getContext("2d", { willReadFrequently: true });
+    return _lumaCtx;
+  }
+
+  function _sampleLuma(el) {
+    try {
+      const ctx = _ensureLumaCtx();
+      if (!ctx || !el) return null;
+      const w = _lumaCanvas.width;
+      const h = _lumaCanvas.height;
+      ctx.drawImage(el, 0, 0, w, h);
+      const data = ctx.getImageData(0, 0, w, h).data;
+      let sum = 0;
+      const n = w * h;
+      for (let i = 0; i < data.length; i += 4) {
+        // Rec.709 luma approximation
+        sum += 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+      }
+      return sum / (n * 255);
+    } catch (_) {
+      // Cross-origin/canvas taint or draw failure.
+      return null;
+    }
+  }
+
+  function _applyFlashGuard(luma) {
+    if (!FLASH_GUARD_ENABLED) return;
+    if (luma == null) return;
+
+    // Gentle normalization: keep it subtle so it doesn't look "filtered".
+    const scale = _clamp(0.75, FLASH_TARGET_LUMA / Math.max(luma, 0.05), 1.25);
+    const contrast = _clamp(0.9, 1.05 - Math.abs(luma - 0.5) * 0.25, 1.05);
+    const filter = `brightness(${scale.toFixed(3)}) contrast(${contrast.toFixed(3)})`;
+
+    video.style.filter = filter;
+    // The still underneath should match the live feed visually.
+    const img = document.getElementById("live-image");
+    if (img) img.style.filter = filter;
+
+    if (flashShield) {
+      // Add a small adaptive tint to reduce extreme flashes.
+      // Bright scenes: darken slightly. Dark scenes: lighten slightly.
+      const hi = Math.max(0, luma - 0.7);
+      const lo = Math.max(0, 0.3 - luma);
+      const a = _clamp(0, Math.max(hi, lo) * 1.2, 0.22);
+      if (a <= 0.001) {
+        flashShield.style.backgroundColor = "rgba(0,0,0,0)";
+      } else if (hi >= lo) {
+        flashShield.style.backgroundColor = `rgba(0,0,0,${a.toFixed(3)})`;
+      } else {
+        flashShield.style.backgroundColor = `rgba(255,255,255,${a.toFixed(3)})`;
+      }
+    }
+  }
+
+  function updateFlashGuardFrom(el) {
+    if (!FLASH_GUARD_ENABLED) return;
+    const luma = _sampleLuma(el);
+    _applyFlashGuard(luma);
+  }
+
+  let _softImageSeq = 0;
+  function setImageSrcSoft(src) {
+    if (!src) return;
+    const img = document.getElementById("live-image");
+    if (!img) return;
+
+    _softImageSeq += 1;
+    const seq = _softImageSeq;
+
+    const pre = new Image();
+    pre.onload = () => {
+      if (seq != _softImageSeq) return;
+      img.style.opacity = "0";
+      // Switch src on the next frame so opacity transition applies.
+      requestAnimationFrame(() => {
+        if (seq != _softImageSeq) return;
+        img.src = src;
+      });
+    };
+    pre.onerror = () => {
+      if (seq != _softImageSeq) return;
+      img.src = src;
+    };
+    pre.src = src;
+  }
+
   function setMediaAspect(width, height) {
     if (!container) return;
     const w = Number(width);
@@ -369,6 +486,7 @@ export function initTilePlayer() {
     }
     const q = getEffectiveLiveQuality();
     liveStatsEl.textContent = `${w}x${h} (${q})`;
+    updateFlashGuardFrom(video);
   }
 
   if (liveActionBtn) {
@@ -475,6 +593,8 @@ export function initTilePlayer() {
         hideSpinner(video);
       }
     }
+    image.style.opacity = "1";
+    updateFlashGuardFrom(image);
   });
   image.addEventListener("error", () => {
     if (
@@ -657,6 +777,15 @@ export function initTilePlayer() {
 
   function setVideoSrc(url) {
     // Use the <video> element directly; live.html's <source> has no src.
+    // Fade down before switching to avoid hard flashes between scenes.
+    video.style.opacity = "0";
+    // Apply a neutral guard during connect; it'll be refined once frames arrive.
+    if (FLASH_GUARD_ENABLED) {
+      video.style.filter = "brightness(0.95) contrast(0.98)";
+      const img = document.getElementById("live-image");
+      if (img) img.style.filter = "brightness(0.95) contrast(0.98)";
+      if (flashShield) flashShield.style.backgroundColor = "rgba(0,0,0,0.06)";
+    }
     video.removeAttribute("src");
     if (source) source.removeAttribute("src");
     video.src = url;
@@ -963,7 +1092,7 @@ export function initTilePlayer() {
     // Avoid a blank screen while RTSP spins up: keep a still underneath
     // until the first frame is ready.
     image.style.display = "block";
-    image.src = stillPreviewUrl(camera) || image.src;
+    setImageSrcSoft(stillPreviewUrl(camera) || image.src);
 
     setClipUiActive(false);
     setSpeedControlsVisible(false);
@@ -1164,6 +1293,11 @@ export function initTilePlayer() {
       video.style.display = "block";
       image.style.display = "none";
       hideSpinner(video);
+      // Fade in once we have the first frame.
+      requestAnimationFrame(() => {
+        video.style.opacity = "1";
+      });
+      updateFlashGuardFrom(video);
       updateLiveStats();
       clearLiveBad(camera);
       setLastGoodProfile(camera, profile);
