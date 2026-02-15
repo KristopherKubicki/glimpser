@@ -216,6 +216,13 @@ export function initTilePlayer() {
     if (!isLivePage) return;
     if (!cam || cam === "All" || String(cam).startsWith("group-")) return;
     if (window.LOW_CPU_MODE) return;
+    const det = window.templateDetails?.[cam] || {};
+    const kind = det.capabilities?.kind || "";
+    if (
+      !det.capabilities?.live_video &&
+      !["rtsp", "hls", "mjpeg"].includes(kind)
+    )
+      return;
     const now = Date.now();
     const key = `${cam}::first`;
     const last = warmSentAt.get(key) || 0;
@@ -231,6 +238,13 @@ export function initTilePlayer() {
     if (!isLivePage) return;
     if (!cam || cam === "All" || String(cam).startsWith("group-")) return;
     if (window.LOW_CPU_MODE) return;
+    const det = window.templateDetails?.[cam] || {};
+    const kind = det.capabilities?.kind || "";
+    if (
+      !det.capabilities?.live_video &&
+      !["rtsp", "hls", "mjpeg"].includes(kind)
+    )
+      return;
     const now = Date.now();
     const key = `${cam}::high`;
     const last = warmSentAt.get(key) || 0;
@@ -867,6 +881,10 @@ export function initTilePlayer() {
   function isLikelyRealtimeStreamCamera(name) {
     if (!name || name === "All" || name.startsWith("group-")) return false;
     const details = window.templateDetails?.[name] || {};
+    if (details.capabilities && details.capabilities.live_video === false)
+      return false;
+    if (details.capabilities && details.capabilities.live_video === true)
+      return true;
     const rawUrl = String(details.url || "").trim();
     if (!rawUrl) return false;
     const url = rawUrl.toLowerCase();

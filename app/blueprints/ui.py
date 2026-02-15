@@ -363,6 +363,15 @@ def create_blueprint() -> Blueprint:
                     if group
                     in [g.strip() for g in str(template.get("groups", "")).split(",")]
                 }
+        # Add capability hints for smarter live playback decisions in the UI.
+        templates = {
+            name: {
+                **(template or {}),
+                "capabilities": routes.live_capabilities_for_template(template or {}),
+            }
+            for name, template in (templates or {}).items()
+        }
+
         return render_template(
             "live.html",
             template_details=templates,

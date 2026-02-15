@@ -508,7 +508,19 @@ class TestRoutes(unittest.TestCase):
         mock_get_template.assert_called_with("cam1")
         mock_render_template.assert_called_with(
             "live.html",
-            template_details={"cam1": mock_get_template.return_value},
+            template_details={
+                "cam1": {
+                    **mock_get_template.return_value,
+                    "capabilities": {
+                        "kind": "web",
+                        "live_video": False,
+                        "avg_ttfb_ms": 0,
+                        "last_ttfb_ms": 0,
+                        "avoid_for_s": 0,
+                        "source": "url",
+                    },
+                }
+            },
             selected_camera="cam1",
             selected_group=None,
             page_title="Live View",
@@ -550,8 +562,14 @@ class TestRoutes(unittest.TestCase):
         mock_render_template.assert_called_with(
             "live.html",
             template_details={
-                "cam1": {"groups": "g1, g2"},
-                "cam2": {"groups": "g2"},
+                "cam1": {
+                    "groups": "g1, g2",
+                    "capabilities": {"kind": "unknown", "live_video": False},
+                },
+                "cam2": {
+                    "groups": "g2",
+                    "capabilities": {"kind": "unknown", "live_video": False},
+                },
             },
             selected_camera=None,
             selected_group="g2",

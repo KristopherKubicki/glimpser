@@ -120,6 +120,7 @@ from app.utils.settings_tooltips import (
     SETTINGS_TOOLTIPS,
 )
 from app.utils.warm_live import WarmLiveManager
+from app.utils import live_caps
 
 try:
     import onnxruntime as ort
@@ -881,6 +882,37 @@ def resolve_live_stream_url(
     )
 
 
+def live_capabilities_for_template(details: dict, *, profile: str = "sub") -> dict:
+    """Return lightweight capability hints for live playback.
+
+    The UI uses this to decide whether to attempt low-latency live video (RTSP/HLS/MJPEG)
+    vs image-based live modes.
+    """
+
+    raw_url = str((details or {}).get("url") or "").strip()
+    stream_url = (
+        resolve_live_stream_url(details or {}, profile=profile) if details else None
+    )
+    url = stream_url or raw_url
+    if not url:
+        return {"kind": "unknown", "live_video": False}
+
+    caps = live_caps.get(url)
+    now = time.time()
+    avoid_for = max(0, int((caps.avoid_until_ts or 0) - now))
+    kind = str(caps.kind or live_caps.guess_kind(url) or "unknown")
+    live_video = kind in {"rtsp", "hls", "mjpeg"}
+
+    return {
+        "kind": kind,
+        "live_video": live_video,
+        "avg_ttfb_ms": int(caps.avg_ttfb_ms or 0),
+        "last_ttfb_ms": int(caps.last_ttfb_ms or 0),
+        "avoid_for_s": avoid_for,
+        "source": "stream" if stream_url else "url",
+    }
+
+
 def parse_cache_delay(headers: typing.Mapping[str, str]) -> float:
     """Return the time-to-live from HTTP cache headers."""
 
@@ -1135,6 +1167,7 @@ def generate_live_stream(
 
         process: subprocess.Popen | None = None
         try:
+            proc_start_ts = time.time()
             process = subprocess.Popen(
                 command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
@@ -1157,6 +1190,7 @@ def generate_live_stream(
                                     "ffmpeg produced no output for %.1fs, giving up",
                                     time.time() - last_output_ts,
                                 )
+                                live_caps.record_failure(url, reason="no_output")
                                 return
                             continue
                         chunk = os.read(process.stdout.fileno(), 64 * 1024)
@@ -1164,6 +1198,11 @@ def generate_live_stream(
                         raise GeneratorExit
                     if not chunk:
                         break
+                    if not chunk_yielded:
+                        live_caps.record_success(
+                            url,
+                            ttfb_ms=int((time.time() - proc_start_ts) * 1000),
+                        )
                     yield chunk
                     chunk_yielded = True
                     last_output_ts = time.time()
@@ -1219,6 +1258,7 @@ def generate_live_stream(
                     "ffmpeg produced no output (%s failures), giving up",
                     failures,
                 )
+                live_caps.record_failure(url, reason="no_output")
                 return
             if (
                 max_no_output_seconds is not None
@@ -1228,6 +1268,7 @@ def generate_live_stream(
                     "ffmpeg produced no output for %.1fs, giving up",
                     time.time() - last_output_ts,
                 )
+                live_caps.record_failure(url, reason="no_output")
                 return
             if failures >= config.LIVE_MAX_FAILURES:
                 logging.error(
@@ -1261,6 +1302,7 @@ def generate_live_stream(
                     "ffmpeg produced no output for %.1fs, giving up",
                     time.time() - last_output_ts,
                 )
+                live_caps.record_failure(url, reason="no_output")
                 return
             delay = min(delay, remaining)
         time.sleep(delay)
