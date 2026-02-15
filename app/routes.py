@@ -1025,7 +1025,13 @@ def generate_live_stream(
             vf_parts.append(f"scale=min(iw\\,{int(live_width)}):-2")
         if vf_parts:
             command.extend(["-vf", ",".join(vf_parts)])
-        gop = max(10, int(live_fps or 10) * 2)
+        live_fps_int = int(live_fps or 10)
+        # For ultra-low-fps startup profiles, force every frame to be a keyframe
+        # so browsers can render immediately without waiting for the next IDR.
+        if live_fps_int <= 2:
+            gop = 1
+        else:
+            gop = max(10, live_fps_int * 2)
         command.extend(
             [
                 "-c:v",
@@ -1044,6 +1050,7 @@ def generate_live_stream(
                 "0",
             ]
         )
+        command.extend(["-muxdelay", "0", "-muxpreload", "0", "-flush_packets", "1"])
     else:
         command.extend(["-c:v", "copy"])
 
