@@ -170,7 +170,7 @@ export function initTilePlayer() {
   const liveActionBtn = document.getElementById("live-action");
   const liveStatsEl = document.getElementById("live-stats");
   let liveActionMode = "";
-  let liveAutoStage = "low";
+  let liveAutoStage = "first";
   let liveAutoUpgradeTimer = null;
   let liveActionCamera = null;
   let forceLiveCamera = null;
@@ -183,7 +183,7 @@ export function initTilePlayer() {
     liveQualitySelect.value = liveQuality;
     liveQualitySelect.addEventListener("change", () => {
       liveQuality = liveQualitySelect.value;
-      liveAutoStage = "low";
+      liveAutoStage = "first";
       clearLiveAutoUpgradeTimer();
       localStorage.setItem("liveQuality", liveQuality);
       // Restart the live stream immediately with the new quality.
@@ -206,7 +206,7 @@ export function initTilePlayer() {
   }
 
   function getProfilePlanForQuality(q) {
-    return q === "low" ? ["sub", "main"] : ["main", "sub"];
+    return q === "low" || q === "first" ? ["sub", "main"] : ["main", "sub"];
   }
 
   function liveStateKey(camera, suffix) {
@@ -865,7 +865,7 @@ export function initTilePlayer() {
     setLiveSourceBadge("");
     setLiveAction("", null);
     clearLiveAutoUpgradeTimer();
-    if (liveQuality === "auto") liveAutoStage = "low";
+    if (liveQuality === "auto") liveAutoStage = "first";
     if (liveStatsEl) liveStatsEl.textContent = "";
     setSpeedControlsVisible(true);
     if (!hasClipSource) {
@@ -1017,7 +1017,7 @@ export function initTilePlayer() {
       const profile = profilePlan[profileIndex] || "main";
 
       clearLiveAutoUpgradeTimer();
-      setLiveAction(q === "low" ? "upgrade" : "", camera);
+      setLiveAction(q === "low" || q === "first" ? "upgrade" : "", camera);
       setLiveSourceBadge(`Live RTSP (${profile}, ${q})`, "probing");
       setVideoSrc(
         `/live_video?camera=${encodeURIComponent(camera)}&profile=${profile}&quality=${encodeURIComponent(q)}&time=${Date.now()}`,
@@ -1095,24 +1095,34 @@ export function initTilePlayer() {
 
       if (liveQuality === "auto") {
         const cooldown = getLiveCooldownUntil(camera);
-        setLiveAction(q === "low" ? "upgrade" : "", camera);
-        if (
-          q === "low" &&
-          autoUpgradeEligible &&
-          (!cooldown || Date.now() > cooldown)
-        ) {
-          liveAutoUpgradeTimer = setTimeout(() => {
-            if (streamToken !== activeStreamToken) return;
-            if (current !== camera) return;
-            if (liveQuality !== "auto") return;
-            const cd = getLiveCooldownUntil(camera);
-            if (cd && Date.now() < cd) return;
-            liveAutoStage = "high";
-            profileIndex = 0;
-            resetMonitor();
-            showSpinner(video);
-            startAttempt();
-          }, 5000);
+        setLiveAction(q === "low" || q === "first" ? "upgrade" : "", camera);
+        if (autoUpgradeEligible && (!cooldown || Date.now() > cooldown)) {
+          if (q === "first") {
+            // Fastest possible first frame, then step up.
+            liveAutoUpgradeTimer = setTimeout(() => {
+              if (streamToken !== activeStreamToken) return;
+              if (current !== camera) return;
+              if (liveQuality !== "auto") return;
+              liveAutoStage = "low";
+              profileIndex = 0;
+              resetMonitor();
+              showSpinner(video);
+              startAttempt();
+            }, 600);
+          } else if (q === "low") {
+            liveAutoUpgradeTimer = setTimeout(() => {
+              if (streamToken !== activeStreamToken) return;
+              if (current !== camera) return;
+              if (liveQuality !== "auto") return;
+              const cd = getLiveCooldownUntil(camera);
+              if (cd && Date.now() < cd) return;
+              liveAutoStage = "high";
+              profileIndex = 0;
+              resetMonitor();
+              showSpinner(video);
+              startAttempt();
+            }, 2000);
+          }
         }
       }
     };
@@ -1258,7 +1268,7 @@ export function initTilePlayer() {
     const streamToken = ++activeStreamToken;
 
     clearLiveAutoUpgradeTimer();
-    if (liveQuality === "auto") liveAutoStage = "low";
+    if (liveQuality === "auto") liveAutoStage = "first";
     setLiveAction("", null);
 
     if (shouldUseLiveVideo(name)) {

@@ -487,7 +487,7 @@ def create_blueprint() -> Blueprint:
         profile = (routes.request.args.get("profile") or "main").strip().lower()
 
         quality = (routes.request.args.get("quality") or "auto").strip().lower()
-        if quality not in {"auto", "low", "high"}:
+        if quality not in {"auto", "low", "high", "first"}:
             quality = "auto"
 
         if profile not in {"main", "sub", "auto"}:
@@ -507,7 +507,10 @@ def create_blueprint() -> Blueprint:
 
         width = None
         fps = None
-        if quality == "low":
+        if quality == "first":
+            width = min(routes.config.LIVE_RTSP_WIDTH, 360)
+            fps = min(routes.config.LIVE_RTSP_FPS, 2)
+        elif quality == "low":
             width = min(routes.config.LIVE_RTSP_WIDTH, 480)
             fps = min(routes.config.LIVE_RTSP_FPS, 3)
         elif quality == "high":
