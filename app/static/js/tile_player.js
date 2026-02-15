@@ -461,7 +461,7 @@ export function initTilePlayer() {
   const hasClipSource = Boolean(source && source.src);
   const CLIP_DURATION_SEC = 120;
   const CLIP_LOOP_COUNT = 3;
-  const LIVE_CONNECT_TIMEOUT_MS = 8000;
+  const LIVE_CONNECT_TIMEOUT_MS = 5000;
   const LIVE_PROFILE_RECOVERY_MS = 45000;
 
   function showClip() {

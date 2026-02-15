@@ -21,6 +21,7 @@ import random
 import re
 import shutil
 import socket
+import select
 import sqlite3
 import struct
 import subprocess
@@ -905,6 +906,8 @@ def generate_live_stream(
     width: int | None = None,
     fps: int | None = None,
     transcode_rtsp: bool | None = None,
+    max_no_output_seconds: float | None = None,
+    max_no_output_failures: int | None = None,
 ) -> Generator[bytes, None, None]:
     """Yield video data directly from a remote URL using ``ffmpeg``.
 
@@ -1058,6 +1061,7 @@ def generate_live_stream(
 
     failures = 0
     last_log = 0.0
+    start_ts = time.time()
     while True:
         if parsed.scheme in ("http", "https") and not check_url_accessible(url):
             failures += 1
@@ -1071,11 +1075,17 @@ def generate_live_stream(
                 command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
             chunk_yielded = False
+            stderr_snip = ""
 
             try:
                 while True:
                     try:
-                        chunk = process.stdout.read(1024 * 1024)
+                        r, _, _ = select.select([process.stdout], [], [], 1.0)
+                        if not r:
+                            if process.poll() is not None:
+                                break
+                            continue
+                        chunk = os.read(process.stdout.fileno(), 64 * 1024)
                     except BrokenPipeError:
                         raise GeneratorExit
                     if not chunk:
@@ -1091,12 +1101,25 @@ def generate_live_stream(
                 return
             finally:
                 if process:
+                    # Grab a little stderr for diagnostics before closing.
+                    try:
+                        if process.stderr:
+                            raw = process.stderr.read(4096)
+                            if raw:
+                                stderr_snip = raw.decode(errors="replace").strip()
+                    except Exception:
+                        stderr_snip = stderr_snip
+
                     if process.stdout:
                         process.stdout.close()
                     if process.stderr:
                         process.stderr.close()
-                    process.kill()
-                    process.wait(timeout=1)
+                    if process.poll() is None:
+                        process.kill()
+                    try:
+                        process.wait(timeout=1)
+                    except Exception:
+                        pass
         except GeneratorExit:
             if process:
                 if process.stdout:
@@ -1113,6 +1136,24 @@ def generate_live_stream(
         now = time.time()
         if not chunk_yielded:
             failures += 1
+            if (
+                max_no_output_failures is not None
+                and failures >= max_no_output_failures
+            ):
+                logging.error(
+                    "ffmpeg produced no output (%s failures), giving up",
+                    failures,
+                )
+                return
+            if (
+                max_no_output_seconds is not None
+                and (time.time() - start_ts) >= max_no_output_seconds
+            ):
+                logging.error(
+                    "ffmpeg produced no output for %.1fs, giving up",
+                    time.time() - start_ts,
+                )
+                return
             if failures >= config.LIVE_MAX_FAILURES:
                 logging.error(
                     "ffmpeg failed %s times without output, giving up",
@@ -1120,6 +1161,8 @@ def generate_live_stream(
                 )
                 return
             if now - last_log > 10:
+                if stderr_snip:
+                    logging.warning("ffmpeg stderr (first 4KB): %s", stderr_snip)
                 logging.warning(
                     "ffmpeg exited with %s, retrying (%s/%s)",
                     process.returncode,

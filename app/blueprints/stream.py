@@ -521,7 +521,13 @@ def create_blueprint() -> Blueprint:
 
         resp = Response(
             routes.stream_with_context(
-                routes.generate_live_stream(url, width=width, fps=fps)
+                routes.generate_live_stream(
+                    url,
+                    width=width,
+                    fps=fps,
+                    max_no_output_seconds=8.0,
+                    max_no_output_failures=2,
+                )
             ),
             mimetype="video/mp4",
         )
