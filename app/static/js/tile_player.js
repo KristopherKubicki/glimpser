@@ -173,6 +173,7 @@ export function initTilePlayer() {
   let liveAutoStage = "low";
   let liveAutoUpgradeTimer = null;
   let liveActionCamera = null;
+  let forceLiveCamera = null;
   let liveQuality =
     liveQualitySelect?.value ||
     localStorage.getItem("liveQuality") ||
@@ -206,6 +207,60 @@ export function initTilePlayer() {
 
   function getProfilePlanForQuality(q) {
     return q === "low" ? ["sub", "main"] : ["main", "sub"];
+  }
+
+  function liveStateKey(camera, suffix) {
+    return `live:${suffix}:${camera}`;
+  }
+
+  function getLiveBadUntil(camera) {
+    if (!camera) return 0;
+    const raw = localStorage.getItem(liveStateKey(camera, "badUntil"));
+    const n = Number(raw) || 0;
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function markLiveBad(camera, ms = 120000) {
+    if (!camera) return;
+    const until = Date.now() + Math.max(30000, ms);
+    localStorage.setItem(liveStateKey(camera, "badUntil"), String(until));
+  }
+
+  function clearLiveBad(camera) {
+    if (!camera) return;
+    localStorage.removeItem(liveStateKey(camera, "badUntil"));
+  }
+
+  function getLastGoodProfile(camera) {
+    if (!camera) return "";
+    return (localStorage.getItem(liveStateKey(camera, "profile")) || "").trim();
+  }
+
+  function setLastGoodProfile(camera, profile) {
+    if (!camera || !profile) return;
+    localStorage.setItem(liveStateKey(camera, "profile"), profile);
+  }
+
+  function canAttemptLive(camera) {
+    const until = getLiveBadUntil(camera);
+    return !until || Date.now() > until;
+  }
+
+  function getLiveCooldownUntil(camera) {
+    if (!camera) return 0;
+    const raw = localStorage.getItem(liveStateKey(camera, "cooldownUntil"));
+    const n = Number(raw) || 0;
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function setLiveCooldownUntil(camera, untilMs) {
+    if (!camera) return;
+    const until = Number(untilMs) || 0;
+    if (!until) {
+      localStorage.removeItem(liveStateKey(camera, "cooldownUntil"));
+      return;
+    }
+    localStorage.setItem(liveStateKey(camera, "cooldownUntil"), String(until));
   }
 
   function setLiveAction(mode, camera = null) {
@@ -256,7 +311,13 @@ export function initTilePlayer() {
 
       if (liveActionMode === "try") {
         clearLiveAutoUpgradeTimer();
+        clearLiveBad(cam);
+        forceLiveCamera = cam;
         play(cam);
+        // Clear the override after we kick off the attempt.
+        setTimeout(() => {
+          if (forceLiveCamera === cam) forceLiveCamera = null;
+        }, 0);
         return;
       }
 
@@ -783,7 +844,8 @@ export function initTilePlayer() {
       name &&
       name !== "All" &&
       !name.startsWith("group-") &&
-      isLikelyRealtimeStreamCamera(name)
+      isLikelyRealtimeStreamCamera(name) &&
+      (name === forceLiveCamera || canAttemptLive(name))
     );
   }
 
@@ -821,6 +883,8 @@ export function initTilePlayer() {
     }
     stopLiveVideoMode();
 
+    if (forceLiveCamera === camera) forceLiveCamera = null;
+
     showSpinner(video);
     image.dataset.mode = "preview";
     image.dataset.streamToken = String(streamToken);
@@ -841,19 +905,118 @@ export function initTilePlayer() {
       camera !== "All";
 
     const getQuality = () => getEffectiveLiveQuality();
-    const getPlan = () => getProfilePlanForQuality(getQuality());
+    const getPlan = (q) => {
+      const plan = getProfilePlanForQuality(q);
+      const last = getLastGoodProfile(camera);
+      if (last && plan.includes(last)) {
+        // Prefer the last known-good profile first.
+        return [last, ...plan.filter((p) => p !== last)];
+      }
+      return plan;
+    };
 
     let profileIndex = 0;
     let failedThisAttempt = false;
+
+    let stallCount = 0;
+    let waitingCount = 0;
+    let lastFrameCount = 0;
+    let samples = 0;
+    let monitorTimer = null;
+
+    const resetMonitor = () => {
+      stallCount = 0;
+      waitingCount = 0;
+      lastFrameCount = 0;
+      samples = 0;
+    };
+
+    const getDroppedRatio = () => {
+      if (typeof video.getVideoPlaybackQuality !== "function") return 0;
+      const q = video.getVideoPlaybackQuality();
+      const dropped = Number(q.droppedVideoFrames) || 0;
+      const total = Number(q.totalVideoFrames) || 0;
+      return total ? dropped / total : 0;
+    };
+
+    const getApproxFps = () => {
+      if (typeof video.getVideoPlaybackQuality !== "function") return 0;
+      const q = video.getVideoPlaybackQuality();
+      const total = Number(q.totalVideoFrames) || 0;
+      const d = total - lastFrameCount;
+      lastFrameCount = total;
+      // sample period ~2s
+      return (d * 1000) / 2000;
+    };
+
+    const maybeDowngradeFromHigh = () => {
+      const now = Date.now();
+      if (liveQuality !== "auto") return false;
+      if (liveAutoStage !== "high") return false;
+      if (now < getLiveCooldownUntil(camera)) return false;
+
+      const dropped = getDroppedRatio();
+      const fps = getApproxFps();
+      const tooManyStalls = stallCount >= 2 || waitingCount >= 2;
+      const tooManyDrops = dropped > 0.25;
+      const tooLowFps = fps && fps < 6;
+
+      samples += 1;
+      // Require a couple samples before taking action.
+      if (samples < 2) return false;
+
+      if (tooManyStalls || tooManyDrops || tooLowFps) {
+        liveAutoStage = "low";
+        setLiveCooldownUntil(camera, now + 60000);
+        profileIndex = 0;
+        resetMonitor();
+        showSpinner(video);
+        startAttempt();
+        return true;
+      }
+
+      return false;
+    };
+
+    const startMonitor = () => {
+      if (monitorTimer) clearInterval(monitorTimer);
+      resetMonitor();
+      monitorTimer = setInterval(() => {
+        if (streamToken !== activeStreamToken) return;
+        // Only adapt when we're in high.
+        if (maybeDowngradeFromHigh()) return;
+        updateLiveStats();
+      }, 2000);
+    };
+
+    const stopMonitor = () => {
+      if (!monitorTimer) return;
+      clearInterval(monitorTimer);
+      monitorTimer = null;
+    };
+
+    const onWaiting = () => {
+      if (streamToken !== activeStreamToken) return;
+      waitingCount += 1;
+      stallCount += 1;
+    };
+
+    const onStalled = () => {
+      if (streamToken !== activeStreamToken) return;
+      stallCount += 1;
+      const q = getQuality();
+      setLiveSourceBadge(`Live RTSP (buffering, ${q})`, "probing");
+    };
 
     const startAttempt = () => {
       if (streamToken !== activeStreamToken) return;
       failedThisAttempt = false;
 
       const q = getQuality();
-      const profilePlan = getPlan();
+      const profilePlan = getPlan(q);
       const profile = profilePlan[profileIndex] || "main";
 
+      clearLiveAutoUpgradeTimer();
       setLiveAction(q === "low" ? "upgrade" : "", camera);
       setLiveSourceBadge(`Live RTSP (${profile}, ${q})`, "probing");
       setVideoSrc(
@@ -888,7 +1051,7 @@ export function initTilePlayer() {
       }
 
       const q = getQuality();
-      const profilePlan = getPlan();
+      const profilePlan = getPlan(q);
 
       if (profileIndex + 1 < profilePlan.length) {
         profileIndex += 1;
@@ -900,12 +1063,15 @@ export function initTilePlayer() {
       if (liveQuality === "auto" && liveAutoStage === "high") {
         liveAutoStage = "low";
         profileIndex = 0;
+        setLiveCooldownUntil(camera, Date.now() + 60000);
         showSpinner(video);
         startAttempt();
         return;
       }
 
+      stopMonitor();
       stopLiveVideoMode();
+      markLiveBad(camera, 120000);
       setLiveAction("try", camera);
       playMjpg(camera, true, streamToken);
     };
@@ -917,23 +1083,33 @@ export function initTilePlayer() {
         liveConnectTimer = null;
       }
       const q = getQuality();
-      const profilePlan = getPlan();
+      const profilePlan = getPlan(q);
       const profile = profilePlan[profileIndex] || "main";
       setLiveSourceBadge(`Live RTSP (${profile}, ${q})`, "ok");
       hideSpinner(video);
       updateLiveStats();
+      clearLiveBad(camera);
+      setLastGoodProfile(camera, profile);
+      startMonitor();
       scheduleMainRecovery();
 
       if (liveQuality === "auto") {
+        const cooldown = getLiveCooldownUntil(camera);
         setLiveAction(q === "low" ? "upgrade" : "", camera);
-        if (q === "low" && autoUpgradeEligible) {
-          clearLiveAutoUpgradeTimer();
+        if (
+          q === "low" &&
+          autoUpgradeEligible &&
+          (!cooldown || Date.now() > cooldown)
+        ) {
           liveAutoUpgradeTimer = setTimeout(() => {
             if (streamToken !== activeStreamToken) return;
             if (current !== camera) return;
             if (liveQuality !== "auto") return;
+            const cd = getLiveCooldownUntil(camera);
+            if (cd && Date.now() < cd) return;
             liveAutoStage = "high";
             profileIndex = 0;
+            resetMonitor();
             showSpinner(video);
             startAttempt();
           }, 5000);
@@ -945,25 +1121,21 @@ export function initTilePlayer() {
       onAttemptFailure();
     };
 
-    const onStalled = () => {
-      if (streamToken !== activeStreamToken) return;
-      // Keep waiting until connect timeout before failing over.
-      const q = getQuality();
-      setLiveSourceBadge(`Live RTSP (buffering, ${q})`, "probing");
-    };
-
     video.addEventListener("canplay", onReady);
     video.addEventListener("loadedmetadata", onReady);
     video.addEventListener("loadeddata", onReady);
     video.addEventListener("playing", onReady);
     video.addEventListener("error", onError);
+    video.addEventListener("waiting", onWaiting);
     video.addEventListener("stalled", onStalled);
     liveVideoCleanup = () => {
+      stopMonitor();
       video.removeEventListener("canplay", onReady);
       video.removeEventListener("loadedmetadata", onReady);
       video.removeEventListener("loadeddata", onReady);
       video.removeEventListener("playing", onReady);
       video.removeEventListener("error", onError);
+      video.removeEventListener("waiting", onWaiting);
       video.removeEventListener("stalled", onStalled);
       if (liveProfileRetryTimer) {
         clearTimeout(liveProfileRetryTimer);
