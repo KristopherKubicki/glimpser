@@ -118,54 +118,57 @@ export function initTemplates() {
         const gap = list
           ? parseFloat(getComputedStyle(list).gap || "0") || 0
           : 0;
-        // Iterate over possible column counts to find the largest tile width
-        // that fits the viewport horizontally and vertically.
+
+        // Compute a true "no clipping" video-wall fit.
+        // For each possible column count, compute the max tile width allowed by:
+        // 1) horizontal space, and 2) vertical space given the implied row count.
+        // Then pick the layout that yields the largest tiles.
         let bestWidth = 50;
         let bestCols = 1;
+
         // Prefer measuring the actual grid viewport instead of approximating via
         // window size - headers/footers/overlays differ per page.
         let availableWidth = window.innerWidth;
         let availableHeight = window.innerHeight;
+        let padX = 0;
+        let padY = 0;
         if (list) {
           const rect = list.getBoundingClientRect();
           if (rect.width > 0) availableWidth = rect.width;
           if (rect.height > 0) availableHeight = rect.height;
+          const cs = getComputedStyle(list);
+          padX =
+            (parseFloat(cs.paddingLeft || "0") || 0) +
+            (parseFloat(cs.paddingRight || "0") || 0);
+          padY =
+            (parseFloat(cs.paddingTop || "0") || 0) +
+            (parseFloat(cs.paddingBottom || "0") || 0);
         }
-        const WALL_MIN_TILE = 12;
+        availableWidth = Math.max(0, availableWidth - padX);
+        availableHeight = Math.max(0, availableHeight - padY);
+
+        const WALL_MIN_TILE = 8;
         const NORMAL_MIN_TILE = 50;
         const minTile = isGroupWall ? WALL_MIN_TILE : NORMAL_MIN_TILE;
 
-        let foundFit = false;
-        let bestOverflow = Number.POSITIVE_INFINITY;
-
         for (let cols = 1; cols <= totalTemplates; cols++) {
-          const maxWidthForCols = Math.floor(
+          const rows = Math.ceil(totalTemplates / cols);
+
+          // Horizontal constraint
+          const widthFromW = Math.floor(
             (availableWidth - gap * (cols - 1)) / cols,
           );
-          if (maxWidthForCols < minTile) break;
-          const rows = Math.ceil(totalTemplates / cols);
-          const tileHeight = maxWidthForCols * ASPECT_RATIO;
-          const totalHeight = rows * tileHeight + gap * (rows - 1);
-          const overflow = totalHeight - availableHeight;
 
-          if (overflow <= 0) {
-            // Fits: prefer the largest tiles (widest).
-            foundFit = true;
-            if (maxWidthForCols > bestWidth) {
-              bestWidth = maxWidthForCols;
-              bestCols = cols;
-            }
-          } else if (!foundFit) {
-            // No perfect fit yet: pick the layout with the smallest overflow
-            // (and then the largest tiles) so we don't get stuck at 1 column.
-            if (
-              overflow < bestOverflow ||
-              (overflow == bestOverflow && maxWidthForCols > bestWidth)
-            ) {
-              bestOverflow = overflow;
-              bestWidth = maxWidthForCols;
-              bestCols = cols;
-            }
+          // Vertical constraint: solve for tile width using height and aspect ratio.
+          const heightPerTile = (availableHeight - gap * (rows - 1)) / rows;
+          const widthFromH = Math.floor(heightPerTile / ASPECT_RATIO);
+
+          const candidateWidth = Math.min(widthFromW, widthFromH);
+          if (candidateWidth < minTile) break;
+
+          if (candidateWidth > bestWidth) {
+            bestWidth = candidateWidth;
+            bestCols = cols;
           }
         }
         const widthForMaxHeight = MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO;
