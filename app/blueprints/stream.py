@@ -472,6 +472,48 @@ def create_blueprint() -> Blueprint:
             mimetype="video/mp4",
         )
 
+    @bp.route("/warm_live")
+    @routes.login_required
+    def warm_live() -> Response:
+        """Pre-warm a camera live pipeline for fast time-to-first-frame."""
+
+        camera = routes.request.args.get("camera")
+        if not camera:
+            routes.abort(400, "camera parameter required")
+        details = routes.template_manager.get_template(camera)
+        if not details:
+            routes.abort(404)
+
+        profile = (routes.request.args.get("profile") or "sub").strip().lower()
+        if profile not in {"main", "sub", "auto"}:
+            profile = "sub"
+
+        quality = (routes.request.args.get("quality") or "first").strip().lower()
+        if quality not in {"first", "low", "high", "auto"}:
+            quality = "first"
+
+        stream_url = routes.resolve_live_stream_url(details, profile=profile)
+        url = stream_url or details.get("url")
+        if not url:
+            routes.abort(404)
+
+        width = None
+        fps = None
+        if quality == "first":
+            width = min(routes.config.LIVE_RTSP_WIDTH, 360)
+            fps = min(routes.config.LIVE_RTSP_FPS, 2)
+        elif quality == "low":
+            width = min(routes.config.LIVE_RTSP_WIDTH, 480)
+            fps = min(routes.config.LIVE_RTSP_FPS, 3)
+        elif quality == "high":
+            width = max(routes.config.LIVE_RTSP_WIDTH, 1280)
+            width = min(width, 1920)
+            fps = max(routes.config.LIVE_RTSP_FPS, 10)
+            fps = min(fps, 15)
+
+        routes.warm_live(url, width=width, fps=fps)
+        return Response(status=204)
+
     @bp.route("/live_video")
     @routes.login_required
     def live_video() -> Response:
@@ -519,21 +561,31 @@ def create_blueprint() -> Blueprint:
             fps = max(routes.config.LIVE_RTSP_FPS, 10)
             fps = min(fps, 15)
 
+        use_warm = (
+            quality == "first"
+            and isinstance(url, str)
+            and url.lower().startswith(("rtsp://", "rtsps://"))
+        )
+
+        if use_warm:
+            gen = routes.generate_warm_live_stream(url, width=width, fps=fps)
+        else:
+            gen = routes.generate_live_stream(
+                url,
+                width=width,
+                fps=fps,
+                max_no_output_seconds=8.0,
+                max_no_output_failures=2,
+            )
+
         resp = Response(
-            routes.stream_with_context(
-                routes.generate_live_stream(
-                    url,
-                    width=width,
-                    fps=fps,
-                    max_no_output_seconds=8.0,
-                    max_no_output_failures=2,
-                )
-            ),
+            routes.stream_with_context(gen),
             mimetype="video/mp4",
         )
         resp.headers["X-Live-Source"] = "stream" if stream_url else "fallback"
         resp.headers["X-Live-Profile"] = profile
         resp.headers["X-Live-Quality"] = quality
+        resp.headers["X-Live-Warm"] = "1" if use_warm else "0"
         return resp
 
     @bp.route("/stream.m3u8")

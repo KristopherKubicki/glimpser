@@ -209,6 +209,35 @@ export function initTilePlayer() {
     return q === "low" || q === "first" ? ["sub", "main"] : ["main", "sub"];
   }
 
+  const WARM_LIVE_DEBOUNCE_MS = 15000;
+  const warmSentAt = new Map();
+
+  function maybeWarmCamera(cam) {
+    if (!isLivePage) return;
+    if (!cam || cam === "All" || String(cam).startsWith("group-")) return;
+    if (window.LOW_CPU_MODE) return;
+    const now = Date.now();
+    const last = warmSentAt.get(cam) || 0;
+    if (now - last < WARM_LIVE_DEBOUNCE_MS) return;
+    warmSentAt.set(cam, now);
+    fetch(
+      `/warm_live?camera=${encodeURIComponent(cam)}&profile=sub&quality=first&t=${now}`,
+      { cache: "no-store" },
+    ).catch(() => {});
+  }
+
+  function maybeWarmSelection(sel) {
+    if (!isLivePage) return;
+    if (!sel || sel === "All") return;
+    if (String(sel).startsWith("group-")) {
+      const group = String(sel).slice(6);
+      const cams = camerasForGroup(group).slice(0, 2);
+      cams.forEach(maybeWarmCamera);
+      return;
+    }
+    maybeWarmCamera(sel);
+  }
+
   function liveStateKey(camera, suffix) {
     return `live:${suffix}:${camera}`;
   }
@@ -470,7 +499,7 @@ export function initTilePlayer() {
       pngTimer = null;
     }
     image.style.display = "none";
-    video.style.display = "block";
+    video.style.display = "none";
     container?.classList.remove(LIVE_CLASS);
     safePlay(video);
   }
@@ -888,13 +917,16 @@ export function initTilePlayer() {
     showSpinner(video);
     image.dataset.mode = "preview";
     image.dataset.streamToken = String(streamToken);
-    image.style.display = "none";
+    // Avoid a blank screen while RTSP spins up: keep a still underneath
+    // until the first frame is ready.
+    image.style.display = "block";
+    image.src = stillPreviewUrl(camera) || image.src;
 
     setClipUiActive(false);
     setSpeedControlsVisible(false);
 
     if (container) container.classList.remove(LIVE_CLASS);
-    video.style.display = "block";
+    video.style.display = "none";
     video.loop = false;
     video.preload = "none";
 
@@ -1086,6 +1118,8 @@ export function initTilePlayer() {
       const profilePlan = getPlan(q);
       const profile = profilePlan[profileIndex] || "main";
       setLiveSourceBadge(`Live RTSP (${profile}, ${q})`, "ok");
+      video.style.display = "block";
+      image.style.display = "none";
       hideSpinner(video);
       updateLiveStats();
       clearLiveBad(camera);
@@ -1263,6 +1297,7 @@ export function initTilePlayer() {
   function play(name) {
     if (!name) return;
     current = name;
+    maybeWarmSelection(name);
     syncLiveContext(name);
     hideBounce();
     const streamToken = ++activeStreamToken;

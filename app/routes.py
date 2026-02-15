@@ -119,6 +119,7 @@ from app.utils.settings_tooltips import (
     SETTINGS_PLACEHOLDERS,
     SETTINGS_TOOLTIPS,
 )
+from app.utils.warm_live import WarmLiveManager
 
 try:
     import onnxruntime as ort
@@ -900,6 +901,158 @@ def parse_cache_delay(headers: typing.Mapping[str, str]) -> float:
     return 0.0
 
 
+def build_live_ffmpeg_command(
+    url: str,
+    *,
+    width: int | None = None,
+    fps: int | None = None,
+    transcode_rtsp: bool | None = None,
+) -> list[str]:
+    """Build the ffmpeg command used for browser-friendly live playback."""
+
+    command = [config.FFMPEG_PATH]
+    if config.FFMPEG_HWACCEL and config.FFMPEG_HWACCEL.lower() != "false":
+        command.extend(["-hwaccel", config.FFMPEG_HWACCEL])
+
+    parsed = urlparse(url)
+    if parsed.scheme in ("http", "https"):
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+        command.extend(["-headers", f"User-Agent: {config.UA}\r\n"])
+        command.extend(["-headers", f"referer: {base_url}\r\n"])
+        command.extend(["-headers", f"origin: {base_url}\r\n"])
+        command.extend(["-seekable", "0"])
+
+    if parsed.scheme in ("http", "https"):
+        command.extend(
+            [
+                "-reconnect",
+                "1",
+                "-reconnect_streamed",
+                "1",
+                "-reconnect_delay_max",
+                "2",
+            ]
+        )
+    elif parsed.scheme in ("rtsp", "rtsps"):
+        # Keep RTSP startup stable and latency low for true camera streams.
+        command.extend(
+            [
+                "-rtsp_transport",
+                "tcp",
+                "-timeout",
+                str(config.LIVE_RTSP_SOCKET_TIMEOUT_US),
+                "-analyzeduration",
+                "0",
+                "-probesize",
+                "32768",
+            ]
+        )
+
+    command.extend(["-i", url, "-loglevel", "error", "-an"])
+
+    do_transcode_rtsp = (
+        config.LIVE_TRANSCODE_RTSP if transcode_rtsp is None else bool(transcode_rtsp)
+    )
+
+    if parsed.scheme in ("rtsp", "rtsps") and do_transcode_rtsp:
+        command.extend(["-fflags", "nobuffer", "-flags", "low_delay"])
+        vf_parts: list[str] = []
+        live_fps = fps if fps is not None else config.LIVE_RTSP_FPS
+        live_width = width if width is not None else config.LIVE_RTSP_WIDTH
+        if live_fps:
+            vf_parts.append(f"fps={int(live_fps)}")
+        if live_width:
+            vf_parts.append(f"scale=min(iw\\,{int(live_width)}):-2")
+        if vf_parts:
+            command.extend(["-vf", ",".join(vf_parts)])
+
+        live_fps_int = int(live_fps or 10)
+        # For ultra-low-fps startup profiles, force every frame to be a keyframe
+        # so browsers can render immediately without waiting for the next IDR.
+        if live_fps_int <= 2:
+            gop = 1
+        else:
+            gop = max(10, live_fps_int * 2)
+
+        command.extend(
+            [
+                "-c:v",
+                "libx264",
+                "-preset",
+                "ultrafast",
+                "-tune",
+                "zerolatency",
+                "-pix_fmt",
+                "yuv420p",
+                "-g",
+                str(gop),
+                "-keyint_min",
+                str(gop),
+                "-sc_threshold",
+                "0",
+                "-muxdelay",
+                "0",
+                "-muxpreload",
+                "0",
+                "-flush_packets",
+                "1",
+            ]
+        )
+    else:
+        command.extend(["-c:v", "copy"])
+
+    command.extend(
+        [
+            "-f",
+            "mp4",
+            "-movflags",
+            "frag_keyframe+empty_moov+default_base_moof",
+            "pipe:1",
+        ]
+    )
+
+    return command
+
+
+# Shared warm live manager for faster time-to-first-frame when cameras are
+# revisited shortly after being viewed or prewarmed on group pages.
+warm_live_manager = WarmLiveManager()
+
+
+def _warm_live_key(
+    url: str, width: int | None, fps: int | None, transcode_rtsp: bool | None
+) -> str:
+    return f"{url}|w={width or ''}|fps={fps or ''}|t={1 if transcode_rtsp else 0}"
+
+
+def warm_live(
+    url: str,
+    *,
+    width: int | None = None,
+    fps: int | None = None,
+    transcode_rtsp: bool | None = None,
+) -> None:
+    cmd = build_live_ffmpeg_command(
+        url, width=width, fps=fps, transcode_rtsp=transcode_rtsp
+    )
+    warm_live_manager.warm(_warm_live_key(url, width, fps, transcode_rtsp), cmd)
+
+
+def generate_warm_live_stream(
+    url: str,
+    *,
+    width: int | None = None,
+    fps: int | None = None,
+    transcode_rtsp: bool | None = None,
+) -> Generator[bytes, None, None]:
+    cmd = build_live_ffmpeg_command(
+        url, width=width, fps=fps, transcode_rtsp=transcode_rtsp
+    )
+    yield from warm_live_manager.subscribe(
+        _warm_live_key(url, width, fps, transcode_rtsp), cmd
+    )
+
+
 def generate_live_stream(
     url: str,
     *,
@@ -959,110 +1112,14 @@ def generate_live_stream(
             time.sleep(min(delay, config.LIVE_MAX_RETRY_DELAY))
         return
 
-    command = [config.FFMPEG_PATH]
-    if config.FFMPEG_HWACCEL and config.FFMPEG_HWACCEL.lower() != "false":
-        command.extend(["-hwaccel", config.FFMPEG_HWACCEL])
+    command = build_live_ffmpeg_command(
+        url,
+        width=width,
+        fps=fps,
+        transcode_rtsp=transcode_rtsp,
+    )
 
     parsed = urlparse(url)
-    if parsed.scheme in ("http", "https"):
-        base_url = f"{parsed.scheme}://{parsed.netloc}"
-        command.extend(["-headers", f"User-Agent: {config.UA}\r\n"])
-        command.extend(["-headers", f"referer: {base_url}\r\n"])
-        command.extend(["-headers", f"origin: {base_url}\r\n"])
-        command.extend(["-seekable", "0"])
-    if parsed.scheme in ("http", "https"):
-        command.extend(
-            [
-                "-reconnect",
-                "1",
-                "-reconnect_streamed",
-                "1",
-                "-reconnect_delay_max",
-                "2",
-            ]
-        )
-    elif parsed.scheme in ("rtsp", "rtsps"):
-        # Keep RTSP startup stable and latency low for true camera streams.
-        command.extend(
-            [
-                "-rtsp_transport",
-                "tcp",
-                "-timeout",
-                str(config.LIVE_RTSP_SOCKET_TIMEOUT_US),
-                "-analyzeduration",
-                "0",
-                "-probesize",
-                "32768",
-            ]
-        )
-
-    command.extend(
-        [
-            "-i",
-            url,
-            "-loglevel",
-            "error",
-            "-an",
-        ]
-    )
-
-    # Browser-friendly defaults for RTSP streams: downscale + transcode to H.264
-    # so playback starts reliably (many cameras default to very high-res feeds).
-    # HTTP sources keep stream-copy to stay cheap.
-    do_transcode_rtsp = (
-        config.LIVE_TRANSCODE_RTSP if transcode_rtsp is None else bool(transcode_rtsp)
-    )
-
-    if parsed.scheme in ("rtsp", "rtsps") and do_transcode_rtsp:
-        command.extend(["-fflags", "nobuffer", "-flags", "low_delay"])
-        vf_parts = []
-        live_fps = fps if fps is not None else config.LIVE_RTSP_FPS
-        live_width = width if width is not None else config.LIVE_RTSP_WIDTH
-        if live_fps:
-            vf_parts.append(f"fps={int(live_fps)}")
-        if live_width:
-            # Preserve aspect ratio; never upscale beyond the camera feed.
-            vf_parts.append(f"scale=min(iw\\,{int(live_width)}):-2")
-        if vf_parts:
-            command.extend(["-vf", ",".join(vf_parts)])
-        live_fps_int = int(live_fps or 10)
-        # For ultra-low-fps startup profiles, force every frame to be a keyframe
-        # so browsers can render immediately without waiting for the next IDR.
-        if live_fps_int <= 2:
-            gop = 1
-        else:
-            gop = max(10, live_fps_int * 2)
-        command.extend(
-            [
-                "-c:v",
-                "libx264",
-                "-preset",
-                "ultrafast",
-                "-tune",
-                "zerolatency",
-                "-pix_fmt",
-                "yuv420p",
-                "-g",
-                str(gop),
-                "-keyint_min",
-                str(gop),
-                "-sc_threshold",
-                "0",
-            ]
-        )
-        command.extend(["-muxdelay", "0", "-muxpreload", "0", "-flush_packets", "1"])
-    else:
-        command.extend(["-c:v", "copy"])
-
-    command.extend(
-        [
-            "-f",
-            "mp4",
-            "-movflags",
-            "frag_keyframe+empty_moov+default_base_moof",
-            "pipe:1",
-        ]
-    )
 
     failures = 0
     last_log = 0.0
