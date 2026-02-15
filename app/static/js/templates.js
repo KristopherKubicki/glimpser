@@ -641,7 +641,7 @@ export async function loadTemplates() {
   const searchInput = document.getElementById("search-input");
   const selectedGroup = getSelectedGroup();
   const searchQuery = searchInput ? searchInput.value.toLowerCase() : "";
-  const url = `/templates?group=${selectedGroup}&search=${searchQuery}&t=${new Date().getTime()}`;
+  const url = `/templates?group=${selectedGroup}&search=${searchQuery}`;
   const slider = document.getElementById("grid-width-slider");
 
   const isGroupWall = document.body?.classList.contains("templates-wall");
@@ -678,7 +678,10 @@ export async function loadTemplates() {
   }
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      cache: "no-cache",
+      headers: { Accept: "application/json" },
+    });
 
     if (!response.ok) {
       throw new Error("Network response was not ok");

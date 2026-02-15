@@ -258,6 +258,8 @@ rtsp_profile_cache_time = {}
 reachability_cache = {}
 domain_backoff_cache = {}
 local_quarantine_cache = {}
+_tier_failure_log_cache: dict[str, dict[str, float]] = {}
+TIER_FAILURE_LOG_INTERVAL_SECONDS = 30
 danger_fallback_cache = {}
 danger_session_cache = {}
 _local_quarantine_log_cache: dict[str, float] = {}
@@ -1193,12 +1195,26 @@ def _record_tier_failure(
         _record_local_failure(url, detail)
     if detail not in {"source_circuit_open", "retry_budget_exhausted"}:
         _record_source_failure(url)
-    logging.info(
-        "Tier %s failed for %s: %s",
-        TIER_NAMES.get(tier, str(tier)),
-        sanitize_url(url),
-        detail,
-    )
+    now = time.time()
+    log_key = f"{tier}|{detail}|{sanitize_url(url)}"
+    entry_log = _tier_failure_log_cache.get(log_key, {"last": 0.0, "suppressed": 0.0})
+    last = float(entry_log.get("last", 0.0) or 0.0)
+    if now - last >= TIER_FAILURE_LOG_INTERVAL_SECONDS:
+        suppressed = int(entry_log.get("suppressed", 0) or 0)
+        entry_log["last"] = now
+        entry_log["suppressed"] = 0
+        _tier_failure_log_cache[log_key] = entry_log
+        suffix = f" (suppressed {suppressed} repeats)" if suppressed else ""
+        logging.info(
+            "Tier %s failed for %s: %s%s",
+            TIER_NAMES.get(tier, str(tier)),
+            sanitize_url(url),
+            detail,
+            suffix,
+        )
+    else:
+        entry_log["suppressed"] = float(entry_log.get("suppressed", 0.0) or 0.0) + 1
+        _tier_failure_log_cache[log_key] = entry_log
     _persist_preflight_cache()
 
 

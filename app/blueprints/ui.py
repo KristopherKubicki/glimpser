@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import logging
@@ -22,6 +23,11 @@ from flask import (
 
 _MISSING_SCREENSHOT_LOG_INTERVAL_SECONDS = 300
 _missing_screenshot_log_ts: dict[str, float] = {}
+
+# Tiny per-process cache for the templates JSON payload. The templates UI polls
+# frequently; this keeps the endpoint responsive under load and enables ETag/304.
+_TEMPLATES_JSON_CACHE: dict[tuple[str, str, str], dict[str, object]] = {}
+_TEMPLATES_JSON_CACHE_TTL_SECONDS = 1.0
 
 
 def _log_missing_screenshot(name: str) -> None:
@@ -522,8 +528,34 @@ def create_blueprint() -> Blueprint:
             if routes.template_manager.save_template(template_name, data):
                 return jsonify({"status": "success", "message": "Template saved"})
         elif request.method == "GET":
-            group = request.args.get("group")
+            group = request.args.get("group") or "all"
             search_query = request.args.get("search", "").lower()
+
+            # Cache/ETag: keep the templates UI snappy (it polls often).
+            user_id = str(routes.current_user.get_id() or "anon")
+            cache_key = (user_id, group, search_query)
+            now = time.time()
+            entry = _TEMPLATES_JSON_CACHE.get(cache_key)
+            if (
+                entry
+                and now - float(entry.get("ts", 0.0) or 0.0)
+                <= _TEMPLATES_JSON_CACHE_TTL_SECONDS
+            ):
+                etag = str(entry.get("etag") or "")
+                body = entry.get("body") or b"{}"
+                inm = request.headers.get("If-None-Match")
+                if inm and etag and inm == etag:
+                    resp = Response(status=304)
+                    resp.headers["ETag"] = etag
+                    resp.headers["Cache-Control"] = (
+                        "private, max-age=0, must-revalidate"
+                    )
+                    return resp
+                resp = Response(body, mimetype="application/json")
+                resp.headers["ETag"] = etag
+                resp.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
+                return resp
+
             templates = routes.template_manager.get_templates()
             filtered_templates: dict[str, dict[str, str]] = {}
             for name, template in templates.items():
@@ -535,7 +567,25 @@ def create_blueprint() -> Blueprint:
                     or any(search_query in g.lower() for g in template_groups)
                 ):
                     filtered_templates[name] = template
-            return jsonify(filtered_templates)
+
+            # Stable JSON for deterministic ETags.
+            body = json.dumps(
+                filtered_templates, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+            etag = '"' + hashlib.sha1(body).hexdigest() + '"'
+            _TEMPLATES_JSON_CACHE[cache_key] = {"ts": now, "etag": etag, "body": body}
+
+            inm = request.headers.get("If-None-Match")
+            if inm and inm == etag:
+                resp = Response(status=304)
+                resp.headers["ETag"] = etag
+                resp.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
+                return resp
+
+            resp = Response(body, mimetype="application/json")
+            resp.headers["ETag"] = etag
+            resp.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
+            return resp
         elif request.method == "DELETE":
             data = request.get_json(silent=True) or {}
             template_name = routes.validate_template_name(str(data.get("name", "")))
