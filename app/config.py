@@ -540,6 +540,16 @@ if LOW_CPU_MODE:
 LIVE_RTSP_RW_TIMEOUT_US = int(get_setting("LIVE_RTSP_RW_TIMEOUT_US", 15000000))
 LIVE_RTSP_SOCKET_TIMEOUT_US = int(get_setting("LIVE_RTSP_SOCKET_TIMEOUT_US", 15000000))
 
+# Skip expensive preflight checks when a given URL/host was recently proven
+# healthy. This makes camera flipping feel NVR-fast while still keeping
+# circuit-breakers for degraded networks.
+LIVE_PREFLIGHT_SKIP_OK_SECONDS = int(get_setting("LIVE_PREFLIGHT_SKIP_OK_SECONDS", 20))
+
+# Best-effort in-process concurrency limits per host for live playback.
+# Note: multiple workers won't coordinate, so these are primarily to prevent
+# stampedes within a single worker.
+LIVE_HOST_MAX_STREAMS = int(get_setting("LIVE_HOST_MAX_STREAMS", 2))
+
 # Stop restarting live streams endlessly when ffmpeg repeatedly fails. If the
 # live view fails this many times in a row without producing any output,
 # ``generate_live_stream`` gives up and closes the connection so resources are

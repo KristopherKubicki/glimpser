@@ -498,19 +498,46 @@ def create_blueprint() -> Blueprint:
             routes.abort(404)
 
         host_key = routes.live_host_key(str(url))
-        if host_key and not routes.live_host_caps.should_attempt(host_key):
-            routes.live_caps.record_failure(str(url), reason="host_avoid")
-            return Response(status=204)
+        now = routes.time.time()
+        skip_ok_s = int(getattr(routes.config, "LIVE_PREFLIGHT_SKIP_OK_SECONDS", 20))
 
-        ok_pre, _pre_info = routes.preflight_live_url(str(url))
-        if not ok_pre:
-            if host_key:
-                routes.live_host_caps.record_failure(host_key, reason="preflight")
-            routes.live_caps.record_failure(str(url), reason="preflight")
-            return Response(status=204)
+        url_caps = routes.live_caps.get(str(url))
+        host_caps = routes.live_host_caps.get(host_key) if host_key else None
+        recent_ok = bool(
+            url_caps.last_ok_ts and (now - float(url_caps.last_ok_ts)) <= skip_ok_s
+        )
+        host_recent_ok = bool(
+            host_caps
+            and host_caps.last_ok_ts
+            and (now - float(host_caps.last_ok_ts)) <= skip_ok_s
+        )
 
+        # Avoid stampeding: at most one warm request per host at a time (per worker).
+        warm_token = None
         if host_key:
-            routes.live_host_caps.record_success(host_key)
+            warm_token = routes.live_limits.try_acquire(
+                host_key, kind="warm_live", limit=1, timeout=0.0
+            )
+            if warm_token is None:
+                return Response(status=204)
+
+        try:
+            if not (recent_ok or host_recent_ok):
+                if host_key and not routes.live_host_caps.should_attempt(host_key):
+                    routes.live_caps.record_failure(str(url), reason="host_avoid")
+                    return Response(status=204)
+
+                ok_pre, _pre_info = routes.preflight_live_url(str(url))
+                if not ok_pre:
+                    if host_key:
+                        routes.live_host_caps.record_failure(
+                            host_key, reason="preflight"
+                        )
+                    routes.live_caps.record_failure(str(url), reason="preflight")
+                    return Response(status=204)
+        finally:
+            if warm_token:
+                warm_token.release()
 
         width = None
         fps = None
@@ -555,21 +582,6 @@ def create_blueprint() -> Blueprint:
         if not url:
             routes.abort(404)
 
-        host_key = routes.live_host_key(str(url))
-        if host_key and not routes.live_host_caps.should_attempt(host_key):
-            routes.live_caps.record_failure(str(url), reason="host_avoid")
-            return Response(status=204)
-
-        ok_pre, _pre_info = routes.preflight_live_url(str(url))
-        if not ok_pre:
-            if host_key:
-                routes.live_host_caps.record_failure(host_key, reason="preflight")
-            routes.live_caps.record_failure(str(url), reason="preflight")
-            return Response(status=204)
-
-        if host_key:
-            routes.live_host_caps.record_success(host_key)
-
         routes.logging.info(
             "live_video request camera=%s profile=%s source=%s",
             camera,
@@ -577,23 +589,60 @@ def create_blueprint() -> Blueprint:
             "stream" if stream_url else "fallback",
         )
 
-        # Cheap preflight + circuit breaker to avoid stampeding degraded LAN hosts.
         host_key = routes.live_host_key(str(url))
-        if host_key and not routes.live_host_caps.should_attempt(host_key):
-            routes.live_caps.record_failure(str(url), reason="host_avoid")
-            return Response(status=503)
+        now = routes.time.time()
+        skip_ok_s = int(getattr(routes.config, "LIVE_PREFLIGHT_SKIP_OK_SECONDS", 20))
 
-        ok_pre, pre_info = routes.preflight_live_url(str(url))
-        if not ok_pre:
-            if host_key:
-                routes.live_host_caps.record_failure(
-                    host_key, reason=str(pre_info.get("reason") or "")
-                )
-            routes.live_caps.record_failure(str(url), reason="preflight")
-            return Response(status=503)
+        url_caps = routes.live_caps.get(str(url))
+        host_caps = routes.live_host_caps.get(host_key) if host_key else None
+        recent_ok = bool(
+            url_caps.last_ok_ts and (now - float(url_caps.last_ok_ts)) <= skip_ok_s
+        )
+        host_recent_ok = bool(
+            host_caps
+            and host_caps.last_ok_ts
+            and (now - float(host_caps.last_ok_ts)) <= skip_ok_s
+        )
 
+        # Best-effort per-host concurrency limit (per worker).
+        token = None
         if host_key:
-            routes.live_host_caps.record_success(host_key)
+            max_streams = int(getattr(routes.config, "LIVE_HOST_MAX_STREAMS", 2) or 0)
+            if max_streams > 0:
+                token = routes.live_limits.wait_acquire(
+                    host_key,
+                    kind="live_video",
+                    limit=max_streams,
+                    max_wait_s=0.5,
+                )
+                if token is None:
+                    resp = Response(status=503)
+                    resp.headers["Retry-After"] = "2"
+                    return resp
+
+        # Cheap preflight + circuit breaker to avoid stampeding degraded LAN hosts.
+        # Skip when we have a very recent proven-good stream.
+        if not (recent_ok or host_recent_ok):
+            if host_key and not routes.live_host_caps.should_attempt(host_key):
+                routes.live_caps.record_failure(str(url), reason="host_avoid")
+                resp = Response(status=503)
+                resp.headers["Retry-After"] = "2"
+                if token:
+                    token.release()
+                return resp
+
+            ok_pre, pre_info = routes.preflight_live_url(str(url))
+            if not ok_pre:
+                if host_key:
+                    routes.live_host_caps.record_failure(
+                        host_key, reason=str(pre_info.get("reason") or "")
+                    )
+                routes.live_caps.record_failure(str(url), reason="preflight")
+                resp = Response(status=503)
+                resp.headers["Retry-After"] = "2"
+                if token:
+                    token.release()
+                return resp
 
         width = None
         fps = None
@@ -616,9 +665,9 @@ def create_blueprint() -> Blueprint:
         )
 
         if use_warm:
-            gen = routes.generate_warm_live_stream(url, width=width, fps=fps)
+            inner = routes.generate_warm_live_stream(url, width=width, fps=fps)
         else:
-            gen = routes.generate_live_stream(
+            inner = routes.generate_live_stream(
                 url,
                 width=width,
                 fps=fps,
@@ -626,8 +675,15 @@ def create_blueprint() -> Blueprint:
                 max_no_output_failures=2,
             )
 
+        def limited_gen():
+            try:
+                yield from inner
+            finally:
+                if token:
+                    token.release()
+
         resp = Response(
-            routes.stream_with_context(gen),
+            routes.stream_with_context(limited_gen()),
             mimetype="video/mp4",
         )
         resp.headers["X-Live-Source"] = "stream" if stream_url else "fallback"

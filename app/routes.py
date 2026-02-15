@@ -123,6 +123,7 @@ from app.utils.settings_tooltips import (
 from app.utils.warm_live import WarmLiveManager
 from app.utils import live_caps
 from app.utils import live_host_caps
+from app.utils import live_limits
 
 try:
     import onnxruntime as ort
@@ -1029,7 +1030,6 @@ def live_capabilities_for_template(
     avoid_for = max(0, int((caps.avoid_until_ts or 0) - now))
 
     kind = str(caps.kind or live_caps.guess_kind(url) or "unknown").lower()
-
     try:
         parsed = urlparse(url)
     except Exception:
@@ -1242,9 +1242,20 @@ def generate_warm_live_stream(
     cmd = build_live_ffmpeg_command(
         url, width=width, fps=fps, transcode_rtsp=transcode_rtsp
     )
-    yield from warm_live_manager.subscribe(
+    proc_start_ts = time.time()
+    host_key = live_host_key(url)
+    first = True
+    for chunk in warm_live_manager.subscribe(
         _warm_live_key(url, width, fps, transcode_rtsp), cmd
-    )
+    ):
+        if first:
+            live_caps.record_success(
+                url, ttfb_ms=int((time.time() - proc_start_ts) * 1000)
+            )
+            if host_key:
+                live_host_caps.record_success(host_key)
+            first = False
+        yield chunk
 
 
 def generate_live_stream(
@@ -1314,6 +1325,8 @@ def generate_live_stream(
     )
 
     parsed = urlparse(url)
+    host_key = live_host_key(url)
+    host_marked_ok = False
 
     failures = 0
     last_log = 0.0
@@ -1353,6 +1366,10 @@ def generate_live_stream(
                                     time.time() - last_output_ts,
                                 )
                                 live_caps.record_failure(url, reason="no_output")
+                                if host_key:
+                                    live_host_caps.record_failure(
+                                        host_key, reason="no_output"
+                                    )
                                 return
                             continue
                         chunk = os.read(process.stdout.fileno(), 64 * 1024)
@@ -1365,6 +1382,9 @@ def generate_live_stream(
                             url,
                             ttfb_ms=int((time.time() - proc_start_ts) * 1000),
                         )
+                        if host_key and not host_marked_ok:
+                            live_host_caps.record_success(host_key)
+                            host_marked_ok = True
                     yield chunk
                     chunk_yielded = True
                     last_output_ts = time.time()
@@ -1421,6 +1441,8 @@ def generate_live_stream(
                     failures,
                 )
                 live_caps.record_failure(url, reason="no_output")
+                if host_key:
+                    live_host_caps.record_failure(host_key, reason="no_output")
                 return
             if (
                 max_no_output_seconds is not None
@@ -1431,6 +1453,8 @@ def generate_live_stream(
                     time.time() - last_output_ts,
                 )
                 live_caps.record_failure(url, reason="no_output")
+                if host_key:
+                    live_host_caps.record_failure(host_key, reason="no_output")
                 return
             if failures >= config.LIVE_MAX_FAILURES:
                 logging.error(
@@ -1465,6 +1489,8 @@ def generate_live_stream(
                     time.time() - last_output_ts,
                 )
                 live_caps.record_failure(url, reason="no_output")
+                if host_key:
+                    live_host_caps.record_failure(host_key, reason="no_output")
                 return
             delay = min(delay, remaining)
         time.sleep(delay)
