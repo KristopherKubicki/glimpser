@@ -69,6 +69,16 @@ export function initTemplates() {
         if (isMobile) {
           slider.min = slider.max;
           slider.value = slider.max;
+          if (isGroupWall && list) {
+            // Wall layout: stretch tiles to fill the available width/height.
+            list.dataset.wallLayout = "1";
+            if (bestCols && Number.isFinite(bestCols)) {
+              list.style.gridTemplateColumns = `repeat(${bestCols}, 1fr)`;
+            }
+          } else if (list) {
+            list.dataset.wallLayout = "0";
+            list.style.gridTemplateColumns = "";
+          }
           document.documentElement.style.setProperty(
             "--tile-size",
             `${slider.value}px`,
@@ -93,9 +103,11 @@ export function initTemplates() {
           return el.offsetParent !== null;
         });
         const totalTemplates =
-          (isVirtualized
-            ? Number(window.templatesTotalCount)
-            : visibleTiles.length || allTiles.length) ||
+          (isGroupWall
+            ? visibleTiles.length || allTiles.length
+            : isVirtualized
+              ? Number(window.templatesTotalCount)
+              : visibleTiles.length || allTiles.length) ||
           Number(window.templatesTotalCount) ||
           1;
 
@@ -106,6 +118,7 @@ export function initTemplates() {
         // Iterate over possible column counts to find the largest tile width
         // that fits the viewport horizontally and vertically.
         let bestWidth = 50;
+        let bestCols = 1;
         // Prefer measuring the actual grid viewport instead of approximating via
         // window size - headers/footers/overlays differ per page.
         let availableWidth = window.innerWidth;
@@ -153,6 +166,16 @@ export function initTemplates() {
             : shouldInitializeToFit
               ? computedMin
               : clampedValue;
+          if (isGroupWall && list) {
+            // Wall layout: stretch tiles to fill the available width/height.
+            list.dataset.wallLayout = "1";
+            if (bestCols && Number.isFinite(bestCols)) {
+              list.style.gridTemplateColumns = `repeat(${bestCols}, 1fr)`;
+            }
+          } else if (list) {
+            list.dataset.wallLayout = "0";
+            list.style.gridTemplateColumns = "";
+          }
           document.documentElement.style.setProperty(
             "--tile-size",
             `${slider.value}px`,

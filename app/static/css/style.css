@@ -187,6 +187,18 @@ body.templates-screen #template-list::-webkit-scrollbar {
   height: 0;
 }
 
+/* Group video-wall view: fit all tiles on screen (no scrolling) */
+body.templates-wall #template-list {
+  overflow: hidden;
+  place-content: start stretch;
+}
+
+body.templates-wall .templateDiv {
+  width: auto !important;
+  height: auto !important;
+  flex: 0 0 auto;
+}
+
 main {
   padding: 0.5rem 1rem 60px;
   flex-grow: 1;

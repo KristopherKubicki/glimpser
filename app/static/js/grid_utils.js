@@ -116,6 +116,7 @@ export function updateTableLayout(width) {
 export function updateGridLayout() {
   const templateList = document.getElementById("template-list");
   if (!templateList) return;
+  if (templateList.dataset.wallLayout === "1") return;
   if (isMobile()) {
     templateList.style.gridTemplateColumns = "1fr";
   } else {

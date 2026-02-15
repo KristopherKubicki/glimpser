@@ -1,5 +1,5 @@
 {% extends 'base.html' %} {% from 'components.html' import template_controls %}
-{% block body_class %}templates-screen{% endblock %}
+{% block body_class %}templates-screen templates-wall{% endblock %}
 {% block content %} {% call template_controls() %}
 <select id="sort-date" class="sort-select" aria-label="Sort cameras">
   <option value="">↕</option>
@@ -31,6 +31,7 @@
 <script type="module">
   import { loadTemplates } from '{{ url_for('static', filename='js/templates.js') }}';
   window.currentGroup = '{{ group_name }}';
+  window.isGroupWall = true;
   document.addEventListener('DOMContentLoaded', () => {
       loadTemplates();
   });
