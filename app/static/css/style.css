@@ -335,6 +335,29 @@ h2 {
   font-size: 12px;
 }
 
+.live-action {
+  background: rgba(20, 20, 20, 0.9);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.live-action:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.live-stats {
+  margin-left: 0.35rem;
+  font-size: 12px;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+
 
 #template-controls input[type="text"],
 #template-controls select {

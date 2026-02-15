@@ -179,7 +179,7 @@ def get_setting(name, default=None):
     except (OperationalError, sqlite3.OperationalError) as e:
         if "no such table" in str(e):
             # This is ok on first run when the DB is empty.
-            logging.warning("table does not exist")
+            logging.debug("settings table does not exist yet")
         else:
             logging.warning("initialization error %s", e)
     except SQLAlchemyError as e:
@@ -263,7 +263,7 @@ def sync_version(pkg_version: str) -> None:
             session.commit()
     except (OperationalError, sqlite3.OperationalError) as e:
         if "no such table" in str(e):
-            logging.warning("table does not exist")
+            logging.debug("settings table does not exist yet")
         else:
             logging.warning("initialization error %s", e)
     except SQLAlchemyError as e:

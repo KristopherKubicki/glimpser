@@ -167,6 +167,12 @@ export function initTilePlayer() {
   }
 
   const liveQualitySelect = document.getElementById("live-quality");
+  const liveActionBtn = document.getElementById("live-action");
+  const liveStatsEl = document.getElementById("live-stats");
+  let liveActionMode = "";
+  let liveAutoStage = "low";
+  let liveAutoUpgradeTimer = null;
+  let liveActionCamera = null;
   let liveQuality =
     liveQualitySelect?.value ||
     localStorage.getItem("liveQuality") ||
@@ -176,6 +182,8 @@ export function initTilePlayer() {
     liveQualitySelect.value = liveQuality;
     liveQualitySelect.addEventListener("change", () => {
       liveQuality = liveQualitySelect.value;
+      liveAutoStage = "low";
+      clearLiveAutoUpgradeTimer();
       localStorage.setItem("liveQuality", liveQuality);
       // Restart the live stream immediately with the new quality.
       if (current && shouldUseLiveVideo(current)) {
@@ -183,6 +191,93 @@ export function initTilePlayer() {
       }
     });
   }
+
+  function clearLiveAutoUpgradeTimer() {
+    if (liveAutoUpgradeTimer) {
+      clearTimeout(liveAutoUpgradeTimer);
+      liveAutoUpgradeTimer = null;
+    }
+  }
+
+  function getEffectiveLiveQuality() {
+    if (liveQuality !== "auto") return liveQuality;
+    return liveAutoStage;
+  }
+
+  function getProfilePlanForQuality(q) {
+    return q === "low" ? ["sub", "main"] : ["main", "sub"];
+  }
+
+  function setLiveAction(mode, camera = null) {
+    liveActionMode = mode || "";
+    liveActionCamera = camera;
+    if (!liveActionBtn) return;
+
+    const q = getEffectiveLiveQuality();
+    let visible = false;
+    let label = "";
+    let title = "";
+
+    if (mode === "upgrade") {
+      visible =
+        !window.LOW_CPU_MODE &&
+        (liveQuality === "low" || liveQuality === "auto") &&
+        q !== "high";
+      label = "Upgrade";
+      title = "Upgrade to higher quality live stream";
+    } else if (mode === "try") {
+      visible = Boolean(camera) && shouldUseLiveVideo(String(camera));
+      label = "Try Live";
+      title = "Try RTSP live stream again";
+    }
+
+    liveActionBtn.textContent = label;
+    liveActionBtn.title = title;
+    liveActionBtn.style.display = visible ? "" : "none";
+  }
+
+  function updateLiveStats() {
+    if (!liveStatsEl) return;
+    const w = Number(video.videoWidth) || 0;
+    const h = Number(video.videoHeight) || 0;
+    if (!w || !h) {
+      liveStatsEl.textContent = "";
+      return;
+    }
+    const q = getEffectiveLiveQuality();
+    liveStatsEl.textContent = `${w}x${h} (${q})`;
+  }
+
+  if (liveActionBtn) {
+    liveActionBtn.addEventListener("click", () => {
+      const cam =
+        liveActionCamera || (typeof current === "string" ? current : null);
+      if (!cam) return;
+
+      if (liveActionMode === "try") {
+        clearLiveAutoUpgradeTimer();
+        play(cam);
+        return;
+      }
+
+      if (liveActionMode === "upgrade") {
+        clearLiveAutoUpgradeTimer();
+        if (liveQuality === "auto") {
+          liveAutoStage = "high";
+          setLiveAction("", cam);
+          play(cam);
+          return;
+        }
+        liveQuality = "high";
+        if (liveQualitySelect) liveQualitySelect.value = liveQuality;
+        localStorage.setItem("liveQuality", liveQuality);
+        setLiveAction("", cam);
+        play(cam);
+      }
+    });
+  }
+
+  video.addEventListener("loadedmetadata", updateLiveStats);
 
   const speedSlider = document.getElementById("speed-slider");
   const speedValue = document.getElementById("speed-value");
@@ -706,6 +801,10 @@ export function initTilePlayer() {
       liveConnectTimer = null;
     }
     setLiveSourceBadge("");
+    setLiveAction("", null);
+    clearLiveAutoUpgradeTimer();
+    if (liveQuality === "auto") liveAutoStage = "low";
+    if (liveStatsEl) liveStatsEl.textContent = "";
     setSpeedControlsVisible(true);
     if (!hasClipSource) {
       video.pause();
@@ -735,18 +834,30 @@ export function initTilePlayer() {
     video.loop = false;
     video.preload = "none";
 
-    const profilePlan =
-      liveQuality === "low" ? ["sub", "main"] : ["main", "sub"];
+    const autoUpgradeEligible =
+      liveQuality === "auto" &&
+      !window.LOW_CPU_MODE &&
+      !String(camera).startsWith("group-") &&
+      camera !== "All";
+
+    const getQuality = () => getEffectiveLiveQuality();
+    const getPlan = () => getProfilePlanForQuality(getQuality());
+
     let profileIndex = 0;
     let failedThisAttempt = false;
 
     const startAttempt = () => {
       if (streamToken !== activeStreamToken) return;
       failedThisAttempt = false;
+
+      const q = getQuality();
+      const profilePlan = getPlan();
       const profile = profilePlan[profileIndex] || "main";
-      setLiveSourceBadge(`Live RTSP (${profile}, ${liveQuality})`, "probing");
+
+      setLiveAction(q === "low" ? "upgrade" : "", camera);
+      setLiveSourceBadge(`Live RTSP (${profile}, ${q})`, "probing");
       setVideoSrc(
-        `/live_video?camera=${encodeURIComponent(camera)}&profile=${profile}&quality=${encodeURIComponent(liveQuality)}&time=${Date.now()}`,
+        `/live_video?camera=${encodeURIComponent(camera)}&profile=${profile}&quality=${encodeURIComponent(q)}&time=${Date.now()}`,
       );
       video.load();
       safePlay(video);
@@ -775,12 +886,27 @@ export function initTilePlayer() {
         clearTimeout(liveConnectTimer);
         liveConnectTimer = null;
       }
+
+      const q = getQuality();
+      const profilePlan = getPlan();
+
       if (profileIndex + 1 < profilePlan.length) {
         profileIndex += 1;
         startAttempt();
         return;
       }
+
+      // Auto mode: if the upgrade stage fails, step back down to low.
+      if (liveQuality === "auto" && liveAutoStage === "high") {
+        liveAutoStage = "low";
+        profileIndex = 0;
+        showSpinner(video);
+        startAttempt();
+        return;
+      }
+
       stopLiveVideoMode();
+      setLiveAction("try", camera);
       playMjpg(camera, true, streamToken);
     };
 
@@ -790,10 +916,29 @@ export function initTilePlayer() {
         clearTimeout(liveConnectTimer);
         liveConnectTimer = null;
       }
+      const q = getQuality();
+      const profilePlan = getPlan();
       const profile = profilePlan[profileIndex] || "main";
-      setLiveSourceBadge(`Live RTSP (${profile}, ${liveQuality})`, "ok");
+      setLiveSourceBadge(`Live RTSP (${profile}, ${q})`, "ok");
       hideSpinner(video);
+      updateLiveStats();
       scheduleMainRecovery();
+
+      if (liveQuality === "auto") {
+        setLiveAction(q === "low" ? "upgrade" : "", camera);
+        if (q === "low" && autoUpgradeEligible) {
+          clearLiveAutoUpgradeTimer();
+          liveAutoUpgradeTimer = setTimeout(() => {
+            if (streamToken !== activeStreamToken) return;
+            if (current !== camera) return;
+            if (liveQuality !== "auto") return;
+            liveAutoStage = "high";
+            profileIndex = 0;
+            showSpinner(video);
+            startAttempt();
+          }, 5000);
+        }
+      }
     };
 
     const onError = () => {
@@ -803,7 +948,8 @@ export function initTilePlayer() {
     const onStalled = () => {
       if (streamToken !== activeStreamToken) return;
       // Keep waiting until connect timeout before failing over.
-      setLiveSourceBadge(`Live RTSP (buffering, ${liveQuality})`, "probing");
+      const q = getQuality();
+      setLiveSourceBadge(`Live RTSP (buffering, ${q})`, "probing");
     };
 
     video.addEventListener("canplay", onReady);
@@ -837,6 +983,9 @@ export function initTilePlayer() {
     stopLiveVideoMode();
     if (isCamera && isLivePage) {
       setLiveSourceBadge("Live PNG fallback", "fallback");
+      setLiveAction("try", target);
+    } else {
+      setLiveAction("", null);
     }
     showSpinner(video);
     image.dataset.mode = "stream";
@@ -860,6 +1009,9 @@ export function initTilePlayer() {
     stopLiveVideoMode();
     if (isCamera && isLivePage) {
       setLiveSourceBadge("Live MJPEG fallback", "fallback");
+      setLiveAction("try", target);
+    } else {
+      setLiveAction("", null);
     }
     if (pngTimer) {
       clearInterval(pngTimer);
@@ -932,6 +1084,10 @@ export function initTilePlayer() {
     syncLiveContext(name);
     hideBounce();
     const streamToken = ++activeStreamToken;
+
+    clearLiveAutoUpgradeTimer();
+    if (liveQuality === "auto") liveAutoStage = "low";
+    setLiveAction("", null);
 
     if (shouldUseLiveVideo(name)) {
       playLiveVideo(name, streamToken);
