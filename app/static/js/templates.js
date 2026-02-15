@@ -57,7 +57,7 @@ export function initTemplates() {
     if (slider) {
       // Auto-fit makes the templates view behave like a video wall (fill the viewport).
       // Default ON; moving the slider manually will turn it off.
-      slider.dataset.autofit = localStorage.getItem("gridAutofit") || "1";
+      slider.dataset.autofit = localStorage.getItem("gridAutofit") || "0";
       if (isGroupWall) slider.dataset.autofit = "1";
       if (isGroupWall) {
         slider.dataset.autofit = "1";
@@ -178,23 +178,20 @@ export function initTemplates() {
           isGroupWall ? 12 : 50,
           Math.min(slider.max, Math.floor(bestWidth)),
         );
-
         slider.min = computedMin;
         const currentValue = parseFloat(slider.value || "0") || computedMin;
-        const shouldInitializeToFit = !sliderInitialized;
         const shouldAutoFit = slider.dataset.autofit === "1" || isGroupWall;
-        const clampedValue = Math.max(computedMin, currentValue);
-        if (
-          shouldAutoFit ||
-          shouldInitializeToFit ||
-          clampedValue !== currentValue
-        ) {
+        const clampedValue = Math.min(
+          slider.max,
+          Math.max(computedMin, currentValue),
+        );
+
+        // On the index page we do *not* want to shrink everything on first load.
+        // Only change the slider value when auto-fit is enabled or the current value is out of bounds.
+        const needsUpdate = shouldAutoFit || clampedValue !== currentValue;
+        if (needsUpdate) {
           isProgrammaticSliderUpdate = true;
-          slider.value = shouldAutoFit
-            ? computedMin
-            : shouldInitializeToFit
-              ? computedMin
-              : clampedValue;
+          slider.value = shouldAutoFit ? computedMin : clampedValue;
           if (list) {
             if (isGroupWall) {
               list.dataset.wallLayout = "1";
@@ -210,6 +207,16 @@ export function initTemplates() {
           );
           slider.dispatchEvent(new Event("input"));
           isProgrammaticSliderUpdate = false;
+        } else if (!sliderInitialized) {
+          // First run: ensure CSS vars/layout are applied without altering the user's default size.
+          if (list && !isGroupWall) {
+            list.dataset.wallLayout = "0";
+            list.style.gridTemplateColumns = "";
+          }
+          document.documentElement.style.setProperty(
+            "--tile-size",
+            `${slider.value}px`,
+          );
         }
         sliderInitialized = true;
       };
@@ -218,6 +225,12 @@ export function initTemplates() {
       window.addEventListener("resize", updateSliderLimits);
       window.updateSliderLimits = updateSliderLimits;
       slider.dispatchEvent(new Event("input"));
+
+      slider.addEventListener("pointerdown", () => {
+        if (isGroupWall) return;
+        slider.dataset.autofit = "0";
+        localStorage.setItem("gridAutofit", "0");
+      });
     }
 
     if (captionToggle) {
