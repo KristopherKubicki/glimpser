@@ -1061,7 +1061,9 @@ def generate_live_stream(
 
     failures = 0
     last_log = 0.0
-    start_ts = time.time()
+    # Used for "no bytes received" circuit breaking. We update this timestamp
+    # whenever we successfully yield any bytes to the client.
+    last_output_ts = time.time()
     while True:
         if parsed.scheme in ("http", "https") and not check_url_accessible(url):
             failures += 1
@@ -1084,6 +1086,16 @@ def generate_live_stream(
                         if not r:
                             if process.poll() is not None:
                                 break
+                            if (
+                                max_no_output_seconds is not None
+                                and (time.time() - last_output_ts)
+                                >= max_no_output_seconds
+                            ):
+                                logging.error(
+                                    "ffmpeg produced no output for %.1fs, giving up",
+                                    time.time() - last_output_ts,
+                                )
+                                return
                             continue
                         chunk = os.read(process.stdout.fileno(), 64 * 1024)
                     except BrokenPipeError:
@@ -1092,6 +1104,7 @@ def generate_live_stream(
                         break
                     yield chunk
                     chunk_yielded = True
+                    last_output_ts = time.time()
                     if process.poll() is not None:
                         break
             except GeneratorExit:
@@ -1147,11 +1160,11 @@ def generate_live_stream(
                 return
             if (
                 max_no_output_seconds is not None
-                and (time.time() - start_ts) >= max_no_output_seconds
+                and (time.time() - last_output_ts) >= max_no_output_seconds
             ):
                 logging.error(
                     "ffmpeg produced no output for %.1fs, giving up",
-                    time.time() - start_ts,
+                    time.time() - last_output_ts,
                 )
                 return
             if failures >= config.LIVE_MAX_FAILURES:
@@ -1179,6 +1192,15 @@ def generate_live_stream(
         # Exponential backoff keeps the server from hammering the camera URL
         # when ffmpeg repeatedly fails. The delay tops out at 30 seconds.
         delay = 2 if failures == 0 else min(2**failures, 30)
+        if max_no_output_seconds is not None and not chunk_yielded:
+            remaining = max_no_output_seconds - (time.time() - last_output_ts)
+            if remaining <= 0:
+                logging.error(
+                    "ffmpeg produced no output for %.1fs, giving up",
+                    time.time() - last_output_ts,
+                )
+                return
+            delay = min(delay, remaining)
         time.sleep(delay)
 
 
