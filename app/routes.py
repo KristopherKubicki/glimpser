@@ -21,6 +21,7 @@ import random
 import re
 import shutil
 import socket
+import ssl
 import select
 import sqlite3
 import struct
@@ -121,6 +122,7 @@ from app.utils.settings_tooltips import (
 )
 from app.utils.warm_live import WarmLiveManager
 from app.utils import live_caps
+from app.utils import live_host_caps
 
 try:
     import onnxruntime as ort
@@ -797,6 +799,105 @@ def check_url_accessible(url: str) -> bool:
         return bool(info.get("ok"))
     logging.error("Connectivity check failed for %s", url)
     return False
+
+
+def live_host_key(url: str) -> str:
+    """Return a stable host key for circuit-breaking and backoff."""
+
+    try:
+        p = urlparse(str(url or ""))
+    except Exception:
+        return ""
+
+    host = p.hostname or ""
+    if not host:
+        return ""
+
+    scheme = (p.scheme or "").lower()
+    port = p.port
+    if port is None:
+        if scheme in {"https", "wss"}:
+            port = 443
+        elif scheme in {"http", "ws"}:
+            port = 80
+        elif scheme in {"rtsp", "rtsps"}:
+            port = 554
+        else:
+            port = 0
+
+    return f"{scheme}://{host}:{int(port)}"
+
+
+def _tcp_preconnect(host: str, port: int, *, timeout: float = 2.0) -> tuple[bool, str]:
+    try:
+        with socket.create_connection((host, int(port)), timeout=timeout):
+            return True, "tcp_ok"
+    except Exception as exc:
+        return False, f"tcp_fail:{exc.__class__.__name__}"
+
+
+def _tls_preconnect(host: str, port: int, *, timeout: float = 2.0) -> tuple[bool, str]:
+    try:
+        sock = socket.create_connection((host, int(port)), timeout=timeout)
+        try:
+            ctx = ssl.create_default_context()
+            with ctx.wrap_socket(sock, server_hostname=host):
+                return True, "tls_ok"
+        finally:
+            try:
+                sock.close()
+            except Exception:
+                pass
+    except Exception as exc:
+        return False, f"tls_fail:{exc.__class__.__name__}"
+
+
+def preflight_live_url(url: str) -> tuple[bool, dict]:
+    """Run a cheap liveness probe before spinning up ffmpeg.
+
+    Returns (ok, info). On failure, info contains a short reason and stage.
+    """
+
+    u = str(url or "").strip()
+    if not u:
+        return False, {"stage": "input", "reason": "empty_url"}
+
+    try:
+        p = urlparse(u)
+    except Exception:
+        return False, {"stage": "input", "reason": "bad_url"}
+
+    scheme = (p.scheme or "").lower()
+    host = p.hostname or ""
+    port = p.port
+
+    if scheme in {"rtsp", "rtsps"}:
+        if port is None:
+            port = 554
+        ok, reason = _tcp_preconnect(host, int(port), timeout=2.0)
+        return ok, {"stage": "preconnect", "reason": reason}
+
+    if scheme in {"http", "https"}:
+        # Most reliable cheap probe: GET + Range with media-biased Accept.
+        ok, info = probe_url_with_range(u, timeout=3, preconnect=True)
+        if not ok:
+            return False, {"stage": "probe", "reason": "probe_failed"}
+        if not bool(info.get("ok")):
+            return False, {
+                "stage": "probe",
+                "reason": f"http_{int(info.get('status') or 0)}",
+                "info": info,
+            }
+        return True, {"stage": "probe", "info": info}
+
+    # Unknown scheme: try TCP if we can guess a port.
+    if host:
+        if port is None:
+            port = 0
+        ok, reason = _tcp_preconnect(host, int(port or 0), timeout=2.0)
+        return ok, {"stage": "preconnect", "reason": reason}
+
+    return False, {"stage": "input", "reason": "unsupported_scheme"}
 
 
 def _hikvision_channel_for_profile(channel: str, profile: str = "main") -> str:

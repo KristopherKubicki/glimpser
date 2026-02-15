@@ -497,6 +497,21 @@ def create_blueprint() -> Blueprint:
         if not url:
             routes.abort(404)
 
+        host_key = routes.live_host_key(str(url))
+        if host_key and not routes.live_host_caps.should_attempt(host_key):
+            routes.live_caps.record_failure(str(url), reason="host_avoid")
+            return Response(status=204)
+
+        ok_pre, _pre_info = routes.preflight_live_url(str(url))
+        if not ok_pre:
+            if host_key:
+                routes.live_host_caps.record_failure(host_key, reason="preflight")
+            routes.live_caps.record_failure(str(url), reason="preflight")
+            return Response(status=204)
+
+        if host_key:
+            routes.live_host_caps.record_success(host_key)
+
         width = None
         fps = None
         if quality == "first":
@@ -540,12 +555,45 @@ def create_blueprint() -> Blueprint:
         if not url:
             routes.abort(404)
 
+        host_key = routes.live_host_key(str(url))
+        if host_key and not routes.live_host_caps.should_attempt(host_key):
+            routes.live_caps.record_failure(str(url), reason="host_avoid")
+            return Response(status=204)
+
+        ok_pre, _pre_info = routes.preflight_live_url(str(url))
+        if not ok_pre:
+            if host_key:
+                routes.live_host_caps.record_failure(host_key, reason="preflight")
+            routes.live_caps.record_failure(str(url), reason="preflight")
+            return Response(status=204)
+
+        if host_key:
+            routes.live_host_caps.record_success(host_key)
+
         routes.logging.info(
             "live_video request camera=%s profile=%s source=%s",
             camera,
             profile,
             "stream" if stream_url else "fallback",
         )
+
+        # Cheap preflight + circuit breaker to avoid stampeding degraded LAN hosts.
+        host_key = routes.live_host_key(str(url))
+        if host_key and not routes.live_host_caps.should_attempt(host_key):
+            routes.live_caps.record_failure(str(url), reason="host_avoid")
+            return Response(status=503)
+
+        ok_pre, pre_info = routes.preflight_live_url(str(url))
+        if not ok_pre:
+            if host_key:
+                routes.live_host_caps.record_failure(
+                    host_key, reason=str(pre_info.get("reason") or "")
+                )
+            routes.live_caps.record_failure(str(url), reason="preflight")
+            return Response(status=503)
+
+        if host_key:
+            routes.live_host_caps.record_success(host_key)
 
         width = None
         fps = None
