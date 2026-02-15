@@ -987,8 +987,6 @@ def generate_live_stream(
             [
                 "-rtsp_transport",
                 "tcp",
-                "-rw_timeout",
-                str(config.LIVE_RTSP_RW_TIMEOUT_US),
                 "-timeout",
                 str(config.LIVE_RTSP_SOCKET_TIMEOUT_US),
                 "-analyzeduration",
