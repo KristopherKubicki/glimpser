@@ -1150,7 +1150,7 @@ nav a.active {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 4;
+  z-index: 2;
   background-color: rgba(0, 0, 0, 0);
   transition: background-color 180ms ease;
 }
@@ -3079,6 +3079,7 @@ details > summary {
   font-size: 20px;
   pointer-events: none;
   color: #fff;
+  z-index: 7;
   display: none;
 }
 .loading-spinner.visible {

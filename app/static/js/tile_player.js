@@ -116,9 +116,16 @@ export function initTilePlayer() {
     flashShield.className = "flash-shield";
     container.appendChild(flashShield);
   }
+  if (flashShield && flashShield.parentElement === container) {
+    // Keep the shield directly after the video so UI overlays remain above it.
+    video.insertAdjacentElement("afterend", flashShield);
+  }
 
   let _lumaCanvas = null;
   let _lumaCtx = null;
+  let _lastLuma = null;
+  let _burstUntil = 0;
+  let _burstDir = 0; // 1 => new is brighter (darken), -1 => new is darker (lighten)
 
   function _clamp(min, v, max) {
     return Math.max(min, Math.min(max, v));
@@ -158,6 +165,17 @@ export function initTilePlayer() {
     if (!FLASH_GUARD_ENABLED) return;
     if (luma == null) return;
 
+    const now = Date.now();
+    const prev = _lastLuma;
+    if (prev != null) {
+      const delta = Math.abs(luma - prev);
+      if (delta > 0.35) {
+        _burstUntil = now + 240;
+        _burstDir = luma > prev ? 1 : -1;
+      }
+    }
+    _lastLuma = luma;
+
     // Gentle normalization: keep it subtle so it doesn't look "filtered".
     const scale = _clamp(0.75, FLASH_TARGET_LUMA / Math.max(luma, 0.05), 1.25);
     const contrast = _clamp(0.9, 1.05 - Math.abs(luma - 0.5) * 0.25, 1.05);
@@ -173,13 +191,31 @@ export function initTilePlayer() {
       // Bright scenes: darken slightly. Dark scenes: lighten slightly.
       const hi = Math.max(0, luma - 0.7);
       const lo = Math.max(0, 0.3 - luma);
-      const a = _clamp(0, Math.max(hi, lo) * 1.2, 0.22);
+      let a = Math.max(hi, lo) * 1.2;
+      let tint = hi >= lo ? "black" : "white";
+
+      // If the scene luma jumps hard, add a brief "cap" so the switch
+      // doesn't feel like a flashbang.
+      if (now < _burstUntil) {
+        const t = 1 - (now - (_burstUntil - 240)) / 240;
+        const burstA = 0.18 * _clamp(0, t, 1);
+        if (_burstDir === 1) {
+          tint = "black";
+          a = Math.max(a, burstA);
+        } else if (_burstDir === -1) {
+          tint = "white";
+          a = Math.max(a, burstA);
+        }
+      }
+
+      a = _clamp(0, a, 0.25);
       if (a <= 0.001) {
         flashShield.style.backgroundColor = "rgba(0,0,0,0)";
-      } else if (hi >= lo) {
-        flashShield.style.backgroundColor = `rgba(0,0,0,${a.toFixed(3)})`;
       } else {
-        flashShield.style.backgroundColor = `rgba(255,255,255,${a.toFixed(3)})`;
+        flashShield.style.backgroundColor =
+          tint === "black"
+            ? `rgba(0,0,0,${a.toFixed(3)})`
+            : `rgba(255,255,255,${a.toFixed(3)})`;
       }
     }
   }
@@ -784,7 +820,9 @@ export function initTilePlayer() {
       video.style.filter = "brightness(0.95) contrast(0.98)";
       const img = document.getElementById("live-image");
       if (img) img.style.filter = "brightness(0.95) contrast(0.98)";
-      if (flashShield) flashShield.style.backgroundColor = "rgba(0,0,0,0.06)";
+      if (flashShield) flashShield.style.backgroundColor = "rgba(0,0,0,0.10)";
+      _burstUntil = Date.now() + 240;
+      _burstDir = 1;
     }
     video.removeAttribute("src");
     if (source) source.removeAttribute("src");
