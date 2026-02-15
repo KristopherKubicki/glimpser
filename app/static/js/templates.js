@@ -52,31 +52,36 @@ export function initTemplates() {
     const MAX_THUMBNAIL_HEIGHT = 1080;
     const ASPECT_RATIO = 9 / 16;
     const MAX_THUMBNAIL_WIDTH = Math.round(MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO);
-    const isGroupWall =
-      typeof window !== "undefined" &&
-      Boolean(window.currentGroup) &&
-      window.currentGroup !== "all";
+    const isGroupWall = document.body?.classList.contains("templates-wall");
 
     if (slider) {
       // Auto-fit makes the templates view behave like a video wall (fill the viewport).
       // Default ON; moving the slider manually will turn it off.
       slider.dataset.autofit = localStorage.getItem("gridAutofit") || "1";
       if (isGroupWall) slider.dataset.autofit = "1";
+      if (isGroupWall) {
+        slider.dataset.autofit = "1";
+        slider.disabled = true;
+        slider.style.display = "none";
+      }
       let sliderInitialized = false;
       let isProgrammaticSliderUpdate = false;
       const updateSliderLimits = () => {
         const list = templateList;
         slider.max = Math.min(window.innerWidth, MAX_THUMBNAIL_WIDTH);
+
         if (isMobile) {
           slider.min = slider.max;
           slider.value = slider.max;
-          if (isGroupWall && list) {
-            // Wall layout on mobile still uses a single column (screen is too narrow).
-            list.dataset.wallLayout = "1";
-            list.style.gridTemplateColumns = "1fr";
-          } else if (list) {
-            list.dataset.wallLayout = "0";
-            list.style.gridTemplateColumns = "";
+          if (list) {
+            if (isGroupWall) {
+              // Wall layout on mobile still uses a single column (screen is too narrow).
+              list.dataset.wallLayout = "1";
+              list.style.gridTemplateColumns = "1fr";
+            } else {
+              list.dataset.wallLayout = "0";
+              list.style.gridTemplateColumns = "";
+            }
           }
           document.documentElement.style.setProperty(
             "--tile-size",
@@ -113,7 +118,6 @@ export function initTemplates() {
         const gap = list
           ? parseFloat(getComputedStyle(list).gap || "0") || 0
           : 0;
-
         // Iterate over possible column counts to find the largest tile width
         // that fits the viewport horizontally and vertically.
         let bestWidth = 50;
@@ -127,25 +131,48 @@ export function initTemplates() {
           if (rect.width > 0) availableWidth = rect.width;
           if (rect.height > 0) availableHeight = rect.height;
         }
+        const WALL_MIN_TILE = 12;
+        const NORMAL_MIN_TILE = 50;
+        const minTile = isGroupWall ? WALL_MIN_TILE : NORMAL_MIN_TILE;
+
+        let foundFit = false;
+        let bestOverflow = Number.POSITIVE_INFINITY;
 
         for (let cols = 1; cols <= totalTemplates; cols++) {
           const maxWidthForCols = Math.floor(
             (availableWidth - gap * (cols - 1)) / cols,
           );
-          if (maxWidthForCols < 50) break;
+          if (maxWidthForCols < minTile) break;
           const rows = Math.ceil(totalTemplates / cols);
           const tileHeight = maxWidthForCols * ASPECT_RATIO;
           const totalHeight = rows * tileHeight + gap * (rows - 1);
-          if (totalHeight <= availableHeight && maxWidthForCols > bestWidth) {
-            bestWidth = maxWidthForCols;
+          const overflow = totalHeight - availableHeight;
+
+          if (overflow <= 0) {
+            // Fits: prefer the largest tiles (widest).
+            foundFit = true;
+            if (maxWidthForCols > bestWidth) {
+              bestWidth = maxWidthForCols;
+              bestCols = cols;
+            }
+          } else if (!foundFit) {
+            // No perfect fit yet: pick the layout with the smallest overflow
+            // (and then the largest tiles) so we don't get stuck at 1 column.
+            if (
+              overflow < bestOverflow ||
+              (overflow == bestOverflow && maxWidthForCols > bestWidth)
+            ) {
+              bestOverflow = overflow;
+              bestWidth = maxWidthForCols;
+              bestCols = cols;
+            }
           }
         }
-
         const widthForMaxHeight = MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO;
         slider.max = Math.min(slider.max, widthForMaxHeight);
 
         const computedMin = Math.max(
-          50,
+          isGroupWall ? 12 : 50,
           Math.min(slider.max, Math.floor(bestWidth)),
         );
 
@@ -165,13 +192,14 @@ export function initTemplates() {
             : shouldInitializeToFit
               ? computedMin
               : clampedValue;
-          if (isGroupWall && list) {
-            // Wall layout on mobile still uses a single column (screen is too narrow).
-            list.dataset.wallLayout = "1";
-            list.style.gridTemplateColumns = "1fr";
-          } else if (list) {
-            list.dataset.wallLayout = "0";
-            list.style.gridTemplateColumns = "";
+          if (list) {
+            if (isGroupWall) {
+              list.dataset.wallLayout = "1";
+              list.style.gridTemplateColumns = `repeat(${bestCols}, minmax(0, 1fr))`;
+            } else {
+              list.dataset.wallLayout = "0";
+              list.style.gridTemplateColumns = "";
+            }
           }
           document.documentElement.style.setProperty(
             "--tile-size",
@@ -257,6 +285,12 @@ export function initTemplates() {
 
       slider.addEventListener("input", handleSlider);
       slider.addEventListener("change", handleSlider);
+      if (isGroupWall) {
+        slider.dataset.autofit = "1";
+        slider.disabled = true;
+        slider.style.display = "none";
+      }
+
       if (isMobile) {
         slider.style.display = "none";
         slider.value = Math.min(window.innerWidth, slider.max);
@@ -267,7 +301,7 @@ export function initTemplates() {
         });
       } else {
         handleSlider();
-        setupTileResizeDrag(slider);
+        if (!isGroupWall) setupTileResizeDrag(slider);
       }
     }
 
@@ -569,10 +603,12 @@ export async function loadTemplates() {
   const selectedGroup = getSelectedGroup();
   const searchQuery = searchInput ? searchInput.value.toLowerCase() : "";
   const url = `/templates?group=${selectedGroup}&search=${searchQuery}&t=${new Date().getTime()}`;
-
   const slider = document.getElementById("grid-width-slider");
 
-  updateGridLayout();
+  const isGroupWall = document.body?.classList.contains("templates-wall");
+  if (!isGroupWall) {
+    updateGridLayout();
+  }
 
   const templateList = document.getElementById("template-list");
   const captionsTable = document.getElementById("captions-table");
@@ -724,10 +760,7 @@ export async function loadTemplates() {
     window.templatesTotalCount = templateCount;
 
     if (isIndexPage && cards.length) {
-      const isGroupWall =
-        typeof window !== "undefined" &&
-        Boolean(window.currentGroup) &&
-        window.currentGroup !== "all";
+      const isGroupWall = document.body?.classList.contains("templates-wall");
       const slider = document.getElementById("grid-width-slider");
       const shouldVirtualize =
         !isGroupWall &&
@@ -761,7 +794,13 @@ export async function loadTemplates() {
       window.addEventListener("resize", updateGridLayout);
     }
     if (window.updateSliderLimits) {
-      window.updateSliderLimits();
+      if (isGroupWall) {
+        requestAnimationFrame(
+          () => window.updateSliderLimits && window.updateSliderLimits(),
+        );
+      } else {
+        window.updateSliderLimits();
+      }
       if (slider && slider.dataset.autofit === "1") {
         slider.value = slider.min;
         slider.dispatchEvent(new Event("input"));

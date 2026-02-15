@@ -194,9 +194,8 @@ body.templates-wall #template-list {
 }
 
 body.templates-wall .templateDiv {
-  width: auto !important;
-  height: auto !important;
-  flex: 0 0 auto;
+  width: 100% !important;
+  flex: 0 0 auto !important;
 }
 
 main {
