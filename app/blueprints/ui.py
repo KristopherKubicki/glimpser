@@ -18,6 +18,7 @@ from flask import (
     render_template,
     request,
     send_file,
+    session,
     url_for,
 )
 
@@ -532,7 +533,12 @@ def create_blueprint() -> Blueprint:
             search_query = request.args.get("search", "").lower()
 
             # Cache/ETag: keep the templates UI snappy (it polls often).
-            user_id = str(routes.current_user.get_id() or "anon")
+            session_user = session.get("user_id")
+            user_id = (
+                str(session_user)
+                if session_user is not None
+                else (request.remote_addr or "anon")
+            )
             cache_key = (user_id, group, search_query)
             now = time.time()
             entry = _TEMPLATES_JSON_CACHE.get(cache_key)
