@@ -91,6 +91,29 @@ export function initTemplates() {
           return;
         }
 
+        // Index page: if auto-fit is OFF, don't run the "fit everything on screen" sizing math.
+        // That math is for wall-mode and can produce extreme sizes (especially before tiles load).
+        if (!isGroupWall && slider.dataset.autofit !== "1") {
+          slider.min = 50;
+          const v = parseFloat(slider.value || "0") || 360;
+          slider.value = Math.min(
+            slider.max,
+            Math.max(slider.min, v),
+          ).toString();
+          if (list) {
+            list.dataset.wallLayout = "0";
+            list.style.gridTemplateColumns = "";
+          }
+          document.documentElement.style.setProperty(
+            "--tile-size",
+            `${slider.value}px`,
+          );
+          if (!sliderInitialized) {
+            slider.dispatchEvent(new Event("input"));
+            sliderInitialized = true;
+          }
+          return;
+        }
         // When we're in a dedicated group view ("/templates/<group>"), prefer a
         // "video wall" fit: use the *visible* tile count and resize to fill the viewport.
         // The index view virtualizes tiles for performance; in that case use the
