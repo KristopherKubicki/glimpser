@@ -882,11 +882,37 @@ def resolve_live_stream_url(
     )
 
 
-def live_capabilities_for_template(details: dict, *, profile: str = "sub") -> dict:
+def _infer_http_kind_from_probe(url: str, content_type: str) -> str | None:
+    ct = str(content_type or "").lower().split(";", 1)[0].strip()
+    lower_url = str(url or "").lower()
+
+    if "multipart/x-mixed-replace" in ct:
+        return "mjpeg"
+    if "mpegurl" in ct or lower_url.endswith(".m3u8"):
+        return "hls"
+    if ct.startswith("video/"):
+        return "http_video"
+    if ct.startswith("image/"):
+        return "snapshot"
+    if "text/html" in ct:
+        return "web"
+    return None
+
+
+def live_capabilities_for_template(
+    details: dict, *, profile: str = "sub", probe_http: bool = False
+) -> dict:
     """Return lightweight capability hints for live playback.
 
     The UI uses this to decide whether to attempt low-latency live video (RTSP/HLS/MJPEG)
     vs image-based live modes.
+
+    ``probe_http`` enables a tiny ranged GET (1-2 bytes) for HTTP(S) URLs to classify
+    ambiguous endpoints (e.g. MJPEG streams, HLS playlists, snapshot images) without
+    downloading full bodies.
+
+    Important: this should remain cheap when called for *many* templates (e.g. /live group
+    view). The HTTP probe is therefore optional and additionally rate-limited per-URL.
     """
 
     raw_url = str((details or {}).get("url") or "").strip()
@@ -895,21 +921,56 @@ def live_capabilities_for_template(details: dict, *, profile: str = "sub") -> di
     )
     url = stream_url or raw_url
     if not url:
-        return {"kind": "unknown", "live_video": False}
+        return {"kind": "unknown", "live_video": False, "auto_live_video": False}
 
     caps = live_caps.get(url)
     now = time.time()
     avoid_for = max(0, int((caps.avoid_until_ts or 0) - now))
-    kind = str(caps.kind or live_caps.guess_kind(url) or "unknown")
-    live_video = kind in {"rtsp", "hls", "mjpeg"}
+
+    kind = str(caps.kind or live_caps.guess_kind(url) or "unknown").lower()
+
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        parsed = None
+
+    # Optional HTTP probe for better classification of http(s) endpoints.
+    # Only run if:
+    # - caller asked for it
+    # - this isn't already known to be live video
+    # - we haven't probed recently
+    if (
+        probe_http
+        and parsed is not None
+        and parsed.scheme in {"http", "https"}
+        and kind in {"web", "unknown", "snapshot"}
+        and (now - float(getattr(caps, "last_probe_ts", 0) or 0) > 300)
+    ):
+        ok, info = probe_url_with_range(url, timeout=3, preconnect=True)
+        if ok and info:
+            live_caps.record_probe(url, info)
+            if bool(info.get("ok")):
+                inferred = _infer_http_kind_from_probe(
+                    url, str(info.get("content_type") or "")
+                )
+                if inferred and inferred != kind:
+                    kind = inferred
+                    live_caps.set_kind(url, kind)
+
+    live_video = kind in {"rtsp", "hls", "mjpeg", "http_video"}
+    auto_live_video = bool(live_video and avoid_for <= 0)
 
     return {
         "kind": kind,
         "live_video": live_video,
-        "avg_ttfb_ms": int(caps.avg_ttfb_ms or 0),
-        "last_ttfb_ms": int(caps.last_ttfb_ms or 0),
+        "auto_live_video": auto_live_video,
+        "avg_ttfb_ms": int(getattr(caps, "avg_ttfb_ms", 0) or 0),
+        "last_ttfb_ms": int(getattr(caps, "last_ttfb_ms", 0) or 0),
         "avoid_for_s": avoid_for,
         "source": "stream" if stream_url else "url",
+        "content_type": str(getattr(caps, "content_type", "") or ""),
+        "effective_url": str(getattr(caps, "effective_url", "") or ""),
+        "last_probe_status": int(getattr(caps, "last_probe_status", 0) or 0),
     }
 
 

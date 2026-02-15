@@ -367,7 +367,10 @@ def create_blueprint() -> Blueprint:
         templates = {
             name: {
                 **(template or {}),
-                "capabilities": routes.live_capabilities_for_template(template or {}),
+                "capabilities": routes.live_capabilities_for_template(
+                    template or {},
+                    probe_http=bool(selected_camera and name == selected_camera),
+                ),
             }
             for name, template in (templates or {}).items()
         }

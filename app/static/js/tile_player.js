@@ -303,7 +303,15 @@ export function initTilePlayer() {
 
   function canAttemptLive(camera) {
     const until = getLiveBadUntil(camera);
-    return !until || Date.now() > until;
+    if (until && Date.now() <= until) return false;
+
+    // Respect server-side backoff (persisted in live_caps.json) when provided.
+    const det = window.templateDetails?.[camera] || {};
+    const avoidForS = Number(det.capabilities?.avoid_for_s || 0) || 0;
+    if (avoidForS > 0) return false;
+    if (det.capabilities?.auto_live_video === false) return false;
+
+    return true;
   }
 
   function getLiveCooldownUntil(camera) {

@@ -479,13 +479,15 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
     @patch("app.routes.template_manager.get_template")
+    @patch("app.routes.probe_url_with_range")
     @patch("app.blueprints.ui.render_template")
     def test_live_single_camera(
-        self, mock_render_template, mock_get_template, mock_session_local
+        self, mock_render_template, mock_probe, mock_get_template, mock_session_local
     ):
         """The live route should render only the requested camera."""
 
         mock_get_template.return_value = {"url": "https://example.com"}
+        mock_probe.return_value = (False, {})
 
         class DummyQuery:
             def filter_by(self, **kwargs):
@@ -514,10 +516,14 @@ class TestRoutes(unittest.TestCase):
                     "capabilities": {
                         "kind": "web",
                         "live_video": False,
+                        "auto_live_video": False,
                         "avg_ttfb_ms": 0,
                         "last_ttfb_ms": 0,
                         "avoid_for_s": 0,
                         "source": "url",
+                        "content_type": "",
+                        "effective_url": "",
+                        "last_probe_status": 0,
                     },
                 }
             },
@@ -564,11 +570,19 @@ class TestRoutes(unittest.TestCase):
             template_details={
                 "cam1": {
                     "groups": "g1, g2",
-                    "capabilities": {"kind": "unknown", "live_video": False},
+                    "capabilities": {
+                        "kind": "unknown",
+                        "live_video": False,
+                        "auto_live_video": False,
+                    },
                 },
                 "cam2": {
                     "groups": "g2",
-                    "capabilities": {"kind": "unknown", "live_video": False},
+                    "capabilities": {
+                        "kind": "unknown",
+                        "live_video": False,
+                        "auto_live_video": False,
+                    },
                 },
             },
             selected_camera=None,

@@ -14,7 +14,7 @@ PERSIST_EVERY_SECONDS = float(os.getenv("LIVE_CAPS_PERSIST_EVERY", "5"))
 
 @dataclass
 class LiveCaps:
-    kind: str = "unknown"  # rtsp|hls|mjpeg|snapshot|web|unknown
+    kind: str = "unknown"  # rtsp|hls|mjpeg|http_video|snapshot|web|unknown
     last_ok_ts: float = 0.0
     last_fail_ts: float = 0.0
     ok_count: int = 0
@@ -22,6 +22,14 @@ class LiveCaps:
     last_ttfb_ms: int = 0
     avg_ttfb_ms: int = 0
     avoid_until_ts: float = 0.0
+    # Lightweight HTTP probe cache to better classify "web-ish" URLs without
+    # hammering endpoints on every /live load.
+    last_probe_ts: float = 0.0
+    last_probe_status: int = 0
+    content_type: str = ""
+    accept_ranges: str = ""
+    content_range: str = ""
+    effective_url: str = ""
 
 
 _lock = threading.Lock()
@@ -105,6 +113,12 @@ def get(url: str) -> LiveCaps:
         c.last_ttfb_ms = int(c.last_ttfb_ms or 0)
         c.avg_ttfb_ms = int(c.avg_ttfb_ms or 0)
         c.avoid_until_ts = float(c.avoid_until_ts or 0)
+        c.last_probe_ts = float(c.last_probe_ts or 0)
+        c.last_probe_status = int(c.last_probe_status or 0)
+        c.content_type = str(c.content_type or "")
+        c.accept_ranges = str(c.accept_ranges or "")
+        c.content_range = str(c.content_range or "")
+        c.effective_url = str(c.effective_url or "")
         if c.kind == "unknown":
             c.kind = guess_kind(url)
         return c
@@ -112,7 +126,7 @@ def get(url: str) -> LiveCaps:
 
 def should_attempt_live(url: str) -> bool:
     c = get(url)
-    if c.kind not in {"rtsp", "hls", "mjpeg"}:
+    if c.kind not in {"rtsp", "hls", "mjpeg", "http_video"}:
         return False
     return _now() >= float(c.avoid_until_ts or 0)
 
@@ -159,4 +173,45 @@ def record_failure(url: str, *, reason: str = "") -> None:
         ):
             c.avoid_until_ts = _now() + 120
         _caps[url] = c.__dict__.copy()
+        _persist()
+
+
+def record_probe(url: str, info: dict[str, Any]) -> None:
+    """Persist a tiny HTTP probe result for ``url``.
+
+    ``info`` should look like the metadata returned by ``probe_url_with_range``.
+    """
+
+    if not url:
+        return
+    if not isinstance(info, dict):
+        return
+    with _lock:
+        _load()
+        c = get(url)
+        c.last_probe_ts = _now()
+        try:
+            c.last_probe_status = int(info.get("status") or 0)
+        except Exception:
+            c.last_probe_status = 0
+        c.content_type = str(info.get("content_type") or "")
+        c.accept_ranges = str(info.get("accept_ranges") or "")
+        c.content_range = str(info.get("content_range") or "")
+        c.effective_url = str(info.get("url") or "")
+        _caps[url] = c.__dict__.copy()
+        _persist()
+
+
+def set_kind(url: str, kind: str) -> None:
+    """Set the persisted kind classification for ``url``."""
+
+    u = str(url or "").strip()
+    k = str(kind or "").strip().lower()
+    if not u or not k:
+        return
+    with _lock:
+        _load()
+        c = get(u)
+        c.kind = k
+        _caps[u] = c.__dict__.copy()
         _persist()
