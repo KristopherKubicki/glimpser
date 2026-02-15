@@ -65,16 +65,15 @@ export function initTemplates() {
       let sliderInitialized = false;
       let isProgrammaticSliderUpdate = false;
       const updateSliderLimits = () => {
+        const list = templateList;
         slider.max = Math.min(window.innerWidth, MAX_THUMBNAIL_WIDTH);
         if (isMobile) {
           slider.min = slider.max;
           slider.value = slider.max;
           if (isGroupWall && list) {
-            // Wall layout: stretch tiles to fill the available width/height.
+            // Wall layout on mobile still uses a single column (screen is too narrow).
             list.dataset.wallLayout = "1";
-            if (bestCols && Number.isFinite(bestCols)) {
-              list.style.gridTemplateColumns = `repeat(${bestCols}, 1fr)`;
-            }
+            list.style.gridTemplateColumns = "1fr";
           } else if (list) {
             list.dataset.wallLayout = "0";
             list.style.gridTemplateColumns = "";
@@ -91,7 +90,7 @@ export function initTemplates() {
         // "video wall" fit: use the *visible* tile count and resize to fill the viewport.
         // The index view virtualizes tiles for performance; in that case use the
         // server-provided total count so sizing remains stable while scrolling.
-        const list = templateList;
+        /* list already defined above */
         const isVirtualized = list?.dataset.virtualized === "1";
         const allTiles = list
           ? Array.from(
@@ -167,11 +166,9 @@ export function initTemplates() {
               ? computedMin
               : clampedValue;
           if (isGroupWall && list) {
-            // Wall layout: stretch tiles to fill the available width/height.
+            // Wall layout on mobile still uses a single column (screen is too narrow).
             list.dataset.wallLayout = "1";
-            if (bestCols && Number.isFinite(bestCols)) {
-              list.style.gridTemplateColumns = `repeat(${bestCols}, 1fr)`;
-            }
+            list.style.gridTemplateColumns = "1fr";
           } else if (list) {
             list.dataset.wallLayout = "0";
             list.style.gridTemplateColumns = "";
