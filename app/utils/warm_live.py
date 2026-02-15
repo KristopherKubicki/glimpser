@@ -66,6 +66,7 @@ class _Mp4BoxParser:
 @dataclass
 class WarmLiveConfig:
     ttl_seconds: float = 30.0
+    init_timeout_seconds: float = 8.0
     max_cache_bytes: int = 2_000_000
     max_cached_fragments: int = 6
 
@@ -203,6 +204,8 @@ class WarmLiveStream:
                         if boxtype == "moof":
                             self._init_ready = True
                             self._pending_frag = [raw]
+                            self._seq += 1
+                            self._cv.notify_all()
                         else:
                             self._init += raw
                         continue
@@ -219,12 +222,25 @@ class WarmLiveStream:
             self._start_locked()
 
     def subscribe(self) -> Generator[bytes, None, None]:
+        # If a client subscribes before we have the init segment, wait briefly
+        # so playback can start without needing a second request.
+        deadline = time.time() + float(self._cfg.init_timeout_seconds or 0)
+
         with self._lock:
             self._subscribers += 1
             self._last_use = time.time()
             self._start_locked()
+
+            while not self._init_ready:
+                if self._proc and self._proc.poll() is not None:
+                    return
+                remaining = deadline - time.time()
+                if remaining <= 0:
+                    return
+                self._cv.wait(timeout=min(1.0, remaining))
+
             start_seq = self._seq
-            init = self._init if self._init_ready else b""
+            init = self._init
             snap = list(self._frags)[-3:]
 
         try:

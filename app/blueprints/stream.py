@@ -562,7 +562,7 @@ def create_blueprint() -> Blueprint:
             fps = min(fps, 15)
 
         use_warm = (
-            quality == "first"
+            quality in {"first", "low", "high"}
             and isinstance(url, str)
             and url.lower().startswith(("rtsp://", "rtsps://"))
         )

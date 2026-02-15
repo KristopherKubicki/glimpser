@@ -217,11 +217,28 @@ export function initTilePlayer() {
     if (!cam || cam === "All" || String(cam).startsWith("group-")) return;
     if (window.LOW_CPU_MODE) return;
     const now = Date.now();
-    const last = warmSentAt.get(cam) || 0;
+    const key = `${cam}::first`;
+    const last = warmSentAt.get(key) || 0;
     if (now - last < WARM_LIVE_DEBOUNCE_MS) return;
-    warmSentAt.set(cam, now);
+    warmSentAt.set(key, now);
     fetch(
       `/warm_live?camera=${encodeURIComponent(cam)}&profile=sub&quality=first&t=${now}`,
+      { cache: "no-store" },
+    ).catch(() => {});
+  }
+
+  function maybeWarmCameraHigh(cam) {
+    if (!isLivePage) return;
+    if (!cam || cam === "All" || String(cam).startsWith("group-")) return;
+    if (window.LOW_CPU_MODE) return;
+    const now = Date.now();
+    const key = `${cam}::high`;
+    const last = warmSentAt.get(key) || 0;
+    // High-res warm is more expensive; keep it less chatty.
+    if (now - last < 30000) return;
+    warmSentAt.set(key, now);
+    fetch(
+      `/warm_live?camera=${encodeURIComponent(cam)}&profile=main&quality=high&t=${now}`,
       { cache: "no-store" },
     ).catch(() => {});
   }
@@ -1144,6 +1161,7 @@ export function initTilePlayer() {
               startAttempt();
             }, 600);
           } else if (q === "low") {
+            maybeWarmCameraHigh(camera);
             liveAutoUpgradeTimer = setTimeout(() => {
               if (streamToken !== activeStreamToken) return;
               if (current !== camera) return;
