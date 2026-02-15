@@ -108,6 +108,8 @@ export function initTilePlayer() {
       parseFloat(localStorage.getItem("flashTargetLuma") || "0.55"),
     ),
   );
+  const FLASH_GUARD_DARK_BIAS =
+    window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? true;
 
   let flashShield = container?.querySelector("#flash-shield") || null;
   if (!flashShield && container) {
@@ -177,8 +179,16 @@ export function initTilePlayer() {
     _lastLuma = luma;
 
     // Gentle normalization: keep it subtle so it doesn't look "filtered".
-    const scale = _clamp(0.75, FLASH_TARGET_LUMA / Math.max(luma, 0.05), 1.25);
-    const contrast = _clamp(0.9, 1.05 - Math.abs(luma - 0.5) * 0.25, 1.05);
+    // Dark-bias: prefer *darkening* bright scenes; avoid aggressively brightening
+    // dark scenes (which can feel washed out at night).
+    const brightenMax = FLASH_GUARD_DARK_BIAS ? 1.04 : 1.12;
+    const darkenMin = 0.78;
+    const desired = FLASH_TARGET_LUMA / Math.max(luma, 0.05);
+    const scale =
+      desired > 1
+        ? _clamp(0.95, desired, brightenMax)
+        : _clamp(darkenMin, desired, 1.0);
+    const contrast = _clamp(0.92, 1.04 - Math.abs(luma - 0.5) * 0.18, 1.05);
     const filter = `brightness(${scale.toFixed(3)}) contrast(${contrast.toFixed(3)})`;
 
     video.style.filter = filter;
@@ -192,7 +202,7 @@ export function initTilePlayer() {
       const hi = Math.max(0, luma - 0.7);
       const lo = Math.max(0, 0.3 - luma);
       let a = Math.max(hi, lo) * 1.2;
-      let tint = hi >= lo ? "black" : "white";
+      let tint = FLASH_GUARD_DARK_BIAS ? "black" : hi >= lo ? "black" : "white";
 
       // If the scene luma jumps hard, add a brief "cap" so the switch
       // doesn't feel like a flashbang.
@@ -203,7 +213,8 @@ export function initTilePlayer() {
           tint = "black";
           a = Math.max(a, burstA);
         } else if (_burstDir === -1) {
-          tint = "white";
+          // In dark-bias mode, keep using black to avoid a "washed" look.
+          tint = FLASH_GUARD_DARK_BIAS ? "black" : "white";
           a = Math.max(a, burstA);
         }
       }
