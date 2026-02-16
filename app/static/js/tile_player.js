@@ -52,19 +52,27 @@ export function initTilePlayer() {
       groupCameras: Object.keys(window.templateDetails || {}),
     };
   }
+  const urlParams = new URLSearchParams(window.location.search || "");
+  const forceAllRotator = urlParams.get("rotator") === "all";
+  const hasExplicitLiveSelection =
+    isLivePage &&
+    (urlParams.has("camera") || urlParams.has("group") || forceAllRotator);
 
+  // Only inherit nav state on /live when the URL explicitly asked for a camera/group.
+  // Otherwise browsers can restore a stale dropdown selection (often Waze) and pin /live.
   const preferredCamera =
-    typeof window.currentCamera === "string" ? window.currentCamera : "";
+    hasExplicitLiveSelection && typeof window.currentCamera === "string"
+      ? window.currentCamera
+      : "";
   const preferredGroup =
-    typeof window.currentGroup === "string" ? window.currentGroup : "";
+    hasExplicitLiveSelection && typeof window.currentGroup === "string"
+      ? window.currentGroup
+      : "";
+
   const realCameras = Object.keys(window.templateDetails || {}).filter(
     (name) => name !== "All",
   );
   const singleCamera = realCameras.length === 1 ? realCameras[0] : "";
-  const urlParams = new URLSearchParams(window.location.search || "");
-  const forceAllRotator = urlParams.get("rotator") === "all";
-  const hasExplicitLiveSelection =
-    urlParams.has("camera") || urlParams.has("group") || forceAllRotator;
 
   let current = forceAllRotator
     ? "All"
