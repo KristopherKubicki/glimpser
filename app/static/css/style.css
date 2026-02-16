@@ -175,6 +175,15 @@ body.templates-screen #template-list-section {
   flex-direction: column;
 }
 
+/* Group video-wall view: remove side gutters and let the grid span the viewport */
+body.templates-wall #template-list-section {
+  padding: 0;
+  margin: 0;
+  width: 100vw;
+  max-width: 100vw;
+}
+
+
 body.templates-screen #template-list {
   flex: 1 1 auto;
   min-height: 0;
@@ -193,6 +202,9 @@ body.templates-wall #template-list {
   place-content: start stretch;
   padding: 0;
   gap: 2px;
+  margin: 0;
+  width: 100vw;
+  max-width: 100vw;
 }
 
 body.templates-wall .templateDiv {
