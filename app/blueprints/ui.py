@@ -349,8 +349,17 @@ def create_blueprint() -> Blueprint:
 
         camera = request.args.get("camera")
         group = request.args.get("group")
+        rotator = request.args.get("rotator")
+        force_all_rotator = rotator == "all"
         selected_camera = None
         selected_group = None
+
+        # In explicit all-rotator mode, ignore any stale camera/group query
+        # values so the client always receives the full template set.
+        if force_all_rotator:
+            camera = None
+            group = None
+
         if camera:
             camera = routes.validate_template_name(camera)
             if camera is None:
@@ -370,6 +379,14 @@ def create_blueprint() -> Blueprint:
                     if group
                     in [g.strip() for g in str(template.get("groups", "")).split(",")]
                 }
+
+        routes.logging.info(
+            "live page request camera=%s group=%s rotator=%s templates=%d",
+            camera,
+            group,
+            rotator,
+            len(templates or {}),
+        )
         # Add capability hints for smarter live playback decisions in the UI.
         templates = {
             name: {
