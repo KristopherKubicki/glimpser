@@ -596,7 +596,14 @@ export function initTilePlayer() {
   let liveVideoCleanup = null;
   let liveProfileRetryTimer = null;
   let liveConnectTimer = null;
+  let streamRecoverTimer = null;
+  let streamRecoverDelayMs = 1200;
+  let backendCheckTimer = null;
+  let backendWasDown = false;
+  let backendConsecutiveFails = 0;
 
+  const STREAM_RECOVER_MAX_DELAY_MS = 12000;
+  const BACKEND_HEALTH_POLL_MS = 4000;
   const speedContainer = document.getElementById("speed-container");
 
   function setSpeedControlsVisible(visible) {
@@ -612,6 +619,72 @@ export function initTilePlayer() {
       secs === 60 ? "1fpm" : `${(1 / secs).toFixed(2)}fps`;
   }
 
+  function resetStreamRecovery() {
+    if (streamRecoverTimer) {
+      clearTimeout(streamRecoverTimer);
+      streamRecoverTimer = null;
+    }
+    streamRecoverDelayMs = 1200;
+  }
+
+  function isLiveStreamActive() {
+    if (!isLivePage || hasClipSource) return false;
+    if (image?.dataset?.mode === "stream") return true;
+    if (liveVideoCleanup && video.style.display !== "none") return true;
+    return false;
+  }
+
+  function scheduleStreamRecovery(reason = "reconnect", minDelayMs = 0) {
+    if (!isLiveStreamActive()) return;
+    if (streamRecoverTimer) return;
+
+    const delay = Math.max(minDelayMs, streamRecoverDelayMs);
+    streamRecoverTimer = setTimeout(() => {
+      streamRecoverTimer = null;
+      if (!isLiveStreamActive()) return;
+      if (backendWasDown) {
+        setLiveSourceBadge("Reconnecting to backend...", "probing");
+      }
+      showSpinner(video);
+      play(current);
+      streamRecoverDelayMs = Math.min(
+        STREAM_RECOVER_MAX_DELAY_MS,
+        Math.round(streamRecoverDelayMs * 1.8),
+      );
+    }, delay);
+
+    if (reason && isLivePage) {
+      console.debug(
+        `[live] scheduling stream recovery (${reason}) in ${delay}ms`,
+      );
+    }
+  }
+
+  async function checkBackendHealthForLive() {
+    if (!isLiveStreamActive()) return;
+    try {
+      const res = await fetch("/health", {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) throw new Error(`health ${res.status}`);
+      backendConsecutiveFails = 0;
+      if (backendWasDown) {
+        backendWasDown = false;
+        resetStreamRecovery();
+        scheduleStreamRecovery("backend-up", 120);
+      }
+    } catch (_) {
+      backendConsecutiveFails += 1;
+      if (backendConsecutiveFails >= 2) {
+        backendWasDown = true;
+      }
+      if (backendWasDown) {
+        scheduleStreamRecovery("backend-down", 1200);
+      }
+    }
+  }
+
   if (speedSlider) speedSlider.addEventListener("input", updateSpeedLabel);
   updateSpeedLabel();
 
@@ -625,6 +698,13 @@ export function initTilePlayer() {
 
   image.dataset.mode = image.dataset.mode || "preview";
   let activeStreamToken = 0;
+  if (isLivePage && !hasClipSource) {
+    backendCheckTimer = setInterval(
+      checkBackendHealthForLive,
+      BACKEND_HEALTH_POLL_MS,
+    );
+    setTimeout(checkBackendHealthForLive, 1500);
+  }
   image.addEventListener("load", () => {
     setMediaAspect(image.naturalWidth, image.naturalHeight);
     // Only hide the spinner for the most recent stream load. Older in-flight
@@ -641,6 +721,9 @@ export function initTilePlayer() {
       }
     }
     image.style.opacity = "1";
+    backendWasDown = false;
+    backendConsecutiveFails = 0;
+    resetStreamRecovery();
     updateFlashGuardFrom(image);
   });
   image.addEventListener("error", () => {
@@ -652,6 +735,7 @@ export function initTilePlayer() {
     }
     hideSpinner(video);
     showErrorIndicator(video);
+    scheduleStreamRecovery("image-error", 900);
   });
 
   const fsButton = document.getElementById("fullscreen-toggle");
@@ -1346,6 +1430,9 @@ export function initTilePlayer() {
       requestAnimationFrame(() => {
         video.style.opacity = "1";
       });
+      backendWasDown = false;
+      backendConsecutiveFails = 0;
+      resetStreamRecovery();
       updateFlashGuardFrom(video);
       updateLiveStats();
       clearLiveBad(camera);
@@ -1408,6 +1495,7 @@ export function initTilePlayer() {
       video.removeEventListener("error", onError);
       video.removeEventListener("waiting", onWaiting);
       video.removeEventListener("stalled", onStalled);
+      resetStreamRecovery();
       if (liveProfileRetryTimer) {
         clearTimeout(liveProfileRetryTimer);
         liveProfileRetryTimer = null;
