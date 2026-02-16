@@ -107,7 +107,7 @@
   object-fit: contain;
   max-width: 100%;
   max-height: 100%;
-  transition: opacity 900ms ease;
+  transition: opacity 1800ms ease-in-out;
   will-change: opacity;
 }
 

@@ -688,7 +688,7 @@ export function initTilePlayer() {
   const STREAM_RECOVER_MAX_DELAY_MS = 12000;
   const ROTATION_DWELL_MS = 6000;
   const BACKEND_HEALTH_POLL_MS = 4000;
-  const LIVE_FADE_MS = 900;
+  const LIVE_FADE_MS = 1800;
   const speedContainer = document.getElementById("speed-container");
 
   function setSpeedControlsVisible(visible) {
@@ -727,8 +727,51 @@ export function initTilePlayer() {
           return;
         image.style.display = "none";
         image.style.opacity = "1";
-      }, ms + 20);
+      }, ms + 80);
     });
+  }
+
+  function captureVideoFrameToStill() {
+    if (!isLivePage) return false;
+    if (!video || !image) return false;
+    if (video.style.display === "none") return false;
+    const w = video.videoWidth || 0;
+    const h = video.videoHeight || 0;
+    if (!w || !h) return false;
+
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d", { alpha: false });
+      if (!ctx) return false;
+      ctx.drawImage(video, 0, 0, w, h);
+      // JPEG is widely supported and fast enough for a single transition frame.
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.65);
+      if (!dataUrl) return false;
+
+      image.dataset.mode = "preview";
+      image.src = dataUrl;
+      image.style.display = "block";
+      image.style.opacity = "1";
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function primeTransitionStill() {
+    if (!isLivePage) return;
+    if (!image) return;
+
+    // If we already have a visible still, keep it.
+    const hasStill =
+      image.style.display !== "none" && Boolean(image.getAttribute("src"));
+    if (hasStill) return;
+
+    // Otherwise, try to snapshot the current video so we always have something
+    // to fade from (rotation / rapid switching can skip last_screenshot preload).
+    captureVideoFrameToStill();
   }
 
   function crossFadeToImage() {
@@ -746,7 +789,7 @@ export function initTilePlayer() {
       setTimeout(() => {
         video.style.display = "none";
         video.style.opacity = "1";
-      }, ms + 20);
+      }, ms + 80);
     });
   }
 
@@ -1193,7 +1236,7 @@ export function initTilePlayer() {
     // to move to the stream immediately.
     const ok = await Promise.race([
       preloadStill(url),
-      new Promise((resolve) => setTimeout(() => resolve(false), 750)),
+      new Promise((resolve) => setTimeout(() => resolve(false), 1400)),
     ]);
     if (!ok) return;
     if (seq !== switchSeq) return;
@@ -1823,6 +1866,7 @@ export function initTilePlayer() {
     maybeWarmSelection(selection);
     syncLiveContext(selection);
     hideBounce();
+    primeTransitionStill();
     const streamToken = ++activeStreamToken;
 
     clearLiveAutoUpgradeTimer();
