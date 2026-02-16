@@ -129,7 +129,8 @@ export function initNav() {
         return;
       }
       cameraDropdown.style.display = "";
-      cameraDropdown.innerHTML = '<option value="">Cameras</option>';
+      cameraDropdown.innerHTML =
+        '<option value="">Cameras</option><option value="__all_rotator__">All Rotator</option>';
       cameraDropdown.disabled = true;
       try {
         const cams = await fetchJson(
@@ -184,6 +185,14 @@ export function initNav() {
 
         // On /live, tile_player.js handles this selector directly.
         if (window.location.pathname.startsWith("/live")) {
+          return;
+        }
+
+        if (selectedCamera === "__all_rotator__") {
+          currentCamera = null;
+          currentGroup = null;
+          updateLiveLinkHref();
+          window.location.href = "/live";
           return;
         }
 
