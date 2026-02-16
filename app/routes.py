@@ -1735,7 +1735,11 @@ def generate(
                         last_shot = None
 
                 if frame is None:
-                    cached = _get_cached_latest_shot(group, camera, filename)
+                    cached = (
+                        _get_cached_latest_shot(group, camera, filename)
+                        if camera
+                        else None
+                    )
                     if cached:
                         most_recent_file = cached
                     else:
@@ -1746,9 +1750,16 @@ def generate(
                         templates = template_manager.get_templates()
 
                         # sorted_templates = sorted(templates.items(), key=lambda x: int(x[1].get('last_video_time', 0) or 0), reverse=True)
-                        sorted_templates = (
-                            templates.items()
-                        )  # there is a problem with the sort..
+                        sorted_templates = sorted(
+                            templates.items(), key=lambda x: str(x[0]).lower()
+                        )
+                        # For aggregate/group streams, rotate source camera by second so
+                        # one very-fresh feed (e.g. Waze) can't dominate forever.
+                        if not camera and sorted_templates:
+                            offset = int(time.time()) % len(sorted_templates)
+                            sorted_templates = (
+                                sorted_templates[offset:] + sorted_templates[:offset]
+                            )
 
                         most_recent_time = 0
                         # there is some kind of bug in here where we will sometimes pick an image before we should (like if its not captioned yet)
@@ -1824,6 +1835,11 @@ def generate(
 
                             last_file = lfiles[-1] if lfiles else None
                             if last_file and os.path.exists(last_file):
+                                if not camera:
+                                    # Aggregate/group stream mode: pick the first valid
+                                    # camera from the rotated ordering for fair cycling.
+                                    most_recent_file = last_file
+                                    break
                                 last_mtime = os.path.getmtime(last_file)
                                 if (
                                     last_mtime > most_recent_time
@@ -1836,7 +1852,8 @@ def generate(
                     if most_recent_file:
                         last_time = time.time()
                         last_shot = most_recent_file
-                        _set_cached_latest_shot(group, camera, filename, last_shot)
+                        if camera:
+                            _set_cached_latest_shot(group, camera, filename, last_shot)
 
                         try:
                             with open(most_recent_file, "rb") as f:
