@@ -879,47 +879,114 @@ export function initTilePlayer() {
     if (container) container.appendChild(image);
   }
 
-  image.dataset.mode = image.dataset.mode || "preview";
-  let activeStreamToken = 0;
+  // For /live rotator switching, cross-fade between two <img> elements so we can
+  // keep the previous camera visible until the next stream produces its first frame.
+  let imageAlt = null;
   if (isLivePage && !hasClipSource) {
-    backendCheckTimer = setInterval(
-      checkBackendHealthForLive,
-      BACKEND_HEALTH_POLL_MS,
-    );
-    setTimeout(checkBackendHealthForLive, 1500);
-  }
-  image.addEventListener("load", () => {
-    setMediaAspect(image.naturalWidth, image.naturalHeight);
-    // Only hide the spinner for the most recent stream load. Older in-flight
-    // requests can complete out of order during rapid switching.
-    if (
-      image.dataset.mode === "stream" &&
-      image.dataset.streamToken === String(activeStreamToken)
-    ) {
-      const remaining = spinnerMinUntil - Date.now();
-      if (remaining > 0) {
-        setTimeout(() => hideSpinner(video), remaining);
-      } else {
-        hideSpinner(video);
-      }
+    imageAlt = document.getElementById("live-image-alt");
+    if (!imageAlt) {
+      imageAlt = document.createElement("img");
+      imageAlt.id = "live-image-alt";
+      imageAlt.style.display = "none";
+      if (container) container.appendChild(imageAlt);
     }
-    image.style.opacity = "1";
-    backendWasDown = false;
-    backendConsecutiveFails = 0;
-    resetStreamRecovery();
-    updateFlashGuardFrom(image);
-  });
-  image.addEventListener("error", () => {
-    if (
-      image.dataset.mode !== "stream" ||
-      image.dataset.streamToken !== String(activeStreamToken)
-    ) {
+  }
+
+  function wireStreamImage(img) {
+    img.dataset.mode = img.dataset.mode || "preview";
+
+    img.addEventListener("load", () => {
+      setMediaAspect(img.naturalWidth, img.naturalHeight);
+
+      // Only hide the spinner for the most recent stream load. Older in-flight
+      // requests can complete out of order during rapid switching.
+      if (
+        img.dataset.mode === "stream" &&
+        img.dataset.streamToken === String(activeStreamToken)
+      ) {
+        const remaining = spinnerMinUntil - Date.now();
+        if (remaining > 0) {
+          setTimeout(() => hideSpinner(video), remaining);
+        } else {
+          hideSpinner(video);
+        }
+      }
+
+      img.style.opacity = "1";
+      backendWasDown = false;
+      backendConsecutiveFails = 0;
+      resetStreamRecovery();
+      updateFlashGuardFrom(img);
+
+      // If this is the new stream image and we have an alternate, cross-fade.
+      if (imageAlt && img !== image && img.dataset.mode === "stream") {
+        const ms = prefersReducedMotion() ? 0 : LIVE_FADE_MS;
+        img.style.transitionDuration = `${ms}ms`;
+        image.style.transitionDuration = `${ms}ms`;
+        img.style.transitionTimingFunction = "ease-in-out";
+        image.style.transitionTimingFunction = "ease-in-out";
+
+        // Ensure both are visible during the fade.
+        img.style.display = "block";
+        image.style.display = "block";
+        img.style.opacity = "0";
+
+        requestAnimationFrame(() => {
+          if (img.dataset.streamToken !== String(activeStreamToken)) return;
+          img.style.opacity = "1";
+          image.style.opacity = "0";
+          setTimeout(() => {
+            if (img.dataset.streamToken !== String(activeStreamToken)) return;
+            // Stop the old stream to free the connection.
+            image.style.display = "none";
+            image.style.opacity = "1";
+            image.removeAttribute("src");
+            // Swap references: the newly loaded img becomes the active image.
+            const prev = image;
+            image = img;
+            imageAlt = prev;
+          }, ms + 80);
+        });
+      }
+    });
+
+    img.addEventListener("error", () => {
+      if (
+        img.dataset.mode !== "stream" ||
+        img.dataset.streamToken !== String(activeStreamToken)
+      ) {
+        return;
+      }
+      hideSpinner(video);
+      showErrorIndicator(video);
+      scheduleStreamRecovery("image-error", 900);
+    });
+  }
+
+  wireStreamImage(image);
+  if (imageAlt) wireStreamImage(imageAlt);
+
+  function setStreamImageSrc(nextSrc, streamToken) {
+    if (!nextSrc) return;
+    activeStreamToken = streamToken;
+
+    // If we don't have an alternate image (non-live pages), just swap.
+    if (!imageAlt) {
+      image.dataset.mode = "stream";
+      image.dataset.streamToken = String(streamToken);
+      image.style.opacity = "0";
+      image.style.display = "block";
+      image.src = nextSrc;
       return;
     }
-    hideSpinner(video);
-    showErrorIndicator(video);
-    scheduleStreamRecovery("image-error", 900);
-  });
+
+    // Start the next stream in the alternate element.
+    imageAlt.dataset.mode = "stream";
+    imageAlt.dataset.streamToken = String(streamToken);
+    imageAlt.style.opacity = "0";
+    imageAlt.style.display = "block";
+    imageAlt.src = nextSrc;
+  }
 
   const fsButton = document.getElementById("fullscreen-toggle");
   if (fsButton) {
@@ -1736,12 +1803,12 @@ export function initTilePlayer() {
     setSpeedControlsVisible(true);
     video.preload = "none";
     crossFadeToImage();
-    image.src = setPngSrc(target, isCamera);
+    setStreamImageSrc(setPngSrc(target, isCamera), streamToken);
     if (container) container.classList.add(LIVE_CLASS);
     if (pngTimer) clearInterval(pngTimer);
     pngTimer = setInterval(() => {
       if (image.dataset.streamToken !== String(streamToken)) return;
-      image.src = setPngSrc(target, isCamera);
+      setStreamImageSrc(setPngSrc(target, isCamera), streamToken);
     }, refreshSeconds * 1000);
   }
 
@@ -1771,7 +1838,10 @@ export function initTilePlayer() {
     // For everything else we stream the most recent frames and optionally kick
     // off a one-shot refresh.
     const route = "/stream.mjpg";
-    image.src = `${route}?${param}=${encodeURIComponent(target)}&time=${Date.now()}`;
+    setStreamImageSrc(
+      `${route}?${param}=${encodeURIComponent(target)}&time=${Date.now()}`,
+      streamToken,
+    );
     if (container) container.classList.add(LIVE_CLASS);
   }
 

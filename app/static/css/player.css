@@ -98,7 +98,8 @@
   }
 }
 #live-video,
-#live-image {
+#live-image,
+#live-image-alt {
   position: absolute;
   top: 0;
   left: 0;
