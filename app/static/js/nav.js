@@ -162,20 +162,13 @@ export function initNav() {
         currentGroup = selected === "all" ? null : selected;
         currentCamera = null;
         updateLiveLinkHref();
-        if (
-          window.location.pathname.startsWith("/live") &&
-          typeof window.changeGroup === "function"
-        ) {
-          window.changeGroup(selected);
-          loadNavCameras(selected);
-          return;
-        }
+
+        // Group selection is always a wall view: All => home wall, group => group wall.
         if (selected === "all") {
-          window.location.href = "/live";
+          window.location.href = "/";
         } else {
           window.location.href = `/group/${encodeURIComponent(selected)}`;
         }
-        loadNavCameras(selected);
       });
       if (currentGroup) loadNavCameras(currentGroup);
     }
@@ -184,26 +177,27 @@ export function initNav() {
       cameraDropdown.addEventListener("change", () => {
         const selectedCamera = cameraDropdown.value || null;
         currentCamera = selectedCamera;
-        if (!currentCamera) {
-          updateLiveLinkHref();
-        } else {
-          const activeGroup = groupDropdown ? groupDropdown.value : null;
-          currentGroup =
-            activeGroup && activeGroup !== "all" ? activeGroup : currentGroup;
-          updateLiveLinkHref();
-        }
+        const activeGroup = groupDropdown ? groupDropdown.value : null;
+        currentGroup =
+          activeGroup && activeGroup !== "all" ? activeGroup : null;
+        updateLiveLinkHref();
 
-        // On the live page, tile_player.js is attached to the same select and
-        // handles switching directly. Avoid re-dispatching the same event.
+        // On /live, tile_player.js handles this selector directly.
         if (window.location.pathname.startsWith("/live")) {
-          const pageSelector = document.getElementById("camera-selector");
-          if (pageSelector && typeof window.changeCamera === "function") {
-            window.changeCamera(selectedCamera);
-          }
           return;
         }
+
+        // Outside /live, selecting a camera should always land in live view.
         if (selectedCamera) {
-          window.location.href = `/templates/${encodeURIComponent(selectedCamera)}`;
+          window.location.href = `/live?camera=${encodeURIComponent(selectedCamera)}`;
+          return;
+        }
+
+        // "Cameras" (blank option) means rotate by current group/all on live.
+        if (currentGroup) {
+          window.location.href = `/live?group=${encodeURIComponent(currentGroup)}`;
+        } else {
+          window.location.href = "/live";
         }
       });
     }

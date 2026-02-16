@@ -1645,7 +1645,16 @@ export function initTilePlayer() {
 
   if (camSelect) {
     camSelect.addEventListener("change", async () => {
-      current = camSelect.value;
+      // Empty camera option means "rotate" for current group/all.
+      const selected = camSelect.value;
+      if (selected) {
+        current = selected;
+      } else {
+        const navGroup = document.getElementById("nav-group-dropdown");
+        const g = navGroup?.value || "all";
+        current = g && g !== "all" ? `group-${g}` : "All";
+      }
+
       syncLiveContext(current);
       if (!hasClipSource) {
         // /live: show a still preview for the new target immediately, then

@@ -41,23 +41,25 @@ describe("nav group dropdown", () => {
     const dd = setup();
     dd.value = "";
     dd.dispatchEvent(new Event("change"));
-    expect(window.location.href).toBe("/live");
+    expect(window.location.href).toBe("/");
   });
 
   test("selecting all navigates to live", () => {
     const dd = setup();
     dd.value = "all";
     dd.dispatchEvent(new Event("change"));
-    expect(window.location.href).toBe("/live");
+    expect(window.location.href).toBe("/");
   });
 
-  test("live page uses changeGroup", () => {
-    window.changeGroup = jest.fn();
+  test("selecting a group navigates to group wall", () => {
     const dd = setup();
     window.location.pathname = "/live";
+    const opt = document.createElement("option");
+    opt.value = "kitchen";
+    opt.textContent = "kitchen";
+    dd.appendChild(opt);
     dd.value = "kitchen";
     dd.dispatchEvent(new Event("change"));
-    expect(window.changeGroup).toHaveBeenCalled();
-    expect(window.location.href).toBe("");
+    expect(window.location.href).toBe("/group/kitchen");
   });
 });
