@@ -1,5 +1,6 @@
 import { jest } from "@jest/globals";
 
+window.__GLIMPSER_DISABLE_BEACONS = true;
 document.body.innerHTML = `
   <video id="live-video"><source></source></video>
 `;

@@ -407,6 +407,21 @@ def create_blueprint() -> Blueprint:
             page_title="Live View",
         )
 
+    @bp.route("/client_beacon", methods=["POST"], endpoint="client_beacon")
+    @routes.login_required
+    def client_beacon():
+        """Lightweight client beacon for debugging UI state."""
+
+        payload = request.get_json(silent=True) or {}
+        routes.logging.info(
+            "client_beacon ip=%s path=%s event=%s data=%s",
+            request.remote_addr,
+            str(payload.get("path") or ""),
+            str(payload.get("event") or ""),
+            str(payload.get("data") or ""),
+        )
+        return ("", 204)
+
     @bp.route("/clock", endpoint="clock_page")
     @routes.login_required
     def clock_page():

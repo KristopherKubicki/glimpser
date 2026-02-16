@@ -5,6 +5,25 @@ function safePlay(el) {
   if (p && typeof p.catch === "function") p.catch(() => {});
 }
 
+function sendClientBeacon(event, data) {
+  if (window.__GLIMPSER_DISABLE_BEACONS) return;
+  try {
+    fetch("/client_beacon", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      keepalive: true,
+      body: JSON.stringify({
+        event,
+        path: window.location?.pathname || "",
+        data,
+      }),
+    }).catch(() => {});
+  } catch (_) {
+    // ignore
+  }
+}
+
 export function adjustFullHeight() {
   const container = document.querySelector(".video-container.full-height");
   if (!container) return;
@@ -89,6 +108,12 @@ export function initTilePlayer() {
               ? camSelect.value
               : "All";
 
+  sendClientBeacon("tile_player_init", {
+    forceAllRotator,
+    hasExplicitLiveSelection,
+    current,
+  });
+
   if (forceAllRotator) {
     window.currentCamera = null;
     window.currentGroup = null;
@@ -123,6 +148,7 @@ export function initTilePlayer() {
   }
 
   let abortCtl;
+  let lastPlayBeaconAt = 0;
   let liveTimer;
 
   const container = video.parentElement;
@@ -1680,6 +1706,11 @@ export function initTilePlayer() {
   // skipped entirely so the image element always shows the current stream.
   function play(name) {
     if (!name) return;
+    const now = Date.now();
+    if (isLivePage && now - lastPlayBeaconAt > 10000) {
+      lastPlayBeaconAt = now;
+      sendClientBeacon("live_play", { name });
+    }
 
     let selection = name;
     const shouldRotate =
