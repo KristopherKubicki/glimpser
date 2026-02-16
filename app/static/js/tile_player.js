@@ -63,17 +63,22 @@ export function initTilePlayer() {
   const singleCamera = realCameras.length === 1 ? realCameras[0] : "";
   const urlParams = new URLSearchParams(window.location.search || "");
   const forceAllRotator = urlParams.get("rotator") === "all";
+  const hasExplicitLiveSelection =
+    urlParams.has("camera") || urlParams.has("group") || forceAllRotator;
+
   let current = forceAllRotator
     ? "All"
     : preferredCamera && window.templateDetails?.[preferredCamera]
       ? preferredCamera
       : preferredGroup && preferredGroup !== "all"
         ? `group-${preferredGroup}`
-        : isLivePage && singleCamera
-          ? singleCamera
-          : camSelect && camSelect.value
-            ? camSelect.value
-            : "All";
+        : isLivePage && !hasExplicitLiveSelection
+          ? "All"
+          : isLivePage && singleCamera
+            ? singleCamera
+            : camSelect && camSelect.value
+              ? camSelect.value
+              : "All";
 
   if (forceAllRotator) {
     window.currentCamera = null;
