@@ -1672,11 +1672,20 @@ def generate(
     boundary = b"frame"
     while True:
         ltime = time.time()
+        stream_scope = "all"
+        if camera:
+            stream_scope = f"camera_{camera}"
+        elif group:
+            stream_scope = f"group_{group}"
+        safe_scope = "".join(
+            ch if ch.isalnum() or ch in ("_", "-") else "_" for ch in stream_scope
+        )
+        scoped_name = f"{safe_scope}_{filename}"
         last_path = os.path.join(
             os.path.dirname(os.path.join(__file__)),
             "..",
             SCREENSHOT_DIRECTORY,
-            filename,
+            scoped_name,
         ).replace(".png", ".jpg")
 
         frame = None

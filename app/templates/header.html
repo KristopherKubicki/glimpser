@@ -21,11 +21,11 @@
     />
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css') }}"
+      href="{{ url_for('static', filename='css/style.css') }}?v={{ COMMIT_HASH or VERSION }}"
     />
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='css/player.css') }}"
+      href="{{ url_for('static', filename='css/player.css') }}?v={{ COMMIT_HASH or VERSION }}"
     />
     <link
       rel="preload"
@@ -47,7 +47,7 @@
     {% if session.get('user_id') or LAN_GUEST %}
     <script
       type="module"
-      src="{{ url_for('static', filename='js/script.js') }}"
+      src="{{ url_for('static', filename='js/script.js') }}?v={{ COMMIT_HASH or VERSION }}"
     ></script>
     {% endif %}
   </head>

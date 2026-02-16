@@ -79,6 +79,6 @@
 
 <script
   type="module"
-  src="{{ url_for('static', filename='js/tile_player.js') }}?v={{ VERSION }}"
+  src="{{ url_for('static', filename='js/tile_player.js') }}?v={{ COMMIT_HASH or VERSION }}"
 ></script>
 {% endblock %}
