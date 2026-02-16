@@ -6224,10 +6224,17 @@ def capture_screenshot_and_har(
         # Remove popups
         if popup_xpath:
             try:
-                _remove_popup(driver, popup_xpath)
-            except Exception:
-                # logging.info(f"Could not remove popup={popup_xpath}:")
-                pass
+                removed = _remove_popup(driver, popup_xpath)
+                if removed == 0:
+                    logging.debug(
+                        "[%s] popup_xpath matched no elements: %s",
+                        name,
+                        popup_xpath,
+                    )
+            except Exception as e:
+                logging.debug(
+                    "[%s] popup_xpath remove failed (%s): %s", name, popup_xpath, e
+                )
 
         # If dedicated_selector is set, capture that region instead of full page
         if dedicated_selector:
@@ -6236,8 +6243,58 @@ def capture_screenshot_and_har(
                 driver.execute_script("arguments[0].scrollIntoView(true);", element)
                 time.sleep(1)
                 element.screenshot(partial_screenshot)
-            except Exception:
-                pass
+
+                # Guard against bad XPath crops that produce tiny/blank captures.
+                if os.path.exists(partial_screenshot):
+                    try:
+                        viewport_w = int(
+                            driver.execute_script(
+                                "return Math.max(document.documentElement.clientWidth||0, window.innerWidth||0);"
+                            )
+                            or 0
+                        )
+                        viewport_h = int(
+                            driver.execute_script(
+                                "return Math.max(document.documentElement.clientHeight||0, window.innerHeight||0);"
+                            )
+                            or 0
+                        )
+                        with Image.open(partial_screenshot) as _im:
+                            shot_w, shot_h = _im.size
+                        shot_area = max(1, shot_w * shot_h)
+                        viewport_area = max(1, viewport_w * viewport_h)
+                        shot_ratio = shot_area / viewport_area
+                        shot_kb = os.path.getsize(partial_screenshot) / 1024.0
+                        is_tiny_crop = (
+                            shot_w < 700
+                            or shot_h < 350
+                            or shot_kb < 12
+                            or shot_ratio < 0.12
+                        )
+                        if is_tiny_crop:
+                            logging.warning(
+                                "[%s] dedicated_xpath tiny crop; falling back to full-page. xpath=%s shot=%sx%s %.1fKB viewport=%sx%s ratio=%.3f",
+                                name,
+                                dedicated_selector,
+                                shot_w,
+                                shot_h,
+                                shot_kb,
+                                viewport_w,
+                                viewport_h,
+                                shot_ratio,
+                            )
+                            os.remove(partial_screenshot)
+                    except Exception as e:
+                        logging.debug(
+                            "[%s] dedicated_xpath crop validation failed: %s", name, e
+                        )
+            except Exception as e:
+                logging.warning(
+                    "[%s] dedicated_xpath failed; falling back to full-page. xpath=%s err=%s",
+                    name,
+                    dedicated_selector,
+                    e,
+                )
 
         # Fallback to entire page if partial didn't get created
         if not os.path.exists(partial_screenshot):
@@ -6502,13 +6559,17 @@ def _capture_danger_mode(
 def _remove_popup(driver, popup_xpath):
     """
     If there's an annoying overlay or popup, remove it from the DOM by XPATH.
+    Returns the number of removed elements.
     """
+    removed = 0
     try:
         elements = driver.find_elements(By.XPATH, popup_xpath)
         for el in elements:
             driver.execute_script("arguments[0].remove();", el)
+            removed += 1
     except Exception as e:
         logging.debug(f"_remove_popup error: {e}")
+    return removed
 
 
 def _save_har_logs(driver, har_output_path):
