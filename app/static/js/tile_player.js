@@ -1621,7 +1621,11 @@ export function initTilePlayer() {
     video.style.display = "none";
     image.style.display = "block";
     const param = isCamera ? "camera" : "group";
-    const route = isCamera ? "/fast_stream.mjpg" : "/stream.mjpg";
+    // Never force an on-demand recapture loop for live playback; it can hang
+    // indefinitely on slow/broken web sources. Live video is handled via RTSP/HLS.
+    // For everything else we stream the most recent frames and optionally kick
+    // off a one-shot refresh.
+    const route = "/stream.mjpg";
     image.src = `${route}?${param}=${encodeURIComponent(target)}&time=${Date.now()}`;
     if (container) container.classList.add(LIVE_CLASS);
   }
