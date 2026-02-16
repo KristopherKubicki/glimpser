@@ -688,11 +688,66 @@ export function initTilePlayer() {
   const STREAM_RECOVER_MAX_DELAY_MS = 12000;
   const ROTATION_DWELL_MS = 6000;
   const BACKEND_HEALTH_POLL_MS = 4000;
+  const LIVE_FADE_MS = 900;
   const speedContainer = document.getElementById("speed-container");
 
   function setSpeedControlsVisible(visible) {
     if (!speedContainer) return;
     speedContainer.style.display = visible ? "" : "none";
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  }
+
+  function crossFadeToVideo(token) {
+    if (!isLivePage) return;
+    if (!video || !image) return;
+    if (token != null && image.dataset.streamToken !== String(token)) return;
+
+    const ms = prefersReducedMotion() ? 0 : LIVE_FADE_MS;
+    video.style.transitionDuration = `${ms}ms`;
+    image.style.transitionDuration = `${ms}ms`;
+
+    // Keep the last frame visible while the new stream fades in.
+    video.style.display = "block";
+    // Ensure the image is visible for the fade out, but don't force it if it
+    // wasn't (previews can be disabled in some flows).
+    if (image.style.display === "none") image.style.display = "block";
+
+    video.style.opacity = "0";
+    image.style.opacity = image.style.opacity || "1";
+
+    requestAnimationFrame(() => {
+      if (token != null && image.dataset.streamToken !== String(token)) return;
+      video.style.opacity = "1";
+      image.style.opacity = "0";
+      setTimeout(() => {
+        if (token != null && image.dataset.streamToken !== String(token))
+          return;
+        image.style.display = "none";
+        image.style.opacity = "1";
+      }, ms + 20);
+    });
+  }
+
+  function crossFadeToImage() {
+    if (!isLivePage) return;
+    if (!video || !image) return;
+    const ms = prefersReducedMotion() ? 0 : LIVE_FADE_MS;
+    video.style.transitionDuration = `${ms}ms`;
+    image.style.transitionDuration = `${ms}ms`;
+
+    image.style.display = "block";
+    image.style.opacity = "0";
+    requestAnimationFrame(() => {
+      image.style.opacity = "1";
+      video.style.opacity = "0";
+      setTimeout(() => {
+        video.style.display = "none";
+        video.style.opacity = "1";
+      }, ms + 20);
+    });
   }
 
   function updateSpeedLabel() {
@@ -1338,6 +1393,7 @@ export function initTilePlayer() {
     showSpinner(video);
     image.dataset.mode = "preview";
     image.dataset.streamToken = String(streamToken);
+    image.style.opacity = "0";
     // Avoid a blank screen while RTSP spins up: keep a still underneath
     // until the first frame is ready.
     image.style.display = "block";
@@ -1539,13 +1595,8 @@ export function initTilePlayer() {
       const profilePlan = getPlan(q);
       const profile = profilePlan[profileIndex] || "main";
       setLiveSourceBadge(`Live RTSP (${profile}, ${q})`, "ok");
-      video.style.display = "block";
-      image.style.display = "none";
       hideSpinner(video);
-      // Fade in once we have the first frame.
-      requestAnimationFrame(() => {
-        video.style.opacity = "1";
-      });
+      crossFadeToVideo(streamToken);
       backendWasDown = false;
       backendConsecutiveFails = 0;
       resetStreamRecovery();
@@ -1640,8 +1691,7 @@ export function initTilePlayer() {
     setClipUiActive(false);
     setSpeedControlsVisible(true);
     video.preload = "none";
-    video.style.display = "none";
-    image.style.display = "block";
+    crossFadeToImage();
     image.src = setPngSrc(target, isCamera);
     if (container) container.classList.add(LIVE_CLASS);
     if (pngTimer) clearInterval(pngTimer);
@@ -1670,8 +1720,7 @@ export function initTilePlayer() {
     setClipUiActive(false);
     setSpeedControlsVisible(true);
     video.preload = "none";
-    video.style.display = "none";
-    image.style.display = "block";
+    crossFadeToImage();
     const param = isCamera ? "camera" : "group";
     // Never force an on-demand recapture loop for live playback; it can hang
     // indefinitely on slow/broken web sources. Live video is handled via RTSP/HLS.
