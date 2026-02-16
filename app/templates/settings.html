@@ -125,6 +125,14 @@ template_form, settings_row with context %} {% block content %}
         title="Reset your password"
         >Reset Password</a
       >
+      {% endcall %} {% call card('XPath Health') %}
+      <p>Review fragile selectors and tiny screenshot captures.</p>
+      <a
+        href="{{ url_for('ui.xpath_health') }}"
+        class="doc-link"
+        title="Open XPath health report"
+        >Open XPath Health Report</a
+      >
       {% endcall %} {% call card('Configuration
       Management') %}
       <div class="checkbox-row">

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block content %}
+<main class="container">
+  <h2>XPath Health</h2>
+  <p>
+    Total: {{ summary.total }} &nbsp;|&nbsp; With XPath: {{ summary.with_xpath }}
+    &nbsp;|&nbsp; Rows With Issues: {{ summary.issue_rows }} &nbsp;|&nbsp; Tiny Latest
+    Frames: {{ summary.tiny_rows }}
+  </p>
+  <p>
+    <a href="{{ url_for('ui.settings') }}">Back to Settings</a>
+  </p>
+
+  <table class="settings-table">
+    <thead>
+      <tr>
+        <th>Camera</th>
+        <th>Latest</th>
+        <th>XPath</th>
+        <th>Issues</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>
+          <a href="{{ url_for('ui.live', camera=row.name) }}">{{ row.name }}</a>
+          {% if row.capture_failed %}<div><small>capture_failed=1</small></div>{% endif %}
+        </td>
+        <td>
+          {% if row.latest_name %}
+          <div>{{ row.latest_dims }}{% if row.latest_kb is not none %}, {{ '%.1f'|format(row.latest_kb) }} KB{% endif %}</div>
+          <div><small>{{ row.latest_name }}</small></div>
+          <div><small>{{ row.latest_age }}</small></div>
+          {% else %}
+          <small>no screenshots</small>
+          {% endif %}
+        </td>
+        <td>
+          {% if row.popup_xpath %}<div><small><b>popup:</b> {{ row.popup_xpath }}</small></div>{% endif %}
+          {% if row.dedicated_xpath %}<div><small><b>dedicated:</b> {{ row.dedicated_xpath }}</small></div>{% endif %}
+          {% if not row.popup_xpath and not row.dedicated_xpath %}<small>none</small>{% endif %}
+        </td>
+        <td>
+          {% if row.issues %}
+            {% for issue in row.issues %}
+            <div><small>{{ issue }}</small></div>
+            {% endfor %}
+          {% else %}
+          <small>ok</small>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</main>
+{% endblock %}

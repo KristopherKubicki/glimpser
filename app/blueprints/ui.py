@@ -843,6 +843,145 @@ def create_blueprint() -> Blueprint:
             session.close()
         return True
 
+    @bp.route("/xpath_health", endpoint="xpath_health")
+    @routes.login_required
+    def xpath_health():
+        """Render a health report for configured popup/dedicated XPaths."""
+
+        templates = routes.template_manager.get_templates()
+        screenshots_root = Path(routes.SCREENSHOT_DIRECTORY)
+        image_exts = {".png", ".jpg", ".jpeg", ".webp"}
+
+        def _norm_xpath(xpath: str | None) -> str:
+            return " ".join((xpath or "").split())
+
+        def _xpath_risks(xpath: str | None) -> list[str]:
+            norm = _norm_xpath(xpath)
+            if not norm:
+                return []
+            lower = norm.lower()
+            risks: list[str] = []
+            if norm in {"//iframe", "//p"}:
+                risks.append("overly generic selector")
+            if "uzbvz" in lower:
+                risks.append("hashed class name (likely unstable)")
+            if (
+                "contains(@name, 'welcome')" in lower
+                or 'contains(@name,"welcome")' in lower
+            ):
+                risks.append("welcome-popup selector is often transient")
+            if "leaflet-pane" in lower:
+                risks.append("targets map tile pane (can miss overlays)")
+            if norm.startswith("//*"):
+                risks.append("global wildcard selector")
+            return risks
+
+        rows: list[dict[str, object]] = []
+        tiny_count = 0
+        issue_count = 0
+
+        for name in sorted(n for n in templates.keys() if n):
+            template = templates.get(name, {})
+            popup_xpath = (template.get("popup_xpath") or "").strip()
+            dedicated_xpath = (template.get("dedicated_xpath") or "").strip()
+
+            issues: list[str] = []
+            for risk in _xpath_risks(popup_xpath):
+                issues.append(f"popup_xpath: {risk}")
+            for risk in _xpath_risks(dedicated_xpath):
+                issues.append(f"dedicated_xpath: {risk}")
+
+            latest_name = ""
+            latest_age = ""
+            latest_dims = ""
+            latest_kb: float | None = None
+
+            shot_dir = screenshots_root / routes.secure_filename(name)
+            latest_path = None
+            if shot_dir.exists() and shot_dir.is_dir():
+                latest_path = max(
+                    (
+                        p
+                        for p in shot_dir.iterdir()
+                        if p.is_file() and p.suffix.lower() in image_exts
+                    ),
+                    key=lambda p: p.stat().st_mtime,
+                    default=None,
+                )
+
+            if latest_path is not None:
+                try:
+                    st = latest_path.stat()
+                    latest_name = latest_path.name
+                    latest_kb = st.st_size / 1024.0
+                    latest_dt = datetime.fromtimestamp(st.st_mtime)
+                    age = datetime.now() - latest_dt
+                    age_seconds = int(max(0, age.total_seconds()))
+                    if age_seconds < 60:
+                        latest_age = f"{age_seconds}s ago"
+                    elif age_seconds < 3600:
+                        latest_age = f"{age_seconds // 60}m ago"
+                    elif age_seconds < 86400:
+                        latest_age = f"{age_seconds // 3600}h ago"
+                    else:
+                        latest_age = f"{age_seconds // 86400}d ago"
+                    try:
+                        with routes.Image.open(latest_path) as im:
+                            w, h = im.size
+                            latest_dims = f"{w}x{h}"
+                            if st.st_size < 12 * 1024 or w < 700 or h < 350:
+                                tiny_count += 1
+                                issues.append("latest screenshot is tiny/low-detail")
+                    except Exception:
+                        latest_dims = "unknown"
+                        issues.append("latest screenshot unreadable")
+                except OSError:
+                    issues.append("unable to stat latest screenshot")
+            else:
+                issues.append("no screenshots found")
+
+            capture_failed = bool(template.get("capture_failed"))
+            offline_since = (template.get("offline_since") or "").strip()
+            if capture_failed:
+                issues.append("capture_failed=1")
+            if offline_since:
+                issues.append(f"offline_since={offline_since}")
+
+            if issues:
+                issue_count += 1
+
+            rows.append(
+                {
+                    "name": name,
+                    "popup_xpath": popup_xpath,
+                    "dedicated_xpath": dedicated_xpath,
+                    "issues": issues,
+                    "capture_failed": capture_failed,
+                    "offline_since": offline_since,
+                    "latest_name": latest_name,
+                    "latest_age": latest_age,
+                    "latest_dims": latest_dims,
+                    "latest_kb": latest_kb,
+                }
+            )
+
+        rows.sort(key=lambda r: (-len(r["issues"]), r["name"]))
+        summary = {
+            "total": len(rows),
+            "with_xpath": sum(
+                1 for r in rows if r["popup_xpath"] or r["dedicated_xpath"]
+            ),
+            "issue_rows": issue_count,
+            "tiny_rows": tiny_count,
+        }
+
+        return render_template(
+            "xpath_health.html",
+            rows=rows,
+            summary=summary,
+            page_title="XPath Health",
+        )
+
     @bp.route("/settings", methods=["GET", "POST"], endpoint="settings")
     @routes.login_required
     def settings():
