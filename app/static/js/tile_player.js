@@ -828,7 +828,8 @@ export function initTilePlayer() {
         setLiveSourceBadge("Reconnecting to backend...", "probing");
       }
       showSpinner(video);
-      play(current);
+      const recoverTarget = rotationRoot || current;
+      play(recoverTarget);
       streamRecoverDelayMs = Math.min(
         STREAM_RECOVER_MAX_DELAY_MS,
         Math.round(streamRecoverDelayMs * 1.8),
