@@ -29,13 +29,28 @@ export function initNav() {
 
     const updateLiveLinkHref = () => {
       if (!liveLink) return;
-      if (currentCamera) {
-        liveLink.href = `/live?camera=${encodeURIComponent(currentCamera)}`;
-      } else if (currentGroup && currentGroup !== "all") {
-        liveLink.href = `/live?group=${encodeURIComponent(currentGroup)}`;
-      } else {
-        liveLink.href = "/live";
+
+      // If we are currently viewing a template page, make the Live link open
+      // that specific camera's live view.
+      const templateAnchor = document.querySelector(
+        "nav .nav-center a[href^='/templates/']",
+      );
+      const templateHref = templateAnchor?.getAttribute("href") || "";
+      const templateName = templateHref.startsWith("/templates/")
+        ? decodeURIComponent(templateHref.slice("/templates/".length))
+        : null;
+      if (templateName) {
+        liveLink.href = `/live?camera=${encodeURIComponent(templateName)}`;
+        return;
       }
+
+      if (currentGroup && currentGroup !== "all") {
+        liveLink.href = `/live?group=${encodeURIComponent(currentGroup)}`;
+        return;
+      }
+
+      // Default: global rotator view.
+      liveLink.href = "/live?rotator=all";
     };
 
     const syncNavSelections = () => {

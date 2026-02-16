@@ -54,6 +54,7 @@ export function initTilePlayer() {
   }
   const urlParams = new URLSearchParams(window.location.search || "");
   const forceAllRotator = urlParams.get("rotator") === "all";
+  let forcedRotatorActive = forceAllRotator;
   const hasExplicitLiveSelection =
     isLivePage &&
     (urlParams.has("camera") || urlParams.has("group") || forceAllRotator);
@@ -1689,7 +1690,7 @@ export function initTilePlayer() {
         selection.startsWith("group-"));
 
     if (shouldRotate) {
-      const root = forceAllRotator ? "All" : selection;
+      const root = forcedRotatorActive ? "All" : selection;
       const nextCamera = nextRotatedCamera(root);
       if (nextCamera) {
         selection = nextCamera;
@@ -1710,6 +1711,7 @@ export function initTilePlayer() {
     } else {
       stopRotationTimer();
       rotationRoot = null;
+      forcedRotatorActive = false;
       current = selection;
     }
 
@@ -1757,6 +1759,28 @@ export function initTilePlayer() {
       }
 
       syncLiveContext(current);
+
+      if (isLivePage) {
+        const u = new URL(window.location.href);
+        if (
+          forcedRotatorActive &&
+          current &&
+          current !== "All" &&
+          !current.startsWith("group-")
+        ) {
+          forcedRotatorActive = false;
+          u.searchParams.delete("rotator");
+          u.searchParams.set("camera", current);
+          u.searchParams.delete("group");
+          history.replaceState(null, "", u.toString());
+        } else if (
+          forcedRotatorActive &&
+          (current === "All" || current.startsWith("group-"))
+        ) {
+          // Keep the flag; URL may already include rotator=all.
+        }
+      }
+
       if (!hasClipSource) {
         // /live: show a still preview for the new target immediately, then
         // kick off capture and connect to the stream.
