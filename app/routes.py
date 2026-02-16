@@ -1700,8 +1700,8 @@ def generate(
         else:
             with lock:
                 if (
-                    group is None
-                    and camera is None
+                    camera is not None
+                    and group is None
                     and last_time
                     and time.time() - last_time < 1
                     and last_shot
