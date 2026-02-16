@@ -53,6 +53,13 @@ def create_blueprint() -> Blueprint:
             group = None
         if camera == "all":
             camera = None
+        routes.logging.info(
+            "stream.mjpg connect ip=%s group=%s camera=%s ua=%s",
+            routes.request.remote_addr,
+            group,
+            camera,
+            routes.request.headers.get("User-Agent", ""),
+        )
         return Response(
             routes.generate(group=group, camera=camera, filename="latest_camera.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -405,6 +412,12 @@ def create_blueprint() -> Blueprint:
             routes.abort(400, "camera parameter required")
         if not routes.template_manager.get_template(camera):
             routes.abort(404)
+        routes.logging.info(
+            "fast_stream.mjpg connect ip=%s camera=%s ua=%s",
+            routes.request.remote_addr,
+            camera,
+            routes.request.headers.get("User-Agent", ""),
+        )
         return Response(
             routes.generate_fast_mjpg(camera),
             mimetype="multipart/x-mixed-replace; boundary=frame",
