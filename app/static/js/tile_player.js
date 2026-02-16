@@ -63,7 +63,6 @@ export function initTilePlayer() {
   const singleCamera = realCameras.length === 1 ? realCameras[0] : "";
   const urlParams = new URLSearchParams(window.location.search || "");
   const forceAllRotator = urlParams.get("rotator") === "all";
-  const FORCED_ALL_ROTATOR_MS = 6000;
   let current = forceAllRotator
     ? "All"
     : preferredCamera && window.templateDetails?.[preferredCamera]
@@ -616,53 +615,18 @@ export function initTilePlayer() {
   let backendCheckTimer = null;
   let backendWasDown = false;
   let backendConsecutiveFails = 0;
-  let forcedAllRotatorTimer = null;
-  let forcedAllRotatorIndex = -1;
+  let rotationTimer = null;
+  let rotationRoot = null;
+  let rotationIndex = -1;
 
   const STREAM_RECOVER_MAX_DELAY_MS = 12000;
+  const ROTATION_DWELL_MS = 6000;
   const BACKEND_HEALTH_POLL_MS = 4000;
   const speedContainer = document.getElementById("speed-container");
 
   function setSpeedControlsVisible(visible) {
     if (!speedContainer) return;
     speedContainer.style.display = visible ? "" : "none";
-  }
-
-  function getForcedAllRotatorCameras() {
-    return Object.keys(window.templateDetails || {})
-      .filter((name) => name && name !== "All")
-      .sort((a, b) => a.localeCompare(b));
-  }
-
-  function stopForcedAllRotator() {
-    if (forcedAllRotatorTimer) {
-      clearTimeout(forcedAllRotatorTimer);
-      forcedAllRotatorTimer = null;
-    }
-  }
-
-  function scheduleForcedAllRotatorTick() {
-    if (!forceAllRotator) return;
-    stopForcedAllRotator();
-    forcedAllRotatorTimer = setTimeout(() => {
-      if (!forceAllRotator) return;
-      const cams = getForcedAllRotatorCameras();
-      if (!cams.length) return;
-
-      forcedAllRotatorIndex = (forcedAllRotatorIndex + 1) % cams.length;
-      const nextCamera = cams[forcedAllRotatorIndex];
-      if (!nextCamera) return;
-
-      if (camSelect) {
-        const hasCamera = Array.from(camSelect.options || []).some(
-          (opt) => opt.value === nextCamera,
-        );
-        if (hasCamera) camSelect.value = nextCamera;
-      }
-      current = nextCamera;
-      syncLiveContext(nextCamera);
-      play(nextCamera);
-    }, FORCED_ALL_ROTATOR_MS);
   }
 
   function updateSpeedLabel() {
@@ -1133,6 +1097,39 @@ export function initTilePlayer() {
           .includes(group);
       })
       .map(([cam]) => cam);
+  }
+
+  function stopRotationTimer() {
+    if (rotationTimer) {
+      clearTimeout(rotationTimer);
+      rotationTimer = null;
+    }
+  }
+
+  function rotationTargetsFor(selection) {
+    if (selection === "All") {
+      return Object.keys(window.templateDetails || {})
+        .filter((name) => name && name !== "All")
+        .sort((a, b) => a.localeCompare(b));
+    }
+    if (selection && selection.startsWith("group-")) {
+      const group = selection.slice(6);
+      return camerasForGroup(group).sort((a, b) => a.localeCompare(b));
+    }
+    return [];
+  }
+
+  function nextRotatedCamera(selection) {
+    const targets = rotationTargetsFor(selection);
+    if (!targets.length) return null;
+
+    if (rotationRoot !== selection) {
+      rotationRoot = selection;
+      rotationIndex = -1;
+    }
+
+    rotationIndex = (rotationIndex + 1) % targets.length;
+    return targets[rotationIndex];
   }
 
   function cancelAdhocRefresh() {
@@ -1665,17 +1662,42 @@ export function initTilePlayer() {
   // skipped entirely so the image element always shows the current stream.
   function play(name) {
     if (!name) return;
-    current = name;
-    if (forceAllRotator) {
-      const cams = getForcedAllRotatorCameras();
-      if (cams.length) {
-        const idx = cams.indexOf(current);
-        if (idx >= 0) forcedAllRotatorIndex = idx;
+
+    let selection = name;
+    const shouldRotate =
+      isLivePage &&
+      !hasClipSource &&
+      (forceAllRotator ||
+        selection === "All" ||
+        selection.startsWith("group-"));
+
+    if (shouldRotate) {
+      const root = forceAllRotator ? "All" : selection;
+      const nextCamera = nextRotatedCamera(root);
+      if (nextCamera) {
+        selection = nextCamera;
+        current = nextCamera;
+        if (camSelect) {
+          const hasCamera = Array.from(camSelect.options || []).some(
+            (opt) => opt.value === nextCamera,
+          );
+          if (hasCamera) camSelect.value = nextCamera;
+        }
+        stopRotationTimer();
+        rotationTimer = setTimeout(() => {
+          play(root);
+        }, ROTATION_DWELL_MS);
+      } else {
+        current = root;
       }
-      scheduleForcedAllRotatorTick();
+    } else {
+      stopRotationTimer();
+      rotationRoot = null;
+      current = selection;
     }
-    maybeWarmSelection(name);
-    syncLiveContext(name);
+
+    maybeWarmSelection(selection);
+    syncLiveContext(selection);
     hideBounce();
     const streamToken = ++activeStreamToken;
 
@@ -1683,25 +1705,25 @@ export function initTilePlayer() {
     if (liveQuality === "auto") liveAutoStage = "first";
     setLiveAction("", null);
 
-    if (shouldUseLiveVideo(name)) {
-      playLiveVideo(name, streamToken);
+    if (shouldUseLiveVideo(selection)) {
+      playLiveVideo(selection, streamToken);
       return;
     }
 
     const usePng = refreshSeconds > 1;
-    if (name === "All") {
+    if (selection === "All") {
       usePng
         ? playPng("all", false, streamToken)
         : playMjpg("all", false, streamToken);
-    } else if (name.startsWith("group-")) {
-      const group = name.slice(6);
+    } else if (selection.startsWith("group-")) {
+      const group = selection.slice(6);
       usePng
         ? playPng(group, false, streamToken)
         : playMjpg(group, false, streamToken);
     } else {
       usePng
-        ? playPng(name, true, streamToken)
-        : playMjpg(name, true, streamToken);
+        ? playPng(selection, true, streamToken)
+        : playMjpg(selection, true, streamToken);
     }
   }
 
