@@ -63,6 +63,7 @@ export function initTilePlayer() {
   const singleCamera = realCameras.length === 1 ? realCameras[0] : "";
   const urlParams = new URLSearchParams(window.location.search || "");
   const forceAllRotator = urlParams.get("rotator") === "all";
+  const FORCED_ALL_ROTATOR_MS = 6000;
   let current = forceAllRotator
     ? "All"
     : preferredCamera && window.templateDetails?.[preferredCamera]
@@ -615,6 +616,8 @@ export function initTilePlayer() {
   let backendCheckTimer = null;
   let backendWasDown = false;
   let backendConsecutiveFails = 0;
+  let forcedAllRotatorTimer = null;
+  let forcedAllRotatorIndex = -1;
 
   const STREAM_RECOVER_MAX_DELAY_MS = 12000;
   const BACKEND_HEALTH_POLL_MS = 4000;
@@ -623,6 +626,43 @@ export function initTilePlayer() {
   function setSpeedControlsVisible(visible) {
     if (!speedContainer) return;
     speedContainer.style.display = visible ? "" : "none";
+  }
+
+  function getForcedAllRotatorCameras() {
+    return Object.keys(window.templateDetails || {})
+      .filter((name) => name && name !== "All")
+      .sort((a, b) => a.localeCompare(b));
+  }
+
+  function stopForcedAllRotator() {
+    if (forcedAllRotatorTimer) {
+      clearTimeout(forcedAllRotatorTimer);
+      forcedAllRotatorTimer = null;
+    }
+  }
+
+  function scheduleForcedAllRotatorTick() {
+    if (!forceAllRotator) return;
+    stopForcedAllRotator();
+    forcedAllRotatorTimer = setTimeout(() => {
+      if (!forceAllRotator) return;
+      const cams = getForcedAllRotatorCameras();
+      if (!cams.length) return;
+
+      forcedAllRotatorIndex = (forcedAllRotatorIndex + 1) % cams.length;
+      const nextCamera = cams[forcedAllRotatorIndex];
+      if (!nextCamera) return;
+
+      if (camSelect) {
+        const hasCamera = Array.from(camSelect.options || []).some(
+          (opt) => opt.value === nextCamera,
+        );
+        if (hasCamera) camSelect.value = nextCamera;
+      }
+      current = nextCamera;
+      syncLiveContext(nextCamera);
+      play(nextCamera);
+    }, FORCED_ALL_ROTATOR_MS);
   }
 
   function updateSpeedLabel() {
@@ -1626,6 +1666,14 @@ export function initTilePlayer() {
   function play(name) {
     if (!name) return;
     current = name;
+    if (forceAllRotator) {
+      const cams = getForcedAllRotatorCameras();
+      if (cams.length) {
+        const idx = cams.indexOf(current);
+        if (idx >= 0) forcedAllRotatorIndex = idx;
+      }
+      scheduleForcedAllRotatorTick();
+    }
     maybeWarmSelection(name);
     syncLiveContext(name);
     hideBounce();
