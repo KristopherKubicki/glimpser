@@ -24,6 +24,31 @@ function sendClientBeacon(event, data) {
   }
 }
 
+if (!window.__glimpserErrorBeaconInstalled) {
+  window.__glimpserErrorBeaconInstalled = true;
+  window.addEventListener("error", (e) => {
+    try {
+      sendClientBeacon("client_error", {
+        message: String(e?.message || ""),
+        filename: String(e?.filename || ""),
+        lineno: Number(e?.lineno || 0),
+        colno: Number(e?.colno || 0),
+      });
+    } catch (_) {
+      // ignore
+    }
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    try {
+      sendClientBeacon("client_rejection", {
+        reason: String(e?.reason || ""),
+      });
+    } catch (_) {
+      // ignore
+    }
+  });
+}
+
 export function adjustFullHeight() {
   const container = document.querySelector(".video-container.full-height");
   if (!container) return;
@@ -1865,7 +1890,12 @@ export function initTilePlayer() {
 
 document.addEventListener("DOMContentLoaded", () => {
   adjustFullHeight();
-  initTilePlayer();
+  try {
+    initTilePlayer();
+  } catch (err) {
+    sendClientBeacon("init_exception", { message: String(err || "") });
+    throw err;
+  }
 });
 window.addEventListener("resize", adjustFullHeight);
 
