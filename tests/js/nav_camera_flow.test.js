@@ -58,5 +58,5 @@ test("camera dropdown includes all rotator and navigates to /live", async () => 
 
   cam.value = "__all_rotator__";
   cam.dispatchEvent(new Event("change"));
-  expect(window.location.href).toBe("/live");
+  expect(window.location.href).toBe("/live?rotator=all");
 });

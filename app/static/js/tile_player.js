@@ -61,8 +61,11 @@ export function initTilePlayer() {
     (name) => name !== "All",
   );
   const singleCamera = realCameras.length === 1 ? realCameras[0] : "";
-  let current =
-    preferredCamera && window.templateDetails?.[preferredCamera]
+  const urlParams = new URLSearchParams(window.location.search || "");
+  const forceAllRotator = urlParams.get("rotator") === "all";
+  let current = forceAllRotator
+    ? "All"
+    : preferredCamera && window.templateDetails?.[preferredCamera]
       ? preferredCamera
       : preferredGroup && preferredGroup !== "all"
         ? `group-${preferredGroup}`
@@ -71,6 +74,17 @@ export function initTilePlayer() {
           : camSelect && camSelect.value
             ? camSelect.value
             : "All";
+
+  if (forceAllRotator) {
+    window.currentCamera = null;
+    window.currentGroup = null;
+    if (camSelect) {
+      const hasAll = Array.from(camSelect.options || []).some(
+        (opt) => opt.value === "All",
+      );
+      if (hasAll) camSelect.value = "All";
+    }
+  }
 
   function syncLiveContext(selection) {
     let camera = null;

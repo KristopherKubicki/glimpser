@@ -192,7 +192,7 @@ export function initNav() {
           currentCamera = null;
           currentGroup = null;
           updateLiveLinkHref();
-          window.location.href = "/live";
+          window.location.href = "/live?rotator=all";
           return;
         }
 
