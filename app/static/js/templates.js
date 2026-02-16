@@ -298,26 +298,50 @@ export function initTemplates() {
           MAX_THUMBNAIL_HEIGHT,
         );
         document.documentElement.style.setProperty("--tile-size", `${value}px`);
+        // In wall-layout mode, tile sizing is controlled by the CSS grid tracks (1fr columns)
+        // and each tile's `aspect-ratio`. Setting explicit pixel widths/heights here can cause
+        // subtle clipping/overlap on some displays due to rounding differences.
+        const isWallLayout = templateList.dataset.wallLayout === "1";
         templateList.querySelectorAll(".templateDiv").forEach((div) => {
-          div.style.width = `${value}px`;
-          div.style.height = `${height}px`;
+          if (isWallLayout) {
+            div.style.width = "";
+            div.style.height = "";
+          } else {
+            div.style.width = `${value}px`;
+            div.style.height = `${height}px`;
+          }
         });
 
-        const scale = value / 360;
-        const cameraNameFontSize = Math.max(6, 14 * scale);
-        const timestampFontSize = Math.max(6, 12 * scale);
-        document.documentElement.style.setProperty(
-          "--tile-scale",
-          scale.toString(),
-        );
-        document.documentElement.style.setProperty(
-          "--camera-name-font-size",
-          `${cameraNameFontSize}px`,
-        );
-        document.documentElement.style.setProperty(
-          "--timestamp-font-size",
-          `${timestampFontSize}px`,
-        );
+        // Use the actual rendered tile width for font scaling when in wall-layout mode.
+        const applyScaleFromWidth = (tileWidthPx) => {
+          const scale = tileWidthPx / 360;
+          const cameraNameFontSize = Math.max(6, 14 * scale);
+          const timestampFontSize = Math.max(6, 12 * scale);
+          document.documentElement.style.setProperty(
+            "--tile-scale",
+            scale.toString(),
+          );
+          document.documentElement.style.setProperty(
+            "--camera-name-font-size",
+            `${cameraNameFontSize}px`,
+          );
+          document.documentElement.style.setProperty(
+            "--timestamp-font-size",
+            `${timestampFontSize}px`,
+          );
+        };
+
+        if (isWallLayout) {
+          // Wait a frame so the grid can settle before measuring.
+          requestAnimationFrame(() => {
+            const firstTile = templateList.querySelector(".templateDiv");
+            const measured =
+              firstTile?.getBoundingClientRect?.().width || value;
+            applyScaleFromWidth(measured);
+          });
+        } else {
+          applyScaleFromWidth(value);
+        }
         applyCaptionVisibility(value);
         updateTableLayout(value);
       };

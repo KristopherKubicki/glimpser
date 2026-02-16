@@ -191,6 +191,8 @@ body.templates-screen #template-list::-webkit-scrollbar {
 body.templates-wall #template-list {
   overflow: hidden;
   place-content: start stretch;
+  padding: 0;
+  gap: 2px;
 }
 
 body.templates-wall .templateDiv {
@@ -521,6 +523,7 @@ select:hover {
   position: relative;
   border-radius: 5px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
   flex: 0 0 var(--tile-size);
   width: var(--tile-size);
   aspect-ratio: 16 / 9;
