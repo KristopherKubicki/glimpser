@@ -84,6 +84,7 @@ export function initTilePlayer() {
   if (!video) return;
   video.addEventListener("contextmenu", (e) => e.preventDefault());
   const source = video.querySelector("source");
+  const hasClipSource = Boolean(source && source.src);
   const camSelect =
     document.getElementById("camera-selector") ||
     document.getElementById("nav-camera-dropdown");
@@ -860,7 +861,6 @@ export function initTilePlayer() {
 
   const LIVE_CLASS = "live-mode";
   const IDLE_DELAY = 30000;
-  const hasClipSource = Boolean(source && source.src);
   const CLIP_DURATION_SEC = 120;
   const CLIP_LOOP_COUNT = 3;
   const LIVE_CONNECT_TIMEOUT_MS = 5000;
