@@ -77,6 +77,93 @@ template_form, settings_row with context %} {% block content %}
     </a>
   </div>
 
+
+
+  {% call card('Display Comfort') %}
+  <div id="comfort-settings">
+    <p>
+      These controls are stored in your browser (local settings) and help reduce
+      eye strain on big screens.
+    </p>
+
+    <h3 class="comfort-heading">Idle Dimmer</h3>
+    <div class="checkbox-row">
+      <span>Enable</span>
+      <label class="switch" title="Dim the screen when idle">
+        <input id="comfort-idle-enabled" type="checkbox" />
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="comfort-row">
+      <label for="comfort-idle-seconds" class="comfort-label">Idle after</label>
+      <input id="comfort-idle-seconds" type="range" />
+      <span id="comfort-idle-seconds-val" class="comfort-value"></span>
+      <span class="comfort-suffix">sec</span>
+    </div>
+
+    <div class="comfort-row">
+      <label for="comfort-dim-opacity" class="comfort-label">Dim strength</label>
+      <input id="comfort-dim-opacity" type="range" />
+      <span id="comfort-dim-opacity-val" class="comfort-value"></span>
+    </div>
+
+    <div class="comfort-row">
+      <label for="comfort-brighten-ms" class="comfort-label">Wake fade</label>
+      <input id="comfort-brighten-ms" type="range" />
+      <span id="comfort-brighten-ms-val" class="comfort-value"></span>
+      <span class="comfort-suffix">ms</span>
+    </div>
+
+    <h3 class="comfort-heading">Tint</h3>
+    <div class="checkbox-row">
+      <span>Enable</span>
+      <label class="switch" title="Apply a gentle tint to reduce harsh contrast">
+        <input id="comfort-tint-enabled" type="checkbox" />
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="checkbox-row">
+      <span>Auto at night</span>
+      <label class="switch" title="Enable tint only at night">
+        <input id="comfort-tint-auto-night" type="checkbox" />
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="comfort-row">
+      <label for="comfort-tint-color" class="comfort-label">Color</label>
+      <select id="comfort-tint-color" class="sm-select" title="Tint color">
+        <option value="warm">Warm</option>
+        <option value="cool">Cool</option>
+        <option value="neutral">Neutral</option>
+        <option value="dark">Dark</option>
+      </select>
+    </div>
+
+    <div class="comfort-row">
+      <label for="comfort-tint-opacity" class="comfort-label">Strength</label>
+      <input id="comfort-tint-opacity" type="range" />
+      <span id="comfort-tint-opacity-val" class="comfort-value"></span>
+    </div>
+
+    <h3 class="comfort-heading">Live Flash Guard</h3>
+    <div class="checkbox-row">
+      <span>Enable</span>
+      <label class="switch" title="Reduce harsh brightness flashes when switching cameras">
+        <input id="comfort-flash-guard-enabled" type="checkbox" />
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="comfort-row">
+      <label for="comfort-flash-target-luma" class="comfort-label">Target brightness</label>
+      <input id="comfort-flash-target-luma" type="range" />
+      <span id="comfort-flash-target-luma-val" class="comfort-value"></span>
+    </div>
+  </div>
+  {% endcall %}
   <form
     method="POST"
     action="{{ url_for('ui.settings') }}"

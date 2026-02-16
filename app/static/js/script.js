@@ -31,6 +31,7 @@ import { initUnsavedIndicator } from "./unsaved.js";
 import { initVideoZoom } from "./zoom.js";
 import { initSearchShortcut } from "./search_shortcut.js";
 import { initUrlTester } from "./url_test.js";
+import { initComfort } from "./comfort.js";
 
 function initGuestGuard() {
   if (!window.IS_LAN_GUEST) return;
@@ -86,4 +87,5 @@ initVideoZoom();
 initSearchShortcut();
 initHotkeys();
 initUrlTester();
+initComfort();
 initGuestGuard();
