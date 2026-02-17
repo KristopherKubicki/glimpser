@@ -5,6 +5,7 @@ import io
 import json
 import logging
 import os
+import re
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -1554,19 +1555,87 @@ def create_blueprint() -> Blueprint:
         """Google Home / Nest camera integration status page."""
 
         from app.utils import google_sdm
+        from app.utils.google_sdm_profiles import list_profile_names, resolve_profile
 
-        configured = google_sdm.configured()
-        refresh_token = routes.config.get_setting("GOOGLE_SDM_REFRESH_TOKEN", "")
-        connected = bool(refresh_token)
+        profile_names = list_profile_names()
+        profiles = ["default", *[p for p in profile_names if p != "default"]]
+
+        selected = (request.args.get("profile") or "").strip() or "default"
+        if selected not in profiles:
+            selected = "default"
+
+        prof = resolve_profile(selected)
+        configured = bool(google_sdm.configured(selected))
+        connected = bool(prof and prof.refresh_token)
 
         return render_template(
             "google_home.html",
             configured=configured,
             connected=connected,
-            project_id=routes.config.get_setting("GOOGLE_SDM_PROJECT_ID", ""),
-            redirect_uri=routes.config.get_setting("GOOGLE_SDM_REDIRECT_URI", ""),
+            profiles=profiles,
+            selected_profile=selected,
+            project_id=(prof.project_id if prof else ""),
+            redirect_uri=(prof.redirect_uri if prof else ""),
+            client_id=(prof.client_id if prof else ""),
             page_title="Google Home",
         )
+
+    @bp.route(
+        "/integrations/google/profile",
+        methods=["POST"],
+        endpoint="google_home_profile",
+    )
+    @routes.login_required
+    def google_home_profile():
+        """Create/update a Google SDM profile in GOOGLE_SDM_PROFILES."""
+
+        profile = (request.form.get("profile") or "").strip().lower()
+        if not profile:
+            routes.flash("Profile name is required.", "error")
+            return redirect(url_for("ui.google_home"))
+
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,31}", profile):
+            routes.flash(
+                "Invalid profile name. Use 1-32 chars: a-z, 0-9, '_' or '-'.",
+                "error",
+            )
+            return redirect(url_for("ui.google_home"))
+
+        project_id = (request.form.get("project_id") or "").strip()
+        client_id = (request.form.get("client_id") or "").strip()
+        client_secret = (request.form.get("client_secret") or "").strip()
+        redirect_uri = (request.form.get("redirect_uri") or "").strip()
+
+        raw = routes.config.get_setting("GOOGLE_SDM_PROFILES", "") or ""
+        try:
+            payload = routes.json.loads(raw) if str(raw).strip() else {}
+        except Exception:
+            payload = {}
+        if not isinstance(payload, dict):
+            payload = {}
+
+        existing = payload.get(profile)
+        if not isinstance(existing, dict):
+            existing = {}
+
+        # Preserve secrets/tokens unless explicitly replaced.
+        if not client_secret:
+            client_secret = str(existing.get("client_secret") or "").strip()
+        refresh_token = str(existing.get("refresh_token") or "").strip()
+
+        payload[profile] = {
+            "project_id": project_id,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "redirect_uri": redirect_uri,
+            "refresh_token": refresh_token,
+        }
+
+        routes.update_setting(
+            "GOOGLE_SDM_PROFILES", routes.json.dumps(payload), restart=False
+        )
+        routes.flash(f"Saved Google SDM profile '{profile}'.", "success")
+        return redirect(url_for("ui.google_home", profile=profile))
 
     @bp.route("/integrations/google/connect", endpoint="google_home_connect")
     @routes.login_required
@@ -1577,9 +1646,18 @@ def create_blueprint() -> Blueprint:
 
         from app.utils import google_sdm
 
+        profile = (request.args.get("profile") or "").strip() or "default"
+        if not google_sdm.configured(profile):
+            routes.flash(
+                f"Google SDM profile '{profile}' is not configured yet.",
+                "error",
+            )
+            return redirect(url_for("ui.google_home", profile=profile))
+
         state = secrets.token_urlsafe(24)
         session["google_oauth_state"] = state
-        return redirect(google_sdm.build_oauth_authorize_url(state))
+        session["google_oauth_profile"] = profile
+        return redirect(google_sdm.build_oauth_authorize_url(state, profile))
 
     @bp.route("/integrations/google/callback", endpoint="google_home_callback")
     @routes.login_required
@@ -1591,26 +1669,47 @@ def create_blueprint() -> Blueprint:
         code = (request.args.get("code") or "").strip()
         state = (request.args.get("state") or "").strip()
         expected = (session.get("google_oauth_state") or "").strip()
+        profile = (session.get("google_oauth_profile") or "").strip() or "default"
+
         session.pop("google_oauth_state", None)
+        session.pop("google_oauth_profile", None)
 
         if not code:
             routes.flash("Google OAuth callback missing code", "error")
-            return redirect(url_for("ui.google_home"))
+            return redirect(url_for("ui.google_home", profile=profile))
 
         if not expected or not state or state != expected:
             routes.flash("Google OAuth state mismatch; please try again", "error")
-            return redirect(url_for("ui.google_home"))
+            return redirect(url_for("ui.google_home", profile=profile))
 
         try:
             refresh, access, expires_in = google_sdm.exchange_code_for_refresh_token(
-                code
+                code, profile
             )
         except Exception as exc:
             routes.flash(f"Google OAuth failed: {exc}", "error")
-            return redirect(url_for("ui.google_home"))
+            return redirect(url_for("ui.google_home", profile=profile))
 
         # Persist refresh token (no restart required).
-        routes.update_setting("GOOGLE_SDM_REFRESH_TOKEN", str(refresh), restart=False)
+        raw_profiles = routes.config.get_setting("GOOGLE_SDM_PROFILES", "") or ""
+        try:
+            payload = (
+                routes.json.loads(raw_profiles) if str(raw_profiles).strip() else {}
+            )
+        except Exception:
+            payload = {}
+        if not isinstance(payload, dict):
+            payload = {}
+
+        prof_data = payload.get(profile)
+        if not isinstance(prof_data, dict):
+            prof_data = {}
+        prof_data["refresh_token"] = str(refresh)
+        payload[profile] = prof_data
+
+        routes.update_setting(
+            "GOOGLE_SDM_PROFILES", routes.json.dumps(payload), restart=False
+        )
         routes.update_setting(
             "GOOGLE_SDM_CONNECTED_AT",
             datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
@@ -1620,13 +1719,13 @@ def create_blueprint() -> Blueprint:
         # Warm the in-process cache for immediate use.
         try:
             google_sdm.clear_cached_tokens()
-            _ = access  # access token returned; cache will refresh on demand
+            _ = access
             _ = expires_in
         except Exception:
             pass
 
         routes.flash("Google Home connected. You can now import cameras.", "success")
-        return redirect(url_for("ui.google_home_devices"))
+        return redirect(url_for("ui.google_home_devices", profile=profile))
 
     @bp.route(
         "/integrations/google/disconnect",
@@ -1639,10 +1738,25 @@ def create_blueprint() -> Blueprint:
 
         from app.utils import google_sdm
 
-        routes.update_setting("GOOGLE_SDM_REFRESH_TOKEN", "", restart=False)
+        profile = (request.args.get("profile") or "").strip() or "default"
+        raw_profiles = routes.config.get_setting("GOOGLE_SDM_PROFILES", "") or ""
+
+        if str(raw_profiles).strip():
+            try:
+                payload = routes.json.loads(raw_profiles)
+            except Exception:
+                payload = {}
+            if isinstance(payload, dict) and isinstance(payload.get(profile), dict):
+                payload[profile]["refresh_token"] = ""
+                routes.update_setting(
+                    "GOOGLE_SDM_PROFILES", routes.json.dumps(payload), restart=False
+                )
+        else:
+            routes.update_setting("GOOGLE_SDM_REFRESH_TOKEN", "", restart=False)
+
         google_sdm.clear_cached_tokens()
         routes.flash("Google Home disconnected.", "success")
-        return redirect(url_for("ui.google_home"))
+        return redirect(url_for("ui.google_home", profile=profile))
 
     def _sdm_device_id(device: dict) -> str | None:
         name = str(device.get("name") or "")
@@ -1656,33 +1770,52 @@ def create_blueprint() -> Blueprint:
         custom = str(info.get("customName") or "").strip()
         if custom:
             return custom
+
         rel = device.get("parentRelations") or []
-        if rel and isinstance(rel[0], dict):
-            dn = str(rel[0].get("displayName") or "").strip()
+        for item in rel:
+            if not isinstance(item, dict):
+                continue
+            dn = str(item.get("displayName") or "").strip()
             if dn:
                 return dn
+
         return str(device.get("type") or "Camera").split(".")[-1] or "Camera"
+
+    def _sdm_structure_room(device: dict) -> tuple[str, str]:
+        struct = ""
+        room = ""
+        rel = device.get("parentRelations") or []
+        for item in rel:
+            if not isinstance(item, dict):
+                continue
+            rtype = str(item.get("relationType") or "").strip().upper()
+            dn = str(item.get("displayName") or "").strip()
+            if rtype == "STRUCTURE" and dn:
+                struct = dn
+            elif rtype == "ROOM" and dn:
+                room = dn
+        return struct, room
 
     def _make_template_name(base: str, existing: set[str]) -> str:
         # Allowed: letters/digits/_-. and max len 32.
-        cleaned = []
+        cleaned: list[str] = []
         for ch in base:
             if ch.isalnum() or ch in "_-.":
                 cleaned.append(ch)
             elif ch.isspace():
                 cleaned.append("_")
-        name = "".join(cleaned).strip("-_.")
+        name = "".join(cleaned).strip("-_ .")
         name = name.replace("__", "_").replace("--", "-")
         if not name:
             name = "GoogleCam"
-        # Ensure <=32 and unique.
+
         name = name[:32]
         if name in existing:
             stem = name
             i = 2
             while True:
                 suffix = f"-{i}"
-                candidate = (stem[: 32 - len(suffix)] + suffix).rstrip("-_.")
+                candidate = (stem[: 32 - len(suffix)] + suffix).rstrip("-_ .")
                 if candidate and candidate not in existing:
                     name = candidate
                     break
@@ -1700,6 +1833,9 @@ def create_blueprint() -> Blueprint:
         """List Google SDM devices and import cameras."""
 
         from app.utils import google_sdm
+        from app.utils.google_sdm_profiles import resolve_profile
+
+        profile = (request.args.get("profile") or "").strip() or "default"
 
         if request.method == "POST":
             device_ids = request.form.getlist("device_id")
@@ -1716,13 +1852,13 @@ def create_blueprint() -> Blueprint:
                 did = str(did).strip()
                 if not did:
                     continue
-                # Try to pick a human-ish name if we have it in the hidden label map.
+
                 label = (request.form.get(f"label_{did}") or "GoogleCam").strip()
                 tname = _make_template_name(label, existing_names)
                 ok = routes.template_manager.save_template(
                     tname,
                     {
-                        "url": f"sdm://{did}",
+                        "url": f"sdm://{profile}/{did}",
                         "groups": group,
                         "frequency": frequency,
                         "headless": False,
@@ -1738,43 +1874,53 @@ def create_blueprint() -> Blueprint:
                 routes.flash(f"Imported {imported} Google Home camera(s).", "success")
             else:
                 routes.flash("No cameras imported.", "info")
-            return redirect(url_for("ui.google_home_devices"))
+            return redirect(url_for("ui.google_home_devices", profile=profile))
 
-        if not google_sdm.configured():
-            routes.flash("Google SDM is not configured yet.", "error")
-            return redirect(url_for("ui.google_home"))
+        if not google_sdm.configured(profile):
+            routes.flash(
+                f"Google SDM profile '{profile}' is not configured yet.", "error"
+            )
+            return redirect(url_for("ui.google_home", profile=profile))
 
-        if not routes.config.get_setting("GOOGLE_SDM_REFRESH_TOKEN", ""):
-            routes.flash("Google Home is not connected yet.", "error")
-            return redirect(url_for("ui.google_home"))
+        prof = resolve_profile(profile)
+        if not (prof and prof.refresh_token):
+            routes.flash(
+                f"Google SDM profile '{profile}' is not connected yet.", "error"
+            )
+            return redirect(url_for("ui.google_home", profile=profile))
 
         try:
-            devices = google_sdm.list_devices()
+            devices = google_sdm.list_devices(profile)
         except Exception as exc:
             routes.flash(f"Failed to list Google devices: {exc}", "error")
             devices = []
 
-        camera_rows = []
+        camera_rows: list[dict[str, object]] = []
         for dev in devices:
             did = _sdm_device_id(dev)
             if not did:
                 continue
+
             traits = dev.get("traits") or {}
             has_stream = "sdm.devices.traits.CameraLiveStream" in traits
+            struct, room = _sdm_structure_room(dev)
             camera_rows.append(
                 {
                     "device_id": did,
                     "label": _sdm_device_label(dev),
                     "type": dev.get("type") or "",
                     "has_stream": bool(has_stream),
+                    "structure": struct,
+                    "room": room,
                 }
             )
 
-        camera_rows.sort(key=lambda r: (not r["has_stream"], r["label"].lower()))
+        camera_rows.sort(key=lambda r: (not r["has_stream"], str(r["label"]).lower()))
 
         return render_template(
             "google_home_devices.html",
             cameras=camera_rows,
+            profile=profile,
             page_title="Google Home Cameras",
         )
 

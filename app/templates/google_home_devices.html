@@ -5,15 +5,17 @@
   <div class="card">
     <h2>Google Home Cameras</h2>
     <p>
-      Import SDM cameras into Glimpser as <code>sdm://&lt;device_id&gt;</code> templates.
+      Import SDM cameras into Glimpser as <code>sdm://&lt;profile&gt;/&lt;device_id&gt;</code> templates.
       Streams are short-lived; Glimpser resolves a fresh RTSP URL at capture time.
     </p>
+    <p>Profile: <code>{{ profile }}</code></p>
 
     {% if not cameras %}
       <p>No devices found (or SDM access not enabled for cameras).</p>
-      <a class="btn" href="{{ url_for('ui.google_home') }}">Back</a>
+      <a class="btn" href="{{ url_for('ui.google_home', profile=profile) }}">Back</a>
     {% else %}
-      <form method="POST" action="{{ url_for('ui.google_home_devices') }}">
+      <form method="POST" action="{{ url_for('ui.google_home_devices', profile=profile) }}">
+        <input type="hidden" name="profile" value="{{ profile }}" />
         <div style="display:flex; gap: 12px; flex-wrap: wrap; align-items: end; margin: 12px 0;">
           <label>
             Group
@@ -24,7 +26,7 @@
             <input type="number" name="frequency" value="2" min="1" max="525600" style="width: 120px;" />
           </label>
           <button type="submit" class="btn">Import Selected</button>
-          <a class="btn" href="{{ url_for('ui.google_home') }}">Back</a>
+          <a class="btn" href="{{ url_for('ui.google_home', profile=profile) }}">Back</a>
         </div>
 
         <table class="settings-table" style="width:100%;">
@@ -33,6 +35,8 @@
               <th style="width: 60px;">Import</th>
               <th>Name</th>
               <th style="width: 180px;">Stream</th>
+              <th style="width: 200px;">Structure</th>
+              <th style="width: 200px;">Room</th>
               <th style="width: 320px;">Device ID</th>
             </tr>
           </thead>
@@ -54,6 +58,8 @@
                     <span title="No live stream trait detected">No</span>
                   {% endif %}
                 </td>
+                <td><code>{{ cam.structure or '' }}</code></td>
+                <td><code>{{ cam.room or '' }}</code></td>
                 <td><code>{{ cam.device_id }}</code></td>
               </tr>
             {% endfor %}

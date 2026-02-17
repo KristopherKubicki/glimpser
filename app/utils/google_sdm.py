@@ -33,7 +33,7 @@ from urllib.parse import urlencode
 
 import requests
 
-from app import config
+from app.utils.google_sdm_profiles import resolve_profile
 
 _AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 _TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -54,8 +54,8 @@ class GoogleSdmError(RuntimeError):
 
 
 _access_lock = threading.Lock()
-_access_token: str | None = None
-_access_expires_at: datetime.datetime | None = None
+_access_token: dict[str, str] = {}
+_access_expires_at: dict[str, datetime.datetime] = {}
 
 _resolve_lock = threading.Lock()
 _resolved_rtsp_cache: dict[str, SdmRtspStream] = {}
@@ -66,28 +66,31 @@ def _now_utc() -> datetime.datetime:
     return datetime.datetime.now(datetime.UTC)
 
 
-def _setting(name: str, default: str | None = None) -> str | None:
-    return config.get_setting(name, default)
+def _profile(name: str | None):
+    prof = resolve_profile(name)
+    if not prof:
+        raise GoogleSdmError("Google SDM profile is not configured")
+    return prof
 
 
-def configured() -> bool:
+def configured(profile: str | None = None) -> bool:
+    prof = resolve_profile(profile)
+    if not prof:
+        return False
     return bool(
-        _setting("GOOGLE_SDM_CLIENT_ID")
-        and _setting("GOOGLE_SDM_CLIENT_SECRET")
-        and _setting("GOOGLE_SDM_PROJECT_ID")
-        and _setting("GOOGLE_SDM_REDIRECT_URI")
+        prof.client_id and prof.client_secret and prof.project_id and prof.redirect_uri
     )
 
 
-def build_oauth_authorize_url(state: str) -> str:
+def build_oauth_authorize_url(state: str, profile: str | None = None) -> str:
     """Return the OAuth authorize URL."""
 
-    if not configured():
+    if not configured(profile):
         raise GoogleSdmError("Google SDM is not configured")
 
     params = {
-        "client_id": _setting("GOOGLE_SDM_CLIENT_ID"),
-        "redirect_uri": _setting("GOOGLE_SDM_REDIRECT_URI"),
+        "client_id": _profile(profile).client_id,
+        "redirect_uri": _profile(profile).redirect_uri,
         "response_type": "code",
         "scope": _SDM_SCOPE,
         "access_type": "offline",
@@ -98,18 +101,20 @@ def build_oauth_authorize_url(state: str) -> str:
     return f"{_AUTH_URL}?{urlencode(params)}"
 
 
-def exchange_code_for_refresh_token(code: str) -> tuple[str, str, int]:
+def exchange_code_for_refresh_token(
+    code: str, profile: str | None = None
+) -> tuple[str, str, int]:
     """Exchange an OAuth `code` for refresh+access tokens."""
 
-    if not configured():
+    if not configured(profile):
         raise GoogleSdmError("Google SDM is not configured")
 
     data = {
-        "client_id": _setting("GOOGLE_SDM_CLIENT_ID"),
-        "client_secret": _setting("GOOGLE_SDM_CLIENT_SECRET"),
+        "client_id": _profile(profile).client_id,
+        "client_secret": _profile(profile).client_secret,
         "code": code,
         "grant_type": "authorization_code",
-        "redirect_uri": _setting("GOOGLE_SDM_REDIRECT_URI"),
+        "redirect_uri": _profile(profile).redirect_uri,
     }
     resp = requests.post(_TOKEN_URL, data=data, timeout=20)
     if resp.status_code != 200:
@@ -125,14 +130,14 @@ def exchange_code_for_refresh_token(code: str) -> tuple[str, str, int]:
     return refresh, access, expires_in
 
 
-def _refresh_access_token() -> tuple[str, int]:
-    refresh = _setting("GOOGLE_SDM_REFRESH_TOKEN")
+def _refresh_access_token(profile: str | None = None) -> tuple[str, int]:
+    refresh = _profile(profile).refresh_token
     if not refresh:
         raise GoogleSdmError("Missing GOOGLE_SDM_REFRESH_TOKEN")
 
     data = {
-        "client_id": _setting("GOOGLE_SDM_CLIENT_ID"),
-        "client_secret": _setting("GOOGLE_SDM_CLIENT_SECRET"),
+        "client_id": _profile(profile).client_id,
+        "client_secret": _profile(profile).client_secret,
         "refresh_token": refresh,
         "grant_type": "refresh_token",
     }
@@ -149,21 +154,26 @@ def _refresh_access_token() -> tuple[str, int]:
     return access, expires_in
 
 
-def access_token() -> str:
+def access_token(profile: str | None = None) -> str:
     """Return a valid access token, refreshing if needed."""
 
     global _access_token, _access_expires_at
 
     with _access_lock:
-        if _access_token and _access_expires_at:
+        key = str(profile or "default")
+        token = _access_token.get(key)
+        exp = _access_expires_at.get(key)
+        if token and exp:
             # Refresh a bit early to avoid edge expiry.
-            if _access_expires_at - _now_utc() > datetime.timedelta(seconds=30):
-                return _access_token
+            if exp - _now_utc() > datetime.timedelta(seconds=30):
+                return token
 
-        access, expires_in = _refresh_access_token()
-        _access_token = access
-        _access_expires_at = _now_utc() + datetime.timedelta(seconds=int(expires_in))
-        return _access_token
+        access, expires_in = _refresh_access_token(profile)
+        _access_token[key] = access
+        _access_expires_at[key] = _now_utc() + datetime.timedelta(
+            seconds=int(expires_in)
+        )
+        return access
 
 
 def clear_cached_tokens() -> None:
@@ -174,25 +184,25 @@ def clear_cached_tokens() -> None:
 
     global _access_token, _access_expires_at
     with _access_lock:
-        _access_token = None
-        _access_expires_at = None
+        _access_token.clear()
+        _access_expires_at.clear()
 
     with _resolve_lock:
         _resolved_rtsp_cache.clear()
         _resolved_rtsp_reverse.clear()
 
 
-def _auth_headers() -> dict[str, str]:
-    return {"Authorization": f"Bearer {access_token()}"}
+def _auth_headers(profile: str | None = None) -> dict[str, str]:
+    return {"Authorization": f"Bearer {access_token(profile)}"}
 
 
-def list_devices() -> list[dict[str, Any]]:
-    project = _setting("GOOGLE_SDM_PROJECT_ID")
+def list_devices(profile: str | None = None) -> list[dict[str, Any]]:
+    project = _profile(profile).project_id
     if not project:
         raise GoogleSdmError("Missing GOOGLE_SDM_PROJECT_ID")
 
     url = f"{_SDM_BASE}/enterprises/{project}/devices"
-    resp = requests.get(url, headers=_auth_headers(), timeout=30)
+    resp = requests.get(url, headers=_auth_headers(profile), timeout=30)
     if resp.status_code != 200:
         raise GoogleSdmError(
             f"SDM list devices failed: {resp.status_code} {resp.text[:200]}"
@@ -201,14 +211,14 @@ def list_devices() -> list[dict[str, Any]]:
     return list(payload.get("devices") or [])
 
 
-def generate_rtsp_stream(device_name: str) -> SdmRtspStream:
+def generate_rtsp_stream(device_name: str, profile: str | None = None) -> SdmRtspStream:
     """Generate an RTSP stream URL for a given SDM `device_name`.
 
     `device_name` should be the full SDM resource name, for example:
     `enterprises/<project_id>/devices/<device_id>`.
     """
 
-    project = _setting("GOOGLE_SDM_PROJECT_ID")
+    project = _profile(profile).project_id
     if not project:
         raise GoogleSdmError("Missing GOOGLE_SDM_PROJECT_ID")
 
@@ -221,7 +231,7 @@ def generate_rtsp_stream(device_name: str) -> SdmRtspStream:
         "params": {},
     }
 
-    resp = requests.post(url, json=payload, headers=_auth_headers(), timeout=30)
+    resp = requests.post(url, json=payload, headers=_auth_headers(profile), timeout=30)
     if resp.status_code != 200:
         raise GoogleSdmError(
             f"SDM generate stream failed: {resp.status_code} {resp.text[:200]}"
@@ -248,13 +258,25 @@ def generate_rtsp_stream(device_name: str) -> SdmRtspStream:
     return SdmRtspStream(rtsp_url=str(rtsp_url), expires_at=expires_at)
 
 
-def parse_sdm_url(url: str) -> str | None:
-    """Return the SDM device id if `url` is `sdm://<device_id>`."""
+def parse_sdm_url(url: str) -> tuple[str | None, str | None]:
+    """Return (profile, device_id) when `url` is `sdm://...`.
+
+    Supported forms:
+    - `sdm://<device_id>` (legacy single-profile)
+    - `sdm://<profile>/<device_id>` (multi-project)
+    """
 
     if not url or not url.startswith("sdm://"):
-        return None
-    device_id = url[len("sdm://") :].strip("/")
-    return device_id or None
+        return None, None
+
+    rest = url[len("sdm://") :].strip("/")
+    if not rest:
+        return None, None
+
+    parts = [p for p in rest.split("/") if p]
+    if len(parts) == 1:
+        return None, parts[0]
+    return parts[0], parts[1]
 
 
 def stable_key_for_resolved_rtsp(rtsp_url: str) -> str | None:
@@ -273,7 +295,7 @@ def resolve_sdm_to_rtsp(stable_sdm_url: str) -> str | None:
     capture while still refreshing before expiry.
     """
 
-    device_id = parse_sdm_url(stable_sdm_url)
+    profile, device_id = parse_sdm_url(stable_sdm_url)
     if not device_id:
         return None
 
@@ -287,12 +309,12 @@ def resolve_sdm_to_rtsp(stable_sdm_url: str) -> str | None:
             # No expiry provided; reuse briefly.
             return cached.rtsp_url
 
-    project = _setting("GOOGLE_SDM_PROJECT_ID")
+    project = _profile(profile).project_id
     if not project:
         raise GoogleSdmError("Missing GOOGLE_SDM_PROJECT_ID")
 
     device_name = f"enterprises/{project}/devices/{device_id}"
-    stream = generate_rtsp_stream(device_name)
+    stream = generate_rtsp_stream(device_name, profile)
 
     with _resolve_lock:
         _resolved_rtsp_cache[stable_sdm_url] = stream
