@@ -6233,6 +6233,8 @@ def capture_screenshot_and_har(
 
     ##################
     # Non-Danger Mode
+    # Non-danger captures must never open a visible browser window.
+    headless = True
     ##################
     user_data_dir = None
     driver = None

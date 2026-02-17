@@ -206,3 +206,40 @@ class TestScreenshotCapture(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    @patch("app.utils.screenshots._finalize_screenshot", return_value=True)
+    @patch("app.utils.screenshots.launch_headless_chrome")
+    @patch("app.utils.screenshots.get_chrome_version", return_value=120)
+    @patch("app.utils.screenshots.get_chrome_path", return_value=sys.executable)
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
+    def test_capture_screenshot_forces_headless_non_danger(
+        self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
+    ):
+        class _FakeOptions:
+            def __init__(self):
+                self.args = []
+
+            def add_argument(self, arg):
+                self.args.append(arg)
+
+        fake_opts = _FakeOptions()
+
+        def _fake_options_ctor():
+            return fake_opts
+
+        mock_driver = MagicMock()
+        mock_launch.return_value = mock_driver
+        mock_driver.get.return_value = None
+        mock_driver.save_screenshot.return_value = True
+
+        with patch("app.utils.screenshots.Options", side_effect=_fake_options_ctor):
+            result = capture_screenshot_and_har(
+                "http://example.com",
+                self.output_path,
+                headless=False,
+                danger=False,
+            )
+
+        self.assertTrue(result)
+        self.assertTrue(any("--headless" in a for a in fake_opts.args))
+        mock_finalize.assert_called_once()
