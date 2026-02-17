@@ -3414,7 +3414,7 @@ def capture_or_download(name: str, template: dict) -> bool:
 
     # Disallow local file paths to avoid unintended file disclosure
     parsed = urlparse(url)
-    if parsed.scheme and parsed.scheme not in {"http", "https", "rtsp", "rtmp"}:
+    if parsed.scheme and parsed.scheme not in {"http", "https", "rtsp", "rtmp", "sdm"}:
         logging.error("Unsupported URL scheme: %s", parsed.scheme)
         _record_tier_failure(url, TIER_OFFLINE, "unsupported_scheme")
         return False
