@@ -1546,6 +1546,238 @@ def create_blueprint() -> Blueprint:
             routes.stream_with_context(generate()), mimetype="text/event-stream"
         )
 
+    # --- Integrations -------------------------------------------------------
+
+    @bp.route("/integrations/google", endpoint="google_home")
+    @routes.login_required
+    def google_home():
+        """Google Home / Nest camera integration status page."""
+
+        from app.utils import google_sdm
+
+        configured = google_sdm.configured()
+        refresh_token = routes.config.get_setting("GOOGLE_SDM_REFRESH_TOKEN", "")
+        connected = bool(refresh_token)
+
+        return render_template(
+            "google_home.html",
+            configured=configured,
+            connected=connected,
+            project_id=routes.config.get_setting("GOOGLE_SDM_PROJECT_ID", ""),
+            redirect_uri=routes.config.get_setting("GOOGLE_SDM_REDIRECT_URI", ""),
+            page_title="Google Home",
+        )
+
+    @bp.route("/integrations/google/connect", endpoint="google_home_connect")
+    @routes.login_required
+    def google_home_connect():
+        """Start OAuth flow for Google SDM."""
+
+        import secrets
+
+        from app.utils import google_sdm
+
+        state = secrets.token_urlsafe(24)
+        session["google_oauth_state"] = state
+        return redirect(google_sdm.build_oauth_authorize_url(state))
+
+    @bp.route("/integrations/google/callback", endpoint="google_home_callback")
+    @routes.login_required
+    def google_home_callback():
+        """OAuth callback endpoint for Google SDM."""
+
+        from app.utils import google_sdm
+
+        code = (request.args.get("code") or "").strip()
+        state = (request.args.get("state") or "").strip()
+        expected = (session.get("google_oauth_state") or "").strip()
+        session.pop("google_oauth_state", None)
+
+        if not code:
+            routes.flash("Google OAuth callback missing code", "error")
+            return redirect(url_for("ui.google_home"))
+
+        if not expected or not state or state != expected:
+            routes.flash("Google OAuth state mismatch; please try again", "error")
+            return redirect(url_for("ui.google_home"))
+
+        try:
+            refresh, access, expires_in = google_sdm.exchange_code_for_refresh_token(
+                code
+            )
+        except Exception as exc:
+            routes.flash(f"Google OAuth failed: {exc}", "error")
+            return redirect(url_for("ui.google_home"))
+
+        # Persist refresh token (no restart required).
+        routes.update_setting("GOOGLE_SDM_REFRESH_TOKEN", str(refresh), restart=False)
+        routes.update_setting(
+            "GOOGLE_SDM_CONNECTED_AT",
+            datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            restart=False,
+        )
+
+        # Warm the in-process cache for immediate use.
+        try:
+            google_sdm.clear_cached_tokens()
+            _ = access  # access token returned; cache will refresh on demand
+            _ = expires_in
+        except Exception:
+            pass
+
+        routes.flash("Google Home connected. You can now import cameras.", "success")
+        return redirect(url_for("ui.google_home_devices"))
+
+    @bp.route(
+        "/integrations/google/disconnect",
+        methods=["POST"],
+        endpoint="google_home_disconnect",
+    )
+    @routes.login_required
+    def google_home_disconnect():
+        """Disconnect Google SDM by removing stored refresh token."""
+
+        from app.utils import google_sdm
+
+        routes.update_setting("GOOGLE_SDM_REFRESH_TOKEN", "", restart=False)
+        google_sdm.clear_cached_tokens()
+        routes.flash("Google Home disconnected.", "success")
+        return redirect(url_for("ui.google_home"))
+
+    def _sdm_device_id(device: dict) -> str | None:
+        name = str(device.get("name") or "")
+        if "/devices/" not in name:
+            return None
+        return name.split("/devices/", 1)[-1].strip() or None
+
+    def _sdm_device_label(device: dict) -> str:
+        traits = device.get("traits") or {}
+        info = traits.get("sdm.devices.traits.Info") or {}
+        custom = str(info.get("customName") or "").strip()
+        if custom:
+            return custom
+        rel = device.get("parentRelations") or []
+        if rel and isinstance(rel[0], dict):
+            dn = str(rel[0].get("displayName") or "").strip()
+            if dn:
+                return dn
+        return str(device.get("type") or "Camera").split(".")[-1] or "Camera"
+
+    def _make_template_name(base: str, existing: set[str]) -> str:
+        # Allowed: letters/digits/_-. and max len 32.
+        cleaned = []
+        for ch in base:
+            if ch.isalnum() or ch in "_-.":
+                cleaned.append(ch)
+            elif ch.isspace():
+                cleaned.append("_")
+        name = "".join(cleaned).strip("-_.")
+        name = name.replace("__", "_").replace("--", "-")
+        if not name:
+            name = "GoogleCam"
+        # Ensure <=32 and unique.
+        name = name[:32]
+        if name in existing:
+            stem = name
+            i = 2
+            while True:
+                suffix = f"-{i}"
+                candidate = (stem[: 32 - len(suffix)] + suffix).rstrip("-_.")
+                if candidate and candidate not in existing:
+                    name = candidate
+                    break
+                i += 1
+        existing.add(name)
+        return name
+
+    @bp.route(
+        "/integrations/google/devices",
+        methods=["GET", "POST"],
+        endpoint="google_home_devices",
+    )
+    @routes.login_required
+    def google_home_devices():
+        """List Google SDM devices and import cameras."""
+
+        from app.utils import google_sdm
+
+        if request.method == "POST":
+            device_ids = request.form.getlist("device_id")
+            group = (
+                request.form.get("group") or "google_home"
+            ).strip() or "google_home"
+            frequency = int(request.form.get("frequency") or 2)
+
+            templates = routes.template_manager.get_templates()
+            existing_names = set(templates.keys())
+
+            imported = 0
+            for did in device_ids:
+                did = str(did).strip()
+                if not did:
+                    continue
+                # Try to pick a human-ish name if we have it in the hidden label map.
+                label = (request.form.get(f"label_{did}") or "GoogleCam").strip()
+                tname = _make_template_name(label, existing_names)
+                ok = routes.template_manager.save_template(
+                    tname,
+                    {
+                        "url": f"sdm://{did}",
+                        "groups": group,
+                        "frequency": frequency,
+                        "headless": False,
+                        "browser": False,
+                        "stealth": False,
+                        "dark": True,
+                    },
+                )
+                if ok:
+                    imported += 1
+
+            if imported:
+                routes.flash(f"Imported {imported} Google Home camera(s).", "success")
+            else:
+                routes.flash("No cameras imported.", "info")
+            return redirect(url_for("ui.google_home_devices"))
+
+        if not google_sdm.configured():
+            routes.flash("Google SDM is not configured yet.", "error")
+            return redirect(url_for("ui.google_home"))
+
+        if not routes.config.get_setting("GOOGLE_SDM_REFRESH_TOKEN", ""):
+            routes.flash("Google Home is not connected yet.", "error")
+            return redirect(url_for("ui.google_home"))
+
+        try:
+            devices = google_sdm.list_devices()
+        except Exception as exc:
+            routes.flash(f"Failed to list Google devices: {exc}", "error")
+            devices = []
+
+        camera_rows = []
+        for dev in devices:
+            did = _sdm_device_id(dev)
+            if not did:
+                continue
+            traits = dev.get("traits") or {}
+            has_stream = "sdm.devices.traits.CameraLiveStream" in traits
+            camera_rows.append(
+                {
+                    "device_id": did,
+                    "label": _sdm_device_label(dev),
+                    "type": dev.get("type") or "",
+                    "has_stream": bool(has_stream),
+                }
+            )
+
+        camera_rows.sort(key=lambda r: (not r["has_stream"], r["label"].lower()))
+
+        return render_template(
+            "google_home_devices.html",
+            cameras=camera_rows,
+            page_title="Google Home Cameras",
+        )
+
     @bp.route("/search_suggestions", endpoint="search_suggestions")
     @routes.login_required
     def search_suggestions():

@@ -220,7 +220,18 @@ template_form, settings_row with context %} {% block content %}
         title="Open XPath health report"
         >Open XPath Health Report</a
       >
-      {% endcall %} {% call card('Configuration
+      {% endcall %}
+
+      {% call card('Google Home Cameras') %}
+      <p>Connect Google SDM and import Google Home / Nest cameras.</p>
+      <a
+        href="{{ url_for('ui.google_home') }}"
+        class="doc-link"
+        title="Configure Google Home / Nest integration"
+        >Open Google Home Integration</a
+      >
+      {% endcall %}
+ {% call card('Configuration
       Management') %}
       <div class="checkbox-row">
         <span>Advanced Options</span>

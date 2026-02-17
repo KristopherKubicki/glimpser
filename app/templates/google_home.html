@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<main class="container settings-page">
+  <div class="card">
+    <h2>Google Home / Nest</h2>
+
+    {% if not configured %}
+      <p>
+        Google SDM is not configured yet. Add these settings on the Settings page
+        (Admin tab):
+      </p>
+      <ul>
+        <li><code>GOOGLE_SDM_PROJECT_ID</code></li>
+        <li><code>GOOGLE_SDM_CLIENT_ID</code></li>
+        <li><code>GOOGLE_SDM_CLIENT_SECRET</code></li>
+        <li><code>GOOGLE_SDM_REDIRECT_URI</code></li>
+      </ul>
+      <p>
+        Then return here and click Connect.
+      </p>
+    {% else %}
+      <p>
+        Project: <code>{{ project_id or '—' }}</code><br />
+        Redirect URI: <code>{{ redirect_uri or '—' }}</code>
+      </p>
+
+      {% if connected %}
+        <p>Status: <strong>Connected</strong></p>
+        <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+          <a class="btn" href="{{ url_for('ui.google_home_devices') }}">Discover / Import Cameras</a>
+          <form method="POST" action="{{ url_for('ui.google_home_disconnect') }}" style="display:inline;">
+            <button type="submit" class="btn" title="Disconnect Google Home">Disconnect</button>
+          </form>
+        </div>
+      {% else %}
+        <p>Status: <strong>Not connected</strong></p>
+        <a class="btn" href="{{ url_for('ui.google_home_connect') }}">Connect Google</a>
+      {% endif %}
+    {% endif %}
+  </div>
+</main>
+{% endblock %}

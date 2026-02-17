@@ -166,6 +166,22 @@ def access_token() -> str:
         return _access_token
 
 
+def clear_cached_tokens() -> None:
+    """Clear cached access tokens and resolved RTSP URLs.
+
+    Useful after disconnecting a Google account or rotating credentials.
+    """
+
+    global _access_token, _access_expires_at
+    with _access_lock:
+        _access_token = None
+        _access_expires_at = None
+
+    with _resolve_lock:
+        _resolved_rtsp_cache.clear()
+        _resolved_rtsp_reverse.clear()
+
+
 def _auth_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {access_token()}"}
 
