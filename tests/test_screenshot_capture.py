@@ -70,7 +70,14 @@ class TestScreenshotCapture(unittest.TestCase):
 
         self.assertTrue(result)
         mock_driver.find_elements.assert_called_once()
-        mock_driver.execute_script.assert_called_once()
+        # Popup removal + overlay stripping may both use execute_script.
+        self.assertGreaterEqual(mock_driver.execute_script.call_count, 1)
+        scripts = [
+            call.args[0]
+            for call in mock_driver.execute_script.call_args_list
+            if call.args
+        ]
+        self.assertTrue(any("arguments[0].remove" in script for script in scripts))
         mock_finalize.assert_called_once()
 
     @patch("app.utils.screenshots.webdriver.Chrome")

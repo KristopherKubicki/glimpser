@@ -1528,6 +1528,8 @@ def is_mostly_blank(
     blank_color=(255, 255, 255),
     text_std_threshold: int = 20,
     dark_threshold: int = 10,
+    highlight_threshold: int = 40,
+    highlight_ratio_threshold: float = 0.0005,
     edge_ratio: float = 0.05,
     edge_threshold: float = 0.02,
     entropy_threshold: float = 2.0,
@@ -1541,6 +1543,10 @@ def is_mostly_blank(
         blank_color: RGB color treated as "blank".
         text_std_threshold: Minimum global std-dev to consider text present.
         dark_threshold: Minimum luma value to avoid dark-frame detection.
+        highlight_threshold: Per-pixel luma threshold used to detect sparse highlights
+            (e.g., streetlights on night cams) so we don't misclassify real content as blank.
+        highlight_ratio_threshold: Minimum fraction of pixels above highlight_threshold to
+            consider a dark frame as having content.
         edge_ratio: Fractional border to ignore when analyzing content.
         edge_threshold: Minimum edge density to treat as non-blank.
         entropy_threshold: Minimum grayscale entropy to treat as non-blank.
@@ -1591,6 +1597,7 @@ def is_mostly_blank(
     gray_uint = np.clip(gray, 0, 255).astype(np.uint8)
     luma = float(gray.mean())
     gray_std = float(gray.std())
+    highlight_ratio = float((gray_uint >= highlight_threshold).mean())
 
     # ---------- 3.  “Edge density?”  ----------
     # Low edge density + low variance/entropy is a strong blank signal.
@@ -1600,12 +1607,23 @@ def is_mostly_blank(
 
     # ---------- 2.  “Flat image?”  ----------
     # Low global std-dev ≈ little structure / shapes
-    if gray_std < text_std_threshold and edge_density < edge_threshold:
+    # Allow sparse highlights (night cams) to pass through; a nearly-black frame with a
+    # few bright pixels can still be meaningful.
+    if (
+        gray_std < text_std_threshold
+        and edge_density < edge_threshold
+        and highlight_ratio < highlight_ratio_threshold
+    ):
         return True
 
     # ---------- 3.  “Too dark?”  ----------
     # Use perceptual luma so pure-dark blue isn’t mis-treated
-    if luma < dark_threshold and edge_density < edge_threshold:
+    # Don't classify night scenes as blank if they contain sparse highlights.
+    if (
+        luma < dark_threshold
+        and edge_density < edge_threshold
+        and highlight_ratio < highlight_ratio_threshold
+    ):
         return True
 
     # ---------- 4.  “Low entropy + low chroma?” ----------
@@ -6294,7 +6312,52 @@ def capture_screenshot_and_har(
         # If dedicated_selector is set, capture that region instead of full page
         if dedicated_selector:
             try:
-                element = driver.find_element(By.XPATH, dedicated_selector)
+                # Some pages (especially heavy JS sites) need a bit of time before
+                # the target element is present *and* laid out at its final size.
+                element = None
+                deadline = time.time() + min(12, max(0, timeout - 1))
+                last_exc = None
+                while time.time() < deadline:
+                    try:
+                        cand = driver.find_element(By.XPATH, dedicated_selector)
+                        tag = (
+                            driver.execute_script(
+                                "return arguments[0].tagName.toLowerCase();", cand
+                            )
+                            or ""
+                        )
+                        rect = getattr(cand, "rect", None) or {}
+                        w = float(rect.get("width") or 0)
+                        h = float(rect.get("height") or 0)
+                        if tag == "img":
+                            # Wait for images to actually load; otherwise screenshots
+                            # can be a single-color placeholder that triggers blank detection.
+                            try:
+                                loaded = bool(
+                                    driver.execute_script(
+                                        "return arguments[0].complete && arguments[0].naturalWidth > 100;",
+                                        cand,
+                                    )
+                                )
+                            except Exception:
+                                loaded = True
+                            if not loaded:
+                                time.sleep(0.75)
+                                element = cand
+                                continue
+                            # WeatherBug camera stills can start small and then expand;
+                            # wait briefly for a more useful layout.
+                            if w < 650 or h < 350:
+                                time.sleep(0.75)
+                                element = cand
+                                continue
+                        element = cand
+                        break
+                    except Exception as exc:
+                        last_exc = exc
+                        time.sleep(0.5)
+                if element is None and last_exc is not None:
+                    raise last_exc
                 driver.execute_script("arguments[0].scrollIntoView(true);", element)
                 time.sleep(1)
                 element.screenshot(partial_screenshot)
@@ -6320,12 +6383,38 @@ def capture_screenshot_and_har(
                         viewport_area = max(1, viewport_w * viewport_h)
                         shot_ratio = shot_area / viewport_area
                         shot_kb = os.path.getsize(partial_screenshot) / 1024.0
-                        is_tiny_crop = (
-                            shot_w < 700
-                            or shot_h < 350
-                            or shot_kb < 12
-                            or shot_ratio < 0.12
+                        element_tag = ""
+                        element_src = ""
+                        try:
+                            element_tag = (
+                                driver.execute_script(
+                                    "return arguments[0].tagName.toLowerCase();",
+                                    element,
+                                )
+                                or ""
+                            )
+                            element_src = (element.get_attribute("src") or "").strip()
+                        except Exception:
+                            element_tag = ""
+                            element_src = ""
+
+                        is_weatherbug_cam = (
+                            element_tag == "img"
+                            and "cameras-cam.cdn.weatherbug.net/" in element_src
                         )
+                        # Guard against bad XPath crops that produce tiny/blank captures.
+                        # For WeatherBug camera still images, the element can be a
+                        # relatively small portion of the viewport, so don't use
+                        # the viewport-area ratio heuristic.
+                        if is_weatherbug_cam:
+                            is_tiny_crop = shot_w < 450 or shot_h < 250 or shot_kb < 12
+                        else:
+                            is_tiny_crop = (
+                                shot_w < 700
+                                or shot_h < 350
+                                or shot_kb < 12
+                                or shot_ratio < 0.12
+                            )
                         if is_tiny_crop:
                             logging.warning(
                                 "[%s] dedicated_xpath tiny crop; falling back to full-page. xpath=%s shot=%sx%s %.1fKB viewport=%sx%s ratio=%.3f",
