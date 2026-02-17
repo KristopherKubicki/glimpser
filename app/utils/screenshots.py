@@ -65,6 +65,11 @@ from app.config import (
     UA,
 )
 from app.utils import status_cache, user_activity
+from app.utils.google_sdm import (
+    GoogleSdmError,
+    resolve_sdm_to_rtsp,
+    stable_key_for_resolved_rtsp,
+)
 from app.utils.logging_utils import sanitize_url
 from app.utils.validators import validate_proxy, validate_url
 
@@ -2611,6 +2616,10 @@ def _record_retry_after(
 
 
 def record_preflight_backoff(url: str, reason: str, backoff_seconds: int) -> None:
+    stable = stable_key_for_resolved_rtsp(str(url or ""))
+    if stable:
+        url = stable
+
     """Set a short backoff window after a preflight or capture failure."""
 
     entry = throttle_cache.setdefault(url, {"errors": 0, "first": time.time()})
@@ -2639,6 +2648,26 @@ def _capture_or_download_inner(
         r"^https?://(www\.)?weatherbug\.com/weather-camera/\?cam=", url, re.I
     ):
         url = url.replace("/weather-camera/?", "/weather-camera?", 1)
+        clean_url = sanitize_url(url)
+
+    # Resolve Google SDM camera URLs (sdm://<device_id>) to short-lived RTSP URLs.
+    if url.lower().startswith("sdm://"):
+        try:
+            resolved = resolve_sdm_to_rtsp(url)
+        except GoogleSdmError as exc:
+            logging.warning("SDM resolve failed for %s: %s", sanitize_url(url), exc)
+            record_preflight_backoff(
+                url, "sdm_resolve_failed", PREFLIGHT_BACKOFF_STREAM_FAIL
+            )
+            _record_tier_failure(url, TIER_HTTP, "sdm_resolve_failed")
+            return False
+        if not resolved:
+            record_preflight_backoff(
+                url, "sdm_unconfigured", PREFLIGHT_BACKOFF_STREAM_FAIL
+            )
+            _record_tier_failure(url, TIER_HTTP, "sdm_unconfigured")
+            return False
+        url = resolved
         clean_url = sanitize_url(url)
 
     popup_xpath = template.get("popup_xpath")
