@@ -919,7 +919,15 @@ export function initTilePlayer() {
       updateFlashGuardFrom(img);
 
       // If this is the new stream image and we have an alternate, cross-fade.
-      if (imageAlt && img !== image && img.dataset.mode === "stream") {
+      // Note: for MJPEG streams, <img> can emit many "load" events (one per frame).
+      // We must only cross-fade once per camera switch, otherwise the DOM will thrash.
+      if (
+        imageAlt &&
+        pendingImageSwapToken &&
+        img === imageAlt &&
+        img.dataset.mode === "stream" &&
+        img.dataset.streamToken === String(pendingImageSwapToken)
+      ) {
         const ms = prefersReducedMotion() ? 0 : LIVE_FADE_MS;
         img.style.transitionDuration = `${ms}ms`;
         image.style.transitionDuration = `${ms}ms`;
@@ -940,11 +948,15 @@ export function initTilePlayer() {
             // Stop the old stream to free the connection.
             image.style.display = "none";
             image.style.opacity = "1";
-            image.removeAttribute("src");
+            // Force-close any old multipart stream connection.
+            image.src =
+              "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+
             // Swap references: the newly loaded img becomes the active image.
             const prev = image;
             image = img;
             imageAlt = prev;
+            pendingImageSwapToken = null;
           }, ms + 80);
         });
       }
@@ -959,6 +971,8 @@ export function initTilePlayer() {
       }
       hideSpinner(video);
       showErrorIndicator(video);
+      if (pendingImageSwapToken && img === imageAlt)
+        pendingImageSwapToken = null;
       scheduleStreamRecovery("image-error", 900);
     });
   }
@@ -981,6 +995,7 @@ export function initTilePlayer() {
     }
 
     // Start the next stream in the alternate element.
+    pendingImageSwapToken = streamToken;
     imageAlt.dataset.mode = "stream";
     imageAlt.dataset.streamToken = String(streamToken);
     imageAlt.style.opacity = "0";
