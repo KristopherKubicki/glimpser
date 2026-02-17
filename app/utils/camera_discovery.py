@@ -30,6 +30,7 @@ import psutil
 from app.utils.api_utils import request_with_retry
 
 from .chrome_utils import is_port_open
+from .eufy import is_eufy_vendor
 from .oui_map import OUI_MAP as BUILTIN_OUI_MAP
 
 # Minimal OUI mapping for MAC manufacturer lookup.  The bulk of prefixes lives
@@ -625,6 +626,9 @@ def _add_mac_info(cam: dict) -> None:
         vendor = _mac_manufacturer(mac)
         if vendor:
             info["manufacturer"] = vendor
+            if is_eufy_vendor(vendor):
+                # Keep the raw manufacturer string, but add a normalized family tag.
+                info.setdefault("vendor_family", "eufy")
 
 
 def _trace_upstream(ip: str, timeout: int = 3) -> str | None:
