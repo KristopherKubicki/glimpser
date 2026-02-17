@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import re
+import threading
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -30,6 +31,37 @@ _missing_screenshot_log_ts: dict[str, float] = {}
 # frequently; this keeps the endpoint responsive under load and enables ETag/304.
 _TEMPLATES_JSON_CACHE: dict[tuple[str, str, str], dict[str, object]] = {}
 _TEMPLATES_JSON_CACHE_TTL_SECONDS = 1.0
+
+_GOOGLE_OAUTH_STATE_TTL_SECONDS = 30 * 60
+_google_oauth_states: dict[str, tuple[str, float]] = {}
+_google_oauth_states_lock = threading.Lock()
+
+
+def _store_google_oauth_state(state: str, profile: str) -> None:
+    now = time.monotonic()
+    cutoff = now - _GOOGLE_OAUTH_STATE_TTL_SECONDS
+    with _google_oauth_states_lock:
+        for k, (_, ts) in list(_google_oauth_states.items()):
+            if ts < cutoff:
+                _google_oauth_states.pop(k, None)
+        _google_oauth_states[state] = (profile, now)
+
+
+def _pop_google_oauth_profile(state: str) -> str | None:
+    if not state:
+        return None
+    now = time.monotonic()
+    with _google_oauth_states_lock:
+        entry = _google_oauth_states.pop(state, None)
+
+    if not entry:
+        return None
+
+    profile, ts = entry
+    if now - ts > _GOOGLE_OAUTH_STATE_TTL_SECONDS:
+        return None
+
+    return profile
 
 
 def _log_missing_screenshot(name: str) -> None:
@@ -1655,8 +1687,7 @@ def create_blueprint() -> Blueprint:
             return redirect(url_for("ui.google_home", profile=profile))
 
         state = secrets.token_urlsafe(24)
-        session["google_oauth_state"] = state
-        session["google_oauth_profile"] = profile
+        _store_google_oauth_state(state, profile)
         return redirect(google_sdm.build_oauth_authorize_url(state, profile))
 
     @bp.route("/integrations/google/callback", endpoint="google_home_callback")
@@ -1668,19 +1699,15 @@ def create_blueprint() -> Blueprint:
 
         code = (request.args.get("code") or "").strip()
         state = (request.args.get("state") or "").strip()
-        expected = (session.get("google_oauth_state") or "").strip()
-        profile = (session.get("google_oauth_profile") or "").strip() or "default"
-
-        session.pop("google_oauth_state", None)
-        session.pop("google_oauth_profile", None)
 
         if not code:
             routes.flash("Google OAuth callback missing code", "error")
-            return redirect(url_for("ui.google_home", profile=profile))
+            return redirect(url_for("ui.google_home"))
 
-        if not expected or not state or state != expected:
+        profile = _pop_google_oauth_profile(state)
+        if not profile:
             routes.flash("Google OAuth state mismatch; please try again", "error")
-            return redirect(url_for("ui.google_home", profile=profile))
+            return redirect(url_for("ui.google_home"))
 
         try:
             refresh, access, expires_in = google_sdm.exchange_code_for_refresh_token(
