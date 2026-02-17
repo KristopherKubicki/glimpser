@@ -943,6 +943,9 @@ export function initTilePlayer() {
     }
   }
 
+  let activeStreamToken = 0;
+  let pendingImageSwapToken = null;
+
   function wireStreamImage(img) {
     img.dataset.mode = img.dataset.mode || "preview";
 
