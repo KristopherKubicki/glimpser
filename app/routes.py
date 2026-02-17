@@ -708,7 +708,13 @@ def update_setting(name: str, value: str, restart: bool = True) -> bool:
     """
 
     name = name.replace("'", "")[:32]
-    value = value.replace("'", "")[:1024]
+
+    # Some integrations store JSON blobs (e.g. multiple OAuth profiles) that can
+    # exceed the historical 1KB setting limit.
+    max_value_len = 1024
+    if name in {"GOOGLE_SDM_PROFILES"}:
+        max_value_len = 16384
+    value = value.replace("'", "")[:max_value_len]
 
     if not re.findall(r"^[A-Z_]+?$", name):
         return False
