@@ -731,29 +731,80 @@ export function initTilePlayer() {
     });
   }
 
+  let _stillCanvas = null;
+  let _stillCtx = null;
+  let _lastStillCaptureAt = 0;
+  let _lastStillObjectUrl = null;
+
   function captureVideoFrameToStill() {
     if (!isLivePage) return false;
+    if (window.LOW_CPU_MODE) return false;
     if (!video || !image) return false;
     if (video.style.display === "none") return false;
+
     const w = video.videoWidth || 0;
     const h = video.videoHeight || 0;
     if (!w || !h) return false;
 
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d", { alpha: false });
-      if (!ctx) return false;
-      ctx.drawImage(video, 0, 0, w, h);
-      // JPEG is widely supported and fast enough for a single transition frame.
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.65);
-      if (!dataUrl) return false;
+    const now = Date.now();
+    // Throttle: capturing frames can be expensive on some GPUs/CPUs.
+    if (now - _lastStillCaptureAt < 2500) return false;
+    _lastStillCaptureAt = now;
 
-      image.dataset.mode = "preview";
-      image.src = dataUrl;
-      image.style.display = "block";
-      image.style.opacity = "1";
+    try {
+      const maxW = 640;
+      const scale = Math.min(1, maxW / w);
+      const cw = Math.max(1, Math.round(w * scale));
+      const ch = Math.max(1, Math.round(h * scale));
+
+      if (!_stillCanvas) {
+        _stillCanvas = document.createElement("canvas");
+      }
+      if (_stillCanvas.width !== cw) _stillCanvas.width = cw;
+      if (_stillCanvas.height !== ch) _stillCanvas.height = ch;
+      if (!_stillCtx) {
+        _stillCtx = _stillCanvas.getContext("2d", { alpha: false });
+      }
+      if (!_stillCtx) return false;
+
+      _stillCtx.drawImage(video, 0, 0, cw, ch);
+
+      const applyUrl = (url) => {
+        if (!url) return;
+        if (_lastStillObjectUrl) {
+          try {
+            URL.revokeObjectURL(_lastStillObjectUrl);
+          } catch (_) {
+            // ignore
+          }
+          _lastStillObjectUrl = null;
+        }
+        // Only revoke when we create an object URL.
+        if (url.startsWith("blob:")) _lastStillObjectUrl = url;
+
+        image.dataset.mode = "preview";
+        image.src = url;
+        image.style.display = "block";
+        image.style.opacity = "1";
+      };
+
+      // Prefer async encoding to avoid blocking the UI thread.
+      if (typeof _stillCanvas.toBlob === "function") {
+        _stillCanvas.toBlob(
+          (blob) => {
+            if (!blob) return;
+            applyUrl(URL.createObjectURL(blob));
+          },
+          "image/jpeg",
+          0.65,
+        );
+        return true;
+      }
+
+      // Fallback: synchronous (older browsers).
+      const dataUrl = _stillCanvas.toDataURL("image/jpeg", 0.65);
+      if (!dataUrl) return false;
+      applyUrl(dataUrl);
       return true;
     } catch (_) {
       return false;
