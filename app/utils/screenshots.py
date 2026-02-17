@@ -5330,11 +5330,18 @@ def should_use_lightweight_browser(
 def should_use_phantom_browser(
     url, dedicated_selector, popup_xpath, headless, stealth, browser, danger
 ):
-    """Determine if a lightweight browser should be used for capture."""
+    """Determine if PhantomJS should be used for capture.
+
+    PhantomJS is a best-effort renderer for simple, static pages. It is not
+    reliable for modern JS-heavy sites and should not be used when the template
+    is explicitly requesting a real browser workflow (headless/stealth) or when
+    XPath-based cropping/overlay removal is configured.
+    """
     return (
         re.findall(r"^https?://", url, flags=re.I)
-        # dedicated_selector in [None, ""] and
-        # popup_xpath in [None, ""] and
+        and dedicated_selector in [None, ""]
+        and popup_xpath in [None, ""]
+        and not headless
         and not stealth
         and not browser
         and not is_enhanced(url)
