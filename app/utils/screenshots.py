@@ -1399,16 +1399,65 @@ def detect_background_color(image: Image.Image, sample_width: int = 10):
 
 
 def remove_background(image, background_color=None, threshold=10):
-    """Crop the image to remove the background color border and ensure a 16:9 aspect ratio."""
+    """Crop the image to remove the background color border.
+
+    Historically Glimpser expanded the detected content bounding box to a
+    16:9 aspect ratio. That can re-introduce large uniform borders when the
+    page background is the dominant color (common on video players or map
+    embeds). We now prefer *cropping in* to 16:9 when the expansion would
+    add substantial padding.
+    """
+
     if background_color is None:
         background_color = detect_background_color(image)
+
     # Find the bounding box of the non-background area
     bbox = find_bounding_box(image, background_color, threshold)
 
-    # Adjust the bounding box to fit a 16:9 aspect ratio
+    def _crop_in_to_aspect_ratio(bbox, aspect_ratio=(16, 9)):
+        """Return a centered bbox that fits inside `bbox` with the given ratio."""
+
+        left, top, right, bottom = bbox
+        w = max(1, int(right - left))
+        h = max(1, int(bottom - top))
+        target = aspect_ratio[0] / aspect_ratio[1]
+        current = w / h
+        if abs(current - target) < 1e-6:
+            return bbox
+        if current > target:
+            new_w = int(h * target)
+            if new_w < 1:
+                return bbox
+            pad = (w - new_w) // 2
+            return (left + pad, top, left + pad + new_w, bottom)
+        new_h = int(w / target)
+        if new_h < 1:
+            return bbox
+        pad = (h - new_h) // 2
+        return (left, top + pad, right, top + pad + new_h)
+
+    # Adjust the bounding box to fit a 16:9 aspect ratio (without adding big borders).
     if bbox:
-        bbox = adjust_bbox_to_aspect_ratio(bbox, image.size, aspect_ratio=(16, 9))
+        expanded = adjust_bbox_to_aspect_ratio(bbox, image.size, aspect_ratio=(16, 9))
+
+        # If expanding would add a lot of padding, crop-in instead.
+        if expanded and expanded != bbox:
+            ex_left, ex_top, ex_right, ex_bottom = expanded
+            left, top, right, bottom = bbox
+            pad_left = max(0, left - ex_left)
+            pad_top = max(0, top - ex_top)
+            pad_right = max(0, ex_right - right)
+            pad_bottom = max(0, ex_bottom - bottom)
+            pad_max = max(pad_left, pad_top, pad_right, pad_bottom)
+
+            # Threshold: >40px or >4% of min dimension tends to be visible "chrome".
+            min_dim = max(1, min(image.size))
+            if pad_max > 40 or (pad_max / min_dim) > 0.04:
+                bbox = _crop_in_to_aspect_ratio(bbox, aspect_ratio=(16, 9))
+            else:
+                bbox = expanded
         image = image.crop(bbox)
+
     return image
 
 
