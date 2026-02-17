@@ -6284,6 +6284,12 @@ def capture_screenshot_and_har(
                 logging.debug(
                     "[%s] popup_xpath remove failed (%s): %s", name, popup_xpath, e
                 )
+        # Best-effort removal of large fixed/sticky overlays (cookie banners, modals).
+        removed_overlays = _strip_fixed_overlays(driver, name)
+        if removed_overlays:
+            logging.debug(
+                "[%s] stripped %d fixed/sticky overlays", name, removed_overlays
+            )
 
         # If dedicated_selector is set, capture that region instead of full page
         if dedicated_selector:
@@ -6603,6 +6609,63 @@ def _capture_danger_mode(
                 driver.quit()
             except Exception as ex:
                 logging.debug(f"driver.quit() failed in danger mode: {ex}")
+
+
+def _strip_fixed_overlays(driver, name: str) -> int:
+    """Best-effort removal of large fixed/sticky overlays (cookie banners, modals).
+
+    This is intentionally conservative: it only hides elements that are
+    position:fixed/sticky, are visible, and occupy a meaningful fraction of
+    the viewport but not *most* of it. When in doubt, it leaves the DOM
+    untouched.
+    """
+
+    try:
+        removed = driver.execute_script(
+            """
+            const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+            const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+            const varea = Math.max(1, vw * vh);
+            let removed = 0;
+
+            const candidates = Array.from(document.querySelectorAll('body *'));
+            for (const el of candidates) {
+              try {
+                const style = window.getComputedStyle(el);
+                if (!style) continue;
+                const pos = style.position;
+                if (pos !== 'fixed' && pos !== 'sticky') continue;
+                if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
+
+                const r = el.getBoundingClientRect();
+                if (!r || r.width <= 0 || r.height <= 0) continue;
+                // Skip if fully offscreen
+                if (r.bottom < 0 || r.top > vh || r.right < 0 || r.left > vw) continue;
+
+                const area = r.width * r.height;
+                const frac = area / varea;
+                // Too small to matter
+                if (frac < 0.05) continue;
+                // Likely the main content (or full-screen app)
+                if (frac > 0.80) continue;
+
+                // Heuristic: overlays often sit at the top/bottom/center.
+                const nearEdge = (r.top < vh * 0.15) || (r.bottom > vh * 0.85);
+                if (!nearEdge && frac < 0.20) continue;
+
+                el.style.setProperty('display', 'none', 'important');
+                removed++;
+              } catch (e) {
+                // ignore per-node failures
+              }
+            }
+            return removed;
+            """
+        )
+        return int(removed or 0)
+    except Exception as exc:
+        logging.debug("[%s] overlay strip failed: %s", name, exc)
+        return 0
 
 
 def _remove_popup(driver, popup_xpath):
