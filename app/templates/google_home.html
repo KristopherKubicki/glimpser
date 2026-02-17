@@ -41,6 +41,9 @@
           <label style="min-width: 420px;">
             OAuth Client Secret
             <input type="password" name="client_secret" value="" placeholder="(leave blank to keep existing)" style="width:100%;" />
+            {% if client_secret_saved %}
+              <small>Current secret: <strong>saved</strong></small>
+            {% endif %}
           </label>
           <label style="min-width: 520px;">
             Redirect URI

@@ -1587,7 +1587,7 @@ def create_blueprint() -> Blueprint:
         """Google Home / Nest camera integration status page."""
 
         from app.utils import google_sdm
-        from app.utils.google_sdm_profiles import list_profile_names, resolve_profile
+        from app.utils.google_sdm_profiles import list_profile_names
 
         profile_names = list_profile_names()
         profiles = ["default", *[p for p in profile_names if p != "default"]]
@@ -1596,9 +1596,52 @@ def create_blueprint() -> Blueprint:
         if selected not in profiles:
             selected = "default"
 
-        prof = resolve_profile(selected)
+        # For the UI, show the stored values even if a profile isn't fully
+        # configured yet (so users can see/edit what they've already entered).
+        raw = routes.config.get_setting("GOOGLE_SDM_PROFILES", "") or ""
+        try:
+            payload = routes.json.loads(raw) if str(raw).strip() else {}
+        except Exception:
+            payload = {}
+        if not isinstance(payload, dict):
+            payload = {}
+
+        stored = payload.get(selected)
+        if not isinstance(stored, dict):
+            stored = {}
+
+        project_id = str(stored.get("project_id") or "").strip()
+        client_id = str(stored.get("client_id") or "").strip()
+        redirect_uri = str(stored.get("redirect_uri") or "").strip()
+        client_secret_saved = bool(str(stored.get("client_secret") or "").strip())
+        refresh_token_saved = bool(str(stored.get("refresh_token") or "").strip())
+
+        # Legacy single-project settings (only meaningful for the default profile).
+        if selected == "default":
+            legacy_project_id = str(
+                routes.config.get_setting("GOOGLE_SDM_PROJECT_ID", "") or ""
+            ).strip()
+            legacy_client_id = str(
+                routes.config.get_setting("GOOGLE_SDM_CLIENT_ID", "") or ""
+            ).strip()
+            legacy_client_secret = str(
+                routes.config.get_setting("GOOGLE_SDM_CLIENT_SECRET", "") or ""
+            ).strip()
+            legacy_redirect_uri = str(
+                routes.config.get_setting("GOOGLE_SDM_REDIRECT_URI", "") or ""
+            ).strip()
+            legacy_refresh_token = str(
+                routes.config.get_setting("GOOGLE_SDM_REFRESH_TOKEN", "") or ""
+            ).strip()
+
+            project_id = project_id or legacy_project_id
+            client_id = client_id or legacy_client_id
+            redirect_uri = redirect_uri or legacy_redirect_uri
+            client_secret_saved = client_secret_saved or bool(legacy_client_secret)
+            refresh_token_saved = refresh_token_saved or bool(legacy_refresh_token)
+
         configured = bool(google_sdm.configured(selected))
-        connected = bool(prof and prof.refresh_token)
+        connected = refresh_token_saved
 
         return render_template(
             "google_home.html",
@@ -1606,9 +1649,10 @@ def create_blueprint() -> Blueprint:
             connected=connected,
             profiles=profiles,
             selected_profile=selected,
-            project_id=(prof.project_id if prof else ""),
-            redirect_uri=(prof.redirect_uri if prof else ""),
-            client_id=(prof.client_id if prof else ""),
+            project_id=project_id,
+            redirect_uri=redirect_uri,
+            client_id=client_id,
+            client_secret_saved=client_secret_saved,
             page_title="Google Home",
         )
 
