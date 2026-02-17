@@ -571,7 +571,9 @@ PREFLIGHT_LOW_CPU_LOCAL_BUDGET_SECONDS = int(
 PREFLIGHT_LOW_CPU_WAN_BUDGET_SECONDS = int(
     os.getenv("PREFLIGHT_LOW_CPU_WAN_BUDGET_SECONDS", "5")
 )
-STREAM_PROBE_TIMEOUT = 5
+# RTSP streams across WAN links can take longer than a few seconds to respond
+# (DNS, TCP handshake, auth challenge, initial keyframe). Keep this tunable.
+STREAM_PROBE_TIMEOUT = int(os.getenv("STREAM_PROBE_TIMEOUT", "10"))
 HDHOMERUN_URL_RE = re.compile(r"/auto/v\d+(?:\.\d+)?(?:$|[/?#])", re.IGNORECASE)
 
 TIER_OFFLINE = 0
@@ -762,7 +764,10 @@ def _probe_stream_with_ffprobe(url: str, timeout: int, name: str) -> bool:
         probe_size,
     ]
     if scheme == "rtsp":
-        base_cmd.extend(["-stimeout", str(int(timeout * 1_000_000))])
+        # Some ffprobe builds (notably Ubuntu's) do not support `-stimeout`
+        # for RTSP, causing probes to fail with "Option not found". Prefer
+        # `-rw_timeout` (microseconds), and rely on the subprocess timeout too.
+        base_cmd.extend(["-rw_timeout", str(int(timeout * 1_000_000))])
 
     transports = [None]
     if scheme == "rtsp":
@@ -866,7 +871,9 @@ def _ffmpeg_null_probe(
     if scheme == "rtsp":
         transports = _rtsp_transport_candidates(url)
 
-    probe_timeout = max(2, min(timeout, 8))
+    # `timeout` is already bounded by the caller (and by STREAM_PROBE_TIMEOUT);
+    # don't further clamp it here or WAN RTSP streams can fail preflight.
+    probe_timeout = max(2, int(timeout))
     per_attempt_timeout = max(2, int(probe_timeout / max(len(transports), 1)))
     last_error = None
 
@@ -1861,7 +1868,7 @@ def download_image(
     response = None
 
     cached = get_cached_status_code(url)
-    if cached is not None and cached != 200:
+    if cached in {401, 403, 404, 410, 429}:
         logging.debug(f"Skipping {clean_url} due to cached status {cached}")
         return False
     try:
@@ -1910,6 +1917,19 @@ def download_image(
             response = http_session().get(url, **request_kwargs)
 
         status = response.status_code
+        # Some hosts return transient 403/503 based on User-Agent heuristics.
+        # Retry once with a very plain UA before caching the failure.
+        if status in {403, 503} and headers.get("user-agent") == UA:
+            try:
+                response.close()
+            except Exception:
+                pass
+            alt_headers = dict(headers)
+            alt_headers["user-agent"] = "Mozilla/5.0"
+            request_kwargs["headers"] = alt_headers
+            response = http_session().get(url, **request_kwargs)
+            status = response.status_code
+
         if status == 429:
             record_rate_limit(url, response)
             return False
@@ -5453,15 +5473,22 @@ def capture_frame_from_stream(
 
     scheme = urlparse(url).scheme.lower()
     probe_timeout = max(min(timeout, STREAM_PROBE_TIMEOUT), 3)
-    if not _probe_stream_with_ffprobe(url, probe_timeout, name):
-        record_preflight_backoff(url, "ffprobe_failed", PREFLIGHT_BACKOFF_STREAM_FAIL)
-        return False
+    ffprobe_ok = _probe_stream_with_ffprobe(url, probe_timeout, name)
+    null_probe_ok = False
     if PREFLIGHT_FFMPEG_NULL_PROBE:
-        if not _ffmpeg_null_probe(url, probe_timeout, name, stealth):
-            record_preflight_backoff(
-                url, "ffmpeg_null_probe_failed", PREFLIGHT_BACKOFF_STREAM_FAIL
-            )
-            return False
+        null_probe_ok = _ffmpeg_null_probe(url, probe_timeout, name, stealth)
+
+    if not ffprobe_ok and not null_probe_ok:
+        record_preflight_backoff(
+            url, "stream_probe_failed", PREFLIGHT_BACKOFF_STREAM_FAIL
+        )
+        return False
+
+    if ffprobe_ok is False and null_probe_ok is True:
+        logging.info(
+            "Stream preflight: ffprobe failed but ffmpeg probe succeeded for %s",
+            sanitize_url(url),
+        )
 
     clean_url = sanitize_url(url)
     is_hdhomerun_stream = _is_hdhomerun_like_stream_url(url)

@@ -8,6 +8,7 @@ exclude_docs: |
 nav:
   - Home: index.md
   - Guides:
+      - TODO: todo.md
       - Accessibility Improvements: accessibility.md
       - Agentic Instructions: AGENTS.md
       - API Documentation: api_documentation.md
