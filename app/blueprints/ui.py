@@ -893,10 +893,16 @@ def create_blueprint() -> Blueprint:
                 return []
             lower = norm.lower()
             risks: list[str] = []
-            if norm in {"//iframe", "//p"}:
+            if norm in {"//iframe", "//p", "//table", "//article", "//main"}:
                 risks.append("overly generic selector")
             if "uzbvz" in lower:
                 risks.append("hashed class name (likely unstable)")
+            if "contains(@class,'jss" in lower or 'contains(@class,"jss' in lower:
+                risks.append("JSS-generated class name (likely unstable)")
+            if "contains(@class,'css-" in lower or 'contains(@class,"css-' in lower:
+                risks.append("CSS-hash class name (likely unstable)")
+            if "contains(@id,'ember" in lower or 'contains(@id,"ember' in lower:
+                risks.append("ember-generated id (likely unstable)")
             if (
                 "contains(@name, 'welcome')" in lower
                 or 'contains(@name,"welcome")' in lower
@@ -906,6 +912,15 @@ def create_blueprint() -> Blueprint:
                 risks.append("targets map tile pane (can miss overlays)")
             if norm.startswith("//*"):
                 risks.append("global wildcard selector")
+            # Commonly leads to selecting the wrong element when multiple iframes exist.
+            if norm == "//iframe":
+                risks.append("iframe selector without @src constraint is fragile")
+            elif (
+                norm.startswith("//iframe[")
+                and "@src" not in lower
+                and "contains(@src" not in lower
+            ):
+                risks.append("iframe selector without @src constraint is fragile")
             return risks
 
         rows: list[dict[str, object]] = []
@@ -923,6 +938,8 @@ def create_blueprint() -> Blueprint:
             for risk in _xpath_risks(dedicated_xpath):
                 issues.append(f"dedicated_xpath: {risk}")
 
+            suggestions: list[str] = []
+            latest_tiny = False
             latest_name = ""
             latest_age = ""
             latest_dims = ""
@@ -963,6 +980,7 @@ def create_blueprint() -> Blueprint:
                             latest_dims = f"{w}x{h}"
                             if st.st_size < 12 * 1024 or w < 700 or h < 350:
                                 tiny_count += 1
+                                latest_tiny = True
                                 issues.append("latest screenshot is tiny/low-detail")
                     except Exception:
                         latest_dims = "unknown"
@@ -979,6 +997,27 @@ def create_blueprint() -> Blueprint:
             if offline_since:
                 issues.append(f"offline_since={offline_since}")
 
+            if dedicated_xpath and latest_tiny:
+                suggestions.append(
+                    "Consider clearing dedicated_xpath (it may be cropping to a tiny element)."
+                )
+            if dedicated_xpath and any(
+                "overly generic selector" in i
+                for i in issues
+                if isinstance(i, str) and i.startswith("dedicated_xpath:")
+            ):
+                suggestions.append(
+                    "Make dedicated_xpath more specific (prefer @id, stable @class tokens, or constraints like contains(@src, ...))."
+                )
+            if popup_xpath and any(
+                "overly generic selector" in i
+                for i in issues
+                if isinstance(i, str) and i.startswith("popup_xpath:")
+            ):
+                suggestions.append(
+                    "Make popup_xpath more specific (prefer dialog container id/class and a close button selector)."
+                )
+
             if issues:
                 issue_count += 1
 
@@ -988,6 +1027,8 @@ def create_blueprint() -> Blueprint:
                     "popup_xpath": popup_xpath,
                     "dedicated_xpath": dedicated_xpath,
                     "issues": issues,
+                    "suggestions": suggestions,
+                    "latest_tiny": latest_tiny,
                     "capture_failed": capture_failed,
                     "offline_since": offline_since,
                     "latest_name": latest_name,
@@ -1013,6 +1054,23 @@ def create_blueprint() -> Blueprint:
             summary=summary,
             page_title="XPath Health",
         )
+
+    @bp.route("/xpath_health/clear", methods=["POST"], endpoint="xpath_health_clear")
+    @routes.login_required
+    def xpath_health_clear():
+        """Clear an XPath field (popup/dedicated) for a template."""
+
+        template_name = routes.validate_template_name(
+            str(request.form.get("name") or "")
+        )
+        field = str(request.form.get("field") or "").strip()
+        if template_name is None:
+            routes.abort(404)
+        if field not in {"popup_xpath", "dedicated_xpath"}:
+            routes.abort(400)
+        routes.template_manager.save_template(template_name, {field: ""})
+        routes.flash(f"Cleared {field} for {template_name}", "success")
+        return redirect(url_for("ui.xpath_health"))
 
     @bp.route("/settings", methods=["GET", "POST"], endpoint="settings")
     @routes.login_required

@@ -18,6 +18,8 @@
         <th>Latest</th>
         <th>XPath</th>
         <th>Issues</th>
+        <th>Suggestions</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -49,6 +51,35 @@
           {% else %}
           <small>ok</small>
           {% endif %}
+        </td>
+        <td>
+          {% if row.suggestions %}
+            {% for hint in row.suggestions %}
+            <div><small>{{ hint }}</small></div>
+            {% endfor %}
+          {% else %}
+          <small>&nbsp;</small>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display:flex; gap:0.35rem; flex-wrap:wrap">
+            <a class="button" href="{{ url_for('ui.template_details', template_name=row.name) }}">Edit</a>
+            <a class="button" href="{{ url_for('ui.logs') }}?search={{ row.name }}">Logs</a>
+            {% if row.popup_xpath %}
+            <form method="post" action="{{ url_for('ui.xpath_health_clear') }}" style="display:inline">
+              <input type="hidden" name="name" value="{{ row.name }}" />
+              <input type="hidden" name="field" value="popup_xpath" />
+              <button type="submit" class="button" title="Clear popup_xpath">Clear Popup</button>
+            </form>
+            {% endif %}
+            {% if row.dedicated_xpath %}
+            <form method="post" action="{{ url_for('ui.xpath_health_clear') }}" style="display:inline">
+              <input type="hidden" name="name" value="{{ row.name }}" />
+              <input type="hidden" name="field" value="dedicated_xpath" />
+              <button type="submit" class="button" title="Clear dedicated_xpath">Clear Dedicated</button>
+            </form>
+            {% endif %}
+          </div>
         </td>
       </tr>
       {% endfor %}
