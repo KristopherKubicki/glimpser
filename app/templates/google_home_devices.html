@@ -4,6 +4,13 @@
 <main class="container settings-page">
   <div class="card">
     <h2>Google Home Cameras</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %} {% endwith %}
     <p>
       Import SDM cameras into Glimpser as <code>sdm://&lt;profile&gt;/&lt;device_id&gt;</code> templates.
       Streams are short-lived; Glimpser resolves a fresh RTSP URL at capture time.

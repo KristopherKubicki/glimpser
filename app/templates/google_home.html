@@ -5,6 +5,14 @@
   <div class="card">
     <h2>Google Home / Nest</h2>
 
+    {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %} {% endwith %}
+
     <form method="GET" action="{{ url_for('ui.google_home') }}" style="display:flex; gap: 12px; flex-wrap: wrap; align-items: end; margin: 12px 0;">
       <label>
         Profile

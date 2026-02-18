@@ -1915,6 +1915,14 @@ def create_blueprint() -> Blueprint:
                 request.form.get("group") or "google_home"
             ).strip() or "google_home"
             frequency = int(request.form.get("frequency") or 2)
+            logging.info(
+                "google_sdm import profile=%s selected=%s group=%s frequency=%s ip=%s",
+                profile,
+                len(device_ids),
+                group,
+                frequency,
+                request.remote_addr,
+            )
 
             templates = routes.template_manager.get_templates()
             existing_names = set(templates.keys())
@@ -1941,9 +1949,23 @@ def create_blueprint() -> Blueprint:
                 )
                 if ok:
                     imported += 1
+                else:
+                    # Avoid dumping full IDs into the log; they're long.
+                    did_short = did[:12] + "…" + did[-6:] if len(did) > 24 else did
+                    logging.warning(
+                        "google_sdm import failed profile=%s name=%s device_id=%s",
+                        profile,
+                        tname,
+                        did_short,
+                    )
 
             if imported:
                 routes.flash(f"Imported {imported} Google Home camera(s).", "success")
+                primary_group = (group.split(",")[0] or "").strip()
+                if primary_group:
+                    return redirect(
+                        routes.url_for("views.group_page", group_name=primary_group)
+                    )
             else:
                 routes.flash("No cameras imported.", "info")
             return redirect(url_for("ui.google_home_devices", profile=profile))
