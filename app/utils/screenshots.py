@@ -739,7 +739,7 @@ def _probe_stream_with_ffprobe(url: str, timeout: int, name: str) -> bool:
     analyze_duration = ANALYZE_DURATION_DEFAULT
     probe_size = PROBE_SIZE_DEFAULT
     # Early RTSP preflight to avoid repeated stream failures later in the flow.
-    if scheme == "rtsp":
+    if scheme in {"rtsp", "rtsps"}:
         analyze_duration = ANALYZE_DURATION_RTSP
         probe_size = PROBE_SIZE_RTSP
     elif _is_hdhomerun_like_stream_url(url):
@@ -768,14 +768,14 @@ def _probe_stream_with_ffprobe(url: str, timeout: int, name: str) -> bool:
         "-probesize",
         probe_size,
     ]
-    if scheme == "rtsp":
+    if scheme in {"rtsp", "rtsps"}:
         # Some ffprobe builds (notably Ubuntu's) do not support `-stimeout`
         # for RTSP, causing probes to fail with "Option not found". Prefer
         # `-rw_timeout` (microseconds), and rely on the subprocess timeout too.
         base_cmd.extend(["-rw_timeout", str(int(timeout * 1_000_000))])
 
     transports = [None]
-    if scheme == "rtsp":
+    if scheme in {"rtsp", "rtsps"}:
         transports = _rtsp_transport_candidates(url)
     per_attempt_timeout = max(2, int(timeout / max(len(transports), 1)))
     last_error = None
@@ -849,7 +849,7 @@ def _ffmpeg_null_probe(
     scheme = urlparse(url).scheme.lower()
     analyze_duration = ANALYZE_DURATION_DEFAULT
     probe_size = PROBE_SIZE_DEFAULT
-    if scheme == "rtsp":
+    if scheme in {"rtsp", "rtsps"}:
         analyze_duration = ANALYZE_DURATION_RTSP
         probe_size = PROBE_SIZE_RTSP
     elif _is_hdhomerun_like_stream_url(url):
@@ -873,7 +873,7 @@ def _ffmpeg_null_probe(
         )
 
     transports = [None]
-    if scheme == "rtsp":
+    if scheme in {"rtsp", "rtsps"}:
         transports = _rtsp_transport_candidates(url)
 
     # `timeout` is already bounded by the caller (and by STREAM_PROBE_TIMEOUT);
@@ -891,7 +891,7 @@ def _ffmpeg_null_probe(
             cmd.extend(["-headers", f"referer: {base_url}\r\n"])
             cmd.extend(["-headers", f"origin: {base_url}\r\n"])
             cmd.extend(["-seekable", "0"])
-        elif scheme == "rtsp" and transport:
+        elif scheme in {"rtsp", "rtsps"} and transport:
             cmd.extend(["-rtsp_transport", transport])
             logging.debug(
                 "ffmpeg null probe RTSP transport=%s for %s",
@@ -2345,6 +2345,9 @@ def parse_url(url):
             port = 443
         elif parsed_url.scheme == "rtsp":
             port = 554
+        elif parsed_url.scheme == "rtsps":
+            # Google SDM GenerateRtspStream returns `rtsps://...`.
+            port = 443
         elif parsed_url.scheme == "rtmp":
             port = 1935
         # Add more schemes and their default ports if necessary.
@@ -2707,6 +2710,8 @@ def _capture_or_download_inner(
             port = 443
         elif scheme == "rtsp":
             port = 554
+        elif scheme == "rtsps":
+            port = 443
         elif scheme == "rtmp":
             port = 1935
         else:
@@ -2741,6 +2746,8 @@ def _capture_or_download_inner(
             candidate_ports = [443]
         elif scheme == "rtsp":
             candidate_ports = [554]
+        elif scheme == "rtsps":
+            candidate_ports = [443]
         elif port is not None:
             candidate_ports = [int(port)]
         if port is not None and int(port) not in candidate_ports:
@@ -4088,6 +4095,10 @@ def _get_rtsp_profile_url(url: str) -> str | None:
 
 
 def _rtsp_transport_candidates(url: str) -> list[str]:
+    scheme = urlparse(url).scheme.lower()
+    if scheme == "rtsps":
+        # Secure RTSP over TLS is typically tunneled over TCP.
+        return ["tcp"]
     preferred = _get_rtsp_transport(url) or "tcp"
     candidates = [preferred]
     for transport in ("tcp", "udp"):
@@ -5303,7 +5314,16 @@ def is_pdf_url(url, content_type):
 
 def is_video_stream_url(url, content_type):
     """Check if the URL is likely to be a video stream."""
-    video_indicators = [".mjpg", ".mp4", ".gif", ".webp", "rtsp://", ".m3u8", ":5004/"]
+    video_indicators = [
+        ".mjpg",
+        ".mp4",
+        ".gif",
+        ".webp",
+        "rtsp://",
+        "rtsps://",
+        ".m3u8",
+        ":5004/",
+    ]
     return (
         any(ind in url.lower() for ind in video_indicators) or "video/" in content_type
     )
@@ -5508,17 +5528,32 @@ def capture_frame_from_stream(
         return False
 
     scheme = urlparse(url).scheme.lower()
+    is_sdm_rtsps = scheme == "rtsps" and "sdm_live_stream" in url.lower()
     probe_timeout = max(min(timeout, STREAM_PROBE_TIMEOUT), 3)
-    ffprobe_ok = _probe_stream_with_ffprobe(url, probe_timeout, name)
+    if scheme == "rtsps":
+        probe_timeout = max(probe_timeout, 20)
+
+    ffprobe_ok = (
+        True if is_sdm_rtsps else _probe_stream_with_ffprobe(url, probe_timeout, name)
+    )
     null_probe_ok = False
-    if PREFLIGHT_FFMPEG_NULL_PROBE:
+    if PREFLIGHT_FFMPEG_NULL_PROBE and not is_sdm_rtsps:
         null_probe_ok = _ffmpeg_null_probe(url, probe_timeout, name, stealth)
 
     if not ffprobe_ok and not null_probe_ok:
-        record_preflight_backoff(
-            url, "stream_probe_failed", PREFLIGHT_BACKOFF_STREAM_FAIL
-        )
-        return False
+        if scheme == "rtsps":
+            # Google SDM often returns short-lived `rtsps://` URLs that can be
+            # slow to answer preflight probes. Continue to direct capture so
+            # we do not falsely mark cameras unavailable on probe timeout.
+            logging.info(
+                "Stream preflight timed out for %s; attempting direct capture",
+                sanitize_url(url),
+            )
+        else:
+            record_preflight_backoff(
+                url, "stream_probe_failed", PREFLIGHT_BACKOFF_STREAM_FAIL
+            )
+            return False
 
     if ffprobe_ok is False and null_probe_ok is True:
         logging.info(
@@ -5538,9 +5573,11 @@ def capture_frame_from_stream(
     os.makedirs(tmpdirname, exist_ok=True)
     if os.path.exists(tmpdirname):
         transports = [None]
-        if scheme == "rtsp":
+        if scheme in {"rtsp", "rtsps"}:
             transports = _rtsp_transport_candidates(url)
         per_attempt_timeout = max(5, int(timeout / max(len(transports), 1)))
+        if scheme == "rtsps":
+            per_attempt_timeout = max(per_attempt_timeout, 12)
 
         for transport in transports:
             # Capture multiple frames into the temporary directory
@@ -5586,7 +5623,7 @@ def capture_frame_from_stream(
                 if is_hdhomerun_stream:
                     probe_size = PROBE_SIZE_OTHER
                     analyze_duration = ANALYZE_DURATION_OTHER
-            elif scheme == "rtsp":
+            elif scheme in {"rtsp", "rtsps"}:
                 if transport:
                     command.extend(["-rtsp_transport", transport])
                 probe_size = PROBE_SIZE_RTSP
@@ -5608,6 +5645,9 @@ def capture_frame_from_stream(
                 # HDHomeRun feeds may have sparse keyframes; decode non-key
                 # frames too and keep capture burst short for responsiveness.
                 frames_to_capture = max(1, min(NUM_FRAMES, 2))
+            pre_input_args = (
+                [] if is_hdhomerun_stream or is_sdm_rtsps else ["-skip_frame", "nokey"]
+            )
             command.extend(
                 [
                     "-use_wallclock_as_timestamps",
@@ -5617,6 +5657,7 @@ def capture_frame_from_stream(
                     "1",
                     "-sn",
                     "-an",
+                    *pre_input_args,
                     #'-err_detect','aggressive',
                     "-i",
                     url,  # Input stream URL
@@ -5636,8 +5677,6 @@ def capture_frame_from_stream(
                     temp_output_pattern,  # Temporary output file pattern
                 ]
             )
-            if not is_hdhomerun_stream:
-                command.extend(["-skip_frame", "nokey"])
 
             try:
                 subprocess.run(

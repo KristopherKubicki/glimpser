@@ -243,13 +243,26 @@ def generate_rtsp_stream(device_name: str, profile: str | None = None) -> SdmRts
 
     resp = requests.post(url, json=payload, headers=_auth_headers(profile), timeout=30)
     if resp.status_code != 200:
+        error_msg = ""
+        try:
+            payload = resp.json()
+            error_msg = str((payload.get("error") or {}).get("message") or "").strip()
+        except Exception:
+            error_msg = ""
+
+        if "not supporting RTSP protocol" in error_msg:
+            raise GoogleSdmError(
+                "SDM camera is WEB_RTC-only; RTSP snapshots are not available"
+            )
+
         raise GoogleSdmError(
             f"SDM generate stream failed: {resp.status_code} {resp.text[:200]}"
         )
 
     data = resp.json()
     results = data.get("results") or {}
-    rtsp_url = results.get("rtspUrl")
+    stream_urls = results.get("streamUrls") or {}
+    rtsp_url = results.get("rtspUrl") or stream_urls.get("rtspUrl")
     expires_at_raw = results.get("expiresAt")
 
     expires_at = None

@@ -75,6 +75,7 @@
             <th style="width: 60px">Import</th>
             <th>Name</th>
             <th style="width: 180px">Stream</th>
+            <th style="width: 180px">Protocols</th>
             <th style="width: 200px">Structure</th>
             <th style="width: 200px">Room</th>
             <th style="width: 320px">Device ID</th>
@@ -90,8 +91,15 @@
                 value="{{ cam.device_id }}"
                 {%
                 if
-                cam.has_stream
+                cam.has_rtsp
                 %}checked{%
+                endif
+                %}
+                {%
+                if
+                not
+                cam.has_rtsp
+                %}disabled{%
                 endif
                 %}
               />
@@ -106,12 +114,22 @@
               <small><code>{{ cam.type }}</code></small>
             </td>
             <td>
-              {% if cam.has_stream %}
-              <span title="CameraLiveStream supported">Yes</span>
+              {% if cam.has_rtsp %}
+              <span title="Camera supports RTSP snapshots">RTSP</span>
+              {% elif cam.supports_rtsp %}
+              <span title="RTSP exists, but this device type is not importable">
+                RTSP (unsupported type)
+              </span>
+              {% elif cam.has_stream %}
+              <span
+                title="Camera is WEB_RTC-only; RTSP snapshots are not supported yet"
+                >WEB_RTC only</span
+              >
               {% else %}
               <span title="No live stream trait detected">No</span>
               {% endif %}
             </td>
+            <td><code>{{ ",".join(cam.protocols) }}</code></td>
             <td><code>{{ cam.structure or '' }}</code></td>
             <td><code>{{ cam.room or '' }}</code></td>
             <td><code>{{ cam.device_id }}</code></td>

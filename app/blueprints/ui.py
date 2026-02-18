@@ -80,6 +80,7 @@ def create_blueprint() -> Blueprint:
 
     from app import routes
     from app.utils import recovery
+    from app.utils.validators import validate_group_name
 
     bp = Blueprint("ui", __name__)
 
@@ -1910,7 +1911,7 @@ def create_blueprint() -> Blueprint:
         list_error = ""
         # Default new imports into the house profile group (argyle/beach/halsted)
         # when possible, so they appear in the expected video wall immediately.
-        default_group = routes.validate_group_name(profile) or "google_home"
+        default_group = validate_group_name(profile) or "google_home"
 
         if request.method == "POST":
             device_ids = request.form.getlist("device_id")
@@ -2000,14 +2001,26 @@ def create_blueprint() -> Blueprint:
                 continue
 
             traits = dev.get("traits") or {}
-            has_stream = "sdm.devices.traits.CameraLiveStream" in traits
+            stream_trait = traits.get("sdm.devices.traits.CameraLiveStream") or {}
+            supported_protocols = [
+                str(p).upper() for p in (stream_trait.get("supportedProtocols") or [])
+            ]
+            device_type = str(dev.get("type") or "")
+            is_camera_type = device_type.upper().endswith((".CAMERA", ".DOORBELL"))
+            has_stream = bool(stream_trait)
+            supports_rtsp = "RTSP" in supported_protocols
+            has_rtsp = supports_rtsp and is_camera_type
             struct, room = _sdm_structure_room(dev)
             camera_rows.append(
                 {
                     "device_id": did,
                     "label": _sdm_device_label(dev),
-                    "type": dev.get("type") or "",
+                    "type": device_type,
+                    "is_camera_type": bool(is_camera_type),
                     "has_stream": bool(has_stream),
+                    "has_rtsp": bool(has_rtsp),
+                    "supports_rtsp": bool(supports_rtsp),
+                    "protocols": supported_protocols,
                     "structure": struct,
                     "room": room,
                 }
