@@ -161,6 +161,9 @@ def get_system_metrics() -> dict[str, Any]:
         "open_files": open_files,
         "thread_count": system_metrics["thread_count"],
         "top_threads": system_metrics.get("top_threads", []),
+        # Stable process boot marker used by long-lived clients (e.g. /live)
+        # to detect backend restarts and refresh themselves.
+        "start_time_epoch": int(system_metrics["start_time"]),
         "uptime": f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s",
         "ffmpeg_version": ffmpeg_version_str,
         "ffmpeg_path": ffmpeg_path,

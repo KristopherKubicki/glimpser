@@ -1,4 +1,4 @@
-const CACHE_NAME = "glimpser-offline-v3";
+const CACHE_NAME = "glimpser-offline-v4";
 const MAX_SHOTS = 20;
 const OFFLINE_URLS = [
   "/",
@@ -21,6 +21,15 @@ self.addEventListener("install", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // Never serve cached /live pages. They are stateful and should always use
+  // the latest backend/runtime code after restarts.
+  if (url.pathname.startsWith("/live")) {
+    event.respondWith(
+      fetch(request).catch(() => caches.match("/offline")),
+    );
+    return;
+  }
 
   if (OFFLINE_URLS.includes(url.pathname)) {
     event.respondWith(networkFirst(request));

@@ -26,6 +26,8 @@ export function initNav() {
         ? window.currentCamera
         : null;
     const liveLink = document.getElementById("live");
+    let lastBootEpoch = null;
+    let restartHandled = false;
 
     const updateLiveLinkHref = () => {
       if (!liveLink) return;
@@ -231,6 +233,31 @@ export function initNav() {
       try {
         const data = await fetchJson("/health");
         if (!data) return;
+        const bootEpoch = Number(data?.metrics?.start_time_epoch || 0);
+        if (Number.isFinite(bootEpoch) && bootEpoch > 0) {
+          if (lastBootEpoch === null) {
+            lastBootEpoch = bootEpoch;
+          } else if (bootEpoch !== lastBootEpoch) {
+            lastBootEpoch = bootEpoch;
+            if (!restartHandled) {
+              restartHandled = true;
+              window.dispatchEvent(
+                new CustomEvent("glimpser:server-restart", {
+                  detail: { bootEpoch },
+                }),
+              );
+              // Long-lived /live tabs can get stuck on old runtime state after
+              // restarts/deploys. Force a one-time reload to pick up fresh JS
+              // and stream state.
+              if (window.location.pathname.startsWith("/live")) {
+                const reloadUrl = new URL(window.location.href);
+                reloadUrl.searchParams.set("_reload", String(Date.now()));
+                window.location.replace(reloadUrl.toString());
+                return;
+              }
+            }
+          }
+        }
         if (data.status === "healthy") {
           healthStatus.style.color = "green";
           healthStatus.title = "Status: Healthy\n\n";
