@@ -22,7 +22,7 @@ from app.config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY
 from app.utils import db
 from app.utils.db import commit_with_retry
 
-from .validators import validate_template_name
+from .validators import is_bool_string, to_bool, validate_template_name
 from .video_details import get_latest_screenshot_date, get_latest_video_date
 
 # Keep aliases for backward compatibility and testing mocks
@@ -308,15 +308,34 @@ class TemplateManager:
                         elif key in ["popup_xpath", "dedicated_xpath"]:
                             if value and not value.startswith("//"):
                                 raise ValueError(f"{key} must start with '//'")
-                        elif key in ["stealth", "headless", "dark", "invert"]:
-                            if value == "on":
-                                value = True
-                            elif value == "off":
-                                value = False
+                        elif key in {
+                            "stealth",
+                            "headless",
+                            "dark",
+                            "invert",
+                            "browser",
+                            "livecaption",
+                            "danger",
+                            "capture_failed",
+                        }:
+                            if isinstance(value, str):
+                                if is_bool_string(value):
+                                    value = to_bool(value)
+                                else:
+                                    logging.debug(
+                                        "Unrecognized boolean string for %s: %s",
+                                        key,
+                                        value,
+                                    )
+                                    continue
                             elif isinstance(value, bool):
                                 pass
+                            elif isinstance(value, int) and value in (0, 1):
+                                value = bool(value)
                             else:
-                                logging.debug("MISSSSED %s", value)
+                                logging.debug(
+                                    "Unrecognized boolean value for %s: %s", key, value
+                                )
                                 continue
                     except ValueError as e:
                         # Log the validation error and return False
