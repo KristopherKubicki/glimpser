@@ -1908,12 +1908,15 @@ def create_blueprint() -> Blueprint:
 
         profile = (request.args.get("profile") or "").strip() or "default"
         list_error = ""
+        # Default new imports into the house profile group (argyle/beach/halsted)
+        # when possible, so they appear in the expected video wall immediately.
+        default_group = routes.validate_group_name(profile) or "google_home"
 
         if request.method == "POST":
             device_ids = request.form.getlist("device_id")
             group = (
-                request.form.get("group") or "google_home"
-            ).strip() or "google_home"
+                request.form.get("group") or default_group
+            ).strip() or default_group
             frequency = int(request.form.get("frequency") or 2)
             logging.info(
                 "google_sdm import profile=%s selected=%s group=%s frequency=%s ip=%s",
@@ -2017,6 +2020,7 @@ def create_blueprint() -> Blueprint:
             cameras=camera_rows,
             list_error=list_error,
             profile=profile,
+            default_group=default_group,
             page_title="Google Home Cameras",
         )
 
