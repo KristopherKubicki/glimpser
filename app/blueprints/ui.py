@@ -1907,6 +1907,7 @@ def create_blueprint() -> Blueprint:
         from app.utils.google_sdm_profiles import resolve_profile
 
         profile = (request.args.get("profile") or "").strip() or "default"
+        list_error = ""
 
         if request.method == "POST":
             device_ids = request.form.getlist("device_id")
@@ -1963,7 +1964,8 @@ def create_blueprint() -> Blueprint:
         try:
             devices = google_sdm.list_devices(profile)
         except Exception as exc:
-            routes.flash(f"Failed to list Google devices: {exc}", "error")
+            list_error = str(exc)
+            routes.flash(f"Failed to list Google devices: {list_error}", "error")
             devices = []
 
         camera_rows: list[dict[str, object]] = []
@@ -1991,6 +1993,7 @@ def create_blueprint() -> Blueprint:
         return render_template(
             "google_home_devices.html",
             cameras=camera_rows,
+            list_error=list_error,
             profile=profile,
             page_title="Google Home Cameras",
         )

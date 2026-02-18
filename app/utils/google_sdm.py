@@ -35,7 +35,7 @@ import requests
 
 from app.utils.google_sdm_profiles import resolve_profile
 
-_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+_PCM_AUTH_BASE = "https://nestservices.google.com/partnerconnections"
 _TOKEN_URL = "https://oauth2.googleapis.com/token"
 _SDM_BASE = "https://smartdevicemanagement.googleapis.com/v1"
 
@@ -88,6 +88,14 @@ def build_oauth_authorize_url(state: str, profile: str | None = None) -> str:
     if not configured(profile):
         raise GoogleSdmError("Google SDM is not configured")
 
+    # Device Access uses Partner Connections Manager (PCM) for account linking.
+    # Using the standard Google OAuth endpoint will mint a token with the SDM
+    # scope, but the token will not be associated with any enterprise until the
+    # user grants structure/device permissions in PCM.
+    project_id = _profile(profile).project_id
+    if not project_id:
+        raise GoogleSdmError("Missing GOOGLE_SDM_PROJECT_ID")
+
     params = {
         "client_id": _profile(profile).client_id,
         "redirect_uri": _profile(profile).redirect_uri,
@@ -95,10 +103,12 @@ def build_oauth_authorize_url(state: str, profile: str | None = None) -> str:
         "scope": _SDM_SCOPE,
         "access_type": "offline",
         "prompt": "consent",
-        "include_granted_scopes": "true",
+        # PCM is still OAuth under the hood, so we keep `state` to prevent CSRF
+        # and map the callback back to a configured Glimpser profile.
         "state": state,
     }
-    return f"{_AUTH_URL}?{urlencode(params)}"
+    auth_url = f"{_PCM_AUTH_BASE}/{project_id}/auth"
+    return f"{auth_url}?{urlencode(params)}"
 
 
 def exchange_code_for_refresh_token(

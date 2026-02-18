@@ -11,7 +11,12 @@
     <p>Profile: <code>{{ profile }}</code></p>
 
     {% if not cameras %}
-      <p>No devices found (or SDM access not enabled for cameras).</p>
+      {% if list_error %}
+        <p><strong>Error listing devices:</strong></p>
+        <pre style="white-space: pre-wrap; word-break: break-word;">{{ list_error }}</pre>
+      {% else %}
+        <p>No devices found (or SDM access not enabled for cameras).</p>
+      {% endif %}
       <a class="btn" href="{{ url_for('ui.google_home', profile=profile) }}">Back</a>
     {% else %}
       <form method="POST" action="{{ url_for('ui.google_home_devices', profile=profile) }}">
