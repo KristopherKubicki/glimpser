@@ -391,6 +391,9 @@ def display_startup_info(args=None):
         ["Version", config.VERSION],
         ["Host", config.HOST],
         ["Port", config.PORT],
+        ["HTTPS Enabled", "Yes" if config.HTTPS_ENABLED else "No"],
+        ["HTTPS Port", str(config.HTTPS_PORT)],
+        ["HTTPS Only", "Yes" if config.HTTPS_ONLY else "No"],
         ["Debug Mode", config.DEBUG_MODE],
         ["Log Level", config.LOG_LEVEL],
         ["Database", config.DATABASE_PATH],
@@ -479,30 +482,99 @@ def main(argv=None):
     app = create_application(args)
     display_startup_info(args)
 
-    if is_port_in_use(config.PORT) and config.DEBUG_MODE is False:
-        logging.error(
-            "Error: Port %s is already in use. Please choose a different port.",
-            config.PORT,
-        )
-        usage = get_port_usage(config.PORT)
-        if usage:
-            logging.error("Processes using port %s:\n%s", config.PORT, usage)
+    ports_to_check: list[int]
+    if config.HTTPS_ENABLED:
+        if config.HTTPS_ONLY:
+            ports_to_check = [config.HTTPS_PORT]
         else:
+            if config.HTTPS_PORT == config.PORT:
+                logging.error(
+                    "HTTPS_PORT matches PORT (%s). Set HTTPS_ONLY=True or choose a different HTTPS_PORT.",
+                    config.PORT,
+                )
+                sys.exit(1)
+            ports_to_check = [config.PORT, config.HTTPS_PORT]
+    else:
+        ports_to_check = [config.PORT]
+
+    if config.DEBUG_MODE is False:
+        for port in ports_to_check:
+            if not is_port_in_use(port):
+                continue
             logging.error(
-                "Could not determine which process is using port %s.",
-                config.PORT,
+                "Error: Port %s is already in use. Please choose a different port.",
+                port,
             )
-        sys.exit(1)
+            usage = get_port_usage(port)
+            if usage:
+                logging.error("Processes using port %s:\n%s", port, usage)
+            else:
+                logging.error(
+                    "Could not determine which process is using port %s.",
+                    port,
+                )
+            sys.exit(1)
 
     try:
-        logging.info(
-            "Starting web interface at http://%s:%s",
-            config.HOST,
-            config.PORT,
-        )
-        app.run(
-            host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True
-        )
+        ssl_context = None
+        if config.HTTPS_ENABLED:
+            from app.utils import https as https_utils
+
+            if config.HTTPS_SELF_SIGNED:
+                https_utils.ensure_self_signed_cert(
+                    config.HTTPS_CERT_PATH,
+                    config.HTTPS_KEY_PATH,
+                    https_utils.collect_cert_names(),
+                )
+            ssl_context = (config.HTTPS_CERT_PATH, config.HTTPS_KEY_PATH)
+
+        if config.HTTPS_ENABLED and not config.HTTPS_ONLY:
+            from werkzeug.serving import make_server
+
+            https_server = make_server(
+                config.HOST,
+                config.HTTPS_PORT,
+                app,
+                threaded=True,
+                ssl_context=ssl_context,
+            )
+            https_thread = threading.Thread(
+                target=https_server.serve_forever,
+                name="https-server",
+                daemon=True,
+            )
+            https_thread.start()
+            logging.info(
+                "Starting HTTPS interface at https://%s:%s",
+                config.HOST,
+                config.HTTPS_PORT,
+            )
+
+        if config.HTTPS_ENABLED and config.HTTPS_ONLY:
+            logging.info(
+                "Starting web interface at https://%s:%s",
+                config.HOST,
+                config.HTTPS_PORT,
+            )
+            app.run(
+                host=config.HOST,
+                port=config.HTTPS_PORT,
+                debug=config.DEBUG_MODE,
+                threaded=True,
+                ssl_context=ssl_context,
+            )
+        else:
+            logging.info(
+                "Starting web interface at http://%s:%s",
+                config.HOST,
+                config.PORT,
+            )
+            app.run(
+                host=config.HOST,
+                port=config.PORT,
+                debug=config.DEBUG_MODE,
+                threaded=True,
+            )
     except KeyboardInterrupt:
         logging.info("KeyboardInterrupt received. Cleaning up...")
         cleanup_resources()

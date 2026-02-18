@@ -28,6 +28,24 @@ SETTINGS_TOOLTIPS = {
         "TCP port used by the built-in web server. The default is 8082 but any "
         "available port may be chosen."
     ),
+    "HTTPS_ENABLED": (
+        "Enable the built-in HTTPS listener. Use this when integrations (like Google OAuth) "
+        "require an https:// redirect URI."
+    ),
+    "HTTPS_PORT": ("TCP port used for the HTTPS listener (default 8443)."),
+    "HTTPS_ONLY": (
+        "When enabled, Glimpser serves only HTTPS and disables the plain HTTP listener."
+    ),
+    "HTTPS_SELF_SIGNED": (
+        "Auto-generate a self-signed certificate when HTTPS is enabled and no certificate "
+        "files exist at the configured paths."
+    ),
+    "HTTPS_CERT_PATH": ("Path to the HTTPS certificate file (PEM)."),
+    "HTTPS_KEY_PATH": ("Path to the HTTPS private key file (PEM)."),
+    "HTTPS_CERT_HOSTNAMES": (
+        "Comma-separated hostnames and/or IP addresses to include in the self-signed "
+        "certificate (Subject Alternative Name)."
+    ),
     "DANGER_PORT": (
         "Port used by Chrome for remote debugging when Danger mode is enabled. "
         "Change this if you launch Chrome with --remote-debugging-port on a "
@@ -372,6 +390,13 @@ SETTINGS_GROUPS = {
         "TZ",
         "HOST",
         "PORT",
+        "HTTPS_ENABLED",
+        "HTTPS_PORT",
+        "HTTPS_ONLY",
+        "HTTPS_SELF_SIGNED",
+        "HTTPS_CERT_PATH",
+        "HTTPS_KEY_PATH",
+        "HTTPS_CERT_HOSTNAMES",
         "DANGER_PORT",
         "DEBUG",
         "DEBUG_MODE",
@@ -472,6 +497,7 @@ NUMERIC_FIELDS = {
     "LIVE_MAX_FAILURES",
     "CHYRON_SPEED",
     "DANGER_PORT",
+    "HTTPS_PORT",
     "WATCHDOG_FAILURE_THRESHOLD",
     "WATCHDOG_RESTART_COOLDOWN",
     "WATCHDOG_MAX_FILE_HANDLES",

@@ -308,6 +308,21 @@ NAV_ICON = get_setting("NAV_ICON", "img/glimpser_small.png")
 HOST = get_setting("HOST", "0.0.0.0")
 PORT = int(get_setting("PORT", 8082))
 DANGER_PORT = int(get_setting("DANGER_PORT", 9222))
+HTTPS_ENABLED = get_setting("HTTPS_ENABLED", "False") == "True"
+HTTPS_PORT = int(get_setting("HTTPS_PORT", 8443))
+HTTPS_ONLY = get_setting("HTTPS_ONLY", "False") == "True"
+HTTPS_SELF_SIGNED = get_setting("HTTPS_SELF_SIGNED", "True") == "True"
+HTTPS_CERT_PATH = get_setting("HTTPS_CERT_PATH", "data/certs/glimpser.crt")
+HTTPS_KEY_PATH = get_setting("HTTPS_KEY_PATH", "data/certs/glimpser.key")
+HTTPS_CERT_HOSTNAMES = get_setting("HTTPS_CERT_HOSTNAMES", "")
+_https_cert_rel = Path(HTTPS_CERT_PATH)
+HTTPS_CERT_PATH = str(
+    _https_cert_rel if _https_cert_rel.is_absolute() else _BASE_DIR / _https_cert_rel
+)
+_https_key_rel = Path(HTTPS_KEY_PATH)
+HTTPS_KEY_PATH = str(
+    _https_key_rel if _https_key_rel.is_absolute() else _BASE_DIR / _https_key_rel
+)
 ENFORCE_DOMAIN_IN_HOST = get_setting("ENFORCE_DOMAIN_IN_HOST", "False") == "True"
 DEBUG = get_setting("DEBUG", "False") == "True"
 # Provide a separate attribute for runtime checks
