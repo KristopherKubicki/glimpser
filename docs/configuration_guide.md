@@ -36,6 +36,13 @@ can modify them in the application interface or directly in the database.
 - `HOST` – address to bind the server (default `0.0.0.0`). The settings page lists common local addresses first.
 - `ENFORCE_DOMAIN_IN_HOST` – require a domain in the `Host` header (default `False`)
 - `PORT` – port for the web interface (default `8082`). Must be a free, non‑privileged port.
+- `HTTPS_ENABLED` – enable the built-in HTTPS listener (default `False`).
+- `HTTPS_PORT` – port used by the HTTPS listener (default `8443`).
+- `HTTPS_ONLY` – when `True`, serve only HTTPS and disable the HTTP listener (default `False`).
+- `HTTPS_SELF_SIGNED` – when `True`, auto-generate a self-signed certificate if the configured files are missing (default `True`).
+- `HTTPS_CERT_PATH` – certificate path for HTTPS (default `data/certs/glimpser.crt`).
+- `HTTPS_KEY_PATH` – private key path for HTTPS (default `data/certs/glimpser.key`).
+- `HTTPS_CERT_HOSTNAMES` – comma-separated hostnames/IPs to include in the self-signed certificate SAN (default empty).
 - `DEBUG` – enable debug mode (default `False`)
 - `DEBUG_MODE` – runtime alias of `DEBUG` used by the command-line interface
 - `MAX_WORKERS` – number of worker threads (default `8`). Limited to twice the CPU count.
