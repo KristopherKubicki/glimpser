@@ -166,11 +166,15 @@ class TemplateManager:
         session = self.get_session()
         try:
             templates = session.query(Template).all()
-            result = {template.name: template.__dict__ for template in templates}
-            for key in result:
-                del result[key]["_sa_instance_state"]
-            if result.get(None):
-                del result[None]
+            result = {}
+            for template in templates:
+                # Templates without a name are not addressable via the UI or
+                # scheduler; treat them as invalid and ignore.
+                if not template.name:
+                    continue
+                data = template.__dict__.copy()
+                data.pop("_sa_instance_state", None)
+                result[template.name] = data
             return result
         finally:
             session.close()
@@ -227,7 +231,9 @@ class TemplateManager:
         try:
             template = session.query(Template).filter_by(name=name).first()
             if template is None:
-                template = Template()
+                # Always set the name on create. Some callers only pass it via
+                # the `name` argument (not inside `details`).
+                template = Template(name=name)
                 session.add(template)
                 ldelta = True
             else:
