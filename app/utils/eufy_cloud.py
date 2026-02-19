@@ -28,7 +28,6 @@ from itsdangerous import BadData, URLSafeSerializer
 from app import config
 
 _SNAPSHOT_TOKEN_SALT = "eufy-cloud-snapshot-v1"
-_EUFY_API_BASE = "https://mysecurity.eufylife.com/api/v1"
 _EUFY_DOMAIN_BASE = "https://extend.eufylife.com"
 _EUFY_SERVER_PUBLIC_KEY = (
     "04c5c00c4f8d1197cc7c3167c52bf7acb054d722f0ef08dcd7e0883236e0d72a"
@@ -39,6 +38,8 @@ _NATIVE_REFRESH_GRACE_SECONDS = 60.0
 
 _NATIVE_SESSION_LOCK = threading.Lock()
 _NATIVE_SESSIONS: dict[str, dict[str, object]] = {}
+_NATIVE_CAPTCHA_LOCK = threading.Lock()
+_NATIVE_CAPTCHAS: dict[str, dict[str, object]] = {}
 
 _NATIVE_DEFAULT_HEADERS = {
     "User-Agent": "EufySecurity/4.6.0_1630 (Android 12; ONEPLUS A3003)",
@@ -58,6 +59,22 @@ _NATIVE_DEFAULT_HEADERS = {
 
 class EufyCloudError(RuntimeError):
     """Raised when Eufy cloud integration calls fail."""
+
+
+class EufyCaptchaRequired(EufyCloudError):
+    """Raised when Eufy cloud requires a human captcha challenge."""
+
+    def __init__(
+        self,
+        profile: str,
+        captcha_id: str,
+        captcha_item: str,
+        message: str,
+    ) -> None:
+        super().__init__(message)
+        self.profile = str(profile or "default").strip().lower() or "default"
+        self.captcha_id = str(captcha_id or "").strip()
+        self.captcha_item = str(captcha_item or "").strip()
 
 
 @dataclass(frozen=True)
@@ -296,6 +313,58 @@ def _clear_native_session(profile_name: str) -> None:
         _NATIVE_SESSIONS.pop(profile_name, None)
 
 
+def _set_native_captcha(profile_name: str, captcha_id: str, captcha_item: str) -> None:
+    key = str(profile_name or "default").strip().lower() or "default"
+    with _NATIVE_CAPTCHA_LOCK:
+        _NATIVE_CAPTCHAS[key] = {
+            "captcha_id": str(captcha_id or "").strip(),
+            "captcha_item": str(captcha_item or "").strip(),
+            "updated_at": time.time(),
+        }
+
+
+def get_native_captcha(profile: str = "default") -> dict[str, str] | None:
+    """Return pending captcha challenge info for a profile, if any."""
+
+    key = str(profile or "default").strip().lower() or "default"
+    with _NATIVE_CAPTCHA_LOCK:
+        raw = _NATIVE_CAPTCHAS.get(key)
+    if not isinstance(raw, dict):
+        return None
+    captcha_id = str(raw.get("captcha_id") or "").strip()
+    captcha_item = str(raw.get("captcha_item") or "").strip()
+    if not captcha_id or not captcha_item:
+        return None
+    return {"captcha_id": captcha_id, "captcha_item": captcha_item}
+
+
+def clear_native_captcha(profile: str = "default") -> None:
+    """Clear pending captcha state for a profile."""
+
+    key = str(profile or "default").strip().lower() or "default"
+    with _NATIVE_CAPTCHA_LOCK:
+        _NATIVE_CAPTCHAS.pop(key, None)
+
+
+def _native_raise_captcha_required(
+    profile: EufyCloudProfile,
+    payload: object,
+    code: int,
+    msg: str,
+) -> None:
+    data = payload.get("data") if isinstance(payload, dict) else None
+    captcha_id = str(data.get("captcha_id") if isinstance(data, dict) else "").strip()
+    captcha_item = str(data.get("item") if isinstance(data, dict) else "").strip()
+    if captcha_id and captcha_item:
+        _set_native_captcha(profile.name, captcha_id, captcha_item)
+        raise EufyCaptchaRequired(
+            profile=profile.name,
+            captcha_id=captcha_id,
+            captcha_item=captcha_item,
+            message=f"Eufy captcha required ({code}): {msg}",
+        )
+
+
 def _native_timezone_ms() -> int:
     """Return timezone offset in Eufy's expected millisecond format."""
 
@@ -390,25 +459,31 @@ def _native_api_base(
 
 
 def _native_session(
-    profile: EufyCloudProfile, *, timeout: float
+    profile: EufyCloudProfile,
+    *,
+    timeout: float,
+    force_login: bool = False,
+    captcha_id: str = "",
+    captcha_code: str = "",
 ) -> tuple[str, str, bytes, dict[str, str]]:
     now = time.time()
-    with _NATIVE_SESSION_LOCK:
-        cached = _NATIVE_SESSIONS.get(profile.name)
-        if isinstance(cached, dict):
-            token = str(cached.get("token") or "").strip()
-            api_base = str(cached.get("api_base") or "").strip()
-            expires_at = float(cached.get("expires_at") or 0)
-            session_key = cached.get("session_key")
-            headers = cached.get("headers")
-            if (
-                token
-                and api_base
-                and isinstance(session_key, bytes)
-                and isinstance(headers, dict)
-                and expires_at > now + _NATIVE_REFRESH_GRACE_SECONDS
-            ):
-                return token, api_base, session_key, dict(headers)
+    if not force_login:
+        with _NATIVE_SESSION_LOCK:
+            cached = _NATIVE_SESSIONS.get(profile.name)
+            if isinstance(cached, dict):
+                token = str(cached.get("token") or "").strip()
+                api_base = str(cached.get("api_base") or "").strip()
+                expires_at = float(cached.get("expires_at") or 0)
+                session_key = cached.get("session_key")
+                headers = cached.get("headers")
+                if (
+                    token
+                    and api_base
+                    and isinstance(session_key, bytes)
+                    and isinstance(headers, dict)
+                    and expires_at > now + _NATIVE_REFRESH_GRACE_SECONDS
+                ):
+                    return token, api_base, session_key, dict(headers)
 
     if not profile.native_email or not profile.native_password:
         raise EufyCloudError(
@@ -438,6 +513,9 @@ def _native_session(
         "time_zone": _native_timezone_ms(),
         "transaction": str(int(time.time() * 1000)),
     }
+    if captcha_id and captcha_code:
+        login_payload["captcha_id"] = str(captcha_id)
+        login_payload["answer"] = str(captcha_code)
 
     try:
         resp = requests.post(
@@ -464,6 +542,7 @@ def _native_session(
     code = _native_error_code(payload)
     if code != 0:
         msg = _native_error_text(payload)
+        _native_raise_captcha_required(profile, payload, code, msg)
         raise EufyCloudError(f"Eufy cloud login failed ({code}): {msg}")
 
     data = payload.get("data") if isinstance(payload, dict) else None
@@ -505,6 +584,7 @@ def _native_session(
             "session_key": shared_key,
             "headers": req_headers,
         }
+    clear_native_captcha(profile.name)
 
     return token, api_base, shared_key, req_headers
 
@@ -783,6 +863,39 @@ def _native_fetch_snapshot(
         )
 
     return _native_fetch_image(profile, image_url, timeout=timeout)
+
+
+def submit_native_captcha(
+    profile: str,
+    captcha_code: str,
+    *,
+    timeout: float = 20.0,
+) -> None:
+    """Submit a pending native-mode Eufy captcha answer."""
+
+    key = str(profile or "default").strip().lower() or "default"
+    prof = resolve_profile(key)
+    if not prof:
+        raise EufyCloudError(f"Eufy cloud profile '{key}' is not configured")
+    if prof.mode != "native":
+        raise EufyCloudError(f"Eufy profile '{key}' is not in native mode")
+
+    challenge = get_native_captcha(key)
+    if not challenge:
+        raise EufyCloudError(f"No pending captcha challenge for profile '{key}'")
+
+    answer = str(captcha_code or "").strip()
+    if not answer:
+        raise EufyCloudError("Captcha answer is required")
+
+    _clear_native_session(key)
+    _native_session(
+        prof,
+        timeout=timeout,
+        force_login=True,
+        captcha_id=str(challenge.get("captcha_id") or ""),
+        captcha_code=answer,
+    )
 
 
 def list_devices(profile: str = "default", *, timeout: float = 12.0) -> list[dict]:

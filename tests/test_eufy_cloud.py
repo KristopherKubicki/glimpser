@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from app.utils import eufy_cloud
 
 
@@ -134,3 +136,124 @@ def test_fetch_snapshot_native_mode(monkeypatch) -> None:
         "timeout": 9,
         "url": "https://cdn.example.test/front.jpg",
     }
+
+
+def test_native_session_sets_captcha_challenge(monkeypatch) -> None:
+    profile = eufy_cloud.EufyCloudProfile(
+        name="argyle",
+        mode="native",
+        bridge_url="",
+        api_token="",
+        devices_path="/api/devices",
+        snapshot_path="/api/cameras/{device_id}/snapshot",
+        verify_tls=True,
+        native_email="guest@example.com",
+        native_password="secret",
+        native_country="US",
+    )
+
+    class _FakeResp:
+        status_code = 200
+
+        @staticmethod
+        def json() -> dict:
+            return {
+                "code": 100032,
+                "msg": "Failed to request.",
+                "data": {
+                    "captcha_id": "cid-123",
+                    "item": "data:image/png;base64,abc",
+                },
+            }
+
+    eufy_cloud._clear_native_session(profile.name)
+    eufy_cloud.clear_native_captcha(profile.name)
+    monkeypatch.setattr(eufy_cloud, "_native_api_base", lambda *a, **k: "https://x")
+    monkeypatch.setattr(eufy_cloud.requests, "post", lambda *a, **k: _FakeResp())
+
+    with pytest.raises(eufy_cloud.EufyCaptchaRequired):
+        eufy_cloud._native_session(profile, timeout=1, force_login=True)
+
+    challenge = eufy_cloud.get_native_captcha(profile.name)
+    assert challenge is not None
+    assert challenge["captcha_id"] == "cid-123"
+    assert challenge["captcha_item"].startswith("data:image/png;base64,")
+
+    eufy_cloud.clear_native_captcha(profile.name)
+    eufy_cloud._clear_native_session(profile.name)
+
+
+def test_submit_native_captcha_reuses_pending_challenge(monkeypatch) -> None:
+    profile = eufy_cloud.EufyCloudProfile(
+        name="argyle",
+        mode="native",
+        bridge_url="",
+        api_token="",
+        devices_path="/api/devices",
+        snapshot_path="/api/cameras/{device_id}/snapshot",
+        verify_tls=True,
+        native_email="guest@example.com",
+        native_password="secret",
+        native_country="US",
+    )
+    monkeypatch.setattr(
+        eufy_cloud,
+        "resolve_profile",
+        lambda name="default": profile if name == "argyle" else None,
+    )
+
+    eufy_cloud._set_native_captcha("argyle", "cid-1", "data:image/png;base64,abc")
+    seen: dict[str, object] = {}
+
+    def _fake_native_session(
+        prof,
+        *,
+        timeout,
+        force_login=False,
+        captcha_id="",
+        captcha_code="",
+    ):
+        seen["profile"] = prof.name
+        seen["timeout"] = timeout
+        seen["force_login"] = force_login
+        seen["captcha_id"] = captcha_id
+        seen["captcha_code"] = captcha_code
+        eufy_cloud.clear_native_captcha(prof.name)
+        return "token", "https://api.example", b"k" * 32, {}
+
+    monkeypatch.setattr(eufy_cloud, "_native_session", _fake_native_session)
+
+    eufy_cloud.submit_native_captcha("argyle", "4321", timeout=7)
+
+    assert seen == {
+        "profile": "argyle",
+        "timeout": 7,
+        "force_login": True,
+        "captcha_id": "cid-1",
+        "captcha_code": "4321",
+    }
+    assert eufy_cloud.get_native_captcha("argyle") is None
+
+
+def test_submit_native_captcha_requires_pending_challenge(monkeypatch) -> None:
+    profile = eufy_cloud.EufyCloudProfile(
+        name="argyle",
+        mode="native",
+        bridge_url="",
+        api_token="",
+        devices_path="/api/devices",
+        snapshot_path="/api/cameras/{device_id}/snapshot",
+        verify_tls=True,
+        native_email="guest@example.com",
+        native_password="secret",
+        native_country="US",
+    )
+    monkeypatch.setattr(
+        eufy_cloud,
+        "resolve_profile",
+        lambda name="default": profile if name == "argyle" else None,
+    )
+    eufy_cloud.clear_native_captcha("argyle")
+
+    with pytest.raises(eufy_cloud.EufyCloudError):
+        eufy_cloud.submit_native_captcha("argyle", "1234")

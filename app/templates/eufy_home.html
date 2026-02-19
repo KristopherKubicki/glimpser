@@ -128,6 +128,27 @@
       <p>Status: <strong>Not configured</strong></p>
       <p>Save either native cloud credentials or an external bridge profile first.</p>
     {% endif %}
+
+    {% if captcha_challenge %}
+      <hr style="margin: 16px 0;" />
+      <h3 style="margin: 0 0 8px 0;">Captcha Verification Required</h3>
+      <p style="margin-top: 0;">
+        Eufy requested captcha verification for profile <code>{{ selected_profile }}</code>.
+      </p>
+      <img
+        src="{{ captcha_challenge.captcha_item }}"
+        alt="Eufy captcha"
+        style="display: block; max-width: 320px; background: #111; padding: 8px; border: 1px solid #333; border-radius: 6px; margin-bottom: 10px;"
+      />
+      <form method="POST" action="{{ url_for('ui.eufy_captcha') }}" style="display: flex; gap: 8px; align-items: end; flex-wrap: wrap;">
+        <input type="hidden" name="profile" value="{{ selected_profile }}" />
+        <label>
+          Captcha Code
+          <input type="text" name="captcha_code" autocomplete="off" autocorrect="off" spellcheck="false" style="min-width: 180px;" />
+        </label>
+        <button type="submit" class="btn">Submit Captcha</button>
+      </form>
+    {% endif %}
   </div>
 </main>
 {% endblock %}

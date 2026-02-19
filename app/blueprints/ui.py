@@ -2298,6 +2298,9 @@ def create_blueprint() -> Blueprint:
         }
 
         configured = bool(eufy_cloud.configured(selected))
+        captcha_challenge = (
+            eufy_cloud.get_native_captcha(selected) if mode == "native" else None
+        )
 
         return render_template(
             "eufy_home.html",
@@ -2313,6 +2316,7 @@ def create_blueprint() -> Blueprint:
             verify_tls=verify_tls,
             api_token_saved=api_token_saved,
             native_password_saved=native_password_saved,
+            captcha_challenge=captcha_challenge,
             page_title="Eufy Cloud",
         )
 
@@ -2394,6 +2398,35 @@ def create_blueprint() -> Blueprint:
         return redirect(url_for("ui.eufy_home", profile=profile))
 
     @bp.route(
+        "/integrations/eufy/captcha",
+        methods=["POST"],
+        endpoint="eufy_captcha",
+    )
+    @routes.login_required
+    def eufy_captcha():
+        """Submit a pending Eufy native-cloud captcha challenge."""
+
+        from app.utils import eufy_cloud
+
+        profile = (request.form.get("profile") or "").strip().lower() or "default"
+        answer = str(request.form.get("captcha_code") or "").strip()
+        if not answer:
+            routes.flash("Captcha answer is required.", "error")
+            return redirect(url_for("ui.eufy_home", profile=profile))
+
+        try:
+            eufy_cloud.submit_native_captcha(profile, answer, timeout=20)
+        except eufy_cloud.EufyCaptchaRequired:
+            routes.flash("Captcha was incorrect. Please try again.", "error")
+            return redirect(url_for("ui.eufy_home", profile=profile))
+        except Exception as exc:
+            routes.flash(f"Failed to verify Eufy captcha: {exc}", "error")
+            return redirect(url_for("ui.eufy_home", profile=profile))
+
+        routes.flash("Captcha accepted. You can import Eufy cameras now.", "success")
+        return redirect(url_for("ui.eufy_devices", profile=profile))
+
+    @bp.route(
         "/integrations/eufy/devices",
         methods=["GET", "POST"],
         endpoint="eufy_devices",
@@ -2468,6 +2501,12 @@ def create_blueprint() -> Blueprint:
 
         try:
             devices = eufy_cloud.list_devices(profile)
+        except eufy_cloud.EufyCaptchaRequired:
+            routes.flash(
+                "Eufy requires captcha verification for this profile. Solve it below.",
+                "warning",
+            )
+            return redirect(url_for("ui.eufy_home", profile=profile))
         except Exception as exc:
             list_error = str(exc)
             routes.flash(f"Failed to list Eufy devices: {list_error}", "error")

@@ -27,6 +27,10 @@ This keeps credentials and cloud tokens server-side in Glimpser.
 5. Save profile.
 6. Click **Discover / Import Cameras**.
 7. Select cameras and import them into a group.
+8. If Eufy shows a captcha challenge:
+   - Glimpser will display the captcha image on the Eufy integration page.
+   - Enter the captcha text and submit.
+   - Then retry **Discover / Import Cameras**.
 
 ## Bridge API shape
 
