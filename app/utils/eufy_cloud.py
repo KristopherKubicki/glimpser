@@ -1,4 +1,4 @@
-"""Eufy cloud bridge helpers.
+"""Eufy cloud helpers.
 
 Glimpser keeps Eufy cloud access enclosed by routing snapshot fetches through
 local Glimpser endpoints. Templates can use stable URLs like:
@@ -6,13 +6,16 @@ local Glimpser endpoints. Templates can use stable URLs like:
     eufy://<profile>/<device_id>
 
 At capture time those URLs are converted to signed local proxy URLs
-(``/integrations/eufy/snapshot``), so camera credentials/tokens stay server-side.
+(``/integrations/eufy/snapshot``), so camera credentials/tokens stay
+server-side.
 """
 
 from __future__ import annotations
 
 import base64
 import json
+import threading
+import time
 from dataclasses import dataclass
 from urllib.parse import quote, urlparse
 
@@ -22,20 +25,31 @@ from itsdangerous import BadData, URLSafeSerializer
 from app import config
 
 _SNAPSHOT_TOKEN_SALT = "eufy-cloud-snapshot-v1"
+_EUFY_API_BASE = "https://mysecurity.eufylife.com/api/v1"
+_NATIVE_REFRESH_GRACE_SECONDS = 60.0
+
+_NATIVE_SESSION_LOCK = threading.Lock()
+_NATIVE_SESSIONS: dict[str, dict[str, object]] = {}
 
 
 class EufyCloudError(RuntimeError):
-    """Raised when Eufy cloud bridge calls fail."""
+    """Raised when Eufy cloud integration calls fail."""
 
 
 @dataclass(frozen=True)
 class EufyCloudProfile:
+    """Normalized Eufy integration profile."""
+
     name: str
+    mode: str
     bridge_url: str
     api_token: str
     devices_path: str
     snapshot_path: str
     verify_tls: bool
+    native_email: str
+    native_password: str
+    native_country: str
 
 
 def _serializer() -> URLSafeSerializer:
@@ -90,14 +104,20 @@ def list_profile_names() -> list[str]:
 
 
 def resolve_profile(profile: str = "default") -> EufyCloudProfile | None:
+    """Resolve a stored Eufy profile into normalized runtime settings."""
+
     payload = _load_profiles()
-    key = str(profile or "default").strip() or "default"
+    key = str(profile or "default").strip().lower() or "default"
     value = payload.get(key)
     if not isinstance(value, dict):
         return None
 
+    mode = str(value.get("mode") or "external").strip().lower()
+    if mode not in {"external", "native"}:
+        mode = "external"
+
     bridge_url = str(value.get("bridge_url") or "").strip().rstrip("/")
-    if not bridge_url:
+    if mode == "external" and not bridge_url:
         return None
 
     devices_path = _normalize_path(value.get("devices_path") or "", "/api/devices")
@@ -115,16 +135,27 @@ def resolve_profile(profile: str = "default") -> EufyCloudProfile | None:
 
     return EufyCloudProfile(
         name=key,
+        mode=mode,
         bridge_url=bridge_url,
         api_token=str(value.get("api_token") or "").strip(),
         devices_path=devices_path,
         snapshot_path=snapshot_path,
         verify_tls=verify_tls,
+        native_email=str(value.get("native_email") or "").strip(),
+        native_password=str(value.get("native_password") or "").strip(),
+        native_country=str(value.get("native_country") or "US").strip() or "US",
     )
 
 
 def configured(profile: str = "default") -> bool:
-    return resolve_profile(profile) is not None
+    """Return whether a profile has enough config to capture snapshots."""
+
+    prof = resolve_profile(profile)
+    if prof is None:
+        return False
+    if prof.mode == "native":
+        return bool(prof.native_email and prof.native_password)
+    return bool(prof.bridge_url)
 
 
 def parse_eufy_url(url: str) -> tuple[str, str]:
@@ -197,6 +228,12 @@ def resolve_eufy_to_snapshot(url: str) -> str:
     return build_snapshot_proxy_url(profile, device_id)
 
 
+def ensure_bridge_running(profile: str = "default") -> None:
+    """Compatibility no-op kept for legacy call sites."""
+
+    _ = profile
+
+
 def _extract_devices(payload: object) -> list[dict]:
     if isinstance(payload, list):
         return [item for item in payload if isinstance(item, dict)]
@@ -209,10 +246,377 @@ def _extract_devices(payload: object) -> list[dict]:
     return []
 
 
+def _native_error_text(payload: object) -> str:
+    if not isinstance(payload, dict):
+        return "unknown error"
+    return str(
+        payload.get("msg")
+        or payload.get("message")
+        or payload.get("error")
+        or payload.get("reason")
+        or "unknown error"
+    ).strip()
+
+
+def _native_error_code(payload: object) -> int:
+    if not isinstance(payload, dict):
+        return -1
+    try:
+        return int(payload.get("code", -1))
+    except Exception:
+        return -1
+
+
+def _clear_native_session(profile_name: str) -> None:
+    with _NATIVE_SESSION_LOCK:
+        _NATIVE_SESSIONS.pop(profile_name, None)
+
+
+def _native_session(profile: EufyCloudProfile, *, timeout: float) -> tuple[str, str]:
+    now = time.time()
+    with _NATIVE_SESSION_LOCK:
+        cached = _NATIVE_SESSIONS.get(profile.name)
+        if isinstance(cached, dict):
+            token = str(cached.get("token") or "").strip()
+            api_base = str(cached.get("api_base") or _EUFY_API_BASE).strip()
+            expires_at = float(cached.get("expires_at") or 0)
+            if token and api_base and expires_at > now + _NATIVE_REFRESH_GRACE_SECONDS:
+                return token, api_base
+
+    if not profile.native_email or not profile.native_password:
+        raise EufyCloudError(
+            f"Eufy profile '{profile.name}' missing cloud email/password"
+        )
+
+    login_payload = {
+        "email": profile.native_email,
+        "password": profile.native_password,
+    }
+
+    try:
+        resp = requests.post(
+            f"{_EUFY_API_BASE}/passport/login",
+            json=login_payload,
+            timeout=timeout,
+            verify=profile.verify_tls,
+        )
+    except Exception as exc:
+        raise EufyCloudError(f"Eufy cloud login request failed: {exc}") from exc
+
+    if resp.status_code >= 400:
+        raise EufyCloudError(f"Eufy cloud login returned HTTP {resp.status_code}")
+
+    try:
+        payload = resp.json()
+    except Exception as exc:
+        raise EufyCloudError("Eufy cloud login returned invalid JSON") from exc
+
+    code = _native_error_code(payload)
+    if code != 0:
+        msg = _native_error_text(payload)
+        raise EufyCloudError(f"Eufy cloud login failed ({code}): {msg}")
+
+    data = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(data, dict):
+        raise EufyCloudError("Eufy cloud login response missing data payload")
+
+    token = str(data.get("auth_token") or "").strip()
+    if not token:
+        raise EufyCloudError("Eufy cloud login succeeded but auth token missing")
+
+    domain = str(data.get("domain") or "").strip()
+    api_base = _EUFY_API_BASE
+    if domain:
+        api_base = f"https://{domain}/v1"
+
+    try:
+        expires_at = float(data.get("token_expires_at") or 0)
+    except Exception:
+        expires_at = 0
+    if expires_at <= now:
+        expires_at = now + 1800
+
+    with _NATIVE_SESSION_LOCK:
+        _NATIVE_SESSIONS[profile.name] = {
+            "token": token,
+            "api_base": api_base,
+            "expires_at": expires_at,
+        }
+
+    return token, api_base
+
+
+def _native_request(
+    profile: EufyCloudProfile,
+    endpoint: str,
+    *,
+    payload: dict | None = None,
+    timeout: float,
+    retry: bool = True,
+) -> dict:
+    token, api_base = _native_session(profile, timeout=timeout)
+    url = f"{api_base.rstrip('/')}/{endpoint.lstrip('/')}"
+    try:
+        resp = requests.post(
+            url,
+            headers={"x-auth-token": token},
+            json=payload or {},
+            timeout=timeout,
+            verify=profile.verify_tls,
+        )
+    except Exception as exc:
+        raise EufyCloudError(
+            f"Eufy cloud request failed for {endpoint}: {exc}"
+        ) from exc
+
+    if resp.status_code == 401 and retry:
+        _clear_native_session(profile.name)
+        return _native_request(
+            profile,
+            endpoint,
+            payload=payload,
+            timeout=timeout,
+            retry=False,
+        )
+
+    if resp.status_code >= 400:
+        raise EufyCloudError(
+            f"Eufy cloud endpoint {endpoint} returned HTTP {resp.status_code}"
+        )
+
+    try:
+        body = resp.json()
+    except Exception as exc:
+        raise EufyCloudError(
+            f"Eufy cloud endpoint {endpoint} returned invalid JSON"
+        ) from exc
+
+    code = _native_error_code(body)
+    if code != 0:
+        msg = _native_error_text(body)
+        authish = (
+            "token" in msg.lower()
+            or "auth" in msg.lower()
+            or code
+            in {
+                26051,
+                26052,
+                26053,
+            }
+        )
+        if retry and authish:
+            _clear_native_session(profile.name)
+            return _native_request(
+                profile,
+                endpoint,
+                payload=payload,
+                timeout=timeout,
+                retry=False,
+            )
+        raise EufyCloudError(f"Eufy cloud error on {endpoint} ({code}): {msg}")
+
+    return body if isinstance(body, dict) else {}
+
+
+def _native_snapshot_url(device: dict) -> str:
+    if not isinstance(device, dict):
+        return ""
+    url = str(
+        device.get("cover_path")
+        or device.get("picture_url")
+        or device.get("snapshot_url")
+        or ""
+    ).strip()
+    if url.startswith("//"):
+        return "https:" + url
+    return url
+
+
+def _native_online(device: dict) -> bool:
+    val = device.get("is_online", device.get("online", device.get("status")))
+    if val is None or val == "":
+        return True
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, (int, float)):
+        return val > 0
+    text = str(val).strip().lower()
+    return text not in {"0", "false", "offline", "off", "disconnected"}
+
+
+def _native_list_devices(profile: EufyCloudProfile, *, timeout: float) -> list[dict]:
+    payload = _native_request(profile, "app/get_devs_list", timeout=timeout)
+    raw_devices = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(raw_devices, list):
+        raise EufyCloudError("Eufy cloud devices payload is missing data list")
+
+    out: list[dict] = []
+    for item in raw_devices:
+        if not isinstance(item, dict):
+            continue
+        did = str(
+            item.get("device_sn")
+            or item.get("device_id")
+            or item.get("id")
+            or item.get("serialNumber")
+            or ""
+        ).strip()
+        if not did:
+            continue
+
+        name = str(
+            item.get("device_name")
+            or item.get("name")
+            or item.get("label")
+            or item.get("nickname")
+            or did
+        ).strip()
+        out.append(
+            {
+                "device_id": did,
+                "name": name,
+                "online": _native_online(item),
+                "snapshot": bool(_native_snapshot_url(item)),
+                "model": str(
+                    item.get("device_model") or item.get("model") or ""
+                ).strip(),
+                "station": str(
+                    item.get("station_sn") or item.get("station") or ""
+                ).strip(),
+            }
+        )
+
+    out.sort(key=lambda d: str(d.get("name") or "").lower())
+    return out
+
+
+def _native_fetch_image(
+    profile: EufyCloudProfile,
+    image_url: str,
+    *,
+    timeout: float,
+) -> tuple[bytes, str]:
+    image_url = str(image_url or "").strip()
+    if not image_url:
+        raise EufyCloudError("Eufy cloud device has no cover image URL")
+
+    token, _api_base = _native_session(profile, timeout=timeout)
+    last_error = ""
+    for headers in (
+        {"x-auth-token": token},
+        {"Authorization": f"Bearer {token}"},
+        {},
+    ):
+        try:
+            resp = requests.get(
+                image_url,
+                headers=headers,
+                timeout=timeout,
+                verify=profile.verify_tls,
+            )
+        except Exception as exc:
+            last_error = str(exc)
+            continue
+
+        if resp.status_code >= 400:
+            last_error = f"HTTP {resp.status_code}"
+            continue
+
+        content_type = (
+            str(resp.headers.get("Content-Type") or "").split(";", 1)[0].strip()
+        )
+        if content_type.startswith("image/"):
+            return resp.content, content_type or "image/jpeg"
+
+        try:
+            payload = resp.json()
+        except Exception:
+            last_error = f"non-image content-type {content_type or 'unknown'}"
+            continue
+
+        if isinstance(payload, dict):
+            b64 = str(
+                payload.get("image_base64")
+                or payload.get("snapshot_base64")
+                or payload.get("jpeg_base64")
+                or ""
+            ).strip()
+            if b64:
+                try:
+                    return base64.b64decode(b64), "image/jpeg"
+                except Exception:
+                    last_error = "invalid base64 image payload"
+                    continue
+            redirect = str(
+                payload.get("snapshot_url")
+                or payload.get("image_url")
+                or payload.get("url")
+                or ""
+            ).strip()
+            if redirect:
+                return _native_fetch_image(profile, redirect, timeout=timeout)
+
+        last_error = f"unsupported payload ({content_type or 'unknown'})"
+
+    raise EufyCloudError(
+        f"Failed fetching Eufy snapshot image for URL {image_url}: {last_error}"
+    )
+
+
+def _native_fetch_snapshot(
+    profile: EufyCloudProfile,
+    device_id: str,
+    *,
+    timeout: float,
+) -> tuple[bytes, str]:
+    payload = _native_request(profile, "app/get_devs_list", timeout=timeout)
+    raw_devices = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(raw_devices, list):
+        raise EufyCloudError("Eufy cloud devices payload is missing data list")
+
+    did = str(device_id or "").strip()
+    if not did:
+        raise EufyCloudError("Missing Eufy device id")
+
+    target = next(
+        (
+            d
+            for d in raw_devices
+            if isinstance(d, dict)
+            and str(
+                d.get("device_sn")
+                or d.get("device_id")
+                or d.get("id")
+                or d.get("serialNumber")
+                or ""
+            ).strip()
+            == did
+        ),
+        None,
+    )
+    if not isinstance(target, dict):
+        raise EufyCloudError(f"Eufy cloud device '{did}' not found")
+
+    image_url = _native_snapshot_url(target)
+    if not image_url:
+        raise EufyCloudError(
+            f"Eufy cloud device '{did}' has no snapshot/cover URL in API response"
+        )
+
+    return _native_fetch_image(profile, image_url, timeout=timeout)
+
+
 def list_devices(profile: str = "default", *, timeout: float = 12.0) -> list[dict]:
+    """List devices for a configured Eufy profile."""
+
     prof = resolve_profile(profile)
     if not prof:
         raise EufyCloudError(f"Eufy cloud profile '{profile}' is not configured")
+
+    if prof.mode == "native":
+        return _native_list_devices(prof, timeout=timeout)
+
+    ensure_bridge_running(profile)
 
     url = _join_url(prof.bridge_url, prof.devices_path)
     try:
@@ -290,11 +694,16 @@ def fetch_snapshot(
     *,
     timeout: float = 20.0,
 ) -> tuple[bytes, str]:
-    """Fetch a snapshot for ``device_id`` from the configured bridge profile."""
+    """Fetch a snapshot for ``device_id`` from the configured profile."""
 
     prof = resolve_profile(profile)
     if not prof:
         raise EufyCloudError(f"Eufy cloud profile '{profile}' is not configured")
+
+    if prof.mode == "native":
+        return _native_fetch_snapshot(prof, device_id, timeout=timeout)
+
+    ensure_bridge_running(profile)
 
     url = _snapshot_url_for_device(prof, device_id)
 

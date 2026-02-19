@@ -3,23 +3,28 @@
 {% block content %}
 <main class="container settings-page">
   <div class="card">
-    <h2>Eufy Cloud Bridge</h2>
+    <h2>Eufy Cloud Cameras</h2>
 
-    {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %}
-    <div class="flash-messages">
-      {% for category, message in messages %}
-      <div class="alert alert-{{ category }}">{{ message }}</div>
-      {% endfor %}
-    </div>
-    {% endif %} {% endwith %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
 
     <p>
-      Keep Eufy cloud access enclosed inside Glimpser by connecting a bridge and
-      importing cameras as <code>eufy://&lt;profile&gt;/&lt;device_id&gt;</code>
-      templates.
+      Keep Eufy cloud access enclosed inside Glimpser and import cameras as
+      <code>eufy://&lt;profile&gt;/&lt;device_id&gt;</code> templates.
     </p>
 
-    <form method="GET" action="{{ url_for('ui.eufy_home') }}" style="display:flex; gap: 12px; flex-wrap: wrap; align-items: end; margin: 12px 0;">
+    <form
+      method="GET"
+      action="{{ url_for('ui.eufy_home') }}"
+      style="display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin: 12px 0;"
+    >
       <label>
         Profile
         <select name="profile" style="min-width: 220px;">
@@ -34,47 +39,85 @@
     <details style="margin: 12px 0;" open>
       <summary><strong>Edit Profile</strong></summary>
       <form method="POST" action="{{ url_for('ui.eufy_profile') }}" style="margin-top: 12px;">
-        <div style="display:flex; gap: 12px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
           <label style="min-width: 220px;">
             Profile Name
-            <input type="text" name="profile" value="{{ selected_profile }}" placeholder="e.g. argyle" style="width:100%;" />
+            <input type="text" name="profile" value="{{ selected_profile }}" placeholder="e.g. argyle" style="width: 100%;" />
           </label>
+
+          <label style="min-width: 260px;">
+            Mode
+            <select name="mode" style="width: 100%;">
+              <option value="native" {% if mode == 'native' %}selected{% endif %}>Native Cloud (no bridge endpoint)</option>
+              <option value="external" {% if mode != 'native' %}selected{% endif %}>External Bridge</option>
+            </select>
+          </label>
+
+          <label style="min-width: 420px;">
+            Eufy Account Email
+            <input type="email" name="native_email" value="{{ native_email }}" placeholder="guest-eufy@example.com" style="width: 100%;" />
+          </label>
+
+          <label style="min-width: 420px;">
+            Eufy Account Password
+            <input type="password" name="native_password" value="" placeholder="(leave blank to keep existing)" style="width: 100%;" />
+            {% if native_password_saved %}
+              <small>Current cloud password: <strong>saved</strong></small>
+            {% endif %}
+          </label>
+
+          <label style="min-width: 220px;">
+            Eufy Country Code
+            <input type="text" name="native_country" value="{{ native_country }}" placeholder="US" style="width: 100%;" />
+          </label>
+
           <label style="min-width: 520px;">
             Bridge URL
-            <input type="text" name="bridge_url" value="{{ bridge_url }}" placeholder="http://127.0.0.1:18888" style="width:100%;" />
+            <input type="text" name="bridge_url" value="{{ bridge_url }}" placeholder="http://127.0.0.1:18888" style="width: 100%;" />
           </label>
+
           <label style="min-width: 360px;">
             Devices Path
-            <input type="text" name="devices_path" value="{{ devices_path }}" placeholder="/api/devices" style="width:100%;" />
+            <input type="text" name="devices_path" value="{{ devices_path }}" placeholder="/api/devices" style="width: 100%;" />
           </label>
+
           <label style="min-width: 420px;">
             Snapshot Path
-            <input type="text" name="snapshot_path" value="{{ snapshot_path }}" placeholder="/api/cameras/{device_id}/snapshot" style="width:100%;" />
+            <input type="text" name="snapshot_path" value="{{ snapshot_path }}" placeholder="/api/cameras/{device_id}/snapshot" style="width: 100%;" />
             <small>
               Use <code>{device_id}</code> placeholder if your bridge expects
               path-based IDs.
             </small>
           </label>
+
           <label style="min-width: 420px;">
             API Token
-            <input type="password" name="api_token" value="" placeholder="(leave blank to keep existing)" style="width:100%;" />
+            <input type="password" name="api_token" value="" placeholder="(leave blank to keep existing)" style="width: 100%;" />
             {% if api_token_saved %}
               <small>Current token: <strong>saved</strong></small>
             {% endif %}
           </label>
-          <label style="display:flex; gap:8px; align-items:center; min-width: 220px;">
+
+          <label style="display: flex; gap: 8px; align-items: center; min-width: 220px;">
             <input type="checkbox" name="verify_tls" value="true" {% if verify_tls %}checked{% endif %} />
             Verify TLS
           </label>
         </div>
-        <div style="display:flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
           <button type="submit" class="btn">Save Profile</button>
         </div>
       </form>
+
       <p style="margin-top: 10px;">
         Tip: create one profile per house (for example
         <code>argyle</code>/<code>beach</code>/<code>halsted</code>) and point
-        each to its own Eufy bridge endpoint if needed.
+        each to its own account or bridge endpoint.
+      </p>
+      <p style="margin-top: 8px;">
+        Native mode uses Eufy cloud credentials directly and does not require a
+        separate bridge URL. External mode uses your bridge URL +
+        <code>/api/devices</code>/<code>/api/cameras/{device_id}/snapshot</code>.
       </p>
     </details>
 
@@ -83,7 +126,7 @@
       <a class="btn" href="{{ url_for('ui.eufy_devices', profile=selected_profile) }}">Discover / Import Cameras</a>
     {% else %}
       <p>Status: <strong>Not configured</strong></p>
-      <p>Set bridge URL and save the profile first.</p>
+      <p>Save either native cloud credentials or an external bridge profile first.</p>
     {% endif %}
   </div>
 </main>

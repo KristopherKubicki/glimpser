@@ -2275,12 +2275,19 @@ def create_blueprint() -> Blueprint:
         if not isinstance(stored, dict):
             stored = {}
 
+        mode = str(stored.get("mode") or "external").strip().lower()
+        if mode not in {"external", "native"}:
+            mode = "external"
+
         bridge_url = str(stored.get("bridge_url") or "").strip()
         devices_path = str(stored.get("devices_path") or "/api/devices").strip()
         snapshot_path = str(
             stored.get("snapshot_path") or "/api/cameras/{device_id}/snapshot"
         ).strip()
+        native_email = str(stored.get("native_email") or "").strip()
+        native_country = str(stored.get("native_country") or "US").strip() or "US"
         api_token_saved = bool(str(stored.get("api_token") or "").strip())
+        native_password_saved = bool(str(stored.get("native_password") or "").strip())
         verify_tls = str(stored.get("verify_tls", "true")).strip().lower() in {
             "true",
             "1",
@@ -2297,11 +2304,15 @@ def create_blueprint() -> Blueprint:
             profiles=profile_names,
             selected_profile=selected,
             configured=configured,
+            mode=mode,
             bridge_url=bridge_url,
             devices_path=devices_path,
             snapshot_path=snapshot_path,
+            native_email=native_email,
+            native_country=native_country,
             verify_tls=verify_tls,
             api_token_saved=api_token_saved,
+            native_password_saved=native_password_saved,
             page_title="Eufy Cloud",
         )
 
@@ -2326,12 +2337,19 @@ def create_blueprint() -> Blueprint:
             )
             return redirect(url_for("ui.eufy_home"))
 
+        mode = (request.form.get("mode") or "external").strip().lower()
+        if mode not in {"external", "native"}:
+            mode = "external"
+
         bridge_url = (request.form.get("bridge_url") or "").strip().rstrip("/")
         devices_path = (request.form.get("devices_path") or "/api/devices").strip()
         snapshot_path = (
             request.form.get("snapshot_path") or "/api/cameras/{device_id}/snapshot"
         ).strip()
         api_token = (request.form.get("api_token") or "").strip()
+        native_email = (request.form.get("native_email") or "").strip()
+        native_password = (request.form.get("native_password") or "").strip()
+        native_country = (request.form.get("native_country") or "US").strip() or "US"
         verify_tls = request.form.get("verify_tls", "false").lower() in {
             "true",
             "1",
@@ -2354,13 +2372,19 @@ def create_blueprint() -> Blueprint:
             existing = {}
         if not api_token:
             api_token = str(existing.get("api_token") or "").strip()
+        if not native_password:
+            native_password = str(existing.get("native_password") or "").strip()
 
         payload[profile] = {
+            "mode": mode,
             "bridge_url": bridge_url,
             "api_token": api_token,
             "devices_path": devices_path,
             "snapshot_path": snapshot_path,
             "verify_tls": verify_tls,
+            "native_email": native_email,
+            "native_password": native_password,
+            "native_country": native_country,
         }
 
         routes.update_setting(
