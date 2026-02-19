@@ -56,7 +56,7 @@ def test_list_devices_native_mode(monkeypatch) -> None:
 
     def _fake_native_request(profile, endpoint, *, payload=None, timeout=0, retry=True):
         assert profile.name == "argyle"
-        assert endpoint == "app/get_devs_list"
+        assert endpoint == "v2/app/get_devs_list"
         assert payload is None
         assert retry is True
         return {
@@ -103,7 +103,7 @@ def test_fetch_snapshot_native_mode(monkeypatch) -> None:
 
     def _fake_native_request(profile, endpoint, *, payload=None, timeout=0, retry=True):
         assert profile.name == "argyle"
-        assert endpoint == "app/get_devs_list"
+        assert endpoint == "v2/app/get_devs_list"
         return {
             "code": 0,
             "data": [

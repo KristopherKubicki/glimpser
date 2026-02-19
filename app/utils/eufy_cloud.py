@@ -20,16 +20,40 @@ from dataclasses import dataclass
 from urllib.parse import quote, urlparse
 
 import requests
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from itsdangerous import BadData, URLSafeSerializer
 
 from app import config
 
 _SNAPSHOT_TOKEN_SALT = "eufy-cloud-snapshot-v1"
 _EUFY_API_BASE = "https://mysecurity.eufylife.com/api/v1"
+_EUFY_DOMAIN_BASE = "https://extend.eufylife.com"
+_EUFY_SERVER_PUBLIC_KEY = (
+    "04c5c00c4f8d1197cc7c3167c52bf7acb054d722f0ef08dcd7e0883236e0d72a"
+    "3868d9750cb47fa4619248f3d83f0f662671dadc6e2d31c2f41db0161651c7c076"
+)
+_EUFY_OPENUDID = "5e4621b0152c0d00"
 _NATIVE_REFRESH_GRACE_SECONDS = 60.0
 
 _NATIVE_SESSION_LOCK = threading.Lock()
 _NATIVE_SESSIONS: dict[str, dict[str, object]] = {}
+
+_NATIVE_DEFAULT_HEADERS = {
+    "User-Agent": "EufySecurity/4.6.0_1630 (Android 12; ONEPLUS A3003)",
+    "App_version": "v4.6.0_1630",
+    "Os_type": "android",
+    "Os_version": "31",
+    "Phone_model": "ONEPLUS A3003",
+    "Language": "en",
+    "Net_type": "wifi",
+    "Mnc": "02",
+    "Mcc": "262",
+    "Sn": "75814221ee75",
+    "Model_type": "PHONE",
+    "Cache-Control": "no-cache",
+}
 
 
 class EufyCloudError(RuntimeError):
@@ -272,31 +296,154 @@ def _clear_native_session(profile_name: str) -> None:
         _NATIVE_SESSIONS.pop(profile_name, None)
 
 
-def _native_session(profile: EufyCloudProfile, *, timeout: float) -> tuple[str, str]:
+def _native_timezone_ms() -> int:
+    """Return timezone offset in Eufy's expected millisecond format."""
+
+    offset_minutes = int(time.localtime().tm_gmtoff / 60)
+    return offset_minutes * 60 * 1000
+
+
+def _pkcs7_pad(data: bytes, block_size: int = 16) -> bytes:
+    pad_len = block_size - (len(data) % block_size)
+    return data + bytes([pad_len]) * pad_len
+
+
+def _pkcs7_unpad(data: bytes, block_size: int = 16) -> bytes:
+    if not data:
+        return data
+    pad_len = data[-1]
+    if pad_len < 1 or pad_len > block_size or pad_len > len(data):
+        raise EufyCloudError("Invalid Eufy API padding")
+    if data[-pad_len:] != bytes([pad_len]) * pad_len:
+        raise EufyCloudError("Invalid Eufy API padding bytes")
+    return data[:-pad_len]
+
+
+def _native_encrypt_password(password: str, key: bytes) -> str:
+    iv = key[:16]
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+    enc = cipher.encryptor()
+    payload = _pkcs7_pad(password.encode("utf-8"))
+    return base64.b64encode(enc.update(payload) + enc.finalize()).decode("ascii")
+
+
+def _native_decrypt_payload(data: str, key: bytes) -> object:
+    iv = key[:16]
+    raw = base64.b64decode(str(data or ""))
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+    dec = cipher.decryptor()
+    payload = dec.update(raw) + dec.finalize()
+    unpadded = _pkcs7_unpad(payload)
+    try:
+        return json.loads(unpadded.decode("utf-8"))
+    except Exception as exc:
+        raise EufyCloudError("Failed to parse Eufy encrypted payload") from exc
+
+
+def _native_headers(country: str) -> dict[str, str]:
+    headers = dict(_NATIVE_DEFAULT_HEADERS)
+    headers["Country"] = country.upper()
+    headers["Timezone"] = time.strftime("GMT%z")
+    headers["Openudid"] = _EUFY_OPENUDID
+    return headers
+
+
+def _native_api_base(
+    country: str,
+    *,
+    timeout: float,
+    verify_tls: bool,
+) -> str:
+    lookup_country = str(country or "US").strip().upper() or "US"
+    try:
+        resp = requests.get(
+            f"{_EUFY_DOMAIN_BASE}/domain/{lookup_country}",
+            timeout=timeout,
+            verify=verify_tls,
+        )
+    except Exception as exc:
+        raise EufyCloudError(f"Eufy domain lookup failed: {exc}") from exc
+
+    if resp.status_code >= 400:
+        body = (resp.text or "").strip().replace("\n", " ")[:120]
+        raise EufyCloudError(
+            f"Eufy domain lookup returned HTTP {resp.status_code}: {body}"
+        )
+
+    try:
+        payload = resp.json()
+    except Exception as exc:
+        raise EufyCloudError("Eufy domain lookup returned invalid JSON") from exc
+
+    code = _native_error_code(payload)
+    if code != 0:
+        raise EufyCloudError(
+            f"Eufy domain lookup failed ({code}): {_native_error_text(payload)}"
+        )
+
+    data = payload.get("data") if isinstance(payload, dict) else None
+    domain = str(data.get("domain") if isinstance(data, dict) else "").strip()
+    if not domain:
+        raise EufyCloudError("Eufy domain lookup missing API domain")
+
+    return f"https://{domain}"
+
+
+def _native_session(
+    profile: EufyCloudProfile, *, timeout: float
+) -> tuple[str, str, bytes, dict[str, str]]:
     now = time.time()
     with _NATIVE_SESSION_LOCK:
         cached = _NATIVE_SESSIONS.get(profile.name)
         if isinstance(cached, dict):
             token = str(cached.get("token") or "").strip()
-            api_base = str(cached.get("api_base") or _EUFY_API_BASE).strip()
+            api_base = str(cached.get("api_base") or "").strip()
             expires_at = float(cached.get("expires_at") or 0)
-            if token and api_base and expires_at > now + _NATIVE_REFRESH_GRACE_SECONDS:
-                return token, api_base
+            session_key = cached.get("session_key")
+            headers = cached.get("headers")
+            if (
+                token
+                and api_base
+                and isinstance(session_key, bytes)
+                and isinstance(headers, dict)
+                and expires_at > now + _NATIVE_REFRESH_GRACE_SECONDS
+            ):
+                return token, api_base, session_key, dict(headers)
 
     if not profile.native_email or not profile.native_password:
         raise EufyCloudError(
             f"Eufy profile '{profile.name}' missing cloud email/password"
         )
 
+    country = str(profile.native_country or "US").strip().upper() or "US"
+    api_base = _native_api_base(country, timeout=timeout, verify_tls=profile.verify_tls)
+    req_headers = _native_headers(country)
+
+    private_key = ec.generate_private_key(ec.SECP256R1())
+    client_public_key = private_key.public_key().public_bytes(
+        encoding=Encoding.X962,
+        format=PublicFormat.UncompressedPoint,
+    )
+    server_public = ec.EllipticCurvePublicKey.from_encoded_point(
+        ec.SECP256R1(), bytes.fromhex(_EUFY_SERVER_PUBLIC_KEY)
+    )
+    shared_key = private_key.exchange(ec.ECDH(), server_public)
+
     login_payload = {
-        "email": profile.native_email,
-        "password": profile.native_password,
+        "ab": country,
+        "client_secret_info": {"public_key": client_public_key.hex()},
+        "enc": 0,
+        "email": str(profile.native_email),
+        "password": _native_encrypt_password(str(profile.native_password), shared_key),
+        "time_zone": _native_timezone_ms(),
+        "transaction": str(int(time.time() * 1000)),
     }
 
     try:
         resp = requests.post(
-            f"{_EUFY_API_BASE}/passport/login",
+            f"{api_base}/v2/passport/login_sec",
             json=login_payload,
+            headers=req_headers,
             timeout=timeout,
             verify=profile.verify_tls,
         )
@@ -304,7 +451,10 @@ def _native_session(profile: EufyCloudProfile, *, timeout: float) -> tuple[str, 
         raise EufyCloudError(f"Eufy cloud login request failed: {exc}") from exc
 
     if resp.status_code >= 400:
-        raise EufyCloudError(f"Eufy cloud login returned HTTP {resp.status_code}")
+        body = (resp.text or "").strip().replace("\n", " ")[:120]
+        raise EufyCloudError(
+            f"Eufy cloud login returned HTTP {resp.status_code}: {body}"
+        )
 
     try:
         payload = resp.json()
@@ -324,15 +474,26 @@ def _native_session(profile: EufyCloudProfile, *, timeout: float) -> tuple[str, 
     if not token:
         raise EufyCloudError("Eufy cloud login succeeded but auth token missing")
 
-    domain = str(data.get("domain") or "").strip()
-    api_base = _EUFY_API_BASE
-    if domain:
-        api_base = f"https://{domain}/v1"
+    # Eufy can rotate the response crypto key per login. Keep the fallback for
+    # older responses that omit `server_secret_info`.
+    response_public = str(
+        (data.get("server_secret_info") or {}).get("public_key") or ""
+    ).strip()
+    if response_public:
+        try:
+            rotated_public = ec.EllipticCurvePublicKey.from_encoded_point(
+                ec.SECP256R1(), bytes.fromhex(response_public)
+            )
+            shared_key = private_key.exchange(ec.ECDH(), rotated_public)
+        except Exception:
+            pass
 
     try:
         expires_at = float(data.get("token_expires_at") or 0)
     except Exception:
         expires_at = 0
+    if expires_at > 10_000_000_000:
+        expires_at /= 1000.0
     if expires_at <= now:
         expires_at = now + 1800
 
@@ -341,9 +502,11 @@ def _native_session(profile: EufyCloudProfile, *, timeout: float) -> tuple[str, 
             "token": token,
             "api_base": api_base,
             "expires_at": expires_at,
+            "session_key": shared_key,
+            "headers": req_headers,
         }
 
-    return token, api_base
+    return token, api_base, shared_key, req_headers
 
 
 def _native_request(
@@ -354,12 +517,16 @@ def _native_request(
     timeout: float,
     retry: bool = True,
 ) -> dict:
-    token, api_base = _native_session(profile, timeout=timeout)
+    token, api_base, session_key, session_headers = _native_session(
+        profile, timeout=timeout
+    )
     url = f"{api_base.rstrip('/')}/{endpoint.lstrip('/')}"
+    headers = dict(session_headers)
+    headers["x-auth-token"] = token
     try:
         resp = requests.post(
             url,
-            headers={"x-auth-token": token},
+            headers=headers,
             json=payload or {},
             timeout=timeout,
             verify=profile.verify_tls,
@@ -415,7 +582,17 @@ def _native_request(
             )
         raise EufyCloudError(f"Eufy cloud error on {endpoint} ({code}): {msg}")
 
-    return body if isinstance(body, dict) else {}
+    if not isinstance(body, dict):
+        return {}
+
+    encrypted_data = body.get("data")
+    if isinstance(encrypted_data, str) and encrypted_data.strip():
+        decrypted = _native_decrypt_payload(encrypted_data, session_key)
+        merged = dict(body)
+        merged["data"] = decrypted
+        return merged
+
+    return body
 
 
 def _native_snapshot_url(device: dict) -> str:
@@ -445,7 +622,7 @@ def _native_online(device: dict) -> bool:
 
 
 def _native_list_devices(profile: EufyCloudProfile, *, timeout: float) -> list[dict]:
-    payload = _native_request(profile, "app/get_devs_list", timeout=timeout)
+    payload = _native_request(profile, "v2/app/get_devs_list", timeout=timeout)
     raw_devices = payload.get("data") if isinstance(payload, dict) else None
     if not isinstance(raw_devices, list):
         raise EufyCloudError("Eufy cloud devices payload is missing data list")
@@ -500,10 +677,12 @@ def _native_fetch_image(
     if not image_url:
         raise EufyCloudError("Eufy cloud device has no cover image URL")
 
-    token, _api_base = _native_session(profile, timeout=timeout)
+    token, _api_base, _session_key, session_headers = _native_session(
+        profile, timeout=timeout
+    )
     last_error = ""
     for headers in (
-        {"x-auth-token": token},
+        {**session_headers, "x-auth-token": token},
         {"Authorization": f"Bearer {token}"},
         {},
     ):
@@ -569,7 +748,7 @@ def _native_fetch_snapshot(
     *,
     timeout: float,
 ) -> tuple[bytes, str]:
-    payload = _native_request(profile, "app/get_devs_list", timeout=timeout)
+    payload = _native_request(profile, "v2/app/get_devs_list", timeout=timeout)
     raw_devices = payload.get("data") if isinstance(payload, dict) else None
     if not isinstance(raw_devices, list):
         raise EufyCloudError("Eufy cloud devices payload is missing data list")
