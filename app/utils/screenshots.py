@@ -67,6 +67,7 @@ from app.config import (
 from app.utils import status_cache, user_activity
 from app.utils.google_sdm import (
     GoogleSdmError,
+    build_webrtc_preview_url,
     resolve_sdm_to_rtsp,
     stable_key_for_resolved_rtsp,
 )
@@ -2653,25 +2654,56 @@ def _capture_or_download_inner(
         url = url.replace("/weather-camera/?", "/weather-camera?", 1)
         clean_url = sanitize_url(url)
 
+    sdm_webrtc_fallback = False
+    # Use the live <video> element for crops; <img id="sdm-still"> can lag if
+    # frames are slow and cause false "element missing" fallbacks.
+    sdm_webrtc_selector = "//*[@id='sdm-video' or @id='sdm-still']"
+
     # Resolve Google SDM camera URLs (sdm://<device_id>) to short-lived RTSP URLs.
+    # For WEB_RTC-only cameras we fall back to a local, signed WebRTC preview page
+    # that headless Chrome can snapshot.
     if url.lower().startswith("sdm://"):
+        resolved = None
         try:
             resolved = resolve_sdm_to_rtsp(url)
         except GoogleSdmError as exc:
-            logging.warning("SDM resolve failed for %s: %s", sanitize_url(url), exc)
-            record_preflight_backoff(
-                url, "sdm_resolve_failed", PREFLIGHT_BACKOFF_STREAM_FAIL
-            )
-            _record_tier_failure(url, TIER_HTTP, "sdm_resolve_failed")
-            return False
-        if not resolved:
+            msg = str(exc)
+            if "WEB_RTC-only" in msg:
+                preview_url = build_webrtc_preview_url(url)
+                if preview_url:
+                    sdm_webrtc_fallback = True
+                    logging.info(
+                        "SDM WEB_RTC fallback for %s via internal preview",
+                        sanitize_url(url),
+                    )
+                    url = preview_url
+                    clean_url = sanitize_url(url)
+                else:
+                    logging.warning(
+                        "SDM WEB_RTC fallback failed to build preview URL for %s",
+                        sanitize_url(url),
+                    )
+                    record_preflight_backoff(
+                        url, "sdm_webrtc_preview_failed", PREFLIGHT_BACKOFF_STREAM_FAIL
+                    )
+                    _record_tier_failure(url, TIER_HTTP, "sdm_webrtc_preview_failed")
+                    return False
+            else:
+                logging.warning("SDM resolve failed for %s: %s", sanitize_url(url), exc)
+                record_preflight_backoff(
+                    url, "sdm_resolve_failed", PREFLIGHT_BACKOFF_STREAM_FAIL
+                )
+                _record_tier_failure(url, TIER_HTTP, "sdm_resolve_failed")
+                return False
+        if not sdm_webrtc_fallback and not resolved:
             record_preflight_backoff(
                 url, "sdm_unconfigured", PREFLIGHT_BACKOFF_STREAM_FAIL
             )
             _record_tier_failure(url, TIER_HTTP, "sdm_unconfigured")
             return False
-        url = resolved
-        clean_url = sanitize_url(url)
+        if not sdm_webrtc_fallback:
+            url = resolved
+            clean_url = sanitize_url(url)
 
     popup_xpath = template.get("popup_xpath")
     dedicated_selector = template.get("dedicated_xpath")
@@ -2685,6 +2717,14 @@ def _capture_or_download_inner(
     browser = template.get("browser", "") not in ["", "false", False]
     danger = template.get("danger", "") not in ["", "false", False]
     danger_fallback = _danger_fallback_active(url)
+
+    if sdm_webrtc_fallback:
+        browser = True
+        headless = True
+        stealth = False
+        timeout = max(timeout, 40)
+        if not dedicated_selector:
+            dedicated_selector = sdm_webrtc_selector
 
     if danger:
         browser = True
@@ -6506,11 +6546,16 @@ def capture_screenshot_and_har(
                             element_tag == "img"
                             and "cameras-cam.cdn.weatherbug.net/" in element_src
                         )
+                        is_video_crop = element_tag == "video"
                         # Guard against bad XPath crops that produce tiny/blank captures.
                         # For WeatherBug camera still images, the element can be a
                         # relatively small portion of the viewport, so don't use
                         # the viewport-area ratio heuristic.
-                        if is_weatherbug_cam:
+                        if is_video_crop:
+                            # Video frames can compress to small files at night
+                            # while still being valid captures.
+                            is_tiny_crop = shot_w < 700 or shot_h < 350
+                        elif is_weatherbug_cam:
                             is_tiny_crop = shot_w < 450 or shot_h < 250 or shot_kb < 12
                         else:
                             is_tiny_crop = (
@@ -6637,8 +6682,19 @@ def _finalize_screenshot(
     try:
         with Image.open(tmp_path) as img:
             img = img.convert("RGB")
+            is_sdm_webrtc_preview = bool(
+                url and "/integrations/google/webrtc/preview" in str(url)
+            )
 
             blank = is_mostly_blank(img)
+            if blank and is_sdm_webrtc_preview:
+                # SDM WebRTC feeds can be legitimately low-light at night; keep the
+                # frame rather than replacing it with "No screenshot available".
+                logging.info(
+                    "[%s] Accepting low-light SDM WebRTC frame that appears mostly blank",
+                    name,
+                )
+                blank = False
             if blank:
                 logging.warning(f"[{name}] The captured screenshot looks mostly blank.")
                 if url:
@@ -6651,7 +6707,8 @@ def _finalize_screenshot(
                 success = False
             else:
                 # Optional background removal
-                img = remove_background(img)
+                if not is_sdm_webrtc_preview:
+                    img = remove_background(img)
 
                 # If you want to do naive “darkening” or inverting more thoroughly,
                 # you can do that here. For example:

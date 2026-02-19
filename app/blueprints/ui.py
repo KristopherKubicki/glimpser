@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 from flask import (
     Blueprint,
     Response,
+    abort,
     jsonify,
     redirect,
     render_template,
@@ -23,6 +24,7 @@ from flask import (
     session,
     url_for,
 )
+from flask_login import current_user
 
 _MISSING_SCREENSHOT_LOG_INTERVAL_SECONDS = 300
 _missing_screenshot_log_ts: dict[str, float] = {}
@@ -1830,6 +1832,212 @@ def create_blueprint() -> Blueprint:
         routes.flash("Google Home disconnected.", "success")
         return redirect(url_for("ui.google_home", profile=profile))
 
+    def _google_webrtc_request_args() -> tuple[str, str, str]:
+        """Return normalized `(profile, device_id, token)` from request params/body."""
+
+        payload = request.get_json(silent=True) or {}
+        profile = (
+            str(payload.get("profile") or request.values.get("profile") or "").strip()
+            or "default"
+        )
+        device_id = str(
+            payload.get("device_id") or request.values.get("device_id") or ""
+        ).strip()
+        token = str(payload.get("token") or request.values.get("token") or "").strip()
+        return profile, device_id, token
+
+    def _google_webrtc_authorized(profile: str, device_id: str, token: str) -> bool:
+        """Allow either logged-in user or valid signed preview token."""
+
+        if bool(getattr(current_user, "is_authenticated", False)):
+            return True
+        from app.utils import google_sdm
+
+        verified = google_sdm.verify_webrtc_preview_token(token, max_age_seconds=900)
+        if not verified:
+            return False
+        vp, vd = verified
+        return vp == profile and vd == device_id
+
+    def _normalize_webrtc_offer_sdp(raw_offer: str) -> str:
+        """Normalize SDP to strict CRLF line endings expected by SDM.
+
+        Some clients can accidentally pass escaped line breaks (`\\r\\n`) or mixed
+        endings. SDM rejects those payloads with INVALID_ARGUMENT.
+        """
+
+        offer_sdp = str(raw_offer or "")
+        if not offer_sdp.strip():
+            return ""
+
+        # If the client accidentally sent JSON-escaped text, decode it back.
+        if "\\r\\n" in offer_sdp and "\r\n" not in offer_sdp and "\n" not in offer_sdp:
+            offer_sdp = offer_sdp.replace("\\r\\n", "\r\n").replace("\\n", "\n")
+
+        normalized = offer_sdp.replace("\r\n", "\n").replace("\r", "\n")
+        lines = [line for line in normalized.split("\n") if line != ""]
+        if not lines:
+            return ""
+        return "\r\n".join(lines) + "\r\n"
+
+    @bp.route(
+        "/integrations/google/webrtc/preview",
+        methods=["GET"],
+        endpoint="google_webrtc_preview",
+    )
+    def google_webrtc_preview():
+        """Minimal WebRTC preview page used for SDM WEB_RTC captures/live view."""
+
+        profile, device_id, token = _google_webrtc_request_args()
+        if not device_id:
+            abort(400, "device_id required")
+        if not _google_webrtc_authorized(profile, device_id, token):
+            abort(403)
+
+        return render_template(
+            "google_home_webrtc_preview.html",
+            profile=profile,
+            device_id=device_id,
+            token=token,
+            page_title=f"Google Camera {device_id[:8]}",
+        )
+
+    @bp.route(
+        "/integrations/google/webrtc/start",
+        methods=["POST"],
+        endpoint="google_webrtc_start",
+    )
+    def google_webrtc_start():
+        """Accept browser SDP offer and return SDM WebRTC answer."""
+
+        from app.utils import google_sdm
+
+        profile, device_id, token = _google_webrtc_request_args()
+        if not device_id:
+            return jsonify({"ok": False, "error": "device_id required"}), 400
+        if not _google_webrtc_authorized(profile, device_id, token):
+            return jsonify({"ok": False, "error": "unauthorized"}), 403
+
+        payload = request.get_json(silent=True) or {}
+        offer_sdp = _normalize_webrtc_offer_sdp(payload.get("offer_sdp") or "")
+        if not offer_sdp:
+            return jsonify({"ok": False, "error": "offer_sdp required"}), 400
+        offer_lines = [line for line in offer_sdp.split("\r\n") if line]
+        logging.info(
+            (
+                "google_webrtc_start offer profile=%s device=%s lines=%d "
+                "ends_crlf=%s has_bare_lf=%s"
+            ),
+            profile,
+            device_id[:12] + "…" if len(device_id) > 12 else device_id,
+            max(len(offer_lines), 0),
+            offer_sdp.endswith("\r\n"),
+            ("\n" in offer_sdp.replace("\r\n", "")),
+        )
+
+        try:
+            _p, device_name = google_sdm.webrtc_device_name_from_stable_url(
+                f"sdm://{profile}/{device_id}"
+            )
+            stream = google_sdm.generate_webrtc_stream(device_name, offer_sdp, profile)
+        except Exception as exc:
+            logging.warning(
+                "google_webrtc_start failed profile=%s device=%s: %s",
+                profile,
+                device_id,
+                exc,
+            )
+            return jsonify({"ok": False, "error": str(exc)}), 502
+
+        logging.info(
+            "google_webrtc_start ok profile=%s device=%s media_session=%s answer_len=%s",
+            profile,
+            device_id[:12] + "…" if len(device_id) > 12 else device_id,
+            stream.media_session_id[:12] + "…"
+            if len(stream.media_session_id) > 12
+            else stream.media_session_id,
+            len(stream.answer_sdp or ""),
+        )
+        return jsonify(
+            {
+                "ok": True,
+                "answer_sdp": stream.answer_sdp,
+                "media_session_id": stream.media_session_id,
+                "expires_at": stream.expires_at.isoformat()
+                if stream.expires_at
+                else None,
+            }
+        )
+
+    @bp.route(
+        "/integrations/google/webrtc/extend",
+        methods=["POST"],
+        endpoint="google_webrtc_extend",
+    )
+    def google_webrtc_extend():
+        """Extend an active SDM WebRTC session."""
+
+        from app.utils import google_sdm
+
+        profile, device_id, token = _google_webrtc_request_args()
+        if not device_id:
+            return jsonify({"ok": False, "error": "device_id required"}), 400
+        if not _google_webrtc_authorized(profile, device_id, token):
+            return jsonify({"ok": False, "error": "unauthorized"}), 403
+
+        payload = request.get_json(silent=True) or {}
+        media_session_id = str(payload.get("media_session_id") or "").strip()
+        if not media_session_id:
+            return jsonify({"ok": False, "error": "media_session_id required"}), 400
+
+        try:
+            _p, device_name = google_sdm.webrtc_device_name_from_stable_url(
+                f"sdm://{profile}/{device_id}"
+            )
+            expires_at = google_sdm.extend_webrtc_stream(
+                device_name, media_session_id, profile
+            )
+        except Exception as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 502
+
+        return jsonify(
+            {
+                "ok": True,
+                "expires_at": expires_at.isoformat() if expires_at else None,
+            }
+        )
+
+    @bp.route(
+        "/integrations/google/webrtc/stop",
+        methods=["POST"],
+        endpoint="google_webrtc_stop",
+    )
+    def google_webrtc_stop():
+        """Stop an active SDM WebRTC session."""
+
+        from app.utils import google_sdm
+
+        profile, device_id, token = _google_webrtc_request_args()
+        if not device_id:
+            return jsonify({"ok": False, "error": "device_id required"}), 400
+        if not _google_webrtc_authorized(profile, device_id, token):
+            return jsonify({"ok": False, "error": "unauthorized"}), 403
+
+        payload = request.get_json(silent=True) or {}
+        media_session_id = str(payload.get("media_session_id") or "").strip()
+        if not media_session_id:
+            return jsonify({"ok": False, "error": "media_session_id required"}), 400
+
+        try:
+            _p, device_name = google_sdm.webrtc_device_name_from_stable_url(
+                f"sdm://{profile}/{device_id}"
+            )
+            google_sdm.stop_webrtc_stream(device_name, media_session_id, profile)
+        except Exception as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 502
+
+        return jsonify({"ok": True})
+
     def _sdm_device_id(device: dict) -> str | None:
         name = str(device.get("name") or "")
         if "/devices/" not in name:
@@ -2009,7 +2217,11 @@ def create_blueprint() -> Blueprint:
             is_camera_type = device_type.upper().endswith((".CAMERA", ".DOORBELL"))
             has_stream = bool(stream_trait)
             supports_rtsp = "RTSP" in supported_protocols
+            supports_webrtc = "WEB_RTC" in supported_protocols
             has_rtsp = supports_rtsp and is_camera_type
+            importable = bool(
+                is_camera_type and has_stream and (has_rtsp or supports_webrtc)
+            )
             struct, room = _sdm_structure_room(dev)
             camera_rows.append(
                 {
@@ -2020,6 +2232,8 @@ def create_blueprint() -> Blueprint:
                     "has_stream": bool(has_stream),
                     "has_rtsp": bool(has_rtsp),
                     "supports_rtsp": bool(supports_rtsp),
+                    "supports_webrtc": bool(supports_webrtc),
+                    "importable": importable,
                     "protocols": supported_protocols,
                     "structure": struct,
                     "room": room,

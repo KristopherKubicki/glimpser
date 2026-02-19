@@ -19,6 +19,7 @@ Glimpser monitors cameras and video streams, applying AI to summarize important 
 - [Video and Image Endpoints](video_image_endpoints.md)
 - [Live View Scrubbing](live_scrub.md)
 - [Dashboard Live Button](live_all.md)
+- [Google Home WEB_RTC Support](google_home_webrtc.md)
 - [Search Bar Autocomplete](search_autocomplete.md)
 - [Jog-Shuttle Control](jog_shuttle.md)
 - [Web Notifications](web_notifications.md)

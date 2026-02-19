@@ -29,10 +29,12 @@ import logging
 import threading
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import requests
+from itsdangerous import BadData, URLSafeTimedSerializer
 
+from app import config
 from app.utils.google_sdm_profiles import resolve_profile
 
 _PCM_AUTH_BASE = "https://nestservices.google.com/partnerconnections"
@@ -49,6 +51,13 @@ class SdmRtspStream:
     expires_at: datetime.datetime | None
 
 
+@dataclass(frozen=True)
+class SdmWebRtcStream:
+    answer_sdp: str
+    media_session_id: str
+    expires_at: datetime.datetime | None
+
+
 class GoogleSdmError(RuntimeError):
     pass
 
@@ -60,6 +69,8 @@ _access_expires_at: dict[str, datetime.datetime] = {}
 _resolve_lock = threading.Lock()
 _resolved_rtsp_cache: dict[str, SdmRtspStream] = {}
 _resolved_rtsp_reverse: dict[str, str] = {}
+
+_PREVIEW_TOKEN_SALT = "google-sdm-webrtc-preview-v1"
 
 
 def _now_utc() -> datetime.datetime:
@@ -206,6 +217,16 @@ def _auth_headers(profile: str | None = None) -> dict[str, str]:
     return {"Authorization": f"Bearer {access_token(profile)}"}
 
 
+def _device_name(device_id: str, profile: str | None = None) -> str:
+    project = _profile(profile).project_id
+    if not project:
+        raise GoogleSdmError("Missing GOOGLE_SDM_PROJECT_ID")
+    device_id = str(device_id or "").strip()
+    if not device_id:
+        raise GoogleSdmError("Missing SDM device id")
+    return f"enterprises/{project}/devices/{device_id}"
+
+
 def list_devices(profile: str | None = None) -> list[dict[str, Any]]:
     project = _profile(profile).project_id
     if not project:
@@ -281,6 +302,116 @@ def generate_rtsp_stream(device_name: str, profile: str | None = None) -> SdmRts
     return SdmRtspStream(rtsp_url=str(rtsp_url), expires_at=expires_at)
 
 
+def generate_webrtc_stream(
+    device_name: str, offer_sdp: str, profile: str | None = None
+) -> SdmWebRtcStream:
+    """Generate a WebRTC answer/session for a given SDM `device_name`."""
+
+    if "/devices/" not in str(device_name):
+        raise GoogleSdmError("device_name does not look like an SDM device resource")
+
+    raw_offer = str(offer_sdp or "")
+    if not raw_offer.strip():
+        raise GoogleSdmError("Missing WebRTC offer SDP")
+    # SDM requires CRLF-terminated SDP. Avoid `.strip()` here because it drops
+    # trailing CRLF and causes SDM to reject otherwise-valid offers.
+    normalized = raw_offer.replace("\r\n", "\n").replace("\r", "\n")
+    lines = [line for line in normalized.split("\n") if line != ""]
+    offer_sdp = "\r\n".join(lines) + "\r\n"
+
+    url = f"{_SDM_BASE}/{device_name}:executeCommand"
+    payload = {
+        "command": "sdm.devices.commands.CameraLiveStream.GenerateWebRtcStream",
+        "params": {"offerSdp": offer_sdp},
+    }
+
+    resp = requests.post(url, json=payload, headers=_auth_headers(profile), timeout=30)
+    if resp.status_code != 200:
+        raise GoogleSdmError(
+            f"SDM generate WebRTC failed: {resp.status_code} {resp.text[:200]}"
+        )
+
+    data = resp.json()
+    results = data.get("results") or {}
+    answer_sdp = str(results.get("answerSdp") or "").strip()
+    media_session_id = str(results.get("mediaSessionId") or "").strip()
+    expires_at_raw = results.get("expiresAt")
+    expires_at = None
+    if expires_at_raw:
+        try:
+            expires_at = datetime.datetime.fromisoformat(
+                str(expires_at_raw).replace("Z", "+00:00")
+            )
+        except Exception:
+            expires_at = None
+
+    if not answer_sdp or not media_session_id:
+        raise GoogleSdmError("SDM did not return WebRTC answer/session")
+
+    return SdmWebRtcStream(
+        answer_sdp=answer_sdp,
+        media_session_id=media_session_id,
+        expires_at=expires_at,
+    )
+
+
+def extend_webrtc_stream(
+    device_name: str, media_session_id: str, profile: str | None = None
+) -> datetime.datetime | None:
+    """Extend an SDM WebRTC stream session."""
+
+    if "/devices/" not in str(device_name):
+        raise GoogleSdmError("device_name does not look like an SDM device resource")
+    media_session_id = str(media_session_id or "").strip()
+    if not media_session_id:
+        raise GoogleSdmError("Missing media session id")
+
+    url = f"{_SDM_BASE}/{device_name}:executeCommand"
+    payload = {
+        "command": "sdm.devices.commands.CameraLiveStream.ExtendWebRtcStream",
+        "params": {"mediaSessionId": media_session_id},
+    }
+
+    resp = requests.post(url, json=payload, headers=_auth_headers(profile), timeout=20)
+    if resp.status_code != 200:
+        raise GoogleSdmError(
+            f"SDM extend WebRTC failed: {resp.status_code} {resp.text[:200]}"
+        )
+
+    expires_at_raw = (resp.json().get("results") or {}).get("expiresAt")
+    if not expires_at_raw:
+        return None
+    try:
+        return datetime.datetime.fromisoformat(
+            str(expires_at_raw).replace("Z", "+00:00")
+        )
+    except Exception:
+        return None
+
+
+def stop_webrtc_stream(
+    device_name: str, media_session_id: str, profile: str | None = None
+) -> None:
+    """Stop an SDM WebRTC stream session."""
+
+    if "/devices/" not in str(device_name):
+        raise GoogleSdmError("device_name does not look like an SDM device resource")
+    media_session_id = str(media_session_id or "").strip()
+    if not media_session_id:
+        raise GoogleSdmError("Missing media session id")
+
+    url = f"{_SDM_BASE}/{device_name}:executeCommand"
+    payload = {
+        "command": "sdm.devices.commands.CameraLiveStream.StopWebRtcStream",
+        "params": {"mediaSessionId": media_session_id},
+    }
+    resp = requests.post(url, json=payload, headers=_auth_headers(profile), timeout=20)
+    if resp.status_code != 200:
+        raise GoogleSdmError(
+            f"SDM stop WebRTC failed: {resp.status_code} {resp.text[:200]}"
+        )
+
+
 def parse_sdm_url(url: str) -> tuple[str | None, str | None]:
     """Return (profile, device_id) when `url` is `sdm://...`.
 
@@ -349,3 +480,75 @@ def resolve_sdm_to_rtsp(stable_sdm_url: str) -> str | None:
         stream.expires_at,
     )
     return stream.rtsp_url
+
+
+def webrtc_device_name_from_stable_url(stable_sdm_url: str) -> tuple[str, str]:
+    """Resolve `sdm://...` into `(profile, device_name)` for WebRTC commands."""
+
+    profile, device_id = parse_sdm_url(stable_sdm_url)
+    profile = profile or "default"
+    if not device_id:
+        raise GoogleSdmError("Invalid SDM URL: missing device id")
+    return profile, _device_name(device_id, profile)
+
+
+def issue_webrtc_preview_token(profile: str, device_id: str) -> str:
+    """Issue a short signed token for internal WebRTC preview/auth."""
+
+    signer = URLSafeTimedSerializer(str(config.SECRET_KEY), salt=_PREVIEW_TOKEN_SALT)
+    payload = {"p": str(profile or "default"), "d": str(device_id or "")}
+    return str(signer.dumps(payload))
+
+
+def verify_webrtc_preview_token(
+    token: str, *, max_age_seconds: int = 600
+) -> tuple[str, str] | None:
+    """Validate a signed WebRTC preview token.
+
+    Returns `(profile, device_id)` when valid, else `None`.
+    """
+
+    token = str(token or "").strip()
+    if not token:
+        return None
+    signer = URLSafeTimedSerializer(str(config.SECRET_KEY), salt=_PREVIEW_TOKEN_SALT)
+    try:
+        data = signer.loads(token, max_age=max_age_seconds)
+    except BadData:
+        return None
+    if not isinstance(data, dict):
+        return None
+    profile = str(data.get("p") or "default").strip() or "default"
+    device_id = str(data.get("d") or "").strip()
+    if not device_id:
+        return None
+    return profile, device_id
+
+
+def build_webrtc_preview_url(stable_sdm_url: str) -> str | None:
+    """Build a local preview URL for SDM WEB_RTC captures.
+
+    This URL is signed and intended for internal headless browser snapshots.
+    """
+
+    profile, device_id = parse_sdm_url(stable_sdm_url)
+    if not device_id:
+        return None
+    profile = profile or "default"
+    token = issue_webrtc_preview_token(profile, device_id)
+
+    if bool(getattr(config, "HTTPS_ENABLED", False)) and bool(
+        getattr(config, "HTTPS_ONLY", False)
+    ):
+        scheme = "https"
+        port = int(getattr(config, "HTTPS_PORT", 8443))
+    else:
+        scheme = "http"
+        port = int(getattr(config, "PORT", 8082))
+
+    return (
+        f"{scheme}://127.0.0.1:{port}/integrations/google/webrtc/preview"
+        f"?profile={quote(profile, safe='')}"
+        f"&device_id={quote(device_id, safe='')}"
+        f"&token={quote(token, safe='')}"
+    )

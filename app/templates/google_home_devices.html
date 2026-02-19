@@ -91,14 +91,14 @@
                 value="{{ cam.device_id }}"
                 {%
                 if
-                cam.has_rtsp
+                cam.importable
                 %}checked{%
                 endif
                 %}
                 {%
                 if
                 not
-                cam.has_rtsp
+                cam.importable
                 %}disabled{%
                 endif
                 %}
@@ -116,6 +116,11 @@
             <td>
               {% if cam.has_rtsp %}
               <span title="Camera supports RTSP snapshots">RTSP</span>
+              {% elif cam.supports_webrtc and cam.is_camera_type %}
+              <span
+                title="WEB_RTC-only camera; Glimpser will use WebRTC preview capture"
+                >WEB_RTC</span
+              >
               {% elif cam.supports_rtsp %}
               <span title="RTSP exists, but this device type is not importable">
                 RTSP (unsupported type)
