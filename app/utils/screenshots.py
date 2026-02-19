@@ -65,6 +65,7 @@ from app.config import (
     UA,
 )
 from app.utils import status_cache, user_activity
+from app.utils.eufy_cloud import EufyCloudError, resolve_eufy_to_snapshot
 from app.utils.google_sdm import (
     GoogleSdmError,
     build_webrtc_preview_url,
@@ -2657,6 +2658,22 @@ def _capture_or_download_inner(
     sdm_webrtc_fallback = False
     # Capture the derived still image only after the preview page marks it ready.
     sdm_webrtc_selector = "//*[@id='sdm-still']"
+
+    # Resolve Eufy cloud bridge URLs (eufy://<profile>/<device_id>) to signed
+    # local proxy URLs. This keeps cloud credentials inside Glimpser.
+    if url.lower().startswith("eufy://"):
+        try:
+            url = resolve_eufy_to_snapshot(url)
+            clean_url = sanitize_url(url)
+        except EufyCloudError as exc:
+            logging.warning(
+                "Eufy bridge resolve failed for %s: %s", sanitize_url(url), exc
+            )
+            record_preflight_backoff(
+                url, "eufy_resolve_failed", PREFLIGHT_BACKOFF_STREAM_FAIL
+            )
+            _record_tier_failure(url, TIER_HTTP, "eufy_resolve_failed")
+            return False
 
     # Resolve Google SDM camera URLs (sdm://<device_id>) to short-lived RTSP URLs.
     # For WEB_RTC-only cameras we fall back to a local, signed WebRTC preview page

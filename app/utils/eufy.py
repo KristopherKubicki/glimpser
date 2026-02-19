@@ -9,9 +9,8 @@ Those APIs are unofficial and change frequently. Instead we provide:
 - Vendor detection helpers (Anker / Eufy).
 - Best-effort RTSP path suggestions for common Eufy devices that expose RTSP.
 
-When we later add a first-class UI integration, it should:
-- guide users to enable RTSP/ONVIF in the Eufy Security app,
-- optionally create templates using the suggested RTSP URLs.
+Glimpser now also includes a first-class Eufy cloud bridge integration in
+``app.utils.eufy_cloud``. This module remains focused on local RTSP/ONVIF paths.
 """
 
 from __future__ import annotations

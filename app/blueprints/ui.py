@@ -2251,6 +2251,257 @@ def create_blueprint() -> Blueprint:
             page_title="Google Home Cameras",
         )
 
+    @bp.route("/integrations/eufy", endpoint="eufy_home")
+    @routes.login_required
+    def eufy_home():
+        """Eufy cloud bridge profile management page."""
+
+        from app.utils import eufy_cloud
+
+        profile_names = eufy_cloud.list_profile_names()
+        selected = (request.args.get("profile") or "").strip().lower() or "default"
+        if selected not in profile_names:
+            selected = "default"
+
+        raw = routes.config.get_setting("EUFY_CLOUD_PROFILES", "") or ""
+        try:
+            payload = routes.json.loads(raw) if str(raw).strip() else {}
+        except Exception:
+            payload = {}
+        if not isinstance(payload, dict):
+            payload = {}
+
+        stored = payload.get(selected)
+        if not isinstance(stored, dict):
+            stored = {}
+
+        bridge_url = str(stored.get("bridge_url") or "").strip()
+        devices_path = str(stored.get("devices_path") or "/api/devices").strip()
+        snapshot_path = str(
+            stored.get("snapshot_path") or "/api/cameras/{device_id}/snapshot"
+        ).strip()
+        api_token_saved = bool(str(stored.get("api_token") or "").strip())
+        verify_tls = str(stored.get("verify_tls", "true")).strip().lower() in {
+            "true",
+            "1",
+            "t",
+            "y",
+            "yes",
+            "on",
+        }
+
+        configured = bool(eufy_cloud.configured(selected))
+
+        return render_template(
+            "eufy_home.html",
+            profiles=profile_names,
+            selected_profile=selected,
+            configured=configured,
+            bridge_url=bridge_url,
+            devices_path=devices_path,
+            snapshot_path=snapshot_path,
+            verify_tls=verify_tls,
+            api_token_saved=api_token_saved,
+            page_title="Eufy Cloud",
+        )
+
+    @bp.route(
+        "/integrations/eufy/profile",
+        methods=["POST"],
+        endpoint="eufy_profile",
+    )
+    @routes.login_required
+    def eufy_profile():
+        """Create or update an Eufy cloud bridge profile."""
+
+        profile = (request.form.get("profile") or "").strip().lower()
+        if not profile:
+            routes.flash("Profile name is required.", "error")
+            return redirect(url_for("ui.eufy_home"))
+
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,31}", profile):
+            routes.flash(
+                "Invalid profile name. Use 1-32 chars: a-z, 0-9, '_' or '-'.",
+                "error",
+            )
+            return redirect(url_for("ui.eufy_home"))
+
+        bridge_url = (request.form.get("bridge_url") or "").strip().rstrip("/")
+        devices_path = (request.form.get("devices_path") or "/api/devices").strip()
+        snapshot_path = (
+            request.form.get("snapshot_path") or "/api/cameras/{device_id}/snapshot"
+        ).strip()
+        api_token = (request.form.get("api_token") or "").strip()
+        verify_tls = request.form.get("verify_tls", "false").lower() in {
+            "true",
+            "1",
+            "t",
+            "y",
+            "yes",
+            "on",
+        }
+
+        raw = routes.config.get_setting("EUFY_CLOUD_PROFILES", "") or ""
+        try:
+            payload = routes.json.loads(raw) if str(raw).strip() else {}
+        except Exception:
+            payload = {}
+        if not isinstance(payload, dict):
+            payload = {}
+
+        existing = payload.get(profile)
+        if not isinstance(existing, dict):
+            existing = {}
+        if not api_token:
+            api_token = str(existing.get("api_token") or "").strip()
+
+        payload[profile] = {
+            "bridge_url": bridge_url,
+            "api_token": api_token,
+            "devices_path": devices_path,
+            "snapshot_path": snapshot_path,
+            "verify_tls": verify_tls,
+        }
+
+        routes.update_setting(
+            "EUFY_CLOUD_PROFILES", routes.json.dumps(payload), restart=False
+        )
+        routes.flash(f"Saved Eufy profile '{profile}'.", "success")
+        return redirect(url_for("ui.eufy_home", profile=profile))
+
+    @bp.route(
+        "/integrations/eufy/devices",
+        methods=["GET", "POST"],
+        endpoint="eufy_devices",
+    )
+    @routes.login_required
+    def eufy_devices():
+        """List Eufy bridge devices and import them as Glimpser templates."""
+
+        from app.utils import eufy_cloud
+
+        profile = (request.args.get("profile") or "").strip().lower() or "default"
+        list_error = ""
+        default_group = validate_group_name(profile) or "eufy"
+
+        if request.method == "POST":
+            device_ids = [str(d).strip() for d in request.form.getlist("device_id")]
+            group = (
+                request.form.get("group") or default_group
+            ).strip() or default_group
+            frequency = int(request.form.get("frequency") or 2)
+
+            templates = routes.template_manager.get_templates()
+            existing_names = set(templates.keys())
+            imported = 0
+            for device_id in device_ids:
+                if not device_id:
+                    continue
+                label = (
+                    request.form.get(f"label_{device_id}") or f"Eufy_{device_id[:8]}"
+                ).strip()
+                tname = _make_template_name(label, existing_names)
+                ok = routes.template_manager.save_template(
+                    tname,
+                    {
+                        "url": f"eufy://{profile}/{device_id}",
+                        "groups": group,
+                        "frequency": frequency,
+                        "browser": False,
+                        "stealth": False,
+                        "headless": False,
+                        "dark": True,
+                        "notes": "Imported from Eufy cloud bridge.",
+                    },
+                )
+                if ok:
+                    imported += 1
+                else:
+                    logging.warning(
+                        "eufy import failed profile=%s name=%s device_id=%s",
+                        profile,
+                        tname,
+                        device_id,
+                    )
+
+            if imported:
+                routes.flash(f"Imported {imported} Eufy camera(s).", "success")
+                primary_group = (group.split(",")[0] or "").strip()
+                if primary_group:
+                    return redirect(
+                        routes.url_for("views.group_page", group_name=primary_group)
+                    )
+            else:
+                routes.flash("No cameras imported.", "info")
+            return redirect(url_for("ui.eufy_devices", profile=profile))
+
+        if not eufy_cloud.configured(profile):
+            routes.flash(
+                f"Eufy profile '{profile}' is not configured yet.",
+                "error",
+            )
+            return redirect(url_for("ui.eufy_home", profile=profile))
+
+        try:
+            devices = eufy_cloud.list_devices(profile)
+        except Exception as exc:
+            list_error = str(exc)
+            routes.flash(f"Failed to list Eufy devices: {list_error}", "error")
+            devices = []
+
+        return render_template(
+            "eufy_devices.html",
+            devices=devices,
+            profile=profile,
+            list_error=list_error,
+            default_group=default_group,
+            page_title="Eufy Cameras",
+        )
+
+    @bp.route(
+        "/integrations/eufy/snapshot",
+        methods=["GET"],
+        endpoint="eufy_snapshot_proxy",
+    )
+    def eufy_snapshot_proxy():
+        """Proxy Eufy snapshots through Glimpser for enclosed capture URLs."""
+
+        from app.utils import eufy_cloud
+
+        profile = (request.args.get("profile") or "").strip().lower() or "default"
+        device_id = str(request.args.get("device_id") or "").strip()
+        token = str(request.args.get("token") or "").strip()
+
+        if not device_id:
+            abort(400, "device_id required")
+
+        # Allow logged-in users directly. Background capture workers use signed
+        # tokens in `eufy://`-derived URLs.
+        if not bool(getattr(current_user, "is_authenticated", False)):
+            verified = eufy_cloud.verify_snapshot_token(token)
+            if not verified:
+                abort(403)
+            vp, vd = verified
+            if vp != profile or vd != device_id:
+                abort(403)
+
+        try:
+            payload, content_type = eufy_cloud.fetch_snapshot(
+                profile, device_id, timeout=20
+            )
+        except Exception as exc:
+            logging.warning(
+                "eufy snapshot proxy failed profile=%s device=%s: %s",
+                profile,
+                device_id,
+                exc,
+            )
+            return Response(str(exc), status=502, mimetype="text/plain")
+
+        resp = Response(payload, mimetype=content_type or "image/jpeg")
+        resp.headers["Cache-Control"] = "no-store, max-age=0"
+        return resp
+
     @bp.route("/search_suggestions", endpoint="search_suggestions")
     @routes.login_required
     def search_suggestions():

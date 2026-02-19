@@ -231,6 +231,15 @@ template_form, settings_row with context %} {% block content %}
         >Open Google Home Integration</a
       >
       {% endcall %}
+      {% call card('Eufy Cloud Cameras') %}
+      <p>Connect an enclosed Eufy cloud bridge and import Eufy cameras.</p>
+      <a
+        href="{{ url_for('ui.eufy_home') }}"
+        class="doc-link"
+        title="Configure Eufy cloud bridge integration"
+        >Open Eufy Integration</a
+      >
+      {% endcall %}
  {% call card('Configuration
       Management') %}
       <div class="checkbox-row">

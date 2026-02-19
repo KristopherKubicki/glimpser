@@ -1,0 +1,102 @@
+{% extends 'base.html' %} {% block content %}
+<main class="container settings-page">
+  <div class="card">
+    <h2>Eufy Cameras</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %} {% endwith %}
+
+    <p>
+      Import bridge cameras into Glimpser as
+      <code>eufy://&lt;profile&gt;/&lt;device_id&gt;</code> templates. At
+      capture time, Glimpser fetches snapshots through its local
+      <code>/integrations/eufy/snapshot</code> proxy.
+    </p>
+    <p>Profile: <code>{{ profile }}</code></p>
+
+    {% if not devices %} {% if list_error %}
+    <p><strong>Error listing devices:</strong></p>
+    <pre style="white-space: pre-wrap; word-break: break-word">
+{{ list_error }}</pre
+    >
+    {% else %}
+    <p>No devices returned by the bridge.</p>
+    {% endif %}
+    <a class="btn" href="{{ url_for('ui.eufy_home', profile=profile) }}">Back</a>
+    {% else %}
+    <form method="POST" action="{{ url_for('ui.eufy_devices', profile=profile) }}">
+      <input type="hidden" name="profile" value="{{ profile }}" />
+      <div
+        style="
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+          align-items: end;
+          margin: 12px 0;
+        "
+      >
+        <label>
+          Group
+          <input
+            type="text"
+            name="group"
+            value="{{ default_group }}"
+            style="min-width: 220px"
+          />
+        </label>
+        <label>
+          Frequency (minutes)
+          <input
+            type="number"
+            name="frequency"
+            value="2"
+            min="1"
+            max="525600"
+            style="width: 120px"
+          />
+        </label>
+        <button type="submit" class="btn">Import Selected</button>
+        <a class="btn" href="{{ url_for('ui.eufy_home', profile=profile) }}"
+          >Back</a
+        >
+      </div>
+
+      <table class="settings-table" style="width: 100%">
+        <thead>
+          <tr>
+            <th style="width: 60px">Import</th>
+            <th>Name</th>
+            <th style="width: 120px">Online</th>
+            <th style="width: 140px">Snapshot</th>
+            <th style="width: 220px">Station</th>
+            <th style="width: 220px">Model</th>
+            <th style="width: 360px">Device ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cam in devices %}
+          <tr>
+            <td>
+              <input type="checkbox" name="device_id" value="{{ cam.device_id }}" />
+              <input type="hidden" name="label_{{ cam.device_id }}" value="{{ cam.name }}" />
+            </td>
+            <td><strong>{{ cam.name }}</strong></td>
+            <td>{% if cam.online %}Yes{% else %}No{% endif %}</td>
+            <td>{% if cam.snapshot %}Yes{% else %}No{% endif %}</td>
+            <td><code>{{ cam.station or '' }}</code></td>
+            <td><code>{{ cam.model or '' }}</code></td>
+            <td><code>{{ cam.device_id }}</code></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </form>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}

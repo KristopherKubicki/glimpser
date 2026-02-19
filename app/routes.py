@@ -712,7 +712,7 @@ def update_setting(name: str, value: str, restart: bool = True) -> bool:
     # Some integrations store JSON blobs (e.g. multiple OAuth profiles) that can
     # exceed the historical 1KB setting limit.
     max_value_len = 1024
-    if name in {"GOOGLE_SDM_PROFILES"}:
+    if name in {"GOOGLE_SDM_PROFILES", "EUFY_CLOUD_PROFILES"}:
         max_value_len = 16384
     value = value.replace("'", "")[:max_value_len]
 

@@ -81,6 +81,8 @@ def guess_kind(url: str) -> str:
         return "hls"
     if any(ext in lower for ext in (".mjpg", ".mjpeg")):
         return "mjpeg"
+    if lower.startswith("eufy://"):
+        return "snapshot"
     if lower.endswith((".jpg", ".jpeg", ".png")) or "/picture" in lower:
         return "snapshot"
     try:

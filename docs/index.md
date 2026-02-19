@@ -20,6 +20,7 @@ Glimpser monitors cameras and video streams, applying AI to summarize important 
 - [Live View Scrubbing](live_scrub.md)
 - [Dashboard Live Button](live_all.md)
 - [Google Home WEB_RTC Support](google_home_webrtc.md)
+- [Eufy Cloud Bridge](eufy_cloud_bridge.md)
 - [Search Bar Autocomplete](search_autocomplete.md)
 - [Jog-Shuttle Control](jog_shuttle.md)
 - [Web Notifications](web_notifications.md)
