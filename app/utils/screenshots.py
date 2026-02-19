@@ -2655,9 +2655,8 @@ def _capture_or_download_inner(
         clean_url = sanitize_url(url)
 
     sdm_webrtc_fallback = False
-    # Use the live <video> element for crops; <img id="sdm-still"> can lag if
-    # frames are slow and cause false "element missing" fallbacks.
-    sdm_webrtc_selector = "//*[@id='sdm-video' or @id='sdm-still']"
+    # Capture the derived still image only after the preview page marks it ready.
+    sdm_webrtc_selector = "//*[@id='sdm-still']"
 
     # Resolve Google SDM camera URLs (sdm://<device_id>) to short-lived RTSP URLs.
     # For WEB_RTC-only cameras we fall back to a local, signed WebRTC preview page
@@ -3412,20 +3411,32 @@ def _capture_or_download_inner(
                 return lsuc
 
             if not use_danger:
+                is_sdm_webrtc_preview = "/integrations/google/webrtc/preview" in str(
+                    url or ""
+                )
+                renderer_backoff_ok = not is_sdm_webrtc_preview
+                method_backoff = 45 if is_sdm_webrtc_preview else HEADLESS_BACKOFF_BASE
+                preflight_backoff = (
+                    45 if is_sdm_webrtc_preview else PREFLIGHT_BACKOFF_BROWSER_FAIL
+                )
                 cas_error(url)
                 if time.time() - method_start > timeout:
-                    _record_renderer_failure("headless", "timeout")
+                    if renderer_backoff_ok:
+                        _record_renderer_failure("headless", "timeout")
                     _record_browser_failure_for_danger(url, "headless_timeout")
                     record_preflight_backoff(
-                        url, "browser_timeout", PREFLIGHT_BACKOFF_BROWSER_FAIL
+                        url,
+                        "browser_timeout",
+                        preflight_backoff,
                     )
                     _record_tier_failure(url, target_tier, "browser_timeout")
-                    _record_method_failure(url, "headless", HEADLESS_BACKOFF_BASE)
+                    _record_method_failure(url, "headless", method_backoff)
                 else:
-                    _record_renderer_failure("headless", "failed")
+                    if renderer_backoff_ok:
+                        _record_renderer_failure("headless", "failed")
                     _record_browser_failure_for_danger(url, "headless_failed")
                     _record_tier_failure(url, target_tier, "browser_failed")
-                    _record_method_failure(url, "headless", HEADLESS_BACKOFF_BASE)
+                    _record_method_failure(url, "headless", method_backoff)
 
     if not (danger or danger_fallback):
         # logging.error(" *** fail ", url, "brow", browser, "headless", headless, "stealth", stealth, "danger", danger, "dedicated", dedicated_selector, "popup", popup_xpath)
@@ -6249,6 +6260,7 @@ def capture_screenshot_and_har(
 
     # Quick sanity check
     clean_url = sanitize_url(url)
+    is_sdm_webrtc_preview = "/integrations/google/webrtc/preview" in clean_url
     if not re.match(r"^https?://", url, flags=re.IGNORECASE):
         logging.error(
             f"[capture_screenshot_and_har] Not a valid http/https URL: {clean_url}"
@@ -6259,7 +6271,12 @@ def capture_screenshot_and_har(
         logging.warning("System offline; skipping capture for %s", clean_url)
         return False
 
-    timeout = max(timeout, 30)
+    # SDM WebRTC preview captures are internal and should fail fast; a 30s
+    # floor causes long queue buildup when several cameras are unreachable.
+    if is_sdm_webrtc_preview:
+        timeout = max(12, min(int(timeout or 0), 18))
+    else:
+        timeout = max(timeout, 30)
 
     cleanup_old_tempdirs(prefix="glimpser_", max_age_hours=12)
 
@@ -6428,9 +6445,8 @@ def capture_screenshot_and_har(
 
         # Navigate
         driver.get(url)
-        time.sleep(
-            5
-        )  # Basic wait for DOM. Tweak as needed or switch to explicit waits.
+        time.sleep(1.25 if is_sdm_webrtc_preview else 5)
+        # Basic wait for DOM. Tweak as needed or switch to explicit waits.
 
         # Remove popups
         if popup_xpath:
@@ -6459,7 +6475,11 @@ def capture_screenshot_and_har(
                 # Some pages (especially heavy JS sites) need a bit of time before
                 # the target element is present *and* laid out at its final size.
                 element = None
-                deadline = time.time() + min(12, max(0, timeout - 1))
+                is_sdm_webrtc_preview_url = (
+                    "/integrations/google/webrtc/preview" in str(url or "")
+                )
+                wait_budget = 25 if is_sdm_webrtc_preview_url else 12
+                deadline = time.time() + min(wait_budget, max(0, timeout - 1))
                 last_exc = None
                 while time.time() < deadline:
                     try:
@@ -6477,31 +6497,66 @@ def capture_screenshot_and_har(
                             # Wait for images to actually load; otherwise screenshots
                             # can be a single-color placeholder that triggers blank detection.
                             try:
-                                loaded = bool(
-                                    driver.execute_script(
-                                        "return arguments[0].complete && arguments[0].naturalWidth > 100;",
-                                        cand,
-                                    )
+                                loaded_meta = driver.execute_script(
+                                    "return {"
+                                    "complete: !!arguments[0].complete,"
+                                    "nw: arguments[0].naturalWidth || 0,"
+                                    "ready: arguments[0].dataset ? arguments[0].dataset.ready : ''"
+                                    "};",
+                                    cand,
                                 )
+                                loaded = bool(
+                                    loaded_meta.get("complete")
+                                    and int(loaded_meta.get("nw") or 0) > 100
+                                )
+                                if (
+                                    loaded
+                                    and is_sdm_webrtc_preview_url
+                                    and str(loaded_meta.get("ready") or "") != "1"
+                                ):
+                                    loaded = False
                             except Exception:
                                 loaded = True
                             if not loaded:
                                 time.sleep(0.75)
-                                element = cand
                                 continue
                             # WeatherBug camera stills can start small and then expand;
                             # wait briefly for a more useful layout.
                             if w < 650 or h < 350:
                                 time.sleep(0.75)
-                                element = cand
+                                continue
+                        if tag == "video":
+                            try:
+                                vstate = driver.execute_script(
+                                    "return {"
+                                    "rs: arguments[0].readyState || 0,"
+                                    "vw: arguments[0].videoWidth || 0,"
+                                    "vh: arguments[0].videoHeight || 0,"
+                                    "ct: arguments[0].currentTime || 0"
+                                    "};",
+                                    cand,
+                                )
+                            except Exception:
+                                vstate = {"rs": 0, "vw": 0, "vh": 0, "ct": 0}
+                            if (
+                                int(vstate.get("rs") or 0) < 2
+                                or int(vstate.get("vw") or 0) < 100
+                                or int(vstate.get("vh") or 0) < 100
+                                or float(vstate.get("ct") or 0.0) < 0.10
+                            ):
+                                time.sleep(0.6)
                                 continue
                         element = cand
                         break
                     except Exception as exc:
                         last_exc = exc
                         time.sleep(0.5)
-                if element is None and last_exc is not None:
-                    raise last_exc
+                if element is None:
+                    if last_exc is not None:
+                        raise last_exc
+                    raise TimeoutException(
+                        f"Dedicated selector not ready before timeout: {dedicated_selector}"
+                    )
                 driver.execute_script("arguments[0].scrollIntoView(true);", element)
                 time.sleep(1)
                 element.screenshot(partial_screenshot)
@@ -6690,11 +6745,25 @@ def _finalize_screenshot(
             if blank and is_sdm_webrtc_preview:
                 # SDM WebRTC feeds can be legitimately low-light at night; keep the
                 # frame rather than replacing it with "No screenshot available".
-                logging.info(
-                    "[%s] Accepting low-light SDM WebRTC frame that appears mostly blank",
-                    name,
-                )
-                blank = False
+                gray = np.asarray(img.convert("L"))
+                h, w = gray.shape[:2]
+                c = gray[
+                    int(h * 0.15) : int(h * 0.8),
+                    int(w * 0.1) : int(w * 0.9),
+                ]
+                center_mean = float(c.mean()) if c.size else 0.0
+                center_std = float(c.std()) if c.size else 0.0
+                if center_std > 2.5 or center_mean > 8.0:
+                    logging.info(
+                        (
+                            "[%s] Accepting low-light SDM WebRTC frame "
+                            "(center_mean=%.2f center_std=%.2f)"
+                        ),
+                        name,
+                        center_mean,
+                        center_std,
+                    )
+                    blank = False
             if blank:
                 logging.warning(f"[{name}] The captured screenshot looks mostly blank.")
                 if url:

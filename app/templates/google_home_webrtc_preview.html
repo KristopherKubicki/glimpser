@@ -79,6 +79,7 @@
         let mediaSessionId = "";
         let drawTimer = null;
         let extendTimer = null;
+        let goodFrameStreak = 0;
 
         const setStatus = (text) => {
           statusEl.textContent = text;
@@ -125,6 +126,37 @@
 
         const startCanvasPump = () => {
           if (drawTimer) window.clearInterval(drawTimer);
+          stillEl.dataset.ready = "";
+          goodFrameStreak = 0;
+
+          const frameLooksLive = (w, h) => {
+            try {
+              // Sample only the center of the frame. A zero-variance center is a
+              // strong signal that WebRTC connected but never delivered real video.
+              const sw = Math.max(64, Math.floor(w * 0.28));
+              const sh = Math.max(64, Math.floor(h * 0.28));
+              const sx = Math.max(0, Math.floor((w - sw) / 2));
+              const sy = Math.max(0, Math.floor((h - sh) / 2));
+              const data = ctx.getImageData(sx, sy, sw, sh).data;
+              let n = 0;
+              let sum = 0;
+              let sumSq = 0;
+              for (let i = 0; i < data.length; i += 16) {
+                const y = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+                sum += y;
+                sumSq += y * y;
+                n += 1;
+              }
+              if (!n) return false;
+              const mean = sum / n;
+              const variance = Math.max(0, sumSq / n - mean * mean);
+              const std = Math.sqrt(variance);
+              return std > 1.2 || mean > 5.0;
+            } catch (_e) {
+              return true;
+            }
+          };
+
           drawTimer = window.setInterval(() => {
             if (videoEl.readyState < 2) return;
             const w = Math.max(videoEl.videoWidth || 1280, 320);
@@ -134,9 +166,19 @@
               canvas.height = h;
             }
             ctx.drawImage(videoEl, 0, 0, w, h);
-            stillEl.src = canvas.toDataURL("image/jpeg", 0.86);
-            stillEl.dataset.ready = "1";
-            setStatus(`live ${w}x${h}`);
+            const looksLive = frameLooksLive(w, h);
+            if (looksLive) {
+              goodFrameStreak += 1;
+              stillEl.src = canvas.toDataURL("image/jpeg", 0.86);
+              if (goodFrameStreak >= 2) {
+                stillEl.dataset.ready = "1";
+              }
+              setStatus(`live ${w}x${h}`);
+            } else {
+              goodFrameStreak = 0;
+              stillEl.dataset.ready = "";
+              setStatus("waiting for video frame…");
+            }
           }, 350);
         };
 
@@ -171,10 +213,16 @@
 
         const start = async () => {
           setStatus("creating offer…");
-          pc = new RTCPeerConnection({ iceServers: [] });
+          pc = new RTCPeerConnection({
+            iceServers: [
+              { urls: "stun:stun.l.google.com:19302" },
+              { urls: "stun:stun1.l.google.com:19302" },
+            ],
+          });
           pc.addTransceiver("audio", { direction: "recvonly" });
           pc.addTransceiver("video", { direction: "recvonly" });
           try {
+            // SDM requires audio/video/application m-lines in the offer.
             pc.createDataChannel("glimpser");
           } catch (_e) {}
 
@@ -210,10 +258,52 @@
             offer_sdp: localSdp,
           });
           mediaSessionId = String(startResp.media_session_id || "");
-          await pc.setRemoteDescription({
-            type: "answer",
-            sdp: String(startResp.answer_sdp || ""),
-          });
+          let answerSdp = String(startResp.answer_sdp || "");
+          // SDM answers can include direction/sctp lines Chrome rejects in
+          // strict mode. Normalize to a Chrome-compatible answer.
+          if (answerSdp) {
+            const out = [];
+            for (const line of answerSdp
+              .replace(/\r\n/g, "\n")
+              .replace(/\r/g, "\n")
+              .split("\n")) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
+
+              if (trimmed === "a=sendrecv") {
+                out.push("a=sendonly");
+                continue;
+              }
+
+              const appLine = trimmed.match(/^m=application\s+(\d+)\s+DTLS\/SCTP\s+\d+/i);
+              if (appLine) {
+                out.push(`m=application ${appLine[1]} UDP/DTLS/SCTP webrtc-datachannel`);
+                continue;
+              }
+
+              const sctpMap = trimmed.match(/^a=sctpmap:(\d+)\s+\S+(?:\s+(\d+))?/i);
+              if (sctpMap) {
+                out.push(`a=sctp-port:${sctpMap[1]}`);
+                if (sctpMap[2]) out.push(`a=max-message-size:${sctpMap[2]}`);
+                continue;
+              }
+
+              out.push(trimmed);
+            }
+            answerSdp = `${out.join("\r\n")}\r\n`;
+          }
+          try {
+            await pc.setRemoteDescription({
+              type: "answer",
+              sdp: answerSdp,
+            });
+          } catch (err) {
+            const sctp = answerSdp
+              .split(/\r?\n/)
+              .filter((line) => line.includes("sctp"))
+              .join(" | ");
+            throw new Error(`${err.message} [${sctp}]`);
+          }
           startKeepAlive();
           setStatus("connected");
         };
