@@ -1,11 +1,10 @@
-const CACHE_NAME = "glimpser-offline-v4";
+const CACHE_NAME = "glimpser-offline-v5";
 const MAX_SHOTS = 20;
 const OFFLINE_URLS = [
   "/",
   "/status",
   "/discover",
   "/settings",
-  "/templates",
   "/offline",
   "/static/css/style.css",
   "/static/css/player.css",
@@ -18,9 +17,34 @@ self.addEventListener("install", (event) => {
   );
 });
 
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((names) =>
+        Promise.all(
+          names.map((name) => {
+            if (name !== CACHE_NAME) {
+              return caches.delete(name);
+            }
+            return Promise.resolve(false);
+          }),
+        ),
+      )
+      .then(() => self.clients.claim()),
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // Always use live network responses for dynamic API calls.
+  // Returning stale cached JSON here can freeze group/live camera lists.
+  if (url.pathname === "/templates" || url.pathname === "/groups") {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   // Never serve cached /live pages. They are stateful and should always use
   // the latest backend/runtime code after restarts.
@@ -71,7 +95,7 @@ function networkFirst(request) {
       }
       return response;
     })
-    .catch(() => caches.match(request));
+    .catch(() => caches.open(CACHE_NAME).then((cache) => cache.match(request)));
 }
 
 function cacheLatestShots(request) {
@@ -90,7 +114,7 @@ function cacheLatestShots(request) {
       });
       return response;
     })
-    .catch(() => caches.match(request));
+    .catch(() => caches.open(CACHE_NAME).then((cache) => cache.match(request)));
 }
 
 function promiseTimeout(promise, ms) {
