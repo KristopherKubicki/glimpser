@@ -2,6 +2,7 @@ import { enqueueClip } from "./video.js";
 import {
   NO_TIMESTAMP_PLACEHOLDER,
   timeAgo,
+  parseTimestamp,
   formatExactTime,
   updateHumanizedTimes,
 } from "./time_utils.js";
@@ -770,8 +771,10 @@ export async function loadTemplates() {
             : timeAgo(lastScreenshotTime);
         const nextCaptureTime = timeAgo(template.next_screenshot_time);
 
-        const lastScreenshotDate = new Date(lastScreenshotTime);
-        const ageMinutes = (Date.now() - lastScreenshotDate.getTime()) / 60000;
+        const lastScreenshotDate = parseTimestamp(lastScreenshotTime);
+        const ageMinutes = lastScreenshotDate
+          ? (Date.now() - lastScreenshotDate.getTime()) / 60000
+          : Number.POSITIVE_INFINITY;
         const videoContainerClass = "video-container";
         const errorClass = template.capture_failed
           ? "template-error"
@@ -921,7 +924,11 @@ export function setupTableSorting(tableId) {
           return parseFloat(aVal) - parseFloat(bVal);
         }
         if (type === "date") {
-          return new Date(aVal) - new Date(bVal);
+          const aDate = parseTimestamp(aVal);
+          const bDate = parseTimestamp(bVal);
+          const aMs = aDate ? aDate.getTime() : 0;
+          const bMs = bDate ? bDate.getTime() : 0;
+          return aMs - bMs;
         }
         return aVal.localeCompare(bVal);
       });
@@ -972,7 +979,11 @@ export function sortTemplates(option) {
       if (field === "error") {
         return getVal(a) - getVal(b);
       }
-      return new Date(getVal(a)) - new Date(getVal(b));
+      const aDate = parseTimestamp(getVal(a));
+      const bDate = parseTimestamp(getVal(b));
+      const aMs = aDate ? aDate.getTime() : 0;
+      const bMs = bDate ? bDate.getTime() : 0;
+      return aMs - bMs;
     });
     if (direction === "desc") rows.reverse();
     rows.forEach((row) => tbody.appendChild(row));
@@ -996,7 +1007,11 @@ export function sortTemplates(option) {
     if (field === "error") {
       return getVal(a) - getVal(b);
     }
-    return new Date(getVal(a)) - new Date(getVal(b));
+    const aDate = parseTimestamp(getVal(a));
+    const bDate = parseTimestamp(getVal(b));
+    const aMs = aDate ? aDate.getTime() : 0;
+    const bMs = bDate ? bDate.getTime() : 0;
+    return aMs - bMs;
   });
   if (direction === "desc") items.reverse();
   items.forEach((item) => list.appendChild(item));
@@ -1012,10 +1027,7 @@ export function setupCaptionsFilter() {
   if (!searchInput || rows.length === 0) return;
 
   const parseDate = (str) => {
-    if (!str) return null;
-    const iso = str.includes("T") ? str : str.replace(" ", "T") + "Z";
-    const d = new Date(iso);
-    return Number.isNaN(d.getTime()) ? null : d;
+    return parseTimestamp(str);
   };
 
   // Escape user search term for safe use in RegExp
@@ -1155,6 +1167,7 @@ export {
   timeAgo,
   formatExactTime,
   updateHumanizedTimes,
+  parseTimestamp,
   applyStatusFilter,
   updateStatusCounts,
   setupStatusFilter,

@@ -1,4 +1,5 @@
 import { updateHumanizedTimes } from "./templates.js";
+import { parseTimestamp } from "./time_utils.js";
 
 function playTone(duration = 500) {
   const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -255,7 +256,9 @@ function setupLiveHistoryUpdates() {
       const resp = await fetch("/captions_status");
       const data = await resp.json();
       if (!data.timestamp || !data.caption) return;
-      if (!latest || new Date(data.timestamp) > new Date(latest)) {
+      const dataTs = parseTimestamp(data.timestamp);
+      const latestTs = parseTimestamp(latest);
+      if (dataTs && (!latestTs || dataTs > latestTs)) {
         const row = document.createElement("tr");
         row.innerHTML = `<td><span class="humanized-time" data-time="${data.timestamp}">${data.timestamp}</span></td><td>${data.caption}</td>`;
         tbody.prepend(row);

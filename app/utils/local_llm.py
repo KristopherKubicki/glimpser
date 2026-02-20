@@ -84,6 +84,26 @@ def _image_to_base64_jpeg(image_path: str, max_size: int = 512) -> str | None:
         return None
 
 
+def _image_bytes_to_base64_jpeg(image_bytes: bytes, max_size: int = 512) -> str | None:
+    if not image_bytes:
+        return None
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as img:
+            img = img.convert("RGB")
+            ratio = min(max_size / img.size[0], max_size / img.size[1])
+            new_size = (
+                max(1, int(img.size[0] * ratio)),
+                max(1, int(img.size[1] * ratio)),
+            )
+            img_resized = img.resize(new_size)
+            buffer = io.BytesIO()
+            img_resized.save(buffer, format="JPEG")
+            return base64.b64encode(buffer.getvalue()).decode("utf-8")
+    except Exception as exc:
+        logging.warning("Local LLM image conversion failed: %s", exc)
+        return None
+
+
 def caption_with_ollama(
     *,
     model: str,
@@ -115,6 +135,42 @@ def caption_with_ollama(
         ],
     }
     data = _post_ollama(payload)
+    if not data:
+        return None
+    return _extract_message_text(data)
+
+
+def ocr_with_ollama(
+    *,
+    model: str,
+    system_prompt: str,
+    prompt: str,
+    image_bytes: bytes,
+    max_size: int = 512,
+    timeout: int | None = None,
+    options: dict[str, Any] | None = None,
+) -> str | None:
+    """Return OCR text from a local Ollama vision-capable model."""
+
+    base64_image = _image_bytes_to_base64_jpeg(image_bytes, max_size=max_size)
+    if not base64_image:
+        return None
+
+    payload = {
+        "model": model,
+        "stream": False,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {
+                "role": "user",
+                "content": prompt,
+                "images": [base64_image],
+            },
+        ],
+    }
+    if options:
+        payload["options"] = options
+    data = _post_ollama(payload, timeout=timeout)
     if not data:
         return None
     return _extract_message_text(data)

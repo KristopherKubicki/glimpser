@@ -134,3 +134,4 @@ pytest-report.xml
 .pre-commit-cache/
 logs/
 logs
+.session

@@ -28,13 +28,6 @@
       href="{{ url_for('static', filename='css/player.css') }}?v={{ COMMIT_HASH or VERSION }}"
     />
     <link
-      rel="preload"
-      href="{{ url_for('static', filename='icons/sprite.svg') }}"
-      as="fetch"
-      type="image/svg+xml"
-      crossorigin
-    />
-    <link
       rel="icon"
       type="image/x-icon"
       href="{{ url_for('static', filename='favicon.ico') }}"

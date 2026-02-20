@@ -1,18 +1,85 @@
 export const NO_TIMESTAMP_PLACEHOLDER = "no timestamp";
 
+function scoreTimestampCandidate(nowMs, candidate) {
+  const diffMs = nowMs - candidate.getTime();
+  // Prefer plausible past timestamps. Penalize future timestamps heavily so
+  // mixed local/UTC strings resolve to whichever interpretation is closer
+  // to "now" without claiming stale captures are many hours old.
+  return diffMs >= 0 ? diffMs : Math.abs(diffMs) + 7 * 24 * 60 * 60 * 1000;
+}
+
+export function parseTimestamp(dateString) {
+  if (!dateString) return null;
+  if (dateString instanceof Date) {
+    return Number.isNaN(dateString.getTime()) ? null : dateString;
+  }
+
+  if (typeof dateString === "number") {
+    const millis =
+      Number.isFinite(dateString) && dateString < 1e12
+        ? dateString * 1000
+        : dateString;
+    const parsed = new Date(millis);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const raw = String(dateString).trim();
+  if (!raw) return null;
+
+  const nowMs = Date.now();
+  const candidates = [];
+  const seen = new Set();
+  const addCandidate = (value) => {
+    const key = String(value);
+    if (seen.has(key)) return;
+    seen.add(key);
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      candidates.push(parsed);
+    }
+  };
+
+  if (/^\d{10,13}$/.test(raw)) {
+    addCandidate(Number(raw));
+  }
+
+  const hasTimezone = /Z$|[+-]\d{2}:?\d{2}$/.test(raw);
+  if (raw.includes("T")) {
+    if (hasTimezone) {
+      addCandidate(raw);
+    } else {
+      // Try both local and UTC when timezone is missing.
+      addCandidate(raw);
+      addCandidate(`${raw}Z`);
+    }
+  } else {
+    const normalized = raw.replace(" ", "T");
+    addCandidate(raw);
+    addCandidate(normalized);
+    if (!hasTimezone) {
+      addCandidate(`${normalized}Z`);
+    }
+  }
+
+  if (!candidates.length) return null;
+
+  let best = candidates[0];
+  let bestScore = scoreTimestampCandidate(nowMs, best);
+  for (let i = 1; i < candidates.length; i += 1) {
+    const score = scoreTimestampCandidate(nowMs, candidates[i]);
+    if (score < bestScore) {
+      best = candidates[i];
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
 export function timeAgo(dateString) {
   if (!dateString) return "just now";
-  const now = new Date();
-  const iso =
-    dateString instanceof Date
-      ? dateString.toISOString()
-      : dateString.includes("T")
-        ? /Z$|[+-]\d{2}:?\d{2}$/.test(dateString)
-          ? dateString
-          : `${dateString}Z`
-        : `${dateString.replace(" ", "T")}Z`;
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return "just now";
+  const now = Date.now();
+  const parsed = parseTimestamp(dateString);
+  if (!parsed) return "just now";
   const diffInSeconds = Math.floor((now - parsed) / 1000);
   if (diffInSeconds < 0) return "in the future";
 
@@ -33,16 +100,8 @@ export function timeAgo(dateString) {
 }
 
 export function formatExactTime(dateString) {
-  const date =
-    dateString instanceof Date
-      ? dateString
-      : new Date(
-          dateString.includes("T")
-            ? /Z$|[+-]\d{2}:?\d{2}$/.test(dateString)
-              ? dateString
-              : `${dateString}Z`
-            : `${dateString.replace(" ", "T")}Z`,
-        );
+  const date = parseTimestamp(dateString);
+  if (!date) return String(dateString || "");
   return date.toString();
 }
 

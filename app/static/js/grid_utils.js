@@ -1,4 +1,8 @@
-import { timeAgo, NO_TIMESTAMP_PLACEHOLDER } from "./time_utils.js";
+import {
+  timeAgo,
+  parseTimestamp,
+  NO_TIMESTAMP_PLACEHOLDER,
+} from "./time_utils.js";
 
 export function isMobile() {
   return window.matchMedia("(hover: none) and (max-width: 767px)").matches;
@@ -21,8 +25,10 @@ export function createTemplateCard(name, template, index, mobile) {
     lastScreenshotTime === NO_TIMESTAMP_PLACEHOLDER
       ? NO_TIMESTAMP_PLACEHOLDER
       : timeAgo(lastScreenshotTime);
-  const lastScreenshotDate = new Date(lastScreenshotTime);
-  const ageMinutes = (Date.now() - lastScreenshotDate.getTime()) / 60000;
+  const lastScreenshotDate = parseTimestamp(lastScreenshotTime);
+  const ageMinutes = lastScreenshotDate
+    ? (Date.now() - lastScreenshotDate.getTime()) / 60000
+    : Number.POSITIVE_INFINITY;
   const videoContainerClass = "video-container";
   const errorClass = template.capture_failed
     ? "template-error"

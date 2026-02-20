@@ -1,6 +1,7 @@
 import { attemptAutoLogin } from "./login.js";
 import { safePlay, setClipSrc as setClipSrcVideo } from "./video_utils.js";
 import { getCameraNames as getCameraNamesUtil } from "./camera_utils.js";
+import { parseTimestamp } from "./time_utils.js";
 import {
   updateFrameTimestamp as updateFrameTimestampUtil,
   setTimestampVisibility as setTimestampVisibilityUtil,
@@ -1161,7 +1162,10 @@ function checkCameraConnection(cameraName) {
     return false;
   }
 
-  const lastScreenshotTime = new Date(camera.last_screenshot_time);
+  const lastScreenshotTime = parseTimestamp(camera.last_screenshot_time);
+  if (!lastScreenshotTime) {
+    return false;
+  }
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
   return lastScreenshotTime > oneHourAgo;
 }
