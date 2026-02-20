@@ -21,6 +21,7 @@ beforeAll(async () => {
 describe("slider initialization", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.setItem("gridAutofit", "1");
     const list = document.getElementById("template-list");
     list.innerHTML = "";
     list.style.gap = "0px";
@@ -40,9 +41,9 @@ describe("slider initialization", () => {
   });
 
   test.each([
-    [1920, 1080, 4, 640],
+    [1920, 1080, 4, 871],
     [1920, 1080, 2, 960],
-    [1280, 720, 4, 426],
+    [1280, 720, 4, 551],
   ])(
     "computes min width %ipx x %ipx with %i cameras",
     (width, height, count, expected) => {

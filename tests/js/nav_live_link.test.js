@@ -31,7 +31,7 @@ test("live link uses camera when set", () => {
   initNav();
   document.dispatchEvent(new Event("DOMContentLoaded"));
   expect(document.getElementById("live").getAttribute("href")).toBe(
-    "/live?camera=cam1",
+    "/live?group=front",
   );
 });
 
@@ -50,5 +50,7 @@ test("live link defaults to /live", () => {
   window.currentGroup = "all";
   initNav();
   document.dispatchEvent(new Event("DOMContentLoaded"));
-  expect(document.getElementById("live").getAttribute("href")).toBe("/live");
+  expect(document.getElementById("live").getAttribute("href")).toBe(
+    "/live?rotator=all",
+  );
 });
