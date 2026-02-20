@@ -15,7 +15,7 @@
     <p>
       Import Eufy cameras into Glimpser as
       <code>eufy://&lt;profile&gt;/&lt;device_id&gt;</code> templates. At
-      capture time, Glimpser fetches snapshots through its local
+      capture time, Glimpser fetches snapshots from ADB through its local
       <code>/integrations/eufy/snapshot</code> proxy.
     </p>
     <p>Profile: <code>{{ profile }}</code></p>
@@ -37,6 +37,7 @@
       action="{{ url_for('ui.eufy_devices', profile=profile) }}"
     >
       <input type="hidden" name="profile" value="{{ profile }}" />
+      <input type="hidden" name="action" value="import" />
       <div
         style="
           display: flex;
@@ -66,6 +67,21 @@
             style="width: 120px"
           />
         </label>
+        <label style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" name="run_first_pass" value="true" checked />
+          Capture first screenshot after import
+        </label>
+        <label>
+          First-pass timeout (seconds)
+          <input
+            type="number"
+            name="first_pass_timeout"
+            value="20"
+            min="5"
+            max="60"
+            style="width: 120px"
+          />
+        </label>
         <button type="submit" class="btn">Import Selected</button>
         <a class="btn" href="{{ url_for('ui.eufy_home', profile=profile) }}"
           >Back</a
@@ -92,6 +108,7 @@
                 type="checkbox"
                 name="device_id"
                 value="{{ cam.device_id }}"
+                checked
               />
               <input
                 type="hidden"
@@ -109,6 +126,30 @@
           {% endfor %}
         </tbody>
       </table>
+    </form>
+
+    <hr style="margin: 16px 0;" />
+    <form method="POST" action="{{ url_for('ui.eufy_devices', profile=profile) }}">
+      <input type="hidden" name="profile" value="{{ profile }}" />
+      <input type="hidden" name="action" value="first_pass" />
+      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap;">
+        <label>
+          First-pass timeout (seconds)
+          <input
+            type="number"
+            name="first_pass_timeout"
+            value="20"
+            min="5"
+            max="60"
+            style="width: 120px"
+          />
+        </label>
+        <button type="submit" class="btn">Run First Pass Now</button>
+      </div>
+      <small
+        >Use this to force initial screenshots for imported Eufy templates
+        without waiting for scheduler cadence.</small
+      >
     </form>
     {% endif %}
   </div>

@@ -2258,10 +2258,24 @@ def create_blueprint() -> Blueprint:
 
         from app.utils import eufy_cloud
 
+        def _resolve_profile_or_fallback(raw_name: str) -> str:
+            requested = str(raw_name or "").strip().lower() or "default"
+            names = eufy_cloud.list_profile_names()
+            if requested not in names:
+                requested = "default"
+            if requested != "default":
+                return requested
+            if eufy_cloud.configured("default"):
+                return "default"
+            for candidate in names:
+                if candidate == "default":
+                    continue
+                if eufy_cloud.configured(candidate):
+                    return candidate
+            return requested
+
         profile_names = eufy_cloud.list_profile_names()
-        selected = (request.args.get("profile") or "").strip().lower() or "default"
-        if selected not in profile_names:
-            selected = "default"
+        selected = _resolve_profile_or_fallback(request.args.get("profile"))
 
         raw = routes.config.get_setting("EUFY_CLOUD_PROFILES", "") or ""
         try:
@@ -2275,31 +2289,35 @@ def create_blueprint() -> Blueprint:
         if not isinstance(stored, dict):
             stored = {}
 
-        mode = str(stored.get("mode") or "external").strip().lower()
-        if mode not in {"external", "native"}:
-            mode = "external"
-
-        bridge_url = str(stored.get("bridge_url") or "").strip()
-        devices_path = str(stored.get("devices_path") or "/api/devices").strip()
-        snapshot_path = str(
-            stored.get("snapshot_path") or "/api/cameras/{device_id}/snapshot"
-        ).strip()
-        native_email = str(stored.get("native_email") or "").strip()
-        native_country = str(stored.get("native_country") or "US").strip() or "US"
-        api_token_saved = bool(str(stored.get("api_token") or "").strip())
-        native_password_saved = bool(str(stored.get("native_password") or "").strip())
-        verify_tls = str(stored.get("verify_tls", "true")).strip().lower() in {
-            "true",
-            "1",
-            "t",
-            "y",
-            "yes",
-            "on",
-        }
-
+        mode = "emulator"
+        emulator_adb_path = str(stored.get("emulator_adb_path") or "").strip()
+        emulator_adb_serial = str(stored.get("emulator_adb_serial") or "").strip()
+        emulator_launch_cmd = str(stored.get("emulator_launch_cmd") or "").strip()
+        emulator_capture_cmd = str(stored.get("emulator_capture_cmd") or "").strip()
+        emulator_boot_cmd = str(stored.get("emulator_boot_cmd") or "").strip()
+        emulator_devices_json = str(stored.get("emulator_devices_json") or "").strip()
+        try:
+            emulator_boot_timeout_seconds = float(
+                stored.get("emulator_boot_timeout_seconds") or 45.0
+            )
+        except Exception:
+            emulator_boot_timeout_seconds = 45.0
+        emulator_boot_timeout_seconds = max(
+            5.0, min(emulator_boot_timeout_seconds, 240.0)
+        )
+        try:
+            emulator_settle_seconds = float(
+                stored.get("emulator_settle_seconds") or 2.0
+            )
+        except Exception:
+            emulator_settle_seconds = 2.0
+        emulator_settle_seconds = max(0.0, min(emulator_settle_seconds, 60.0))
         configured = bool(eufy_cloud.configured(selected))
-        captcha_challenge = (
-            eufy_cloud.get_native_captcha(selected) if mode == "native" else None
+        requested_group = (request.args.get("group") or "").strip()
+        suggested_group = (
+            validate_group_name(requested_group)
+            or validate_group_name("" if selected == "default" else selected)
+            or "eufy"
         )
 
         return render_template(
@@ -2308,16 +2326,16 @@ def create_blueprint() -> Blueprint:
             selected_profile=selected,
             configured=configured,
             mode=mode,
-            bridge_url=bridge_url,
-            devices_path=devices_path,
-            snapshot_path=snapshot_path,
-            native_email=native_email,
-            native_country=native_country,
-            verify_tls=verify_tls,
-            api_token_saved=api_token_saved,
-            native_password_saved=native_password_saved,
-            captcha_challenge=captcha_challenge,
-            page_title="Eufy Cloud",
+            emulator_adb_path=emulator_adb_path,
+            emulator_adb_serial=emulator_adb_serial,
+            emulator_launch_cmd=emulator_launch_cmd,
+            emulator_capture_cmd=emulator_capture_cmd,
+            emulator_boot_cmd=emulator_boot_cmd,
+            emulator_boot_timeout_seconds=emulator_boot_timeout_seconds,
+            emulator_devices_json=emulator_devices_json,
+            emulator_settle_seconds=emulator_settle_seconds,
+            suggested_group=suggested_group,
+            page_title="Eufy ADB",
         )
 
     @bp.route(
@@ -2341,28 +2359,31 @@ def create_blueprint() -> Blueprint:
             )
             return redirect(url_for("ui.eufy_home"))
 
-        mode = (request.form.get("mode") or "external").strip().lower()
-        if mode not in {"external", "native"}:
-            mode = "external"
-
-        bridge_url = (request.form.get("bridge_url") or "").strip().rstrip("/")
-        devices_path = (request.form.get("devices_path") or "/api/devices").strip()
-        snapshot_path = (
-            request.form.get("snapshot_path") or "/api/cameras/{device_id}/snapshot"
+        mode = "emulator"
+        emulator_adb_path = (request.form.get("emulator_adb_path") or "").strip()
+        emulator_adb_serial = (request.form.get("emulator_adb_serial") or "").strip()
+        emulator_launch_cmd = (request.form.get("emulator_launch_cmd") or "").strip()
+        emulator_capture_cmd = (request.form.get("emulator_capture_cmd") or "").strip()
+        emulator_boot_cmd = (request.form.get("emulator_boot_cmd") or "").strip()
+        emulator_devices_json = (
+            request.form.get("emulator_devices_json") or ""
         ).strip()
-        api_token = (request.form.get("api_token") or "").strip()
-        native_email = (request.form.get("native_email") or "").strip()
-        native_password = (request.form.get("native_password") or "").strip()
-        native_country = (request.form.get("native_country") or "US").strip() or "US"
-        verify_tls = request.form.get("verify_tls", "false").lower() in {
-            "true",
-            "1",
-            "t",
-            "y",
-            "yes",
-            "on",
-        }
-
+        try:
+            emulator_boot_timeout_seconds = float(
+                request.form.get("emulator_boot_timeout_seconds") or 45.0
+            )
+        except Exception:
+            emulator_boot_timeout_seconds = 45.0
+        emulator_boot_timeout_seconds = max(
+            5.0, min(emulator_boot_timeout_seconds, 240.0)
+        )
+        try:
+            emulator_settle_seconds = float(
+                request.form.get("emulator_settle_seconds") or 2.0
+            )
+        except Exception:
+            emulator_settle_seconds = 2.0
+        emulator_settle_seconds = max(0.0, min(emulator_settle_seconds, 60.0))
         raw = routes.config.get_setting("EUFY_CLOUD_PROFILES", "") or ""
         try:
             payload = routes.json.loads(raw) if str(raw).strip() else {}
@@ -2374,21 +2395,17 @@ def create_blueprint() -> Blueprint:
         existing = payload.get(profile)
         if not isinstance(existing, dict):
             existing = {}
-        if not api_token:
-            api_token = str(existing.get("api_token") or "").strip()
-        if not native_password:
-            native_password = str(existing.get("native_password") or "").strip()
 
         payload[profile] = {
             "mode": mode,
-            "bridge_url": bridge_url,
-            "api_token": api_token,
-            "devices_path": devices_path,
-            "snapshot_path": snapshot_path,
-            "verify_tls": verify_tls,
-            "native_email": native_email,
-            "native_password": native_password,
-            "native_country": native_country,
+            "emulator_adb_path": emulator_adb_path,
+            "emulator_adb_serial": emulator_adb_serial,
+            "emulator_launch_cmd": emulator_launch_cmd,
+            "emulator_capture_cmd": emulator_capture_cmd,
+            "emulator_boot_cmd": emulator_boot_cmd,
+            "emulator_boot_timeout_seconds": emulator_boot_timeout_seconds,
+            "emulator_devices_json": emulator_devices_json,
+            "emulator_settle_seconds": emulator_settle_seconds,
         }
 
         routes.update_setting(
@@ -2404,27 +2421,58 @@ def create_blueprint() -> Blueprint:
     )
     @routes.login_required
     def eufy_captcha():
-        """Submit a pending Eufy native-cloud captcha challenge."""
-
-        from app.utils import eufy_cloud
-
+        """Disabled: Eufy runs in ADB-only mode."""
         profile = (request.form.get("profile") or "").strip().lower() or "default"
-        answer = str(request.form.get("captcha_code") or "").strip()
-        if not answer:
-            routes.flash("Captcha answer is required.", "error")
-            return redirect(url_for("ui.eufy_home", profile=profile))
+        routes.flash(
+            "Eufy API/web captcha flow is disabled. Use ADB-only integration.",
+            "info",
+        )
+        return redirect(url_for("ui.eufy_home", profile=profile))
 
-        try:
-            eufy_cloud.submit_native_captcha(profile, answer, timeout=20)
-        except eufy_cloud.EufyCaptchaRequired:
-            routes.flash("Captcha was incorrect. Please try again.", "error")
-            return redirect(url_for("ui.eufy_home", profile=profile))
-        except Exception as exc:
-            routes.flash(f"Failed to verify Eufy captcha: {exc}", "error")
-            return redirect(url_for("ui.eufy_home", profile=profile))
+    @bp.route(
+        "/integrations/eufy/captcha/auto",
+        methods=["POST"],
+        endpoint="eufy_captcha_auto",
+    )
+    @routes.login_required
+    def eufy_captcha_auto():
+        """Disabled: Eufy runs in ADB-only mode."""
+        profile = (request.form.get("profile") or "").strip().lower() or "default"
+        routes.flash(
+            "Eufy API/web captcha flow is disabled. Use ADB-only integration.",
+            "info",
+        )
+        return redirect(url_for("ui.eufy_home", profile=profile))
 
-        routes.flash("Captcha accepted. You can import Eufy cameras now.", "success")
-        return redirect(url_for("ui.eufy_devices", profile=profile))
+    @bp.route(
+        "/integrations/eufy/captcha/request",
+        methods=["POST"],
+        endpoint="eufy_captcha_request",
+    )
+    @routes.login_required
+    def eufy_captcha_request():
+        """Disabled: Eufy runs in ADB-only mode."""
+        profile = (request.form.get("profile") or "").strip().lower() or "default"
+        routes.flash(
+            "Eufy API/web captcha flow is disabled. Use ADB-only integration.",
+            "info",
+        )
+        return redirect(url_for("ui.eufy_home", profile=profile))
+
+    @bp.route(
+        "/integrations/eufy/webportal/bootstrap",
+        methods=["POST"],
+        endpoint="eufy_webportal_bootstrap",
+    )
+    @routes.login_required
+    def eufy_webportal_bootstrap():
+        """Disabled: Eufy runs in ADB-only mode."""
+        profile = (request.form.get("profile") or "").strip().lower() or "default"
+        routes.flash(
+            "Eufy web portal bootstrap is disabled. Use ADB-only integration.",
+            "info",
+        )
+        return redirect(url_for("ui.eufy_home", profile=profile))
 
     @bp.route(
         "/integrations/eufy/devices",
@@ -2435,28 +2483,178 @@ def create_blueprint() -> Blueprint:
     def eufy_devices():
         """List Eufy bridge devices and import them as Glimpser templates."""
 
-        from app.utils import eufy_cloud
+        from app.utils import eufy_cloud, eufy_first_pass
 
-        profile = (request.args.get("profile") or "").strip().lower() or "default"
+        def _resolve_profile_or_fallback(raw_name: str) -> str:
+            requested = str(raw_name or "").strip().lower() or "default"
+            names = eufy_cloud.list_profile_names()
+            if requested not in names:
+                requested = "default"
+            if requested != "default":
+                return requested
+            if eufy_cloud.configured("default"):
+                return "default"
+            for candidate in names:
+                if candidate == "default":
+                    continue
+                if eufy_cloud.configured(candidate):
+                    return candidate
+            return requested
+
+        # Prefer submitted form profile on POST to avoid query-string drift
+        # when users keep multiple integration tabs open.
+        profile = _resolve_profile_or_fallback(
+            request.form.get("profile") or request.args.get("profile") or ""
+        )
         list_error = ""
-        default_group = validate_group_name(profile) or "eufy"
+        requested_group = (
+            request.form.get("group") or request.args.get("group") or ""
+        ).strip()
+        default_group = (
+            validate_group_name(requested_group)
+            or validate_group_name("" if profile == "default" else profile)
+            or "eufy"
+        )
 
         if request.method == "POST":
+            action = str(request.form.get("action") or "import").strip().lower()
+            timeout_raw = str(request.form.get("first_pass_timeout") or "20").strip()
+            try:
+                first_pass_timeout = float(timeout_raw)
+            except Exception:
+                first_pass_timeout = 20.0
+            first_pass_timeout = max(5.0, min(first_pass_timeout, 60.0))
+
+            if action == "first_pass":
+                try:
+                    results = eufy_first_pass.capture_profile_first_pass(
+                        profile,
+                        timeout=first_pass_timeout,
+                    )
+                except Exception as exc:
+                    routes.flash(f"First pass failed: {exc}", "error")
+                    return redirect(url_for("ui.eufy_devices", profile=profile))
+
+                total = len(results)
+                ok = sum(1 for row in results if row.get("ok"))
+                failed_rows = [row for row in results if not row.get("ok")]
+                failed = len(failed_rows)
+
+                if total == 0:
+                    routes.flash(
+                        f"No imported eufy:// templates found for profile '{profile}'.",
+                        "info",
+                    )
+                elif failed == 0:
+                    routes.flash(
+                        f"First pass complete: {ok}/{total} screenshots captured.",
+                        "success",
+                    )
+                else:
+                    summary = ", ".join(
+                        f"{row['name']}: {str(row['error'])[:80]}"
+                        for row in failed_rows[:3]
+                    )
+                    routes.flash(
+                        f"First pass: {ok} ok, {failed} failed. {summary}",
+                        "warning",
+                    )
+                return redirect(url_for("ui.eufy_devices", profile=profile))
+
             device_ids = [str(d).strip() for d in request.form.getlist("device_id")]
-            group = (
-                request.form.get("group") or default_group
-            ).strip() or default_group
+            group = (request.form.get("group") or "").strip() or default_group
             frequency = int(request.form.get("frequency") or 2)
+            run_first_pass = str(request.form.get("run_first_pass") or "").lower() in {
+                "1",
+                "true",
+                "on",
+                "yes",
+            }
 
             templates = routes.template_manager.get_templates()
             existing_names = set(templates.keys())
             imported = 0
+            updated = 0
+            deduped = 0
+            imported_names: list[str] = []
+
+            # Keep one template per (profile, device_id). Re-imports can happen
+            # after captcha/session hiccups; this avoids accumulating duplicates.
+            eufy_templates_by_device: dict[
+                str, list[tuple[str, dict[str, object]]]
+            ] = {}
+            for template_name, tmpl in templates.items():
+                tmpl_url = str(tmpl.get("url") or "")
+                if not tmpl_url.startswith("eufy://"):
+                    continue
+                try:
+                    tmpl_profile, tmpl_device_id = eufy_cloud.parse_eufy_url(tmpl_url)
+                except Exception:
+                    continue
+                if tmpl_profile != profile or not tmpl_device_id:
+                    continue
+                eufy_templates_by_device.setdefault(tmpl_device_id, []).append(
+                    (template_name, tmpl)
+                )
+
+            canonical_by_device: dict[str, str] = {}
+            for tmpl_device_id, variants in eufy_templates_by_device.items():
+                ranked = sorted(
+                    variants,
+                    key=lambda item: (
+                        # Prefer templates that already captured at least once.
+                        1
+                        if str(item[1].get("last_screenshot_time") or "").strip()
+                        else 0,
+                        # Prefer human-readable names over "-2/-3" suffixes.
+                        1 if not re.search(r"-\d+$", item[0]) else 0,
+                        # Prefer currently healthy templates over failed ones.
+                        1 if not bool(item[1].get("capture_failed")) else 0,
+                        int(item[1].get("id") or 0),
+                    ),
+                    reverse=True,
+                )
+                keep_name = ranked[0][0]
+                canonical_by_device[tmpl_device_id] = keep_name
+                for drop_name, _drop_tmpl in ranked[1:]:
+                    if routes.template_manager.delete_template(drop_name):
+                        deduped += 1
+                        existing_names.discard(drop_name)
+
             for device_id in device_ids:
                 if not device_id:
                     continue
                 label = (
                     request.form.get(f"label_{device_id}") or f"Eufy_{device_id[:8]}"
                 ).strip()
+
+                existing_name = canonical_by_device.get(device_id)
+                if existing_name:
+                    ok = routes.template_manager.save_template(
+                        existing_name,
+                        {
+                            "url": f"eufy://{profile}/{device_id}",
+                            "groups": group,
+                            "frequency": frequency,
+                            "browser": False,
+                            "stealth": False,
+                            "headless": False,
+                            "dark": True,
+                            "notes": "Imported from Eufy ADB integration.",
+                        },
+                    )
+                    if ok:
+                        updated += 1
+                        imported_names.append(existing_name)
+                    else:
+                        logging.warning(
+                            "eufy import update failed profile=%s name=%s device_id=%s",
+                            profile,
+                            existing_name,
+                            device_id,
+                        )
+                    continue
+
                 tname = _make_template_name(label, existing_names)
                 ok = routes.template_manager.save_template(
                     tname,
@@ -2468,11 +2666,12 @@ def create_blueprint() -> Blueprint:
                         "stealth": False,
                         "headless": False,
                         "dark": True,
-                        "notes": "Imported from Eufy cloud bridge.",
+                        "notes": "Imported from Eufy ADB integration.",
                     },
                 )
                 if ok:
                     imported += 1
+                    imported_names.append(tname)
                 else:
                     logging.warning(
                         "eufy import failed profile=%s name=%s device_id=%s",
@@ -2481,8 +2680,45 @@ def create_blueprint() -> Blueprint:
                         device_id,
                     )
 
-            if imported:
-                routes.flash(f"Imported {imported} Eufy camera(s).", "success")
+            if imported or updated or deduped:
+                parts: list[str] = []
+                if imported:
+                    parts.append(f"imported {imported}")
+                if updated:
+                    parts.append(f"updated {updated}")
+                if deduped:
+                    parts.append(f"removed {deduped} duplicate(s)")
+                routes.flash(
+                    f"Eufy sync complete: {', '.join(parts)}.",
+                    "success",
+                )
+                if run_first_pass and imported_names:
+                    try:
+                        pass_results = eufy_first_pass.capture_profile_first_pass(
+                            profile,
+                            timeout=first_pass_timeout,
+                            template_names=imported_names,
+                        )
+                    except Exception as exc:
+                        routes.flash(
+                            f"Import complete, but first-pass capture failed: {exc}",
+                            "warning",
+                        )
+                    else:
+                        pass_ok = sum(1 for row in pass_results if row.get("ok"))
+                        pass_failed = sum(
+                            1 for row in pass_results if not row.get("ok")
+                        )
+                        if pass_failed == 0:
+                            routes.flash(
+                                f"First pass complete: {pass_ok}/{len(pass_results)} captured.",
+                                "success",
+                            )
+                        else:
+                            routes.flash(
+                                f"First pass: {pass_ok} ok, {pass_failed} failed.",
+                                "warning",
+                            )
                 primary_group = (group.split(",")[0] or "").strip()
                 if primary_group:
                     return redirect(
@@ -2490,7 +2726,7 @@ def create_blueprint() -> Blueprint:
                     )
             else:
                 routes.flash("No cameras imported.", "info")
-            return redirect(url_for("ui.eufy_devices", profile=profile))
+            return redirect(url_for("ui.eufy_devices", profile=profile, group=group))
 
         if not eufy_cloud.configured(profile):
             routes.flash(
@@ -2501,12 +2737,6 @@ def create_blueprint() -> Blueprint:
 
         try:
             devices = eufy_cloud.list_devices(profile)
-        except eufy_cloud.EufyCaptchaRequired:
-            routes.flash(
-                "Eufy requires captcha verification for this profile. Solve it below.",
-                "warning",
-            )
-            return redirect(url_for("ui.eufy_home", profile=profile))
         except Exception as exc:
             list_error = str(exc)
             routes.flash(f"Failed to list Eufy devices: {list_error}", "error")

@@ -104,20 +104,12 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn('<table id="discover-table"', html)
         self.assertIn('th class="sortable"', html)
 
-    def test_header_preloads_sprite(self):
+    def test_header_does_not_preload_sprite(self):
         parser = parse_template(Path("app/templates/header.html"))
         expected_href = "{{ url_for('static', filename='icons/sprite.svg') }}"
         for attrs in parser.link_tags:
-            if (
-                attrs.get("rel") == "preload"
-                and attrs.get("as") == "fetch"
-                and attrs.get("type") == "image/svg+xml"
-                and "crossorigin" in attrs
-                and attrs.get("href") == expected_href
-            ):
-                break
-        else:
-            self.fail("sprite.svg preload link missing")
+            if attrs.get("rel") == "preload" and attrs.get("href") == expected_href:
+                self.fail("sprite.svg should not be preloaded from the shared header")
 
     def test_settings_has_advanced_toggle(self):
         parser = parse_template(Path("app/templates/settings.html"))
@@ -213,6 +205,28 @@ class TestHtmlTemplates(unittest.TestCase):
         self.assertIn('id="index-time"', html)
         self.assertIn('role="timer"', html)
         self.assertIn('aria-live="polite"', html)
+
+    def test_eufy_devices_has_first_pass_controls(self):
+        html = Path("app/templates/eufy_devices.html").read_text(encoding="utf-8")
+        self.assertIn('name="run_first_pass"', html)
+        self.assertIn('name="first_pass_timeout"', html)
+        self.assertIn('name="action" value="first_pass"', html)
+        self.assertIn("Run First Pass Now", html)
+
+    def test_eufy_home_has_emulator_controls(self):
+        html = Path("app/templates/eufy_home.html").read_text(encoding="utf-8")
+        self.assertIn("VM / Emulator (ADB)", html)
+        self.assertIn("ADB-only mode is enforced in this deployment.", html)
+        self.assertIn('name="emulator_adb_path"', html)
+        self.assertIn('name="emulator_boot_cmd"', html)
+        self.assertIn('name="emulator_devices_json"', html)
+        self.assertNotIn('name="bridge_url"', html)
+        self.assertNotIn('name="api_token"', html)
+        self.assertNotIn('name="native_email"', html)
+        self.assertNotIn('name="native_password"', html)
+        self.assertNotIn('name="webportal_url"', html)
+        self.assertNotIn('name="webportal_pin"', html)
+        self.assertNotIn("Launch Local Web Portal Session", html)
 
     def test_live_page_has_overlay(self):
         html = Path("app/templates/live.html").read_text(encoding="utf-8")

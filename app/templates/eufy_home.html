@@ -1,19 +1,16 @@
-{% extends 'base.html' %}
-
-{% block content %}
+{% extends 'base.html' %} {% block content %}
 <main class="container settings-page">
   <div class="card">
-    <h2>Eufy Cloud Cameras</h2>
+    <h2>Eufy Cameras</h2>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="flash-messages">
-          {% for category, message in messages %}
-            <div class="alert alert-{{ category }}">{{ message }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
+    {% with messages = get_flashed_messages(with_categories=true) %} {% if
+    messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %} {% endwith %}
 
     <p>
       Keep Eufy cloud access enclosed inside Glimpser and import cameras as
@@ -23,131 +20,202 @@
     <form
       method="GET"
       action="{{ url_for('ui.eufy_home') }}"
-      style="display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin: 12px 0;"
+      style="
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: end;
+        margin: 12px 0;
+      "
     >
       <label>
         Profile
-        <select name="profile" style="min-width: 220px;">
+        <select name="profile" style="min-width: 220px">
           {% for p in profiles %}
-            <option value="{{ p }}" {% if p == selected_profile %}selected{% endif %}>{{ p }}</option>
+          <option value="{{ p }}" {{ "selected" if p == selected_profile else "" }}>
+            {{ p }}
+          </option>
           {% endfor %}
         </select>
       </label>
       <button type="submit" class="btn">Switch</button>
     </form>
 
-    <details style="margin: 12px 0;" open>
+    <details style="margin: 12px 0" open>
       <summary><strong>Edit Profile</strong></summary>
-      <form method="POST" action="{{ url_for('ui.eufy_profile') }}" style="margin-top: 12px;">
-        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-          <label style="min-width: 220px;">
+      <form
+        method="POST"
+        action="{{ url_for('ui.eufy_profile') }}"
+        style="margin-top: 12px"
+      >
+        <div style="display: flex; gap: 12px; flex-wrap: wrap">
+          <label style="min-width: 220px">
             Profile Name
-            <input type="text" name="profile" value="{{ selected_profile }}" placeholder="e.g. argyle" style="width: 100%;" />
+            <input
+              type="text"
+              name="profile"
+              value="{{ selected_profile }}"
+              placeholder="e.g. argyle"
+              style="width: 100%"
+            />
           </label>
 
-          <label style="min-width: 260px;">
+          <label style="min-width: 260px">
             Mode
-            <select name="mode" style="width: 100%;">
-              <option value="native" {% if mode == 'native' %}selected{% endif %}>Native Cloud (no bridge endpoint)</option>
-              <option value="external" {% if mode != 'native' %}selected{% endif %}>External Bridge</option>
+            <select name="mode" style="width: 100%">
+              <option value="emulator" {{ "selected" if mode == "emulator" else "" }}>
+                VM / Emulator (ADB)
+              </option>
             </select>
+            <small>ADB-only mode is enforced in this deployment.</small>
           </label>
 
-          <label style="min-width: 420px;">
-            Eufy Account Email
-            <input type="email" name="native_email" value="{{ native_email }}" placeholder="guest-eufy@example.com" style="width: 100%;" />
-          </label>
-
-          <label style="min-width: 420px;">
-            Eufy Account Password
-            <input type="password" name="native_password" value="" placeholder="(leave blank to keep existing)" style="width: 100%;" />
-            {% if native_password_saved %}
-              <small>Current cloud password: <strong>saved</strong></small>
-            {% endif %}
-          </label>
-
-          <label style="min-width: 220px;">
-            Eufy Country Code
-            <input type="text" name="native_country" value="{{ native_country }}" placeholder="US" style="width: 100%;" />
-          </label>
-
-          <label style="min-width: 520px;">
-            Bridge URL
-            <input type="text" name="bridge_url" value="{{ bridge_url }}" placeholder="http://127.0.0.1:18888" style="width: 100%;" />
-          </label>
-
-          <label style="min-width: 360px;">
-            Devices Path
-            <input type="text" name="devices_path" value="{{ devices_path }}" placeholder="/api/devices" style="width: 100%;" />
-          </label>
-
-          <label style="min-width: 420px;">
-            Snapshot Path
-            <input type="text" name="snapshot_path" value="{{ snapshot_path }}" placeholder="/api/cameras/{device_id}/snapshot" style="width: 100%;" />
+          <label style="min-width: 520px">
+            Emulator ADB Path (optional)
+            <input
+              type="text"
+              name="emulator_adb_path"
+              value="{{ emulator_adb_path }}"
+              placeholder="/home/kristopher/android/platform-tools/adb"
+              style="width: 100%"
+            />
             <small>
-              Use <code>{device_id}</code> placeholder if your bridge expects
-              path-based IDs.
+              Leave empty to use <code>adb</code> from PATH. Glimpser also
+              checks <code>GLIMPSER_EUFY_ADB_PATH</code>.
             </small>
           </label>
 
-          <label style="min-width: 420px;">
-            API Token
-            <input type="password" name="api_token" value="" placeholder="(leave blank to keep existing)" style="width: 100%;" />
-            {% if api_token_saved %}
-              <small>Current token: <strong>saved</strong></small>
-            {% endif %}
+          <label style="min-width: 260px">
+            Emulator ADB Serial (optional)
+            <input
+              type="text"
+              name="emulator_adb_serial"
+              value="{{ emulator_adb_serial }}"
+              placeholder="emulator-5554"
+              style="width: 100%"
+            />
           </label>
 
-          <label style="display: flex; gap: 8px; align-items: center; min-width: 220px;">
-            <input type="checkbox" name="verify_tls" value="true" {% if verify_tls %}checked{% endif %} />
-            Verify TLS
+          <label style="min-width: 360px">
+            Emulator Boot Command (optional)
+            <input
+              type="text"
+              name="emulator_boot_cmd"
+              value="{{ emulator_boot_cmd }}"
+              placeholder="virsh start android-vm"
+              style="width: 100%"
+            />
+            <small>
+              Run when no ADB device is online. Use this to start your VM
+              automatically. If left empty, Glimpser tries auto-detect.
+            </small>
           </label>
+
+          <label style="min-width: 220px">
+            Emulator Boot Timeout (seconds)
+            <input
+              type="number"
+              name="emulator_boot_timeout_seconds"
+              value="{{ emulator_boot_timeout_seconds }}"
+              min="5"
+              max="240"
+              step="1"
+              style="width: 100%"
+            />
+          </label>
+
+          <label style="min-width: 360px">
+            Emulator Launch Cmd (optional)
+            <input
+              type="text"
+              name="emulator_launch_cmd"
+              value="{{ emulator_launch_cmd }}"
+              placeholder="adb -s emulator-5554 shell am start -a android.intent.action.VIEW -d '{deep_link}'"
+              style="width: 100%"
+            />
+            <small>
+              Supports placeholders:
+              <code>{profile}</code>, <code>{device_id}</code>,
+              <code>{device_name}</code>, <code>{deep_link}</code>.
+            </small>
+          </label>
+
+          <label style="min-width: 360px">
+            Emulator Capture Cmd (optional)
+            <input
+              type="text"
+              name="emulator_capture_cmd"
+              value="{{ emulator_capture_cmd }}"
+              placeholder="adb -s emulator-5554 exec-out screencap -p"
+              style="width: 100%"
+            />
+            <small>
+              Leave empty to use <code>adb exec-out screencap -p</code>.
+            </small>
+          </label>
+
+          <label style="min-width: 220px">
+            Emulator Settle Seconds
+            <input
+              type="number"
+              name="emulator_settle_seconds"
+              value="{{ emulator_settle_seconds }}"
+              min="0"
+              max="60"
+              step="0.5"
+              style="width: 100%"
+            />
+          </label>
+
+          <label style="min-width: 700px">
+            Emulator Device Catalog (JSON)
+            <textarea
+              name="emulator_devices_json"
+              rows="8"
+              style="width: 100%"
+              placeholder='{"devices":[{"device_id":"T81A...","name":"Driveway","deep_link":"eufysecurity://camera/T81A..."}]}'
+            >
+{{ emulator_devices_json }}</textarea
+            >
+            <small>
+              Used by VM/emulator mode. Accepts a list or
+              <code>{"devices":[...]}</code> object. Each device should include
+              <code>device_id</code> and <code>name</code>.
+            </small>
+          </label>
+
         </div>
 
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px">
           <button type="submit" class="btn">Save Profile</button>
         </div>
       </form>
 
-      <p style="margin-top: 10px;">
+      <p style="margin-top: 10px">
         Tip: create one profile per house (for example
-        <code>argyle</code>/<code>beach</code>/<code>halsted</code>) and point
-        each to its own account or bridge endpoint.
+        <code>argyle</code>/<code>beach</code>/<code>halsted</code>).
       </p>
-      <p style="margin-top: 8px;">
-        Native mode uses Eufy cloud credentials directly and does not require a
-        separate bridge URL. External mode uses your bridge URL +
-        <code>/api/devices</code>/<code>/api/cameras/{device_id}/snapshot</code>.
+      <p style="margin-top: 8px">
+        VM / Emulator mode captures from Android via ADB commands and a local
+        JSON device catalog. Web/native cloud capture is disabled in this
+        deployment.
       </p>
     </details>
 
     {% if configured %}
-      <p>Status: <strong>Configured</strong></p>
-      <a class="btn" href="{{ url_for('ui.eufy_devices', profile=selected_profile) }}">Discover / Import Cameras</a>
+    <p>
+      Status: <strong>Configured</strong> &mdash; Mode: <code>{{ mode }}</code>
+    </p>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center">
+      <a
+        class="btn"
+        href="{{ url_for('ui.eufy_devices', profile=selected_profile, group=suggested_group) }}"
+        >Discover / Import Cameras</a
+      >
+    </div>
     {% else %}
-      <p>Status: <strong>Not configured</strong></p>
-      <p>Save either native cloud credentials or an external bridge profile first.</p>
-    {% endif %}
-
-    {% if captcha_challenge %}
-      <hr style="margin: 16px 0;" />
-      <h3 style="margin: 0 0 8px 0;">Captcha Verification Required</h3>
-      <p style="margin-top: 0;">
-        Eufy requested captcha verification for profile <code>{{ selected_profile }}</code>.
-      </p>
-      <img
-        src="{{ captcha_challenge.captcha_item }}"
-        alt="Eufy captcha"
-        style="display: block; max-width: 320px; background: #111; padding: 8px; border: 1px solid #333; border-radius: 6px; margin-bottom: 10px;"
-      />
-      <form method="POST" action="{{ url_for('ui.eufy_captcha') }}" style="display: flex; gap: 8px; align-items: end; flex-wrap: wrap;">
-        <input type="hidden" name="profile" value="{{ selected_profile }}" />
-        <label>
-          Captcha Code
-          <input type="text" name="captcha_code" autocomplete="off" autocorrect="off" spellcheck="false" style="min-width: 180px;" />
-        </label>
-        <button type="submit" class="btn">Submit Captcha</button>
-      </form>
+    <p>Status: <strong>Not configured</strong></p>
+    <p>Save an emulator profile first.</p>
     {% endif %}
   </div>
 </main>
