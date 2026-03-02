@@ -43,7 +43,7 @@ jobs:
           JAVA_HOME: /opt/jdk
 
       - name: Upload human-readable HTML
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dependency-check-html
           path: reports/*.html
