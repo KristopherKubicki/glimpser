@@ -59,7 +59,7 @@ jobs:
           password: ${{ env.PYPI_API_TOKEN }}
       - name: Upload Debian package
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: debian/glimpser.deb
@@ -96,7 +96,7 @@ jobs:
         run: python build_windows.py
       - name: Upload Windows executable
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: dist/Glimpser.exe
@@ -129,7 +129,7 @@ jobs:
         run: python build_macos.py
       - name: Upload macOS archive
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: dist/Glimpser
