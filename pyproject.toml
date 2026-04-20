@@ -38,7 +38,7 @@ dependencies = [
   "numpy>=1.26,<2.0",
   "pdf2image==1.17.0",
   "pillow==11.2.1",
-  "psutil~=7.0.0",
+  "psutil>=7.0,<7.3",
   "pynput==1.8.1",
   "python-dateutil>=2.9.0.post0",
   "python-dotenv>=1.1.0",
