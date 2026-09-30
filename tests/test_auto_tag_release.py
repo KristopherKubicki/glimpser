@@ -35,6 +35,32 @@ class TestAutoTagRelease(unittest.TestCase):
             with patch.object(auto_tag_release, "VERSION_FILE", pyproject):
                 self.assertEqual(auto_tag_release.get_version(), "9.9.9")
 
+    def test_project_version_wins_over_tool_version_and_spacing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pyproject = Path(tmpdir) / "pyproject.toml"
+            pyproject.write_text(
+                '[project]\nversion         = "0.2.10"\n'
+                '[tool.commitizen]\nversion = "0.2.9"\n'
+            )
+            self.assertEqual(auto_tag_release.get_version(pyproject), "0.2.10")
+
+    def test_missing_project_version_does_not_use_tool_version(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "pyproject.toml"
+            path.write_text('[tool.commitizen]\nversion = "0.2.9"\n')
+            with self.assertRaisesRegex(RuntimeError, "project.version"):
+                auto_tag_release.get_version(path)
+
+    def test_print_version_never_creates_or_pushes_tag(self):
+        with (
+            patch.object(auto_tag_release, "get_version", return_value="0.2.10"),
+            patch.object(auto_tag_release, "create_tag") as create,
+            patch("builtins.print") as output,
+        ):
+            auto_tag_release.main(["--print-version"])
+            output.assert_called_once_with("0.2.10")
+            create.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
