@@ -93,15 +93,41 @@ class TestMainUtilities(unittest.TestCase):
 
     @patch("main.subprocess.run")
     def test_clear_console_windows(self, mock_run):
-        with patch.object(main.os, "name", "nt"):
+        with (
+            patch.object(main.os, "name", "nt"),
+            patch("main.sys.stdout.isatty", return_value=True),
+        ):
             main.clear_console()
-            mock_run.assert_called_once_with(["cls"], check=False)
+            mock_run.assert_called_once_with(
+                ["cmd.exe", "/d", "/c", "cls"], check=False, timeout=2
+            )
 
     @patch("main.subprocess.run")
     def test_clear_console_posix(self, mock_run):
-        with patch.object(main.os, "name", "posix"):
+        with (
+            patch.object(main.os, "name", "posix"),
+            patch("main.sys.stdout.isatty", return_value=True),
+        ):
             main.clear_console()
-            mock_run.assert_called_once_with(["clear"], check=False)
+            mock_run.assert_called_once_with(["clear"], check=False, timeout=2)
+
+    @patch("main.subprocess.run")
+    def test_clear_console_skips_redirected_output(self, mock_run):
+        with patch("main.sys.stdout.isatty", return_value=False):
+            main.clear_console()
+        mock_run.assert_not_called()
+
+    @patch("main.subprocess.run", side_effect=FileNotFoundError)
+    def test_missing_clear_command_does_not_prevent_startup(self, mock_run):
+        with patch("main.sys.stdout.isatty", return_value=True):
+            main.clear_console()
+
+    @patch("main.clear_console")
+    def test_version_exits_before_startup(self, mock_clear):
+        with self.assertRaises(SystemExit) as result:
+            main.main(["--version"])
+        self.assertEqual(result.exception.code, 0)
+        mock_clear.assert_not_called()
 
     @patch("main.clear_console")
     def test_clear_console_cli_calls_clear(self, mock_clear):

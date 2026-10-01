@@ -360,9 +360,14 @@ def graceful_shutdown(signum, frame):
 
 
 def clear_console():
-    """Clear the terminal in a platform agnostic way."""
-    command = ["cls"] if os.name == "nt" else ["clear"]
-    subprocess.run(command, check=False)
+    """Best-effort terminal clearing without disrupting service startup."""
+    if not sys.stdout.isatty():
+        return
+    command = ["cmd.exe", "/d", "/c", "cls"] if os.name == "nt" else ["clear"]
+    try:
+        subprocess.run(command, check=False, timeout=2)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
 
 
 def clear_console_cli():
@@ -500,6 +505,7 @@ def get_port_usage(port: int) -> str:
 
 def main(argv=None):
     """Entry point for the ``glimpser`` command."""
+    args = parse_arguments(argv)
     # Clear the console before starting
     clear_console()
 
@@ -511,7 +517,6 @@ def main(argv=None):
     signal.signal(signal.SIGINT, graceful_shutdown)
 
     logging.info("Initializing...")
-    args = parse_arguments(argv)
     app = create_application(args)
     display_startup_info(args)
     # HTTPS may share its port with an address-specific reverse proxy such as
