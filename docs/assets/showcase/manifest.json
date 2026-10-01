@@ -1,0 +1,500 @@
+[
+  {
+    "slug": "chicago-lake-sky",
+    "title": "Chicago skyline from Lake Michigan",
+    "source": "https://www.glerl.noaa.gov/metdata/chi/",
+    "credit": "NOAA Great Lakes Environmental Research Laboratory",
+    "frame_count": 47,
+    "first_capture": "HarrisonDeverCam1_20260930120334.png",
+    "last_capture": "HarrisonDeverCam1_20260930225021.png",
+    "frames": [
+      {
+        "file": "HarrisonDeverCam1_20260930120334.png",
+        "sha256": "87a2a8766727899187cc94cf49c1753c385db371c8ea506b8bf14518a199240b"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930122319.png",
+        "sha256": "8da8fff245ac75f9c3f5b69658a4e83541b788b996ce5fe5827fdd5915bc69ab"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930124103.png",
+        "sha256": "1ce83771215086c7e801059914c951ffec6578e3045dd14be504248fd05416b9"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930124549.png",
+        "sha256": "c7f7b85b3f9cdd74aecb23fc4997b0b0e1d3c5e924dcd92d0053667ff97ebb9e"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930125330.png",
+        "sha256": "75b93e05313601cb77adfa7c5e39faee215302797901134d4d0bbc6aec77a1f1"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930130339.png",
+        "sha256": "1960fe2549aacdc3e4d4666589040a63cf70357794daa4d2de1e780913c24488"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930131756.png",
+        "sha256": "055b75ccfa9b267e1eb57fb00b397ca514a3aa79c41e197ecbe56f2b3f259f86"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930132920.png",
+        "sha256": "5e911e37e2bf2f7846f3648b6980f3906d95aca9cf8eba931fdd65deb46984fc"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930133623.png",
+        "sha256": "8aae6827715663afe8ea78b8b1ff65c520104a504c6da3eb2e4b3ddc4893a020"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930134820.png",
+        "sha256": "881721016dc52dc956dabe95679ef64fe5e8cac477229d890bf7fb6bd7b48bc2"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930135648.png",
+        "sha256": "76466cd52964fcce92f609eb3b6d34969f65659d494e1409ad55f4ddbe4bec95"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930140639.png",
+        "sha256": "da1abe84dcce64b188e8e2aeaadcebca46583ecabda1f88cf1f450c9af1d0abc"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930141708.png",
+        "sha256": "da1eca8a86704fc18bb79f160186eac903341f8a986ce8002a19a8a38ac43351"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930142628.png",
+        "sha256": "0892a302edc6074dc45a90a00e74bb715cce11a38feeae86c4bce1a63d06aec4"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930144404.png",
+        "sha256": "1be5a4936bed2cab1990e0b2f6fcc8cdac681e2445b3a44a91f1d6fa4538a3df"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930145345.png",
+        "sha256": "c6ea5008106a72433c621e239995ad55ca33b0479284efe38628a86c9b515294"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930151950.png",
+        "sha256": "5e71471ea6f197ace3fe60e5b4cd657639f9f961d6ff7df17e151c9f8e844a64"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930152930.png",
+        "sha256": "295b86c0e00a594c24c9bc9cd4e8753ed71501325d7e35d45b5530c9d04b4ea7"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930153935.png",
+        "sha256": "02b477df6ee40f6fb81ed093c6cbac6611cf1b2a5caf93015a68347aa21cf309"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930160659.png",
+        "sha256": "586fa40a166e24a94f0185bf08268a31ad59d503e1b10280261445614d74161a"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930161750.png",
+        "sha256": "586fa40a166e24a94f0185bf08268a31ad59d503e1b10280261445614d74161a"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930163413.png",
+        "sha256": "48d3f62188df159603f9c6e2c784a21b3c4e15208f19254f62296f8e6bff0be3"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930163836.png",
+        "sha256": "a98540932e20eac3de6842f772792ea9a6a7db9ea81eddb6bcfa5a52ee3d55a3"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930164750.png",
+        "sha256": "9c376311caeae5cb2e70bc8da6658aa1dfbecea2ec39137130270c4699e09730"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930170002.png",
+        "sha256": "7654999442bdb4e823bd3dc124fedcd6e4118a909a17f698a2164158fc257cfe"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930171216.png",
+        "sha256": "f40c99dc563479ac5176d7d0b365a9f300a2cd9a30650267f0d3b321339e605c"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930172955.png",
+        "sha256": "f6230d5d764b946fa097c126e9937969ad7cb7fa51ecfa305a04d2eb870bed64"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930174656.png",
+        "sha256": "3187971a35336311b53f989d978788bbdf2195964b93b12ca9a2ad98330f2688"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930180726.png",
+        "sha256": "d542852b52038d6d1e5b2b6fb8e931a1e61606ef6102ee79e7b829b4359b6f55"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930181829.png",
+        "sha256": "5dad81799c8b4bddaf95c975bfa97e62de0b6d858f4313b3e81f894cc3de2e20"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930182631.png",
+        "sha256": "35402138d623522ec26b15ae2c178ba99983982bbcdee77011829a0642cb11d2"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930183909.png",
+        "sha256": "35402138d623522ec26b15ae2c178ba99983982bbcdee77011829a0642cb11d2"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930185001.png",
+        "sha256": "7217be4d15a43eea3ddbe3a15a47ad8146fb48f4bad5a142ad9e74b4acaee6b0"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930191439.png",
+        "sha256": "36f226287858743c48880171b4e3a89389db0277042b3f6c55ba929c2ac4bb4e"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930192759.png",
+        "sha256": "f2d6b7b63c7da4816158bc5e351ee7f0171b6616a21292006b53e4bdbff00c9c"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930193328.png",
+        "sha256": "15c255b1bbe488ebeb5ab76d188dced3948590cb7595fedd37702f8e9bd65255"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930194825.png",
+        "sha256": "046f6a5fc3763710cb3e28e2ac410d2345a6267e8558ab53f6ed625d8ad60ea3"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930200101.png",
+        "sha256": "0c19c176d1a298093a95b6fb14221441677fcd420804ecf46b18da53338b44cb"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930201804.png",
+        "sha256": "84696c91ed28da42a39cd276f86eb297cdf99058c14eb9a862e92158f522acc2"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930202841.png",
+        "sha256": "d6247b7524c48cd706cb918adebf0877c77090085b4794af0b96fc601cbb528b"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930203222.png",
+        "sha256": "d6247b7524c48cd706cb918adebf0877c77090085b4794af0b96fc601cbb528b"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930212154.png",
+        "sha256": "b3395e7d4b3e064ef8db530178cb3e216c151a1a8edcc5b29f5008f393091c79"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930213533.png",
+        "sha256": "b3395e7d4b3e064ef8db530178cb3e216c151a1a8edcc5b29f5008f393091c79"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930214403.png",
+        "sha256": "fd19a671297827fe0540fc23c77af815c1999c78fd0e765ee6cac974de8bced1"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930215353.png",
+        "sha256": "e0685273580367e5052480393d5f3b1f4178efebcd60eed2f48c22166e7fa391"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930221206.png",
+        "sha256": "856d09ac24048237eccaf456252608714e6c48637a59880826f6305883efcc6f"
+      },
+      {
+        "file": "HarrisonDeverCam1_20260930225021.png",
+        "sha256": "9622de53c6b4601bcbbc983439bb036b1d85cc81877db85d500b59e66351ba28"
+      }
+    ]
+  },
+  {
+    "slug": "continental-clouds",
+    "title": "GOES-East continental cloud movement",
+    "source": "https://www.star.nesdis.noaa.gov/GOES/",
+    "credit": "NOAA / NESDIS Center for Satellite Applications and Research",
+    "frame_count": 72,
+    "first_capture": "GOES16_20260930031415.png",
+    "last_capture": "GOES16_20261001012249.png",
+    "frames": [
+      {
+        "file": "GOES16_20260930031415.png",
+        "sha256": "6a82106d47f0b7d9488b75195a902ad19df6ed874dbd9be2878eb9c5d8a5b2b0"
+      },
+      {
+        "file": "GOES16_20260930032223.png",
+        "sha256": "347096555f4d0274ceda3e4a3491debcdf22456e400b61ab61483b1dea8f7fbe"
+      },
+      {
+        "file": "GOES16_20260930034532.png",
+        "sha256": "2c973730632523b4dc3505820a382f984f396328c22c8ce9d76190c2185d9173"
+      },
+      {
+        "file": "GOES16_20260930035527.png",
+        "sha256": "16e0ecfd7a113f39b7952a9c5fe3807520276a6bd16e02b5d167b3a3615c8c90"
+      },
+      {
+        "file": "GOES16_20260930040828.png",
+        "sha256": "07a383f802e44fc5f79dcd82270654c285293ce8bd226875e5b8096e56fa06b0"
+      },
+      {
+        "file": "GOES16_20260930042912.png",
+        "sha256": "b4baf6e3db2ed7afeb15ae98deaf37c6970c543f6599f7a70033e03b3a96c0f7"
+      },
+      {
+        "file": "GOES16_20260930043922.png",
+        "sha256": "063580bf44b8afb406f7d3cd88f00e67c7f3c8b03df1fd3b23f7810cc6c0acbb"
+      },
+      {
+        "file": "GOES16_20260930045348.png",
+        "sha256": "2c9804c7a838d2d7ca80f5d6d9b5c3fa0a7374a7d275469745e67fab407ee54f"
+      },
+      {
+        "file": "GOES16_20260930052512.png",
+        "sha256": "fd22fd75e615a92d1312be6bd612df8a94fbb654e405cb64d7797ccd0240febb"
+      },
+      {
+        "file": "GOES16_20260930053733.png",
+        "sha256": "28799cdb7a48df1a66f8a045b509fca87e0b292c133a805dec125ea56a98bf7a"
+      },
+      {
+        "file": "GOES16_20260930055230.png",
+        "sha256": "4f2172947940b23c998a81698f3e7881a39b3f19c88c5581587477bc16d00d81"
+      },
+      {
+        "file": "GOES16_20260930061622.png",
+        "sha256": "e56d113dd78d73a559dbba562e536436cec126f3720bcf4f6d13edf1d8da1e99"
+      },
+      {
+        "file": "GOES16_20260930062256.png",
+        "sha256": "53be652a03e684cf7d94ea8b0ec134bd3e1c93b9383818fa5a73cfd9eb8a3577"
+      },
+      {
+        "file": "GOES16_20260930063749.png",
+        "sha256": "a814b9f1f306621cb726cdd0d51e119ec543f81739ed9a5df6c3182b7ac48e08"
+      },
+      {
+        "file": "GOES16_20260930065836.png",
+        "sha256": "8c047a4c14a7286ea17506fae754ab5bdc5d8002d07ef471c617aab3c7bcfa97"
+      },
+      {
+        "file": "GOES16_20260930071122.png",
+        "sha256": "8678e8ebcf390730a7c90e97e4dac25c8ab617af91f2344f0ac454ce1dc4114f"
+      },
+      {
+        "file": "GOES16_20260930072314.png",
+        "sha256": "d6d7d444879142c6e919e1b43ccae4f68aea362d122b0c685db72115e3b9c097"
+      },
+      {
+        "file": "GOES16_20260930074231.png",
+        "sha256": "bf7f78bf43e43471a81717747eb676235f85b8823c825d6119e60693c72a67c1"
+      },
+      {
+        "file": "GOES16_20260930075432.png",
+        "sha256": "69cdc4f5a9c6f74b0250efbb91fbd65632829cc4b4c551ade9ab7de196a90848"
+      },
+      {
+        "file": "GOES16_20260930080927.png",
+        "sha256": "6e848e09f541504c92d7133518e5bb6c0a4f3bb4875ada7581b9a3e69ad79ead"
+      },
+      {
+        "file": "GOES16_20260930083522.png",
+        "sha256": "7d5c4a0b01c3f7268117fa5b24da1ee89b263ce4fc15b2930c2c654ffa8ef72a"
+      },
+      {
+        "file": "GOES16_20260930083758.png",
+        "sha256": "d9d0d6258d993f9957efd0c33540514c437a8c8f68d882a2765ed1539909b76b"
+      },
+      {
+        "file": "GOES16_20260930092422.png",
+        "sha256": "8d6b362142130e7677811c74d99a7f1f37ef86cc7f20bfe54cc01f55ff68bf73"
+      },
+      {
+        "file": "GOES16_20260930094541.png",
+        "sha256": "4574ab206dc840650f718bac719dc6fd3d4ee77d0b738e6cd1675e8e13e6a871"
+      },
+      {
+        "file": "GOES16_20260930100347.png",
+        "sha256": "65bb4609f1dac9e6ea2d32bd31843c89015486a66eefffde3caabb7f2ac81c7d"
+      },
+      {
+        "file": "GOES16_20260930101056.png",
+        "sha256": "cf38dadc4f46b19a7711a679776a12858fe227388c1d1d8e7ef329d8b34af2b4"
+      },
+      {
+        "file": "GOES16_20260930102404.png",
+        "sha256": "34fa5b2999cb6661543dc6434cbb6878b2ec69a426e67da1c2e02ce642d5ef6e"
+      },
+      {
+        "file": "GOES16_20260930103845.png",
+        "sha256": "4e1404f534f3dc172e11a15534f1785fc3987f3ede8cbf8e5bd2344b890e0a60"
+      },
+      {
+        "file": "GOES16_20260930105403.png",
+        "sha256": "9709bd493b39a22af470b7d4a190c51a4999536937992bb96a041a11a1276dc3"
+      },
+      {
+        "file": "GOES16_20260930110737.png",
+        "sha256": "56c531365f997610eedd6a022ef679330b23a1789dee7eb7675497b3e65fc5ac"
+      },
+      {
+        "file": "GOES16_20260930112223.png",
+        "sha256": "4d6180a63df7795290394d101615e982e6d1814bd129eae78ed64cc9224af016"
+      },
+      {
+        "file": "GOES16_20260930114048.png",
+        "sha256": "69ba1536e8989d9e24e1ffc41312a0ab5b2c4a818c3277a7ae60d4504b9616bc"
+      },
+      {
+        "file": "GOES16_20260930120116.png",
+        "sha256": "637eb1fe373c423954bb2829bc64be16495e4071813fb7ac49dab1655c7f567b"
+      },
+      {
+        "file": "GOES16_20260930121022.png",
+        "sha256": "daa5dc6ebd45e4a054aac705814d8930dba5ed1c559de040bc59cb61bf1fc54e"
+      },
+      {
+        "file": "GOES16_20260930122508.png",
+        "sha256": "32aa963d08a89857a0a09486e4d1fa0e791144126bf3efb017cb8d65a10f8c8f"
+      },
+      {
+        "file": "GOES16_20260930124056.png",
+        "sha256": "69426c5f0f1740f2e52c33caae10642babce03bdbcf70c6124cb223527caf861"
+      },
+      {
+        "file": "GOES16_20260930130654.png",
+        "sha256": "46ae89c2607badbe85783c2ea35f0a9a258daa176191555ec484c0fab7dadff5"
+      },
+      {
+        "file": "GOES16_20260930131950.png",
+        "sha256": "60941e8303ca6160301ad96cc60a0a54f6d11c30c5bac5aa0ed43affc42acd13"
+      },
+      {
+        "file": "GOES16_20260930133035.png",
+        "sha256": "b1055b4122f069c86a87f4daac1893490d4f4d35c72e6780c1e0fc348f78dfe3"
+      },
+      {
+        "file": "GOES16_20260930134724.png",
+        "sha256": "cd1c1a89d8f4bca242f29eeebacecca0c5b41301bc25b6dd70ecd967479e121b"
+      },
+      {
+        "file": "GOES16_20260930141642.png",
+        "sha256": "f9a5633b7707df077f5c5c37a946443ffb753b181268ba7219d8403fb0adaf8e"
+      },
+      {
+        "file": "GOES16_20260930143255.png",
+        "sha256": "285698a35933d40e6df169902295916e53869e0b35038102b6afab56d2f12dad"
+      },
+      {
+        "file": "GOES16_20260930145050.png",
+        "sha256": "ebebaf133438f65c982ff55b714c006bbf438394f31c576401079a1ccff66812"
+      },
+      {
+        "file": "GOES16_20260930145703.png",
+        "sha256": "8ad88d0c9d0b34c65ef15edf67c61ae16527a2889dbf73a8c3ba11c629f26179"
+      },
+      {
+        "file": "GOES16_20260930151901.png",
+        "sha256": "8253fe654fa9626c3f28a7b82bcb0a4b84b1dde441ef35e093d26cb79d1d35de"
+      },
+      {
+        "file": "GOES16_20260930160459.png",
+        "sha256": "dda9150ad7300c465c8f0540144339c77610025fd2a53394be32371660e6f87a"
+      },
+      {
+        "file": "GOES16_20260930161432.png",
+        "sha256": "ae0335d14691a88bbbbf2c6c9ff5244672185e75280d0746a3541b3d507a308a"
+      },
+      {
+        "file": "GOES16_20260930162814.png",
+        "sha256": "af775fe51a83df819781ca67f190c0e5b4c683fe8be1816bd74c4db7217a0994"
+      },
+      {
+        "file": "GOES16_20260930164148.png",
+        "sha256": "8cade5bb818e3ab8428466eb6a1fbaa6cfb10e7447077ccb2ebc75419da6cbad"
+      },
+      {
+        "file": "GOES16_20260930165805.png",
+        "sha256": "83ddd2f4ea3845f8db058ace55926f440b97fac1e880378adabea074e445ee42"
+      },
+      {
+        "file": "GOES16_20260930174848.png",
+        "sha256": "fd09829c402f37f85a3d9effe5a5c1c032c7f571e236922d55d33e138075377d"
+      },
+      {
+        "file": "GOES16_20260930180633.png",
+        "sha256": "0b1789963e6426683801652c5dba9a1e1e0d30c605f0ab49d380c7d3f24cb09e"
+      },
+      {
+        "file": "GOES16_20260930182520.png",
+        "sha256": "15b777f00776e94b2d92dc8aea304f9e9bf4e616b2cdc89d8374a48f2a3062f3"
+      },
+      {
+        "file": "GOES16_20260930184053.png",
+        "sha256": "16a7d9a59b2093322bcd9a1f02148d103dd02e51d45cbeaf9a51c1fb67969a44"
+      },
+      {
+        "file": "GOES16_20260930185246.png",
+        "sha256": "9d17368256cc33b3e18146057c1b813b50da1e135700452bfc203e497c4e6e49"
+      },
+      {
+        "file": "GOES16_20260930190507.png",
+        "sha256": "2c79a1de7054fd4a3eed1ff2782f8dc85571d605c90ebfaf2b107fefd83ef26e"
+      },
+      {
+        "file": "GOES16_20260930191555.png",
+        "sha256": "1efb24aed049a047495fa24f5d57afe14fe1ab008bcf65f7313b9499eb64d4e5"
+      },
+      {
+        "file": "GOES16_20260930193041.png",
+        "sha256": "4e4d0bb392ae95b226d778cca80a44361f9c4572c51b8e9b237b30a9013074c1"
+      },
+      {
+        "file": "GOES16_20260930194538.png",
+        "sha256": "7f7d256d185561c49d87cf828c0f8d54a1d847e83aaa61c8ba0312381bd15b1b"
+      },
+      {
+        "file": "GOES16_20260930195941.png",
+        "sha256": "6fd6d3fa40a3d521be8dce0b2312f0c6258391a942ea39982918f34c920c0b2a"
+      },
+      {
+        "file": "GOES16_20260930201647.png",
+        "sha256": "3ea6118c2368d07295603280ddca99e4ae7606c4095df5135b9d64b5b8517d4a"
+      },
+      {
+        "file": "GOES16_20260930214034.png",
+        "sha256": "36aba2fd7d87e3a8b0561fa29228fda10099ace95b6d92990ee721fef169ab1c"
+      },
+      {
+        "file": "GOES16_20260930220405.png",
+        "sha256": "f156670144201f444870984dc41bfae8875d9f53b9dd03337e49971fee76b699"
+      },
+      {
+        "file": "GOES16_20260930223049.png",
+        "sha256": "2e8e1e9dfbd477a05d312c782c4328f638b0dbae76c6170386aeb5721bb0fdcc"
+      },
+      {
+        "file": "GOES16_20260930232617.png",
+        "sha256": "e3a15c0fd220c27dbd5b667b877b06f7b2548ee2624b34d47aed3dbd6fa40444"
+      },
+      {
+        "file": "GOES16_20260930233942.png",
+        "sha256": "4833ed62f79b20cc2c45f7533430c55a6624419679de1db6762c6fff7ef03b2a"
+      },
+      {
+        "file": "GOES16_20261001000015.png",
+        "sha256": "1e58f60ebb4f4c2e66409d2dce2ce3debe5dce5ec150b8de7658fab26044ee5f"
+      },
+      {
+        "file": "GOES16_20261001000320.png",
+        "sha256": "1e58f60ebb4f4c2e66409d2dce2ce3debe5dce5ec150b8de7658fab26044ee5f"
+      },
+      {
+        "file": "GOES16_20261001001848.png",
+        "sha256": "c4f40deac4ce3f69a5f8b543483e77ef7c2da19d5021d8919dc6b3a9a24253af"
+      },
+      {
+        "file": "GOES16_20261001003531.png",
+        "sha256": "50f309b43348ebab32d54dedf6dd5a7e777d2322918823a73ec37a60c9c0100f"
+      },
+      {
+        "file": "GOES16_20261001005319.png",
+        "sha256": "d892b0ea5f4de7c79fa8a93c673f9f8de980b01fe7dc2426e0619d866a89a779"
+      },
+      {
+        "file": "GOES16_20261001012249.png",
+        "sha256": "c86ebf2c4a324ee4a2de330522806966cef11e9a17c2bb9dab436d6e28b03a6b"
+      }
+    ]
+  }
+]

@@ -8,7 +8,7 @@
 # Glimpser
 
 [![Python application](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/python-app.yml)
-[![Pylint 3.8 - 3.13](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.8)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
+[![Pylint 3.10 - 3.13](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml/badge.svg?label=pylint%203.10-3.13)](https://github.com/KristopherKubicki/glimpser/actions/workflows/pylint.yml)
 [![CodeQL](https://github.com/KristopherKubicki/glimpser/actions/workflows/codeql.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/codeql.yml)
 [![Docs Build](https://github.com/KristopherKubicki/glimpser/actions/workflows/docs-build.yml/badge.svg)](https://github.com/KristopherKubicki/glimpser/actions/workflows/docs-build.yml)
 [![GitHub release](https://img.shields.io/github/v/release/KristopherKubicki/glimpser)](https://github.com/KristopherKubicki/glimpser/releases/latest)
@@ -25,6 +25,13 @@ Read a high-level [Architecture Overview](docs/architecture_overview.md) to unde
 See [OpenSSF Scorecard](docs/scorecard.md) for details on the security badge.
 
 ![Glimpser June 2025](https://github.com/user-attachments/assets/ea3e094e-1fc5-447b-87f8-9772c9086e5f)
+
+## Weather and sky examples
+
+See [real timelapses of Chicago's skyline and continental cloud movement](docs/weather_sky_showcase.md),
+assembled from Glimpser's archived NOAA imagery, with source credits and capture details.
+
+![Chicago skyline timelapse](docs/assets/showcase/chicago-lake-sky.gif)
 
 ## Features
 
@@ -61,7 +68,7 @@ See [OpenSSF Scorecard](docs/scorecard.md) for details on the security badge.
 
 ### Prerequisites
 
-- Python 3.8 to 3.13
+- Python 3.10 to 3.13
 
 ### Steps
 

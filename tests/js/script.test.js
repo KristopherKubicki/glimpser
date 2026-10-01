@@ -36,6 +36,10 @@ describe("script.js", () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   test("loadTemplates fetches data and updates the DOM", async () => {
     // Mock the fetch response
     global.fetch.mockResolvedValueOnce({
@@ -105,18 +109,12 @@ describe("script.js", () => {
   });
 
   test("timeAgo treats naive timestamps as UTC", () => {
-    process.env.TZ = "America/Chicago";
     jest.useFakeTimers().setSystemTime(new Date("2024-01-01T01:00:00Z"));
     expect(timeAgo("2024-01-01 00:00:00")).toBe("1h ago");
-    jest.useRealTimers();
-    delete process.env.TZ;
   });
 
   test("timeAgo prefers local interpretation when UTC looks stale", () => {
-    process.env.TZ = "America/Chicago";
     jest.useFakeTimers().setSystemTime(new Date("2024-01-01T16:00:00Z"));
     expect(timeAgo("2024-01-01 10:00:00")).toBe("just now");
-    jest.useRealTimers();
-    delete process.env.TZ;
   });
 });
