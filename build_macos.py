@@ -13,6 +13,7 @@ ARGS = [
     "--console",
     "--add-data=app/templates:app/templates",
     "--add-data=app/static:app/static",
+    "--add-data=app/utils/ffmpeg_setup.py:app/utils",
     "--hidden-import=flask",
     "--hidden-import=flask_apscheduler",
     "--hidden-import=sqlalchemy",

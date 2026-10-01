@@ -532,3 +532,8 @@ secret files, capture data, and dependency caches. Native binaries start at
 the expected version in a timed smoke test before upload. Windows uses exclusive
 byte-range locks for capture coordination; POSIX retains `flock`. Both native
 runners test lock contention and release before building.
+
+Frozen executables keep runtime data under `~/.glimpser` by default, with an
+optional `GLIMPSER_STATE_DIR` override. They never use the disposable bundle
+extraction directory for the database, session secret, logs, or capture storage.
+Source and Debian installations retain their existing paths.

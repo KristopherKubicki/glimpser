@@ -15,8 +15,12 @@ if __name__ == "__main__":
         capture_output=True,
         text=True,
         timeout=60,
-        check=True,
+        check=False,
     )
+    if result.returncode:
+        print(result.stdout, file=sys.stderr)
+        print(result.stderr, file=sys.stderr)
+        raise SystemExit(result.returncode)
     if version not in result.stdout:
         raise SystemExit("Executable did not report the expected release version")
     print(f"{executable.name}: starts and reports {version}")

@@ -13,6 +13,7 @@ ARGS = [
     "--console",  # Keep CLI output available for service diagnostics
     "--add-data=app/templates:app/templates",  # Include templates directory
     "--add-data=app/static:app/static",  # Include static directory
+    "--add-data=app/utils/ffmpeg_setup.py:app/utils",
     "--hidden-import=flask",  # Include hidden import flask
     "--hidden-import=flask_apscheduler",  # Include hidden import flask_apscheduler
     "--hidden-import=sqlalchemy",  # Include hidden import sqlalchemy

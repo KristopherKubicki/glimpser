@@ -16,6 +16,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 from app.caption_policy import DEFAULT_CAPTION_PROMPT
+from app.runtime_paths import application_state_root
 from app.session_secret import resolve_session_secret
 
 # config.py
@@ -76,7 +77,7 @@ def _parse_cli_args():
 _cli_args = _parse_cli_args() if __name__ == "__main__" else None
 
 # Resolve paths relative to the project root when a relative path is provided
-_BASE_DIR = Path(__file__).resolve().parent.parent
+_BASE_DIR = application_state_root(__file__)
 
 DATABASE_PATH = (
     _cli_args.db_path
