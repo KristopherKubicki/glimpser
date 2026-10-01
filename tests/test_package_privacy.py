@@ -75,3 +75,28 @@ def test_debhelper_path_uses_clean_staging(tmp_path):
     staged = root / "debian/glimpser/opt/glimpser"
     assert (staged / "app/templates/index.html").exists()
     assert not (staged / "data").exists()
+
+
+def test_python_archive_rejects_generated_state(tmp_path):
+    import zipfile
+
+    from scripts.check_release_artifacts import check_archive
+
+    archive = tmp_path / "test.whl"
+    with zipfile.ZipFile(archive, "w") as output:
+        output.writestr("app/__init__.py", "# source")
+        output.writestr("data/glimpser.session-secret", "PRIVATE-SENTINEL")
+    with pytest.raises(ValueError, match="Forbidden runtime member"):
+        check_archive(archive)
+
+
+def test_python_archive_accepts_source_assets(tmp_path):
+    import zipfile
+
+    from scripts.check_release_artifacts import check_archive
+
+    archive = tmp_path / "test.whl"
+    with zipfile.ZipFile(archive, "w") as output:
+        output.writestr("app/templates/index.html", "public asset")
+        output.writestr("app/static/js/main.js", "// source")
+    assert check_archive(archive) == 2

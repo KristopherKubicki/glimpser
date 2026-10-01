@@ -50,6 +50,8 @@ jobs:
         run: |
           uv pip install --system build
           python -m build
+      - name: Check Python artifacts for runtime state
+        run: python scripts/check_release_artifacts.py dist/*.whl dist/*.tar.gz
       - name: Generate release badges
         run: |
           python scripts/generate_release_badges.py
@@ -95,8 +97,17 @@ jobs:
       - name: Install project requirements
         shell: bash
         run: uv pip install --system .
+      - name: Test Windows file locking
+        run: python -m unittest tests.test_file_locks
+        env:
+          GLIMPSER_SKIP_DB_INIT: "1"
       - name: Build Windows executable
         run: python build_windows.py
+      - name: Smoke test Windows executable
+        timeout-minutes: 2
+        run: python scripts/check_release_executable.py dist/Glimpser.exe
+        env:
+          GLIMPSER_SKIP_DB_INIT: "1"
       - name: Upload Windows executable
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
@@ -128,8 +139,17 @@ jobs:
         run: uv pip install --system pyinstaller
       - name: Install project requirements
         run: uv pip install --system .
+      - name: Test macOS file locking
+        run: python -m unittest tests.test_file_locks
+        env:
+          GLIMPSER_SKIP_DB_INIT: "1"
       - name: Build macOS executable
         run: python build_macos.py
+      - name: Smoke test macOS executable
+        timeout-minutes: 2
+        run: python scripts/check_release_executable.py dist/Glimpser
+        env:
+          GLIMPSER_SKIP_DB_INIT: "1"
       - name: Upload macOS archive
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2

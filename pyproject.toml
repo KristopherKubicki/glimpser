@@ -117,6 +117,22 @@ agents = [
 requires      = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build]
+exclude = [
+  "**/__pycache__/**", "**/*.pyc", "**/*.db", "**/*.db.*",
+  "**/*.session-secret*", "**/.env", "**/*.pem", "**/*.key",
+  "**/node_modules/**", "**/data/**", "**/logs/**", "**/.hypothesis/**",
+  "/debian/glimpser/**", "/debian/glimpser-stage.*/**", "**/*.deb",
+]
+
+[tool.hatch.build.targets.sdist]
+only-include = [
+  "app", "scripts", "docs", "tests", "debian",
+  "main.py", "generate_credentials.py", "build_macos.py", "build_windows.py",
+  "build_packages.sh", "pyproject.toml", "uv.lock", "package.json", "package-lock.json",
+  "README.md", "LICENSE.md", "CHANGELOG.md", "CITATION.cff",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["app", "scripts"]
 

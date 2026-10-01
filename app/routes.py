@@ -8,7 +8,6 @@ operations used by the web UI and API.
 
 import csv
 import email.utils
-import fcntl
 import glob
 import hashlib
 import hmac
@@ -71,6 +70,8 @@ from sqlalchemy.exc import OperationalError
 from werkzeug.http import http_date
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
+
+from app.utils import file_locks as fcntl
 
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 

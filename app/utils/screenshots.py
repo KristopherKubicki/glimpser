@@ -10,7 +10,6 @@ import base64
 import datetime
 import email.utils
 import errno
-import fcntl
 import hashlib
 import io
 import ipaddress
@@ -67,6 +66,7 @@ from app.config import (
     TZ,
     UA,
 )
+from app.utils import file_locks as fcntl
 from app.utils import status_cache, user_activity
 from app.utils.eufy_cloud import EufyCloudError, resolve_eufy_to_snapshot
 from app.utils.google_sdm import (

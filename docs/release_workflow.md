@@ -524,3 +524,11 @@ protocol SHA1/MD5 challenge responses remain for ONVIF/RTSP interoperability;
 these are protocol responses, not the application's password storage. Image
 change detection hashes image bytes only. Validation errors deliberately return
 field-specific messages, while unexpected upstream errors return generic text.
+
+Python source archives use an explicit source allowlist as well as runtime-file
+exclusions; release CI inspects both the wheel and source archive for databases,
+secret files, capture data, and dependency caches. Native binaries start at
+`main.py`, retain Flask's `app/templates` and `app/static` layout, and must report
+the expected version in a timed smoke test before upload. Windows uses exclusive
+byte-range locks for capture coordination; POSIX retains `flock`. Both native
+runners test lock contention and release before building.

@@ -1,6 +1,5 @@
 """Serialized, opt-in preset stills with a verified return view."""
 
-import fcntl
 import hashlib
 import io
 import json
@@ -13,6 +12,7 @@ import numpy as np
 from PIL import Image
 
 from app import config
+from app.utils import file_locks as fcntl
 
 
 class Busy(RuntimeError):

@@ -1,6 +1,5 @@
 """Bounded timelapses from accepted screenshots, without capturing or encoding video."""
 
-import fcntl
 import hashlib
 import json
 import os
@@ -14,6 +13,7 @@ from statistics import median
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app import config
+from app.utils import file_locks as fcntl
 from app.utils.source_freshness import source_freshness
 from app.utils.template_manager import get_template
 from app.utils.validators import validate_template_name
