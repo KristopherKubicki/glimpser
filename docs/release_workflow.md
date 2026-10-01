@@ -493,3 +493,18 @@ allowlist, and the camera's private flag. The capture policy supports
 `admin_hosts` for explicit local admin-page handling. These settings have no
 installation-specific defaults. Private migration files must not be committed or
 included in release artifacts.
+
+The release candidate also removes browser-local password storage. Remember-me
+uses the server's signed cookie; opening the login page clears legacy stored
+credentials. Caption and cost table values render as text. Stream filters and
+clip durations are validated before capture work; recovery previews and shortcut
+updates are restricted to their intended files. Camera XML rejects entity
+expansion, URL credentials use structured parsing, and TLS probes explicitly
+require TLS 1.2 or newer. Site-specific capture behavior matches DNS hostnames,
+not arbitrary URL substrings. The optional Codex bridge defaults to loopback,
+requires a token for remote exposure, and confines file browsing to its workspace.
+
+Node tooling is pinned through the committed lockfile and installed with `npm ci`.
+The Debian package declares the build dependencies needed by its locked input
+capture library; the disposable systemd installation test resolves package
+requirements through apt before checking install, upgrade, and removal behavior.

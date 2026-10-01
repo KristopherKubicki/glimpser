@@ -189,7 +189,9 @@ def create_blueprint() -> Blueprint:
 
         def attempt() -> tuple[bool, dict]:
             """Try a ranged GET probe and return status details."""
-            ok, info = probe_url_with_range(url, timeout=3, preconnect=True)
+            ok, info = probe_url_with_range(
+                url, timeout=3, preconnect=True, allow_redirects=False
+            )
             if not ok:
                 routes.logging.debug("GET probe failed for %s", url)
                 return False, info if isinstance(info, dict) else {}

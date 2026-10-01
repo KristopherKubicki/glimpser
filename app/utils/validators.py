@@ -831,7 +831,7 @@ def validate_setting(name: str, value: str) -> str | None:
                 sock.close()
         return str(ivalue)
 
-    email_re = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+    email_re = r"^[^@\s]+@[^@.\s]+(?:\.[^@.\s]+)+$"
 
     if key in {"EMAIL_SENDER", "CAP_SENDER"}:
         if not val:
@@ -852,3 +852,13 @@ def validate_setting(name: str, value: str) -> str | None:
         return validate_url(val) or ""
 
     return val
+
+
+def url_matches_host(url: str, domain: str) -> bool:
+    """Match an exact DNS hostname or its subdomains, never URL text."""
+    try:
+        host = (urlparse(url).hostname or "").lower().rstrip(".")
+    except ValueError:
+        return False
+    domain = domain.lower().rstrip(".")
+    return host == domain or host.endswith("." + domain)

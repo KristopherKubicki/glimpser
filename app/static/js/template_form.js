@@ -144,8 +144,17 @@ function setupTemplateForm(container) {
     if (!value) return null;
     const url = value.toLowerCase();
     if (url.startsWith("rtsp://")) return "stream";
-    if (url.includes("youtube.com") || url.includes("youtu.be"))
-      return "stream";
+    try {
+      const host = new URL(url).hostname;
+      if (
+        ["youtube.com", "youtu.be"].some(
+          (domain) => host === domain || host.endsWith(`.${domain}`),
+        )
+      )
+        return "stream";
+    } catch {
+      return null;
+    }
     if (url.endsWith(".mjpg") || url.includes("mjpg")) return "stream";
     if (
       url.endsWith(".jpg") ||

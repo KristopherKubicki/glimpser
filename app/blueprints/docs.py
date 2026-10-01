@@ -21,9 +21,6 @@ def create_blueprint() -> Blueprint:
         docs_path = os.path.join(
             os.path.dirname(os.path.join(__file__)), "..", routes.DOCS_DIRECTORY
         )
-        full_path = os.path.join(docs_path, filename)
-        if not os.path.exists(full_path):
-            routes.abort(404)
         return send_from_directory(docs_path, filename)
 
     return bp

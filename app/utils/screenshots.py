@@ -77,7 +77,7 @@ from app.utils.google_sdm import (
     stable_sdm_key_for_url,
 )
 from app.utils.logging_utils import sanitize_url
-from app.utils.validators import validate_proxy, validate_url
+from app.utils.validators import url_matches_host, validate_proxy, validate_url
 
 from .chrome_utils import (
     browser_supports_gl,
@@ -7435,6 +7435,7 @@ def _rtsp_request(
         sock.settimeout(timeout)
         if parsed.scheme.lower() == "rtsps":
             context = ssl.create_default_context()
+            context.minimum_version = ssl.TLSVersion.TLSv1_2
             if not config.REQUEST_VERIFY_SSL:
                 context.check_hostname = False
                 context.verify_mode = ssl.CERT_NONE
@@ -7941,6 +7942,7 @@ def _preflight_dns_tls(url: str, timeout: int = 3) -> tuple[bool, str]:
 
     try:
         context = ssl.create_default_context()
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         with socket.create_connection((hostname, port), timeout=timeout) as sock:
             with context.wrap_socket(sock, server_hostname=hostname) as tls_sock:
                 alpn = tls_sock.selected_alpn_protocol()
@@ -8407,9 +8409,11 @@ def get_content_type(
 
 def get_auth(url, username=None, password=None):
     """Return :class:`HTTPBasicAuth` if credentials are available."""
-    auth_match = re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url)
-    if auth_match:
-        return requests.auth.HTTPBasicAuth(*auth_match[0])
+    parsed = urlparse(url)
+    if parsed.username is not None and parsed.password is not None:
+        return requests.auth.HTTPBasicAuth(
+            unquote(parsed.username), unquote(parsed.password)
+        )
     if username and password:
         return requests.auth.HTTPBasicAuth(username, password)
     return None
@@ -8417,9 +8421,11 @@ def get_auth(url, username=None, password=None):
 
 def get_digest_auth(url, username=None, password=None):
     """Return :class:`HTTPDigestAuth` if credentials are available."""
-    auth_match = re.findall(r"\/\/([^\:]+?)\:([^\@]+?)\@", url)
-    if auth_match:
-        return requests.auth.HTTPDigestAuth(*auth_match[0])
+    parsed = urlparse(url)
+    if parsed.username is not None and parsed.password is not None:
+        return requests.auth.HTTPDigestAuth(
+            unquote(parsed.username), unquote(parsed.password)
+        )
     if username and password:
         return requests.auth.HTTPDigestAuth(username, password)
     return None
@@ -8848,6 +8854,7 @@ def _resolve_ytdlp_video_url(url: str) -> tuple[str, str | None]:
                 "--skip-download",
                 "--no-warnings",
                 "--quiet",
+                "--",
                 url,
             ]
             simulate = subprocess.run(
@@ -8866,6 +8873,7 @@ def _resolve_ytdlp_video_url(url: str) -> tuple[str, str | None]:
         ytdlp_command = [
             ytdlp_binary,
             "--get-url",
+            "--",
             url,
         ]
         result = subprocess.run(
@@ -9650,26 +9658,33 @@ def _browser_capture_profile(
     parsed_url = urlparse(lower_url)
     host = parsed_url.hostname or ""
 
-    is_earthcam = "earthcam.com" in lower_url
-    is_electricity_map = "electricitymaps.com" in lower_url
-    is_flightradar = "flightradar24.com" in lower_url
-    is_flightaware = "flightaware.com" in lower_url
-    is_faa = "faa.gov" in lower_url or lower_name == "faa"
-    is_gpsjam = "gpsjam.org" in lower_url
-    is_kubra_stormcenter = "kubra.io" in lower_url or lower_name == "comed"
+    is_earthcam = url_matches_host(lower_url, "earthcam.com")
+    is_electricity_map = url_matches_host(lower_url, "electricitymaps.com")
+    is_flightradar = url_matches_host(lower_url, "flightradar24.com")
+    is_flightaware = url_matches_host(lower_url, "flightaware.com")
+    is_faa = url_matches_host(lower_url, "faa.gov") or lower_name == "faa"
+    is_gpsjam = url_matches_host(lower_url, "gpsjam.org")
+    is_kubra_stormcenter = (
+        url_matches_host(lower_url, "kubra.io") or lower_name == "comed"
+    )
     is_comed_price = (
         lower_name == "comedprice"
-        or "hourlypricing.comed.com" in lower_url
+        or url_matches_host(lower_url, "hourlypricing.comed.com")
         or "comed_price_wall" in lower_url
     )
-    is_lightning_map = "blitzortung.org" in lower_url
-    is_skyline_webcams = "skylinewebcams.com" in lower_url
-    is_storefront = "abt.com" in lower_url or lower_name in {"abt", "abt.com"}
-    is_windy_map = "windy.com" in lower_url
-    is_youtube = "youtube.com" in lower_url or "youtu.be" in lower_url
+    is_lightning_map = url_matches_host(lower_url, "blitzortung.org")
+    is_skyline_webcams = url_matches_host(lower_url, "skylinewebcams.com")
+    is_storefront = url_matches_host(lower_url, "abt.com") or lower_name in {
+        "abt",
+        "abt.com",
+    }
+    is_windy_map = url_matches_host(lower_url, "windy.com")
+    is_youtube = url_matches_host(lower_url, "youtube.com") or url_matches_host(
+        lower_url, "youtu.be"
+    )
     is_tv_guide = (
         lower_name == "tvguide"
-        or "tvguide.com" in lower_url
+        or url_matches_host(lower_url, "tvguide.com")
         or "tv_guide_wall" in lower_url
     )
     is_adblock_wall = "adblock_wall" in lower_url
@@ -9791,7 +9806,7 @@ def _browser_capture_profile(
         "deeplisten.tv",
         "www.deeplisten.tv",
     }
-    is_boatnerd_ais = "ais.boatnerd.com" in lower_url or (
+    is_boatnerd_ais = url_matches_host(lower_url, "ais.boatnerd.com") or (
         "boatnerd" in combined and "ais" in combined
     )
     is_zoom_earth = "zoom.earth" in lower_url or lower_name == "zoomearth"
@@ -9838,7 +9853,7 @@ def _browser_capture_profile(
         lower_name in {"faa", "flight radar", "flightradar", "flightradar24"}
         or is_flightradar
         or is_flightaware
-        or "faa.gov" in lower_url
+        or url_matches_host(lower_url, "faa.gov")
         or "flight tracker" in combined
         or "flight-tracker" in combined
         or "live flight" in combined
@@ -13072,9 +13087,8 @@ def capture_screenshot_and_har(
                             element_tag = ""
                             element_src = ""
 
-                        is_weatherbug_cam = (
-                            element_tag == "img"
-                            and "cameras-cam.cdn.weatherbug.net/" in element_src
+                        is_weatherbug_cam = element_tag == "img" and url_matches_host(
+                            element_src, "cameras-cam.cdn.weatherbug.net"
                         )
                         is_video_crop = element_tag == "video"
                         # Guard against bad XPath crops that produce tiny/blank captures.

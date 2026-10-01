@@ -1,3 +1,4 @@
+import { safeMediaUrl } from "./capture_age.js";
 import { sendTelemetry } from "./telemetry.js";
 
 export function initUrlTester() {
@@ -101,7 +102,7 @@ export function initUrlTester() {
         const url = input.value.trim();
         setStatus("");
         showOverlay("");
-        if (preview) preview.src = url || defaultSrc;
+        if (preview) preview.src = safeMediaUrl(url) || defaultSrc;
         if (submit) submit.disabled = true;
         if (!url) return;
         if (url.toLowerCase().startsWith("rtsp://")) {

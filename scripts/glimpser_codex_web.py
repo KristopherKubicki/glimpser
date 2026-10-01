@@ -17,7 +17,7 @@ from urllib.parse import parse_qs, quote, urlencode, urlparse
 
 SESSION = os.environ.get("HOUSEBOT_CODEX_SESSION", "housebot-codex")
 TMUX_SOCKET = os.environ.get("HOUSEBOT_CODEX_TMUX_SOCKET", SESSION).strip() or SESSION
-HOST = os.environ.get("HOUSEBOT_CODEX_WEB_BIND", "0.0.0.0")
+HOST = os.environ.get("HOUSEBOT_CODEX_WEB_BIND", "127.0.0.1")
 PORT = int(os.environ.get("HOUSEBOT_CODEX_WEB_PORT", "8787"))
 TOKEN = os.environ.get("HOUSEBOT_CODEX_WEB_TOKEN", "").strip()
 DEFAULT_UI_VERSION = "2026.03.25.5"
@@ -582,6 +582,10 @@ def resolve_file_target(raw: str) -> Path | None:
         path = (Path(WORKDIR) / candidate).resolve()
     else:
         path = path.resolve()
+    # The web viewer may only expose files in its configured workspace.
+    # Resolve symlinks before checking containment.
+    if not path.is_relative_to(Path(WORKDIR).resolve()):
+        return None
     return path
 
 
@@ -1645,12 +1649,15 @@ class Handler(BaseHTTPRequestHandler):
         self, path: Path, content_type: str, stat: os.stat_result, *, download: bool
     ) -> None:
         disposition = "attachment" if download else "inline"
+        if "\r" in content_type or "\n" in content_type:
+            content_type = "application/octet-stream"
         with path.open("rb") as handle:
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(stat.st_size))
             self.send_header(
-                "Content-Disposition", f'{disposition}; filename="{path.name}"'
+                "Content-Disposition",
+                f"{disposition}; filename*=UTF-8''{quote(path.name, safe='')}",
             )
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
@@ -4645,6 +4652,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> int:
+    if HOST not in {"localhost", "127.0.0.1", "::1"} and not TOKEN:
+        raise ValueError("A token is required when exposing the Codex bridge remotely")
     ensure_state_dir()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     print(f"Serving {AGENT_NAME} Codex bridge on http://{HOST}:{PORT}")

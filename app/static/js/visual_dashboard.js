@@ -1,6 +1,7 @@
 import { mountAmbientClock } from "./ambient_clock.js";
 import {
   captionAge,
+  safeMediaUrl,
   captureImageUrl,
   captureAge,
   sourceAge,
@@ -112,7 +113,7 @@ export function initVisualDashboard() {
         ? "Open live video ↗"
         : "Open camera player ↗",
     );
-    live.href = camera.live;
+    live.href = safeMediaUrl(camera.live);
     actions.append(live);
     if (camera.buffer_enabled) {
       const button = el("button", "vd-action", "Play recent replay");
@@ -170,7 +171,7 @@ export function initVisualDashboard() {
     const item = el("article", "vd-card");
     if (!combined) item.id = cameraId(camera.name);
     const link = el("a");
-    link.href = camera.live;
+    link.href = safeMediaUrl(camera.live);
     link.setAttribute("aria-label", `Inspect ${camera.name}`);
     link.addEventListener("click", (event) => {
       event.preventDefault();

@@ -77,7 +77,11 @@ export function initCaptions() {
       if (table && data.answer) {
         const now = new Date().toISOString().replace("T", " ").slice(0, 19);
         const rowQ = document.createElement("tr");
-        rowQ.innerHTML = `<td>${now}</td><td>Q: ${chatQuestion.value}</td>`;
+        for (const value of [now, `Q: ${chatQuestion.value}`]) {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          rowQ.appendChild(cell);
+        }
         if (supportsSpeech) {
           const btn = document.createElement("button");
           btn.className = "play-caption";
@@ -90,7 +94,11 @@ export function initCaptions() {
         }
 
         const rowA = document.createElement("tr");
-        rowA.innerHTML = `<td>${now}</td><td>A: ${data.answer}</td>`;
+        for (const value of [now, `A: ${data.answer}`]) {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          rowA.appendChild(cell);
+        }
         if (supportsSpeech) {
           const btnA = document.createElement("button");
           btnA.className = "play-caption";

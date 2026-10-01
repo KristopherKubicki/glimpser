@@ -26,6 +26,7 @@ from ipaddress import ip_address, ip_network
 from urllib.parse import unquote, urlparse, urlunparse
 
 import psutil
+from defusedxml.ElementTree import fromstring as safe_xml_fromstring
 
 from app.utils.api_utils import request_with_retry
 
@@ -194,7 +195,7 @@ def _onvif_get_device_info(xaddr: str, timeout: int = 2) -> dict[str, str]:
             retries=0,
         )
         if resp.ok:
-            xml = ET.fromstring(resp.content)
+            xml = safe_xml_fromstring(resp.content)
             ns = {"tt": "http://www.onvif.org/ver10/schema"}
             for tag, key in (
                 ("Manufacturer", "manufacturer"),
@@ -355,7 +356,7 @@ def _onvif_parse_profiles(xml_bytes: bytes) -> list[dict[str, object]]:
     """Parse an ONVIF GetProfiles response into lightweight profile metadata."""
 
     try:
-        root = ET.fromstring(xml_bytes)
+        root = safe_xml_fromstring(xml_bytes)
     except Exception:
         return []
 
@@ -403,7 +404,7 @@ def _onvif_parse_presets(xml_bytes: bytes) -> list[dict[str, str]]:
     """Parse an ONVIF GetPresets response into token/name pairs."""
 
     try:
-        root = ET.fromstring(xml_bytes)
+        root = safe_xml_fromstring(xml_bytes)
     except Exception:
         return []
 
@@ -554,7 +555,7 @@ def autodetect_onvif_endpoints(
             )
             if not resp.ok:
                 continue
-            xml = ET.fromstring(resp.content)
+            xml = safe_xml_fromstring(resp.content)
             media_addr = _onvif_find_capability_xaddr(xml, "Media")
             ptz_addr = _onvif_find_capability_xaddr(xml, "PTZ")
             xaddr = candidate
@@ -649,7 +650,7 @@ def autodetect_onvif_endpoints(
                 password=password,
             )
             if resp.ok:
-                xml = ET.fromstring(resp.content)
+                xml = safe_xml_fromstring(resp.content)
                 ns = {"tt": "http://www.onvif.org/ver10/schema"}
                 uri = xml.find(".//tt:Uri", ns)
                 if uri is not None and uri.text:
@@ -677,7 +678,7 @@ def autodetect_onvif_endpoints(
                 password=password,
             )
             if resp.ok:
-                xml = ET.fromstring(resp.content)
+                xml = safe_xml_fromstring(resp.content)
                 ns = {"tt": "http://www.onvif.org/ver10/schema"}
                 uri = xml.find(".//tt:Uri", ns)
                 if uri is not None and uri.text:
@@ -1339,7 +1340,7 @@ def _probe_onvif(timeout=2):
             ip = addr[0]
             info = {}
             try:
-                xml = ET.fromstring(data)
+                xml = safe_xml_fromstring(data)
                 # Be namespace-agnostic: different devices use different WS-D
                 # namespace aliases/versions, but element local names are stable.
                 types = _xml_text_by_localname(xml, "Types")
@@ -1542,6 +1543,7 @@ def _check_http_endpoint(ip: str, port: int, path: str, timeout: int = 2) -> boo
             if port == 443:
                 # Discovery is best-effort; accept self-signed certs.
                 ctx = ssl.create_default_context()
+                ctx.minimum_version = ssl.TLSVersion.TLSv1_2
                 ctx.check_hostname = False
                 ctx.verify_mode = ssl.CERT_NONE
                 sock = ctx.wrap_socket(raw_sock, server_hostname=ip)

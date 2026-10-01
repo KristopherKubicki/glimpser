@@ -30,6 +30,7 @@ from app.utils.screenshots import (
     is_video_stream_url,
     sanitize_url,
 )
+from app.utils.validators import url_matches_host
 
 RECOVERY_DIR = Path("data/screenshots/_recovery")
 RECOVERY_DIR.mkdir(parents=True, exist_ok=True)
@@ -171,7 +172,7 @@ def generate_preview(
     preview_kind = "image"
 
     try:
-        if "youtube.com" in url or "youtu.be" in url:
+        if url_matches_host(url, "youtube.com") or url_matches_host(url, "youtu.be"):
             success = _capture_preview_clip(url, str(video_path), timeout) or False
             if success:
                 preview_kind = "video"

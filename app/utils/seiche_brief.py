@@ -926,7 +926,7 @@ def load_or_generate_seiche_brief(
         return generate_seiche_brief_artifacts(now=current_time)
     except Exception as exc:
         if brief:
-            brief["stale_reason"] = str(exc)
+            brief["stale_reason"] = type(exc).__name__
             return brief
         return {
             "generated_at": current_time.strftime(SEICHE_TIME_FORMAT),
@@ -950,7 +950,7 @@ def load_or_generate_seiche_brief(
             "lake_tilt": {"label": "unknown lake tilt"},
             "wind": {"status": "unavailable"},
             "celestial": _moon_context(current_time),
-            "watch_items": [{"title": "NOAA fetch failed", "body": str(exc)}],
+            "watch_items": [{"title": "NOAA fetch failed", "body": type(exc).__name__}],
             "units": {
                 "water_level": "feet above Low Water Datum",
                 "range": "inches",

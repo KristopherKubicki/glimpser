@@ -73,7 +73,21 @@ export function sourceNeedsAttention(freshness = {}) {
 
 // Pin screenshot bytes to the capture named by the UI. A concurrent newer
 // capture must not change the image underneath an older timestamp label.
+export function safeMediaUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  try {
+    const url = new URL(value, window.location.href);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return "";
+    return url.origin === window.location.origin
+      ? url.pathname + url.search + url.hash
+      : url.href;
+  } catch {
+    return "";
+  }
+}
+
 export function captureImageUrl(base, captured) {
+  base = safeMediaUrl(base);
   if (!base || !captured) return base;
   const url = new URL(base, window.location.href);
   if (!/^\/(?:clean_screenshot|last_screenshot)\//.test(url.pathname))

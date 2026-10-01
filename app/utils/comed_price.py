@@ -114,7 +114,7 @@ def _fetch_series(
             _fetch_text(feed_type, fetcher=fetcher, date=date_value)
         )
     except Exception as exc:
-        warnings.append(f"{feed_type}:{date_value}: {exc}")
+        warnings.append(f"{feed_type}:{date_value}: {type(exc).__name__}")
         return []
 
 
@@ -128,7 +128,7 @@ def _fetch_current_price(
         return None if value in (None, "") else float(value)
     except Exception as exc:
         if warnings is not None:
-            warnings.append(f"instantnumber: {exc}")
+            warnings.append(f"instantnumber: {type(exc).__name__}")
         return None
 
 
@@ -138,7 +138,7 @@ def _fetch_interval_label(fetcher=None, warnings: list[str] | None = None) -> st
         return raw.strip().strip('"')
     except Exception as exc:
         if warnings is not None:
-            warnings.append(f"currentHourlyInterval: {exc}")
+            warnings.append(f"currentHourlyInterval: {type(exc).__name__}")
         return ""
 
 

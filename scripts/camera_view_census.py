@@ -21,6 +21,8 @@ from urllib.parse import parse_qs, urlparse
 
 from PIL import Image
 
+from app.utils.validators import url_matches_host
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -136,7 +138,7 @@ def infer_staticness(template: dict[str, Any]) -> str:
     if str(template.get("stabilize_mode") or "").strip():
         return "slight_drift"
     url = str(template.get("url") or "").lower()
-    if "youtube.com" in url or "youtu.be" in url:
+    if url_matches_host(url, "youtube.com") or url_matches_host(url, "youtu.be"):
         return "unknown"
     return "static"
 

@@ -624,8 +624,12 @@ content %}
           .querySelectorAll("#videos-modal video[data-src]")
           .forEach((vid) => {
             if (!vid.getAttribute("src")) {
-              vid.setAttribute("src", vid.getAttribute("data-src"));
-              vid.load();
+              const source = new URL(vid.getAttribute("data-src"), window.location.href);
+              if ((source.protocol === "http:" || source.protocol === "https:") &&
+                  source.origin === window.location.origin) {
+                vid.setAttribute("src", source.href);
+                vid.load();
+              }
             }
           });
       }

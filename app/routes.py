@@ -11,6 +11,7 @@ import email.utils
 import fcntl
 import glob
 import hashlib
+import hmac
 import inspect
 import io
 import json
@@ -351,13 +352,14 @@ class TemplateName:
 def generate_timed_hash():
     """Return a short‑lived hash derived from the API key.
 
-    The resulting string combines a SHA-256 digest of the API key and an
+    The resulting string combines an HMAC-SHA256 signature and an
     expiration timestamp. The timestamp is 15 minutes in the future, allowing
     the caller to generate a temporary token for secure, time limited access.
     """
     expiration_time = int(time.time()) + 15 * 60
-    to_hash = f"{API_KEY}{expiration_time}"
-    hash_digest = hashlib.sha256(to_hash.encode()).hexdigest()
+    hash_digest = hmac.new(
+        API_KEY.encode(), str(expiration_time).encode(), hashlib.sha256
+    ).hexdigest()
     return f"{hash_digest}.{expiration_time}"
 
 
@@ -365,14 +367,15 @@ def is_hash_valid(timed_hash: str) -> bool:
     """Return ``True`` if ``timed_hash`` is valid and not expired."""
     try:
         hash_digest, expiration_time = timed_hash.split(".")
-        to_hash = f"{API_KEY}{expiration_time}"
-        valid_hash = hashlib.sha256(to_hash.encode()).hexdigest()
+        valid_hash = hmac.new(
+            API_KEY.encode(), expiration_time.encode(), hashlib.sha256
+        ).hexdigest()
         if int(expiration_time) < int(time.time()):
             return False
-        if valid_hash != hash_digest:
+        if not hmac.compare_digest(valid_hash, hash_digest):
             return False
         return True
-    except ValueError:
+    except (TypeError, ValueError):
         # Incorrectly formatted hash
         return False
 
@@ -382,9 +385,15 @@ def is_safe_redirect_url(target: str | None) -> bool:
 
     if not target:
         return False
-    if "\n" in target or "\r" in target:
+    if "\\" in target or any(ord(char) < 32 for char in target):
         return False
-    parsed = urlparse(target)
+    # Browsers treat three leading slashes as a network-path reference too.
+    if target.startswith("//"):
+        return False
+    try:
+        parsed = urlparse(target)
+    except ValueError:
+        return False
     return not parsed.scheme and not parsed.netloc
 
 
@@ -426,6 +435,7 @@ def login_required(f: Callable) -> Callable:
                     "/logs",
                     "/stream_logs",
                     "/cost_summary",
+                    "/templates/test_url",
                 }
                 if request.method not in safe_methods or request.path in blocked_paths:
                     return _lan_guest_denied()
@@ -812,7 +822,7 @@ def check_url_accessible(url: str) -> bool:
     ok, info = probe_url_with_range(url, timeout=5, preconnect=False)
     if ok:
         return bool(info.get("ok"))
-    logging.error("Connectivity check failed for %s", url)
+    logging.error("Connectivity check failed")
     return False
 
 
@@ -856,6 +866,7 @@ def _tls_preconnect(host: str, port: int, *, timeout: float = 2.0) -> tuple[bool
         sock = socket.create_connection((host, int(port)), timeout=timeout)
         try:
             ctx = ssl.create_default_context()
+            ctx.minimum_version = ssl.TLSVersion.TLSv1_2
             with ctx.wrap_socket(sock, server_hostname=host):
                 return True, "tls_ok"
         finally:
@@ -1109,14 +1120,14 @@ def parse_cache_delay(headers: typing.Mapping[str, str]) -> float:
         try:
             return float(m.group(1))
         except ValueError as exc:
-            logging.warning("Invalid max-age header %s: %s", m.group(1), exc)
+            logging.warning("Invalid max-age header (%s)", type(exc).__name__)
     expires = headers.get("Expires")
     if expires:
         try:
             dt = email.utils.parsedate_to_datetime(expires)
             return max(0.0, dt.timestamp() - time.time())
         except (TypeError, ValueError) as exc:
-            logging.warning("Invalid Expires header %s: %s", expires, exc)
+            logging.warning("Invalid Expires header (%s)", type(exc).__name__)
     return 0.0
 
 
@@ -1336,8 +1347,7 @@ def generate_live_stream(
                     delay = max(base_delay, cache_delay)
                 else:
                     logging.error(
-                        "Failed to fetch image from %s (HTTP %s)",
-                        url,
+                        "Failed to fetch live image (HTTP %s)",
                         status,
                     )
                     failures += 1
@@ -1345,7 +1355,7 @@ def generate_live_stream(
             except GeneratorExit:
                 break
             except Exception as e:
-                logging.error("Error fetching image from %s: %s", url, e)
+                logging.error("Error fetching live image (%s)", type(e).__name__)
                 failures += 1
                 delay = base_delay * (2**failures)
 
@@ -1806,7 +1816,7 @@ def generate(
         safe_scope = "".join(
             ch if ch.isalnum() or ch in ("_", "-") else "_" for ch in stream_scope
         )
-        scoped_name = f"{safe_scope}_{filename}"
+        scoped_name = secure_filename(f"{safe_scope}_{filename}")
         last_path = os.path.join(
             os.path.dirname(os.path.join(__file__)),
             "..",

@@ -596,6 +596,7 @@ def main(argv=None):
                 host=https_host,
                 port=config.HTTPS_PORT,
                 debug=config.DEBUG_MODE,
+                use_debugger=False,
                 threaded=True,
                 ssl_context=ssl_context,
             )
@@ -609,6 +610,7 @@ def main(argv=None):
                 host=config.HOST,
                 port=config.PORT,
                 debug=config.DEBUG_MODE,
+                use_debugger=False,
                 threaded=True,
             )
     except KeyboardInterrupt:

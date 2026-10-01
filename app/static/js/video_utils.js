@@ -15,7 +15,7 @@ export function safePlay(el) {
 export function setClipSrc(videoEl, cameraName) {
   const now = Date.now();
   if (now - lastClipTime >= CLIP_THROTTLE_MS) {
-    videoEl.src = `/clip/${cameraName}`;
+    videoEl.src = `/clip/${encodeURIComponent(cameraName)}`;
     lastClipTime = now;
   } else {
     videoEl.src = `/stream.mp4?camera=${encodeURIComponent(cameraName)}`;

@@ -37,6 +37,7 @@ def tmp_http_server(tmp_path):
     thread.join()
 
 
+@pytest.mark.enable_socket
 def test_url_test_endpoint(tmp_http_server):
     with (
         patch("app.routes.login_required", lambda x: x),

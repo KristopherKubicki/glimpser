@@ -21,6 +21,7 @@ from flask import (
     render_template,
     request,
     send_file,
+    send_from_directory,
     session,
     url_for,
 )
@@ -459,7 +460,20 @@ def create_blueprint() -> Blueprint:
             action = request.form.get("action")
             if action == "update_shortcut":
                 path_val = request.form.get("shortcut_path")
-                path = Path(path_val) if path_val else None
+                # Only update known application shortcuts, never arbitrary files
+                # selected through a web request.
+                path = None
+                if path_val:
+                    path = next(
+                        (
+                            candidate
+                            for candidate in routes.LINUX_PATHS
+                            if str(candidate) == path_val
+                        ),
+                        None,
+                    )
+                    if path is None:
+                        routes.abort(400, "Unknown Chrome shortcut")
                 paths, msg = routes.update_chrome_shortcuts_info(path)
                 if paths:
                     joined = ", ".join(str(p) for p in paths)
@@ -1408,12 +1422,12 @@ def create_blueprint() -> Blueprint:
     )
     @routes.login_required
     def recovery_preview_file(filename: str):
-        safe_name = Path(filename).name
-        path = recovery.RECOVERY_DIR / safe_name
-        if not path.exists():
+        if not re.fullmatch(r"recovery_[a-f0-9]{32}\.(?:png|mp4)", filename):
             routes.abort(404)
-        mimetype = "image/png" if path.suffix == ".png" else "video/mp4"
-        return send_file(path, mimetype=mimetype, max_age=0)
+        mimetype = "image/png" if filename.endswith(".png") else "video/mp4"
+        return send_from_directory(
+            recovery.RECOVERY_DIR, filename, mimetype=mimetype, max_age=0
+        )
 
     @bp.route(
         "/recovery/apply/<string:template_name>",
@@ -1852,7 +1866,20 @@ def create_blueprint() -> Blueprint:
                 routes.flash("SMS test triggered. Check logs for results.", "info")
             elif action == "update_shortcut":
                 path_val = request.form.get("shortcut_path")
-                path = Path(path_val) if path_val else None
+                # Only update known application shortcuts, never arbitrary files
+                # selected through a web request.
+                path = None
+                if path_val:
+                    path = next(
+                        (
+                            candidate
+                            for candidate in routes.LINUX_PATHS
+                            if str(candidate) == path_val
+                        ),
+                        None,
+                    )
+                    if path is None:
+                        routes.abort(400, "Unknown Chrome shortcut")
                 paths, msg = routes.update_chrome_shortcuts_info(path)
                 if paths:
                     joined = ", ".join(str(p) for p in paths)
@@ -2852,7 +2879,7 @@ def create_blueprint() -> Blueprint:
                 device_id,
                 exc,
             )
-            return jsonify({"ok": False, "error": str(exc)}), 502
+            return jsonify({"ok": False, "error": "upstream_camera_error"}), 502
 
         logging.info(
             "google_webrtc_start ok profile=%s device=%s media_session=%s answer_len=%s",
@@ -2904,8 +2931,8 @@ def create_blueprint() -> Blueprint:
             expires_at = google_sdm.extend_webrtc_stream(
                 device_name, media_session_id, profile
             )
-        except Exception as exc:
-            return jsonify({"ok": False, "error": str(exc)}), 502
+        except Exception:
+            return jsonify({"ok": False, "error": "upstream_camera_error"}), 502
 
         return jsonify(
             {
@@ -2940,8 +2967,8 @@ def create_blueprint() -> Blueprint:
                 f"sdm://{profile}/{device_id}"
             )
             google_sdm.stop_webrtc_stream(device_name, media_session_id, profile)
-        except Exception as exc:
-            return jsonify({"ok": False, "error": str(exc)}), 502
+        except Exception:
+            return jsonify({"ok": False, "error": "upstream_camera_error"}), 502
 
         return jsonify({"ok": True})
 
@@ -3745,7 +3772,9 @@ def create_blueprint() -> Blueprint:
                 device_id,
                 exc,
             )
-            return Response(str(exc), status=502, mimetype="text/plain")
+            return Response(
+                "Camera image unavailable", status=502, mimetype="text/plain"
+            )
 
         resp = Response(payload, mimetype=content_type or "image/jpeg")
         if source_headers.get("Last-Modified"):

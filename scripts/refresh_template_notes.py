@@ -17,6 +17,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable
 
+from app.utils.validators import url_matches_host
+
 IGNORE_LINE = (
     "Ignore embedded timestamps, browser or player chrome, cookie banners, ads, "
     "and old caption overlays unless they block the scene."
@@ -321,11 +323,11 @@ def _source_caveats(row: TemplateRow, extra_caveats: Iterable[str]) -> list[str]
         caveats.append(
             "Private view: report operational facts without exposing unnecessary personal detail."
         )
-    if "i.ytimg.com" in url or "youtube.com" in url:
+    if url_matches_host(url, "i.ytimg.com") or url_matches_host(url, "youtube.com"):
         caveats.append(
             "YouTube-derived still: describe only the current frame, not inferred video motion."
         )
-    if "weatherbug.com" in url:
+    if url_matches_host(url, "weatherbug.com"):
         caveats.append(
             "WeatherBug camera: prioritize the outdoor scene over page framing."
         )

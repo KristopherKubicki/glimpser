@@ -351,8 +351,8 @@ def create_blueprint() -> Blueprint:
             routes.scheduling.schedule_discovery()
             routes.update_setting("DISCOVERY_AUTOSTART", "True", restart=False)
             return jsonify({"status": "running"})
-        except Exception as e:
-            return jsonify({"status": "error", "message": str(e)}), 500
+        except Exception:
+            return jsonify({"status": "error", "message": "Operation failed"}), 500
 
     @bp.route("/toggle_chyron", methods=["POST"])
     @routes.login_required
@@ -364,7 +364,7 @@ def create_blueprint() -> Blueprint:
             new_speed = "0" if str(current) != "0" else "240"
             routes.update_setting("CHYRON_SPEED", new_speed)
             return jsonify({"speed": int(new_speed)})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+        except Exception:
+            return jsonify({"error": "Operation failed"}), 500
 
     return bp

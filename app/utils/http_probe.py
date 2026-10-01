@@ -627,6 +627,7 @@ def _preconnect_check(
                         ctx = ssl.create_default_context(**{ca_option: verify})
                     else:
                         ctx = ssl.create_default_context()
+                        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
                     if verify is False:
                         ctx.check_hostname = False
                         ctx.verify_mode = ssl.CERT_NONE
