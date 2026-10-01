@@ -8,7 +8,8 @@ from pathlib import Path
 
 if __name__ == "__main__":
     executable = Path(sys.argv[1]).resolve()
-    version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+    with Path("pyproject.toml").open("rb") as metadata:
+        version = tomllib.load(metadata)["project"]["version"]
     result = subprocess.run(
         [str(executable), "--version"],
         env={**os.environ, "GLIMPSER_SKIP_DB_INIT": "1"},
