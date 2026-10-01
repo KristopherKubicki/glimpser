@@ -25,13 +25,11 @@ class TestSyncVersion(unittest.TestCase):
         self.config = config
 
         conn = sqlite3.connect(self.db_path)
-        conn.execute(
-            """CREATE TABLE settings (
+        conn.execute("""CREATE TABLE settings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT UNIQUE NOT NULL,
                 value TEXT NOT NULL
-            )"""
-        )
+            )""")
         conn.commit()
         conn.close()
 

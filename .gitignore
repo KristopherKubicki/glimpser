@@ -118,7 +118,6 @@ output.txt
 
 # Node artifacts
 node_modules/
-package-lock.json
 
 # Packaging artifacts
 debian/glimpser/
@@ -129,3 +128,8 @@ release-badges.md
 # Documentation build output
 site/
 pytest-report.xml
+
+# Installation session secrets and transient package staging
+*.session-secret
+*.session-secret.lock
+debian/glimpser-stage.*/

@@ -31,39 +31,77 @@ import { initUnsavedIndicator } from "./unsaved.js";
 import { initVideoZoom } from "./zoom.js";
 import { initSearchShortcut } from "./search_shortcut.js";
 import { initUrlTester } from "./url_test.js";
+import { initComfort } from "./comfort.js";
+import { initLanding } from "./landing.js?v=20260930-private-rules";
 
-initTemplates();
-initVideoControls();
-initVisibilityHandler();
-initSchedulerToggle();
-initDiscoveryToggle();
-initSubnetInput();
-initDiscoveryTable();
-initNav();
-initFormValidation();
-initAddSettingValidation();
-initFooterFade();
-initOffline();
-initNotifications();
-initDangerToggle();
-initIndexTime();
-initWelcome();
-initTooltips();
-initCaptions();
-initSettingsSearch();
-initShortcutPath();
-initTabs();
-initThemeToggle();
-initContrastToggle();
-initNetworkBanner();
-initControlsDropdown();
-initAutocomplete();
-initCosts();
-initAdvanced();
-initKeyVisibility();
-initUnsavedIndicator();
-initCliHelp();
-initVideoZoom();
-initSearchShortcut();
-initHotkeys();
-initUrlTester();
+function isLandingScreen() {
+  return window.location.pathname === "/";
+}
+
+function initGuestGuard() {
+  if (!window.IS_LAN_GUEST) return;
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-requires-login]");
+    if (!target) return;
+    event.preventDefault();
+    const nextUrl =
+      target.getAttribute("data-login-next") ||
+      target.getAttribute("href") ||
+      window.location.pathname;
+    const confirmed = window.confirm(
+      "Login required for this action. Continue to the login screen?",
+    );
+    if (confirmed) {
+      window.location.href = `/login?next=${encodeURIComponent(nextUrl)}`;
+    }
+  });
+}
+
+if (isLandingScreen()) {
+  // Kiosk landing should stay cheap: no template loading, no status polling,
+  // no discovery/settings tooling, and no extra page-wide timers beyond the
+  // clock and curated scene rotator.
+  initNav({ passive: true });
+  initIndexTime();
+  initLanding();
+} else {
+  initTemplates();
+  initVideoControls();
+  initVisibilityHandler();
+  initSchedulerToggle();
+  initDiscoveryToggle();
+  initSubnetInput();
+  initDiscoveryTable();
+  initNav();
+  initFormValidation();
+  initAddSettingValidation();
+  initFooterFade();
+  initOffline();
+  initNotifications();
+  initDangerToggle();
+  initIndexTime();
+  initWelcome();
+  initTooltips();
+  initCaptions();
+  initSettingsSearch();
+  initShortcutPath();
+  initTabs();
+  initThemeToggle();
+  initContrastToggle();
+  initNetworkBanner();
+  initControlsDropdown();
+  initAutocomplete();
+  initCosts();
+  initAdvanced();
+  initKeyVisibility();
+  initUnsavedIndicator();
+  initCliHelp();
+  initVideoZoom();
+  initSearchShortcut();
+  initHotkeys();
+  initUrlTester();
+  initComfort();
+  initLanding();
+}
+
+initGuestGuard();

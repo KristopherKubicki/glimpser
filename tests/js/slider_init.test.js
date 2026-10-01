@@ -21,6 +21,7 @@ beforeAll(async () => {
 describe("slider initialization", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.setItem("gridAutofit", "1");
     const list = document.getElementById("template-list");
     list.innerHTML = "";
     list.style.gap = "0px";
@@ -40,9 +41,9 @@ describe("slider initialization", () => {
   });
 
   test.each([
-    [1920, 1080, 4, 640],
+    [1920, 1080, 4, 871],
     [1920, 1080, 2, 960],
-    [1280, 720, 4, 426],
+    [1280, 720, 4, 551],
   ])(
     "computes min width %ipx x %ipx with %i cameras",
     (width, height, count, expected) => {
@@ -60,6 +61,25 @@ describe("slider initialization", () => {
       global.fetch = jest.fn(() => new Promise(() => {}));
 
       const list = document.getElementById("template-list");
+      // The real app sizes the grid to the template-list viewport (not full window).
+      // Simulate that in jsdom so the auto-fit math is realistic.
+      const headerH = document.querySelector("header")?.offsetHeight || 0;
+      const bannerH = document.getElementById("network-banner")?.offsetHeight || 0;
+      const footerSpace = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--footer-space") ||
+          "0",
+      );
+      list.getBoundingClientRect = () => ({
+        x: 0,
+        y: headerH + bannerH,
+        top: headerH + bannerH,
+        left: 0,
+        width: window.innerWidth,
+        height: Math.max(0, window.innerHeight - headerH - bannerH - footerSpace),
+        right: window.innerWidth,
+        bottom: window.innerHeight - footerSpace,
+        toJSON: () => ({}),
+      });
       list.innerHTML = new Array(count)
         .fill('<div class="templateDiv"></div>')
         .join("");

@@ -13,6 +13,9 @@ class TestBuildMacOS(TestCase):
         build_macos.build()
         mock_run.assert_called_once()
         args = mock_run.call_args.args[0]
+        self.assertEqual(args[0], "main.py")
+        self.assertIn("--add-data=app/templates:app/templates", args)
+        self.assertIn("--add-data=app/static:app/static", args)
         self.assertIn("--name=Glimpser", args)
         self.assertIn("--exclude-module=onnxruntime", args)
 
@@ -23,6 +26,9 @@ class TestBuildWindows(TestCase):
         build_windows.build()
         mock_run.assert_called_once()
         args = mock_run.call_args.args[0]
+        self.assertEqual(args[0], "main.py")
+        self.assertIn("--add-data=app/templates:app/templates", args)
+        self.assertIn("--add-data=app/static:app/static", args)
         self.assertIn("--name=Glimpser", args)
         self.assertIn("--exclude-module=onnxruntime", args)
 

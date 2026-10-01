@@ -13,7 +13,7 @@ if str(ROOT_DIR) not in sys.path:
 # Avoid expensive FFmpeg setup during imports
 os.environ.setdefault("FFMPEG_PATH", "ffmpeg")
 
-from app.utils.scheduling import scheduler
+from app.utils.scheduling import scheduler  # noqa: E402
 
 # Skip end-to-end tests unless explicitly enabled
 os.environ.setdefault("SKIP_E2E", "1")
@@ -22,6 +22,21 @@ os.environ.setdefault("HYPOTHESIS_MAX_EXAMPLES", "10")
 
 # Block network access during tests to avoid accidental HTTP requests.
 pytest_socket.disable_socket()
+
+
+@pytest.fixture(autouse=True)
+def isolated_browser_queue(tmp_path, monkeypatch):
+    """Never share durable browser tickets between tests or with a local install."""
+    monkeypatch.setenv(
+        "GLIMPSER_BROWSER_QUEUE_PATH", str(tmp_path / "browser-queue.db")
+    )
+
+
+@pytest.fixture(autouse=True)
+def isolated_browser_locks(tmp_path, monkeypatch):
+    """Keep parallel tests away from each other's and the host's capture slots."""
+    monkeypatch.setenv("GLIMPSER_BROWSER_CAPTURE_LOCK", str(tmp_path / "browser.lock"))
+    monkeypatch.setenv("GLIMPSER_WEBRTC_CAPTURE_LOCK", str(tmp_path / "webrtc.lock"))
 
 
 @pytest.fixture(autouse=True)

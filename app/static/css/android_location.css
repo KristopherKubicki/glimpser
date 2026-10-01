@@ -1,0 +1,704 @@
+:root {
+  --android-bg: #0b0f12;
+  --android-panel: #151b20;
+  --android-panel-strong: #1d252b;
+  --android-text: #edf4f2;
+  --android-muted: #9daaa7;
+  --android-border: rgba(237, 244, 242, 0.14);
+  --android-green: #50d890;
+  --android-blue: #6ab7ff;
+  --android-amber: #ffcf66;
+  --android-red: #ff7a70;
+  --android-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+}
+
+.android-bridge-page {
+  color: var(--android-text);
+  margin: 0 auto;
+  max-width: 1180px;
+  padding: 24px;
+}
+
+.android-bridge-hero {
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(80, 216, 144, 0.16), transparent 42%),
+    linear-gradient(90deg, #152027, #10161a);
+  border: 1px solid var(--android-border);
+  border-radius: 8px;
+  box-shadow: var(--android-shadow);
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding: 22px;
+}
+
+.android-bridge-hero h2,
+.location-map-header h1 {
+  color: var(--android-text);
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  line-height: 1.02;
+  margin: 0;
+}
+
+.android-bridge-hero p {
+  color: var(--android-muted);
+  margin: 8px 0 0;
+  max-width: 680px;
+}
+
+.android-eyebrow {
+  color: var(--android-green);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.android-primary-action,
+.location-map-header a {
+  align-items: center;
+  background: var(--android-green);
+  border-radius: 6px;
+  color: #07100c;
+  display: inline-flex;
+  font-weight: 800;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 14px;
+  text-decoration: none;
+}
+
+.android-panel-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  margin-bottom: 16px;
+}
+
+.android-panel {
+  background: var(--android-panel);
+  border: 1px solid var(--android-border);
+  border-radius: 8px;
+  box-shadow: var(--android-shadow);
+  padding: 18px;
+}
+
+.android-panel h3 {
+  color: var(--android-text);
+  margin: 0 0 12px;
+}
+
+.android-facts {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.android-facts div,
+.android-section-header,
+.android-subject-row {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+}
+
+.android-facts dt {
+  color: var(--android-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.android-facts dd {
+  margin: 2px 0 0;
+}
+
+.android-code {
+  background: #091013;
+  border: 1px solid rgba(106, 183, 255, 0.18);
+  border-radius: 6px;
+  color: #d8f7e5;
+  margin: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.android-section-header span,
+.android-subject-row span,
+.android-empty {
+  color: var(--android-muted);
+}
+
+.android-subject-list {
+  display: grid;
+  gap: 10px;
+}
+
+.android-subject-row {
+  background: var(--android-panel-strong);
+  border: 1px solid var(--android-border);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.android-subject-row div {
+  display: grid;
+  gap: 4px;
+}
+
+.is-fresh {
+  color: var(--android-green);
+}
+
+.is-stale {
+  color: var(--android-amber);
+}
+
+.android-location-map-page {
+  background: var(--android-bg);
+  color: var(--android-text);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+.location-map-shell {
+  box-sizing: border-box;
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding: 18px;
+}
+
+.location-map-header {
+  align-items: center;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  margin: 0 0 14px;
+}
+
+.location-map-header nav {
+  display: flex;
+  gap: 8px;
+}
+
+.location-map-header a {
+  background: rgba(237, 244, 242, 0.1);
+  color: var(--android-text);
+  min-height: 34px;
+}
+
+.location-dashboard {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  min-height: calc(100vh - 112px);
+  width: 100%;
+}
+
+.location-map-card,
+.location-side-panel {
+  background: var(--android-panel);
+  border: 1px solid var(--android-border);
+  border-radius: 8px;
+  box-sizing: border-box;
+  box-shadow: var(--android-shadow);
+  max-width: 100%;
+}
+
+.location-map-card {
+  min-height: 520px;
+  overflow: hidden;
+}
+
+.location-map-surface {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(145deg, #0e1716 0%, #14222a 48%, #101315 100%);
+  background-size:
+    70px 70px,
+    70px 70px,
+    auto;
+  height: 100%;
+  min-height: calc(100vh - 114px);
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.location-map-surface::after {
+  background:
+    linear-gradient(180deg, rgba(9, 16, 19, 0.1), rgba(9, 16, 19, 0.26)),
+    radial-gradient(
+      circle at 15% 10%,
+      rgba(80, 216, 144, 0.12),
+      transparent 34%
+    );
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+.location-tile-layer {
+  inset: 0;
+  overflow: hidden;
+  position: absolute;
+  z-index: 0;
+}
+
+.location-map-tile {
+  filter: saturate(0.88) contrast(1.02) brightness(0.78);
+  height: 256px;
+  position: absolute;
+  width: 256px;
+}
+
+.location-map-grid {
+  border: 1px solid rgba(80, 216, 144, 0.12);
+  inset: 24px;
+  position: absolute;
+  z-index: 1;
+}
+
+.location-marker-layer {
+  inset: 0;
+  position: absolute;
+  z-index: 3;
+}
+
+.location-marker {
+  align-items: center;
+  background: rgba(80, 216, 144, 0.18);
+  border: 1px solid rgba(80, 216, 144, 0.68);
+  border-radius: 999px;
+  color: var(--android-text);
+  display: inline-flex;
+  gap: 7px;
+  max-width: 220px;
+  min-height: 34px;
+  padding: 5px 10px 5px 6px;
+  position: absolute;
+  transform: translate(-16px, -16px);
+  white-space: nowrap;
+}
+
+.location-marker.is-edge-right {
+  transform: translate(calc(-100% + 16px), -16px);
+}
+
+.location-marker.is-edge-left {
+  transform: translate(0, -16px);
+}
+
+.location-marker.is-edge-top {
+  transform: translate(-16px, 0);
+}
+
+.location-marker.is-edge-left.is-edge-top {
+  transform: translate(0, 0);
+}
+
+.location-marker.is-edge-right.is-edge-top {
+  transform: translate(calc(-100% + 16px), 0);
+}
+
+.location-marker.is-edge-bottom {
+  transform: translate(-16px, calc(-100% + 16px));
+}
+
+.location-marker.is-edge-left.is-edge-bottom {
+  transform: translate(0, calc(-100% + 16px));
+}
+
+.location-marker.is-edge-right.is-edge-bottom {
+  transform: translate(calc(-100% + 16px), calc(-100% + 16px));
+}
+
+.location-marker::before {
+  background: var(--android-green);
+  border-radius: 999px;
+  box-shadow: 0 0 0 6px rgba(80, 216, 144, 0.15);
+  content: "";
+  height: 13px;
+  width: 13px;
+}
+
+.location-marker span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.location-marker[data-provider="tesla"] {
+  background: rgba(106, 183, 255, 0.16);
+  border-color: rgba(106, 183, 255, 0.68);
+}
+
+.location-marker[data-provider="tesla"]::before {
+  background: var(--android-blue);
+  box-shadow: 0 0 0 6px rgba(106, 183, 255, 0.15);
+}
+
+.location-marker.is-stale {
+  background: rgba(255, 207, 102, 0.14);
+  border-color: rgba(255, 207, 102, 0.58);
+  color: #ffe6a8;
+}
+
+.location-marker.is-stale::before {
+  background: var(--android-amber);
+  box-shadow: 0 0 0 6px rgba(255, 207, 102, 0.14);
+}
+
+.location-empty-state {
+  color: var(--android-muted);
+  display: none;
+  font-size: 1.1rem;
+  left: 30px;
+  position: absolute;
+  top: 30px;
+  z-index: 4;
+}
+
+.location-map-attribution {
+  background: rgba(9, 16, 19, 0.72);
+  border-radius: 4px;
+  bottom: 8px;
+  color: rgba(237, 244, 242, 0.74);
+  font-size: 0.7rem;
+  padding: 3px 6px;
+  position: absolute;
+  right: 8px;
+  z-index: 4;
+}
+
+.location-side-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 14px;
+}
+
+.location-stat-strip {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.location-stat-strip div {
+  background: var(--android-panel-strong);
+  border: 1px solid var(--android-border);
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.location-stat-strip span {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.location-stat-strip small {
+  color: var(--android-muted);
+}
+
+.location-list {
+  display: grid;
+  gap: 9px;
+  overflow: auto;
+}
+
+.location-list-item {
+  background: var(--android-panel-strong);
+  border: 1px solid var(--android-border);
+  border-radius: 6px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.location-list-item header {
+  align-items: start;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.location-list-item strong {
+  display: block;
+}
+
+.location-list-item small,
+.location-meta-row {
+  color: var(--android-muted);
+}
+
+.location-pill {
+  background: rgba(80, 216, 144, 0.14);
+  border-radius: 999px;
+  color: var(--android-green);
+  font-size: 0.75rem;
+  padding: 3px 7px;
+  text-transform: uppercase;
+}
+
+.location-pill.is-stale {
+  background: rgba(255, 207, 102, 0.14);
+  color: var(--android-amber);
+}
+
+.location-battery {
+  background: #081012;
+  border-radius: 999px;
+  height: 6px;
+  overflow: hidden;
+}
+
+.location-battery span {
+  background: linear-gradient(90deg, var(--android-green), var(--android-blue));
+  display: block;
+  height: 100%;
+}
+
+.location-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 860px) {
+  .android-bridge-hero,
+  .location-map-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .android-panel-grid,
+  .location-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .location-dashboard {
+    width: calc(100vw - 36px);
+  }
+
+  .location-map-surface {
+    min-height: 58vh;
+  }
+
+  .location-marker {
+    font-size: 0.86rem;
+    max-width: 150px;
+  }
+
+  .location-stat-strip div {
+    padding: 8px;
+  }
+
+  .location-stat-strip {
+    gap: 6px;
+  }
+
+  .location-stat-strip span {
+    font-size: 1.34rem;
+  }
+
+  .location-map-attribution {
+    font-size: 0.62rem;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.household-presence h2 {
+  font-size: 22px;
+  margin: 0 0 12px;
+}
+.household-note {
+  color: #abc0d0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.household-person {
+  background: #102334;
+  border: 1px solid #355064;
+  border-radius: 10px;
+  padding: 14px;
+  margin: 10px 0;
+}
+.household-person > strong {
+  font-size: 19px;
+}
+.household-status {
+  display: block;
+  color: #9ce7d0;
+  margin-top: 6px;
+}
+.household-person p,
+.household-person small {
+  color: #b5c6d5;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.household-person a {
+  display: block;
+  color: #a4f0e3;
+  padding: 8px 0;
+}
+.location-marker.is-camera {
+  background: #55bde6;
+  width: 14px;
+  height: 14px;
+  min-height: 0;
+  padding: 0;
+  border: 2px solid #102334;
+  z-index: 1;
+}
+.location-marker.is-camera > a {
+  display: none;
+  position: absolute;
+  left: 12px;
+  top: -8px;
+  color: white;
+  white-space: nowrap;
+  padding: 5px;
+  background: #102334;
+  border-radius: 4px;
+}
+.location-marker.is-camera:hover,
+.location-marker.is-camera:focus-within {
+  z-index: 30;
+}
+.location-marker.is-camera:hover > a,
+.location-marker.is-camera:focus-within > a {
+  display: block;
+}
+#household-refresh-warning {
+  color: #ffc66d;
+}
+
+.location-marker.is-camera::before {
+  display: none;
+}
+
+.camera-map-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  background: #122027;
+}
+.camera-map-controls input,
+.camera-map-controls select,
+.camera-map-controls button,
+.camera-browser button {
+  background: #203640;
+  color: #e9f5fa;
+  border: 1px solid #52727e;
+  border-radius: 8px;
+  padding: 10px;
+  font: inherit;
+  min-height: 44px;
+}
+.camera-map-controls input {
+  flex: 1;
+  min-width: 160px;
+}
+.camera-map-controls select {
+  max-width: 100%;
+}
+.camera-browser {
+  margin-top: 24px;
+  color: #e9f5fa;
+}
+.camera-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.camera-preview-card {
+  background: #14232b;
+  border: 1px solid #304753;
+  border-radius: 12px;
+  overflow: hidden;
+  color: #e9f5fa;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+}
+.camera-preview-card img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: #081016;
+}
+.camera-preview-card strong,
+.camera-preview-card span,
+.camera-preview-card small {
+  padding: 8px 12px;
+  overflow-wrap: anywhere;
+}
+.camera-preview-card strong {
+  font-size: 19px;
+}
+.camera-preview-card span,
+.camera-preview-card small {
+  color: #b6cad4;
+}
+.location-marker.is-camera {
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  color: #061820;
+  font: 700 14px sans-serif;
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+.location-marker.is-cluster {
+  background: #b2eafa;
+  border-color: #167995;
+  width: 38px;
+  height: 38px;
+}
+.location-marker:focus-visible,
+.camera-preview-card:focus-visible {
+  outline: 3px solid #ffe49a;
+  outline-offset: 3px;
+}
+
+.location-dashboard {
+  min-height: 0;
+  align-items: start;
+}
+.location-map-card {
+  min-height: 0;
+}
+.location-map-surface {
+  height: clamp(420px, 68vh, 780px);
+  min-height: 0;
+}
+
+@media (max-width: 800px) {
+  .location-map-surface {
+    height: 58vh;
+    min-height: 320px;
+  }
+}

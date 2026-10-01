@@ -1,0 +1,97 @@
+/* A stable current-time anchor, independent of the camera's acquisition time. */
+.ambient-clock {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  color: #f0f5fa;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  pointer-events: none;
+}
+.ambient-clock time {
+  font-size: clamp(30px, 2.7vw, 52px);
+  font-weight: 550;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+}
+.ambient-clock-label,
+.ambient-clock-date {
+  font-size: clamp(12px, 0.9vw, 17px);
+  color: #c3d0dc;
+  white-space: nowrap;
+}
+.ambient-clock-label {
+  font-size: clamp(10px, 0.7vw, 13px);
+  letter-spacing: 0.12em;
+}
+.ambient-clock--room {
+  position: static;
+  flex: 0 0 auto;
+  align-self: center;
+  margin-left: auto;
+  padding: 4px 0 4px 16px;
+  color: #d4dce5;
+  text-shadow: 0 1px 3px #000;
+}
+.ambient-clock--room time {
+  font-size: clamp(22px, 1.6vw, 31px);
+  font-weight: 500;
+}
+.ambient-clock--room .ambient-clock-date {
+  display: none;
+}
+.ambient-clock--room .ambient-clock-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.ambient-clock[hidden] {
+  display: none;
+}
+.kiosk-timelapse-label,
+.kiosk-offline-caption {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 20px;
+}
+.kiosk-timelapse-label > strong,
+.kiosk-timelapse-label > span,
+.kiosk-offline-caption > strong,
+.kiosk-offline-caption > p {
+  grid-column: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.kiosk-timelapse-label > .ambient-clock,
+.kiosk-offline-caption > .ambient-clock {
+  grid-column: 2;
+  grid-row: 1 / 3;
+}
+.rotation-overview > header {
+  flex-wrap: wrap;
+}
+.rotation-overview > header .ambient-clock-label {
+  font-size: 10px;
+}
+.ambient-clock--dashboard {
+  flex: 0 0 auto;
+  padding: 6px 18px;
+  border-inline: 1px solid #29384c;
+}
+
+@media (max-width: 700px) {
+  .ambient-clock--room {
+    padding: 4px 0 4px 8px;
+  }
+  .ambient-clock--room time {
+    font-size: 22px;
+  }
+  .ambient-clock--room .ambient-clock-date {
+    display: none;
+  }
+  .ambient-clock--dashboard {
+    margin-block: 12px;
+  }
+}
+.ambient-clock--dashboard time {
+  font-size: clamp(26px, 2vw, 38px);
+}

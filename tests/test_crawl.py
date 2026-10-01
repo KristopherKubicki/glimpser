@@ -1,11 +1,11 @@
 import unittest
 from unittest.mock import patch
 
+import app.utils.screenshots as ss
 from app.utils.screenshots import get_arp_output, is_address_reachable, parse_url
 
 
 class TestURLParsing(unittest.TestCase):
-
     def test_parse_url_http(self):
         url = "http://example.com:8080/some/path"
         domain, port = parse_url(url)
@@ -32,7 +32,6 @@ class TestURLParsing(unittest.TestCase):
 
 
 class TestARPTable(unittest.TestCase):
-
     @patch("subprocess.check_output")
     def test_get_arp_output_linux(self, mock_check_output):
         mock_check_output.return_value = (
@@ -51,6 +50,10 @@ class TestARPTable(unittest.TestCase):
 
 
 class TestIPAddressValidation(unittest.TestCase):
+    def setUp(self):
+        ss.reachability_cache.clear()
+        ss.dns_resolve_cache.clear()
+        ss.dns_resolve_cache_time.clear()
 
     @patch("socket.gethostbyname")
     def test_is_address_reachable_success(self, mock_gethostbyname):

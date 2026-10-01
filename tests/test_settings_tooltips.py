@@ -10,6 +10,7 @@ class TestSettingsTooltips(unittest.TestCase):
         self.assertIn("CHATGPT_KEY", SETTINGS_TOOLTIPS)
         self.assertIn("NOTIFY_ON_MOTION", SETTINGS_TOOLTIPS)
         self.assertIn("NOTIFY_ON_CAPTION", SETTINGS_TOOLTIPS)
+        self.assertIn("LOW_CPU_MODE", SETTINGS_TOOLTIPS)
 
     def test_choices_have_tooltip_or_default(self):
         for key in SETTINGS_CHOICES:

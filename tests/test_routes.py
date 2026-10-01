@@ -16,7 +16,6 @@ from app.utils.template_manager import clear_template_cache
 
 class TestRoutes(unittest.TestCase):
     def setUp(self):
-
         importlib.reload(routes)
 
         template_dir = os.path.join(
@@ -50,87 +49,6 @@ class TestRoutes(unittest.TestCase):
 
             def first(self):
                 return dummy_user
-
-        def order_by(self, *args, **kwargs):
-            return self
-
-        def limit(self, *args, **kwargs):
-            return self
-
-        def all(self):
-            return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            def all(self):
-                return []
 
             def order_by(self, *args, **kwargs):
                 return self
@@ -254,7 +172,14 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.session", {"user_id": 1})
     @patch("app.routes.render_template")
     @patch("app.routes.template_manager.get_templates")
-    def test_index(self, mock_get_templates, mock_render_template, mock_session_local):
+    @patch("app.routes.get_active_groups")
+    def test_index(
+        self,
+        mock_get_active_groups,
+        mock_get_templates,
+        mock_render_template,
+        mock_session_local,
+    ):
         dummy_user = SimpleNamespace(id=1)
 
         class DummyQuery:
@@ -282,11 +207,17 @@ class TestRoutes(unittest.TestCase):
 
         mock_session_local.return_value = DummySession()
         mock_get_templates.return_value = {"camera": {}}
+        mock_get_active_groups.return_value = ["example-home", "beach"]
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
-        mock_render_template.assert_called_with(
-            "index.html", template_details={"camera": {}}, page_title="Dashboard"
-        )
+        mock_render_template.assert_called_once()
+        args, context = mock_render_template.call_args
+        self.assertEqual(args, ("index.html",))
+        self.assertEqual(context["active_groups"], ["example-home", "beach"])
+        self.assertEqual(context["page_title"], "Dashboard")
+        self.assertEqual(context["landing_profile"]["key"], "public")
+        self.assertEqual(context["landing_scenes"], [])
+        self.assertFalse(context["landing_events_enabled"])
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
@@ -349,7 +280,10 @@ class TestRoutes(unittest.TestCase):
         mock_get_templates.return_value = {"template1": {}, "template2": {}}
         response = self.client.get("/templates?group=all")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json(), {"template1": {}, "template2": {}})
+        self.assertEqual(
+            response.get_json(),
+            {"template1": {"name": "template1"}, "template2": {"name": "template2"}},
+        )
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
@@ -561,13 +495,15 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
     @patch("app.routes.template_manager.get_template")
+    @patch("app.routes.probe_url_with_range")
     @patch("app.blueprints.ui.render_template")
     def test_live_single_camera(
-        self, mock_render_template, mock_get_template, mock_session_local
+        self, mock_render_template, mock_probe, mock_get_template, mock_session_local
     ):
         """The live route should render only the requested camera."""
 
         mock_get_template.return_value = {"url": "https://example.com"}
+        mock_probe.return_value = (False, {})
 
         class DummyQuery:
             def filter_by(self, **kwargs):
@@ -590,7 +526,83 @@ class TestRoutes(unittest.TestCase):
         mock_get_template.assert_called_with("cam1")
         mock_render_template.assert_called_with(
             "live.html",
-            template_details={"cam1": mock_get_template.return_value},
+            template_details={
+                "cam1": {
+                    **mock_get_template.return_value,
+                    "capabilities": {
+                        "kind": "web",
+                        "live_video": False,
+                        "auto_live_video": False,
+                        "avg_ttfb_ms": 0,
+                        "last_ttfb_ms": 0,
+                        "avoid_for_s": 0,
+                        "source": "url",
+                        "content_type": "",
+                        "effective_url": "",
+                        "last_probe_status": 0,
+                    },
+                }
+            },
+            selected_camera="cam1",
+            selected_group=None,
+            page_title="Live View",
+        )
+
+    @patch("app.routes.SessionLocal")
+    @patch("app.routes.session", {"user_id": 1})
+    @patch("app.routes.template_manager.get_templates")
+    @patch("app.blueprints.ui.render_template")
+    def test_live_group_filters_templates(
+        self, mock_render_template, mock_get_templates, mock_session_local
+    ):
+        """The live route should honor an explicit group selection."""
+
+        mock_get_templates.return_value = {
+            "cam1": {"groups": "g1, g2"},
+            "cam2": {"groups": "g2"},
+            "cam3": {"groups": "other"},
+        }
+
+        class DummyQuery:
+            def filter_by(self, **kwargs):
+                return self
+
+            def first(self):
+                return SimpleNamespace(id=1)
+
+        class DummySession:
+            def query(self, model):
+                return DummyQuery()
+
+            def close(self):
+                pass
+
+        mock_session_local.return_value = DummySession()
+
+        response = self.client.get("/live?group=g2")
+        self.assertEqual(response.status_code, 200)
+        mock_render_template.assert_called_with(
+            "live.html",
+            template_details={
+                "cam1": {
+                    "groups": "g1, g2",
+                    "capabilities": {
+                        "kind": "unknown",
+                        "live_video": False,
+                        "auto_live_video": False,
+                    },
+                },
+                "cam2": {
+                    "groups": "g2",
+                    "capabilities": {
+                        "kind": "unknown",
+                        "live_video": False,
+                        "auto_live_video": False,
+                    },
+                },
+            },
+            selected_camera=None,
+            selected_group="g2",
             page_title="Live View",
         )
 
@@ -603,7 +615,7 @@ class TestRoutes(unittest.TestCase):
         response = self.client.get("/group/group1")
         self.assertEqual(response.status_code, 200)
         mock_render_template.assert_called_with(
-            "group.html", group_name="group1", page_title="Group – group1"
+            "group.html", group_name="group1", page_title="Group - group1"
         )
 
     @patch("app.routes.SessionLocal")

@@ -1,0 +1,291 @@
+.viewer-views-link {
+  border-radius: 0.375rem;
+  border-width: 1px;
+
+  --tw-border-opacity: 1;
+
+  border-color: rgb(71 85 105 / var(--tw-border-opacity, 1));
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+
+  --tw-text-opacity: 1;
+
+  color: rgb(241 245 249 / var(--tw-text-opacity, 1));
+}
+body.templates-wall main {
+  padding: 0;
+}
+body.templates-wall .viewer-card .camera-media {
+  position: relative;
+  min-height: 14rem;
+  overflow: hidden;
+  border-radius: 0.5rem;
+
+  --tw-bg-opacity: 1;
+
+  background-color: rgb(2 6 23 / var(--tw-bg-opacity, 1));
+}
+body.templates-wall .viewer-card {
+  height: auto;
+  min-height: 14rem;
+}
+body.templates-wall .viewer-card .camera-media video,
+body.templates-wall .viewer-card .camera-still {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+}
+body.templates-wall .viewer-card .camera-media video {
+  opacity: 0;
+}
+body.templates-wall .viewer-card .has-preview-video video {
+  opacity: 1;
+}
+body.templates-wall .viewer-card .camera-name {
+  top: 0.5rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+body.templates-wall .viewer-card .camera-freshness,
+body.templates-wall .viewer-card .camera-name {
+  position: absolute;
+  left: 0.5rem;
+  right: 4rem;
+  z-index: 10;
+  border-radius: 0.25rem;
+  background-color: rgba(2, 6, 23, 0.9);
+  padding: 0.25rem 0.5rem;
+}
+body.templates-wall .viewer-card .camera-freshness {
+  top: 2.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+
+  --tw-text-opacity: 1;
+
+  color: rgb(241 245 249 / var(--tw-text-opacity, 1));
+}
+body.templates-wall .viewer-card .template-error .camera-freshness {
+  --tw-bg-opacity: 1;
+
+  background-color: rgb(69 26 3 / var(--tw-bg-opacity, 1));
+
+  --tw-text-opacity: 1;
+
+  color: rgb(254 243 199 / var(--tw-text-opacity, 1));
+}
+.camera-origin {
+  display: block;
+
+  --tw-text-opacity: 1;
+
+  color: rgb(203 213 225 / var(--tw-text-opacity, 1));
+}
+body.templates-wall .viewer-card .caption-overlay {
+  bottom: 1.75rem;
+  max-height: 2.5rem;
+  overflow: hidden;
+}
+body.templates-wall .viewer-card .camera-caption-age,
+body.templates-wall .viewer-card .caption-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background-color: rgba(2, 6, 23, 0.9);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+body.templates-wall .viewer-card .camera-caption-age {
+  bottom: 0;
+
+  --tw-text-opacity: 1;
+
+  color: rgb(203 213 225 / var(--tw-text-opacity, 1));
+}
+body.templates-wall #template-list {
+  gap: 0.5rem;
+  overflow-y: auto;
+}
+body.templates-wall #template-list-section {
+  min-height: 0;
+}
+body.templates-wall .viewer-card .open-url-link {
+  position: absolute;
+  inset: 0.5rem 0.5rem auto auto;
+  z-index: 20;
+  box-sizing: border-box;
+  display: flex;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  width: 3rem;
+  min-width: 3rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.25rem;
+
+  --tw-bg-opacity: 1;
+
+  background-color: rgb(15 23 42 / var(--tw-bg-opacity, 1));
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+body.templates-wall .viewer-card .camera-media:after {
+  display: none;
+}
+body.templates-wall #controls-wrapper,
+body.templates-wall #controls-wrapper.fade-out {
+  pointer-events: auto;
+  position: relative;
+  inset: auto;
+  margin: 0;
+  box-sizing: border-box;
+  width: 100%;
+  flex-shrink: 0;
+  padding: 0.5rem 1rem;
+  opacity: 1;
+}
+body.templates-wall #dashboard-picker {
+  margin: 0;
+  width: auto;
+  max-width: 100%;
+}
+body.templates-wall #template-controls button,
+body.templates-wall #template-controls input[type="text"],
+body.templates-wall #template-controls select {
+  box-sizing: border-box;
+  border-radius: 0.375rem;
+  border-width: 1px;
+
+  --tw-border-opacity: 1;
+
+  border-color: rgb(71 85 105 / var(--tw-border-opacity, 1));
+
+  --tw-bg-opacity: 1;
+
+  background-color: rgb(15 23 42 / var(--tw-bg-opacity, 1));
+
+  --tw-text-opacity: 1;
+
+  color: rgb(241 245 249 / var(--tw-text-opacity, 1));
+}
+
+@media (max-width: 900px) {
+  body header {
+    flex-wrap: wrap;
+    opacity: 1;
+  }
+  body header nav {
+    margin: 0;
+    flex-wrap: wrap;
+  }
+  body header nav,
+  body header nav .nav-left {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    gap: 0.5rem;
+  }
+  body header nav .nav-left select {
+    margin: 0;
+    height: 2.25rem;
+    min-width: 0;
+    flex: 1 1 0%;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+  body header nav .nav-right {
+    margin: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+  }
+  body header nav .nav-right a {
+    margin: 0;
+    height: 2rem;
+    width: 2rem;
+    min-width: 0;
+    padding: 0;
+  }
+  body header nav .nav-right .status-indicator {
+    margin: 0;
+  }
+  body.landing-screen main .landing-toolbar {
+    position: relative;
+    inset: auto;
+    gap: 0.5rem;
+  }
+  body.landing-screen main .landing-actions,
+  body.landing-screen main .landing-modes,
+  body.landing-screen main .landing-profiles {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+  }
+  body.landing-screen main .landing-action,
+  body.landing-screen main .landing-mode-chip,
+  body.landing-screen main .landing-profile-chip {
+    min-height: 2.25rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+  body.landing-screen main .landing-hero-panel,
+  body.landing-screen main .landing-scene-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  body.landing-screen main .landing-hero-panel {
+    height: auto;
+    min-height: 0;
+  }
+  body.landing-screen main .landing-hero-media {
+    position: relative;
+    display: block;
+    height: 16rem;
+    min-height: 0;
+    flex: none;
+  }
+  body.landing-screen main .landing-context-panel {
+    position: relative;
+    inset: auto;
+    display: flex;
+    height: auto;
+    width: 100%;
+    flex: none;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  body.landing-screen main .landing-pip-card {
+    position: relative;
+    height: 10rem;
+    min-height: 0;
+    flex: none;
+  }
+  body.landing-screen main .landing-deck-panel {
+    position: relative;
+    height: auto;
+  }
+  body.landing-screen main .landing-hero-overlay {
+    bottom: 0.5rem;
+    left: 0.5rem;
+    right: 0.5rem;
+    padding: 0.5rem;
+  }
+  body.landing-screen main .landing-hero-links {
+    display: none;
+  }
+  body.templates-wall .viewer-card,
+  body.templates-wall .viewer-card .camera-media {
+    min-height: 16rem;
+  }
+}

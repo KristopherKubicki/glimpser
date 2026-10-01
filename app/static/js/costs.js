@@ -43,7 +43,19 @@ export function initCosts() {
       tbody.innerHTML = "";
       for (const row of grouped) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${row.name}</td><td data-value="${row.calls}">${row.calls}</td><td data-value="${row.tokens}">${row.tokens}</td><td data-value="${row.cost}">$${row.cost.toFixed(2)}</td>`;
+        const name = document.createElement("td");
+        name.textContent = row.name;
+        tr.appendChild(name);
+        for (const [value, text] of [
+          [row.calls, row.calls],
+          [row.tokens, row.tokens],
+          [row.cost, `$${row.cost.toFixed(2)}`],
+        ]) {
+          const cell = document.createElement("td");
+          cell.dataset.value = String(value);
+          cell.textContent = String(text);
+          tr.appendChild(cell);
+        }
         tbody.appendChild(tr);
       }
       if (!ctx) return;

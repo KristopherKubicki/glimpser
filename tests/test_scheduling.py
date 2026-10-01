@@ -8,11 +8,16 @@ from unittest.mock import MagicMock, patch
 
 from PIL import Image
 
-from app.utils.scheduling import find_closest_image, scheduler, start_log_caching
+from app.utils.scheduling import (
+    _caption_refresh_due,
+    _caption_refresh_hours,
+    find_closest_image,
+    scheduler,
+    start_log_caching,
+)
 
 
 class TestScheduler(unittest.TestCase):
-
     @patch("time.sleep", return_value=None)  # Corrected patch target
     def test_schedule_job(self, mock_sleep):
         job = MagicMock()
@@ -131,6 +136,46 @@ class TestScheduler(unittest.TestCase):
                 tmp, last_caption_time, max_time_diff=timedelta(seconds=60)
             )
             self.assertIsNone(result)
+
+    def test_caption_refresh_hours_by_frequency(self):
+        self.assertEqual(_caption_refresh_hours({"frequency": 60}), 24.0)
+        self.assertEqual(_caption_refresh_hours({"frequency": 30}), 8.0)
+        self.assertEqual(_caption_refresh_hours({"frequency": 5}), 3.0)
+        self.assertEqual(
+            _caption_refresh_hours({"frequency": 14, "livecaption": True}), 2.0
+        )
+
+    def test_caption_refresh_due_ignores_motion_allow_state(self):
+        now = datetime(2026, 5, 4, 12, 0, 0)
+        stale_static_camera = {
+            "frequency": 30,
+            "last_caption": "Existing caption",
+            "last_caption_time": "2026-05-04 03:30:00",
+            "last_motion_caption": "",
+        }
+        fresh_static_camera = {
+            **stale_static_camera,
+            "last_caption_time": "2026-05-04 05:00:00",
+        }
+
+        self.assertTrue(_caption_refresh_due(stale_static_camera, now=now))
+        self.assertFalse(_caption_refresh_due(fresh_static_camera, now=now))
+
+    def test_caption_refresh_due_when_timestamp_missing_or_invalid(self):
+        self.assertTrue(_caption_refresh_due({"last_caption": ""}))
+        self.assertTrue(
+            _caption_refresh_due(
+                {"last_caption": "Existing caption", "last_caption_time": ""}
+            )
+        )
+        self.assertTrue(
+            _caption_refresh_due(
+                {
+                    "last_caption": "Existing caption",
+                    "last_caption_time": "not a timestamp",
+                }
+            )
+        )
 
     """
     @patch('app.utils.scheduling.scheduler.add_job')

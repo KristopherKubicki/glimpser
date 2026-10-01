@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Adblock Wall</title>
+    <link rel="stylesheet" href="/static/css/adblock_wall.css" />
+  </head>
+  <body data-adblock-wall-auto>
+    <main id="adblock-wall" class="adblock-wall" data-ready="0">
+      <header class="adblock-header">
+        <div>
+          <p class="eyebrow">Browser Diagnostics</p>
+          <h1>Content Blocking</h1>
+        </div>
+        <div class="header-status" aria-live="polite">
+          <span id="adblock-status" class="status-pill">Running probes</span>
+          <time id="adblock-updated">--</time>
+        </div>
+      </header>
+
+      <section class="summary-strip" aria-label="Content blocking summary">
+        <article>
+          <span class="metric-label">Blocked</span>
+          <strong id="adblock-blocked">--</strong>
+          <span id="adblock-blocked-label">probe requests</span>
+        </article>
+        <article>
+          <span class="metric-label">Allowed</span>
+          <strong id="adblock-allowed">--</strong>
+          <span>network probes</span>
+        </article>
+        <article>
+          <span class="metric-label">Coverage</span>
+          <strong id="adblock-coverage">--</strong>
+          <span id="adblock-total">6 categories</span>
+        </article>
+      </section>
+
+      <section
+        id="adblock-probes"
+        class="probe-grid"
+        aria-label="Probe results"
+      >
+        <article class="probe-card placeholder-card">
+          <span class="probe-host">initializing</span>
+          <h2>Running blocker probes</h2>
+          <p>Checking ad, analytics, social, and tracker endpoints.</p>
+        </article>
+      </section>
+    </main>
+
+    <script type="module" src="/static/js/adblock_wall.js"></script>
+  </body>
+</html>

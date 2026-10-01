@@ -1,15 +1,16 @@
-# flake8: noqa
+# ruff: noqa
 """HTTP route handlers and helper utilities.
 
 This module registers all Flask endpoints for the application. Routes handle
 authentication, configuration management, media retrieval and other REST
 operations used by the web UI and API.
 """
+
 import csv
 import email.utils
-import fcntl
 import glob
 import hashlib
+import hmac
 import inspect
 import io
 import json
@@ -18,9 +19,12 @@ import math
 import os
 import random
 import re
+import secrets
+import select
 import shutil
 import socket
 import sqlite3
+import ssl
 import struct
 import subprocess
 import sys
@@ -36,7 +40,7 @@ from functools import lru_cache, wraps
 from ipaddress import ip_address
 from pathlib import Path
 from threading import Lock, Thread
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import psutil
 import requests
@@ -47,6 +51,7 @@ from flask import (
     abort,
     current_app,
     flash,
+    has_request_context,
     jsonify,
     make_response,
     redirect,
@@ -65,6 +70,8 @@ from sqlalchemy.exc import OperationalError
 from werkzeug.http import http_date
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
+
+from app.utils import file_locks as fcntl
 
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
@@ -92,7 +99,11 @@ from app.models import PushSubscription, Summary, User
 from app.utils import (
     camera_discovery,
     camera_fix,
+    event_buffer,
     limit_rate,
+    live_caps,
+    live_host_caps,
+    live_limits,
     prompt_optimizer,
     scheduling,
     screenshots,
@@ -100,6 +111,7 @@ from app.utils import (
     test_pattern,
     video_archiver,
 )
+from app.utils.http_probe import probe_url_with_range
 from app.utils.llm import ask_question
 from app.utils.screenshots import (
     capture_frame_from_stream,
@@ -115,6 +127,7 @@ from app.utils.settings_tooltips import (
     SETTINGS_PLACEHOLDERS,
     SETTINGS_TOOLTIPS,
 )
+from app.utils.warm_live import WarmLiveManager
 
 try:
     import onnxruntime as ort
@@ -146,7 +159,7 @@ from typing import Any, Callable, Dict, Generator, List, Optional
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 import app.utils.media_utils as media_utils
-from app.utils.db import SessionLocal, engine
+from app.utils.db import SessionLocal, engine, ensure_column, init_db
 
 # Clip caching constants
 CACHE_TTL_SEC = 120
@@ -340,13 +353,14 @@ class TemplateName:
 def generate_timed_hash():
     """Return a short‑lived hash derived from the API key.
 
-    The resulting string combines a SHA-256 digest of the API key and an
+    The resulting string combines an HMAC-SHA256 signature and an
     expiration timestamp. The timestamp is 15 minutes in the future, allowing
     the caller to generate a temporary token for secure, time limited access.
     """
     expiration_time = int(time.time()) + 15 * 60
-    to_hash = f"{API_KEY}{expiration_time}"
-    hash_digest = hashlib.sha256(to_hash.encode()).hexdigest()
+    hash_digest = hmac.new(
+        API_KEY.encode(), str(expiration_time).encode(), hashlib.sha256
+    ).hexdigest()
     return f"{hash_digest}.{expiration_time}"
 
 
@@ -354,14 +368,15 @@ def is_hash_valid(timed_hash: str) -> bool:
     """Return ``True`` if ``timed_hash`` is valid and not expired."""
     try:
         hash_digest, expiration_time = timed_hash.split(".")
-        to_hash = f"{API_KEY}{expiration_time}"
-        valid_hash = hashlib.sha256(to_hash.encode()).hexdigest()
+        valid_hash = hmac.new(
+            API_KEY.encode(), expiration_time.encode(), hashlib.sha256
+        ).hexdigest()
         if int(expiration_time) < int(time.time()):
             return False
-        if valid_hash != hash_digest:
+        if not hmac.compare_digest(valid_hash, hash_digest):
             return False
         return True
-    except ValueError:
+    except (TypeError, ValueError):
         # Incorrectly formatted hash
         return False
 
@@ -371,9 +386,15 @@ def is_safe_redirect_url(target: str | None) -> bool:
 
     if not target:
         return False
-    if "\n" in target or "\r" in target:
+    if "\\" in target or any(ord(char) < 32 for char in target):
         return False
-    parsed = urlparse(target)
+    # Browsers treat three leading slashes as a network-path reference too.
+    if target.lstrip().startswith("//"):
+        return False
+    try:
+        parsed = urlparse(target)
+    except ValueError:
+        return False
     return not parsed.scheme and not parsed.netloc
 
 
@@ -388,12 +409,40 @@ def login_required(f: Callable) -> Callable:
             ip_obj = ip_address(ip) if ip else None
         except ValueError:
             ip_obj = None
-        if (
-            ip_obj
-            and any(ip_obj in net for net in config.SKIP_LOGIN_SUBNETS)
-            and not request.path.startswith("/settings")
-        ):
-            return f(*args, **kwargs)
+        lan_guest = False
+        if ip_obj and any(ip_obj in net for net in config.SKIP_LOGIN_SUBNETS):
+            lan_guest = True
+
+        if lan_guest and not request.path.startswith("/settings"):
+            mode = (config.LAN_GUEST_MODE or "full").lower()
+            if mode not in {"full", "read_only", "disabled"}:
+                mode = "full"
+            if mode == "disabled":
+                lan_guest = False
+            elif mode == "full":
+                return f(*args, **kwargs)
+            else:
+                safe_methods = {"GET", "HEAD", "OPTIONS"}
+                blocked_prefixes = (
+                    "/settings",
+                    "/authentication",
+                    "/api",
+                    "/discover",
+                    "/system",
+                    "/mcp",
+                    "/notifications",
+                )
+                blocked_paths = {
+                    "/logs",
+                    "/stream_logs",
+                    "/cost_summary",
+                    "/templates/test_url",
+                }
+                if request.method not in safe_methods or request.path in blocked_paths:
+                    return _lan_guest_denied()
+                if any(request.path.startswith(prefix) for prefix in blocked_prefixes):
+                    return _lan_guest_denied()
+                return f(*args, **kwargs)
         # Check for API key in headers, GET parameters, or POST form data
         api_key = (
             request.headers.get("X-API-Key")
@@ -410,7 +459,13 @@ def login_required(f: Callable) -> Callable:
             return f(*args, **kwargs)
 
         # Check for valid static API key
-        elif api_key == API_KEY:
+        elif (
+            isinstance(API_KEY, str)
+            and API_KEY.strip()
+            and isinstance(api_key, str)
+            and api_key.strip()
+            and secrets.compare_digest(api_key.encode(), API_KEY.encode())
+        ):
             return f(*args, **kwargs)
 
         # Check for valid session
@@ -470,6 +525,22 @@ def login_required(f: Callable) -> Callable:
                     flash("Session expired. Please log in again.")
                 return redirect(url_for("login", next=request.url))
 
+            if is_temp_password_required(user):
+                session["force_password_reset"] = True
+
+            if session.get("force_password_reset"):
+                allowed_endpoints = {
+                    "authentication.reset_password",
+                    "authentication.logout",
+                    "logout",
+                }
+                if request.endpoint in allowed_endpoints:
+                    return f(*args, **kwargs)
+                if request.path.startswith("/api") or request.is_json:
+                    return jsonify({"error": "password_reset_required"}), 403
+                flash("Password reset required to continue.", "warning")
+                return redirect(url_for("authentication.reset_password"))
+
             # Optional role checks could be added here
             return f(*args, **kwargs)
 
@@ -503,6 +574,25 @@ def login_required(f: Callable) -> Callable:
                 return redirect(url_for("login", next=request.url))
 
     return decorated_function
+
+
+def _lan_guest_denied() -> Response:
+    if request.path.startswith("/api") or request.is_json:
+        return jsonify({"error": "lan_guest_restricted"}), 403
+    if current_app.secret_key:
+        flash("Login required for this action.", "error")
+    return redirect(url_for("login", next=request.url))
+
+
+def is_temp_password_required(user: Any) -> bool:
+    """Return True when a user has a temporary password flag set."""
+
+    value = getattr(user, "temp_password_required", False)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value == 1
+    return False
 
 
 # Function to read logs from the local text file and filter them based on query parameters
@@ -637,7 +727,13 @@ def update_setting(name: str, value: str, restart: bool = True) -> bool:
     """
 
     name = name.replace("'", "")[:32]
-    value = value.replace("'", "")[:1024]
+
+    # Some integrations store JSON blobs (e.g. multiple OAuth profiles) that can
+    # exceed the historical 1KB setting limit.
+    max_value_len = 1024
+    if name in {"GOOGLE_SDM_PROFILES", "EUFY_CLOUD_PROFILES"}:
+        max_value_len = 16384
+    value = value.replace("'", "")[:max_value_len]
 
     if not re.findall(r"^[A-Z_]+?$", name):
         return False
@@ -723,13 +819,297 @@ def generate_video_stream(
 
 
 def check_url_accessible(url: str) -> bool:
-    """Return ``True`` if the URL responds to a HEAD request."""
+    """Return ``True`` if the URL responds to a tiny ranged GET probe."""
+    ok, info = probe_url_with_range(url, timeout=5, preconnect=False)
+    if ok:
+        return bool(info.get("ok"))
+    logging.error("Connectivity check failed")
+    return False
+
+
+def live_host_key(url: str) -> str:
+    """Return a stable host key for circuit-breaking and backoff."""
+
     try:
-        resp = requests.head(url, timeout=5)
-        return resp.ok
-    except Exception as exc:  # pragma: no cover
-        logging.error("Connectivity check failed for %s: %s", url, exc)
-        return False
+        p = urlparse(str(url or ""))
+    except Exception:
+        return ""
+
+    host = p.hostname or ""
+    if not host:
+        return ""
+
+    scheme = (p.scheme or "").lower()
+    port = p.port
+    if port is None:
+        if scheme in {"https", "wss"}:
+            port = 443
+        elif scheme in {"http", "ws"}:
+            port = 80
+        elif scheme in {"rtsp", "rtsps"}:
+            port = 554
+        else:
+            port = 0
+
+    return f"{scheme}://{host}:{int(port)}"
+
+
+def _tcp_preconnect(host: str, port: int, *, timeout: float = 2.0) -> tuple[bool, str]:
+    try:
+        with socket.create_connection((host, int(port)), timeout=timeout):
+            return True, "tcp_ok"
+    except Exception as exc:
+        return False, f"tcp_fail:{exc.__class__.__name__}"
+
+
+def _tls_preconnect(host: str, port: int, *, timeout: float = 2.0) -> tuple[bool, str]:
+    try:
+        sock = socket.create_connection((host, int(port)), timeout=timeout)
+        try:
+            ctx = ssl.create_default_context()
+            ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+            with ctx.wrap_socket(sock, server_hostname=host):
+                return True, "tls_ok"
+        finally:
+            try:
+                sock.close()
+            except Exception:
+                pass
+    except Exception as exc:
+        return False, f"tls_fail:{exc.__class__.__name__}"
+
+
+def preflight_live_url(url: str) -> tuple[bool, dict]:
+    """Run a cheap liveness probe before spinning up ffmpeg.
+
+    Returns (ok, info). On failure, info contains a short reason and stage.
+    """
+
+    u = str(url or "").strip()
+    if not u:
+        return False, {"stage": "input", "reason": "empty_url"}
+
+    try:
+        p = urlparse(u)
+    except Exception:
+        return False, {"stage": "input", "reason": "bad_url"}
+
+    scheme = (p.scheme or "").lower()
+    host = p.hostname or ""
+    port = p.port
+
+    if scheme in {"rtsp", "rtsps"}:
+        if port is None:
+            port = 554
+        ok, reason = _tcp_preconnect(host, int(port), timeout=2.0)
+        return ok, {"stage": "preconnect", "reason": reason}
+
+    if scheme in {"http", "https"}:
+        # Most reliable cheap probe: GET + Range with media-biased Accept.
+        ok, info = probe_url_with_range(u, timeout=3, preconnect=True)
+        if not ok:
+            return False, {"stage": "probe", "reason": "probe_failed"}
+        if not bool(info.get("ok")):
+            return False, {
+                "stage": "probe",
+                "reason": f"http_{int(info.get('status') or 0)}",
+                "info": info,
+            }
+        return True, {"stage": "probe", "info": info}
+
+    # Unknown scheme: try TCP if we can guess a port.
+    if host:
+        if port is None:
+            port = 0
+        ok, reason = _tcp_preconnect(host, int(port or 0), timeout=2.0)
+        return ok, {"stage": "preconnect", "reason": reason}
+
+    return False, {"stage": "input", "reason": "unsupported_scheme"}
+
+
+def _hikvision_channel_for_profile(channel: str, profile: str = "main") -> str:
+    """Return Hikvision channel id adjusted for ``profile`` preference."""
+
+    ch = str(channel or "").strip()
+    if not ch.isdigit() or len(ch) < 3:
+        return ch
+    base = ch[:-2]
+    stream = ch[-2:]
+    if profile == "sub":
+        return f"{base}02"
+    if profile == "main":
+        return f"{base}01"
+    return f"{base}{stream}"
+
+
+def resolve_live_stream_url(
+    details: dict[str, typing.Any], profile: str = "main"
+) -> str | None:
+    """Resolve a low-latency live stream URL for a template when possible."""
+
+    if not isinstance(details, dict):
+        return None
+
+    raw_url = str(details.get("url") or "").strip()
+    if not raw_url:
+        return None
+
+    lower_url = raw_url.lower()
+    if lower_url.startswith(("rtsp://", "rtsps://")):
+        m = re.search(r"/Streaming/Channels/(\d+)", raw_url, flags=re.IGNORECASE)
+        if m:
+            ch = _hikvision_channel_for_profile(m.group(1), profile=profile)
+            return re.sub(
+                r"/Streaming/Channels/\d+",
+                f"/Streaming/Channels/{ch}",
+                raw_url,
+                flags=re.IGNORECASE,
+            )
+        return raw_url
+
+    parsed = urlparse(raw_url)
+    if parsed.scheme not in {"http", "https"}:
+        return None
+
+    # Keep native HTTP media formats as-is.
+    if any(ext in lower_url for ext in (".m3u8", ".mjpg", ".mjpeg")):
+        return raw_url
+
+    m = re.search(
+        r"/ISAPI/Streaming/channels/(\d+)(?:/picture)?",
+        parsed.path,
+        flags=re.IGNORECASE,
+    )
+    if not m:
+        m = re.search(r"/Streaming/Channels/(\d+)", parsed.path, flags=re.IGNORECASE)
+    if not m:
+        return None
+
+    channel = _hikvision_channel_for_profile(m.group(1), profile=profile)
+
+    host = parsed.hostname
+    if not host:
+        return None
+    port = parsed.port or 554
+    # HTTP and RTSP can have different router mappings. Never assume the web
+    # management port also accepts RTSP when an explicit mapping is configured.
+    try:
+        overrides = json.loads(config.get_setting("LIVE_RTSP_PORT_OVERRIDES", "{}"))
+        override = overrides.get(
+            f"{host}:{parsed.port or (443 if parsed.scheme == 'https' else 80)}"
+        )
+        if override is not None and 1 <= int(override) <= 65535:
+            port = int(override)
+    except (ValueError, TypeError, AttributeError):
+        pass
+
+    username = parsed.username or str(details.get("auth_username") or "").strip()
+    password = parsed.password or str(details.get("auth_password") or "").strip()
+
+    auth = ""
+    if username:
+        u = quote(username, safe="")
+        if password:
+            pword = quote(password, safe="")
+            auth = f"{u}:{pword}@"
+        else:
+            auth = f"{u}@"
+
+    return (
+        f"rtsp://{auth}{host}:{port}/Streaming/Channels/{channel}"
+        "?transportmode=unicast&profile=Profile_1"
+    )
+
+
+def _infer_http_kind_from_probe(url: str, content_type: str) -> str | None:
+    ct = str(content_type or "").lower().split(";", 1)[0].strip()
+    lower_url = str(url or "").lower()
+
+    if "multipart/x-mixed-replace" in ct:
+        return "mjpeg"
+    if "mpegurl" in ct or lower_url.endswith(".m3u8"):
+        return "hls"
+    if ct.startswith("video/"):
+        return "http_video"
+    if ct.startswith("image/"):
+        return "snapshot"
+    if "text/html" in ct:
+        return "web"
+    return None
+
+
+def live_capabilities_for_template(
+    details: dict, *, profile: str = "sub", probe_http: bool = False
+) -> dict:
+    """Return lightweight capability hints for live playback.
+
+    The UI uses this to decide whether to attempt low-latency live video (RTSP/HLS/MJPEG)
+    vs image-based live modes.
+
+    ``probe_http`` enables a tiny ranged GET (1-2 bytes) for HTTP(S) URLs to classify
+    ambiguous endpoints (e.g. MJPEG streams, HLS playlists, snapshot images) without
+    downloading full bodies.
+
+    Important: this should remain cheap when called for *many* templates (e.g. /live group
+    view). The HTTP probe is therefore optional and additionally rate-limited per-URL.
+    """
+
+    raw_url = str((details or {}).get("url") or "").strip()
+    stream_url = (
+        resolve_live_stream_url(details or {}, profile=profile) if details else None
+    )
+    url = stream_url or raw_url
+    if not url:
+        return {"kind": "unknown", "live_video": False, "auto_live_video": False}
+
+    caps = live_caps.get(url)
+    now = time.time()
+    avoid_for = max(0, int((caps.avoid_until_ts or 0) - now))
+
+    kind = str(caps.kind or live_caps.guess_kind(url) or "unknown").lower()
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        parsed = None
+
+    # Optional HTTP probe for better classification of http(s) endpoints.
+    # Only run if:
+    # - caller asked for it
+    # - this isn't already known to be live video
+    # - we haven't probed recently
+    if (
+        probe_http
+        and parsed is not None
+        and parsed.scheme in {"http", "https"}
+        and kind in {"web", "unknown", "snapshot"}
+        and (now - float(getattr(caps, "last_probe_ts", 0) or 0) > 300)
+    ):
+        ok, info = probe_url_with_range(url, timeout=3, preconnect=True)
+        if ok and info:
+            live_caps.record_probe(url, info)
+            if bool(info.get("ok")):
+                inferred = _infer_http_kind_from_probe(
+                    url, str(info.get("content_type") or "")
+                )
+                if inferred and inferred != kind:
+                    kind = inferred
+                    live_caps.set_kind(url, kind)
+
+    live_video = kind in {"rtsp", "hls", "mjpeg", "http_video"}
+    auto_live_video = bool(live_video and avoid_for <= 0)
+
+    return {
+        "kind": kind,
+        "live_video": live_video,
+        "auto_live_video": auto_live_video,
+        "avg_ttfb_ms": int(getattr(caps, "avg_ttfb_ms", 0) or 0),
+        "last_ttfb_ms": int(getattr(caps, "last_ttfb_ms", 0) or 0),
+        "avoid_for_s": avoid_for,
+        "source": "stream" if stream_url else "url",
+        "content_type": str(getattr(caps, "content_type", "") or ""),
+        "effective_url": str(getattr(caps, "effective_url", "") or ""),
+        "last_probe_status": int(getattr(caps, "last_probe_status", 0) or 0),
+    }
 
 
 def parse_cache_delay(headers: typing.Mapping[str, str]) -> float:
@@ -741,18 +1121,191 @@ def parse_cache_delay(headers: typing.Mapping[str, str]) -> float:
         try:
             return float(m.group(1))
         except ValueError as exc:
-            logging.warning("Invalid max-age header %s: %s", m.group(1), exc)
+            logging.warning("Invalid max-age header (%s)", type(exc).__name__)
     expires = headers.get("Expires")
     if expires:
         try:
             dt = email.utils.parsedate_to_datetime(expires)
             return max(0.0, dt.timestamp() - time.time())
         except (TypeError, ValueError) as exc:
-            logging.warning("Invalid Expires header %s: %s", expires, exc)
+            logging.warning("Invalid Expires header (%s)", type(exc).__name__)
     return 0.0
 
 
-def generate_live_stream(url: str) -> Generator[bytes, None, None]:
+def build_live_ffmpeg_command(
+    url: str,
+    *,
+    width: int | None = None,
+    fps: int | None = None,
+    transcode_rtsp: bool | None = None,
+) -> list[str]:
+    """Build the ffmpeg command used for browser-friendly live playback."""
+
+    command = [config.FFMPEG_PATH]
+    if config.FFMPEG_HWACCEL and config.FFMPEG_HWACCEL.lower() != "false":
+        command.extend(["-hwaccel", config.FFMPEG_HWACCEL])
+
+    parsed = urlparse(url)
+    if parsed.scheme in ("http", "https"):
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+        command.extend(["-headers", f"User-Agent: {config.UA}\r\n"])
+        command.extend(["-headers", f"referer: {base_url}\r\n"])
+        command.extend(["-headers", f"origin: {base_url}\r\n"])
+        command.extend(["-seekable", "0"])
+
+    if parsed.scheme in ("http", "https"):
+        command.extend(
+            [
+                "-reconnect",
+                "1",
+                "-reconnect_streamed",
+                "1",
+                "-reconnect_delay_max",
+                "2",
+            ]
+        )
+    elif parsed.scheme in ("rtsp", "rtsps"):
+        # Keep RTSP startup stable and latency low for true camera streams.
+        command.extend(
+            [
+                "-rtsp_transport",
+                "tcp",
+                "-timeout",
+                str(config.LIVE_RTSP_SOCKET_TIMEOUT_US),
+                "-analyzeduration",
+                "0",
+                "-probesize",
+                "32768",
+            ]
+        )
+
+    command.extend(["-i", url, "-loglevel", "error", "-an"])
+
+    do_transcode_rtsp = (
+        config.LIVE_TRANSCODE_RTSP if transcode_rtsp is None else bool(transcode_rtsp)
+    )
+
+    if parsed.scheme in ("rtsp", "rtsps") and do_transcode_rtsp:
+        # Add low-delay mode without clearing the muxer's global-header flag.
+        # Replacing flags emits an empty avcC box and unplayable fragmented MP4.
+        command.extend(["-fflags", "nobuffer", "-flags", "+low_delay"])
+        vf_parts: list[str] = []
+        live_fps = fps if fps is not None else config.LIVE_RTSP_FPS
+        live_width = width if width is not None else config.LIVE_RTSP_WIDTH
+        if live_fps:
+            vf_parts.append(f"fps={int(live_fps)}")
+        if live_width:
+            vf_parts.append(f"scale=min(iw\\,{int(live_width)}):-2")
+        if vf_parts:
+            command.extend(["-vf", ",".join(vf_parts)])
+
+        live_fps_int = int(live_fps or 10)
+        # For ultra-low-fps startup profiles, force every frame to be a keyframe
+        # so browsers can render immediately without waiting for the next IDR.
+        if live_fps_int <= 2:
+            gop = 1
+        else:
+            gop = max(10, live_fps_int * 2)
+
+        command.extend(
+            [
+                "-c:v",
+                "libx264",
+                "-preset",
+                "ultrafast",
+                "-tune",
+                "zerolatency",
+                "-pix_fmt",
+                "yuv420p",
+                "-g",
+                str(gop),
+                "-keyint_min",
+                str(gop),
+                "-sc_threshold",
+                "0",
+                "-muxdelay",
+                "0",
+                "-muxpreload",
+                "0",
+                "-flush_packets",
+                "1",
+            ]
+        )
+    else:
+        command.extend(["-c:v", "copy"])
+
+    command.extend(
+        [
+            "-f",
+            "mp4",
+            "-movflags",
+            "frag_keyframe+empty_moov+default_base_moof",
+            "pipe:1",
+        ]
+    )
+
+    return command
+
+
+# Shared warm live manager for faster time-to-first-frame when cameras are
+# revisited shortly after being viewed or prewarmed on group pages.
+warm_live_manager = WarmLiveManager()
+
+
+def _warm_live_key(
+    url: str, width: int | None, fps: int | None, transcode_rtsp: bool | None
+) -> str:
+    return f"{url}|w={width or ''}|fps={fps or ''}|t={1 if transcode_rtsp else 0}"
+
+
+def warm_live(
+    url: str,
+    *,
+    width: int | None = None,
+    fps: int | None = None,
+    transcode_rtsp: bool | None = None,
+) -> None:
+    cmd = build_live_ffmpeg_command(
+        url, width=width, fps=fps, transcode_rtsp=transcode_rtsp
+    )
+    warm_live_manager.warm(_warm_live_key(url, width, fps, transcode_rtsp), cmd)
+
+
+def generate_warm_live_stream(
+    url: str,
+    *,
+    width: int | None = None,
+    fps: int | None = None,
+    transcode_rtsp: bool | None = None,
+) -> Generator[bytes, None, None]:
+    cmd = build_live_ffmpeg_command(
+        url, width=width, fps=fps, transcode_rtsp=transcode_rtsp
+    )
+    proc_start_ts = time.time()
+    host_key = live_host_key(url)
+    first = True
+    for chunk in warm_live_manager.subscribe(
+        _warm_live_key(url, width, fps, transcode_rtsp), cmd
+    ):
+        if first:
+            live_caps.record_success(
+                url, ttfb_ms=int((time.time() - proc_start_ts) * 1000)
+            )
+            if host_key:
+                live_host_caps.record_success(host_key)
+            first = False
+        yield chunk
+
+
+def generate_live_stream(
+    url: str,
+    *,
+    width: int | None = None,
+    fps: int | None = None,
+    transcode_rtsp: bool | None = None,
+    max_no_output_seconds: float | None = None,
+    max_no_output_failures: int | None = None,
+) -> Generator[bytes, None, None]:
     """Yield video data directly from a remote URL using ``ffmpeg``.
 
     Some camera APIs expose JPEG snapshots rather than a continuous video
@@ -774,8 +1327,16 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
         while True:
             try:
                 resp = session.get(url, timeout=5, stream=True)
-                if resp.status_code == 200:
-                    data = resp.content
+                try:
+                    status = resp.status_code
+                    if status == 200:
+                        data = resp.content
+                        cache_delay = parse_cache_delay(resp.headers)
+                finally:
+                    # Release the response before yielding to a slow viewer or
+                    # sleeping. Unread error bodies must not occupy a socket.
+                    resp.close()
+                if status == 200:
                     digest = hashlib.sha256(data).digest()
                     unchanged = digest == last_hash
                     last_hash = digest
@@ -784,87 +1345,140 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
                         failures = min(failures + 1, 5)
                     else:
                         failures = 0
-                    delay = max(base_delay, parse_cache_delay(resp.headers))
+                    delay = max(base_delay, cache_delay)
                 else:
                     logging.error(
-                        "Failed to fetch image from %s (HTTP %s)",
-                        url,
-                        resp.status_code,
+                        "Failed to fetch live image (HTTP %s)",
+                        status,
                     )
                     failures += 1
                     delay = base_delay * (2**failures)
             except GeneratorExit:
                 break
             except Exception as e:
-                logging.error("Error fetching image from %s: %s", url, e)
+                logging.error("Error fetching live image (%s)", type(e).__name__)
                 failures += 1
                 delay = base_delay * (2**failures)
 
             time.sleep(min(delay, config.LIVE_MAX_RETRY_DELAY))
         return
 
-    command = [config.FFMPEG_PATH]
-    if config.FFMPEG_HWACCEL and config.FFMPEG_HWACCEL.lower() != "false":
-        command.extend(["-hwaccel", config.FFMPEG_HWACCEL])
+    command = build_live_ffmpeg_command(
+        url,
+        width=width,
+        fps=fps,
+        transcode_rtsp=transcode_rtsp,
+    )
 
     parsed = urlparse(url)
-    if parsed.scheme in ("http", "https"):
-        base_url = f"{parsed.scheme}://{parsed.netloc}"
-        command.extend(["-headers", f"User-Agent: {config.UA}\r\n"])
-        command.extend(["-headers", f"referer: {base_url}\r\n"])
-        command.extend(["-headers", f"origin: {base_url}\r\n"])
-        command.extend(["-seekable", "0"])
-    command.extend(
-        [
-            "-reconnect",
-            "1",
-            "-reconnect_streamed",
-            "1",
-            "-reconnect_delay_max",
-            "2",
-            "-i",
-            url,
-            "-loglevel",
-            "error",
-            "-an",
-            "-c:v",
-            "copy",
-            "-f",
-            "mp4",
-            "-movflags",
-            "frag_keyframe+empty_moov",
-            "pipe:1",
-        ]
-    )
+    host_key = live_host_key(url)
+    host_marked_ok = False
 
     failures = 0
     last_log = 0.0
+    # Used for "no bytes received" circuit breaking. We update this timestamp
+    # whenever we successfully yield any bytes to the client.
+    last_output_ts = time.time()
+
+    def http_budget_exhausted() -> bool:
+        # Connectivity failures happen before Popen and must obey the same
+        # retry budget as an encoder that produces no video.
+        attempt_limit = (
+            max_no_output_failures
+            if max_no_output_failures is not None
+            else config.LIVE_MAX_FAILURES
+        )
+        exhausted = failures > 0 and failures >= attempt_limit
+        if max_no_output_seconds is not None:
+            exhausted |= time.time() - last_output_ts >= max_no_output_seconds
+        if exhausted:
+            live_caps.record_failure(url, reason="no_output")
+            if host_key:
+                live_host_caps.record_failure(host_key, reason="no_output")
+        return exhausted
+
     while True:
-        if parsed.scheme in ("http", "https") and not check_url_accessible(url):
-            failures += 1
-            delay = 2 if failures == 0 else min(2**failures, 30)
-            time.sleep(delay)
-            continue
+        if parsed.scheme in ("http", "https"):
+            if http_budget_exhausted():
+                return
+            if not check_url_accessible(url):
+                failures += 1
+                if http_budget_exhausted():
+                    return
+                delay = min(2**failures, 30)
+                if max_no_output_seconds is not None:
+                    remaining = max_no_output_seconds - (time.time() - last_output_ts)
+                    delay = min(delay, max(0, remaining))
+                time.sleep(delay)
+                continue
+            # A successful but slow probe may have consumed the entire budget.
+            if http_budget_exhausted():
+                return
 
         process: subprocess.Popen | None = None
         try:
+            proc_start_ts = time.time()
             process = subprocess.Popen(
                 command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
             chunk_yielded = False
+            stderr_snip = ""
+            stderr_open = process.stderr is not None
 
             try:
                 while True:
                     try:
-                        chunk = process.stdout.read(1024 * 1024)
+                        # Drain diagnostics alongside video: a full stderr pipe
+                        # can otherwise stop ffmpeg before stdout gets a frame.
+                        readers = [process.stdout]
+                        if stderr_open:
+                            readers.append(process.stderr)
+                        r, _, _ = select.select(readers, [], [], 1.0)
+                        if stderr_open and process.stderr in r:
+                            diagnostic = os.read(process.stderr.fileno(), 4096)
+                            if not diagnostic:
+                                stderr_open = False
+                            elif len(stderr_snip) < 4096:
+                                stderr_snip += diagnostic.decode(errors="replace")[
+                                    : 4096 - len(stderr_snip)
+                                ]
+                        if process.stdout not in r:
+                            # Process exit is not pipe EOF: final MP4 bytes may
+                            # become readable after this readiness snapshot.
+                            if (
+                                max_no_output_seconds is not None
+                                and (time.time() - last_output_ts)
+                                >= max_no_output_seconds
+                            ):
+                                logging.error(
+                                    "ffmpeg produced no output for %.1fs, giving up",
+                                    time.time() - last_output_ts,
+                                )
+                                live_caps.record_failure(url, reason="no_output")
+                                if host_key:
+                                    live_host_caps.record_failure(
+                                        host_key, reason="no_output"
+                                    )
+                                return
+                            continue
+                        chunk = os.read(process.stdout.fileno(), 64 * 1024)
                     except BrokenPipeError:
                         raise GeneratorExit
                     if not chunk:
                         break
+                    if not chunk_yielded:
+                        live_caps.record_success(
+                            url,
+                            ttfb_ms=int((time.time() - proc_start_ts) * 1000),
+                        )
+                        if host_key and not host_marked_ok:
+                            live_host_caps.record_success(host_key)
+                            host_marked_ok = True
                     yield chunk
                     chunk_yielded = True
-                    if process.poll() is not None:
-                        break
+                    last_output_ts = time.time()
+                    # Drain through stdout EOF, even after ffmpeg has exited.
+                    # Otherwise a buffered final fragment is silently truncated.
             except GeneratorExit:
                 if process:
                     process.kill()
@@ -872,12 +1486,18 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
                 return
             finally:
                 if process:
+                    # Stop and reap before closing pipes. Never perform a
+                    # blocking stderr.read() while the encoder is still alive.
+                    if process.poll() is None:
+                        process.kill()
+                    try:
+                        process.wait(timeout=1)
+                    except subprocess.TimeoutExpired:
+                        pass
                     if process.stdout:
                         process.stdout.close()
                     if process.stderr:
                         process.stderr.close()
-                    process.kill()
-                    process.wait(timeout=1)
         except GeneratorExit:
             if process:
                 if process.stdout:
@@ -894,6 +1514,30 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
         now = time.time()
         if not chunk_yielded:
             failures += 1
+            if (
+                max_no_output_failures is not None
+                and failures >= max_no_output_failures
+            ):
+                logging.error(
+                    "ffmpeg produced no output (%s failures), giving up",
+                    failures,
+                )
+                live_caps.record_failure(url, reason="no_output")
+                if host_key:
+                    live_host_caps.record_failure(host_key, reason="no_output")
+                return
+            if (
+                max_no_output_seconds is not None
+                and (time.time() - last_output_ts) >= max_no_output_seconds
+            ):
+                logging.error(
+                    "ffmpeg produced no output for %.1fs, giving up",
+                    time.time() - last_output_ts,
+                )
+                live_caps.record_failure(url, reason="no_output")
+                if host_key:
+                    live_host_caps.record_failure(host_key, reason="no_output")
+                return
             if failures >= config.LIVE_MAX_FAILURES:
                 logging.error(
                     "ffmpeg failed %s times without output, giving up",
@@ -901,6 +1545,8 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
                 )
                 return
             if now - last_log > 10:
+                if stderr_snip:
+                    logging.warning("ffmpeg stderr (first 4KB): %s", stderr_snip)
                 logging.warning(
                     "ffmpeg exited with %s, retrying (%s/%s)",
                     process.returncode,
@@ -917,6 +1563,18 @@ def generate_live_stream(url: str) -> Generator[bytes, None, None]:
         # Exponential backoff keeps the server from hammering the camera URL
         # when ffmpeg repeatedly fails. The delay tops out at 30 seconds.
         delay = 2 if failures == 0 else min(2**failures, 30)
+        if max_no_output_seconds is not None and not chunk_yielded:
+            remaining = max_no_output_seconds - (time.time() - last_output_ts)
+            if remaining <= 0:
+                logging.error(
+                    "ffmpeg produced no output for %.1fs, giving up",
+                    time.time() - last_output_ts,
+                )
+                live_caps.record_failure(url, reason="no_output")
+                if host_key:
+                    live_host_caps.record_failure(host_key, reason="no_output")
+                return
+            delay = min(delay, remaining)
         time.sleep(delay)
 
 
@@ -991,46 +1649,116 @@ def _placeholder_screenshot() -> io.BytesIO:
     return buf
 
 
+@lru_cache(maxsize=8)
+def _render_stream_timestamp(frame: bytes, timestamp: str) -> bytes:
+    """Render one exact frame/clock pair, retaining at most eight results."""
+    with Image.open(io.BytesIO(frame)) as img:
+        img = img.convert("RGB")
+        draw = ImageDraw.Draw(img)
+        text = f"\u25cf {timestamp}"
+        font_size = max(10, int(img.height * 0.03))
+        font = load_font(font_size)
+        padding = 4
+        bbox = draw.textbbox((0, 0), text, font=font, stroke_width=1)
+        text_w = bbox[2] - bbox[0]
+        text_h = bbox[3] - bbox[1]
+        x = img.width - text_w - padding
+        y = img.height - int(font_size * 3.5)
+        background = Image.new(
+            "RGBA",
+            (text_w + padding * 2, text_h + padding * 2),
+            (0, 0, 0, 128),
+        )
+        img.paste(background, (x - padding, y - padding), background)
+        draw.text(
+            (x, y),
+            text,
+            font=font,
+            fill=(255, 255, 255, 255),
+            stroke_width=1,
+            stroke_fill=(0, 0, 0, 255),
+        )
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG")
+        return buf.getvalue()
+
+
 def _overlay_stream_timestamp(frame: bytes) -> bytes:
-    """Return ``frame`` with a live timestamp overlay."""
+    """Share timestamp rendering across viewers without retaining large frames."""
     try:
-        with Image.open(io.BytesIO(frame)) as img:
-            img = img.convert("RGB")
-            draw = ImageDraw.Draw(img)
-            zone = tz.gettz(config.TZ) or tz.UTC
-            timestamp = datetime.now(zone).strftime("%H:%M:%S")
-            text = f"\u25cf {timestamp}"
-            font_size = max(10, int(img.height * 0.03))
-            font = load_font(font_size)
-            padding = 4
-            bbox = draw.textbbox((0, 0), text, font=font, stroke_width=1)
-            text_w = bbox[2] - bbox[0]
-            text_h = bbox[3] - bbox[1]
-            x = img.width - text_w - padding
-            y = img.height - int(font_size * 3.5)
-            background = Image.new(
-                "RGBA",
-                (text_w + padding * 2, text_h + padding * 2),
-                (0, 0, 0, 128),
-            )
-            img.paste(background, (x - padding, y - padding), background)
-            draw.text(
-                (x, y),
-                text,
-                font=font,
-                fill=(255, 255, 255, 255),
-                stroke_width=1,
-                stroke_fill=(0, 0, 0, 255),
-            )
-            buf = io.BytesIO()
-            img.save(buf, format="JPEG")
-            return buf.getvalue()
-    except Exception as exc:  # pragma: no cover - overlay failures are noncritical
+        zone = tz.gettz(config.TZ) or tz.UTC
+        timestamp = datetime.now(zone).strftime("%H:%M:%S")
+        # Bound retained source bytes; oversized inputs still render normally.
+        render = (
+            _render_stream_timestamp
+            if len(frame) <= 256 * 1024
+            else _render_stream_timestamp.__wrapped__
+        )
+        return render(frame, timestamp)
+    except Exception as exc:  # Overlay failures must not interrupt playback.
         logging.debug("Stream timestamp overlay failed: %s", exc)
         return frame
 
 
 lock = Lock()
+latest_shot_cache = {}
+
+
+def _cache_key(group: Optional[str], camera: Optional[str], filename: str) -> tuple:
+    return (group or "", camera or "", filename)
+
+
+def _get_cached_latest_shot(
+    group: Optional[str], camera: Optional[str], filename: str, ttl: float = 1.0
+) -> Optional[str]:
+    key = _cache_key(group, camera, filename)
+    entry = latest_shot_cache.get(key, {})
+    cached_at = entry.get("time", 0)
+    path = entry.get("path")
+    if not path:
+        return None
+    if time.time() - cached_at > ttl:
+        return None
+    if not os.path.exists(path):
+        return None
+    return path
+
+
+def _set_cached_latest_shot(
+    group: Optional[str], camera: Optional[str], filename: str, path: str
+) -> None:
+    latest_shot_cache[_cache_key(group, camera, filename)] = {
+        "time": time.time(),
+        "path": path,
+    }
+
+
+def _publish_stream_cache(path: str, frame: bytes) -> None:
+    """Publish a disposable JPEG cache without risking the accepted source."""
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            dir=os.path.dirname(path),
+            prefix=os.path.basename(path) + ".",
+            suffix=".tmp",
+            delete=False,
+        ) as output:
+            temporary = output.name
+            output.write(frame)
+        os.replace(temporary, path)
+    except OSError as exc:
+        # The decoded frame remains usable even if the cache volume is full.
+        logging.warning("Could not publish stream cache %s: %s", path, exc)
+    finally:
+        if temporary is not None:
+            try:
+                os.unlink(temporary)
+            except FileNotFoundError:
+                pass
+            except OSError as exc:
+                logging.warning(
+                    "Could not remove stream cache temporary %s: %s", temporary, exc
+                )
 
 
 def generate(
@@ -1043,6 +1771,21 @@ def generate(
     """Yield MJPEG or RTP frames from the latest screenshot files."""
 
     placeholder_jpeg: Optional[bytes] = None
+    # Each viewer keeps only its last encoded source, never another camera's
+    # global last_shot. Timestamp overlays are still rendered every frame.
+    encoded_version = None
+    encoded_frame = None
+
+    def source_version(path: str) -> tuple:
+        stat = os.stat(path)
+        return (
+            path,
+            stat.st_dev,
+            stat.st_ino,
+            stat.st_size,
+            stat.st_mtime_ns,
+            stat.st_ctime_ns,
+        )
 
     def _placeholder_frame() -> bytes:
         nonlocal placeholder_jpeg
@@ -1066,11 +1809,20 @@ def generate(
     boundary = b"frame"
     while True:
         ltime = time.time()
+        stream_scope = "all"
+        if camera:
+            stream_scope = f"camera_{camera}"
+        elif group:
+            stream_scope = f"group_{group}"
+        safe_scope = "".join(
+            ch if ch.isalnum() or ch in ("_", "-") else "_" for ch in stream_scope
+        )
+        scoped_name = secure_filename(f"{safe_scope}_{filename}")
         last_path = os.path.join(
             os.path.dirname(os.path.join(__file__)),
             "..",
             SCREENSHOT_DIRECTORY,
-            filename,
+            scoped_name,
         ).replace(".png", ".jpg")
 
         frame = None
@@ -1084,151 +1836,174 @@ def generate(
                 frame = f.read()
         else:
             with lock:
-                if (
-                    group is None
-                    and camera is None
-                    and last_time
-                    and time.time() - last_time < 1
-                    and last_shot
-                    and os.path.exists(last_shot)
-                ):
-                    # Serve the previously captured screenshot if a new frame
-                    # was not generated. If the cached image cannot be opened,
-                    # remove it and fall back to searching for a new screenshot.
-                    try:
-                        if screenshots._is_valid_png(last_shot):
-                            with Image.open(last_shot) as img:
-                                img = resize_and_pad(img, (1280, 720))
-                                buffer = io.BytesIO()
-                                img.save(buffer, format="JPEG")
-                                frame = buffer.getvalue()
-                        else:
-                            logging.error(
-                                "Failed to open last shot %s: invalid image",
-                                last_shot,
-                            )
-                            try:
-                                os.remove(last_shot)
-                            except OSError as exc:
-                                logging.warning(
-                                    "Failed to remove bad shot %s: %s",
-                                    last_shot,
-                                    exc,
-                                )
-                            last_shot = None
-                    except Exception as e:
-                        logging.error("Failed to open last shot %s: %s", last_shot, e)
-                        try:
-                            os.remove(last_shot)
-                        except OSError as exc:
-                            logging.warning(
-                                "Failed to remove bad shot %s: %s",
-                                last_shot,
-                                exc,
-                            )
-                        last_shot = None
-
                 if frame is None:
-                    # Replace this with your actual template manager code
-                    templates = template_manager.get_templates()
+                    cached = (
+                        _get_cached_latest_shot(group, camera, filename)
+                        if camera
+                        else None
+                    )
+                    if cached:
+                        most_recent_file = cached
+                    else:
+                        most_recent_file = None
 
-                    # sorted_templates = sorted(templates.items(), key=lambda x: int(x[1].get('last_video_time', 0) or 0), reverse=True)
-                    sorted_templates = (
-                        templates.items()
-                    )  # there is a problem with the sort..
+                    if most_recent_file is None:
+                        # Replace this with your actual template manager code
+                        templates = template_manager.get_templates()
 
-                    most_recent_time = 0
-                    most_recent_file = None
-                    # there is some kind of bug in here where we will sometimes pick an image before we should (like if its not captioned yet)
-                    for template_id, template_details in sorted_templates:
-                        template_name = validate_template_name(
-                            template_details.get("name")
+                        # sorted_templates = sorted(templates.items(), key=lambda x: int(x[1].get('last_video_time', 0) or 0), reverse=True)
+                        sorted_templates = sorted(
+                            templates.items(), key=lambda x: str(x[0]).lower()
                         )
-                        if template_name is None:
-                            continue
-
-                        if camera and template_name != camera:
-                            continue
-
-                        template_groups = []
-                        if group and "groups" in template_details:
-                            template_groups = [
-                                g.strip() for g in template_details["groups"].split(",")
-                            ]
-                            if group not in template_groups:
-                                continue
-                        elif group:
-                            continue
-
-                        path = os.path.join(
-                            os.path.dirname(os.path.abspath(__file__)),
-                            "..",
-                            SCREENSHOT_DIRECTORY,
-                            template_name,
-                        )
-                        # no need to loop through the directory if we find the symlink file
-                        lfiles = []
-                        file_path = os.path.join(path, filename)
-                        if os.path.exists(file_path):
-                            lfiles = [file_path]
-                        else:
-                            # fall back to the oldest screenshot so the MJPEG
-                            # stream always has an initial frame
-                            pngs = []
-                            for f in os.listdir(path):
-                                full = os.path.join(path, f)
-                                if f.endswith(".png") and os.path.isfile(full):
-                                    try:
-                                        ctime = os.path.getctime(full)
-                                    except FileNotFoundError:
-                                        # file vanished between listdir and stat
-                                        continue
-                                    pngs.append((ctime, full))
-
-                            if pngs:
-                                pngs.sort(key=lambda t: t[0])
-                                lfiles = [pngs[0][1]]
-
-                        last_file = lfiles[-1] if lfiles else None
-                        if (
-                            last_file
-                            and os.path.exists(last_file)
-                            and (
-                                os.path.getmtime(last_file) > most_recent_time
-                                or most_recent_file is None
+                        # For aggregate/group streams, rotate source camera by second so
+                        # one very-fresh feed (e.g. Waze) can't dominate forever.
+                        if not camera and sorted_templates:
+                            offset = int(time.time()) % len(sorted_templates)
+                            sorted_templates = (
+                                sorted_templates[offset:] + sorted_templates[:offset]
                             )
-                        ):
-                            most_recent_file = last_file
-                            most_recent_time = os.path.getmtime(last_file)
+
+                        most_recent_time = 0
+                        # there is some kind of bug in here where we will sometimes pick an image before we should (like if its not captioned yet)
+                        for template_id, template_details in sorted_templates:
+                            template_name = validate_template_name(
+                                template_details.get("name")
+                            )
+                            if template_name is None:
+                                continue
+
+                            if camera and template_name != camera:
+                                continue
+
+                            template_groups = []
+                            if group and "groups" in template_details:
+                                template_groups = [
+                                    g.strip()
+                                    for g in template_details["groups"].split(",")
+                                ]
+                                if group not in template_groups:
+                                    continue
+                            elif group:
+                                continue
+
+                            path = os.path.join(
+                                os.path.dirname(os.path.abspath(__file__)),
+                                "..",
+                                SCREENSHOT_DIRECTORY,
+                                template_name,
+                            )
+                            # no need to loop through the directory if we find the symlink file
+                            lfiles = []
+                            file_path = os.path.join(path, filename)
+                            if os.path.exists(file_path):
+                                lfiles = [file_path]
+                            else:
+                                # Fall back to the newest screenshot so the MJPEG
+                                # stream starts with the most recent frame.
+                                try:
+                                    entries = os.listdir(path)
+                                except FileNotFoundError:
+                                    # If a camera is configured but its screenshot directory
+                                    # hasn't been created yet, avoid turning the stream into a 500.
+                                    logging.warning(
+                                        "Missing screenshot directory for template %s: %s",
+                                        template_name,
+                                        path,
+                                    )
+                                    continue
+
+                                pngs = []
+                                for f in entries:
+                                    # Ignore temporary/backup files that may be created during
+                                    # atomic screenshot updates. These can disappear between
+                                    # listdir/stat/open and should never be selected as a
+                                    # "latest" frame for streaming.
+                                    if f.endswith(".tmp.png") or f.endswith(
+                                        ".png.orig"
+                                    ):
+                                        continue
+                                    full = os.path.join(path, f)
+                                    if f.endswith(".png") and os.path.isfile(full):
+                                        try:
+                                            mtime = os.path.getmtime(full)
+                                        except FileNotFoundError:
+                                            # file vanished between listdir and stat
+                                            continue
+                                        pngs.append((mtime, full))
+
+                                if pngs:
+                                    pngs.sort(key=lambda t: t[0], reverse=True)
+                                    lfiles = [pngs[0][1]]
+
+                            last_file = lfiles[-1] if lfiles else None
+                            if last_file and os.path.exists(last_file):
+                                if not camera:
+                                    # Aggregate/group stream mode: pick the first valid
+                                    # camera from the rotated ordering for fair cycling.
+                                    most_recent_file = last_file
+                                    break
+                                last_mtime = os.path.getmtime(last_file)
+                                if (
+                                    last_mtime > most_recent_time
+                                    or most_recent_file is None
+                                ):
+                                    most_recent_file = last_file
+                                    most_recent_time = last_mtime
 
                     frame = None
                     if most_recent_file:
                         last_time = time.time()
                         last_shot = most_recent_file
+                        if camera:
+                            _set_cached_latest_shot(group, camera, filename, last_shot)
 
                         try:
-                            with open(most_recent_file, "rb") as f:
-                                data = f.read()
-                            with Image.open(io.BytesIO(data)) as img:
-                                img = resize_and_pad(img, (1280, 720))
-                                buffer = io.BytesIO()
-                                img.save(buffer, format="JPEG")
-                                frame = buffer.getvalue()
+                            version = source_version(most_recent_file)
+                            stable = time.time_ns() - max(version[-2:]) >= 1_000_000_000
+                            if stable and version == encoded_version:
+                                frame = encoded_frame
+                            else:
+                                with open(most_recent_file, "rb") as f:
+                                    data = f.read()
+                                with Image.open(io.BytesIO(data)) as img:
+                                    img = resize_and_pad(img, (1280, 720))
+                                    buffer = io.BytesIO()
+                                    img.save(buffer, format="JPEG")
+                                    frame = buffer.getvalue()
+                                # Do not cache a file replaced while we read it.
+                                if (
+                                    stable
+                                    and source_version(most_recent_file) == version
+                                ):
+                                    encoded_version, encoded_frame = version, frame
+                                else:
+                                    encoded_version, encoded_frame = None, None
 
                             if frame is not None:
-                                # Write to a temporary file first, then atomically
-                                # replace the cached JPEG. This avoids serving
-                                # partially written files when new screenshots
-                                # are generated.
-                                temp_path = last_path + ".tmp"
-                                with open(temp_path, "wb") as f:
-                                    f.write(frame)
-                                # Atomically move the temp file into place
-                                os.replace(temp_path, last_path)
+                                _publish_stream_cache(last_path, frame)
+                        except FileNotFoundError:
+                            # The selected file can disappear if it was replaced/cleaned up
+                            # between selection and open (for example, a temp file during an
+                            # atomic write). Treat as a transient miss rather than a server error.
+                            frame = None
                         except UnidentifiedImageError:
+                            try:
+                                size = os.path.getsize(most_recent_file)
+                                age_seconds = time.time() - os.path.getmtime(
+                                    most_recent_file
+                                )
+                            except OSError:
+                                size = "unknown"
+                                age_seconds = None
                             logging.warning(
-                                "Discarding invalid screenshot %s",
+                                "Discarding invalid screenshot %s (size=%s, age=%s)",
                                 most_recent_file,
+                                size,
+                                (
+                                    f"{age_seconds:.1f}s"
+                                    if age_seconds is not None
+                                    else "unknown"
+                                ),
                             )
                             try:
                                 os.remove(most_recent_file)
@@ -1240,19 +2015,13 @@ def generate(
                                 )
                             frame = None
                         except Exception as exc:
+                            # Only a confirmed decode failure above can discard a
+                            # source. Permission, cache and other I/O errors cannot.
                             logging.error(
                                 "Failed to update screenshot cache: %s",
                                 exc,
                                 exc_info=True,
                             )
-                            try:
-                                os.remove(most_recent_file)
-                            except OSError as remove_exc:
-                                logging.warning(
-                                    "Failed to remove invalid screenshot %s: %s",
-                                    most_recent_file,
-                                    remove_exc,
-                                )
                             frame = None
 
         if not frame:
@@ -1385,11 +2154,14 @@ def allowed_filename(filename: str) -> bool:
 
 def init_routes(app: Flask) -> None:
     """Register all route handlers on the given ``app``."""
+    init_db()
+    ensure_column("users", "temp_password_required", "BOOLEAN", "0")
     from app.blueprints.api import create_blueprint as create_api_blueprint
     from app.blueprints.assets import create_blueprint as create_assets_blueprint
     from app.blueprints.authentication import create_blueprint as create_auth_blueprint
     from app.blueprints.discovery import create_blueprint as create_discovery_blueprint
     from app.blueprints.docs import create_blueprint as create_docs_blueprint
+    from app.blueprints.location import create_blueprint as create_location_blueprint
     from app.blueprints.mcp import create_blueprint as create_mcp_blueprint
     from app.blueprints.media import create_blueprint as create_media_blueprint
     from app.blueprints.network import create_blueprint
@@ -1449,6 +2221,10 @@ def init_routes(app: Flask) -> None:
     if not getattr(app, "_timeline_bp_registered", False):
         app.register_blueprint(create_timeline_blueprint())
         app._timeline_bp_registered = True
+
+    if not getattr(app, "_location_bp_registered", False):
+        app.register_blueprint(create_location_blueprint())
+        app._location_bp_registered = True
 
     if not getattr(app, "_views_bp_registered", False):
         app.register_blueprint(create_views_blueprint())
@@ -1510,6 +2286,21 @@ def init_routes(app: Flask) -> None:
 
     @app.context_processor
     def inject_footer_data():
+        from app.viewer_policy import VIEWER_CONFIG
+
+        lan_guest = False
+        if has_request_context():
+            ip = request.remote_addr
+            if ip:
+                try:
+                    ip_obj = ip_address(ip)
+                except ValueError:
+                    ip_obj = None
+                if ip_obj and any(ip_obj in net for net in config.SKIP_LOGIN_SUBNETS):
+                    mode = (config.LAN_GUEST_MODE or "full").lower()
+                    if mode not in {"full", "read_only", "disabled"}:
+                        mode = "full"
+                    lan_guest = mode != "disabled"
         outdated = False
         try:
             from app.utils.github import is_update_available
@@ -1522,6 +2313,9 @@ def init_routes(app: Flask) -> None:
             VERSION=VERSION,
             VERSION_OUTDATED=outdated,
             COMMIT_HASH=COMMIT_HASH,
+            ASSET_VERSION=current_app.config.get(
+                "ASSET_VERSION", getattr(config, "ASSET_VERSION", VERSION)
+            ),
             NODE_ENV=NODE_ENV,
             CHYRON_SPEED=CHYRON_SPEED,
             NAV_ICON=NAV_ICON,
@@ -1529,4 +2323,8 @@ def init_routes(app: Flask) -> None:
             CLOCK_OVERLAY=CLOCK_OVERLAY,
             CLOCK_DIGITAL=CLOCK_DIGITAL,
             CLOCK_NAVBAR=CLOCK_NAVBAR,
+            LAN_GUEST=lan_guest,
+            NAVIGATION_GROUPS=VIEWER_CONFIG.get(
+                "navigation_groups", ["plants", "grower", "regional", "weather"]
+            ),
         )

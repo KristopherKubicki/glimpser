@@ -1,7 +1,6 @@
 """Database utilities for initializing the SQLite engine and schema."""
 
 import os
-import time
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
@@ -45,27 +44,54 @@ def ensure_column(
 ) -> None:
     """Add a column to a table if it doesn't already exist."""
 
+    ensure_columns(table_name, [(column_name, column_type, default)])
+
+
+def ensure_columns(table_name: str, definitions: list[tuple[str, str, str]]) -> None:
+    """Upgrade a table using one schema read and transaction per batch.
+
+    Template managers are created on capture and UI read paths. Inspecting the
+    same table separately for every optional column made reads CPU-intensive.
+    Read the schema anew here (no stale cache across database swaps or forks).
+    """
+
     with engine.begin() as conn:
+        table_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name=:name"),
+            {"name": table_name},
+        ).fetchone()
+        if not table_exists:
+            return
         result = conn.execute(text(f"PRAGMA table_info({table_name})"))
-        columns = [row[1] for row in result]
-        if column_name not in columns:
-            conn.execute(
-                text(
-                    f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type} DEFAULT {default}"
+        columns = {row[1] for row in result}
+        for column_name, column_type, default in definitions:
+            if column_name in columns:
+                continue
+            try:
+                conn.execute(
+                    text(
+                        "ALTER TABLE "
+                        f"{table_name} ADD COLUMN {column_name} {column_type} "
+                        f"DEFAULT {default}"
+                    )
                 )
-            )
+            except OperationalError as exc:
+                # Parallel workers can both observe the missing column and race
+                # into the ALTER TABLE. Treat duplicate-column errors as a
+                # successful concurrent migration.
+                if "duplicate column name" not in str(exc).lower():
+                    raise
+            columns.add(column_name)
 
 
 def commit_with_retry(session, attempts: int = 3, delay: float = 0.1) -> None:
-    """Commit a session with retries on SQLite locking errors."""
+    """Commit pending work or propagate the original database failure.
 
-    for attempt in range(attempts):
-        try:
-            session.commit()
-            return
-        except OperationalError as exc:
-            if "database is locked" in str(exc) and attempt < attempts - 1:
-                session.rollback()
-                time.sleep(delay)
-                continue
-            raise
+    The legacy name and arguments remain compatible with existing callers.
+    Retrying only commit after rollback discards pending ORM changes and can
+    falsely report success. A safe retry must replay the complete operation in
+    a new transaction; this helper cannot reconstruct arbitrary caller work.
+    Callers remain responsible for rollback/close on failure. SQLite's existing
+    connection busy timeout still handles short-lived write contention.
+    """
+    session.commit()

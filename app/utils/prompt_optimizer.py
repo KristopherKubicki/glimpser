@@ -24,7 +24,13 @@ def generate_prompt(template_name: str, num_images: int = 3) -> str:
     if not image_paths:
         return ""
 
-    new_prompt = "Review the images and provide a short caption prompt to improve future captions."
+    new_prompt = (
+        "Review these recent frames and write a reusable camera-note prompt for "
+        "future captions. Return 2-4 concise sentences: identify the view, name "
+        "the important visual signals to watch, call out any source/capture "
+        "caveats, and tell the captioner what to ignore. Do not summarize these "
+        "specific frames."
+    )
     original_prompt = img_proc.LLM_CAPTION_PROMPT
     img_proc.LLM_CAPTION_PROMPT = new_prompt
     try:

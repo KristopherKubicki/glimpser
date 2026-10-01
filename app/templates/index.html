@@ -1,57 +1,1288 @@
-<!-- app/templates/index.html -->
+{% extends 'base.html' %} {% block body_class %}landing-screen
+landing-profile-{{ landing_profile.key if landing_profile is defined else
+'public' }}{% endblock %} {% block content %}
+<style>
+  body.landing-screen {
+    --landing-bg: rgba(5, 10, 18, 0.72);
+    --landing-bg-strong: rgba(5, 10, 18, 0.88);
+    --landing-border: rgba(255, 255, 255, 0.14);
+    --landing-border-strong: rgba(255, 255, 255, 0.22);
+    --landing-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+    --landing-text-strong: #f8fbff;
+    --landing-text-muted: rgba(248, 251, 255, 0.78);
+    --landing-accent: rgba(78, 176, 255, 0.28);
+    --landing-screen-gutter: clamp(0.45rem, 1vw, 0.9rem);
+    --landing-viewport-height: var(--eyebat-landing-viewport-height, 100dvh);
+    --landing-stage-height: calc(
+      var(--landing-viewport-height, 100dvh) - var(--landing-screen-gutter) -
+        var(--landing-screen-gutter)
+    );
+    height: var(--landing-viewport-height, 100dvh);
+    min-height: var(--landing-viewport-height, 100dvh);
+    overflow: hidden;
+  }
 
-{% extends 'base.html' %} {% from 'components.html' import template_controls %}
-{% block content %} {% call template_controls() %}
-<select id="sort-date" class="sort-select" aria-label="Sort cameras">
-  <option value="">↕</option>
-  <option value="name_asc">A–Z</option>
-  <option value="name_desc">Z–A</option>
-  <option value="last_desc">Last ↓</option>
-  <option value="last_asc">Last ↑</option>
-  <option value="next_desc">Next ↓</option>
-  <option value="next_asc">Next ↑</option>
-  <option value="error_desc">Error ↓</option>
-  <option value="error_asc">Error ↑</option>
-</select>
-{% endcall %}
+  body.landing-screen > header,
+  body.landing-screen > footer {
+    display: none;
+  }
 
-<section id="template-list-section">
-  <div
-    id="template-list"
-    title="List of all templates"
-    role="region"
-    aria-label="Templates"
-  >
-    <!-- Template list will be populated here -->
+  body.landing-screen main {
+    width: 100%;
+    min-height: var(--landing-viewport-height, 100dvh);
+    box-sizing: border-box;
+    display: flex;
+    padding: var(--landing-screen-gutter);
+  }
+
+  body.landing-screen .landing-shell {
+    position: relative;
+    width: 100%;
+    height: var(--landing-stage-height);
+    min-height: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  body.landing-screen .landing-toolbar,
+  body.landing-screen .landing-review-controls,
+  body.landing-screen .landing-hero-overlay,
+  body.landing-screen .landing-context-panel,
+  body.landing-screen .corner-time {
+    transition:
+      opacity 220ms ease,
+      transform 220ms ease;
+  }
+
+  body.landing-screen .landing-shell:not(.is-chrome-visible) .landing-toolbar,
+  body.landing-screen
+    .landing-shell:not(.is-chrome-visible)
+    .landing-review-controls,
+  body.landing-screen
+    .landing-shell:not(.is-chrome-visible)
+    .landing-hero-overlay,
+  body.landing-screen
+    .landing-shell:not(.is-chrome-visible)
+    .landing-context-panel,
+  body.landing-screen .landing-shell:not(.is-chrome-visible) .corner-time {
+    opacity: 0;
+    transform: translateY(0.35rem);
+    pointer-events: none;
+  }
+
+  body.landing-screen .landing-toolbar {
+    position: absolute;
+    top: var(--landing-screen-gutter);
+    right: var(--landing-screen-gutter);
+    left: var(--landing-screen-gutter);
+    z-index: 20;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+  }
+
+  body.landing-screen .landing-review-controls {
+    position: fixed;
+    right: 50%;
+    bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
+    z-index: 24;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    max-width: calc(100vw - 8rem);
+    padding: 0.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+    background: rgba(3, 9, 17, 0.82);
+    box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.38);
+    transform: translateX(50%);
+    transition: opacity 220ms ease, transform 220ms ease;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  body.landing-screen .landing-shell:not(.is-chrome-visible)
+    .landing-review-controls {
+    transform: translate(50%, 0.35rem);
+  }
+
+  body.landing-screen .landing-review-button,
+  body.landing-screen .landing-review-select,
+  body.landing-screen .landing-review-link {
+    min-height: 2.65rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+    background: rgba(20, 32, 48, 0.92);
+    color: #f3f8ff;
+    font: inherit;
+    font-weight: 700;
+    padding: 0.55rem 0.85rem;
+    text-decoration: none;
+  }
+
+  body.landing-screen .landing-review-button:active,
+  body.landing-screen .landing-review-link:active {
+    background: #2b75a7;
+  }
+
+  body.landing-screen .landing-review-button[data-active="true"] {
+    background: #9f6c18;
+    border-color: #f1bd54;
+  }
+
+  body.landing-screen .landing-review-status {
+    color: #c8dbed;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  body.landing-screen .landing-recent-strip {
+    position: absolute;
+    right: 50%;
+    bottom: calc(100% + 0.55rem);
+    display: grid;
+    width: min(32rem, calc(100vw - 2rem));
+    gap: 0.35rem;
+    padding: 0.55rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 1rem;
+    background: rgba(3, 9, 17, 0.94);
+    transform: translateX(50%);
+  }
+
+  body.landing-screen .landing-recent-strip[hidden] {
+    display: none;
+  }
+
+  body.landing-screen .landing-recent-strip button {
+    min-height: 2.4rem;
+    border: 0;
+    border-radius: 0.65rem;
+    background: rgba(35, 53, 75, 0.9);
+    color: #eff7ff;
+    font: inherit;
+    text-align: left;
+    padding: 0.5rem 0.7rem;
+  }
+
+  body.landing-screen .landing-actions,
+  body.landing-screen .landing-profiles,
+  body.landing-screen .landing-modes {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+  }
+
+  body.landing-screen .landing-actions {
+    flex: 1 1 16rem;
+  }
+
+  body.landing-screen .landing-profiles,
+  body.landing-screen .landing-modes {
+    flex: 0 1 auto;
+  }
+
+  body.landing-screen .landing-action,
+  body.landing-screen .landing-profile-chip,
+  body.landing-screen .landing-mode-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    padding: 0.6rem 0.95rem;
+    border-radius: 999px;
+    border: 1px solid var(--landing-border);
+    background: rgba(7, 14, 24, 0.62);
+    color: var(--landing-text-strong);
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.1;
+    text-decoration: none;
+    white-space: nowrap;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  body.landing-screen .landing-action:hover,
+  body.landing-screen .landing-profile-chip:hover,
+  body.landing-screen .landing-mode-chip:hover {
+    border-color: var(--landing-border-strong);
+    background: rgba(12, 21, 35, 0.78);
+  }
+
+  body.landing-screen .landing-profile-chip.is-active,
+  body.landing-screen .landing-mode-chip.is-active {
+    border-color: rgba(104, 191, 255, 0.62);
+    background:
+      linear-gradient(
+        180deg,
+        rgba(84, 173, 255, 0.26),
+        rgba(39, 97, 152, 0.26)
+      ),
+      rgba(7, 14, 24, 0.8);
+    box-shadow: inset 0 0 0 1px rgba(104, 191, 255, 0.12);
+  }
+
+  body.landing-screen .landing-stage-shell {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    border-radius: 1.4rem;
+    overflow: hidden;
+    background:
+      radial-gradient(
+        circle at top,
+        rgba(40, 92, 136, 0.24),
+        rgba(5, 10, 18, 0.96) 58%
+      ),
+      rgba(5, 10, 18, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: var(--landing-shadow);
+  }
+
+  body.landing-screen.landing-profile-hal {
+    --landing-bg: rgba(2, 6, 12, 0.74);
+    --landing-bg-strong: rgba(2, 6, 12, 0.9);
+    --landing-border: rgba(255, 255, 255, 0.1);
+    --landing-border-strong: rgba(255, 255, 255, 0.18);
+    --landing-screen-gutter: clamp(0.12rem, 0.35vw, 0.35rem);
+    --landing-shadow: none;
+  }
+
+  body.landing-screen.landing-profile-hal .landing-stage-shell {
+    border-radius: 0.35rem;
+    background: #02060c;
+    border-color: rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+  }
+
+  body.landing-screen .landing-stage,
+  body.landing-screen .landing-scene-stack,
+  body.landing-screen .landing-scene-grid,
+  body.landing-screen .landing-hero-panel {
+    position: relative;
+    min-height: inherit;
+    height: 100%;
+  }
+
+  .landing-priority-notice {
+    position: absolute;
+    top: 5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    padding: 0.7rem 1.2rem;
+    border: 2px solid #ffc857;
+    border-radius: 0.75rem;
+    background: #201909;
+    color: #ffe3a3;
+    font-weight: 700;
+    pointer-events: none;
+  }
+  .has-priority-event {
+    outline: 3px solid #ffc857;
+    outline-offset: -3px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .landing-priority-notice {
+      animation: landing-priority-pulse 1.2s ease-in-out 2;
+    }
+  }
+  @keyframes landing-priority-pulse {
+    50% {
+      box-shadow: 0 0 24px rgba(255, 200, 87, 0.65);
+    }
+  }
+
+  body.landing-screen .landing-scene {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(1.008);
+    transition:
+      opacity 280ms ease,
+      transform 900ms ease;
+  }
+
+  body.landing-screen .landing-scene.is-visible,
+  body.landing-screen .landing-scene.is-exiting {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  body.landing-screen .landing-scene.is-visible {
+    pointer-events: auto;
+    z-index: 2;
+  }
+
+  body.landing-screen .landing-scene.is-exiting {
+    z-index: 1;
+  }
+
+  body.landing-screen .landing-hero-panel {
+    position: relative;
+  }
+
+  body.landing-screen .landing-hero-media,
+  body.landing-screen .landing-pip-card,
+  body.landing-screen .landing-deck-card {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border-radius: 1rem;
+    background: rgba(7, 14, 24, 0.92);
+    color: var(--landing-text-strong);
+    text-decoration: none;
+    box-shadow: var(--landing-shadow);
+  }
+
+  body.landing-screen.landing-profile-hal .landing-hero-media,
+  body.landing-screen.landing-profile-hal .landing-pip-card,
+  body.landing-screen.landing-profile-hal .landing-deck-card {
+    border-radius: 0.2rem;
+    background: #02060c;
+    box-shadow: none;
+  }
+
+  body.landing-screen .landing-hero-media {
+    height: 100%;
+    min-height: inherit;
+  }
+
+  body.landing-screen .landing-hero-media img,
+  body.landing-screen .landing-hero-video,
+  body.landing-screen .landing-pip-card img,
+  body.landing-screen .landing-pip-video,
+  body.landing-screen .landing-deck-card img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    /* Preserve capture edges: timestamps and captions are baked into frames. */
+    object-fit: contain;
+    box-sizing: border-box;
+    padding: clamp(6px, 0.6vw, 12px);
+  }
+
+  /* Keep the camera badge above embedded camera timestamps. */
+  body.landing-screen .landing-hero-media img,
+  body.landing-screen .landing-hero-video {
+    padding-top: 3.25rem;
+  }
+
+  body.landing-screen .landing-hero-video,
+  body.landing-screen .landing-pip-video {
+    opacity: 0;
+    transition: opacity 220ms ease;
+  }
+
+  body.landing-screen .landing-hero-media.has-ready-video .landing-hero-video,
+  body.landing-screen .landing-pip-card.has-ready-video .landing-pip-video {
+    opacity: 1;
+  }
+
+  body.landing-screen .landing-hero-media.is-contained img,
+  body.landing-screen .landing-hero-media.is-contained .landing-hero-video,
+  body.landing-screen .landing-pip-card.is-contained img,
+  body.landing-screen .landing-pip-card.is-contained .landing-pip-video,
+  body.landing-screen .landing-deck-card.is-contained img {
+    object-fit: contain;
+    background:
+      linear-gradient(180deg, rgba(8, 15, 26, 0.92), rgba(3, 8, 14, 0.96)),
+      rgba(5, 10, 18, 0.96);
+  }
+
+  body.landing-screen .landing-hero-bug,
+  body.landing-screen .landing-hero-overlay,
+  body.landing-screen .landing-pip-copy,
+  body.landing-screen .landing-deck-copy {
+    position: absolute;
+    z-index: 4;
+  }
+
+  body.landing-screen .landing-capture-age {
+    position: absolute;
+    top: 0.9rem;
+    right: 0.9rem;
+    z-index: 4;
+    max-width: 52%;
+    color: #f8fbff;
+    background: #08121f;
+    border: 1px solid #33465a;
+    border-radius: 0.6rem;
+    padding: 0.4rem 0.65rem;
+    font-size: clamp(0.72rem, 1vw, 0.95rem);
+    line-height: 1.25;
+    text-align: right;
+  }
+
+  body.landing-screen .landing-hero-bug {
+    top: 0.9rem;
+    left: 0.9rem;
+    max-width: min(40%, 24rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0.42rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(5, 10, 18, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--landing-text-strong);
+    font-size: 0.88rem;
+    font-weight: 700;
+    line-height: 1.1;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  body.landing-screen.landing-profile-hal .landing-hero-bug {
+    top: 0.38rem;
+    left: 0.38rem;
+    max-width: min(54vw, 22rem);
+    padding: 0.32rem 0.5rem;
+    border-radius: 0.28rem;
+    background: rgba(2, 6, 12, 0.64);
+    font-size: 0.78rem;
+  }
+
+  body.landing-screen .landing-hero-overlay {
+    left: 0.9rem;
+    right: calc(clamp(14rem, 18vw, 16rem) + 1.8rem);
+    bottom: 0.9rem;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: 1rem;
+    background: rgba(5, 10, 18, 0.58);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--landing-text-strong);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  body.landing-screen.landing-profile-hal .landing-hero-overlay {
+    left: 0.38rem;
+    right: calc(clamp(10.5rem, 15vw, 13.5rem) + 0.85rem);
+    bottom: 0.38rem;
+    gap: 0.5rem;
+    padding: 0.42rem 0.56rem;
+    border-radius: 0.35rem;
+    background: rgba(2, 6, 12, 0.5);
+  }
+
+  body.landing-screen .landing-hero-meta,
+  body.landing-screen .landing-hero-links {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  body.landing-screen .landing-scene-age {
+    font-variant-numeric: tabular-nums;
+    color: var(--landing-text-muted);
+  }
+
+  body.landing-screen .landing-hero-links a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.1rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: var(--landing-text-strong);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  body.landing-screen .landing-context-panel {
+    position: absolute;
+    top: 0.9rem;
+    right: 0.9rem;
+    bottom: clamp(7.25rem, 12vh, 9.75rem);
+    width: clamp(14rem, 18vw, 16rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    z-index: 6;
+  }
+
+  body.landing-screen.landing-profile-hal .landing-context-panel {
+    top: 0.38rem;
+    right: 0.38rem;
+    bottom: clamp(4.8rem, 10vh, 7.2rem);
+    width: clamp(10.5rem, 15vw, 13.5rem);
+    gap: 0.38rem;
+  }
+
+  body.landing-screen .landing-pip-card,
+  body.landing-screen .landing-deck-panel,
+  body.landing-screen .landing-deck-list,
+  body.landing-screen .landing-deck-card {
+    min-height: 0;
+  }
+
+  body.landing-screen .landing-pip-card {
+    flex: 0 0 clamp(9rem, 24vh, 11rem);
+    min-height: clamp(9rem, 24vh, 11rem);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  body.landing-screen.landing-profile-hal .landing-pip-card {
+    flex-basis: clamp(7rem, 21vh, 9.25rem);
+    min-height: clamp(7rem, 21vh, 9.25rem);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  body.landing-screen .landing-pip-copy,
+  body.landing-screen .landing-deck-copy {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.72rem 0.8rem;
+    background:
+      linear-gradient(180deg, rgba(5, 10, 18, 0), rgba(5, 10, 18, 0.86)),
+      linear-gradient(
+        180deg,
+        rgba(5, 10, 18, 0.1),
+        rgba(5, 10, 18, 0.4) 35%,
+        rgba(5, 10, 18, 0.86)
+      );
+  }
+
+  body.landing-screen.landing-profile-hal .landing-pip-copy,
+  body.landing-screen.landing-profile-hal .landing-deck-copy {
+    padding: 0.46rem 0.5rem;
+  }
+
+  body.landing-screen .landing-pip-age,
+  body.landing-screen .landing-deck-step,
+  body.landing-screen .landing-panel-title {
+    color: var(--landing-text-muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  body.landing-screen .landing-pip-title,
+  body.landing-screen .landing-deck-title {
+    color: var(--landing-text-strong);
+    font-size: 0.98rem;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  body.landing-screen .landing-deck-panel {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.8rem;
+    border-radius: 1rem;
+    background: var(--landing-bg);
+    border: 1px solid var(--landing-border);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  body.landing-screen.landing-profile-hal .landing-deck-panel {
+    gap: 0.38rem;
+    padding: 0.38rem;
+    border-radius: 0.28rem;
+    background: rgba(2, 6, 12, 0.58);
+  }
+
+  body.landing-screen .landing-deck-list {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  body.landing-screen.landing-profile-hal .landing-deck-list {
+    gap: 0.38rem;
+  }
+
+  body.landing-screen .landing-deck-card {
+    min-height: 0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  body.landing-screen .landing-deck-card.is-primary {
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+
+  body.landing-screen .landing-rotation-progress {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 5;
+    height: 0.22rem;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+  }
+
+  body.landing-screen .landing-rotation-progress-bar {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(78, 176, 255, 0.22), #5cb0ff);
+    transform-origin: left center;
+    transform: scaleX(0);
+    animation: landing-rotation-progress
+      var(--landing-scene-rotation-ms, var(--landing-rotation-ms, 60000ms))
+      linear infinite;
+  }
+
+  body.landing-screen
+    .landing-scene:not(.is-visible)
+    .landing-rotation-progress-bar {
+    animation: none;
+  }
+
+  body.landing-screen .landing-empty {
+    display: grid;
+    place-items: center;
+    gap: 0.75rem;
+    min-height: min(50vh, 22rem);
+    padding: 1rem;
+    text-align: center;
+  }
+
+  body.landing-screen .corner-time {
+    position: fixed;
+    right: clamp(0.75rem, 1.8vw, 1.1rem);
+    bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    z-index: 12;
+    padding: 0.5rem 0.8rem;
+    border-radius: 999px;
+    background: rgba(5, 10, 18, 0.66);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--landing-text-strong);
+    font-size: 0.84rem;
+    font-variant-numeric: tabular-nums;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  @keyframes landing-rotation-progress {
+    0% {
+      transform: scaleX(0);
+    }
+
+    100% {
+      transform: scaleX(1);
+    }
+  }
+
+  @media (max-width: 900px) {
+    body.landing-screen main {
+      display: block;
+      min-height: 0;
+      padding: 0.75rem;
+      padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    body.landing-screen {
+      height: auto;
+      min-height: 100dvh;
+      overflow: auto;
+    }
+
+    body.landing-screen .landing-shell {
+      height: auto;
+      gap: 0.75rem;
+    }
+
+    body.landing-screen .landing-shell:not(.is-chrome-visible) .landing-toolbar,
+    body.landing-screen
+      .landing-shell:not(.is-chrome-visible)
+      .landing-review-controls,
+    body.landing-screen
+      .landing-shell:not(.is-chrome-visible)
+      .landing-hero-overlay,
+    body.landing-screen
+      .landing-shell:not(.is-chrome-visible)
+      .landing-context-panel,
+    body.landing-screen .landing-shell:not(.is-chrome-visible) .corner-time {
+      opacity: 1;
+      transform: none;
+      pointer-events: auto;
+    }
+
+    body.landing-screen .landing-review-controls {
+      position: sticky;
+      right: auto;
+      bottom: 0.5rem;
+      max-width: 100%;
+      flex-wrap: wrap;
+      justify-content: center;
+      border-radius: 1rem;
+      transform: none;
+    }
+
+    body.landing-screen .landing-actions,
+    body.landing-screen .landing-profiles,
+    body.landing-screen .landing-modes {
+      flex: 1 1 100%;
+    }
+
+    body.landing-screen .landing-profiles,
+    body.landing-screen .landing-modes {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 0.15rem;
+      scrollbar-width: none;
+    }
+
+    body.landing-screen .landing-profiles::-webkit-scrollbar,
+    body.landing-screen .landing-modes::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+    }
+
+    body.landing-screen .landing-stage-shell {
+      flex: none;
+      min-height: 0;
+      height: auto;
+      overflow: visible;
+      border-radius: 0;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+    }
+
+    body.landing-screen .landing-stage,
+    body.landing-screen .landing-scene-stack,
+    body.landing-screen .landing-scene-grid,
+    body.landing-screen .landing-hero-panel {
+      min-height: 0;
+      height: auto;
+    }
+
+    body.landing-screen .landing-scene {
+      position: relative;
+      display: none;
+      inset: auto;
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+
+    body.landing-screen .landing-scene.is-visible {
+      display: block;
+    }
+
+    body.landing-screen .landing-scene.is-exiting {
+      display: none;
+    }
+
+    body.landing-screen .landing-hero-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    body.landing-screen .landing-hero-media {
+      min-height: clamp(16rem, 52vw, 28rem);
+      border-radius: 1rem;
+    }
+
+    body.landing-screen .landing-hero-overlay {
+      right: 0.9rem;
+      flex-wrap: wrap;
+    }
+
+    body.landing-screen .landing-context-panel {
+      position: static;
+      top: auto;
+      right: auto;
+      bottom: auto;
+      width: 100%;
+    }
+
+    body.landing-screen .landing-pip-card {
+      flex-basis: auto;
+      min-height: 10rem;
+    }
+
+    body.landing-screen .landing-deck-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: none;
+    }
+
+    body.landing-screen .corner-time {
+      font-size: 0.78rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    body.landing-screen .landing-toolbar {
+      position: static;
+      gap: 0.65rem;
+    }
+
+    body.landing-screen .landing-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.landing-screen .landing-action,
+    body.landing-screen .landing-profile-chip,
+    body.landing-screen .landing-mode-chip {
+      min-height: 2.7rem;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.9rem;
+    }
+
+    body.landing-screen .landing-hero-bug {
+      max-width: 38%;
+      font-size: 0.82rem;
+    }
+
+    body.landing-screen .landing-hero-overlay {
+      left: 0.7rem;
+      right: 0.7rem;
+      bottom: 0.7rem;
+      gap: 0.55rem;
+      padding: 0.6rem 0.7rem;
+    }
+
+    body.landing-screen .landing-hero-links,
+    body.landing-screen .landing-hero-meta {
+      width: 100%;
+    }
+
+    body.landing-screen .landing-hero-links a {
+      width: 100%;
+    }
+
+    body.landing-screen .landing-pip-card {
+      min-height: 9rem;
+    }
+
+    body.landing-screen .landing-deck-panel {
+      padding: 0.72rem;
+    }
+
+    body.landing-screen .landing-pip-copy,
+    body.landing-screen .landing-deck-copy {
+      padding: 0.65rem 0.72rem;
+    }
+
+    body.landing-screen .landing-pip-title,
+    body.landing-screen .landing-deck-title {
+      font-size: 0.92rem;
+    }
+
+    body.landing-screen .landing-deck-list {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body.landing-screen .landing-toolbar,
+    body.landing-screen .landing-hero-overlay,
+    body.landing-screen .landing-context-panel,
+    body.landing-screen .corner-time,
+    body.landing-screen .landing-scene,
+    body.landing-screen .landing-hero-video,
+    body.landing-screen .landing-pip-video {
+      transition: none;
+    }
+
+    body.landing-screen .landing-rotation-progress-bar {
+      animation: none;
+      transform: scaleX(1);
+    }
+  }
+
+  body:is(.landing-profile-living, .landing-profile-office) .landing-hero-bug,
+  body:is(.landing-profile-living, .landing-profile-office) .landing-capture-age {
+    font-size: clamp(22px, 2vw, 42px);
+    font-weight: 750;
+    padding: 10px 16px;
+    line-height: 1.2;
+    top: 12px;
+    border-radius: 10px;
+    background: #08121f;
+    max-width: 48%;
+    box-sizing: border-box;
+  }
+  body:is(.landing-profile-living, .landing-profile-office) .landing-hero-bug { max-width: 46%; }
+  body:is(.landing-profile-living, .landing-profile-office) .landing-hero-media img,
+  body:is(.landing-profile-living, .landing-profile-office) .landing-hero-video {
+    padding-top: clamp(80px, 6vw, 116px);
+    padding-bottom: clamp(160px, 13vw, 250px);
+  }
+  .kiosk-caption-strip {
+    position: absolute; z-index: 5; bottom: 12px; left: 12px; right: 12px;
+    height: clamp(132px, 11vw, 212px); box-sizing: border-box;
+    display: flex; align-items: center; gap: 24px; padding: 14px 20px;
+    border: 1px solid #36516a; border-radius: 12px; background: #08121f;
+    color: #f8fbff; text-align: left;
+  }
+  .kiosk-caption-text {
+    flex: 1; min-width: 0; font-size: clamp(24px, 2.05vw, 42px);
+    font-weight: 600; line-height: 1.3; overflow: hidden;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  }
+  .kiosk-location { width: clamp(150px, 16vw, 300px); flex-shrink: 0;
+    font-size: clamp(18px, 1.3vw, 28px); color: #93e4d1; line-height: 1.2; }
+  .kiosk-location svg { display: block; width: 100%; max-height: 130px; }
+  body:is(.landing-profile-living, .landing-profile-office) .landing-hero-overlay { display: none; }
+  @media (max-width: 700px) {
+    body:is(.landing-profile-living, .landing-profile-office) .landing-hero-bug,
+    body:is(.landing-profile-living, .landing-profile-office) .landing-capture-age { font-size: 16px; padding: 8px; }
+    .kiosk-caption-text { font-size: 20px; }
+    .kiosk-location { display: none; }
+    .kiosk-caption-strip { height: 132px; padding: 10px; }
+  }
+
+  /* Room displays are full bleed; readable text floats over the image. */
+  body:is(.landing-profile-living, .landing-profile-office) main { padding: 0; }
+  body:is(.landing-profile-living, .landing-profile-office) { --landing-screen-gutter: 0px; }
+  body:is(.landing-profile-living, .landing-profile-office) .landing-stage-shell,
+  body:is(.landing-profile-living, .landing-profile-office) .landing-stage,
+  body:is(.landing-profile-living, .landing-profile-office) .landing-hero-media { border: 0; border-radius: 0; }
+  body:is(.landing-profile-living, .landing-profile-office) .landing-hero-media img,
+  body:is(.landing-profile-living, .landing-profile-office) .landing-hero-media .landing-hero-video,
+  body:is(.landing-profile-living, .landing-profile-office) .landing-hero-media.is-contained img,
+  body:is(.landing-profile-living, .landing-profile-office) .landing-hero-media.is-contained .landing-hero-video {
+    padding: 0; object-fit: cover; background: #000;
+  }
+  .kiosk-caption-strip {
+    bottom: 0; left: 0; right: 0; border: 0; border-radius: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,.9) 28%);
+    padding: 30px 28px 16px;
+  }
+  .kiosk-caption-text { text-shadow: 0 2px 4px #000; }
+  /* Satellite is portrait source imagery. Keep its full frame, with a soft
+     background using the same image to fill wide wall displays. */
+  .landing-scene.is-satellite .landing-hero-media::before {
+    content: ""; position: absolute; inset: -36px; z-index: 0;
+    background: var(--satellite-image) center / cover no-repeat;
+    filter: blur(26px) brightness(.48);
+  }
+  body.landing-screen .landing-scene.is-satellite .landing-hero-media img,
+  body:is(.landing-profile-living, .landing-profile-office) .landing-scene.is-satellite .landing-hero-media img {
+    object-fit: contain; padding: 0; background: transparent; z-index: 1;
+  }
+  .landing-scene.is-satellite .landing-hero-bug,
+  .landing-scene.is-satellite .landing-capture-age,
+  .landing-scene.is-satellite .landing-hero-overlay,
+  .landing-scene.is-satellite .kiosk-caption-strip { z-index: 3; }
+  .landing-satellite-rail {
+    position: absolute; z-index: 3; top: 25%; right: 2%; width: 19%;
+    display: grid; gap: clamp(10px, 2vh, 22px); color: #f1faf7;
+  }
+  .landing-satellite-rail span {
+    display: grid; grid-template-columns: 2rem 1fr; gap: 0 .45rem;
+    padding: .85rem .4rem; border-top: 1px solid #b4eee174;
+    text-shadow: 0 2px 8px #000;
+  }
+  .landing-satellite-rail b { grid-row: span 2; color: #a6e9d6; font-size: .72rem; }
+  .landing-satellite-rail strong { font-size: clamp(.7rem, 1.2vw, 1.1rem); letter-spacing: .09em; }
+  .landing-satellite-rail small { color: #c5dcd9; font-size: clamp(.65rem, .9vw, .9rem); }
+  @media (max-width: 900px) { .landing-satellite-rail { display: none; } }
+  body.landing-screen { --landing-screen-gutter: 0px; }
+  body.landing-screen .landing-stage-shell,
+  body.landing-screen .landing-hero-media { border-radius: 0; }
+  body.landing-screen .landing-stage-shell { border: 0; }
+</style>
+<section class="landing-shell" data-landing-screen>
+  <div class="landing-toolbar">
+    <div class="landing-actions" aria-label="Landing shortcuts">
+      <a class="landing-action" href="{{ url_for('ui.live') }}">Live Rotator</a>
+      <a class="landing-action" href="/dashboard/security"> Dashboards </a>
+      <a class="landing-action" href="/satellite">Satellite timelapse</a>
+    </div>
+    <div class="landing-profiles" aria-label="Landing content profiles">
+      {% for profile in landing_profiles %}
+      <a
+        class="landing-profile-chip{% if profile.key == landing_profile.key %} is-active{% endif %}"
+        href="{{ url_for('views.index', buffer=landing_event_buffer_mode, mode=landing_mode.key, profile=profile.key) }}"
+      >
+        {{ profile.short_label }}
+      </a>
+      {% endfor %}
+    </div>
+    <div class="landing-modes" aria-label="Landing performance modes">
+      {% for mode in landing_modes %}
+      <a
+        class="landing-mode-chip{% if mode.key == landing_mode.key %} is-active{% endif %}"
+        href="{{ url_for('views.index', buffer=landing_event_buffer_mode, mode=mode.key, profile=landing_profile.key) }}"
+      >
+        {{ mode.short_label }}
+      </a>
+      {% endfor %}
+    </div>
   </div>
+
+  <div class="landing-review-controls" data-landing-review-controls>
+    <button class="landing-review-button" type="button" data-review-action="previous">
+      Previous
+    </button>
+    <select class="landing-review-select" aria-label="Hold duration" data-review-duration>
+      <option value="300000">Hold 5 min</option>
+      <option value="900000">Hold 15 min</option>
+      <option value="forever">Hold until resumed</option>
+    </select>
+    <button class="landing-review-button" type="button" data-review-action="hold">
+      Hold
+    </button>
+    <button class="landing-review-button" type="button" data-review-action="next">
+      Next
+    </button>
+    <button class="landing-review-button" type="button" data-review-action="recent">
+      Recent
+    </button>
+    <a class="landing-review-link" href="/seiche">Seiche</a>
+    <span class="landing-review-status" data-review-status aria-live="polite"></span>
+    <div class="landing-recent-strip" data-review-recent hidden></div>
+  </div>
+
+  <section
+    class="landing-stage-shell"
+    aria-label="Curated landing channel"
+    data-landing-chrome-fade-ms="{{ landing_mode.chrome_auto_hide_ms }}"
+    data-landing-event-buffer-auto-every="{{ landing_event_buffer_auto_every }}"
+    data-landing-event-buffer-mode="{{ landing_event_buffer_mode }}"
+    data-landing-hero-video="{{ 'true' if landing_mode.hero_video_enabled else 'false' }}"
+    data-landing-hero-video-playback-rate="{{ landing_mode.hero_video_playback_rate }}"
+    data-landing-mode="{{ landing_mode.key }}"
+    data-landing-events-enabled="{{ 'true' if landing_events_enabled else 'false' }}"
+    data-landing-events-poll-ms="{{ landing_event_poll_ms }}"
+    data-landing-events-url="{{ landing_events_url }}"
+    data-landing-profile="{{ landing_profile.key }}"
+    data-landing-pip-video="{{ 'true' if landing_mode.pip_video_enabled else 'false' }}"
+    data-landing-pip-playback-rate="{{ landing_mode.pip_video_playback_rate }}"
+    data-landing-rotation-ms="{{ landing_mode.rotation_ms }}"
+    data-landing-refresh-ms="{{ landing_mode.image_refresh_ms }}"
+  >
+    {% if landing_scenes %}
+    <div class="landing-stage">
+      <div class="landing-scene-stack">
+        {% for scene in landing_scenes %} {% set scene_index = loop.index0 %}
+        <article
+          class="landing-scene{% if loop.first %} is-visible{% endif %}{% if scene.id == 'satellite-chicago-beach' %} is-satellite{% endif %}"
+          data-scene-id="{{ scene.id }}"
+          data-landing-rotation-ms="{{ scene.rotation_ms }}"
+          data-hero-image-url="{{ scene.hero.image_url }}"
+          data-hero-event-buffer-url="{{ scene.hero.event_buffer_url }}"
+          data-hero-last-screenshot-time="{{ scene.hero.last_screenshot_time or '' }}"
+          data-hero-live-url="{{ scene.hero.live_url }}"
+          data-hero-name="{{ scene.hero.name }}"
+          data-hero-replay-available="{{ 'true' if scene.hero.replay_available else 'false' }}"
+          data-hero-video-url="{% if scene.hero.last_video_time %}{{ scene.hero.video_url }}{% endif %}"
+          data-pip-image-url="{% if scene.pip %}{{ scene.pip.image_url }}{% endif %}"
+          data-pip-event-buffer-url="{% if scene.pip %}{{ scene.pip.event_buffer_url }}{% endif %}"
+          data-pip-live-url="{% if scene.pip %}{{ scene.pip.live_url }}{% endif %}"
+          data-pip-name="{% if scene.pip %}{{ scene.pip.name }}{% endif %}"
+          data-pip-video-url="{% if scene.pip and scene.pip.last_video_time %}{{ scene.pip.video_url }}{% endif %}"
+          aria-hidden="{{ 'false' if loop.first else 'true' }}"
+          style="--landing-scene-rotation-ms: {{ scene.rotation_ms }}ms"
+        >
+          <div class="landing-scene-grid">
+            <section class="landing-hero-panel">
+              <a class="landing-hero-media" href="{{ scene.hero.live_url }}"{% if scene.id == 'satellite-chicago-beach' %} style="--satellite-image: url('{{ scene.hero.image_url }}')"{% endif %}>
+                {% if landing_mode.hero_video_enabled and
+                scene.hero.last_video_time %}
+                <video
+                  class="landing-hero-video"
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  data-landing-poster="{{ scene.hero.image_url }}"
+                  data-video-src="{{ scene.hero.video_url }}"
+                  data-playback-rate="{{ scene.hero_video_playback_rate }}"
+                  aria-hidden="true"
+                ></video>
+                {% endif %}
+                <img
+                  data-landing-src="{{ scene.hero.image_url }}"
+                  data-refresh-src="{{ scene.hero.image_url }}"
+                  data-still-src="{{ scene.hero.image_url }}"
+                  data-event-buffer-src="{{ scene.hero.event_buffer_url }}"
+                  alt="{{ scene.hero.name }} latest capture"
+                  {%
+                  if
+                  loop.first
+                  %}loading="eager"
+                  {%
+                  else
+                  %}loading="lazy"
+                  {%
+                  endif
+                  %}
+                />
+                {% if scene.id == 'satellite-chicago-beach' %}
+                <div class="landing-satellite-rail" aria-label="Places in this daily satellite frame">
+                  <span><b>01</b><strong>BEACH</strong><small>Kenosha shoreline</small></span>
+                  <span><b>02</b><strong>LINCOLNWOOD</strong><small>North Chicago area</small></span>
+                  <span><b>03</b><strong>DOWNTOWN</strong><small>Chicago</small></span>
+                </div>
+                {% endif %}
+                <div class="landing-hero-bug">{{ scene.hero.name }}</div>
+                <div class="landing-capture-age">
+                  {% if scene.id == 'satellite-chicago-beach' %}Data day ·{% else %}Captured ·{% endif %}
+                  <span
+                    {% if scene.id != 'satellite-chicago-beach' %}data-capture-age="{{ scene.hero.last_screenshot_time or '' }}"{% endif %}
+                    >{{ scene.hero.capture_age }}</span
+                  >
+                </div>
+                {% if scene.id != 'satellite-chicago-beach' %}<div class="kiosk-source-age" data-source-freshness='{{ scene.hero.freshness|default({})|tojson }}'>Source time unknown</div>{% endif %}
+                {% if landing_profile.key in ['living', 'office'] %}
+                <div class="kiosk-caption-strip">
+                  <div class="kiosk-caption-copy">
+                    <div class="kiosk-caption-text">{{ scene.hero.caption or 'Waiting for a scene description.' }}</div>
+                    <div class="kiosk-caption-age" data-caption-age="{{ scene.hero.caption_at or '' }}">Description time unknown</div>
+                  </div>
+                  <div class="kiosk-location" data-kiosk-location data-camera-name="{{ scene.hero.name }}" data-area-label="{{ scene.hero.group_label }}">
+                    {{ scene.hero.group_label }}
+                  </div>
+                </div>
+                {% endif %}
+                <div class="landing-hero-overlay">
+                  <div class="landing-hero-meta">
+                    <span>{{ 'Data day' if scene.id == 'satellite-chicago-beach' else 'Captured' }}</span>
+                    <span
+                      class="landing-scene-age"
+                      {% if scene.id != 'satellite-chicago-beach' %}data-human-time="{{ scene.hero.last_screenshot_time }}"{% endif %}
+                      title="{{ scene.hero.last_screenshot_time or 'Awaiting capture' }}"
+                    >
+                      {{ scene.hero.capture_age if scene.id == 'satellite-chicago-beach' else (scene.hero.last_screenshot_time or 'Awaiting capture') }}
+                    </span>
+                  </div>
+                  <div class="landing-hero-links">
+                    <span>Open Live ↗</span>
+                  </div>
+                </div>
+                {% if landing_scenes|length > 1 %}
+                <div class="landing-rotation-progress" aria-hidden="true">
+                  <span class="landing-rotation-progress-bar"></span>
+                </div>
+                {% endif %}
+              </a>
+              {% if landing_scenes|length > 1 %}
+              <aside class="landing-context-panel">
+                <a
+                  class="landing-pip-card"
+                  href="{{ scene.pip.live_url if scene.pip else scene.hero.live_url }}"
+                >
+                  {% if landing_mode.pip_video_enabled and scene.pip and
+                  scene.pip.last_video_time %}
+                  <video
+                    class="landing-pip-video"
+                    muted
+                    loop
+                    playsinline
+                    preload="none"
+                    data-landing-poster="{{ scene.pip.image_url }}"
+                    data-video-src="{{ scene.pip.video_url }}"
+                    data-playback-rate="{{ scene.pip_video_playback_rate }}"
+                    aria-hidden="true"
+                  ></video>
+                  {% else %}
+                  <video
+                    class="landing-pip-video"
+                    muted
+                    loop
+                    playsinline
+                    preload="none"
+                    data-playback-rate="{{ scene.pip_video_playback_rate }}"
+                    aria-hidden="true"
+                  ></video>
+                  {% endif %}
+                  <img
+                    data-landing-src="{{ scene.pip.image_url if scene.pip else scene.hero.image_url }}"
+                    data-refresh-src="{{ scene.pip.image_url if scene.pip else scene.hero.image_url }}"
+                    data-still-src="{{ scene.pip.image_url if scene.pip else scene.hero.image_url }}"
+                    alt="At bat landing preview"
+                    loading="lazy"
+                  />
+                  <div class="landing-pip-copy">
+                    <span class="landing-pip-age">At Bat</span>
+                    <span class="landing-pip-title"
+                      >{{ scene.pip.name if scene.pip else scene.hero.name
+                      }}</span
+                    >
+                  </div>
+                </a>
+                <div class="landing-deck-panel">
+                  <div class="landing-panel-title">Queue</div>
+                  <div class="landing-deck-list">
+                    {% for slot in ['On Deck', 'In Queue'] %}
+                    <a
+                      class="landing-deck-card{% if loop.first %} is-primary{% else %} is-secondary{% endif %}"
+                      data-landing-queue-slot="{{ loop.index0 }}"
+                      href="{{ scene.hero.live_url }}"
+                    >
+                      <img
+                        data-landing-src="{{ scene.hero.image_url }}"
+                        data-refresh-src="{{ scene.hero.image_url }}"
+                        data-still-src="{{ scene.hero.image_url }}"
+                        alt="{{ slot }} landing preview"
+                        loading="lazy"
+                      />
+                      <div class="landing-deck-copy">
+                        <span class="landing-deck-step">{{ slot }}</span>
+                        <span class="landing-deck-title"
+                          >{{ scene.hero.name }}</span
+                        >
+                      </div>
+                    </a>
+                    {% endfor %}
+                  </div>
+                </div>
+              </aside>
+              {% endif %}
+            </section>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <div class="landing-empty">
+      <p>No fresh scenes</p>
+      <a class="landing-action" href="{{ url_for('ui.live') }}">Open Live</a>
+    </div>
+    {% endif %}
+  </section>
+
+  <div
+    id="index-time"
+    class="corner-time"
+    title=""
+    role="timer"
+    aria-live="polite"
+  ></div>
 </section>
 
-<div
-  id="index-time"
-  class="corner-time"
-  title=""
-  role="timer"
-  aria-live="polite"
-></div>
-
-<div id="welcome-modal" class="modal">
-  <div class="modal-content">
-    <span id="welcome-close" class="close-icon" title="Close dialog"
-      >&times;</span
-    >
-    <h3>Welcome to Glimpser</h3>
-    <ol>
-      <li>Add a camera from the <strong>Settings → Discover</strong> tab.</li>
-      <li>Configure monitoring options.</li>
-      <li>View live feeds and summaries.</li>
-    </ol>
-    <p>
-      Use the <strong>Discover Cameras</strong> icon in the navigation bar to
-      scan your network.
-    </p>
-    <button id="welcome-ok" title="Dismiss this guide">Got it!</button>
-  </div>
-</div>
-{% from 'components.html' import confirm_modal %} {{
-confirm_modal('delete-camera', 'Delete this camera?', 'Delete', 'Cancel') }} {%
-endblock %}
+<script id="priority-handoff-settings" type="application/json">{{ priority_handoff_settings|default({})|tojson }}</script>
+<script id="kiosk-live-settings" type="application/json">{{ kiosk_live_settings|default({})|tojson }}</script>
+<script type="module">
+  window.currentGroup = "all";
+  window.activeGroups = {{ active_groups|tojson }};
+</script>
+<script type="module" src="{{ url_for('static', filename='js/kiosk_hud.js') }}?v=20260920-readable"></script>
+{% endblock %}

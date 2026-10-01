@@ -1,3 +1,4 @@
+import { safeMediaUrl } from "./capture_age.js";
 import { sendTelemetry } from "./telemetry.js";
 
 export function initUrlTester() {
@@ -10,6 +11,9 @@ export function initUrlTester() {
       const status = container
         ? container.querySelector("#url-status")
         : document.getElementById("url-status");
+      const statusText = container
+        ? container.querySelector("[data-url-status-text]")
+        : document.querySelector("[data-url-status-text]");
       const preview = container
         ? container.querySelector("img")
         : document.getElementById("url-preview");
@@ -62,6 +66,10 @@ export function initUrlTester() {
         status.textContent = "";
         status.className = "url-status" + (cls ? ` ${cls}` : "");
         status.title = title || "URL test result";
+        if (statusText) {
+          statusText.textContent = title || "Waiting for URL";
+          statusText.className = "url-status-text" + (cls ? ` ${cls}` : "");
+        }
       };
 
       const showOverlay = (msg) => {
@@ -71,25 +79,43 @@ export function initUrlTester() {
       };
 
       const formatTitle = (data) => {
+        const parts = [];
         if (!data.ok) {
-          return (
-            data.error || (data.status ? `HTTP ${data.status}` : "Unreachable")
+          parts.push(
+            data.error || (data.status ? `HTTP ${data.status}` : "Unreachable"),
           );
+        } else {
+          parts.push(data.status ? `HTTP ${data.status}` : "OK");
         }
-        let t = data.status ? `HTTP ${data.status}` : "OK";
-        if (data.content_type) {
-          t += ` \u00b7 ${data.content_type}`;
-        }
-        return t;
+        if (data.content_type) parts.push(data.content_type);
+        if (data.accept_ranges) parts.push(`ranges:${data.accept_ranges}`);
+        if (data.content_range)
+          parts.push(`content-range:${data.content_range}`);
+        const chain = Array.isArray(data.redirect_chain)
+          ? data.redirect_chain.filter(Boolean)
+          : [];
+        if (chain.length > 1) parts.push(`redirects:${chain.length - 1}`);
+        return parts.join(" · ");
       };
 
       const check = async () => {
         const url = input.value.trim();
         setStatus("");
         showOverlay("");
-        if (preview) preview.src = url || defaultSrc;
+        if (preview) preview.src = safeMediaUrl(url) || defaultSrc;
         if (submit) submit.disabled = true;
         if (!url) return;
+        if (url.toLowerCase().startsWith("rtsp://")) {
+          urlOk = true;
+          setStatus("pending", "RTSP will be validated during capture");
+          showOverlay("RTSP preflight runs during capture");
+          if (submit) {
+            submit.disabled = false;
+            submit.classList.remove("confirm-submit");
+            submit.dataset.urlOk = "true";
+          }
+          return;
+        }
         controller?.abort();
         controller = new AbortController();
         setStatus("pending", "Testing...");
@@ -122,7 +148,14 @@ export function initUrlTester() {
           } else {
             urlOk = false;
             setStatus("bad", title);
-            showOverlay(title);
+            const chain = Array.isArray(data.redirect_chain)
+              ? data.redirect_chain.filter(Boolean)
+              : [];
+            if (chain.length > 1) {
+              showOverlay(`${title}\n${chain.join(" -> ")}`);
+            } else {
+              showOverlay(title);
+            }
             if (preview) preview.src = defaultSrc;
             if (player) {
               player.pause();

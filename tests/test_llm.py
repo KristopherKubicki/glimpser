@@ -12,6 +12,15 @@ from app.utils.llm import summarize
 
 
 class TestLLM(unittest.TestCase):
+    def setUp(self):
+        # Keep tests isolated: the in-memory cache is shared across tests within a worker.
+        from app.utils import llm as llm_mod
+        from app.utils import llm_cache
+
+        llm_cache._cache.clear()
+        llm_mod.last_429_error_time = None
+        llm_mod._backoff_until = None
+
     @patch("app.utils.llm.request_with_retry")
     @patch("app.utils.llm.CHATGPT_KEY", "mock_api_key")
     @patch("app.utils.llm.LLM_MODEL_VERSION", "mock_model_version")
@@ -27,7 +36,7 @@ class TestLLM(unittest.TestCase):
 
         start = time.time()
         with patch("time.time", return_value=start):
-            result = summarize("Test prompt")
+            result = summarize("Test prompt (429)")
 
         ts = int(start + 0.5)
         expected_result = json.dumps(
@@ -43,6 +52,7 @@ class TestLLM(unittest.TestCase):
         self.assertIn("Test prompt", str(call_args["json"]["messages"]))
 
     @patch("app.utils.llm.request_with_retry")
+    @patch("app.utils.llm.LOCAL_LLM_FALLBACK", False)
     @patch("app.utils.llm.CHATGPT_KEY", "mock_api_key")
     @patch("app.utils.llm.LLM_MODEL_VERSION", "mock_model_version")
     @patch("app.utils.llm.LLM_SUMMARY_PROMPT", "Mock summary prompt")
@@ -56,6 +66,7 @@ class TestLLM(unittest.TestCase):
         self.assertIn("Summarization delayed", list(data.values())[0])
 
     @patch("app.utils.llm.request_with_retry")
+    @patch("app.utils.llm.LOCAL_LLM_FALLBACK", False)
     @patch(
         "app.utils.llm.last_429_error_time",
         datetime.datetime.now() - datetime.timedelta(minutes=10),
@@ -68,6 +79,25 @@ class TestLLM(unittest.TestCase):
 
         # Verify that the API was not called
         mock_post.assert_not_called()
+
+    @patch("app.utils.llm.summarize_with_ollama", return_value="Local summary line")
+    @patch("app.utils.llm.LOCAL_LLM_TEXT_MODEL", "moondream")
+    @patch("app.utils.llm.LOCAL_LLM_FALLBACK", True)
+    @patch("app.utils.llm.request_with_retry")
+    @patch("app.utils.llm.CHATGPT_KEY", "mock_api_key")
+    @patch("app.utils.llm.LLM_MODEL_VERSION", "mock_model_version")
+    @patch("app.utils.llm.LLM_SUMMARY_PROMPT", "Mock summary prompt")
+    def test_summarize_uses_local_fallback_on_429(self, mock_post, mock_local):
+        mock_response = MagicMock()
+        mock_response.status_code = 429
+        mock_response.headers = {}
+        mock_post.return_value = mock_response
+
+        result = summarize("Test prompt")
+
+        data = json.loads(result)
+        self.assertTrue(any("Local summary line" in v for v in data.values()))
+        mock_local.assert_called_once()
 
     @patch("app.utils.llm.request_with_retry")
     @patch("app.utils.llm.CHATGPT_KEY", "mock_api_key")
@@ -93,6 +123,44 @@ class TestLLM(unittest.TestCase):
         mock_post.assert_called_once()
         call_args = mock_post.call_args[1]
         self.assertIn("Previous conversation", str(call_args["json"]["messages"]))
+
+    @patch("app.utils.llm.request_with_retry")
+    @patch("app.utils.llm.CHATGPT_KEY", "mock_api_key")
+    @patch("app.utils.llm.LLM_MODEL_VERSION", "mock_model_version")
+    @patch("app.utils.llm.LLM_SUMMARY_PROMPT", "Mock summary prompt")
+    def test_summarize_retries_with_max_completion_tokens(self, mock_post):
+        first = MagicMock()
+        first.status_code = 400
+        first.json.return_value = {
+            "error": {
+                "message": "Unsupported parameter: 'max_tokens'. Use 'max_completion_tokens' instead.",
+                "type": "invalid_request_error",
+                "param": "max_tokens",
+                "code": "unsupported_parameter",
+            }
+        }
+
+        second = MagicMock()
+        second.status_code = 200
+        second.json.return_value = {
+            "choices": [{"message": {"content": "Recovered summary"}}],
+            "usage": {"total_tokens": 42},
+        }
+
+        mock_post.side_effect = [first, second]
+
+        start = time.time()
+        with patch("time.time", return_value=start):
+            result = summarize("Test prompt for token fallback")
+
+        ts = int(start + 0.5)
+        expected_result = json.dumps({ts: "Recovered summary"})
+        self.assertEqual(json.loads(result), json.loads(expected_result))
+
+        self.assertEqual(mock_post.call_count, 2)
+        second_payload = mock_post.call_args_list[1].kwargs["json"]
+        self.assertIn("max_completion_tokens", second_payload)
+        self.assertNotIn("max_tokens", second_payload)
 
 
 if __name__ == "__main__":

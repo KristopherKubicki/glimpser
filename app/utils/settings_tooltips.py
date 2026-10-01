@@ -19,6 +19,7 @@ SETTINGS_TOOLTIPS = {
         "OpenAI key required for AI captioning and summarization features. "
         "Leave blank to disable these integrations."
     ),
+    "RECOVERY_SEARCH_MODEL": ("OpenAI model used for camera recovery web searches."),
     "DATABASE_PATH": (
         "Filesystem location of the SQLite database. Change it if you move the "
         "database file."
@@ -26,6 +27,24 @@ SETTINGS_TOOLTIPS = {
     "PORT": (
         "TCP port used by the built-in web server. The default is 8082 but any "
         "available port may be chosen."
+    ),
+    "HTTPS_ENABLED": (
+        "Enable the built-in HTTPS listener. Use this when integrations (like Google OAuth) "
+        "require an https:// redirect URI."
+    ),
+    "HTTPS_PORT": ("TCP port used for the HTTPS listener (default 8443)."),
+    "HTTPS_ONLY": (
+        "When enabled, Glimpser serves only HTTPS and disables the plain HTTP listener."
+    ),
+    "HTTPS_SELF_SIGNED": (
+        "Auto-generate a self-signed certificate when HTTPS is enabled and no certificate "
+        "files exist at the configured paths."
+    ),
+    "HTTPS_CERT_PATH": ("Path to the HTTPS certificate file (PEM)."),
+    "HTTPS_KEY_PATH": ("Path to the HTTPS private key file (PEM)."),
+    "HTTPS_CERT_HOSTNAMES": (
+        "Comma-separated hostnames and/or IP addresses to include in the self-signed "
+        "certificate (Subject Alternative Name)."
     ),
     "DANGER_PORT": (
         "Port used by Chrome for remote debugging when Danger mode is enabled. "
@@ -40,12 +59,16 @@ SETTINGS_TOOLTIPS = {
         "Number of worker threads allowed to run capture jobs in parallel. "
         "Set close to your camera count."
     ),
+    "LOW_CPU_MODE": (
+        "Reduce worker concurrency and background rendering cadence to lower CPU "
+        "usage on constrained hosts."
+    ),
     "LLM_CAPTION_PROMPT": (
-        "System prompt used for image captions. Supports the $datetime token "
-        "and can span multiple lines."
+        "System prompt used for image captions. Keep it scene-first; supports "
+        "the $datetime token and can span multiple lines."
     ),
     "LLM_SUMMARY_PROMPT": (
-        "System prompt for daily summaries. May be multi-line and also "
+        "System prompt for operator summaries. May be multi-line and also "
         "supports the $datetime token."
     ),
     "MAX_RAW_DATA_SIZE": (
@@ -115,6 +138,11 @@ SETTINGS_TOOLTIPS = {
     "CLOCK_OVERLAY": ("Display a timestamp overlay on captured videos when enabled."),
     "CLOCK_DIGITAL": ("Show the clock as digital text instead of an analog icon."),
     "CLOCK_NAVBAR": ("When enabled, the current time appears in the navigation bar."),
+    "VISUAL_TIMESTAMP_MODE": (
+        "Controls text burned into captured still frames. Clean keeps image pixels "
+        "free of timestamp labels, compact burns one local timestamp, and debug "
+        "adds the older local/UTC diagnostic overlay."
+    ),
     "HEALTH_STATUS_ALWAYS_VISIBLE": (
         "Keep the system performance indicator visible even when metrics look normal."
     ),
@@ -168,8 +196,16 @@ SETTINGS_TOOLTIPS = {
         "Comma-separated CIDR blocks that can access non-admin pages without "
         "logging in."
     ),
+    "LAN_GUEST_MODE": (
+        "Controls LAN guest access when SKIP_LOGIN_SUBNETS is set. "
+        "Use 'read_only' to allow viewing without login while requiring "
+        "authentication for changes."
+    ),
     "ALLOW_BOTS": (
         "Allow search engines to index the site. Disable for private installations."
+    ),
+    "ALLOW_PRIVATE_CALLBACK_URLS": (
+        "Permit LAN/private HTTP callback URLs for trusted local integrations."
     ),
     "AUTO_UPDATE_BRANCH": (
         "Git branch to pull automatic updates from when auto update is enabled."
@@ -181,6 +217,30 @@ SETTINGS_TOOLTIPS = {
         "Directory on disk where captured screenshots are stored."
     ),
     "VIDEO_DIRECTORY": ("Directory used to store downloaded video files."),
+    "ARCHIVE_BATCH_SIZE": (
+        "Number of camera folders to process per archive_screenshots run "
+        "(0 processes all cameras)."
+    ),
+    "ARCHIVE_INTERVAL_MINUTES": ("Minutes between archive_screenshots runs."),
+    "LAN_OFFLINE_DISABLE_ERRORS": (
+        "Number of LAN offline failures within the window before a source is "
+        "marked offline."
+    ),
+    "LAN_OFFLINE_DISABLE_WINDOW_MINUTES": (
+        "Minutes to track LAN offline failures before marking a source offline."
+    ),
+    "LAN_OFFLINE_BACKOFF_SECONDS": (
+        "Seconds to back off LAN sources after repeated offline failures."
+    ),
+    "RTSP_PREFLIGHT_FAIL_THRESHOLD": (
+        "RTSP preflight failures within the window before a longer backoff is applied."
+    ),
+    "RTSP_PREFLIGHT_FAIL_WINDOW_SECONDS": (
+        "Seconds to track RTSP preflight failures before longer backoff."
+    ),
+    "RTSP_PREFLIGHT_BACKOFF_SECONDS": (
+        "Seconds to back off RTSP sources after repeated preflight failures."
+    ),
     "CLIPS_DIRECTORY": ("Directory containing generated video clips for sharing."),
     "SUMMARIES_DIRECTORY": (
         "Deprecated path for summary files, kept for backward compatibility."
@@ -271,8 +331,17 @@ SETTINGS_TOOLTIPS = {
     "SSO_USERNAME": (
         "Default username provided to the SSO system when authenticating."
     ),
-    "USER_PASSWORD_HASH": (
-        "BCrypt hashed login password stored for the default user."  # pragma: allowlist secret
+    "LAST_PASSWORD_RESET_REQUIRED_AT": (
+        "Timestamp when a forced password reset was triggered."
+    ),
+    "LAST_PASSWORD_RESET_REQUIRED_BY": (
+        "Username that triggered the most recent forced password reset."
+    ),
+    "LAST_PASSWORD_RESET_COMPLETED_AT": (
+        "Timestamp when the last password reset was completed."
+    ),
+    "LAST_PASSWORD_RESET_COMPLETED_BY": (
+        "Username that completed the last password reset."
     ),
     "VERSION": (
         "Glimpser package version displayed in the footer and used for cache busting."
@@ -314,6 +383,8 @@ SETTINGS_CHOICES = {
     ],
     "LOG_LEVEL": ["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
     "FLASK_LOG_LEVEL": ["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
+    "LAN_GUEST_MODE": ["full", "read_only", "disabled"],
+    "VISUAL_TIMESTAMP_MODE": ["clean", "compact", "debug"],
     "TZ": sorted(available_timezones()),
 }
 
@@ -328,19 +399,31 @@ SETTINGS_GROUPS = {
         "TZ",
         "HOST",
         "PORT",
+        "HTTPS_ENABLED",
+        "HTTPS_PORT",
+        "HTTPS_ONLY",
+        "HTTPS_SELF_SIGNED",
+        "HTTPS_CERT_PATH",
+        "HTTPS_KEY_PATH",
+        "HTTPS_CERT_HOSTNAMES",
         "DANGER_PORT",
         "DEBUG",
         "DEBUG_MODE",
+        "LOW_CPU_MODE",
         "MAX_WORKERS",
         "LOG_LEVEL",
         "FLASK_LOG_LEVEL",
         "CLOCK_OVERLAY",
         "CLOCK_DIGITAL",
         "CLOCK_NAVBAR",
+        "VISUAL_TIMESTAMP_MODE",
     ],
     "Admin": [
         "USER_NAME",
-        "USER_PASSWORD_HASH",
+        "LAST_PASSWORD_RESET_REQUIRED_AT",
+        "LAST_PASSWORD_RESET_REQUIRED_BY",
+        "LAST_PASSWORD_RESET_COMPLETED_AT",
+        "LAST_PASSWORD_RESET_COMPLETED_BY",
         "SECRET_KEY",
         "API_KEY",
         "SSO_TOKEN",
@@ -350,6 +433,7 @@ SETTINGS_GROUPS = {
         "SESSION_COOKIE_HTTPONLY",
         "SESSION_TIMEOUT_MINUTES",
         "SKIP_LOGIN_SUBNETS",
+        "LAN_GUEST_MODE",
     ],
     "Capture": [
         "DATABASE_PATH",
@@ -374,6 +458,14 @@ SETTINGS_GROUPS = {
         "WATCHDOG_MAX_FILE_HANDLES",
         "CRAWLER_STARTUP_SPREAD",
         "DISCOVERY_AUTOSTART",
+        "ARCHIVE_BATCH_SIZE",
+        "ARCHIVE_INTERVAL_MINUTES",
+        "LAN_OFFLINE_DISABLE_ERRORS",
+        "LAN_OFFLINE_DISABLE_WINDOW_MINUTES",
+        "LAN_OFFLINE_BACKOFF_SECONDS",
+        "RTSP_PREFLIGHT_FAIL_THRESHOLD",
+        "RTSP_PREFLIGHT_FAIL_WINDOW_SECONDS",
+        "RTSP_PREFLIGHT_BACKOFF_SECONDS",
         "CLIP_MODEL_NAME",
         "FFMPEG_PATH",
         "FFPROBE_PATH",
@@ -394,6 +486,7 @@ SETTINGS_GROUPS = {
         "TWILIO_SID",
         "TWILIO_TOKEN",
         "TWILIO_NUMBER",
+        "RECOVERY_SEARCH_MODEL",
         "MCP_SERVER_COMMAND",
         "MCP_SERVER_URL",
         "CLOCK_OVERLAY",
@@ -403,6 +496,7 @@ SETTINGS_GROUPS = {
         "CAP_SENDER",
         "NOTIFY_ON_MOTION",
         "NOTIFY_ON_CAPTION",
+        "ALLOW_PRIVATE_CALLBACK_URLS",
     ],
 }
 
@@ -414,6 +508,7 @@ NUMERIC_FIELDS = {
     "LIVE_MAX_FAILURES",
     "CHYRON_SPEED",
     "DANGER_PORT",
+    "HTTPS_PORT",
     "WATCHDOG_FAILURE_THRESHOLD",
     "WATCHDOG_RESTART_COOLDOWN",
     "WATCHDOG_MAX_FILE_HANDLES",
@@ -424,7 +519,13 @@ EMAIL_FIELDS = {"EMAIL_SENDER", "EMAIL_RECIPIENTS"}
 
 # Settings that are hidden behind the advanced toggle on the UI. Their
 # corresponding form inputs are disabled unless advanced mode is enabled.
-LOCKED_SETTINGS = {"CLIP_MODEL_NAME"}
+LOCKED_SETTINGS = {
+    "CLIP_MODEL_NAME",
+    "LAST_PASSWORD_RESET_REQUIRED_AT",
+    "LAST_PASSWORD_RESET_REQUIRED_BY",
+    "LAST_PASSWORD_RESET_COMPLETED_AT",
+    "LAST_PASSWORD_RESET_COMPLETED_BY",
+}
 
 # Example placeholders displayed in the settings form.
 SETTINGS_PLACEHOLDERS = {

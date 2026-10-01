@@ -1,0 +1,149 @@
+{% extends 'base.html' %} {% block content %}
+<main class="container settings-page">
+  <div class="card">
+    <h2>Google Home Cameras</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %} {% if
+    messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %} {% endwith %}
+    <p>
+      Import SDM cameras into Glimpser as
+      <code>sdm://&lt;profile&gt;/&lt;device_id&gt;</code> templates. Streams
+      are short-lived; Glimpser resolves a fresh RTSP URL at capture time.
+    </p>
+    <p>Profile: <code>{{ profile }}</code></p>
+
+    {% if not cameras %} {% if list_error %}
+    <p><strong>Error listing devices:</strong></p>
+    <pre style="white-space: pre-wrap; word-break: break-word">
+{{ list_error }}</pre
+    >
+    {% else %}
+    <p>No devices found (or SDM access not enabled for cameras).</p>
+    {% endif %}
+    <a class="btn" href="{{ url_for('ui.google_home', profile=profile) }}"
+      >Back</a
+    >
+    {% else %}
+    <form
+      method="POST"
+      action="{{ url_for('ui.google_home_devices', profile=profile) }}"
+    >
+      <input type="hidden" name="profile" value="{{ profile }}" />
+      <div
+        style="
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+          align-items: end;
+          margin: 12px 0;
+        "
+      >
+        <label>
+          Group
+          <input
+            type="text"
+            name="group"
+            value="{{ default_group }}"
+            style="min-width: 220px"
+          />
+        </label>
+        <label>
+          Frequency (minutes)
+          <input
+            type="number"
+            name="frequency"
+            value="2"
+            min="1"
+            max="525600"
+            style="width: 120px"
+          />
+        </label>
+        <button type="submit" class="btn">Import Selected</button>
+        <a class="btn" href="{{ url_for('ui.google_home', profile=profile) }}"
+          >Back</a
+        >
+      </div>
+
+      <table class="settings-table" style="width: 100%">
+        <thead>
+          <tr>
+            <th style="width: 60px">Import</th>
+            <th>Name</th>
+            <th style="width: 180px">Stream</th>
+            <th style="width: 180px">Protocols</th>
+            <th style="width: 200px">Structure</th>
+            <th style="width: 200px">Room</th>
+            <th style="width: 320px">Device ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cam in cameras %}
+          <tr>
+            <td>
+              <input
+                type="checkbox"
+                name="device_id"
+                value="{{ cam.device_id }}"
+                {%
+                if
+                cam.importable
+                %}checked{%
+                endif
+                %}
+                {%
+                if
+                not
+                cam.importable
+                %}disabled{%
+                endif
+                %}
+              />
+              <input
+                type="hidden"
+                name="label_{{ cam.device_id }}"
+                value="{{ cam.label }}"
+              />
+            </td>
+            <td>
+              <strong>{{ cam.label }}</strong><br />
+              <small><code>{{ cam.type }}</code></small>
+            </td>
+            <td>
+              {% if cam.has_rtsp %}
+              <span title="Camera supports RTSP snapshots">RTSP</span>
+              {% elif cam.supports_webrtc and cam.is_camera_type %}
+              <span
+                title="WEB_RTC-only camera; Glimpser will use WebRTC preview capture"
+                >WEB_RTC</span
+              >
+              {% elif cam.supports_rtsp %}
+              <span title="RTSP exists, but this device type is not importable">
+                RTSP (unsupported type)
+              </span>
+              {% elif cam.has_stream %}
+              <span
+                title="Camera is WEB_RTC-only; RTSP snapshots are not supported yet"
+                >WEB_RTC only</span
+              >
+              {% else %}
+              <span title="No live stream trait detected">No</span>
+              {% endif %}
+            </td>
+            <td><code>{{ ",".join(cam.protocols) }}</code></td>
+            <td><code>{{ cam.structure or '' }}</code></td>
+            <td><code>{{ cam.room or '' }}</code></td>
+            <td><code>{{ cam.device_id }}</code></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </form>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}

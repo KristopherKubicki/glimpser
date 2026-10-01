@@ -1,6 +1,249 @@
 from __future__ import annotations
 
-from flask import Blueprint, Response
+import io
+from datetime import datetime
+from typing import Any
+
+from flask import Blueprint, Response, jsonify, redirect
+
+_HIGH_FIDELITY_DEFAULT_EXCLUDE = (
+    "private",
+    "safe room",
+    "safe_room",
+    "vault",
+    "jewel",
+    "jewelry",
+)
+
+_HIGH_FIDELITY_BAD_CAPTION_TOKENS = (
+    "unreadable",
+    "no screenshot",
+    "placeholder",
+    "sign in",
+    "captcha",
+    "safety pin",
+    "loading",
+    "blank",
+    "offline mode",
+)
+
+_HIGH_FIDELITY_CANDIDATE_CACHE_TTL_S = 90.0
+_HIGH_FIDELITY_CANDIDATE_CACHE: dict[
+    tuple[Any, tuple[str, ...], tuple[str, ...], int, int, bool],
+    tuple[float, list[dict[str, Any]]],
+] = {}
+
+
+def _parse_high_fidelity_terms(raw: str | None) -> list[str]:
+    """Return normalized substring filters from a comma/newline separated value."""
+
+    if not raw:
+        return []
+    out: list[str] = []
+    for chunk in str(raw).replace("\n", ",").split(","):
+        clean = " ".join(str(chunk).strip().lower().replace("_", " ").split())
+        if clean:
+            out.append(clean)
+    return out
+
+
+def _template_search_blob(template: dict[str, Any]) -> str:
+    """Return one normalized text blob for inclusion/exclusion matching."""
+
+    pieces = [
+        str(template.get("name") or ""),
+        str(template.get("groups") or ""),
+        str(template.get("notes") or ""),
+        str(template.get("url") or ""),
+        str(template.get("last_caption") or ""),
+    ]
+    return " ".join(
+        " ".join(piece.lower().replace("_", " ").split()) for piece in pieces
+    )
+
+
+def _parse_template_timestamp(raw: Any) -> datetime | None:
+    """Parse the template timestamp format used throughout Glimpser."""
+
+    text = str(raw or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.strptime(text, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
+
+
+def _normalize_high_fidelity_mode(raw: Any) -> str:
+    """Return the supported per-camera high-fidelity mode."""
+
+    value = str(raw or "auto").strip().lower()
+    if value not in {"auto", "include", "exclude"}:
+        return "auto"
+    return value
+
+
+def _parse_high_fidelity_rank(raw: Any) -> int:
+    """Return the bounded per-camera high-fidelity priority."""
+
+    try:
+        return max(0, min(100, int(float(raw or 0))))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _latest_template_image_path(name: str) -> str | None:
+    """Return the most recent PNG path for ``name`` if one exists."""
+
+    from app import routes
+
+    clean_name = routes.validate_template_name(name)
+    if clean_name is None:
+        return None
+    path = routes.os.path.join(
+        routes.os.path.dirname(routes.os.path.abspath(__file__)),
+        "..",
+        routes.SCREENSHOT_DIRECTORY,
+        clean_name,
+    )
+    latest_link = routes.os.path.join(path, "latest_camera.png")
+    if routes.os.path.exists(latest_link):
+        return latest_link
+    try:
+        entries = routes.os.listdir(path)
+    except FileNotFoundError:
+        return None
+    pngs: list[tuple[float, str]] = []
+    for entry in entries:
+        if not entry.endswith(".png") or entry.endswith(".tmp.png"):
+            continue
+        full = routes.os.path.join(path, entry)
+        if not routes.os.path.isfile(full):
+            continue
+        try:
+            mtime = routes.os.path.getmtime(full)
+        except OSError:
+            continue
+        pngs.append((mtime, full))
+    if not pngs:
+        return None
+    pngs.sort(key=lambda row: row[0], reverse=True)
+    return pngs[0][1]
+
+
+def _high_fidelity_candidates(
+    *,
+    group: str | None,
+    include_terms: list[str],
+    exclude_terms: list[str],
+    max_age_s: int,
+    limit: int,
+    caption_guard: bool,
+) -> list[dict[str, Any]]:
+    """Return curated screenshot candidates for the TV-style feed.
+
+    The endpoint is meant to be slow and presentable. We therefore only select
+    templates that are fresh, not currently failed, and whose last captions do
+    not look like broken/partial captures.
+    """
+
+    from app import routes
+
+    now = routes.datetime.utcnow()
+    selected: list[dict[str, Any]] = []
+    for name, template in routes.template_manager.get_templates().items():
+        clean_name = routes.validate_template_name(name)
+        if clean_name is None:
+            continue
+        if bool(template.get("capture_failed")):
+            continue
+        # Prefer the explicit privacy toggle, but keep the older metadata
+        # conventions as a fallback for existing templates.
+        if bool(template.get("private_camera")):
+            continue
+        manual_mode = _normalize_high_fidelity_mode(template.get("high_fidelity_mode"))
+        if manual_mode == "exclude":
+            continue
+        manual_rank = _parse_high_fidelity_rank(template.get("high_fidelity_rank"))
+        groups = [
+            g.strip() for g in str(template.get("groups") or "").split(",") if g.strip()
+        ]
+        if group and group not in groups:
+            continue
+
+        blob = _template_search_blob(template)
+        if include_terms and not any(term in blob for term in include_terms):
+            continue
+        query_excludes = exclude_terms[len(_HIGH_FIDELITY_DEFAULT_EXCLUDE) :]
+        if any(term in blob for term in query_excludes):
+            continue
+        # Explicit includes can override the default metadata heuristics, but
+        # operator-supplied query excludes should still win.
+        if manual_mode != "include" and any(term in blob for term in exclude_terms):
+            continue
+
+        if caption_guard:
+            caption_blob = " ".join(
+                str(template.get("last_caption") or "").lower().split()
+            )
+            if any(term in caption_blob for term in _HIGH_FIDELITY_BAD_CAPTION_TOKENS):
+                continue
+
+        ts = _parse_template_timestamp(template.get("last_screenshot_time"))
+        age_s = int((now - ts).total_seconds()) if ts else 10**9
+        if age_s > max_age_s:
+            continue
+
+        image_path = _latest_template_image_path(clean_name)
+        if not image_path or not routes.os.path.exists(image_path):
+            continue
+        if not routes.screenshots._is_valid_png(image_path):
+            continue
+
+        try:
+            with routes.Image.open(image_path) as img:
+                img = img.convert("RGB")
+                width, height = img.size
+                # Reject obviously broken crops/placeholders before TV rotation.
+                if width < 320 or height < 180:
+                    continue
+                if routes.screenshots.is_mostly_blank(img):
+                    continue
+        except Exception:
+            continue
+
+        selected.append(
+            {
+                "name": clean_name,
+                "groups": groups,
+                "notes": str(template.get("notes") or ""),
+                "last_caption": str(template.get("last_caption") or ""),
+                "last_screenshot_time": str(template.get("last_screenshot_time") or ""),
+                "freshness_s": age_s,
+                "high_fidelity_mode": manual_mode,
+                "high_fidelity_rank": manual_rank,
+                "image_path": image_path,
+            }
+        )
+
+    # Prefer explicit includes first, then operator rank, then freshness.
+    selected.sort(
+        key=lambda row: (
+            0 if row["high_fidelity_mode"] == "include" else 1,
+            -row["high_fidelity_rank"],
+            row["freshness_s"],
+            row["name"].lower(),
+        )
+    )
+    return selected[:limit]
+
+
+def _encode_high_fidelity_frame(image) -> bytes:
+    """Encode a TV-feed frame as JPEG with stable settings."""
+
+    buf = io.BytesIO()
+    image.save(buf, format="JPEG", quality=90, optimize=True)
+    return buf.getvalue()
 
 
 def create_blueprint() -> Blueprint:
@@ -29,6 +272,16 @@ def create_blueprint() -> Blueprint:
             group = None
         if camera == "all":
             camera = None
+        if camera is not None:
+            camera = routes.validate_template_name(camera)
+            if camera is None:
+                routes.abort(400, "Invalid camera name")
+        if group is not None:
+            from app.utils.validators import validate_group_name
+
+            group = validate_group_name(group)
+            if group is None:
+                routes.abort(400, "Invalid group name")
         return Response(
             routes.generate(group=group, camera=camera, filename="latest_camera.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -53,6 +306,31 @@ def create_blueprint() -> Blueprint:
             group = None
         if camera == "all":
             camera = None
+        if camera is not None:
+            camera = routes.validate_template_name(camera)
+            if camera is None:
+                routes.abort(400, "Invalid camera name")
+        if group is not None:
+            from app.utils.validators import validate_group_name
+
+            group = validate_group_name(group)
+            if group is None:
+                routes.abort(400, "Invalid group name")
+        user_agent = routes.request.headers.get("User-Agent", "")
+        routes.logging.info(
+            "stream.mjpg connect ip=%s group=%s camera=%s ua=%s",
+            routes.request.remote_addr,
+            group,
+            camera,
+            user_agent,
+        )
+        if (not group) and (not camera) and "autocamera" in user_agent.lower():
+            return redirect(
+                "/high_fidelity_stream.mjpg"
+                "?hold_s=12&transition_ms=1400&limit=36&max_age_s=7200"
+                "&exclude=showroom,private,safe",
+                code=302,
+            )
         return Response(
             routes.generate(group=group, camera=camera, filename="latest_camera.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -88,7 +366,11 @@ def create_blueprint() -> Blueprint:
             routes.abort(404)
 
         if group:
-            group = routes.secure_filename(group)
+            from app.utils.validators import validate_group_name
+
+            group = validate_group_name(group)
+            if group is None:
+                routes.abort(400, "Invalid group name")
             group_path = routes.os.path.join(
                 routes.os.path.dirname(routes.os.path.abspath(__file__)),
                 "..",
@@ -131,7 +413,7 @@ def create_blueprint() -> Blueprint:
         templates = routes.template_manager.get_templates()
         sorted_templates = sorted(
             templates.items(),
-            key=lambda x: (x[1].get("last_video_time", 0) or 0),
+            key=lambda x: x[1].get("last_screenshot_time", 0) or 0,
             reverse=True,
         )
 
@@ -391,6 +673,282 @@ def create_blueprint() -> Blueprint:
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
 
+    @bp.route("/high_fidelity.json", methods=["GET"])
+    @routes.login_required
+    def high_fidelity_json() -> Response:
+        """Return curated TV-style candidates for autocamera or operator tools."""
+
+        group = routes.request.args.get("group")
+        if group == "all":
+            group = None
+        include_terms = _parse_high_fidelity_terms(routes.request.args.get("include"))
+        exclude_terms = list(_HIGH_FIDELITY_DEFAULT_EXCLUDE)
+        exclude_terms.extend(
+            _parse_high_fidelity_terms(routes.request.args.get("exclude"))
+        )
+        max_age_s = max(
+            30,
+            min(
+                86400,
+                int(float(routes.request.args.get("max_age_s") or 7200)),
+            ),
+        )
+        limit = max(
+            1,
+            min(
+                100,
+                int(float(routes.request.args.get("limit") or 24)),
+            ),
+        )
+        hold_s = max(
+            2.0,
+            min(
+                120.0,
+                float(routes.request.args.get("hold_s") or 12),
+            ),
+        )
+        transition_ms = max(
+            0,
+            min(
+                10000,
+                int(float(routes.request.args.get("transition_ms") or 1400)),
+            ),
+        )
+        caption_guard = str(
+            routes.request.args.get("caption_guard", "true")
+        ).strip().lower() not in {"0", "false", "off", "no"}
+
+        selected = _high_fidelity_candidates(
+            group=group,
+            include_terms=include_terms,
+            exclude_terms=exclude_terms,
+            max_age_s=max_age_s,
+            limit=limit,
+            caption_guard=caption_guard,
+        )
+        payload = {
+            "profile": "high_fidelity",
+            "group": group or "all",
+            "hold_s": hold_s,
+            "transition_ms": transition_ms,
+            "count": len(selected),
+            "items": [
+                {
+                    "name": row["name"],
+                    "groups": row["groups"],
+                    "primary_group": (
+                        row["groups"][0] if row["groups"] else "highlights"
+                    ),
+                    "notes": row["notes"],
+                    "last_caption": row["last_caption"],
+                    "last_screenshot_time": row["last_screenshot_time"],
+                    "freshness_s": row["freshness_s"],
+                    "high_fidelity_mode": row["high_fidelity_mode"],
+                    "high_fidelity_rank": row["high_fidelity_rank"],
+                    "image_url": routes.url_for(
+                        "stream.stream_png", camera=row["name"], _external=True
+                    ),
+                    "video_url": routes.url_for(
+                        "assets.serve_video",
+                        template_name=row["name"],
+                        _external=True,
+                    ),
+                    "group_url": (
+                        routes.url_for(
+                            "views.group_page",
+                            group_name=row["groups"][0] if row["groups"] else "all",
+                            _external=True,
+                        )
+                        if row["groups"]
+                        else routes.url_for("views.index", _external=True)
+                    ),
+                    "live_url": routes.url_for(
+                        "ui.live", camera=row["name"], _external=True
+                    ),
+                    "template_url": routes.url_for(
+                        "ui.template_details",
+                        template_name=row["name"],
+                        _external=True,
+                    ),
+                }
+                for row in selected
+            ],
+        }
+        return jsonify(payload)
+
+    @bp.route("/high_fidelity_stream.mjpg", methods=["GET"])
+    @bp.route("/high_fidelity.mjpg", methods=["GET"])
+    @routes.login_required
+    def high_fidelity_mjpg() -> Response:
+        """Serve a slow, curated MJPEG wall with gentle cross-fades.
+
+        This is the "TV" endpoint. It intentionally trades cadence for better
+        presentation quality and allows autocamera to tweak behavior via query
+        params rather than hardcoding another source list.
+        """
+
+        group = routes.request.args.get("group")
+        if group == "all":
+            group = None
+        include_terms = _parse_high_fidelity_terms(routes.request.args.get("include"))
+        exclude_terms = list(_HIGH_FIDELITY_DEFAULT_EXCLUDE)
+        exclude_terms.extend(
+            _parse_high_fidelity_terms(routes.request.args.get("exclude"))
+        )
+        max_age_s = max(
+            30,
+            min(
+                86400,
+                int(float(routes.request.args.get("max_age_s") or 7200)),
+            ),
+        )
+        limit = max(
+            1,
+            min(
+                100,
+                int(float(routes.request.args.get("limit") or 24)),
+            ),
+        )
+        hold_s = max(
+            2.0,
+            min(
+                120.0,
+                float(routes.request.args.get("hold_s") or 12),
+            ),
+        )
+        transition_ms = max(
+            0,
+            min(
+                10000,
+                int(float(routes.request.args.get("transition_ms") or 1400)),
+            ),
+        )
+        transition_fps = max(
+            1,
+            min(
+                24,
+                int(float(routes.request.args.get("transition_fps") or 6)),
+            ),
+        )
+        caption_guard = str(
+            routes.request.args.get("caption_guard", "true")
+        ).strip().lower() not in {"0", "false", "off", "no"}
+
+        def generate_high_fidelity():
+            boundary = b"frame"
+            placeholder_frame = None
+
+            def get_placeholder_frame() -> bytes:
+                nonlocal placeholder_frame
+                if placeholder_frame is None:
+                    placeholder = routes._placeholder_screenshot()
+                    with routes.Image.open(placeholder) as img:
+                        placeholder_frame = _encode_high_fidelity_frame(
+                            routes.resize_and_pad(img.convert("RGB"), (1280, 720))
+                        )
+                return placeholder_frame
+
+            # Emit an immediate frame so slow candidate selection does not make
+            # MJPEG clients treat the endpoint as stalled.
+            yield b"--" + boundary + b"\r\n"
+            yield (
+                b"Content-Type: image/jpeg\r\n\r\n"
+                + get_placeholder_frame()
+                + b"\r\n\r\n"
+            )
+            while True:
+                cache_key = (
+                    group,
+                    tuple(include_terms),
+                    tuple(exclude_terms),
+                    max_age_s,
+                    limit,
+                    caption_guard,
+                )
+                now = routes.time.time()
+                cached = _HIGH_FIDELITY_CANDIDATE_CACHE.get(cache_key)
+                if cached and (now - cached[0]) <= _HIGH_FIDELITY_CANDIDATE_CACHE_TTL_S:
+                    selected = [dict(row) for row in cached[1]]
+                else:
+                    selected = _high_fidelity_candidates(
+                        group=group,
+                        include_terms=include_terms,
+                        exclude_terms=exclude_terms,
+                        max_age_s=max_age_s,
+                        limit=limit,
+                        caption_guard=caption_guard,
+                    )
+                    _HIGH_FIDELITY_CANDIDATE_CACHE[cache_key] = (
+                        routes.time.time(),
+                        [dict(row) for row in selected],
+                    )
+                if not selected:
+                    yield b"--" + boundary + b"\r\n"
+                    yield (
+                        b"Content-Type: image/jpeg\r\n\r\n"
+                        + get_placeholder_frame()
+                        + b"\r\n\r\n"
+                    )
+                    routes.time.sleep(2.0)
+                    continue
+
+                prepared = []
+                for row in selected:
+                    try:
+                        with routes.Image.open(row["image_path"]) as img:
+                            prepared.append(
+                                {
+                                    **row,
+                                    "image": routes.resize_and_pad(
+                                        img.convert("RGB"), (1280, 720)
+                                    ),
+                                }
+                            )
+                    except Exception:
+                        continue
+                if not prepared:
+                    routes.time.sleep(1.0)
+                    continue
+
+                for idx, current in enumerate(prepared):
+                    current_frame = _encode_high_fidelity_frame(current["image"])
+                    still_frames = max(1, int(round(hold_s)))
+                    for _ in range(still_frames):
+                        yield b"--" + boundary + b"\r\n"
+                        yield (
+                            b"Content-Type: image/jpeg\r\n\r\n"
+                            + current_frame
+                            + b"\r\n\r\n"
+                        )
+                        routes.time.sleep(max(0.25, hold_s / still_frames))
+
+                    if transition_ms <= 0 or len(prepared) < 2:
+                        continue
+
+                    nxt = prepared[(idx + 1) % len(prepared)]
+                    steps = max(
+                        1,
+                        int(round((transition_ms / 1000.0) * transition_fps)),
+                    )
+                    # Blend on the server so downstream operators can treat this
+                    # as one polished source without reimplementing transitions.
+                    for step in range(1, steps + 1):
+                        alpha = step / float(steps + 1)
+                        blended = routes.Image.blend(
+                            current["image"], nxt["image"], alpha
+                        )
+                        frame = _encode_high_fidelity_frame(blended)
+                        yield b"--" + boundary + b"\r\n"
+                        yield (
+                            b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n\r\n"
+                        )
+                        routes.time.sleep(1.0 / transition_fps)
+
+        return Response(
+            generate_high_fidelity(),
+            mimetype="multipart/x-mixed-replace; boundary=frame",
+        )
+
     @bp.route("/fast_stream.mjpg", methods=["GET"])
     @routes.login_required
     def fast_stream_mjpg() -> Response:
@@ -399,8 +957,17 @@ def create_blueprint() -> Blueprint:
         camera = routes.request.args.get("camera")
         if not camera:
             routes.abort(400, "camera parameter required")
+        camera = routes.validate_template_name(camera)
+        if camera is None:
+            routes.abort(400, "Invalid camera name")
         if not routes.template_manager.get_template(camera):
             routes.abort(404)
+        routes.logging.info(
+            "fast_stream.mjpg connect ip=%s camera=%s ua=%s",
+            routes.request.remote_addr,
+            camera,
+            routes.request.headers.get("User-Agent", ""),
+        )
         return Response(
             routes.generate_fast_mjpg(camera),
             mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -468,6 +1035,93 @@ def create_blueprint() -> Blueprint:
             mimetype="video/mp4",
         )
 
+    @bp.route("/warm_live")
+    @routes.login_required
+    def warm_live() -> Response:
+        """Pre-warm a camera live pipeline for fast time-to-first-frame."""
+
+        camera = routes.request.args.get("camera")
+        if not camera:
+            routes.abort(400, "camera parameter required")
+        details = routes.template_manager.get_template(camera)
+        if not details:
+            routes.abort(404)
+
+        profile = (routes.request.args.get("profile") or "sub").strip().lower()
+        if profile not in {"main", "sub", "auto"}:
+            profile = "sub"
+
+        quality = (routes.request.args.get("quality") or "first").strip().lower()
+        if quality not in {"first", "low", "high", "auto"}:
+            quality = "first"
+
+        stream_url = routes.resolve_live_stream_url(details, profile=profile)
+        url = stream_url or details.get("url")
+        if not url:
+            routes.abort(404)
+
+        host_key = routes.live_host_key(str(url))
+        now = routes.time.time()
+        skip_ok_s = int(getattr(routes.config, "LIVE_PREFLIGHT_SKIP_OK_SECONDS", 20))
+
+        url_caps = routes.live_caps.get(str(url))
+        host_caps = routes.live_host_caps.get(host_key) if host_key else None
+        recent_ok = bool(
+            url_caps.last_ok_ts and (now - float(url_caps.last_ok_ts)) <= skip_ok_s
+        )
+        host_recent_ok = bool(
+            host_caps
+            and host_caps.last_ok_ts
+            and (now - float(host_caps.last_ok_ts)) <= skip_ok_s
+        )
+
+        # Avoid stampeding: at most one warm request per host at a time (per worker).
+        warm_token = None
+        if host_key:
+            warm_token = routes.live_limits.try_acquire(
+                host_key, kind="warm_live", limit=1, timeout=0.0
+            )
+            if warm_token is None:
+                return Response(status=204)
+
+        try:
+            if not (recent_ok or host_recent_ok):
+                if host_key and not routes.live_host_caps.should_attempt(host_key):
+                    routes.live_caps.record_failure(str(url), reason="host_avoid")
+                    return Response(status=204)
+
+                ok_pre, _pre_info = routes.preflight_live_url(str(url))
+                if not ok_pre:
+                    if host_key:
+                        routes.live_host_caps.record_failure(
+                            host_key, reason="preflight"
+                        )
+                    routes.live_caps.record_failure(str(url), reason="preflight")
+                    return Response(status=204)
+        finally:
+            if warm_token:
+                warm_token.release()
+
+        width = None
+        fps = None
+        if quality == "first":
+            width = min(routes.config.LIVE_RTSP_WIDTH, 360)
+            fps = min(routes.config.LIVE_RTSP_FPS, 2)
+        elif quality == "low":
+            width = min(routes.config.LIVE_RTSP_WIDTH, 480)
+            fps = min(routes.config.LIVE_RTSP_FPS, 3)
+        elif quality == "kiosk":
+            width = min(routes.config.LIVE_RTSP_WIDTH, 960)
+            fps = min(routes.config.LIVE_RTSP_FPS, 3)
+        elif quality == "high":
+            width = max(routes.config.LIVE_RTSP_WIDTH, 1280)
+            width = min(width, 1920)
+            fps = max(routes.config.LIVE_RTSP_FPS, 10)
+            fps = min(fps, 15)
+
+        routes.warm_live(url, width=width, fps=fps)
+        return Response(status=204)
+
     @bp.route("/live_video")
     @routes.login_required
     def live_video() -> Response:
@@ -479,13 +1133,133 @@ def create_blueprint() -> Blueprint:
         details = routes.template_manager.get_template(camera)
         if not details:
             routes.abort(404)
-        url = details.get("url")
+
+        profile = (routes.request.args.get("profile") or "main").strip().lower()
+
+        quality = (routes.request.args.get("quality") or "auto").strip().lower()
+        if quality not in {"auto", "low", "high", "first", "kiosk"}:
+            quality = "auto"
+
+        if profile not in {"main", "sub", "auto"}:
+            profile = "main"
+
+        stream_url = routes.resolve_live_stream_url(details, profile=profile)
+        url = stream_url or details.get("url")
         if not url:
             routes.abort(404)
-        return Response(
-            routes.stream_with_context(routes.generate_live_stream(url)),
+
+        routes.logging.info(
+            "live_video request camera=%s profile=%s source=%s",
+            camera,
+            profile,
+            "stream" if stream_url else "fallback",
+        )
+
+        host_key = routes.live_host_key(str(url))
+        now = routes.time.time()
+        skip_ok_s = int(getattr(routes.config, "LIVE_PREFLIGHT_SKIP_OK_SECONDS", 20))
+
+        url_caps = routes.live_caps.get(str(url))
+        host_caps = routes.live_host_caps.get(host_key) if host_key else None
+        recent_ok = bool(
+            url_caps.last_ok_ts and (now - float(url_caps.last_ok_ts)) <= skip_ok_s
+        )
+        host_recent_ok = bool(
+            host_caps
+            and host_caps.last_ok_ts
+            and (now - float(host_caps.last_ok_ts)) <= skip_ok_s
+        )
+
+        # Best-effort per-host concurrency limit (per worker).
+        token = None
+        if host_key:
+            max_streams = int(getattr(routes.config, "LIVE_HOST_MAX_STREAMS", 2) or 0)
+            if max_streams > 0:
+                token = routes.live_limits.wait_acquire(
+                    host_key,
+                    kind="live_video",
+                    limit=max_streams,
+                    max_wait_s=0.5,
+                )
+                if token is None:
+                    resp = Response(status=503)
+                    resp.headers["Retry-After"] = "2"
+                    return resp
+
+        # Cheap preflight + circuit breaker to avoid stampeding degraded LAN hosts.
+        # Skip when we have a very recent proven-good stream.
+        if not (recent_ok or host_recent_ok):
+            if host_key and not routes.live_host_caps.should_attempt(host_key):
+                routes.live_caps.record_failure(str(url), reason="host_avoid")
+                resp = Response(status=503)
+                resp.headers["Retry-After"] = "2"
+                if token:
+                    token.release()
+                return resp
+
+            ok_pre, pre_info = routes.preflight_live_url(str(url))
+            if not ok_pre:
+                if host_key:
+                    routes.live_host_caps.record_failure(
+                        host_key, reason=str(pre_info.get("reason") or "")
+                    )
+                routes.live_caps.record_failure(str(url), reason="preflight")
+                resp = Response(status=503)
+                resp.headers["Retry-After"] = "2"
+                if token:
+                    token.release()
+                return resp
+
+        width = None
+        fps = None
+        if quality == "first":
+            width = min(routes.config.LIVE_RTSP_WIDTH, 360)
+            fps = min(routes.config.LIVE_RTSP_FPS, 2)
+        elif quality == "low":
+            width = min(routes.config.LIVE_RTSP_WIDTH, 480)
+            fps = min(routes.config.LIVE_RTSP_FPS, 3)
+        elif quality == "kiosk":
+            width = min(routes.config.LIVE_RTSP_WIDTH, 960)
+            fps = min(routes.config.LIVE_RTSP_FPS, 3)
+        elif quality == "high":
+            width = max(routes.config.LIVE_RTSP_WIDTH, 1280)
+            width = min(width, 1920)
+            fps = max(routes.config.LIVE_RTSP_FPS, 10)
+            fps = min(fps, 15)
+
+        use_warm = (
+            quality in {"first", "low", "high", "kiosk"}
+            and isinstance(url, str)
+            and url.lower().startswith(("rtsp://", "rtsps://"))
+        )
+
+        if use_warm:
+            inner = routes.generate_warm_live_stream(url, width=width, fps=fps)
+        else:
+            inner = routes.generate_live_stream(
+                url,
+                width=width,
+                fps=fps,
+                max_no_output_seconds=8.0,
+                max_no_output_failures=2,
+            )
+
+        def limited_gen():
+            try:
+                yield from inner
+            finally:
+                if token:
+                    token.release()
+
+        resp = Response(
+            routes.stream_with_context(limited_gen()),
             mimetype="video/mp4",
         )
+        resp.headers["X-Live-Source"] = "stream" if stream_url else "fallback"
+        resp.headers["X-Live-Profile"] = profile
+        resp.headers["X-Live-Quality"] = quality
+        resp.headers["X-Live-Warm"] = "1" if use_warm else "0"
+        return resp
 
     @bp.route("/stream.m3u8")
     @routes.login_required
@@ -538,7 +1312,7 @@ def create_blueprint() -> Blueprint:
 
         sorted_templates = sorted(
             filtered_templates,
-            key=lambda x: (x[1].get("last_video_time", 0) or 0),
+            key=lambda x: x[1].get("last_video_time", 0) or 0,
             reverse=True,
         )
 

@@ -1,9 +1,5 @@
 export function initLogin() {
   document.addEventListener("DOMContentLoaded", () => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.has("logout")) {
-      localStorage.removeItem("autoLogin");
-    }
     const form = document.getElementById("login-form");
     const noteEl = document.getElementById("security-note");
     attemptAutoLogin();
@@ -20,7 +16,6 @@ export function initLogin() {
     form.addEventListener("submit", (e) => {
       const user = form.elements["username"].value.trim();
       const pass = form.elements["password"].value.trim();
-      const remember = form.elements["remember"].checked;
       const error = document.getElementById("login-error");
       if (!user || !pass) {
         e.preventDefault();
@@ -30,45 +25,17 @@ export function initLogin() {
         }
         return;
       }
-      if (remember) {
-        localStorage.setItem(
-          "autoLogin",
-          JSON.stringify({ username: user, password: pass }),
-        );
-      } else {
-        localStorage.removeItem("autoLogin");
-      }
+      // Remember-me is handled by the server's signed, HttpOnly cookie.
     });
   });
 }
 
 export async function attemptAutoLogin() {
-  if (window.IS_LOGGED_IN) return false;
-  const stored = localStorage.getItem("autoLogin");
-  if (!stored) return false;
+  // Purge credentials persisted by older releases; never replay or store them.
   try {
-    const creds = JSON.parse(stored);
-    const resp = await fetch("/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        username: creds.username,
-        password: creds.password,
-        remember: "on",
-      }),
-    });
-    if (resp.ok && (resp.redirected || resp.url.endsWith("/"))) {
-      window.IS_LOGGED_IN = true;
-      if (window.location.pathname === "/login") {
-        window.location.href = "/";
-      }
-      return true;
-    }
-    // Login failed; clear stored credentials so we don't keep retrying.
     localStorage.removeItem("autoLogin");
-    return false;
-  } catch (err) {
-    console.error("Auto login failed", err);
+  } catch {
+    // Storage can be unavailable in private browsing; login still works.
   }
   return false;
 }

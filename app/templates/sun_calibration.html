@@ -1,0 +1,88 @@
+{% extends 'base.html' %} {% block content %}
+<section class="sun-game-shell">
+  <div class="sun-game-hero">
+    <p class="sun-game-kicker">Camera Census</p>
+    <h2>Sun Bearing Calibration</h2>
+    <p>
+      Pick a camera with known lat/lon, choose a historical frame where the sun
+      or glare is visible, then mark where the sun sits in the frame. Eyebat
+      computes the sun azimuth from the timestamp and saves a bearing with
+      explicit evidence.
+    </p>
+  </div>
+
+  <section class="sun-queue-panel" aria-labelledby="sun-queue-title">
+    <div class="sun-panel-header">
+      <div>
+        <h3 id="sun-queue-title">Calibration Queue</h3>
+        <p class="sun-muted">
+          Ranked by missing operator bearing first, then by the best low-sun
+          history frame.
+        </p>
+      </div>
+      <button id="sun-refresh-queue" type="button" class="sun-secondary-action">
+        Refresh
+      </button>
+    </div>
+    <div id="sun-queue-list" class="sun-queue-list" aria-live="polite">
+      <div class="sun-empty-state">Loading calibration queue...</div>
+    </div>
+  </section>
+
+  <div class="sun-game-grid">
+    <aside class="sun-camera-panel">
+      <div class="sun-panel-header">
+        <h3>Cameras</h3>
+        <label>
+          Filter
+          <input
+            id="sun-camera-filter"
+            type="search"
+            placeholder="Entrance, garden, sky..."
+          />
+        </label>
+      </div>
+      <div
+        id="sun-camera-list"
+        class="sun-camera-list"
+        aria-live="polite"
+      ></div>
+    </aside>
+
+    <section class="sun-frame-panel">
+      <div class="sun-panel-header">
+        <div>
+          <h3 id="sun-active-title">Select a camera</h3>
+          <p id="sun-active-meta" class="sun-muted">
+            Best frames score higher when the sun is low enough to make
+            direction obvious.
+          </p>
+        </div>
+        <label class="sun-fov-control">
+          Horizontal FOV
+          <input
+            id="sun-fov"
+            type="number"
+            min="10"
+            max="180"
+            step="1"
+            value="90"
+          />
+        </label>
+      </div>
+
+      <div id="sun-frame-list" class="sun-frame-list" aria-live="polite">
+        <div class="sun-empty-state">
+          Choose a camera on the left. Cameras without coordinates cannot be
+          scored yet.
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/sun_calibration.js') }}?v={{ COMMIT_HASH or VERSION }}"
+></script>
+{% endblock %}

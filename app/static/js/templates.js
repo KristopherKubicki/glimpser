@@ -2,6 +2,7 @@ import { enqueueClip } from "./video.js";
 import {
   NO_TIMESTAMP_PLACEHOLDER,
   timeAgo,
+  parseTimestamp,
   formatExactTime,
   updateHumanizedTimes,
 } from "./time_utils.js";
@@ -44,21 +45,54 @@ export function initTemplates() {
       .getElementById("template-form")
       ?.closest("details");
     const slider = document.getElementById("grid-width-slider");
-    const isMobile = window.matchMedia(
-      "(hover: none) and (max-width: 767px)",
-    ).matches;
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
     const templateList = document.getElementById("template-list");
     const captionToggle = document.getElementById("caption-toggle");
     const MAX_THUMBNAIL_HEIGHT = 1080;
     const ASPECT_RATIO = 9 / 16;
     const MAX_THUMBNAIL_WIDTH = Math.round(MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO);
+    const isGroupWall = document.body?.classList.contains("templates-wall");
+    const hasTemplateSurface = Boolean(
+      templateList ||
+        document.getElementById("captions-table") ||
+        document.getElementById("camera-table") ||
+        document.querySelector(".template-container") ||
+        form,
+    );
+
+    if (!hasTemplateSurface) {
+      return;
+    }
 
     if (slider) {
+      // Auto-fit makes the templates view behave like a video wall (fill the viewport).
+      // Default ON; moving the slider manually will turn it off.
+      slider.dataset.autofit = localStorage.getItem("gridAutofit") || "0";
+      if (isGroupWall) slider.dataset.autofit = "1";
+      if (isGroupWall) {
+        slider.dataset.autofit = "1";
+        slider.disabled = true;
+        slider.style.display = "none";
+      }
+      let sliderInitialized = false;
+      let isProgrammaticSliderUpdate = false;
       const updateSliderLimits = () => {
+        const list = templateList;
         slider.max = Math.min(window.innerWidth, MAX_THUMBNAIL_WIDTH);
+
         if (isMobile) {
           slider.min = slider.max;
           slider.value = slider.max;
+          if (list) {
+            if (isGroupWall) {
+              // Wall layout on mobile still uses a single column (screen is too narrow).
+              list.dataset.wallLayout = "1";
+              list.style.gridTemplateColumns = "1fr";
+            } else {
+              list.dataset.wallLayout = "0";
+              list.style.gridTemplateColumns = "";
+            }
+          }
           document.documentElement.style.setProperty(
             "--tile-size",
             `${slider.value}px`,
@@ -67,60 +101,169 @@ export function initTemplates() {
           return;
         }
 
-        const templateCount =
-          templateList?.querySelectorAll(".templateDiv").length || 1;
-
-        const gap = parseFloat(getComputedStyle(templateList).gap || "0") || 0;
-
-        // Iterate over possible column counts to find the largest tile width
-        // that fits the viewport horizontally and vertically.
-        let bestWidth = 50;
-        const headerHeight =
-          document.querySelector("header")?.offsetHeight || 0;
-        const bannerHeight =
-          document.getElementById("network-banner")?.offsetHeight || 0;
-        const footerSpace = parseFloat(
-          getComputedStyle(document.documentElement).getPropertyValue(
-            "--footer-space",
-          ) || "0",
-        );
-        const availableHeight =
-          window.innerHeight - headerHeight - bannerHeight - footerSpace;
-
-        for (let cols = 1; cols <= templateCount; cols++) {
-          const maxWidthForCols = Math.floor(
-            (window.innerWidth - gap * (cols - 1)) / cols,
+        // Index page: if auto-fit is OFF, don't run the "fit everything on screen" sizing math.
+        // That math is for wall-mode and can produce extreme sizes (especially before tiles load).
+        if (!isGroupWall && slider.dataset.autofit !== "1") {
+          slider.min = 50;
+          const v = parseFloat(slider.value || "0") || 360;
+          slider.value = Math.min(
+            slider.max,
+            Math.max(slider.min, v),
+          ).toString();
+          if (list) {
+            list.dataset.wallLayout = "0";
+            list.style.gridTemplateColumns = "";
+          }
+          document.documentElement.style.setProperty(
+            "--tile-size",
+            `${slider.value}px`,
           );
-          if (maxWidthForCols < 50) break;
-          const rows = Math.ceil(templateCount / cols);
-          const tileHeight = maxWidthForCols * ASPECT_RATIO;
-          const totalHeight = rows * tileHeight + gap * (rows - 1);
-          if (totalHeight <= availableHeight && maxWidthForCols > bestWidth) {
-            bestWidth = maxWidthForCols;
+          if (!sliderInitialized) {
+            slider.dispatchEvent(new Event("input"));
+            sliderInitialized = true;
+          }
+          return;
+        }
+        // When we're in a dedicated group view ("/templates/<group>"), prefer a
+        // "video wall" fit: use the *visible* tile count and resize to fill the viewport.
+        // The index view virtualizes tiles for performance; in that case use the
+        // server-provided total count so sizing remains stable while scrolling.
+        /* list already defined above */
+        const isVirtualized = list?.dataset.virtualized === "1";
+        const allTiles = list
+          ? Array.from(
+              list.querySelectorAll(".templateDiv:not(.skeleton-card)"),
+            )
+          : [];
+        const visibleTiles = allTiles.filter((el) => {
+          if (el.style.display === "none") return false;
+          return el.offsetParent !== null;
+        });
+        const totalTemplates =
+          (isGroupWall
+            ? visibleTiles.length || allTiles.length
+            : isVirtualized
+              ? Number(window.templatesTotalCount)
+              : visibleTiles.length || allTiles.length) ||
+          Number(window.templatesTotalCount) ||
+          1;
+
+        const gap = list
+          ? parseFloat(getComputedStyle(list).gap || "0") || 0
+          : 0;
+
+        // Compute a true "no clipping" video-wall fit.
+        // For each possible column count, compute the max tile width allowed by:
+        // 1) horizontal space, and 2) vertical space given the implied row count.
+        // Then pick the layout that yields the largest tiles.
+        let bestWidth = 50;
+        let bestCols = 1;
+
+        // Prefer measuring the actual grid viewport instead of approximating via
+        // window size - headers/footers/overlays differ per page.
+        let availableWidth = window.innerWidth;
+        let availableHeight = window.innerHeight;
+        let padX = 0;
+        let padY = 0;
+        if (list) {
+          const rect = list.getBoundingClientRect();
+          if (rect.width > 0) availableWidth = rect.width;
+          if (rect.height > 0) availableHeight = rect.height;
+          const cs = getComputedStyle(list);
+          padX =
+            (parseFloat(cs.paddingLeft || "0") || 0) +
+            (parseFloat(cs.paddingRight || "0") || 0);
+          padY =
+            (parseFloat(cs.paddingTop || "0") || 0) +
+            (parseFloat(cs.paddingBottom || "0") || 0);
+        }
+        availableWidth = Math.max(0, availableWidth - padX);
+        availableHeight = Math.max(0, availableHeight - padY);
+
+        const WALL_MIN_TILE = 8;
+        const NORMAL_MIN_TILE = 50;
+        const minTile = isGroupWall ? WALL_MIN_TILE : NORMAL_MIN_TILE;
+
+        for (let cols = 1; cols <= totalTemplates; cols++) {
+          const rows = Math.ceil(totalTemplates / cols);
+
+          // Horizontal constraint
+          const widthFromW = Math.floor(
+            (availableWidth - gap * (cols - 1)) / cols,
+          );
+
+          // Vertical constraint: solve for tile width using height and aspect ratio.
+          const heightPerTile = (availableHeight - gap * (rows - 1)) / rows;
+          const widthFromH = Math.floor(heightPerTile / ASPECT_RATIO);
+
+          const candidateWidth = Math.min(widthFromW, widthFromH);
+          if (candidateWidth < minTile) break;
+
+          if (candidateWidth > bestWidth) {
+            bestWidth = candidateWidth;
+            bestCols = cols;
           }
         }
-
         const widthForMaxHeight = MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO;
         slider.max = Math.min(slider.max, widthForMaxHeight);
 
         const computedMin = Math.max(
-          50,
+          isGroupWall ? 12 : 50,
           Math.min(slider.max, Math.floor(bestWidth)),
         );
-
         slider.min = computedMin;
-        slider.value = computedMin;
-        document.documentElement.style.setProperty(
-          "--tile-size",
-          `${slider.value}px`,
+        const currentValue = parseFloat(slider.value || "0") || computedMin;
+        const shouldAutoFit = slider.dataset.autofit === "1" || isGroupWall;
+        const clampedValue = Math.min(
+          slider.max,
+          Math.max(computedMin, currentValue),
         );
-        slider.dispatchEvent(new Event("input"));
+
+        // On the index page we do *not* want to shrink everything on first load.
+        // Only change the slider value when auto-fit is enabled or the current value is out of bounds.
+        const needsUpdate = shouldAutoFit || clampedValue !== currentValue;
+        if (needsUpdate) {
+          isProgrammaticSliderUpdate = true;
+          slider.value = shouldAutoFit ? computedMin : clampedValue;
+          if (list) {
+            if (isGroupWall) {
+              list.dataset.wallLayout = "1";
+              list.style.gridTemplateColumns = `repeat(${bestCols}, minmax(0, 1fr))`;
+            } else {
+              list.dataset.wallLayout = "0";
+              list.style.gridTemplateColumns = "";
+            }
+          }
+          document.documentElement.style.setProperty(
+            "--tile-size",
+            `${slider.value}px`,
+          );
+          slider.dispatchEvent(new Event("input"));
+          isProgrammaticSliderUpdate = false;
+        } else if (!sliderInitialized) {
+          // First run: ensure CSS vars/layout are applied without altering the user's default size.
+          if (list && !isGroupWall) {
+            list.dataset.wallLayout = "0";
+            list.style.gridTemplateColumns = "";
+          }
+          document.documentElement.style.setProperty(
+            "--tile-size",
+            `${slider.value}px`,
+          );
+        }
+        sliderInitialized = true;
       };
 
       updateSliderLimits();
       window.addEventListener("resize", updateSliderLimits);
       window.updateSliderLimits = updateSliderLimits;
       slider.dispatchEvent(new Event("input"));
+
+      slider.addEventListener("pointerdown", () => {
+        if (isGroupWall) return;
+        slider.dataset.autofit = "0";
+        localStorage.setItem("gridAutofit", "0");
+      });
     }
 
     if (captionToggle) {
@@ -165,32 +308,62 @@ export function initTemplates() {
           MAX_THUMBNAIL_HEIGHT,
         );
         document.documentElement.style.setProperty("--tile-size", `${value}px`);
+        // In wall-layout mode, tile sizing is controlled by the CSS grid tracks (1fr columns)
+        // and each tile's `aspect-ratio`. Setting explicit pixel widths/heights here can cause
+        // subtle clipping/overlap on some displays due to rounding differences.
+        const isWallLayout = templateList.dataset.wallLayout === "1";
         templateList.querySelectorAll(".templateDiv").forEach((div) => {
-          div.style.width = `${value}px`;
-          div.style.height = `${height}px`;
+          if (isWallLayout) {
+            div.style.width = "";
+            div.style.height = "";
+          } else {
+            div.style.width = `${value}px`;
+            div.style.height = `${height}px`;
+          }
         });
 
-        const scale = value / 360;
-        const cameraNameFontSize = Math.max(6, 14 * scale);
-        const timestampFontSize = Math.max(6, 12 * scale);
-        document.documentElement.style.setProperty(
-          "--tile-scale",
-          scale.toString(),
-        );
-        document.documentElement.style.setProperty(
-          "--camera-name-font-size",
-          `${cameraNameFontSize}px`,
-        );
-        document.documentElement.style.setProperty(
-          "--timestamp-font-size",
-          `${timestampFontSize}px`,
-        );
+        // Use the actual rendered tile width for font scaling when in wall-layout mode.
+        const applyScaleFromWidth = (tileWidthPx) => {
+          const scale = tileWidthPx / 360;
+          const cameraNameFontSize = Math.max(6, 14 * scale);
+          const timestampFontSize = Math.max(6, 12 * scale);
+          document.documentElement.style.setProperty(
+            "--tile-scale",
+            scale.toString(),
+          );
+          document.documentElement.style.setProperty(
+            "--camera-name-font-size",
+            `${cameraNameFontSize}px`,
+          );
+          document.documentElement.style.setProperty(
+            "--timestamp-font-size",
+            `${timestampFontSize}px`,
+          );
+        };
+
+        if (isWallLayout) {
+          // Wait a frame so the grid can settle before measuring.
+          requestAnimationFrame(() => {
+            const firstTile = templateList.querySelector(".templateDiv");
+            const measured =
+              firstTile?.getBoundingClientRect?.().width || value;
+            applyScaleFromWidth(measured);
+          });
+        } else {
+          applyScaleFromWidth(value);
+        }
         applyCaptionVisibility(value);
         updateTableLayout(value);
       };
 
       slider.addEventListener("input", handleSlider);
       slider.addEventListener("change", handleSlider);
+      if (isGroupWall) {
+        slider.dataset.autofit = "1";
+        slider.disabled = true;
+        slider.style.display = "none";
+      }
+
       if (isMobile) {
         slider.style.display = "none";
         slider.value = Math.min(window.innerWidth, slider.max);
@@ -201,7 +374,7 @@ export function initTemplates() {
         });
       } else {
         handleSlider();
-        setupTileResizeDrag(slider);
+        if (!isGroupWall) setupTileResizeDrag(slider);
       }
     }
 
@@ -502,11 +675,19 @@ export async function loadTemplates() {
   const searchInput = document.getElementById("search-input");
   const selectedGroup = getSelectedGroup();
   const searchQuery = searchInput ? searchInput.value.toLowerCase() : "";
-  const url = `/templates?group=${selectedGroup}&search=${searchQuery}&t=${new Date().getTime()}`;
-
+  const params = new URLSearchParams({
+    group: selectedGroup,
+    search: searchQuery,
+  });
+  if (document.getElementById("template-list")) params.set("viewer", "1");
+  if (window.currentDashboard) params.set("dashboard", window.currentDashboard);
+  const url = `/templates?${params}`;
   const slider = document.getElementById("grid-width-slider");
 
-  updateGridLayout();
+  const isGroupWall = document.body?.classList.contains("templates-wall");
+  if (!isGroupWall) {
+    updateGridLayout();
+  }
 
   const templateList = document.getElementById("template-list");
   const captionsTable = document.getElementById("captions-table");
@@ -537,7 +718,10 @@ export async function loadTemplates() {
   }
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      cache: "no-cache",
+      headers: { Accept: "application/json" },
+    });
 
     if (!response.ok) {
       throw new Error("Network response was not ok");
@@ -602,8 +786,10 @@ export async function loadTemplates() {
             : timeAgo(lastScreenshotTime);
         const nextCaptureTime = timeAgo(template.next_screenshot_time);
 
-        const lastScreenshotDate = new Date(lastScreenshotTime);
-        const ageMinutes = (Date.now() - lastScreenshotDate.getTime()) / 60000;
+        const lastScreenshotDate = parseTimestamp(lastScreenshotTime);
+        const ageMinutes = lastScreenshotDate
+          ? (Date.now() - lastScreenshotDate.getTime()) / 60000
+          : Number.POSITIVE_INFINITY;
         const videoContainerClass = "video-container";
         const errorClass = template.capture_failed
           ? "template-error"
@@ -652,8 +838,27 @@ export async function loadTemplates() {
       }
     });
 
+    // Some pages virtualize tiles for performance, which means
+    // `querySelectorAll(".templateDiv")` is not a reliable count.
+    // Persist the real count so the slider can compute a correct "fit on one page" size.
+    window.templatesTotalCount = templateCount;
+
     if (isIndexPage && cards.length) {
-      virtualizeElements(templateList, cards);
+      const isGroupWall = document.body?.classList.contains("templates-wall");
+      const slider = document.getElementById("grid-width-slider");
+      const shouldVirtualize =
+        !isGroupWall &&
+        cards.length > 60 &&
+        !(slider && slider.dataset.autofit === "1");
+      if (shouldVirtualize) {
+        templateList.dataset.virtualized = "1";
+        virtualizeElements(templateList, cards);
+      } else {
+        templateList.dataset.virtualized = "0";
+        cards.forEach((el) => templateList.appendChild(el));
+      }
+    } else if (isIndexPage) {
+      templateList.dataset.virtualized = "0";
     }
 
     if (!hasTemplates) {
@@ -673,8 +878,14 @@ export async function loadTemplates() {
       window.addEventListener("resize", updateGridLayout);
     }
     if (window.updateSliderLimits) {
-      window.updateSliderLimits();
-      if (slider) {
+      if (isGroupWall) {
+        requestAnimationFrame(
+          () => window.updateSliderLimits && window.updateSliderLimits(),
+        );
+      } else {
+        window.updateSliderLimits();
+      }
+      if (slider && slider.dataset.autofit === "1") {
         slider.value = slider.min;
         slider.dispatchEvent(new Event("input"));
       }
@@ -728,7 +939,11 @@ export function setupTableSorting(tableId) {
           return parseFloat(aVal) - parseFloat(bVal);
         }
         if (type === "date") {
-          return new Date(aVal) - new Date(bVal);
+          const aDate = parseTimestamp(aVal);
+          const bDate = parseTimestamp(bVal);
+          const aMs = aDate ? aDate.getTime() : 0;
+          const bMs = bDate ? bDate.getTime() : 0;
+          return aMs - bMs;
         }
         return aVal.localeCompare(bVal);
       });
@@ -746,6 +961,7 @@ export function setupTableSorting(tableId) {
 export function setupSorting() {
   setupTableSorting("camera-table");
   setupTableSorting("feed-status");
+  setupTableSorting("top-failures");
   setupTableSorting("captions-table");
 }
 
@@ -778,7 +994,11 @@ export function sortTemplates(option) {
       if (field === "error") {
         return getVal(a) - getVal(b);
       }
-      return new Date(getVal(a)) - new Date(getVal(b));
+      const aDate = parseTimestamp(getVal(a));
+      const bDate = parseTimestamp(getVal(b));
+      const aMs = aDate ? aDate.getTime() : 0;
+      const bMs = bDate ? bDate.getTime() : 0;
+      return aMs - bMs;
     });
     if (direction === "desc") rows.reverse();
     rows.forEach((row) => tbody.appendChild(row));
@@ -802,7 +1022,11 @@ export function sortTemplates(option) {
     if (field === "error") {
       return getVal(a) - getVal(b);
     }
-    return new Date(getVal(a)) - new Date(getVal(b));
+    const aDate = parseTimestamp(getVal(a));
+    const bDate = parseTimestamp(getVal(b));
+    const aMs = aDate ? aDate.getTime() : 0;
+    const bMs = bDate ? bDate.getTime() : 0;
+    return aMs - bMs;
   });
   if (direction === "desc") items.reverse();
   items.forEach((item) => list.appendChild(item));
@@ -818,10 +1042,7 @@ export function setupCaptionsFilter() {
   if (!searchInput || rows.length === 0) return;
 
   const parseDate = (str) => {
-    if (!str) return null;
-    const iso = str.includes("T") ? str : str.replace(" ", "T") + "Z";
-    const d = new Date(iso);
-    return Number.isNaN(d.getTime()) ? null : d;
+    return parseTimestamp(str);
   };
 
   // Escape user search term for safe use in RegExp
@@ -833,11 +1054,18 @@ export function setupCaptionsFilter() {
     const raw = cell.dataset.raw || cell.textContent;
     cell.dataset.raw = raw;
     if (!term) {
-      cell.innerHTML = raw;
+      cell.textContent = raw;
       return;
     }
     const regex = new RegExp(`(${escapeRegExp(term)})`, "gi");
-    cell.innerHTML = raw.replace(regex, "<mark>$1</mark>");
+    cell.replaceChildren();
+    raw.split(regex).forEach((part, index) => {
+      if (index % 2) {
+        const mark = document.createElement("mark");
+        mark.textContent = part;
+        cell.append(mark);
+      } else cell.append(document.createTextNode(part));
+    });
   };
 
   const filter = () => {
@@ -858,7 +1086,7 @@ export function setupCaptionsFilter() {
       const captionCell = row.querySelector("td:nth-child(2)");
       if (show) highlight(captionCell, term);
       else if (captionCell)
-        captionCell.innerHTML =
+        captionCell.textContent =
           captionCell.dataset.raw || captionCell.textContent;
     });
   };
@@ -961,6 +1189,7 @@ export {
   timeAgo,
   formatExactTime,
   updateHumanizedTimes,
+  parseTimestamp,
   applyStatusFilter,
   updateStatusCounts,
   setupStatusFilter,

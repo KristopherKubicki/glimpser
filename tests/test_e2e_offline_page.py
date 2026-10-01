@@ -14,7 +14,7 @@ if os.environ.get("NO_NETWORK") == "1" or os.environ.get("SKIP_E2E") == "1":
 
 pytest_socket.enable_socket()
 
-import app
+import app  # noqa: E402
 
 try:
     from selenium import webdriver

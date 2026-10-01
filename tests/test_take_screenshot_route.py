@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from flask import Flask
 
+from app.blueprints import assets
 from app.routes import init_routes
 
 
@@ -37,6 +38,19 @@ class TestTakeScreenshotRoute(unittest.TestCase):
         resp = self.client.get("/take_screenshot/cam1?motion=true")
         self.assertEqual(resp.status_code, 200)
         self.mock_update.assert_called_with("cam1", {"name": "cam1"}, motion=True)
+
+    def test_busy_capture_returns_429(self):
+        self.mock_templates.return_value = {"cam1": {"name": "cam1"}}
+        acquired = assets._MANUAL_CAPTURE_LOCK.acquire(blocking=False)
+        self.assertTrue(acquired)
+        try:
+            resp = self.client.post("/take_screenshot/cam1")
+        finally:
+            assets._MANUAL_CAPTURE_LOCK.release()
+
+        self.assertEqual(resp.status_code, 429)
+        self.assertEqual(resp.get_json()["status"], "busy")
+        self.mock_update.assert_not_called()
 
 
 if __name__ == "__main__":  # pragma: no cover

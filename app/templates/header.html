@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
-      {% if page_title %}Glimpser – {{ page_title }}{% else %}Glimpser{% endif
+      {% if page_title %}Glimpser - {{ page_title }}{% else %}Glimpser{% endif
       %}
     </title>
     <meta
@@ -13,7 +13,7 @@
     />
     <meta
       property="og:title"
-      content="{% if page_title %}Glimpser – {{ page_title }}{% else %}Glimpser{% endif %}"
+      content="{% if page_title %}Glimpser - {{ page_title }}{% else %}Glimpser{% endif %}"
     />
     <meta
       property="og:description"
@@ -21,18 +21,15 @@
     />
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css') }}"
+      href="{{ url_for('static', filename='css/style.css') }}?v={{ ASSET_VERSION }}"
     />
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='css/player.css') }}"
+      href="{{ url_for('static', filename='css/player.css') }}?v={{ ASSET_VERSION }}"
     />
     <link
-      rel="preload"
-      href="{{ url_for('static', filename='icons/sprite.svg') }}"
-      as="image"
-      type="image/svg+xml"
-      crossorigin
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/viewer.css') }}?v={{ ASSET_VERSION }}"
     />
     <link
       rel="icon"
@@ -40,12 +37,16 @@
       href="{{ url_for('static', filename='favicon.ico') }}"
     />
     <script>
-      window.IS_LOGGED_IN = {{ 'true' if session.get('user_id') else 'false' }};
+      window.IS_LOGGED_IN = {{ 'true' if session.get('user_id') or LAN_GUEST else 'false' }};
+      window.IS_LAN_GUEST = {{ 'true' if LAN_GUEST else 'false' }};
+      window.LOW_CPU_MODE = {{ 'true' if LOW_CPU_MODE else 'false' }};
+      window.ASSET_VERSION = {{ ASSET_VERSION|tojson }};
     </script>
-    {% if session.get('user_id') %}
+    {% if session.get('user_id') or LAN_GUEST %} {% set bootstrap_script =
+    'js/landing_boot.js' if request.path == '/' else 'js/script.js' %}
     <script
       type="module"
-      src="{{ url_for('static', filename='js/script.js') }}"
+      src="{{ url_for('static', filename=bootstrap_script) }}?v={{ ASSET_VERSION }}"
     ></script>
     {% endif %}
   </head>

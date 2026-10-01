@@ -2,6 +2,7 @@
 
 import io
 import os
+import sys
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
@@ -31,7 +32,7 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots._finalize_screenshot", return_value=True)
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
-    @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.get_chrome_path", return_value=sys.executable)
     @patch("app.utils.screenshots.is_system_online", return_value=True)
     def test_capture_screenshot_success(
         self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
@@ -51,7 +52,7 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots._finalize_screenshot", return_value=True)
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
-    @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.get_chrome_path", return_value=sys.executable)
     @patch("app.utils.screenshots.is_system_online", return_value=True)
     def test_capture_screenshot_with_popup(
         self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
@@ -69,7 +70,14 @@ class TestScreenshotCapture(unittest.TestCase):
 
         self.assertTrue(result)
         mock_driver.find_elements.assert_called_once()
-        mock_driver.execute_script.assert_called_once()
+        # Popup removal + overlay stripping may both use execute_script.
+        self.assertGreaterEqual(mock_driver.execute_script.call_count, 1)
+        scripts = [
+            call.args[0]
+            for call in mock_driver.execute_script.call_args_list
+            if call.args
+        ]
+        self.assertTrue(any("el.remove()" in script for script in scripts))
         mock_finalize.assert_called_once()
 
     @patch("app.utils.screenshots.webdriver.Chrome")
@@ -87,7 +95,7 @@ class TestScreenshotCapture(unittest.TestCase):
 
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
-    @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.get_chrome_path", return_value=sys.executable)
     @patch("app.utils.screenshots.create_placeholder")
     @patch("app.utils.screenshots.is_mostly_blank", return_value=True)
     @patch("app.utils.screenshots.is_system_online", return_value=True)
@@ -127,7 +135,7 @@ class TestScreenshotCapture(unittest.TestCase):
     @patch("app.utils.screenshots._finalize_screenshot", return_value=True)
     @patch("app.utils.screenshots.launch_headless_chrome")
     @patch("app.utils.screenshots.get_chrome_version", return_value=120)
-    @patch("app.utils.screenshots.get_chrome_path", return_value="/usr/bin/chrome")
+    @patch("app.utils.screenshots.get_chrome_path", return_value=sys.executable)
     @patch("app.utils.screenshots.is_system_online", return_value=True)
     def test_capture_screenshot_with_dark_mode(
         self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
@@ -194,6 +202,116 @@ class TestScreenshotCapture(unittest.TestCase):
 
         kwargs = mock_session.get.call_args.kwargs
         self.assertNotIn("proxies", kwargs)
+
+    @patch("app.utils.screenshots._finalize_screenshot", return_value=True)
+    @patch("app.utils.screenshots.launch_headless_chrome")
+    @patch("app.utils.screenshots.get_chrome_version", return_value=120)
+    @patch("app.utils.screenshots.get_chrome_path", return_value=sys.executable)
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
+    def test_capture_screenshot_forces_headless_non_danger(
+        self, mock_online, mock_path, mock_version, mock_launch, mock_finalize
+    ):
+        class _FakeOptions:
+            def __init__(self):
+                self.args = []
+
+            def add_argument(self, arg):
+                self.args.append(arg)
+
+        fake_opts = _FakeOptions()
+
+        def _fake_options_ctor():
+            return fake_opts
+
+        mock_driver = MagicMock()
+        mock_launch.return_value = mock_driver
+        mock_driver.get.return_value = None
+        mock_driver.save_screenshot.return_value = True
+
+        with patch("app.utils.screenshots.Options", side_effect=_fake_options_ctor):
+            result = capture_screenshot_and_har(
+                "http://example.com",
+                self.output_path,
+                headless=False,
+                danger=False,
+            )
+
+        self.assertTrue(result)
+        self.assertTrue(any("--headless" in a for a in fake_opts.args))
+        mock_finalize.assert_called_once()
+
+    @patch("app.utils.screenshots._finalize_screenshot", return_value=True)
+    @patch("app.utils.screenshots._apply_browser_site_dom_cleanup", return_value=4)
+    @patch("app.utils.screenshots._strip_fixed_overlays", return_value=2)
+    @patch("app.utils.screenshots._remove_popup", return_value=1)
+    @patch("app.utils.screenshots.browser_supports_gl", return_value=True)
+    @patch("app.utils.screenshots.launch_headless_chrome")
+    @patch("app.utils.screenshots.get_chrome_version", return_value=120)
+    @patch("app.utils.screenshots.get_chrome_path", return_value=sys.executable)
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
+    def test_capture_screenshot_flight_tracker_profile_uses_richer_browser_path(
+        self,
+        mock_online,
+        mock_path,
+        mock_version,
+        mock_launch,
+        mock_browser_supports_gl,
+        mock_remove_popup,
+        mock_strip_fixed_overlays,
+        mock_dom_cleanup,
+        mock_finalize,
+    ):
+        class _FakeOptions:
+            def __init__(self):
+                self.args = []
+
+            def add_argument(self, arg):
+                self.args.append(arg)
+
+        fake_opts = _FakeOptions()
+
+        def _fake_options_ctor():
+            return fake_opts
+
+        mock_driver = MagicMock()
+        mock_driver.get.return_value = None
+        mock_driver.save_screenshot.return_value = True
+        mock_element = MagicMock()
+        mock_element.rect = {"width": 1600, "height": 900}
+        mock_driver.find_element.return_value = mock_element
+
+        def _fake_execute_script(script, *args):
+            if "tagName.toLowerCase" in script:
+                return "div"
+            return None
+
+        mock_driver.execute_script.side_effect = _fake_execute_script
+        mock_launch.return_value = mock_driver
+
+        with patch("app.utils.screenshots.Options", side_effect=_fake_options_ctor):
+            result = capture_screenshot_and_har(
+                "https://www.flightradar24.com/",
+                self.output_path,
+                name="FlightRadar",
+                popup_xpath="//div[@id='consent']",
+                stealth=False,
+            )
+
+        self.assertTrue(result)
+        self.assertIn("--enable-webgl", fake_opts.args)
+        self.assertIn("--ignore-gpu-blocklist", fake_opts.args)
+        self.assertIn("--use-angle=swiftshader", fake_opts.args)
+        self.assertIn("--use-gl=egl", fake_opts.args)
+        self.assertIn("--window-size=2560,1440", fake_opts.args)
+        self.assertNotIn("--disable-gpu", fake_opts.args)
+        self.assertEqual(fake_opts.page_load_strategy, "eager")
+        self.assertEqual(mock_remove_popup.call_count, 4)
+        self.assertEqual(
+            mock_driver.find_element.call_args.args[1], "//*[@id='app']//main | //main"
+        )
+        mock_strip_fixed_overlays.assert_called_once_with(mock_driver, "FlightRadar")
+        mock_dom_cleanup.assert_called_once()
+        mock_finalize.assert_called_once()
 
 
 if __name__ == "__main__":

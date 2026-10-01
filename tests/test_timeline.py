@@ -15,14 +15,22 @@ class TestTimeline(unittest.TestCase):
         self.client = self.app.test_client()
         clear_template_cache()
 
-    @patch("app.routes.session", {"user_id": 1})
+    @patch("app.routes.API_KEY", "timeline-test-key")
     def test_timeline_redirect(self):
-        response = self.client.get("/timeline")
+        response = self.client.get(
+            "/timeline", headers={"X-API-Key": "timeline-test-key"}
+        )
         self.assertEqual(response.status_code, 302)
         self.assertIn(
             "/captions?tab=history-tab",
             response.headers.get("Location", ""),
         )
+
+    @patch("app.routes.config.SKIP_LOGIN_SUBNETS", [])
+    def test_timeline_requires_authentication(self):
+        response = self.client.get("/timeline")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login?", response.headers["Location"])
 
 
 if __name__ == "__main__":

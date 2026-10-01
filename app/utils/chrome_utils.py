@@ -62,8 +62,11 @@ def get_chrome_version(chrome_path: str) -> int:
             timeout=3,
             check=False,
         )
-        version_str = result.stdout.strip().split()[-1]
-        version = int(version_str.split(".")[0])
+        version_output = f"{result.stdout} {result.stderr}".strip()
+        match = re.search(r"(\d+)\.(\d+)\.(\d+)\.(\d+)", version_output)
+        if not match:
+            raise ValueError("Version number not found in command output.")
+        version = int(match.group(1))
         chrome_version[chrome_path] = (version, time.time())
     except Exception as exc:
         logging.error("Chrome version exception error: %s", exc)
@@ -83,7 +86,7 @@ def browser_supports_gl(chrome_path: str) -> bool:
                 chrome_path,
                 "--headless=new",
                 "--use-gl=egl",
-                "--disable-gpu",
+                "--dump-dom",
                 "about:blank",
             ],
             stdout=subprocess.DEVNULL,

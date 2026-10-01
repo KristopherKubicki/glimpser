@@ -22,17 +22,64 @@ from app.config import SCREENSHOT_DIRECTORY, VIDEO_DIRECTORY
 from app.utils import db
 from app.utils.db import commit_with_retry
 
-from .validators import validate_template_name
+from .validators import is_bool_string, to_bool, validate_template_name
 from .video_details import get_latest_screenshot_date, get_latest_video_date
 
 # Keep aliases for backward compatibility and testing mocks
 SessionLocal = db.SessionLocal
 init_db = db.init_db
-ensure_column = db.ensure_column
+ensure_columns = db.ensure_columns
 Base = db.Base
 
 LLM_USAGE_PATH = "data/llm_usage.json"
 LLM_COST_PER_TOKEN = 0.005 / 1000  # OpenAI pricing example
+
+
+def parse_canonical_screenshot_timestamp(name: str, filename: str) -> datetime | None:
+    """Return the capture time encoded in a canonical screenshot filename.
+
+    Canonical still frames are named ``<camera>_<YYYYmmddHHMMSS>.png`` with an
+    optional ``_blank`` suffix. Sidecars such as ``last_motion.png`` or
+    ``.orig.png`` should never participate in latest-frame selection.
+    """
+
+    valid_name = validate_template_name(name)
+    if valid_name is None:
+        return None
+
+    if not filename.endswith(".png") or filename.endswith(".orig.png"):
+        return None
+
+    prefix = f"{valid_name}_"
+    if not filename.startswith(prefix):
+        return None
+
+    timestamp = filename[len(prefix) : -4]
+    if timestamp.endswith("_blank"):
+        timestamp = timestamp[: -len("_blank")]
+    if len(timestamp) != 14 or not timestamp.isdigit():
+        return None
+
+    try:
+        return datetime.strptime(timestamp, "%Y%m%d%H%M%S")
+    except ValueError:
+        return None
+
+
+def sort_canonical_screenshot_filenames(
+    name: str, filenames: list[str], reverse: bool = False
+) -> list[str]:
+    """Return canonical screenshot filenames sorted by embedded capture time."""
+
+    canonical = []
+    for filename in filenames:
+        captured_at = parse_canonical_screenshot_timestamp(name, filename)
+        if captured_at is None:
+            continue
+        canonical.append((captured_at, filename))
+
+    canonical.sort(key=lambda item: (item[0], item[1]), reverse=reverse)
+    return [filename for _, filename in canonical]
 
 
 def is_snapshot_url(url: str) -> bool:
@@ -63,6 +110,9 @@ class Template(db.Base):
     last_motion_caption = Column(Text, default="")
     last_motion_time = Column(Text, default="")
     last_screenshot_time = Column(Text, default="")
+    last_capture_status = Column(String, default="")
+    last_capture_message = Column(Text, default="")
+    last_capture_status_time = Column(String, default="")
     last_video_time = Column(Text, default="")
     offline_since = Column(Text, default="")
     capture_failed = Column(Boolean, default=False)
@@ -80,13 +130,69 @@ class Template(db.Base):
     baseline_caption = Column(Text, default="")
     invert = Column(Boolean, default=False)
     dark = Column(Boolean, default=False)
+    disable_autocrop = Column(Boolean, default=False)
     headless = Column(Boolean, default=True)
     stealth = Column(Boolean, default=False)
     browser = Column(Boolean, default=False)
+    stabilize_mode = Column(String, default="")
+    capture_rotate_degrees = Column(Integer, default=0)
+    capture_crop_roi = Column(String, default="")
+    lens_correction_spec = Column(String, default="")
+    horizon_level_mode = Column(String, default="")
+    horizon_level_roi = Column(String, default="")
+    night_enhance_mode = Column(String, default="")
+    deflicker_mode = Column(String, default="")
+    source_template = Column(String, default="")
+    burst_enhance_mode = Column(String, default="")
+    burst_enhance_profile = Column(String, default="")
+    burst_enhance_roi = Column(String, default="")
+    composite_view_mode = Column(String, default="")
+    composite_view_spec = Column(Text, default="")
+    camera_latitude = Column(Float, default=None)
+    camera_longitude = Column(Float, default=None)
+    camera_elevation_m = Column(Float, default=None)
+    camera_location_label = Column(String, default="")
+    camera_location_accuracy = Column(String, default="")
+    camera_location_evidence = Column(Text, default="")
+    camera_location_private = Column(Boolean, default=False)
+    view_target_latitude = Column(Float, default=None)
+    view_target_longitude = Column(Float, default=None)
+    view_target_label = Column(String, default="")
+    view_description = Column(Text, default="")
+    view_direction = Column(String, default="")
+    view_bearing_degrees = Column(Float, default=None)
+    view_pitch_degrees = Column(Float, default=None)
+    view_roll_degrees = Column(Float, default=None)
+    view_horizontal_fov_degrees = Column(Float, default=None)
+    view_vertical_fov_degrees = Column(Float, default=None)
+    view_mount_height = Column(String, default="")
+    view_pose_confidence = Column(String, default="")
+    view_pose_evidence = Column(Text, default="")
+    view_staticness = Column(String, default="")
+    view_metadata = Column(Text, default="")
+    view_metadata_version = Column(Integer, default=0)
+    view_metadata_history = Column(Text, default="")
+    view_metadata_updated = Column(String, default="")
     livecaption = Column(Boolean, default=False)
     danger = Column(Boolean, default=False)
+    ptz_enabled = Column(Boolean, default=False)
+    ptz_service = Column(String, default="")
+    ptz_profile_token = Column(String, default="")
+    ptz_profile_name = Column(String, default="")
+    ptz_presets = Column(Text, default="")
+    ptz_vendor_driver = Column(String, default="")
+    private_camera = Column(Boolean, default=False)
     motion = Column(Float, default=0.2)
     rollback_frames = Column(Integer, default=0)
+    event_buffer_enabled = Column(Boolean, default=False)
+    event_buffer_profile = Column(String, default="")
+    event_buffer_fps = Column(Integer, default=1)
+    event_buffer_seconds = Column(Integer, default=120)
+    event_buffer_width = Column(Integer, default=640)
+    event_buffer_pre_seconds = Column(Integer, default=8)
+    event_buffer_post_seconds = Column(Integer, default=6)
+    event_buffer_format = Column(String, default="gif")
+    event_buffer_backoff_seconds = Column(Integer, default=300)
     last_ret = None
 
     @validates("frequency")
@@ -142,11 +248,75 @@ class TemplateManager:
         # Ensure the templates table exists even when Base has been reloaded
         Template.__table__.create(db.engine, checkfirst=True)
         # Automatically add newer columns when upgrading from older versions
-        ensure_column("templates", "capture_failed", "BOOLEAN", "0")
-        ensure_column("templates", "auth_username", "VARCHAR(255)", "''")
-        ensure_column("templates", "auth_password", "VARCHAR(255)", "''")
-        ensure_column("templates", "thumbnail", "VARCHAR(255)", "''")
-        ensure_column("templates", "baseline_caption", "TEXT", "''")
+        ensure_columns(
+            "templates",
+            [
+                ("capture_failed", "BOOLEAN", "0"),
+                ("last_capture_status", "VARCHAR(32)", "''"),
+                ("last_capture_message", "TEXT", "''"),
+                ("last_capture_status_time", "TEXT", "''"),
+                ("auth_username", "VARCHAR(255)", "''"),
+                ("auth_password", "VARCHAR(255)", "''"),
+                ("thumbnail", "VARCHAR(255)", "''"),
+                ("baseline_caption", "TEXT", "''"),
+                ("disable_autocrop", "BOOLEAN", "0"),
+                ("ptz_enabled", "BOOLEAN", "0"),
+                ("ptz_service", "VARCHAR(255)", "''"),
+                ("ptz_profile_token", "VARCHAR(255)", "''"),
+                ("ptz_profile_name", "VARCHAR(255)", "''"),
+                ("ptz_presets", "TEXT", "''"),
+                ("ptz_vendor_driver", "VARCHAR(255)", "''"),
+                ("private_camera", "BOOLEAN", "0"),
+                ("stabilize_mode", "VARCHAR(32)", "''"),
+                ("capture_rotate_degrees", "INTEGER", "0"),
+                ("capture_crop_roi", "VARCHAR(255)", "''"),
+                ("lens_correction_spec", "VARCHAR(255)", "''"),
+                ("horizon_level_mode", "VARCHAR(32)", "''"),
+                ("horizon_level_roi", "VARCHAR(255)", "''"),
+                ("night_enhance_mode", "VARCHAR(32)", "''"),
+                ("deflicker_mode", "VARCHAR(32)", "''"),
+                ("source_template", "VARCHAR(32)", "''"),
+                ("burst_enhance_mode", "VARCHAR(32)", "''"),
+                ("burst_enhance_profile", "VARCHAR(32)", "''"),
+                ("burst_enhance_roi", "VARCHAR(255)", "''"),
+                ("composite_view_mode", "VARCHAR(32)", "''"),
+                ("composite_view_spec", "TEXT", "''"),
+                ("camera_latitude", "REAL", "NULL"),
+                ("camera_longitude", "REAL", "NULL"),
+                ("camera_elevation_m", "REAL", "NULL"),
+                ("camera_location_label", "VARCHAR(255)", "''"),
+                ("camera_location_accuracy", "VARCHAR(32)", "''"),
+                ("camera_location_evidence", "TEXT", "''"),
+                ("camera_location_private", "BOOLEAN", "0"),
+                ("view_target_latitude", "REAL", "NULL"),
+                ("view_target_longitude", "REAL", "NULL"),
+                ("view_target_label", "VARCHAR(255)", "''"),
+                ("view_description", "TEXT", "''"),
+                ("view_direction", "VARCHAR(64)", "''"),
+                ("view_bearing_degrees", "REAL", "NULL"),
+                ("view_pitch_degrees", "REAL", "NULL"),
+                ("view_roll_degrees", "REAL", "NULL"),
+                ("view_horizontal_fov_degrees", "REAL", "NULL"),
+                ("view_vertical_fov_degrees", "REAL", "NULL"),
+                ("view_mount_height", "VARCHAR(128)", "''"),
+                ("view_pose_confidence", "VARCHAR(32)", "''"),
+                ("view_pose_evidence", "TEXT", "''"),
+                ("view_staticness", "VARCHAR(32)", "''"),
+                ("view_metadata", "TEXT", "''"),
+                ("view_metadata_version", "INTEGER", "0"),
+                ("view_metadata_history", "TEXT", "''"),
+                ("view_metadata_updated", "TEXT", "''"),
+                ("event_buffer_enabled", "BOOLEAN", "0"),
+                ("event_buffer_profile", "VARCHAR(32)", "''"),
+                ("event_buffer_fps", "INTEGER", "1"),
+                ("event_buffer_seconds", "INTEGER", "120"),
+                ("event_buffer_width", "INTEGER", "640"),
+                ("event_buffer_pre_seconds", "INTEGER", "8"),
+                ("event_buffer_post_seconds", "INTEGER", "6"),
+                ("event_buffer_format", "VARCHAR(16)", "'gif'"),
+                ("event_buffer_backoff_seconds", "INTEGER", "300"),
+            ],
+        )
 
     def get_session(self):
         """Return a new SQLAlchemy session bound to the app database."""
@@ -166,11 +336,15 @@ class TemplateManager:
         session = self.get_session()
         try:
             templates = session.query(Template).all()
-            result = {template.name: template.__dict__ for template in templates}
-            for key in result:
-                del result[key]["_sa_instance_state"]
-            if result.get(None):
-                del result[None]
+            result = {}
+            for template in templates:
+                # Templates without a name are not addressable via the UI or
+                # scheduler; treat them as invalid and ignore.
+                if not template.name:
+                    continue
+                data = template.__dict__.copy()
+                data.pop("_sa_instance_state", None)
+                result[template.name] = data
             return result
         finally:
             session.close()
@@ -227,11 +401,17 @@ class TemplateManager:
         try:
             template = session.query(Template).filter_by(name=name).first()
             if template is None:
-                template = Template()
+                # Always set the name on create. Some callers only pass it via
+                # the `name` argument (not inside `details`).
+                template = Template(name=name)
                 session.add(template)
                 ldelta = True
             else:
                 ldelta = False
+
+            # Caption/health writes must not reset capture cadence. Only
+            # configuration changes require replacing a scheduler job.
+            reschedule = ldelta
 
             # Determine whether this template operates in browser/stealth mode.
             browser_like = bool(details.get("browser", template.browser)) or bool(
@@ -245,10 +425,10 @@ class TemplateManager:
             # ``docs/configuration_guide.md`` for rationale.
             default_frequency = 60 if browser_like else 30
             default_timeout = 30 if browser_like else 10
-            if "frequency" not in details or details.get("frequency") == "":
-                details["frequency"] = default_frequency
-            if "timeout" not in details or details.get("timeout") == "":
-                details["timeout"] = default_timeout
+            if details.get("frequency") in {"", None}:
+                details["frequency"] = template.frequency or default_frequency
+            if details.get("timeout") in {"", None}:
+                details["timeout"] = template.timeout or default_timeout
             if template:
                 for key, value in details.items():
                     if not hasattr(template, key):
@@ -259,7 +439,7 @@ class TemplateManager:
                         continue
                     try:
                         if key == "rollback_frames":
-                            value = int(value)
+                            value = int(value or 0)
                         elif key in ["frequency", "timeout"]:
                             if value == "":
                                 value = (
@@ -299,20 +479,163 @@ class TemplateManager:
                                 raise ValueError(
                                     "Object confidence must be between 0 and 1"
                                 )
+                        elif key == "view_bearing_degrees":
+                            if value in {None, ""}:
+                                value = None
+                            else:
+                                value = float(value)
+                                if not 0 <= value < 360:
+                                    raise ValueError(
+                                        "View bearing degrees must be >= 0 and < 360"
+                                    )
+                        elif key in {"camera_latitude", "view_target_latitude"}:
+                            if value in {None, ""}:
+                                value = None
+                            else:
+                                value = float(value)
+                                if not -90 <= value <= 90:
+                                    raise ValueError(
+                                        "Latitude must be >= -90 and <= 90"
+                                    )
+                        elif key in {"camera_longitude", "view_target_longitude"}:
+                            if value in {None, ""}:
+                                value = None
+                            else:
+                                value = float(value)
+                                if not -180 <= value <= 180:
+                                    raise ValueError(
+                                        "Longitude must be >= -180 and <= 180"
+                                    )
+                        elif key == "camera_elevation_m":
+                            if value in {None, ""}:
+                                value = None
+                            else:
+                                value = float(value)
+                        elif key in {"camera_location_label", "view_target_label"}:
+                            value = str(value or "").strip()
+                            if len(value) > 255:
+                                raise ValueError("Location label is too long")
+                        elif key in {"camera_location_evidence", "view_pose_evidence"}:
+                            value = str(value or "").strip()
+                            if len(value) > 2000:
+                                raise ValueError("Evidence is too long")
+                        elif key == "camera_location_accuracy":
+                            value = str(value or "").strip().lower()
+                            if value == "unknown":
+                                value = ""
+                            if value not in {
+                                "",
+                                "exact",
+                                "approximate",
+                                "site",
+                                "region",
+                                "source",
+                            }:
+                                raise ValueError("Invalid camera location accuracy")
+                        elif key in {
+                            "view_pitch_degrees",
+                            "view_roll_degrees",
+                            "view_horizontal_fov_degrees",
+                            "view_vertical_fov_degrees",
+                        }:
+                            if value in {None, ""}:
+                                value = None
+                            else:
+                                value = float(value)
+                                if key == "view_pitch_degrees" and not (
+                                    -90 <= value <= 90
+                                ):
+                                    raise ValueError(
+                                        "View pitch degrees must be >= -90 and <= 90"
+                                    )
+                                if key == "view_roll_degrees" and not (
+                                    -180 <= value <= 180
+                                ):
+                                    raise ValueError(
+                                        "View roll degrees must be >= -180 and <= 180"
+                                    )
+                                if key == "view_horizontal_fov_degrees" and not (
+                                    0 < value <= 360
+                                ):
+                                    raise ValueError(
+                                        "Horizontal FOV degrees must be > 0 and <= 360"
+                                    )
+                                if key == "view_vertical_fov_degrees" and not (
+                                    0 < value <= 180
+                                ):
+                                    raise ValueError(
+                                        "Vertical FOV degrees must be > 0 and <= 180"
+                                    )
+                        elif key == "view_mount_height":
+                            value = str(value or "").strip()
+                            if len(value) > 128:
+                                raise ValueError("View mount height is too long")
+                        elif key == "view_pose_confidence":
+                            value = str(value or "").strip().lower()
+                            if value == "unknown":
+                                value = ""
+                            if value not in {"", "estimated", "operator", "calibrated"}:
+                                raise ValueError("Invalid view pose confidence")
+                        elif key == "view_staticness":
+                            value = str(value or "").strip().lower()
+                            if value == "unknown":
+                                value = ""
+                            if value not in {
+                                "",
+                                "static",
+                                "slight_drift",
+                                "drifting",
+                                "ptz",
+                                "rotating",
+                                "composite",
+                            }:
+                                raise ValueError("Invalid view staticness")
+                        elif key == "view_metadata":
+                            value = str(value or "").strip()
+                            if value:
+                                json.loads(value)
+                        elif key == "view_metadata_history":
+                            value = str(value or "").strip()
+                            if value:
+                                json.loads(value)
+                        elif key == "view_metadata_version":
+                            value = int(value or 0)
+                            if value < 0:
+                                raise ValueError("View metadata version must be >= 0")
                         elif key in ["popup_xpath", "dedicated_xpath"]:
                             if value and not value.startswith("//"):
                                 raise ValueError(f"{key} must start with '//'")
-                        elif key in ["stealth", "headless", "dark", "invert"]:
-                            if value == "on":
-                                value = True
-                            elif value == "off":
-                                value = False
+                        elif key in {
+                            "stealth",
+                            "headless",
+                            "dark",
+                            "invert",
+                            "disable_autocrop",
+                            "browser",
+                            "livecaption",
+                            "danger",
+                            "ptz_enabled",
+                            "private_camera",
+                            "camera_location_private",
+                            "capture_failed",
+                        }:
+                            if isinstance(value, str):
+                                if is_bool_string(value):
+                                    value = to_bool(value)
+                                else:
+                                    logging.debug(
+                                        "Unrecognized boolean string for %s",
+                                        key,
+                                    )
+                                    continue
                             elif isinstance(value, bool):
                                 pass
+                            elif isinstance(value, int) and value in (0, 1):
+                                value = bool(value)
                             else:
-                                logging.debug("MISSSSED %s", value)
+                                logging.debug("Unrecognized boolean value for %s", key)
                                 continue
-                    except ValueError as e:
+                    except (TypeError, ValueError) as e:
                         # Log the validation error and return False
                         logging.warning("Validation error: %s %s %s", str(e), name, key)
                         return False
@@ -321,16 +644,152 @@ class TemplateManager:
                     if getattr(template, key) != value:
                         setattr(template, key, value)
                         ldelta = True
+                        if key not in {
+                            "last_caption",
+                            "last_ret",
+                            "last_caption_time",
+                            "last_motion_caption",
+                            "last_motion_time",
+                            "last_screenshot_time",
+                            "last_video_time",
+                            "capture_failed",
+                            "offline_since",
+                            "last_capture_status",
+                            "last_capture_message",
+                            "last_capture_status_time",
+                        }:
+                            reschedule = True
             if ldelta is True:
                 session.commit()
                 # Recreate the scheduler job so the new settings take effect
-                _update_scheduler_job(name, template.frequency)
+                if reschedule:
+                    _update_scheduler_job(name, template.frequency)
             return True
         except Exception as e:
             logging.error("Error saving template: %s", str(e))
             return False
         finally:
             session.close()
+
+    def _rename_prefixed_entries(
+        self, directory: str, old_name: str, new_name: str
+    ) -> None:
+        """Rename files in ``directory`` that start with ``old_name``.
+
+        Template names are embedded in screenshot and video filenames, so a
+        template rename has to update both the directory name and the stored
+        file prefixes. This keeps history, clip listings, and derived views
+        addressable after the rename.
+        """
+
+        if not os.path.isdir(directory):
+            return
+
+        for entry_name in os.listdir(directory):
+            if not entry_name.startswith(old_name):
+                continue
+            src = os.path.join(directory, entry_name)
+            dst = os.path.join(directory, f"{new_name}{entry_name[len(old_name) :]}")
+            if os.path.exists(dst):
+                raise ValueError(f"Destination already exists: {dst}")
+            os.replace(src, dst)
+
+    def _refresh_latest_screenshot_symlink(self, directory: str) -> None:
+        """Refresh ``latest_camera.png`` in ``directory`` after a rename."""
+
+        if not os.path.isdir(directory):
+            return
+
+        png_files = [
+            f
+            for f in os.listdir(directory)
+            if f.endswith(".png")
+            and f != "latest_camera.png"
+            and os.path.isfile(os.path.join(directory, f))
+        ]
+        symlink_path = os.path.join(directory, "latest_camera.png")
+        if os.path.lexists(symlink_path):
+            os.unlink(symlink_path)
+        if not png_files:
+            return
+
+        camera_name = os.path.basename(os.path.normpath(directory))
+        png_files = sort_canonical_screenshot_filenames(camera_name, png_files)
+        if not png_files:
+            return
+
+        latest_name = png_files[-1]
+        os.symlink(os.path.join(directory, latest_name), symlink_path)
+
+    def _rename_template_storage(self, old_name: str, new_name: str) -> None:
+        """Move template storage and rename filename prefixes.
+
+        Screenshots, videos, and the per-template ``latest_camera.png`` symlink
+        all key off the template name. This helper keeps the on-disk structure
+        coherent before the scheduler starts writing to the new name.
+        """
+
+        old_shot_dir = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(old_name))
+        new_shot_dir = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(new_name))
+        old_video_dir = os.path.join(VIDEO_DIRECTORY, secure_filename(old_name))
+        new_video_dir = os.path.join(VIDEO_DIRECTORY, secure_filename(new_name))
+
+        if os.path.exists(new_shot_dir) or os.path.exists(new_video_dir):
+            raise ValueError(f"Storage already exists for {new_name}")
+
+        if os.path.isdir(old_shot_dir):
+            shutil.move(old_shot_dir, new_shot_dir)
+            self._rename_prefixed_entries(new_shot_dir, old_name, new_name)
+            self._refresh_latest_screenshot_symlink(new_shot_dir)
+
+        if os.path.isdir(old_video_dir):
+            shutil.move(old_video_dir, new_video_dir)
+            self._rename_prefixed_entries(new_video_dir, old_name, new_name)
+
+    def rename_template(self, old_name: str, new_name: str) -> str:
+        """Rename a template and its on-disk assets.
+
+        Parameters
+        ----------
+        old_name : str
+            Existing template name.
+        new_name : str
+            New validated template name.
+
+        Returns
+        -------
+        str
+            The final stored template name.
+        """
+
+        old_name = validate_template_name(old_name)
+        new_name = validate_template_name(new_name)
+        if old_name is None or new_name is None:
+            raise ValueError("Invalid template name")
+        if old_name == new_name:
+            return old_name
+
+        session = self.get_session()
+        try:
+            template = session.query(Template).filter_by(name=old_name).first()
+            if template is None:
+                raise ValueError(f"Template not found: {old_name}")
+            if session.query(Template).filter_by(name=new_name).first() is not None:
+                raise ValueError(f"Template already exists: {new_name}")
+
+            self._rename_template_storage(old_name, new_name)
+            template.name = new_name
+            for dependent in (
+                session.query(Template).filter_by(source_template=old_name).all()
+            ):
+                dependent.source_template = new_name
+            commit_with_retry(session)
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+        return new_name
 
     def get_template(self, name):
         """Return a single template by name.
@@ -473,6 +932,47 @@ def get_template(name):
     return manager.get_template(name)
 
 
+def save_caption_metadata(name: str, details: dict) -> bool:
+    """Update captions on an existing source without rewriting its configuration.
+
+    Capture jobs hold snapshots of template settings. Revalidating or saving
+    that entire snapshot can reject legacy metadata or overwrite operator edits.
+    """
+    name = validate_template_name(name)
+    if name is None:
+        return False
+    session = SessionLocal()
+    try:
+        template = session.query(Template).filter_by(name=name).first()
+        if template is None:
+            return False
+        for key in (
+            "last_caption",
+            "last_caption_time",
+            "last_motion_caption",
+            "last_motion_time",
+        ):
+            if key not in details:
+                continue
+            value = details[key]
+            if value is None:
+                value = ""
+            if not isinstance(value, str):
+                return False
+            setattr(template, key, value)
+        session.commit()
+        clear_template_cache()
+        return True
+    except Exception as error:
+        session.rollback()
+        logging.error(
+            "Caption metadata save failed for %s: %s", name, type(error).__name__
+        )
+        return False
+    finally:
+        session.close()
+
+
 def save_template(name: str, template_data) -> bool:
     """Save a template and ensure storage directories exist.
 
@@ -495,7 +995,11 @@ def save_template(name: str, template_data) -> bool:
         return False
 
     manager = TemplateManager()
-    manager.save_template(name, template_data)
+    success = manager.save_template(name, template_data)
+    if not success:
+        return False
+
+    clear_template_cache()
     screenshot_full_path = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(name))
     os.makedirs(screenshot_full_path, exist_ok=True)
     video_full_path = os.path.join(VIDEO_DIRECTORY, secure_filename(name))
@@ -525,6 +1029,7 @@ def delete_template(name: str) -> bool:
     manager = TemplateManager()
     success = manager.delete_template(name)
     if success:
+        clear_template_cache()
         screenshot_full_path = os.path.join(SCREENSHOT_DIRECTORY, secure_filename(name))
         if os.path.exists(screenshot_full_path) and os.path.isdir(screenshot_full_path):
             shutil.rmtree(screenshot_full_path)
@@ -532,6 +1037,15 @@ def delete_template(name: str) -> bool:
         if os.path.exists(video_full_path) and os.path.isdir(video_full_path):
             shutil.rmtree(video_full_path)
     return success
+
+
+def rename_template(old_name: str, new_name: str) -> str:
+    """Rename a template and clear the cached template map."""
+
+    manager = TemplateManager()
+    renamed = manager.rename_template(old_name, new_name)
+    clear_template_cache()
+    return renamed
 
 
 def get_template_by_id(template_id: int):
@@ -571,20 +1085,7 @@ def get_screenshots_for_template(name: str) -> list:
         and ".tmp" not in f
         and ".partial" not in f
     ]
-
-    try:
-        sorted_screenshots = sorted(
-            screenshots,
-            key=lambda x: datetime.strptime(
-                x[len(name) + 1 : -4].replace("_blank", ""), "%Y%m%d%H%M%S"
-            ),
-            reverse=True,
-        )
-    except Exception as e:
-        logging.error("sorting issue %s", e)
-        return []
-
-    return sorted_screenshots[:100]
+    return sort_canonical_screenshot_filenames(name, screenshots, reverse=True)[:100]
 
 
 def get_videos_for_template(name: str):
@@ -808,6 +1309,28 @@ def get_llm_cost_estimate(
             tokens += int(e.get("tokens", 0))
         if not start_date and not end_date:
             tokens = entry.get("total", tokens)
+    elif isinstance(entry, list):
+        sd = datetime.fromisoformat(start_date).date() if start_date else None
+        ed = datetime.fromisoformat(end_date).date() if end_date else None
+        if entry and isinstance(entry[0], dict):
+            for e in entry:
+                try:
+                    dt = datetime.fromisoformat(e.get("time", "")).date()
+                except Exception:
+                    continue
+                if sd and dt < sd:
+                    continue
+                if ed and dt > ed:
+                    continue
+                tokens += int(e.get("tokens", 0))
+        elif not start_date and not end_date:
+            for e in entry:
+                try:
+                    tokens += int(e)
+                except Exception:
+                    continue
+    elif isinstance(entry, dict):
+        tokens = int(entry.get("total", 0))
     else:
         tokens = entry if isinstance(entry, int) else 0
 
@@ -926,25 +1449,61 @@ def group_cost_summary(
     return keep
 
 
-def update_last_screenshot_time(name: str) -> None:
-    """Set ``last_screenshot_time`` to now and clear ``offline_since``."""
+def update_last_screenshot_time(name: str, captured_at: datetime | None = None) -> None:
+    """Record the validated image acquisition time and clear capture failure state."""
     name = validate_template_name(name)
     if name is None:
         return
 
     manager = TemplateManager()
     session = manager.get_session()
+    changed = False
     try:
         template = session.query(Template).filter_by(name=name).first()
         if template:
-            template.last_screenshot_time = datetime.utcnow().strftime(
-                "%Y-%m-%d %H:%M:%S"
+            now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            template.last_screenshot_time = (
+                captured_at.strftime("%Y-%m-%d %H:%M:%S")
+                if captured_at is not None
+                else now
             )
+            template.last_capture_status = "fresh"
+            template.last_capture_message = ""
+            template.last_capture_status_time = now
             template.offline_since = ""
             template.capture_failed = False
             commit_with_retry(session)
+            changed = True
     finally:
         session.close()
+    if changed:
+        clear_template_cache()
+
+
+def set_capture_stale(name: str, reason: str = "stale_previous_frame") -> None:
+    """Record that capture kept the last good frame instead of writing a new one."""
+    name = validate_template_name(name)
+    if name is None:
+        return
+
+    manager = TemplateManager()
+    session = manager.get_session()
+    changed = False
+    try:
+        template = session.query(Template).filter_by(name=name).first()
+        if template:
+            now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            template.capture_failed = False
+            template.offline_since = ""
+            template.last_capture_status = "stale_ok"
+            template.last_capture_message = str(reason or "stale_previous_frame")[:500]
+            template.last_capture_status_time = now
+            commit_with_retry(session)
+            changed = True
+    finally:
+        session.close()
+    if changed:
+        clear_template_cache()
 
 
 def mark_offline(name: str) -> None:
@@ -955,16 +1514,42 @@ def mark_offline(name: str) -> None:
 
     manager = TemplateManager()
     session = manager.get_session()
+    changed = False
     try:
         template = session.query(Template).filter_by(name=name).first()
         if template and not template.offline_since:
             template.offline_since = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
             session.commit()
+            changed = True
     finally:
         session.close()
+    if changed:
+        clear_template_cache()
 
 
-def set_capture_failed(name: str, failed: bool) -> None:
+def clear_offline(name: str) -> None:
+    """Clear the offline status for ``name`` without changing capture times."""
+
+    name = validate_template_name(name)
+    if name is None:
+        return
+
+    manager = TemplateManager()
+    session = manager.get_session()
+    changed = False
+    try:
+        template = session.query(Template).filter_by(name=name).first()
+        if template and template.offline_since:
+            template.offline_since = ""
+            session.commit()
+            changed = True
+    finally:
+        session.close()
+    if changed:
+        clear_template_cache()
+
+
+def set_capture_failed(name: str, failed: bool, reason: str | None = None) -> None:
     """Set ``capture_failed`` flag for ``name``."""
     name = validate_template_name(name)
     if name is None:
@@ -972,13 +1557,28 @@ def set_capture_failed(name: str, failed: bool) -> None:
 
     manager = TemplateManager()
     session = manager.get_session()
+    changed = False
     try:
         template = session.query(Template).filter_by(name=name).first()
         if template:
             template.capture_failed = bool(failed)
+            template.last_capture_status = (
+                "failed" if failed else template.last_capture_status
+            )
+            if failed:
+                template.last_capture_status_time = datetime.utcnow().strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+                template.last_capture_message = str(reason or "")[:500]
+            if not failed:
+                template.offline_since = ""
+                template.last_capture_message = ""
             session.commit()
+            changed = True
     finally:
         session.close()
+    if changed:
+        clear_template_cache()
 
 
 def _update_scheduler_job(name: str, frequency: int) -> None:
@@ -999,10 +1599,15 @@ def _update_scheduler_job(name: str, frequency: int) -> None:
     seconds = 60 * int(frequency)
     try:
         scheduling.scheduler.add_job(
-            func=scheduling.update_camera,
+            func=scheduling.schedule_camera_capture,
             trigger="interval",
             seconds=seconds,
-            args=[name, {}],
+            args=[name, {}, min(120, max(10, seconds - 5))],
+            executor=scheduling.camera_executor(get_template(name) or {}),
+            max_instances=1,
+            coalesce=True,
+            # Match startup scheduling: brief executor delays must not drop a capture.
+            misfire_grace_time=max(30, seconds),
             id=name,
             replace_existing=True,
         )

@@ -1,0 +1,365 @@
+:root {
+  color-scheme: dark;
+
+  --bg: #05070b;
+  --panel: #0c1219;
+  --panel-strong: #111923;
+  --line: #263544;
+  --text: #f3f8ff;
+  --muted: #9eb0c0;
+  --cyan: #79e6ff;
+  --green: #7dffb2;
+  --red: #ff4d6d;
+  --amber: #ffd166;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  display: grid;
+  place-items: start center;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+.adblock-wall {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 10px;
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: 16 / 9;
+  padding: 20px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(8, 12, 18, 0.98), rgba(4, 6, 10, 0.99)),
+    var(--bg);
+}
+
+.adblock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.eyebrow,
+.metric-label,
+.status-pill,
+.probe-host,
+.probe-state {
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  margin: 0 0 7px;
+  color: var(--cyan);
+  font-weight: 800;
+}
+
+h1 {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 780;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.header-status {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+  min-width: 220px;
+  text-align: right;
+}
+
+.status-pill {
+  display: inline-flex;
+  min-width: 170px;
+  justify-content: center;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+}
+
+.status-pill[data-state="strong"] {
+  border-color: rgba(125, 255, 178, 0.48);
+  color: var(--green);
+}
+
+.status-pill[data-state="partial"] {
+  border-color: rgba(255, 209, 102, 0.5);
+  color: var(--amber);
+}
+
+.status-pill[data-state="open"] {
+  border-color: rgba(255, 77, 109, 0.55);
+  color: var(--red);
+}
+
+time {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.summary-strip article {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.summary-strip strong {
+  display: block;
+  margin: 7px 0 4px;
+  color: var(--text);
+  font-size: 30px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-strip span:last-child {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.probe-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.probe-card {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(17, 25, 35, 0.98), rgba(8, 12, 18, 0.98)),
+    var(--panel);
+}
+
+.probe-card[data-state="blocked"] {
+  border-top-color: rgba(125, 255, 178, 0.62);
+}
+
+.probe-card[data-state="allowed"] {
+  border-top-color: rgba(255, 77, 109, 0.68);
+}
+
+.probe-card[data-state="pending"] {
+  border-top-color: rgba(255, 209, 102, 0.56);
+}
+
+.probe-host {
+  display: block;
+  overflow: hidden;
+  color: var(--cyan);
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.probe-card h2 {
+  display: -webkit-box;
+  margin: 10px 0 8px;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 23px;
+  line-height: 1.08;
+  letter-spacing: 0;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.probe-card p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: #c4cfda;
+  font-size: 15px;
+  line-height: 1.38;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.probe-state {
+  place-self: end start;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel-strong);
+  font-weight: 800;
+}
+
+.probe-state[data-state="blocked"] {
+  border-color: rgba(125, 255, 178, 0.48);
+  color: var(--green);
+}
+
+.probe-state[data-state="allowed"] {
+  border-color: rgba(255, 77, 109, 0.5);
+  color: var(--red);
+}
+
+.probe-state[data-state="pending"] {
+  border-color: rgba(255, 209, 102, 0.5);
+  color: var(--amber);
+}
+
+.placeholder-card {
+  grid-column: span 3;
+  place-items: center center;
+  min-height: 390px;
+  text-align: center;
+}
+
+@media (max-width: 1000px) {
+  .adblock-wall {
+    padding: 14px;
+  }
+
+  h1 {
+    font-size: 31px;
+  }
+
+  .adblock-header,
+  .summary-strip {
+    gap: 10px;
+  }
+
+  .probe-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .placeholder-card {
+    grid-column: span 2;
+  }
+}
+
+/* Sized for the 1920 x 1080 household displays; cards retain their live data. */
+@media (min-width: 1200px) {
+  body {
+    --muted: #b3c6d6;
+  }
+  main {
+    height: 100vh;
+    aspect-ratio: auto;
+    padding: 32px;
+    gap: 20px;
+  }
+  h1 {
+    font-size: 48px;
+    line-height: 1.1;
+  }
+  .eyebrow,
+  .metric-label,
+  .status-pill {
+    font-size: 19px;
+  }
+  .header-status time {
+    font-size: 22px;
+  }
+  .metric-panel,
+  .summary-strip article,
+  .lead-strip article {
+    border-radius: 14px;
+    padding: 20px;
+    background: linear-gradient(145deg, #152a38, #101923);
+  }
+  .metric-panel strong,
+  .summary-strip strong,
+  .lead-strip strong {
+    font-size: 44px;
+  }
+  .metric-panel > span:last-child,
+  .summary-strip article > span:last-child,
+  .lead-strip article > span:last-child {
+    font-size: 20px;
+  }
+  .status-pill {
+    border-radius: 30px;
+    padding: 10px 18px;
+  }
+  .program-card,
+  .probe-card {
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .program-card h2,
+  .probe-card h2 {
+    font-size: 28px;
+  }
+  .program-card p,
+  .probe-card p,
+  .program-time,
+  .program-meta,
+  .probe-host {
+    font-size: 20px;
+    line-height: 1.4;
+  }
+  .chart-notes,
+  .cloudping-footer {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 700px) {
+  body {
+    overflow: auto;
+  }
+  main {
+    height: auto;
+    min-height: 100vh;
+    aspect-ratio: auto;
+    overflow: visible;
+  }
+  .header-status {
+    min-width: 0;
+  }
+  .placeholder-card {
+    grid-column: 1 / -1;
+    min-height: 220px;
+  }
+}

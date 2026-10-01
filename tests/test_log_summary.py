@@ -69,3 +69,54 @@ class TestLogSummary(unittest.TestCase):
             self.assertGreaterEqual(len(rows), 1)
         finally:
             session.close()
+
+    def test_get_top_failures(self):
+        now = datetime.datetime.utcnow()
+        with scheduling.log_cache_lock:
+            scheduling.log_cache.clear()
+            scheduling.log_cache.append(
+                {
+                    "timestamp": now,
+                    "level": "ERROR",
+                    "source": "camera",
+                    "message": "Capture failed for Cam1 (http://example.com)",
+                }
+            )
+            scheduling.log_cache.append(
+                {
+                    "timestamp": now,
+                    "level": "ERROR",
+                    "source": "camera",
+                    "message": "Capture failed for Cam1 (http://example.com)",
+                }
+            )
+            scheduling.log_cache.append(
+                {
+                    "timestamp": now,
+                    "level": "WARNING",
+                    "source": "camera",
+                    "message": "[LAN_OFFLINE] Capture failed for Cam1 (http://example.com)",
+                }
+            )
+            scheduling.log_cache.append(
+                {
+                    "timestamp": now,
+                    "level": "WARNING",
+                    "source": "camera",
+                    "message": "RTSP preflight blocked rtsp://10.0.0.5/stream (auth required)",
+                }
+            )
+
+        with patch(
+            "app.utils.scheduling.get_templates",
+            return_value={"Cam1": {"url": "rtsp://user:pass@10.0.0.5/stream"}},
+        ):
+            results = scheduling.get_top_failures(limit=10, window_hours=24)
+
+        counts = {(r["name"], r["reason"]): r for r in results}
+        self.assertEqual(counts[("Cam1", "capture failed")]["count"], 2)
+        self.assertEqual(counts[("Cam1", "capture failed (LAN offline)")]["count"], 1)
+        rtsp_entry = counts[("Cam1", "auth required")]
+        self.assertEqual(rtsp_entry["template_name"], "Cam1")
+        self.assertEqual(rtsp_entry["url"], "rtsp://10.0.0.5/stream")
+        self.assertEqual(rtsp_entry["log_query"], "Cam1")

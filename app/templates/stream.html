@@ -7,21 +7,31 @@
         <video id="live-video" controls autoplay muted title="HLS video player"></video>
     </div>
 
+        <script src="{{ url_for('static', filename='vendor/hls.min.js') }}"></script>
         <script>
         const video = document.getElementById('live-video');
-        if (Hls.isSupported()) {
+        if (window.Hls && Hls.isSupported()) {
             const hls = new Hls();
             hls.loadSource('/stream.m3u8');
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                video.play();
+                const playPromise = video.play();
+                if (playPromise && typeof playPromise.catch === 'function') {
+                    playPromise.catch(() => {});
+                }
             });
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
             video.src = '/stream.m3u8';
             video.addEventListener('canplay', function() {
-                video.play();
+                const playPromise = video.play();
+                if (playPromise && typeof playPromise.catch === 'function') {
+                    playPromise.catch(() => {});
+                }
             });
+        } else {
+            const fallback = document.createElement('p');
+            fallback.textContent = 'Live stream playback unavailable: HLS support not detected.';
+            video.parentElement?.appendChild(fallback);
         }
     </script>
 {% endblock %}
-

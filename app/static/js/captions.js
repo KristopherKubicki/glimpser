@@ -1,4 +1,5 @@
 import { updateHumanizedTimes } from "./templates.js";
+import { parseTimestamp } from "./time_utils.js";
 
 function playTone(duration = 500) {
   const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -76,7 +77,11 @@ export function initCaptions() {
       if (table && data.answer) {
         const now = new Date().toISOString().replace("T", " ").slice(0, 19);
         const rowQ = document.createElement("tr");
-        rowQ.innerHTML = `<td>${now}</td><td>Q: ${chatQuestion.value}</td>`;
+        for (const value of [now, `Q: ${chatQuestion.value}`]) {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          rowQ.appendChild(cell);
+        }
         if (supportsSpeech) {
           const btn = document.createElement("button");
           btn.className = "play-caption";
@@ -89,7 +94,11 @@ export function initCaptions() {
         }
 
         const rowA = document.createElement("tr");
-        rowA.innerHTML = `<td>${now}</td><td>A: ${data.answer}</td>`;
+        for (const value of [now, `A: ${data.answer}`]) {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          rowA.appendChild(cell);
+        }
         if (supportsSpeech) {
           const btnA = document.createElement("button");
           btnA.className = "play-caption";
@@ -255,7 +264,9 @@ function setupLiveHistoryUpdates() {
       const resp = await fetch("/captions_status");
       const data = await resp.json();
       if (!data.timestamp || !data.caption) return;
-      if (!latest || new Date(data.timestamp) > new Date(latest)) {
+      const dataTs = parseTimestamp(data.timestamp);
+      const latestTs = parseTimestamp(latest);
+      if (dataTs && (!latestTs || dataTs > latestTs)) {
         const row = document.createElement("tr");
         row.innerHTML = `<td><span class="humanized-time" data-time="${data.timestamp}">${data.timestamp}</span></td><td>${data.caption}</td>`;
         tbody.prepend(row);

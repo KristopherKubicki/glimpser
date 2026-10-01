@@ -8,6 +8,7 @@ files are missing.
 
 import logging
 import os
+import re
 from datetime import datetime
 
 
@@ -30,23 +31,40 @@ def get_latest_video_date(directory):
 
 
 def get_latest_screenshot_date(directory):
-    """Return the timestamp of the newest ``.png`` in ``directory``.
+    """Return the newest canonical capture time, with a legacy mtime fallback.
 
-    This helper mirrors :func:`get_latest_video_date` but searches for
-    screenshot files instead of videos.
-
-    Parameters
-    ----------
-    directory: str
-        Folder to search for screenshot files.
-
-    Returns
-    -------
-    str | None
-        Timestamp formatted as ``"%Y-%m-%d %H:%M:%S"`` or ``None`` if no file is
-        found.
+    Captioning and clean-image writes can change mtimes after acquisition.
+    Screenshot URLs pin to the UTC timestamp in the canonical filename, so
+    metadata must use that same time rather than the later filesystem write.
     """
-
+    camera = os.path.basename(os.path.normpath(directory))
+    pattern = re.compile(rf"^{re.escape(camera)}_(\d{{14}})(?:_blank)?\.png$")
+    captures = []
+    try:
+        for entry in os.scandir(directory):
+            if not entry.is_file():
+                continue
+            # Regular filenames already carry the identity. Resolving every
+            # archived file causes hundreds of thousands of filesystem calls.
+            filename = (
+                os.path.basename(os.path.realpath(entry.path))
+                if entry.is_symlink()
+                else entry.name
+            )
+            match = pattern.fullmatch(filename)
+            if match:
+                captures.append(match[1])
+    except OSError:
+        return None
+    # Canonical timestamps sort chronologically as strings. Parse only the
+    # newest valid candidate, rather than every image in every camera archive.
+    for candidate in sorted(captures, reverse=True):
+        try:
+            return datetime.strptime(candidate, "%Y%m%d%H%M%S").strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+        except ValueError:
+            continue
     return get_latest_date(directory, ext="png")
 
 

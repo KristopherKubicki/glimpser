@@ -19,9 +19,9 @@ beforeAll(async () => {
 });
 
 describe("templates.js utilities", () => {
-  test("isMobile detects small touch screens", () => {
+  test("isMobile detects narrow screens regardless of input device", () => {
     window.matchMedia = jest.fn().mockImplementation((query) => ({
-      matches: query === "(hover: none) and (max-width: 767px)",
+      matches: query === "(max-width: 767px)",
       addListener: jest.fn(),
       removeListener: jest.fn(),
     }));
@@ -40,7 +40,7 @@ describe("templates.js utilities", () => {
   test("updateGridLayout sets grid columns", () => {
     const list = document.getElementById("template-list");
     window.matchMedia = jest.fn().mockImplementation((query) => ({
-      matches: query === "(hover: none) and (max-width: 767px)",
+      matches: query === "(max-width: 767px)",
       addListener: jest.fn(),
       removeListener: jest.fn(),
     }));

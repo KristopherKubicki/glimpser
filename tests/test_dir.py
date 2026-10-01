@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 
 class TestDirectoryManagement(unittest.TestCase):
-
     def test_directory_creation(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             new_dir = os.path.join(temp_dir, "subdir")

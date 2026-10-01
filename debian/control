@@ -2,22 +2,14 @@ Source: glimpser
 Section: utils
 Priority: optional
 Maintainer: Kristopher Kubicki <kristopher@glimpser.net>
-Build-Depends:
-  debhelper-compat (= 13),
-  dh-python,
-  python3-all,
-  python3-pytest,
-  python3-filelock,
-  python3-yaml,
-  xvfb      # if you prefer the xvfb route
-Depends: ${python3:Depends}, ${misc:Depends},
-         python3-filelock,
-         python3-yaml         # ← NEW
+Build-Depends: debhelper-compat (= 13), python3 (>= 3.11)
 Standards-Version: 3.9.8
 Homepage: https://github.com/KristopherKubicki/glimpser
 
 Package: glimpser
 Architecture: all
+Depends: ${misc:Depends}, python3 (>= 3.11), python3-venv, adduser, init-system-helpers, ffmpeg, xvfb, poppler-utils
+Recommends: chromium, chromium-driver
 Description: Glimpser - A web monitoring and screenshot tool
  Glimpser is a powerful tool for monitoring websites and capturing
  screenshots. It provides features for scheduling, archiving, and
