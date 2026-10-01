@@ -41,6 +41,16 @@ class TestFastMjpgRoute(unittest.TestCase):
         self.update_patch.stop()
         shutil.rmtree(os.path.join(self.repo_root, self.sshot_dir), ignore_errors=True)
 
+    def test_invalid_camera_never_reaches_capture(self):
+        for camera in ("../outside", "/etc/passwd", "--help", "bad/name"):
+            with self.subTest(camera=camera):
+                response = self.client.get(
+                    "/fast_stream.mjpg", query_string={"camera": camera}
+                )
+                self.assertEqual(response.status_code, 400)
+        self.mock_tpl.assert_not_called()
+        self.mock_update.assert_not_called()
+
     def test_route_returns_200(self):
         self.mock_tpl.return_value = {"name": "cam1", "url": "http://example.com"}
         resp = self.client.get("/fast_stream.mjpg?camera=cam1")

@@ -462,11 +462,14 @@ def create_blueprint() -> Blueprint:
         if template_name is None:
             routes.abort(404)
 
-        duration = (
-            routes.request.args.get("duration", type=int)
-            or routes.config.DEFAULT_CLIP_DURATION
-        )
-        if duration <= 0:
+        try:
+            duration = int(
+                routes.request.args.get("duration", routes.config.DEFAULT_CLIP_DURATION)
+            )
+        except (TypeError, ValueError):
+            routes.abort(400, "Invalid duration")
+        # Bound per-request work as well as rejecting command-like input.
+        if not 1 <= duration <= 600:
             routes.abort(400, "Invalid duration")
 
         root = (

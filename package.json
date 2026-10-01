@@ -1,6 +1,6 @@
 {
     "name": "glimpser",
-    "version": "0.2.9",
+    "version": "0.2.10",
     "type": "module",
     "private": true,
     "scripts": {
@@ -17,7 +17,7 @@
         "eslint": "^8.57.0",
         "jest": "^29.7.0",
         "jest-environment-jsdom": "^29.7.0",
-        "prettier": "^3.5.3",
+        "prettier": "3.5.3",
         "stylelint": "^15.10.0",
         "stylelint-config-standard": "^34.0.0"
     }

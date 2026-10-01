@@ -272,6 +272,16 @@ def create_blueprint() -> Blueprint:
             group = None
         if camera == "all":
             camera = None
+        if camera is not None:
+            camera = routes.validate_template_name(camera)
+            if camera is None:
+                routes.abort(400, "Invalid camera name")
+        if group is not None:
+            from app.utils.validators import validate_group_name
+
+            group = validate_group_name(group)
+            if group is None:
+                routes.abort(400, "Invalid group name")
         return Response(
             routes.generate(group=group, camera=camera, filename="latest_camera.png"),
             mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -296,6 +306,16 @@ def create_blueprint() -> Blueprint:
             group = None
         if camera == "all":
             camera = None
+        if camera is not None:
+            camera = routes.validate_template_name(camera)
+            if camera is None:
+                routes.abort(400, "Invalid camera name")
+        if group is not None:
+            from app.utils.validators import validate_group_name
+
+            group = validate_group_name(group)
+            if group is None:
+                routes.abort(400, "Invalid group name")
         user_agent = routes.request.headers.get("User-Agent", "")
         routes.logging.info(
             "stream.mjpg connect ip=%s group=%s camera=%s ua=%s",
@@ -937,6 +957,9 @@ def create_blueprint() -> Blueprint:
         camera = routes.request.args.get("camera")
         if not camera:
             routes.abort(400, "camera parameter required")
+        camera = routes.validate_template_name(camera)
+        if camera is None:
+            routes.abort(400, "Invalid camera name")
         if not routes.template_manager.get_template(camera):
             routes.abort(404)
         routes.logging.info(

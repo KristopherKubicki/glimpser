@@ -45,7 +45,7 @@ Section: utils
 Priority: optional
 Architecture: all
 Maintainer: Kristopher Kubicki <kristopher@glimpser.net>
-Depends: python3 (>= 3.11), python3-venv, adduser, init-system-helpers, ffmpeg, xvfb, poppler-utils
+Depends: python3 (>= 3.11), python3-venv, python3-dev, build-essential, linux-libc-dev, adduser, init-system-helpers, ffmpeg, xvfb, poppler-utils
 Recommends: chromium, chromium-driver
 Description: Glimpser - A web monitoring and screenshot tool
  Glimpser is a powerful tool for monitoring websites and capturing
