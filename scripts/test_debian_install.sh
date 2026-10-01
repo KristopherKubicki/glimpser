@@ -15,8 +15,7 @@ for attempt in $(seq 1 30); do
     sleep 1
 done
 test -d /run/systemd/system
-apt-get update
-apt-get install -y --no-install-recommends /package.deb
+dpkg -i /package.deb
 for attempt in $(seq 1 90); do
     if systemctl is-active --quiet glimpser &&
         python3 -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8082/login\", timeout=2)" 2>/dev/null; then

@@ -44,6 +44,7 @@ jobs:
         run: |
           ./build_packages.sh
       - name: Validate Debian install and upgrade under systemd
+        timeout-minutes: 20
         run: bash scripts/test_debian_install.sh debian/glimpser.deb
       - name: Build Python distributions
         run: |

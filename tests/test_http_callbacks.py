@@ -6,6 +6,16 @@ from app.utils.http_callbacks import send_http_callback
 
 
 class TestHttpCallbacks(unittest.TestCase):
+    def setUp(self):
+        resolver = patch(
+            "socket.getaddrinfo",
+            return_value=[
+                (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))
+            ],
+        )
+        resolver.start()
+        self.addCleanup(resolver.stop)
+
     def test_send_http_callback_no_url(self):
         with patch("requests.post") as mock_post:
             send_http_callback("", "event", {})

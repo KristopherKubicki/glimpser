@@ -624,9 +624,8 @@ class TemplateManager:
                                     value = to_bool(value)
                                 else:
                                     logging.debug(
-                                        "Unrecognized boolean string for %s: %s",
+                                        "Unrecognized boolean string for %s",
                                         key,
-                                        value,
                                     )
                                     continue
                             elif isinstance(value, bool):
@@ -634,9 +633,7 @@ class TemplateManager:
                             elif isinstance(value, int) and value in (0, 1):
                                 value = bool(value)
                             else:
-                                logging.debug(
-                                    "Unrecognized boolean value for %s: %s", key, value
-                                )
+                                logging.debug("Unrecognized boolean value for %s", key)
                                 continue
                     except (TypeError, ValueError) as e:
                         # Log the validation error and return False

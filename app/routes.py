@@ -388,7 +388,7 @@ def is_safe_redirect_url(target: str | None) -> bool:
     if "\\" in target or any(ord(char) < 32 for char in target):
         return False
     # Browsers treat three leading slashes as a network-path reference too.
-    if target.startswith("//"):
+    if target.lstrip().startswith("//"):
         return False
     try:
         parsed = urlparse(target)

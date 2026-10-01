@@ -129,7 +129,15 @@ def is_public_url(url: str) -> bool:
         return False
     if not host:
         return False
-    return not _is_private_host(host)
+    if _is_private_host(host):
+        return False
+    try:
+        addresses = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+        return bool(addresses) and all(
+            ip_address(address[4][0]).is_global for address in addresses
+        )
+    except (OSError, ValueError):
+        return False
 
 
 def _bounded_int(

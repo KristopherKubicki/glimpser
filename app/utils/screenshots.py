@@ -5088,7 +5088,7 @@ def _is_limnotech_resized_image_url(url: str | None) -> bool:
 
     parsed = urlparse(str(url or ""))
     return bool(
-        parsed.netloc.lower().endswith("limnotechdata.com")
+        url_matches_host(str(url or ""), "limnotechdata.com")
         and parsed.path.lower().endswith("/stations/zp-core/i.php")
         and parse_qs(parsed.query).get("i", [""])[0].lower().endswith(".jpg")
     )
@@ -9717,7 +9717,7 @@ def _browser_capture_profile(
             "yahoo.com",
         )
     )
-    is_network_speed_test = "fast.com" in host or lower_name in {
+    is_network_speed_test = url_matches_host(lower_url, "fast.com") or lower_name in {
         "fast",
         "fast.com",
     }

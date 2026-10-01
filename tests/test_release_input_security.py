@@ -32,6 +32,7 @@ def test_browser_redirect_rejects_network_paths_and_controls():
 
     for target in (
         "///evil.example",
+        " ///evil.example",
         "/\\evil.example",
         "\x00//evil.example",
         "https://[",

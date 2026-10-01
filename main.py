@@ -595,7 +595,7 @@ def main(argv=None):
             app.run(
                 host=https_host,
                 port=config.HTTPS_PORT,
-                debug=config.DEBUG_MODE,
+                debug=False,
                 use_debugger=False,
                 threaded=True,
                 ssl_context=ssl_context,
@@ -609,7 +609,7 @@ def main(argv=None):
             app.run(
                 host=config.HOST,
                 port=config.PORT,
-                debug=config.DEBUG_MODE,
+                debug=False,
                 use_debugger=False,
                 threaded=True,
             )

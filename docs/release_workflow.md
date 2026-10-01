@@ -506,5 +506,21 @@ requires a token for remote exposure, and confines file browsing to its workspac
 
 Node tooling is pinned through the committed lockfile and installed with `npm ci`.
 The Debian package declares the build dependencies needed by its locked input
-capture library; the disposable systemd installation test resolves package
-requirements through apt before checking install, upgrade, and removal behavior.
+capture library; the disposable systemd installation test installs the declared dependencies in its base image before
+checking install, upgrade, and removal behavior under the service manager.
+
+Security review boundaries: camera creation, recovery, and URL probing are trusted
+operator functions that intentionally fetch operator-selected network sources,
+including LAN cameras. Keep login enabled; explicitly configured full-access LAN
+subnets have operator privileges. Read-only guests cannot invoke URL probing or
+POST capture configuration. Public URL checks reject private resolved addresses,
+and the URL test does not follow redirects. These checks are not a sandbox for
+untrusted tenants; DNS rebinding and downstream camera/browser redirects require
+network-level egress isolation in such a deployment.
+
+Temporary API links use HMAC-SHA256 with constant-time verification. Links issued
+by the previous digest implementation must be regenerated after rollout. Camera
+protocol SHA1/MD5 challenge responses remain for ONVIF/RTSP interoperability;
+these are protocol responses, not the application's password storage. Image
+change detection hashes image bytes only. Validation errors deliberately return
+field-specific messages, while unexpected upstream errors return generic text.
