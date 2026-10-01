@@ -1062,8 +1062,8 @@ export function initTilePlayer() {
     const controlsList = video.controlsList;
     const supportsNoFullscreen = Boolean(
       controlsList &&
-        typeof controlsList.supports === "function" &&
-        controlsList.supports("nofullscreen"),
+      typeof controlsList.supports === "function" &&
+      controlsList.supports("nofullscreen"),
     );
     // Keep exactly one fullscreen affordance: either native controls OR our
     // custom overlay button depending on browser capability.
