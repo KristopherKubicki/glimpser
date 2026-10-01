@@ -52,7 +52,11 @@ describe("script.js", () => {
 
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringMatching(/\/templates\?group=all&search=&t=\d+/),
+      expect.stringMatching(/\/templates\?group=all&search=&viewer=1$/),
+      expect.objectContaining({
+        cache: "no-cache",
+        headers: { Accept: "application/json" },
+      }),
     );
     expect(document.getElementById("template-list").children.length).toBe(2);
   });
@@ -62,7 +66,7 @@ describe("script.js", () => {
 
     // Mock mobile device
     window.matchMedia = jest.fn().mockImplementation((query) => ({
-      matches: query === "(hover: none) and (max-width: 767px)",
+      matches: query === "(max-width: 767px)",
       addListener: jest.fn(),
       removeListener: jest.fn(),
     }));
@@ -72,7 +76,7 @@ describe("script.js", () => {
 
     // Mock desktop device
     window.matchMedia = jest.fn().mockImplementation((query) => ({
-      matches: query !== "(hover: none) and (max-width: 767px)",
+      matches: query !== "(max-width: 767px)",
       addListener: jest.fn(),
       removeListener: jest.fn(),
     }));
@@ -104,6 +108,14 @@ describe("script.js", () => {
     process.env.TZ = "America/Chicago";
     jest.useFakeTimers().setSystemTime(new Date("2024-01-01T01:00:00Z"));
     expect(timeAgo("2024-01-01 00:00:00")).toBe("1h ago");
+    jest.useRealTimers();
+    delete process.env.TZ;
+  });
+
+  test("timeAgo prefers local interpretation when UTC looks stale", () => {
+    process.env.TZ = "America/Chicago";
+    jest.useFakeTimers().setSystemTime(new Date("2024-01-01T16:00:00Z"));
+    expect(timeAgo("2024-01-01 10:00:00")).toBe("just now");
     jest.useRealTimers();
     delete process.env.TZ;
   });

@@ -65,7 +65,7 @@ class TestLogFiltering(unittest.TestCase):
     def test_level_filter(self):
         result = read_logs_from_memory(level="INFO")
         expected = sorted(
-            [l for l in self.logs if l["level"] == "INFO"],
+            [line for line in self.logs if line["level"] == "INFO"],
             key=lambda x: x["timestamp"],
             reverse=True,
         )
@@ -74,7 +74,7 @@ class TestLogFiltering(unittest.TestCase):
     def test_source_filter(self):
         result = read_logs_from_memory(source="camera")
         expected = sorted(
-            [l for l in self.logs if l["source"] == "camera"],
+            [line for line in self.logs if line["source"] == "camera"],
             key=lambda x: x["timestamp"],
             reverse=True,
         )
@@ -86,10 +86,10 @@ class TestLogFiltering(unittest.TestCase):
         result = read_logs_from_memory(start_date=start, end_date=end)
         expected = sorted(
             [
-                l
-                for l in self.logs
+                line
+                for line in self.logs
                 if datetime.datetime(2023, 1, 2)
-                <= l["timestamp"]
+                <= line["timestamp"]
                 <= datetime.datetime(2023, 1, 4, 23, 59, 59)
             ],
             key=lambda x: x["timestamp"],
@@ -100,7 +100,7 @@ class TestLogFiltering(unittest.TestCase):
     def test_search_filter(self):
         result = read_logs_from_memory(search="camera")
         expected = sorted(
-            [l for l in self.logs if "camera" in l["message"].lower()],
+            [line for line in self.logs if "camera" in line["message"].lower()],
             key=lambda x: x["timestamp"],
             reverse=True,
         )

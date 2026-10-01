@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify
 
+from app.utils.comed_price import fetch_comed_price_payload
+from app.utils.tv_guide import fetch_tv_guide_payload
+
 
 def create_blueprint() -> Blueprint:
     """Create and return the API blueprint."""
@@ -81,5 +84,21 @@ def create_blueprint() -> Blueprint:
             ],
         }
         return jsonify(api_info), 200
+
+    @bp.route("/api/comed-price")
+    @routes.profile_route("/api/comed-price")
+    def api_comed_price():
+        """Return ComEd hourly-pricing data for the local dark capture page."""
+
+        payload = fetch_comed_price_payload()
+        return jsonify(payload), 200 if payload.get("ok") else 502
+
+    @bp.route("/api/tv-guide-tonight")
+    @routes.profile_route("/api/tv-guide-tonight")
+    def api_tv_guide_tonight():
+        """Return TV Guide New Tonight data for the local dark capture page."""
+
+        payload = fetch_tv_guide_payload()
+        return jsonify(payload), 200 if payload.get("ok") else 502
 
     return bp

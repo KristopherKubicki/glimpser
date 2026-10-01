@@ -74,15 +74,22 @@ class TestMainUtilities(unittest.TestCase):
         t2.join.assert_called_once_with(timeout=0.01)
         mock_output.assert_called_once()
 
+    @patch("main._start_shutdown_deadline")
+    @patch("main._shutdown_signaled", False)
     @patch("main.shutdown_manager.cleanup")
     @patch("main.sys.exit")
     @patch("main.time.sleep")
-    def test_graceful_shutdown_exits(self, mock_sleep, mock_exit, mock_cleanup):
+    def test_graceful_shutdown_exits(
+        self, mock_sleep, mock_exit, mock_cleanup, mock_deadline
+    ):
         main.graceful_shutdown(
             signal.SIGTERM if hasattr(signal, "SIGTERM") else 0, None
         )
+        # Repeated signals must not extend the process exit deadline.
+        main.graceful_shutdown(signal.SIGTERM, None)
         mock_cleanup.assert_called_once()
         mock_exit.assert_called_once_with(0)
+        mock_deadline.assert_called_once()
 
     @patch("main.subprocess.run")
     def test_clear_console_windows(self, mock_run):

@@ -1,7 +1,11 @@
-import { timeAgo, NO_TIMESTAMP_PLACEHOLDER } from "./time_utils.js";
+import {
+  timeAgo,
+  parseTimestamp,
+  NO_TIMESTAMP_PLACEHOLDER,
+} from "./time_utils.js";
 
 export function isMobile() {
-  return window.matchMedia("(hover: none) and (max-width: 767px)").matches;
+  return window.matchMedia("(max-width: 767px)").matches;
 }
 
 export function computeBorderColor(ageMinutes, isError) {
@@ -15,48 +19,99 @@ export function computeBorderColor(ageMinutes, isError) {
 }
 
 export function createTemplateCard(name, template, index, mobile) {
-  const lastScreenshotTime =
-    template.last_screenshot_time || NO_TIMESTAMP_PLACEHOLDER;
-  const humanizedTimestamp =
-    lastScreenshotTime === NO_TIMESTAMP_PLACEHOLDER
-      ? NO_TIMESTAMP_PLACEHOLDER
-      : timeAgo(lastScreenshotTime);
-  const lastScreenshotDate = new Date(lastScreenshotTime);
-  const ageMinutes = (Date.now() - lastScreenshotDate.getTime()) / 60000;
-  const videoContainerClass = "video-container";
-  const errorClass = template.capture_failed
-    ? "template-error"
-    : "recent-screenshot";
-  const borderColor = computeBorderColor(ageMinutes, template.capture_failed);
-
   const div = document.createElement("div");
-  div.classList.add("templateDiv");
+  div.className = "templateDiv viewer-card";
   if (mobile) div.classList.add("mobile-card");
-  div.style.opacity = "0";
-  div.style.transform = "translateY(20px)";
-  div.style.transition = "opacity 0.5s ease, transform 0.5s ease";
-
   div.dataset.name = name;
-  div.dataset.index = index.toString();
+  div.dataset.index = String(index);
   div.dataset.last = template.last_screenshot_time || "";
   div.dataset.next = template.next_screenshot_time || "";
   div.dataset.error = template.capture_failed ? "1" : "0";
 
-  div.innerHTML = `
-    <a href='/templates/${name}'>
-      <div class="${videoContainerClass} ${errorClass}" data-timestamp="${lastScreenshotTime}" style="border-color: ${borderColor}">
-        <div class="camera-name">${name}</div>
-        <div class="loading-spinner" aria-hidden="true"></div>
-        <video data-name="${name}" data-poster="/last_screenshot/${name}" alt="${name}" style="width:100%" muted title="${template.last_caption} (${humanizedTimestamp})" preload="none" disableRemotePlayback data-hd-src="/clip/${name}" loading="lazy">
-          <source src="/last_video/${name}" type="video/mp4">
-          Your browser does not support the video tag.
-        </video>
-        <div class="caption-overlay">${template.last_caption || ""}</div>
-      </div>
-    </a>
-    <a href='${template.url}' target='_blank' class='open-url-link' title='Open monitored page' aria-label='Open monitored page'>↗</a>
-    <button class='delete-camera-btn advanced-only' onclick="window.confirmDeleteCamera('${name}')" title='Delete this camera' aria-label='Delete camera'>✖</button>
-  `;
+  const encoded = encodeURIComponent(name);
+  const link = document.createElement("a");
+  link.href = `/templates/${encoded}`;
+  const media = document.createElement("div");
+  media.className = "video-container camera-media";
+  media.dataset.timestamp =
+    template.last_screenshot_time || NO_TIMESTAMP_PLACEHOLDER;
+  const captured = parseTimestamp(template.last_screenshot_time);
+  const minutes = captured
+    ? (Date.now() - captured.getTime()) / 60000
+    : Infinity;
+  const stale = minutes > Math.max(60, 3 * (Number(template.frequency) || 30));
+  if (template.capture_failed || stale) media.classList.add("template-error");
+  else media.classList.add("recent-screenshot");
+
+  const title = document.createElement("div");
+  title.className = "camera-name";
+  title.textContent = name.replace(/([a-z])([A-Z])/g, "$1 $2");
+  const still = document.createElement("img");
+  still.className = "camera-still";
+  still.src = `/last_screenshot/${encoded}`;
+  still.alt = `${name} saved capture`;
+  still.loading = "lazy";
+  const video = document.createElement("video");
+  video.dataset.name = name;
+  video.dataset.poster = `/last_screenshot/${encoded}`;
+  video.dataset.hdSrc = `/clip/${encoded}`;
+  video.preload = "none";
+  video.muted = true;
+  video.playsInline = true;
+  video.disableRemotePlayback = true;
+  const source = document.createElement("source");
+  source.src = `/last_video/${encoded}`;
+  source.type = "video/mp4";
+  video.append(source);
+  video.addEventListener("loadeddata", () =>
+    media.classList.add("has-preview-video"),
+  );
+  for (const event of ["error", "emptied"]) {
+    video.addEventListener(event, () =>
+      media.classList.remove("has-preview-video"),
+    );
+  }
+
+  const state = document.createElement("div");
+  state.className = "camera-freshness";
+  const status = !captured
+    ? "No capture"
+    : stale
+      ? "STALE snapshot"
+      : template.capture_failed
+        ? "Capture failed · saved snapshot"
+        : "Snapshot";
+  const age = document.createElement("span");
+  age.dataset.humanTime = template.last_screenshot_time || "";
+  age.textContent = captured
+    ? timeAgo(template.last_screenshot_time)
+    : "unavailable";
+  state.append(document.createTextNode(`${status} · `), age);
+  state.title = `Captured: ${template.last_screenshot_time || "never"}`;
+  if (template.source_template) {
+    const origin = document.createElement("span");
+    origin.className = "camera-origin";
+    origin.textContent = `View of ${template.source_template}`;
+    state.append(origin);
+  }
+  const caption = document.createElement("div");
+  caption.className = "caption-overlay";
+  caption.textContent = template.last_caption || "No caption yet";
+  caption.title = template.last_caption || "";
+  const captionAge = document.createElement("span");
+  captionAge.className = "camera-caption-age";
+  captionAge.textContent = template.last_caption_time
+    ? `Caption: ${timeAgo(template.last_caption_time)}`
+    : "Caption unavailable";
+
+  media.append(still, video, title, state, caption, captionAge);
+  link.append(media);
+  const open = document.createElement("a");
+  open.href = `/live?camera=${encoded}`;
+  open.className = "open-url-link";
+  open.textContent = "Live";
+  open.setAttribute("aria-label", `Open live view for ${name}`);
+  div.append(link, open);
   return div;
 }
 
@@ -116,6 +171,7 @@ export function updateTableLayout(width) {
 export function updateGridLayout() {
   const templateList = document.getElementById("template-list");
   if (!templateList) return;
+  if (templateList.dataset.wallLayout === "1") return;
   if (isMobile()) {
     templateList.style.gridTemplateColumns = "1fr";
   } else {

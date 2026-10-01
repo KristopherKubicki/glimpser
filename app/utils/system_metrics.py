@@ -30,8 +30,8 @@ stop_event = threading.Event()
 metrics_thread: threading.Thread | None = None
 log_caching_thread: threading.Thread | None = None
 thread_cpu_times: dict[int, float] = {}
-last_thread_sample = time.time()
-child_procs: list[psutil.Process] = []
+last_thread_sample = time.monotonic()
+child_cpu_times: dict[tuple[int, float], float] = {}
 
 # Cache ffmpeg version after the first lookup to avoid repeated subprocess calls.
 FFMPEG_VERSION: str | None = None
@@ -76,7 +76,7 @@ def ffmpeg_supports_hwaccel() -> bool:
         output = subprocess.check_output(
             [FFMPEG_PATH, "-hwaccels"], stderr=subprocess.STDOUT, timeout=2
         ).decode()
-        lines = [l.strip() for l in output.splitlines() if l.strip()]
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
         FFMPEG_GPU_SUPPORT = len(lines) > 1
     except Exception:
         FFMPEG_GPU_SUPPORT = False
@@ -88,36 +88,40 @@ def collect_system_metrics() -> None:
 
     psutil.cpu_percent(interval=None)
     proc = psutil.Process()
-    global thread_cpu_times, last_thread_sample, child_procs
-    proc.cpu_percent(interval=None)
-    child_procs = proc.children(recursive=True)
-    for child in child_procs:
-        try:
-            child.cpu_percent(interval=None)
-        except Exception:
-            continue
+    global thread_cpu_times, last_thread_sample, child_cpu_times
+    thread_cpu_times = {}
+    child_cpu_times = {}
+    last_thread_sample = time.monotonic()
     while not stop_event.is_set():
-        start = time.time()
+        start = time.monotonic()
         system_metrics["cpu_usage"] = psutil.cpu_percent(interval=None)
         system_metrics["memory_usage"] = psutil.virtual_memory().percent
         system_metrics["thread_count"] = threading.active_count()
 
-        interval = start - last_thread_sample or 1
+        interval = max(start - last_thread_sample, 1e-9)
+        cpu_count = psutil.cpu_count() or 1
+        thread_names = {t.native_id: t.name for t in threading.enumerate()}
         current = {t.id: t.user_time + t.system_time for t in proc.threads()}
         usages = []
         for tid, ttime in current.items():
             prev = thread_cpu_times.get(tid, ttime)
-            cpu = ((ttime - prev) / interval) * 100 / psutil.cpu_count()
-            name = next(
-                (t.name for t in threading.enumerate() if t.ident == tid),
-                f"Thread {tid}",
-            )
+            cpu = max(0.0, ttime - prev) / interval * 100 / cpu_count
+            name = thread_names.get(tid, f"Thread {tid}")
             usages.append({"id": tid, "name": name, "cpu": round(cpu, 1)})
         thread_cpu_times = current
         last_thread_sample = start
+        current_children = {}
         for child in proc.children(recursive=True):
             try:
-                cpu = child.cpu_percent(interval=None)
+                # children() returns fresh Process objects: cpu_percent() on
+                # each new instance would repeatedly return the initial zero.
+                # Include creation time so a reused PID cannot inherit a delta.
+                identity = (child.pid, child.create_time())
+                times = child.cpu_times()
+                total = times.user + times.system
+                current_children[identity] = total
+                previous = child_cpu_times.get(identity, total)
+                cpu = max(0.0, total - previous) / interval * 100 / cpu_count
                 cmd = child.cmdline()
                 name = (
                     os.path.basename(cmd[0]) if cmd else os.path.basename(child.name())
@@ -126,6 +130,7 @@ def collect_system_metrics() -> None:
                     usages.append({"id": child.pid, "name": name, "cpu": round(cpu, 1)})
             except Exception:
                 continue
+        child_cpu_times = current_children
         usages.sort(key=lambda x: x["cpu"], reverse=True)
         system_metrics["top_threads"] = usages[:10]
         stop_event.wait(5)
@@ -161,6 +166,9 @@ def get_system_metrics() -> dict[str, Any]:
         "open_files": open_files,
         "thread_count": system_metrics["thread_count"],
         "top_threads": system_metrics.get("top_threads", []),
+        # Stable process boot marker used by long-lived clients (e.g. /live)
+        # to detect backend restarts and refresh themselves.
+        "start_time_epoch": int(system_metrics["start_time"]),
         "uptime": f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m {int(uptime % 60)}s",
         "ffmpeg_version": ffmpeg_version_str,
         "ffmpeg_path": ffmpeg_path,

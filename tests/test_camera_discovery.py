@@ -193,16 +193,20 @@ class TestCameraDiscovery(unittest.TestCase):
     @patch("app.utils.camera_discovery._probe_onvif")
     @patch("app.utils.camera_discovery.is_port_open")
     @patch("app.utils.camera_discovery._check_http_endpoint")
+    @patch("app.utils.camera_discovery._fetch_snmp_sysdescr", return_value=None)
     @patch("app.utils.camera_discovery._fetch_snmp_sysname")
     @patch("app.utils.camera_discovery._fetch_sdp")
+    @patch("app.utils.camera_discovery.psutil.net_if_stats")
     @patch("app.utils.camera_discovery.psutil.net_if_addrs")
     @patch("app.utils.camera_discovery._local_video_devices", return_value=[])
     def test_discover_cameras_merge(
         self,
         mock_local_video_devices,
         mock_addrs,
+        mock_stats,
         mock_fetch_sdp,
         mock_fetch_snmp,
+        mock_fetch_snmp_descr,
         mock_check_http,
         mock_port_open,
         mock_onvif,
@@ -210,6 +214,7 @@ class TestCameraDiscovery(unittest.TestCase):
         mock_ssdp,
         mock_trace,
     ):
+        mock_stats.return_value = self._mock_stats()
         mock_addrs.return_value = self._mock_interfaces()
         mock_port_open.side_effect = self._port_open_side_effect
         mock_fetch_sdp.return_value = "v=0"

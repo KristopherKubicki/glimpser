@@ -31,6 +31,9 @@ class TestVersionSync(unittest.TestCase):
 
     def tearDown(self):
         self.env_patch.stop()
+        from app import config
+
+        importlib.reload(config)
         self.tmp_dir.cleanup()
 
     def _get_version(self):
@@ -51,10 +54,8 @@ class TestVersionSync(unittest.TestCase):
 
         with patch("importlib.metadata.version", side_effect=fake_version):
             from app import config
-            from app.utils import db
 
             importlib.reload(config)
-            importlib.reload(db)
         self.assertEqual(config.VERSION, "2.0.0")
         self.assertEqual(self._get_version(), "2.0.0")
 

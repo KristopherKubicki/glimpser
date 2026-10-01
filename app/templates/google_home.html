@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<main class="container settings-page">
+  <div class="card">
+    <h2>Google Home / Nest</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %} {% endwith %}
+
+    <form method="GET" action="{{ url_for('ui.google_home') }}" style="display:flex; gap: 12px; flex-wrap: wrap; align-items: end; margin: 12px 0;">
+      <label>
+        Profile
+        <select name="profile" style="min-width: 220px;">
+          {% for p in profiles %}
+            <option value="{{ p }}" {% if p == selected_profile %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="btn">Switch</button>
+    </form>
+
+    <p style="margin-top: 12px;">
+      Project: <code>{{ project_id or '—' }}</code><br />
+      Redirect URI: <code>{{ redirect_uri or '—' }}</code>
+    </p>
+
+    <details style="margin: 12px 0;">
+      <summary><strong>Edit Profile</strong></summary>
+      <form method="POST" action="{{ url_for('ui.google_home_profile') }}" style="margin-top: 12px;">
+        <div style="display:flex; gap: 12px; flex-wrap: wrap;">
+          <label style="min-width: 220px;">
+            Profile Name
+            <input type="text" name="profile" value="{{ selected_profile }}" placeholder="e.g. site-one" style="width:100%;" />
+          </label>
+          <label style="min-width: 320px;">
+            Project ID (Device Access)
+            <input type="text" name="project_id" value="{{ project_id }}" placeholder="e.g. 5be..." style="width:100%;" />
+          </label>
+          <label style="min-width: 420px;">
+            OAuth Client ID
+            <input type="text" name="client_id" value="{{ client_id }}" placeholder="...apps.googleusercontent.com" style="width:100%;" />
+          </label>
+          <label style="min-width: 420px;">
+            OAuth Client Secret
+            <input type="password" name="client_secret" value="" placeholder="(leave blank to keep existing)" style="width:100%;" />
+            {% if client_secret_saved %}
+              <small>Current secret: <strong>saved</strong></small>
+            {% endif %}
+          </label>
+          <label style="min-width: 520px;">
+            Redirect URI
+            <input type="text" name="redirect_uri" value="{{ redirect_uri }}" placeholder="http://host:port/integrations/google/callback" style="width:100%;" />
+          </label>
+        </div>
+        <div style="display:flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
+          <button type="submit" class="btn">Save Profile</button>
+        </div>
+      </form>
+      <p style="margin-top: 10px;">
+        Tip: Add profiles for each house (e.g. <code>site-one</code>, <code>site-two</code>, <code>site-three</code>) then connect each one.
+      </p>
+    </details>
+
+    {% if not configured %}
+      <p>Status: <strong>Not configured</strong></p>
+      <p>Fill in the profile fields above, then Connect.</p>
+    {% else %}
+      {% if connected %}
+        <p>Status: <strong>Connected</strong></p>
+        <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+          <a class="btn" href="{{ url_for('ui.google_home_devices', profile=selected_profile) }}">Discover / Import Cameras</a>
+          <form method="POST" action="{{ url_for('ui.google_home_disconnect', profile=selected_profile) }}" style="display:inline;">
+            <button type="submit" class="btn" title="Disconnect Google Home">Disconnect</button>
+          </form>
+        </div>
+      {% else %}
+        <p>Status: <strong>Not connected</strong></p>
+        <a class="btn" href="{{ url_for('ui.google_home_connect', profile=selected_profile) }}">Connect Google</a>
+      {% endif %}
+    {% endif %}
+
+  </div>
+</main>
+{% endblock %}

@@ -17,27 +17,22 @@ import app.config
 def create_tables(conn: sqlite3.Connection) -> None:
     """Create database tables if missing."""
     cursor = conn.cursor()
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS settings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
             value TEXT NOT NULL
         );
-    """
-    )
-    cursor.execute(
-        """
+    """)
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
             role TEXT
         );
-    """
-    )
-    cursor.execute(
-        """
+    """)
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS templates (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
@@ -75,8 +70,7 @@ def create_tables(conn: sqlite3.Connection) -> None:
             motion REAL DEFAULT 0.2,
             rollback_frames INTEGER DEFAULT 0
         );
-    """
-    )
+    """)
     conn.commit()
 
 

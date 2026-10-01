@@ -40,6 +40,16 @@ class TestValidateSetting(unittest.TestCase):
     def test_invalid_log_level(self):
         self.assertIsNone(validate_setting("LOG_LEVEL", "VERBOSE"))
 
+    def test_visual_timestamp_mode(self):
+        self.assertEqual(validate_setting("VISUAL_TIMESTAMP_MODE", "clean"), "clean")
+        self.assertEqual(
+            validate_setting("VISUAL_TIMESTAMP_MODE", "compact"), "compact"
+        )
+        self.assertEqual(validate_setting("VISUAL_TIMESTAMP_MODE", "debug"), "debug")
+        self.assertEqual(validate_setting("VISUAL_TIMESTAMP_MODE", "off"), "clean")
+        self.assertEqual(validate_setting("VISUAL_TIMESTAMP_MODE", "full"), "debug")
+        self.assertIsNone(validate_setting("VISUAL_TIMESTAMP_MODE", "verbose"))
+
     def test_max_workers_limit(self):
         too_many = MAX_WORKERS_MAX + 1
         self.assertIsNone(validate_setting("MAX_WORKERS", str(too_many)))

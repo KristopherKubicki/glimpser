@@ -61,7 +61,7 @@ See [OpenSSF Scorecard](docs/scorecard.md) for details on the security badge.
 
 ### Prerequisites
 
-- Python 3.8 to 3.13
+- Python 3.11 to 3.13
 
 ### Steps
 

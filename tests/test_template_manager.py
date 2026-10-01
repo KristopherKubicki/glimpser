@@ -14,7 +14,7 @@ from app.utils.template_manager import (
     set_capture_failed,
     update_last_screenshot_time,
 )
-from app.utils.validators import validate_template_name
+from app.utils.validators import validate_template_name, validate_update_data
 
 
 class TestTemplateManager(unittest.TestCase):
@@ -48,6 +48,20 @@ class TestTemplateManager(unittest.TestCase):
         self.assertIn("template2", result)
         self.assertEqual(result["template1"]["frequency"], 60)
         self.assertEqual(result["template2"]["frequency"], 120)
+
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_get_templates_includes_private_camera_flag(self, mock_session):
+        mock_session_instance = MagicMock()
+        mock_session.return_value = mock_session_instance
+        mock_query = mock_session_instance.query.return_value
+        mock_all = mock_query.all
+
+        mock_template = Template(name="template1", frequency=60, private_camera=True)
+        mock_all.return_value = [mock_template]
+
+        result = self.template_manager.get_templates()
+
+        self.assertTrue(result["template1"]["private_camera"])
 
     @patch("app.utils.template_manager.SessionLocal")
     def test_get_templates_by_last_caption_time(self, mock_session):
@@ -207,12 +221,412 @@ class TestTemplateManager(unittest.TestCase):
         self.assertEqual(args[0].frequency, 60)
         self.assertEqual(args[0].timeout, 30)
 
-        mock_sess.add.reset_mock()
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_save_template_accepts_disable_autocrop(self, mock_session):
+        mock_sess = MagicMock()
+        mock_session.return_value = mock_sess
+        mock_query = mock_sess.query.return_value
+        mock_first = mock_query.filter_by.return_value.first
+        mock_first.return_value = None
 
-        self.template_manager.save_template("stemp", {"stealth": True})
+        self.template_manager.save_template("nocropcam", {"disable_autocrop": "true"})
         args, _ = mock_sess.add.call_args
-        self.assertEqual(args[0].frequency, 60)
-        self.assertEqual(args[0].timeout, 30)
+        self.assertTrue(args[0].disable_autocrop)
+
+    @patch("app.utils.template_manager.commit_with_retry")
+    def test_rename_template_moves_storage_and_updates_sources(self, mock_commit):
+        old_name = "ExampleHome900"
+        new_name = "ExampleHomeEntryFisheye"
+        renamed_template = Template(name=old_name)
+        dependent_template = Template(name="DerivedZoom", source_template=old_name)
+
+        class _FakeFilterResult:
+            def __init__(self, kwargs):
+                self.kwargs = kwargs
+
+            def first(self):
+                if self.kwargs == {"name": old_name}:
+                    return renamed_template
+                if self.kwargs == {"name": new_name}:
+                    return None
+                return None
+
+            def all(self):
+                if self.kwargs == {"source_template": old_name}:
+                    return [dependent_template]
+                return []
+
+        class _FakeSession:
+            def __init__(self):
+                self.rolled_back = False
+                self.closed = False
+
+            def query(self, _model):
+                return self
+
+            def filter_by(self, **kwargs):
+                return _FakeFilterResult(kwargs)
+
+            def rollback(self):
+                self.rolled_back = True
+
+            def close(self):
+                self.closed = True
+
+        fake_session = _FakeSession()
+
+        with (
+            tempfile.TemporaryDirectory() as shot_root,
+            tempfile.TemporaryDirectory() as video_root,
+        ):
+            old_shot_dir = os.path.join(shot_root, old_name)
+            old_video_dir = os.path.join(video_root, old_name)
+            os.makedirs(old_shot_dir, exist_ok=True)
+            os.makedirs(old_video_dir, exist_ok=True)
+
+            old_png = os.path.join(old_shot_dir, f"{old_name}_20260422141025.png")
+            with open(old_png, "wb") as fh:
+                fh.write(b"png")
+            os.symlink(old_png, os.path.join(old_shot_dir, "latest_camera.png"))
+
+            old_mp4 = os.path.join(old_video_dir, f"{old_name}_20260422141025.mp4")
+            with open(old_mp4, "wb") as fh:
+                fh.write(b"mp4")
+            with open(os.path.join(old_video_dir, "last_video.mp4"), "wb") as fh:
+                fh.write(b"mp4")
+
+            with patch.object(
+                self.template_manager, "get_session", return_value=fake_session
+            ):
+                with patch(
+                    "app.utils.template_manager.SCREENSHOT_DIRECTORY", shot_root
+                ):
+                    with patch(
+                        "app.utils.template_manager.VIDEO_DIRECTORY", video_root
+                    ):
+                        renamed = self.template_manager.rename_template(
+                            old_name, new_name
+                        )
+
+            self.assertEqual(renamed, new_name)
+            self.assertEqual(renamed_template.name, new_name)
+            self.assertEqual(dependent_template.source_template, new_name)
+            mock_commit.assert_called_once_with(fake_session)
+            self.assertTrue(fake_session.closed)
+            self.assertFalse(fake_session.rolled_back)
+
+            new_shot_dir = os.path.join(shot_root, new_name)
+            new_video_dir = os.path.join(video_root, new_name)
+            self.assertFalse(os.path.exists(old_shot_dir))
+            self.assertFalse(os.path.exists(old_video_dir))
+            self.assertTrue(os.path.isdir(new_shot_dir))
+            self.assertTrue(os.path.isdir(new_video_dir))
+            self.assertTrue(
+                os.path.exists(
+                    os.path.join(new_shot_dir, f"{new_name}_20260422141025.png")
+                )
+            )
+            self.assertTrue(
+                os.path.exists(
+                    os.path.join(new_video_dir, f"{new_name}_20260422141025.mp4")
+                )
+            )
+            self.assertTrue(
+                os.path.exists(os.path.join(new_video_dir, "last_video.mp4"))
+            )
+            latest_link = os.path.join(new_shot_dir, "latest_camera.png")
+            self.assertTrue(os.path.islink(latest_link))
+            self.assertIn(new_name, os.readlink(latest_link))
+
+    def test_refresh_latest_screenshot_symlink_prefers_canonical_newest_frame(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            camera_dir = os.path.join(tmp, "cam1")
+            os.makedirs(camera_dir, exist_ok=True)
+
+            newest = os.path.join(camera_dir, "cam1_20260422153026.png")
+            older = os.path.join(camera_dir, "cam1_20260422145530.png")
+            sidecar = os.path.join(camera_dir, "last_motion.png")
+            orig = os.path.join(camera_dir, "cam1_20260422145530.png.orig.png")
+
+            for path in (newest, older, sidecar, orig):
+                with open(path, "wb") as handle:
+                    handle.write(b"png")
+
+            self.template_manager._refresh_latest_screenshot_symlink(camera_dir)
+
+            latest_link = os.path.join(camera_dir, "latest_camera.png")
+            self.assertTrue(os.path.islink(latest_link))
+            self.assertEqual(os.path.realpath(latest_link), newest)
+
+    def test_validate_update_data_accepts_stabilize_modes(self):
+        sanitized = validate_update_data(
+            {
+                "url": "http://example.com/cam.jpg",
+                "stabilize_mode": "rolling_5m",
+            }
+        )
+        self.assertEqual(sanitized["stabilize_mode"], "rolling_5m")
+
+        sanitized = validate_update_data(
+            {"url": "http://example.com/cam.jpg", "stabilize_mode": "off"}
+        )
+        self.assertEqual(sanitized["stabilize_mode"], "")
+
+        with self.assertRaises(ValueError):
+            validate_update_data(
+                {
+                    "url": "http://example.com/cam.jpg",
+                    "stabilize_mode": "nope",
+                }
+            )
+
+    def test_validate_update_data_accepts_night_enhance_modes(self):
+        sanitized = validate_update_data(
+            {
+                "url": "http://example.com/cam.jpg",
+                "night_enhance_mode": "medium",
+            }
+        )
+        self.assertEqual(sanitized["night_enhance_mode"], "medium")
+
+        sanitized = validate_update_data(
+            {"url": "http://example.com/cam.jpg", "night_enhance_mode": "off"}
+        )
+        self.assertEqual(sanitized["night_enhance_mode"], "")
+
+        with self.assertRaises(ValueError):
+            validate_update_data(
+                {
+                    "url": "http://example.com/cam.jpg",
+                    "night_enhance_mode": "turbo",
+                }
+            )
+
+    def test_validate_update_data_accepts_deflicker_modes(self):
+        sanitized = validate_update_data(
+            {
+                "url": "http://example.com/cam.jpg",
+                "deflicker_mode": "medium",
+            }
+        )
+        self.assertEqual(sanitized["deflicker_mode"], "medium")
+
+        sanitized = validate_update_data(
+            {"url": "http://example.com/cam.jpg", "deflicker_mode": "off"}
+        )
+        self.assertEqual(sanitized["deflicker_mode"], "")
+
+        with self.assertRaises(ValueError):
+            validate_update_data(
+                {
+                    "url": "http://example.com/cam.jpg",
+                    "deflicker_mode": "nope",
+                }
+            )
+
+    def test_validate_update_data_accepts_horizon_level_fields(self):
+        sanitized = validate_update_data(
+            {
+                "url": "http://example.com/cam.jpg",
+                "horizon_level_mode": "smooth",
+                "horizon_level_roi": "0.06,0.24,0.88,0.38",
+            }
+        )
+        self.assertEqual(sanitized["horizon_level_mode"], "smooth")
+        self.assertEqual(sanitized["horizon_level_roi"], "0.06,0.24,0.88,0.38")
+
+        sanitized = validate_update_data(
+            {"url": "http://example.com/cam.jpg", "horizon_level_mode": "off"}
+        )
+        self.assertEqual(sanitized["horizon_level_mode"], "")
+
+        with self.assertRaises(ValueError):
+            validate_update_data(
+                {
+                    "url": "http://example.com/cam.jpg",
+                    "horizon_level_mode": "tilt",
+                }
+            )
+
+        with self.assertRaises(ValueError):
+            validate_update_data(
+                {
+                    "url": "http://example.com/cam.jpg",
+                    "horizon_level_roi": "0,0,<script>",
+                }
+            )
+
+    def test_validate_update_data_accepts_burst_enhance_fields(self):
+        sanitized = validate_update_data(
+            {
+                "url": "http://example.com/cam.jpg",
+                "burst_enhance_mode": "roi",
+                "burst_enhance_profile": "hybrid",
+                "burst_enhance_roi": "0.25,0.20,0.30,0.30",
+                "capture_crop_roi": "0,84,2048,1152",
+                "capture_rotate_degrees": "-90",
+                "lens_correction_spec": "rectilinear:fov=95,src_fov=180,zoom=1.15",
+            }
+        )
+        self.assertEqual(sanitized["burst_enhance_mode"], "roi")
+        self.assertEqual(sanitized["burst_enhance_profile"], "hybrid")
+        self.assertEqual(sanitized["burst_enhance_roi"], "0.25,0.20,0.30,0.30")
+        self.assertEqual(sanitized["capture_crop_roi"], "0,84,2048,1152")
+        self.assertEqual(sanitized["capture_rotate_degrees"], -90)
+        self.assertEqual(
+            sanitized["lens_correction_spec"],
+            "rectilinear:fov=95,src_fov=180,zoom=1.15",
+        )
+
+        sanitized = validate_update_data(
+            {
+                "url": "http://example.com/cam.jpg",
+                "burst_enhance_mode": "off",
+                "burst_enhance_profile": "",
+            }
+        )
+        self.assertEqual(sanitized["burst_enhance_mode"], "")
+        self.assertEqual(sanitized["burst_enhance_profile"], "")
+
+        with self.assertRaises(ValueError):
+            validate_update_data(
+                {
+                    "url": "http://example.com/cam.jpg",
+                    "burst_enhance_mode": "zoom",
+                }
+            )
+
+        with self.assertRaises(ValueError):
+            validate_update_data(
+                {
+                    "url": "http://example.com/cam.jpg",
+                    "burst_enhance_profile": "soft",
+                }
+            )
+
+        with self.assertRaises(ValueError):
+            validate_update_data(
+                {
+                    "url": "http://example.com/cam.jpg",
+                    "burst_enhance_roi": "0.2,0.2,0.3,0.3<script>",
+                }
+            )
+
+        with self.assertRaises(ValueError):
+            validate_update_data(
+                {
+                    "url": "http://example.com/cam.jpg",
+                    "capture_crop_roi": "0,84,2048,1152<script>",
+                }
+            )
+
+        with self.assertRaises(ValueError):
+            validate_update_data(
+                {
+                    "url": "http://example.com/cam.jpg",
+                    "capture_rotate_degrees": "45",
+                }
+            )
+
+        with self.assertRaises(ValueError):
+            validate_update_data(
+                {
+                    "url": "http://example.com/cam.jpg",
+                    "lens_correction_spec": "rectilinear:<script>",
+                }
+            )
+
+    def test_validate_update_data_accepts_composite_view_fields(self):
+        sanitized = validate_update_data(
+            {
+                "url": "http://example.com/cam.jpg",
+                "composite_view_mode": "hero_strip",
+                "composite_view_spec": (
+                    "Direct@0.36,0.20,0.28,0.28;"
+                    "Left@0.40,0.35,0.11,0.11;"
+                    "Right@0.54,0.37,0.11,0.11"
+                ),
+            }
+        )
+        self.assertEqual(sanitized["composite_view_mode"], "hero_strip")
+        self.assertIn("Direct@", sanitized["composite_view_spec"])
+
+        sanitized = validate_update_data(
+            {"url": "http://example.com/cam.jpg", "composite_view_mode": "off"}
+        )
+        self.assertEqual(sanitized["composite_view_mode"], "")
+
+        with self.assertRaises(ValueError):
+            validate_update_data(
+                {
+                    "url": "http://example.com/cam.jpg",
+                    "composite_view_mode": "quad",
+                }
+            )
+
+        with self.assertRaises(ValueError):
+            validate_update_data(
+                {
+                    "url": "http://example.com/cam.jpg",
+                    "composite_view_spec": "Direct=0.1,0.1,0.2,0.2",
+                }
+            )
+
+    def test_validate_update_data_accepts_source_template_without_url(self):
+        sanitized = validate_update_data(
+            {
+                "url": "",
+                "source_template": "WhiteGrowerOverhead",
+                "composite_view_mode": "hero_strip",
+            }
+        )
+
+        self.assertEqual(sanitized["url"], "")
+        self.assertEqual(sanitized["source_template"], "WhiteGrowerOverhead")
+
+        with self.assertRaises(ValueError):
+            validate_update_data({"url": "", "source_template": "bad name"})
+
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_save_template_ptz_fields(self, mock_session):
+        mock_sess = MagicMock()
+        mock_session.return_value = mock_sess
+        mock_query = mock_sess.query.return_value
+        mock_first = mock_query.filter_by.return_value.first
+        mock_first.return_value = None
+
+        self.template_manager.save_template(
+            "ptzcam",
+            {
+                "ptz_enabled": True,
+                "ptz_service": "http://cam/onvif/ptz_service",
+                "ptz_profile_token": "sub",
+                "ptz_profile_name": "Sub",
+                "ptz_presets": '[{"token":"1","name":"Overview"}]',
+            },
+        )
+
+        args, _ = mock_sess.add.call_args
+        self.assertTrue(args[0].ptz_enabled)
+        self.assertEqual(args[0].ptz_profile_token, "sub")
+
+    @patch("app.utils.template_manager.SessionLocal")
+    def test_save_template_private_camera_field(self, mock_session):
+        mock_sess = MagicMock()
+        mock_session.return_value = mock_sess
+        mock_query = mock_sess.query.return_value
+        mock_first = mock_query.filter_by.return_value.first
+        mock_first.return_value = None
+
+        self.template_manager.save_template(
+            "privatecam",
+            {
+                "private_camera": True,
+            },
+        )
+
+        args, _ = mock_sess.add.call_args
+        self.assertTrue(args[0].private_camera)
 
     @patch("app.utils.template_manager.SessionLocal")
     def test_get_template_by_id(self, mock_session):
@@ -432,6 +846,32 @@ class TestSchedulerUpdates(unittest.TestCase):
         mock_sess.commit.assert_called_once()
         mock_sched.remove_job.assert_called_with("cam1")
         mock_sched.add_job.assert_called_once()
+
+    def test_rescheduled_capture_runs_after_brief_executor_delay(self):
+        from datetime import datetime, timedelta, timezone
+
+        from apscheduler.events import EVENT_JOB_EXECUTED
+        from apscheduler.executors.base import run_job
+        from apscheduler.schedulers.background import BackgroundScheduler
+
+        from app.utils.template_manager import _update_scheduler_job
+
+        scheduler = BackgroundScheduler(timezone=timezone.utc)
+        scheduler.start(paused=True)
+        try:
+            with (
+                patch("app.utils.scheduling.scheduler", scheduler),
+                patch("app.utils.scheduling.schedule_camera_capture") as capture,
+                patch("app.utils.template_manager.get_template", return_value={}),
+            ):
+                _update_scheduler_job("delayed_camera", 30)
+                job = scheduler.get_job("delayed_camera")
+                delayed_time = datetime.now(timezone.utc) - timedelta(seconds=5)
+                events = run_job(job, "default", [delayed_time], "test.scheduler")
+                capture.assert_called_once()
+                self.assertEqual([event.code for event in events], [EVENT_JOB_EXECUTED])
+        finally:
+            scheduler.shutdown(wait=False)
 
 
 if __name__ == "__main__":

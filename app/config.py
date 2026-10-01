@@ -1,5 +1,3 @@
-# config.py
-
 import argparse
 import importlib.util
 import json
@@ -14,6 +12,14 @@ from ipaddress import ip_network
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
+
+from app.caption_policy import DEFAULT_CAPTION_PROMPT
+from app.session_secret import resolve_session_secret
+
+# config.py
+
 
 _ffmpeg_spec = importlib.util.spec_from_file_location(
     "app.utils.ffmpeg_setup",
@@ -45,9 +51,6 @@ def _load_dotenv_once() -> None:
 # ensures we do not re-read the file unnecessarily should this module somehow
 # be imported more than once.
 _load_dotenv_once()
-
-from sqlalchemy import text
-from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 
 # Parse command line arguments when executed directly
@@ -146,8 +149,19 @@ def _get_session():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    if _engine is None:
-        _engine = create_engine(f"sqlite:///{DATABASE_PATH}")
+    effective_db_path = os.getenv("GLIMPSER_DATABASE_PATH", DATABASE_PATH)
+    needs_engine = _engine is None
+    if not needs_engine:
+        try:
+            needs_engine = str(_engine.url) != f"sqlite:///{effective_db_path}"
+        except Exception:
+            needs_engine = True
+
+    if needs_engine:
+        db_dir = os.path.dirname(effective_db_path)
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
+        _engine = create_engine(f"sqlite:///{effective_db_path}")
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
 
     return SessionLocal()
@@ -169,7 +183,7 @@ def get_setting(name, default=None):
     except (OperationalError, sqlite3.OperationalError) as e:
         if "no such table" in str(e):
             # This is ok on first run when the DB is empty.
-            logging.warning("table does not exist")
+            logging.debug("settings table does not exist yet")
         else:
             logging.warning("initialization error %s", e)
     except SQLAlchemyError as e:
@@ -253,7 +267,7 @@ def sync_version(pkg_version: str) -> None:
             session.commit()
     except (OperationalError, sqlite3.OperationalError) as e:
         if "no such table" in str(e):
-            logging.warning("table does not exist")
+            logging.debug("settings table does not exist yet")
         else:
             logging.warning("initialization error %s", e)
     except SQLAlchemyError as e:
@@ -289,7 +303,7 @@ TZ = get_setting("TZ", "UTC")
 try:
     _PKG_VERSION = version("glimpser")
 except PackageNotFoundError:
-    _PKG_VERSION = "0.2.9"
+    _PKG_VERSION = "0.2.10"
 sync_version(_PKG_VERSION)
 # Default to the package version if not overridden in the database
 VERSION = get_setting("VERSION", _PKG_VERSION)
@@ -298,11 +312,33 @@ NAV_ICON = get_setting("NAV_ICON", "img/glimpser_small.png")
 HOST = get_setting("HOST", "0.0.0.0")
 PORT = int(get_setting("PORT", 8082))
 DANGER_PORT = int(get_setting("DANGER_PORT", 9222))
+HTTPS_ENABLED = get_setting("HTTPS_ENABLED", "False") == "True"
+HTTPS_PORT = int(get_setting("HTTPS_PORT", 8443))
+HTTPS_ONLY = get_setting("HTTPS_ONLY", "False") == "True"
+HTTPS_SELF_SIGNED = get_setting("HTTPS_SELF_SIGNED", "True") == "True"
+HTTPS_CERT_PATH = get_setting("HTTPS_CERT_PATH", "data/certs/glimpser.crt")
+HTTPS_KEY_PATH = get_setting("HTTPS_KEY_PATH", "data/certs/glimpser.key")
+HTTPS_CERT_HOSTNAMES = get_setting("HTTPS_CERT_HOSTNAMES", "")
+_https_cert_rel = Path(HTTPS_CERT_PATH)
+HTTPS_CERT_PATH = str(
+    _https_cert_rel if _https_cert_rel.is_absolute() else _BASE_DIR / _https_cert_rel
+)
+_https_key_rel = Path(HTTPS_KEY_PATH)
+HTTPS_KEY_PATH = str(
+    _https_key_rel if _https_key_rel.is_absolute() else _BASE_DIR / _https_key_rel
+)
 ENFORCE_DOMAIN_IN_HOST = get_setting("ENFORCE_DOMAIN_IN_HOST", "False") == "True"
 DEBUG = get_setting("DEBUG", "False") == "True"
 # Provide a separate attribute for runtime checks
 DEBUG_MODE = DEBUG
-MAX_WORKERS = get_setting("MAX_WORKERS", 8)
+LOW_CPU_MODE = get_setting("LOW_CPU_MODE", "False") == "True"
+_max_workers_cfg = int(get_setting("MAX_WORKERS", 8))
+if LOW_CPU_MODE:
+    # Keep a single-digit worker pool to avoid CPU saturation on weaker hosts.
+    _low_cpu_cap = max(1, min(2, (os.cpu_count() or 1) // 2))
+    MAX_WORKERS = max(1, min(_max_workers_cfg, _low_cpu_cap))
+else:
+    MAX_WORKERS = _max_workers_cfg
 
 # Thresholds
 MAX_RAW_DATA_SIZE = int(get_setting("MAX_RAW_DATA_SIZE", 500 * 1024 * 1024))  # 500 MB
@@ -312,6 +348,20 @@ MAX_COMPRESSED_VIDEO_AGE = int(get_setting("MAX_COMPRESSED_VIDEO_AGE", 7))  # da
 MAX_IN_PROCESS_VIDEO_SIZE = int(
     get_setting("MAX_IN_PROCESS_VIDEO_SIZE", 100 * 1024 * 1024)
 )  # 100 MB
+ARCHIVE_BATCH_SIZE = int(get_setting("ARCHIVE_BATCH_SIZE", 25))
+ARCHIVE_INTERVAL_MINUTES = int(get_setting("ARCHIVE_INTERVAL_MINUTES", 1))
+LAN_OFFLINE_DISABLE_ERRORS = int(get_setting("LAN_OFFLINE_DISABLE_ERRORS", 6))
+LAN_OFFLINE_DISABLE_WINDOW_MINUTES = int(
+    get_setting("LAN_OFFLINE_DISABLE_WINDOW_MINUTES", 60)
+)
+LAN_OFFLINE_BACKOFF_SECONDS = int(get_setting("LAN_OFFLINE_BACKOFF_SECONDS", 1800))
+RTSP_PREFLIGHT_FAIL_THRESHOLD = int(get_setting("RTSP_PREFLIGHT_FAIL_THRESHOLD", 3))
+RTSP_PREFLIGHT_FAIL_WINDOW_SECONDS = int(
+    get_setting("RTSP_PREFLIGHT_FAIL_WINDOW_SECONDS", 900)
+)
+RTSP_PREFLIGHT_BACKOFF_SECONDS = int(
+    get_setting("RTSP_PREFLIGHT_BACKOFF_SECONDS", 3600)
+)
 
 LOG_LEVEL = get_setting("LOG_LEVEL", "WARN")
 FLASK_LOG_LEVEL = get_setting("FLASK_LOG_LEVEL", LOG_LEVEL)
@@ -331,28 +381,46 @@ for _sub in [s.strip() for s in _login_subnets_raw.split(",") if s.strip()]:
         SKIP_LOGIN_SUBNETS.append(ip_network(_sub))
     except ValueError:
         logging.warning("Invalid subnet in SKIP_LOGIN_SUBNETS: %s", _sub)
+LAN_GUEST_MODE = get_setting("LAN_GUEST_MODE", "full").lower()
 
 # Clock configuration
 CLOCK_OVERLAY = get_setting("CLOCK_OVERLAY", "False") == "True"
 CLOCK_DIGITAL = get_setting("CLOCK_DIGITAL", "False") == "True"
 CLOCK_NAVBAR = get_setting("CLOCK_NAVBAR", "True") == "True"
+VISUAL_TIMESTAMP_MODE = str(get_setting("VISUAL_TIMESTAMP_MODE", "clean")).lower()
 
 # Load settings from the database
-SECRET_KEY = get_setting("SECRET_KEY", "default_secret_key")
+SECRET_KEY = resolve_session_secret(
+    get_setting("SECRET_KEY", ""), DATABASE_PATH, persist=not _SKIP_DB_INIT
+)
 USER_NAME = get_setting("USER_NAME", "admin")
-USER_PASSWORD_HASH = get_setting("USER_PASSWORD_HASH", "")
 API_KEY = get_setting("API_KEY", "")
 SSO_TOKEN = get_setting("SSO_TOKEN", "")
 SSO_USERNAME = get_setting("SSO_USERNAME", USER_NAME)
 CHATGPT_KEY = get_setting("CHATGPT_KEY", "")  # maybe generalize as LLM_KEY ?
+RECOVERY_SEARCH_MODEL = get_setting("RECOVERY_SEARCH_MODEL", "gpt-5-mini")
 
 ALLOWED_LLM_MODELS = [
-    "gpt-4.1-mini",
+    "gpt-5-mini",
     "gpt-4.1",
     "gpt-4",
 ]
 
-LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-4.1-mini")
+LLM_MODEL_VERSION = get_setting("LLM_MODEL_VERSION", "gpt-5-mini")
+
+LOCAL_LLM_FALLBACK = get_setting("LOCAL_LLM_FALLBACK", "False") == "True"
+LOCAL_LLM_BASE_URL = get_setting("LOCAL_LLM_BASE_URL", "http://127.0.0.1:11434")
+LOCAL_LLM_VISION_MODEL = get_setting("LOCAL_LLM_VISION_MODEL", "moondream:latest")
+LOCAL_LLM_TEXT_MODEL = get_setting("LOCAL_LLM_TEXT_MODEL", "qwen2.5:3b")
+LOCAL_LLM_TIMEOUT_SECONDS = int(get_setting("LOCAL_LLM_TIMEOUT_SECONDS", 90))
+
+# Keep local helper defaults in sync with configured settings.
+os.environ.setdefault("LOCAL_LLM_BASE_URL", LOCAL_LLM_BASE_URL)
+os.environ.setdefault("LOCAL_LLM_TIMEOUT_SECONDS", str(LOCAL_LLM_TIMEOUT_SECONDS))
+
+if LLM_MODEL_VERSION == "gpt-4.1-mini":
+    logging.warning("Deprecated LLM model gpt-4.1-mini; defaulting to gpt-5-mini.")
+    LLM_MODEL_VERSION = "gpt-5-mini"
 
 if LLM_MODEL_VERSION not in ALLOWED_LLM_MODELS:
     raise ValueError(f"Invalid LLM model: {LLM_MODEL_VERSION}")
@@ -360,17 +428,11 @@ if LLM_MODEL_VERSION not in ALLOWED_LLM_MODELS:
 # note that $datetime is a special keyword that will be replaced with the datetime in iso Z format
 LLM_SUMMARY_PROMPT = get_setting(
     "LLM_SUMMARY_PROMPT",
-    "Return one single line of plain text—no line breaks, numbers, or bullet lists—beginning with a brief greeting plus today’s date, local time, and Chicago temperature, then densely packed clauses separated by “ | ”, each clause giving grouped insights, forecasts, and local take-aways drawn from the logs and any provided history; mark critical items with ⚠️, routine-but-watchworthy items with ℹ️ (info symbol), and resolved items with ✔️; weave a coherent bigger story rather than camera-by-camera notes, avoid repetition, drop boiler-plate, use precise technical language, and include uncommon insights or likely next events whenever possible; if nothing is noteworthy output exactly “All systems nominal — no actionable items.” The time is $datetime UTC.",
-    # "Below are caption logs from multiple live sources. Produce a 10-line technical digest for a highly educated Chicago-area listener who glances for <30 s. Format: line 0 → greeting + date/time + current temperature + one-sentence “big picture”; lines 1-9 → plain-text bullets of ≤90 chars each, no timestamps, each tagged with ⚠️ for immediate action, ℹ️ for watch/interesting, ✔️ for resolved/nominal. Group related items logically; emphasise local (Chicago/Lincolnwood/Kenosha), include concrete facts (counts, magnitudes, street names, runways, K-index, etc.), omit boiler-plate and repeated info unless it’s a new alert. Tie items into a bigger narrative (weather → transit → power → cosmic events) rather than a camera list. If nothing merits mention, output exactly “All systems nominal — no actionable items.” The time is $datetime UTC.",
+    "Return one compact operator brief in plain text. Use one line with clauses separated by ' | '. Start with the date/time context, then group observations by weather/lake, traffic/air, power/network, systems, and unusual visual changes. Lead with actionable or abnormal items, include concrete magnitudes, locations, counts, and source names when available, and avoid camera-by-camera narration. Use labels CRITICAL, WATCH, and OK instead of decorative symbols. Do not repeat stale captions or diagnose clocks/timestamps unless the log is specifically about time service. If nothing is actionable, output exactly 'All systems nominal - no actionable items.' The time is $datetime UTC.",
     # "Summarize the following logs into a concise, technical transcript. Focus on providing clear, actionable insights and key takeaways. Keep the summary brief and organized, with one line per segment, separated by newlines. Start with a brief overview, including any major events or trends. Prioritize clarity and relevance, ensuring the summary is easy to understand and useful for decision-making. Avoid repetition unless necessary. Conclude with a brief summary or closing note. The time is $datetime.",
 )
 
-LLM_CAPTION_PROMPT = get_setting(
-    "LLM_CAPTION_PROMPT",
-    "Examine the image carefully, then reply in two paragraphs only: (1) a punchy headline of ≤ 10 words that captures the single most urgent, unusual, or otherwise news-worthy element the user glancing for three seconds needs to notice; (2) one or two sharply written sentences that expand on that element with concrete specifics—names, counts, street or airport identifiers, magnitudes, colour codes, timestamps, likely impact, or next action—strictly based on visual evidence and the accompanying user question. Skip generic scene-setting, boiler-plate weather phrases, interface chrome, or guessing. If the frame is blank, frozen, unreadable, or unchanged since the previous image, respond only with the word **UNREADABLE**. Do not output anything else. The time is $datetime UTC.",
-    # Provide a concise, insightful observation about this image. Focus on unique or significant aspects. Limit your response to 16 words or less. Do not describe the scene, describe the anomalies. Do not be concerned about timestamp issues (the image may have local and UTC timestamps on it). Provide a concise caption in 10 words o less, focusing only on the noteable aspects.  Avoid general descriptions. Keep it short!  Then, on a newline, write a couple sentences with a more detailed description. The time is $datetime UTC
-    # "Write a concise caption that highlights the most significant or unique aspect of this image in 10 words or less. Avoid general descriptions, and focus on noteworthy details or anomalies. Then, provide a brief, more detailed description in a couple of sentences. The time is $datetime UTC.",
-)
+LLM_CAPTION_PROMPT = get_setting("LLM_CAPTION_PROMPT", DEFAULT_CAPTION_PROMPT)
 
 # FFMPEG/FFPROBE path settings
 _ffmpeg_default = ffmpeg_setup.get_ffmpeg_path() or "ffmpeg"
@@ -391,7 +453,7 @@ def _ffmpeg_supports_hwaccel() -> bool:
         output = subprocess.check_output(
             [FFMPEG_PATH, "-hwaccels"], stderr=subprocess.STDOUT, timeout=2
         ).decode()
-        lines = [l.strip() for l in output.splitlines() if l.strip()]
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
         return len(lines) > 1
     except Exception:
         return False
@@ -434,8 +496,23 @@ if _hwaccel_cfg.lower() == "auto":
 else:
     FFMPEG_HWACCEL = _hwaccel_cfg
 
+from app.runtime_health import probe_acceleration  # noqa: E402
+
+FFMPEG_ACCELERATION_STATUS = probe_acceleration(FFMPEG_PATH, FFMPEG_HWACCEL)
+FFMPEG_HWACCEL = FFMPEG_ACCELERATION_STATUS["effective"]
+if FFMPEG_ACCELERATION_STATUS["status"] == "failed":
+    logging.warning(
+        "GPU capability check failed; using software acceleration: %s",
+        FFMPEG_ACCELERATION_STATUS["reason"],
+    )
+
 # Number of threads FFmpeg should use when encoding/decoding
-FFMPEG_THREADS = int(get_setting("FFMPEG_THREADS", max(1, (os.cpu_count() or 1) // 2)))
+_ffmpeg_threads_cfg = int(
+    get_setting("FFMPEG_THREADS", max(1, (os.cpu_count() or 1) // 2))
+)
+FFMPEG_THREADS = (
+    max(1, min(_ffmpeg_threads_cfg, 2)) if LOW_CPU_MODE else _ffmpeg_threads_cfg
+)
 
 # CLIP model used for object filtering in scheduling
 CLIP_MODEL_NAME = get_setting(
@@ -467,7 +544,37 @@ ANALYZE_DURATION_OTHER = get_setting("ANALYZE_DURATION_OTHER", PROBE_SIZE_OTHER)
 # Frame rate used when `generate_live_stream` falls back to
 # still image capture. Increase to get smoother previews if
 # your hardware can handle the extra load.
-LIVE_FALLBACK_FPS = int(get_setting("LIVE_FALLBACK_FPS", 1))
+_live_fallback_fps_cfg = int(get_setting("LIVE_FALLBACK_FPS", 1))
+LIVE_FALLBACK_FPS = (
+    max(1, min(_live_fallback_fps_cfg, 1)) if LOW_CPU_MODE else _live_fallback_fps_cfg
+)
+
+# Live RTSP playback: optionally transcode to a smaller H.264 stream so browsers
+# start quickly (and so 4K camera feeds don't overwhelm the client/network).
+LIVE_TRANSCODE_RTSP = get_setting("LIVE_TRANSCODE_RTSP", "True") == "True"
+_live_rtsp_width_cfg = int(get_setting("LIVE_RTSP_WIDTH", 1280))
+LIVE_RTSP_WIDTH = max(320, min(_live_rtsp_width_cfg, 3840))
+_live_rtsp_fps_cfg = int(get_setting("LIVE_RTSP_FPS", 10))
+LIVE_RTSP_FPS = max(1, min(_live_rtsp_fps_cfg, 30))
+
+# In low CPU mode, be more conservative with live playback.
+if LOW_CPU_MODE:
+    LIVE_RTSP_WIDTH = min(LIVE_RTSP_WIDTH, 640)
+    LIVE_RTSP_FPS = min(LIVE_RTSP_FPS, 5)
+
+# Socket / IO timeouts (microseconds) for live stream startup/read.
+LIVE_RTSP_RW_TIMEOUT_US = int(get_setting("LIVE_RTSP_RW_TIMEOUT_US", 15000000))
+LIVE_RTSP_SOCKET_TIMEOUT_US = int(get_setting("LIVE_RTSP_SOCKET_TIMEOUT_US", 15000000))
+
+# Skip expensive preflight checks when a given URL/host was recently proven
+# healthy. This makes camera flipping feel NVR-fast while still keeping
+# circuit-breakers for degraded networks.
+LIVE_PREFLIGHT_SKIP_OK_SECONDS = int(get_setting("LIVE_PREFLIGHT_SKIP_OK_SECONDS", 20))
+
+# Best-effort in-process concurrency limits per host for live playback.
+# Note: multiple workers won't coordinate, so these are primarily to prevent
+# stampedes within a single worker.
+LIVE_HOST_MAX_STREAMS = int(get_setting("LIVE_HOST_MAX_STREAMS", 2))
 
 # Stop restarting live streams endlessly when ffmpeg repeatedly fails. If the
 # live view fails this many times in a row without producing any output,
@@ -559,6 +666,9 @@ MCP_SERVER_URL = get_setting("MCP_SERVER_URL", "")
 # When ``True`` the ``/robots.txt`` route allows search engine indexing.
 # ``False`` (the default) disallows all crawlers.
 ALLOW_BOTS = get_setting("ALLOW_BOTS", "False") == "True"
+ALLOW_PRIVATE_CALLBACK_URLS = (
+    get_setting("ALLOW_PRIVATE_CALLBACK_URLS", "False") == "True"
+)
 
 # Branch to auto-update from when new releases are available. "None" disables
 # automatic updates. Values other than "Main" or "Staging" revert to "None".
@@ -570,7 +680,8 @@ if AUTO_UPDATE_BRANCH not in {"None", "Main", "Staging"}:
 # Settings that should never be displayed in the UI
 SENSITIVE_SETTINGS = [
     "SECRET_KEY",
-    "USER_PASSWORD_HASH",
     "DATABASE_URL",
     "VERSION",
+    "GOOGLE_SDM_PROFILES",
+    "EUFY_CLOUD_PROFILES",
 ]

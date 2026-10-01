@@ -2,13 +2,33 @@ import os
 import unittest
 from unittest.mock import patch
 
-from app.utils.network import _get_test_hosts, is_system_online
+from app.utils.network import _get_test_hosts, _state, is_system_online
 
 
 class TestIsSystemOnline(unittest.TestCase):
+    def setUp(self):
+        state_patch = patch(
+            "app.utils.network.network_state",
+            return_value={"lan_ok": False, "wan_ok": False, "dns_ok": False},
+        )
+        state_patch.start()
+        self.addCleanup(state_patch.stop)
+        _state.update(
+            {
+                "last_online_time": None,
+                "last_online_reason": None,
+                "last_offline_log": None,
+                "last_dns_ok_time": None,
+                "last_wan_ok_time": None,
+                "last_lan_ok_time": None,
+                "last_dns_ok_reason": None,
+                "last_wan_ok_reason": None,
+                "last_lan_ok_reason": None,
+            }
+        )
+
     @patch("socket.create_connection")
     def test_first_host_success(self, mock_conn):
-        mock_conn.return_value = None
         with patch.dict(
             os.environ,
             {"ONLINE_TEST_HOSTS": "1.1.1.1", "ONLINE_TEST_URLS": ""},
@@ -32,14 +52,12 @@ class TestIsSystemOnline(unittest.TestCase):
     @patch("app.utils.network.socket.create_connection")
     @patch("app.utils.network._get_test_hosts", return_value=[" ", "2.2.2.2"])
     def test_is_system_online_skips_blank(self, mock_hosts, mock_conn):
-        mock_conn.return_value = None
         with patch.dict(os.environ, {"ONLINE_TEST_URLS": ""}):
             self.assertTrue(is_system_online(timeout=2))
         mock_conn.assert_called_once_with(("2.2.2.2", 443), timeout=2)
 
     @patch("socket.create_connection")
     def test_custom_port_success(self, mock_conn):
-        mock_conn.return_value = None
         with patch.dict(
             os.environ,
             {
@@ -66,7 +84,6 @@ class TestIsSystemOnline(unittest.TestCase):
 
     @patch("socket.create_connection")
     def test_host_with_inline_port(self, mock_conn):
-        mock_conn.return_value = None
         with patch.dict(
             os.environ,
             {"ONLINE_TEST_HOSTS": "example.com:444", "ONLINE_TEST_URLS": ""},
@@ -74,23 +91,25 @@ class TestIsSystemOnline(unittest.TestCase):
             self.assertTrue(is_system_online(timeout=1))
             mock_conn.assert_called_once_with(("example.com", 444), timeout=1)
 
-    @patch("app.utils.network.request_with_retry")
-    def test_url_success(self, mock_head):
-        mock_head.return_value.ok = True
+    @patch("app.utils.network.probe_url_with_range")
+    def test_url_success(self, mock_probe):
+        mock_probe.return_value = (True, {"ok": True})
         with patch.dict(os.environ, {"ONLINE_TEST_URLS": "http://example.com"}):
             self.assertTrue(is_system_online(timeout=1))
-            mock_head.assert_called_once_with("HEAD", "http://example.com", timeout=1)
+            mock_probe.assert_called_once_with(
+                "http://example.com", timeout=1, preconnect=True
+            )
 
     @patch("socket.create_connection")
-    @patch("app.utils.network.request_with_retry", side_effect=Exception("fail"))
-    def test_url_failure_falls_back_to_hosts(self, mock_head, mock_conn):
-        mock_conn.return_value = None
+    @patch("app.utils.network.probe_url_with_range")
+    def test_url_failure_falls_back_to_hosts(self, mock_probe, mock_conn):
+        mock_probe.return_value = (False, {"ok": False})
         with patch.dict(
             os.environ,
             {"ONLINE_TEST_URLS": "http://bad", "ONLINE_TEST_HOSTS": "1.1.1.1"},
         ):
             self.assertTrue(is_system_online(timeout=1))
-            mock_head.assert_called_once_with("HEAD", "http://bad", timeout=1)
+            mock_probe.assert_called_once_with("http://bad", timeout=1, preconnect=True)
             mock_conn.assert_called_once_with(("1.1.1.1", 443), timeout=1)
 
     @patch("app.utils.network.logging.warning")

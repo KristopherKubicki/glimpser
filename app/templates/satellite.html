@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block body_class %}satellite-screen{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/satellite.css') }}?v={{ ASSET_VERSION }}">
+<div class="sat" data-frames='{{ dates|tojson }}'>
+  <header class="sat-header">
+    <div>
+      <p class="sat-kicker">GLIMPSER / REGIONAL VIEW <span class="sat-dot"></span> DAILY SATELLITE</p>
+      <h1>Chicago to the Beach</h1>
+      <p class="sat-intro">One frame for downtown Chicago, Lincolnwood, and the Kenosha shoreline. Scroll through the archive to see clouds, lake color, and seasonal change.</p>
+    </div>
+    <div class="sat-header-actions">
+      <a href="/dashboard/regional">Regional cameras ↗</a>
+      <a href="/dashboard/beach-conditions">Beach conditions ↗</a>
+    </div>
+  </header>
+  {% if dates %}
+  <div class="sat-layout">
+    <section class="sat-panel sat-viewer" aria-label="Satellite image viewer">
+      <div class="sat-viewer-top">
+        <span class="sat-pill"><span class="sat-dot"></span> NOAA-21 VIIRS · true color</span>
+        <span class="sat-date" id="sat-date">{{ dates[-1] }}</span>
+      </div>
+      <div class="sat-image-wrap">
+        <img id="sat-image" src="/satellite/media/{{ dates[-1] }}.jpg" alt="Daily satellite view from downtown Chicago through the Kenosha shoreline" width="1000" height="1600">
+        <span class="sat-marker sat-marker-beach"><i></i><b>BEACH</b><small>Kenosha shoreline</small></span>
+        <span class="sat-marker sat-marker-lincolnwood"><i></i><b>LINCOLNWOOD</b></span>
+        <span class="sat-marker sat-marker-chicago"><i></i><b>DOWNTOWN</b><small>Chicago</small></span>
+      </div>
+    </section>
+    <aside class="sat-side">
+      <section class="sat-panel sat-control-panel">
+        <p class="sat-section-label">TIME MACHINE</p>
+        <div class="sat-counter"><strong id="sat-count">{{ dates|length }}</strong><span>days in the archive</span></div>
+        <div class="sat-controls">
+          <button type="button" id="sat-prev" aria-label="Previous day">←</button>
+          <button type="button" id="sat-play" class="sat-play" aria-label="Play timelapse">▶ <span>Play</span></button>
+          <button type="button" id="sat-next" aria-label="Next day">→</button>
+        </div>
+        <input id="sat-slider" type="range" min="0" max="{{ dates|length - 1 }}" value="{{ dates|length - 1 }}" aria-label="Satellite data day">
+        <div class="sat-range-label"><span>{{ dates[0] }}</span><span>{{ dates[-1] }}</span></div>
+        <p class="sat-hint">Use the slider or your ← → keys to step through days.</p>
+      </section>
+      <section class="sat-panel sat-context">
+        <p class="sat-section-label">IN THIS FRAME</p>
+        <div><span class="sat-context-index">01</span><span><strong>Beach / Kenosha</strong><small>Lake Michigan shoreline</small></span></div>
+        <div><span class="sat-context-index">02</span><span><strong>Lincolnwood</strong><small>North side of Chicago</small></span></div>
+        <div><span class="sat-context-index">03</span><span><strong>Downtown Chicago</strong><small>Southern edge of the frame</small></span></div>
+        <p class="sat-note">Markers show approximate locations. Clouds may hide the ground. This is a daily daytime satellite image, not a live camera feed.</p>
+      </section>
+      <section class="sat-panel sat-download">
+        <p class="sat-section-label">KEEP EXPLORING</p>
+        <a href="/satellite/media/timelapse.mp4" download>Download timelapse <span>↗</span></a>
+        <a href="/templates/GEOS16S">Live regional clouds <span>↗</span></a>
+        <p>Images: NASA GIBS / NOAA-21 VIIRS corrected reflectance. Cloud view: NOAA GOES.</p>
+      </section>
+    </aside>
+  </div>
+  {% else %}
+  <section class="sat-panel sat-empty"><h2>Archive is warming up</h2><p>The first satellite frame will appear after the daily collector publishes it.</p></section>
+  {% endif %}
+</div>
+<script src="{{ url_for('static', filename='js/satellite.js') }}?v={{ ASSET_VERSION }}" defer></script>
+{% endblock %}

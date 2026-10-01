@@ -107,6 +107,10 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
 <div class="edit-template-container">
   {% if preview_src or preview_id %}
   <div class="edit-template-preview">
+    <div class="preview-header">
+      <span>Live Preview</span>
+      <span class="preview-pill">Auto-updates</span>
+    </div>
     <img
       src="{{ preview_src }}"
       data-placeholder="{{ preview_src }}"
@@ -120,101 +124,210 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
       alt="Live preview"
     />
     <div class="preview-status" role="status" aria-live="polite"></div>
+    <div class="preview-meta" aria-label="Camera summary">
+      <div class="preview-meta-row">
+        <span>URL</span>
+        <span class="preview-value" data-preview="url">—</span>
+      </div>
+      <div class="preview-meta-row">
+        <span>Mode</span>
+        <span class="preview-value" data-preview="mode">—</span>
+      </div>
+      <div class="preview-meta-row">
+        <span>Frequency</span>
+        <span class="preview-value" data-preview="frequency">—</span>
+      </div>
+      <div class="preview-meta-row">
+        <span>Timeout</span>
+        <span class="preview-value" data-preview="timeout">—</span>
+      </div>
+      <div class="preview-meta-row">
+        <span>Group</span>
+        <span class="preview-value" data-preview="group">—</span>
+      </div>
+      <div class="preview-meta-row">
+        <span>Auth</span>
+        <span class="preview-value" data-preview="auth">—</span>
+      </div>
+    </div>
   </div>
   {% endif %}
   <form
     id="{{ form_id }}"
     action="{{ action }}"
     method="post"
-    onsubmit="window.sendTelemetry && sendTelemetry('template_submit'); return validateForm()"
+    onsubmit="
+      window.sendTelemetry && sendTelemetry('template_submit');
+      return validateForm();
+    "
     title="Enter template details"
   >
+    <div class="editor-header">
+      <h3>Camera Editor</h3>
+      <p>
+        Build a reliable camera feed with live preview, presets, and guardrails.
+      </p>
+    </div>
     <div
       id="template-error"
       class="form-error hidden"
       role="alert"
       aria-live="assertive"
     ></div>
-    {% if include_name %}
-    <div class="form-row">
-      <label for="name" title="Name of the template">Name:</label>
-      <input
-        type="text"
-        id="name"
-        name="name"
-        value="{{ template.name if template else '' }}"
-        required
-        placeholder="My Camera"
-        title="Enter a unique name for this template"
-      />
-    </div>
-    {% endif %}
-    <div class="form-row">
-      <label for="url" title="URL to monitor">URL:</label>
-      <div class="url-input-container">
+    <div class="template-section">
+      <div class="section-header">Camera Basics</div>
+      <div class="section-help">
+        Give it a clear name, paste the URL, and describe the camera for easier
+        recovery later.
+      </div>
+      {% if include_name %}
+      <div class="form-row">
+        <label for="name" class="required" title="Name of the template"
+          >Name:</label
+        >
         <input
-          type="url"
-          id="url"
-          name="url"
-          class="url-input"
-          value="{{ template.url if template else '' }}"
+          type="text"
+          id="name"
+          name="name"
+          value="{{ template.name if template else '' }}"
           required
-          pattern="https?://.+"
-          placeholder="{{ url_for('stream.test_pattern_mjpg', _external=True) }}"
-          title="Enter the URL to monitor"
-          data-default-url="{{ default_url or '' }}"
+          placeholder="My Camera"
+          title="Enter a unique name for this template"
         />
-        <span id="url-status" class="url-status" title="URL test result"></span>
+      </div>
+      {% endif %}
+      <div class="form-row">
+        <label for="url" class="required" title="URL to monitor">URL:</label>
+        <div class="url-input-container">
+          <input
+            type="url"
+            id="url"
+            name="url"
+            class="url-input"
+            value="{{ template.url if template else '' }}"
+            required
+            pattern="(https?|rtsp)://.+"
+            placeholder="{{ url_for('stream.test_pattern_mjpg', _external=True) }}"
+            title="Enter the URL to monitor"
+            data-default-url="{{ default_url or '' }}"
+          />
+          <button type="button" class="url-test-btn" title="Test URL now">
+            Test
+          </button>
+          <span
+            id="url-status"
+            class="url-status"
+            title="URL test result"
+          ></span>
+          <span class="url-status-text" data-url-status-text>Waiting</span>
+        </div>
+        <div class="field-hint">
+          Supports RTSP, MJPEG, snapshots, and public web pages.
+        </div>
+      </div>
+      <div class="form-row">
+        <label for="notes" title="Short description for recovery"
+          >Description:</label
+        >
+        <textarea
+          id="notes"
+          name="notes"
+          placeholder="Location, name, and context (e.g., 'Union Station train cam, south platform')."
+          title="Short description for recovery and search"
+        >
+{{ template.notes if template else '' }}</textarea
+        >
       </div>
     </div>
-    <div class="form-row double-row">
-      <label for="frequency" title="How often to check the URL (minutes)"
-        >Freq. (m):</label
-      >
-      <input
-        type="number"
-        id="frequency"
-        name="frequency"
-        value="{{ template.frequency if template else 5 }}"
-        min="0"
-        max="43200"
-        step="1"
-        list="frequency-options"
-        class="short-input"
-        required
-        placeholder="Minutes"
-        title="How often to check the URL (minutes)"
-      />
-      <!-- suggestions only; users may enter any value -->
-      <datalist id="frequency-options">
-        <option value="5"></option>
-        <option value="15"></option>
-        <option value="30"></option>
-        <option value="60"></option>
-        <option value="360"></option>
-        <option value="1440"></option>
-      </datalist>
-      <label for="groups" title="Select or create a group">Group:</label>
-      <!-- prettier-ignore -->
-      <input
-        id="groups"
-        name="groups"
-        list="group-options"
-        class="sm-select"
-        title="Choose or enter a group"
-      />
-      <datalist id="group-options"></datalist>
+    <div class="template-section">
+      <div class="section-header">Schedule & Grouping</div>
+      <div class="section-help">
+        Set how often to capture and how this camera is grouped.
+      </div>
+      <div class="form-row double-row">
+        <label
+          for="frequency"
+          class="required"
+          title="How often to check the URL (minutes)"
+          >Freq. (m):</label
+        >
+        <input
+          type="number"
+          id="frequency"
+          name="frequency"
+          value="{{ template.frequency if template else 5 }}"
+          min="0"
+          max="43200"
+          step="1"
+          list="frequency-options"
+          class="short-input"
+          required
+          placeholder="Minutes"
+          title="How often to check the URL (minutes)"
+        />
+        <!-- suggestions only; users may enter any value -->
+        <datalist id="frequency-options">
+          <option value="5"></option>
+          <option value="15"></option>
+          <option value="30"></option>
+          <option value="60"></option>
+          <option value="360"></option>
+          <option value="1440"></option>
+        </datalist>
+        <label for="groups" title="Select or create a group">Group:</label>
+        <!-- prettier-ignore -->
+        <input
+          id="groups"
+          name="groups"
+          list="group-options"
+          class="sm-select"
+          title="Choose or enter a group"
+        />
+        <datalist id="group-options"></datalist>
+      </div>
+      <div class="preset-row">
+        <span class="preset-label">Quick presets:</span>
+        <button
+          type="button"
+          class="preset-btn"
+          data-frequency="1"
+          data-timeout="5"
+        >
+          1m
+        </button>
+        <button
+          type="button"
+          class="preset-btn"
+          data-frequency="5"
+          data-timeout="10"
+        >
+          5m
+        </button>
+        <button
+          type="button"
+          class="preset-btn"
+          data-frequency="15"
+          data-timeout="20"
+        >
+          15m
+        </button>
+        <button
+          type="button"
+          class="preset-btn"
+          data-frequency="60"
+          data-timeout="30"
+        >
+          60m
+        </button>
+      </div>
     </div>
-    <input
-      type="hidden"
-      id="notes"
-      name="notes"
-      value="{{ template.notes if template else '' }}"
-    />
     <details class="advanced-settings">
       <summary title="Show additional fields">Advanced Options</summary>
       <div class="form-row">
-        <label for="timeout" title="Maximum time to wait for a response"
+        <label
+          for="timeout"
+          class="required"
+          title="Maximum time to wait for a response"
           >Timeout:</label
         >
         <input
@@ -238,6 +351,478 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
           <option value="30"></option>
           <option value="45"></option>
         </datalist>
+      </div>
+      <div class="form-row">
+        <label
+          for="stabilize_mode"
+          title="Reduce small camera vibrations by aligning captures against recent frames. Best for fixed cameras like crib, scenic, harbor, or infrastructure feeds."
+          >Stabilize:</label
+        >
+        <select
+          id="stabilize_mode"
+          name="stabilize_mode"
+          class="sm-select"
+          title="Choose how aggressively Glimpser stabilizes nearly static cameras"
+        >
+          {% set stabilize_mode = template.stabilize_mode if template else '' %}
+          {% set stabilize_off_attr = 'selected' if not stabilize_mode else ''
+          %} {% set stabilize_previous_attr = 'selected' if stabilize_mode ==
+          'previous' else '' %} {% set stabilize_5m_attr = 'selected' if
+          stabilize_mode == 'rolling_5m' else '' %} {% set stabilize_30m_attr =
+          'selected' if stabilize_mode == 'rolling_30m' else '' %}
+          <option value="" {{ stabilize_off_attr }}>Off</option>
+          <option value="previous" {{ stabilize_previous_attr }}>
+            Previous frame
+          </option>
+          <option value="rolling_5m" {{ stabilize_5m_attr }}>Rolling 5m</option>
+          <option value="rolling_30m" {{ stabilize_30m_attr }}>
+            Rolling 30m
+          </option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label
+          for="night_enhance_mode"
+          title="Lift dark static scenes using nearby night frames for denoise and controlled shadow recovery. Best for fixed scenic, harbor, skyline, crib, and infrastructure cameras."
+          >Night Enhance:</label
+        >
+        <select
+          id="night_enhance_mode"
+          name="night_enhance_mode"
+          class="sm-select"
+          title="Choose how aggressively Glimpser enhances low-light stills"
+        >
+          {% set night_enhance_mode = template.night_enhance_mode if template
+          else '' %} {% set night_enhance_off_attr = 'selected' if not
+          night_enhance_mode else '' %} {% set night_enhance_light_attr =
+          'selected' if night_enhance_mode == 'light' else '' %} {% set
+          night_enhance_medium_attr = 'selected' if night_enhance_mode ==
+          'medium' else '' %} {% set night_enhance_strong_attr = 'selected' if
+          night_enhance_mode == 'strong' else '' %}
+          <option value="" {{ night_enhance_off_attr }}>Off</option>
+          <option value="light" {{ night_enhance_light_attr }}>Light</option>
+          <option value="medium" {{ night_enhance_medium_attr }}>Medium</option>
+          <option value="strong" {{ night_enhance_strong_attr }}>Strong</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label
+          for="deflicker_mode"
+          title="Smooth luminance pulses in timelapses and teaser videos. Best for LED grow lights, fluorescent retrofits, and other cameras with rolling flicker bands."
+          >Deflicker:</label
+        >
+        <select
+          id="deflicker_mode"
+          name="deflicker_mode"
+          class="sm-select"
+          title="Choose how aggressively Glimpser smooths timelapse flicker"
+        >
+          {% set deflicker_mode = template.deflicker_mode if template else '' %}
+          {% set deflicker_off_attr = 'selected' if not deflicker_mode else ''
+          %} {% set deflicker_light_attr = 'selected' if deflicker_mode ==
+          'light' else '' %} {% set deflicker_medium_attr = 'selected' if
+          deflicker_mode == 'medium' else '' %} {% set deflicker_strong_attr =
+          'selected' if deflicker_mode == 'strong' else '' %}
+          <option value="" {{ deflicker_off_attr }}>Off</option>
+          <option value="light" {{ deflicker_light_attr }}>Light</option>
+          <option value="medium" {{ deflicker_medium_attr }}>Medium</option>
+          <option value="strong" {{ deflicker_strong_attr }}>Strong</option>
+        </select>
+      </div>
+      <div class="form-row double-row">
+        <label
+          for="burst_enhance_mode"
+          title="Fuse a few recent stills to clean up low-def cameras or turn a stable crop into a zoomed-in asset. Use ROI mode on duplicated templates when you want a dedicated zoom view."
+          >Burst Enhance:</label
+        >
+        <select
+          id="burst_enhance_mode"
+          name="burst_enhance_mode"
+          class="sm-select"
+          title="Choose whether still-image burst fusion runs on the whole frame or a selected region of interest"
+        >
+          {% set burst_enhance_mode = template.burst_enhance_mode if template
+          else '' %} {% set burst_off_attr = 'selected' if not
+          burst_enhance_mode else '' %} {% set burst_full_attr = 'selected' if
+          burst_enhance_mode == 'full_frame' else '' %} {% set burst_roi_attr =
+          'selected' if burst_enhance_mode == 'roi' else '' %}
+          <option value="" {{ burst_off_attr }}>Off</option>
+          <option value="full_frame" {{ burst_full_attr }}>Full frame</option>
+          <option value="roi" {{ burst_roi_attr }}>ROI crop</option>
+        </select>
+        <label
+          for="burst_enhance_profile"
+          title="Clean favors denoise, Hybrid blends cleanup with detail recovery, and Crisp pushes sharper but riskier enhancement."
+          >Burst Profile:</label
+        >
+        <select
+          id="burst_enhance_profile"
+          name="burst_enhance_profile"
+          class="sm-select"
+          title="Choose the still-image fusion style"
+        >
+          {% set burst_enhance_profile = template.burst_enhance_profile if
+          template else '' %} {% set burst_clean_attr = 'selected' if
+          burst_enhance_profile in ['', 'clean'] else '' %} {% set
+          burst_hybrid_attr = 'selected' if burst_enhance_profile == 'hybrid'
+          else '' %} {% set burst_crisp_attr = 'selected' if
+          burst_enhance_profile == 'crisp' else '' %}
+          <option value="clean" {{ burst_clean_attr }}>Clean</option>
+          <option value="hybrid" {{ burst_hybrid_attr }}>Hybrid</option>
+          <option value="crisp" {{ burst_crisp_attr }}>Crisp</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label
+          for="source_template"
+          title="Optional base template to derive this view from. When set, Glimpser renders this template from the source template's latest screenshot instead of fetching the upstream camera again."
+          >Source Template:</label
+        >
+        <input
+          type="text"
+          id="source_template"
+          name="source_template"
+          value="{{ template.source_template if template else '' }}"
+          placeholder="WhiteGrowerOverhead"
+          title="Template name used as the still-image source for derived ROI or composite views"
+        />
+      </div>
+      <div class="form-row">
+        <label
+          for="burst_enhance_roi"
+          title="Optional ROI box for ROI crop mode. Use x,y,w,h in pixels or normalized decimals like 0.25,0.20,0.30,0.30. If the box is not 16:9, Glimpser expands it to the source aspect ratio before zooming."
+          >Burst ROI:</label
+        >
+        <input
+          type="text"
+          id="burst_enhance_roi"
+          name="burst_enhance_roi"
+          value="{{ template.burst_enhance_roi if template else '' }}"
+          placeholder="x,y,w,h or 0.25,0.20,0.30,0.30"
+          title="Region of interest used when Burst Enhance is set to ROI crop"
+        />
+      </div>
+      <div class="form-row">
+        <label
+          for="capture_crop_roi"
+          title="Optional capture crop box applied before timestamping and enhancement. Use x,y,w,h in pixels or normalized decimals. Unlike Burst ROI, this keeps the crop's natural aspect ratio."
+          >Capture Crop:</label
+        >
+        <input
+          type="text"
+          id="capture_crop_roi"
+          name="capture_crop_roi"
+          value="{{ template.capture_crop_roi if template else '' }}"
+          placeholder="0,84,2048,1152"
+          title="Region of interest saved as the source camera frame before timestamps and post-processing"
+        />
+      </div>
+      <div class="form-row double-row">
+        <label
+          for="capture_rotate_degrees"
+          title="Rotate the saved capture before timestamps and enhancement. Use this for cameras mounted sideways or upside down."
+          >Capture Rotate:</label
+        >
+        <select
+          id="capture_rotate_degrees"
+          name="capture_rotate_degrees"
+          class="sm-select"
+          title="Rotate the captured still before the rest of the post-processing pipeline"
+        >
+          {% set capture_rotate_degrees = template.capture_rotate_degrees if
+          template else 0 %} {% set rotate_none_attr = 'selected' if
+          capture_rotate_degrees in ['', 0, '0', none] else '' %} {% set
+          rotate_ccw_attr = 'selected' if capture_rotate_degrees in [-90, '-90']
+          else '' %} {% set rotate_cw_attr = 'selected' if
+          capture_rotate_degrees in [90, '90'] else '' %} {% set rotate_180_attr
+          = 'selected' if capture_rotate_degrees in [180, '180', -180, '-180']
+          else '' %}
+          <option value="0" {{ rotate_none_attr }}>None</option>
+          <option value="-90" {{ rotate_ccw_attr }}>90° CCW</option>
+          <option value="90" {{ rotate_cw_attr }}>90° CW</option>
+          <option value="180" {{ rotate_180_attr }}>180°</option>
+        </select>
+        <label
+          for="lens_correction_spec"
+          title="Optional lens correction spec. Use rectilinear:fov=95,src_fov=180,zoom=1.15 for a sideways fisheye camera like Backyard."
+          >Lens Correction:</label
+        >
+        <input
+          type="text"
+          id="lens_correction_spec"
+          name="lens_correction_spec"
+          value="{{ template.lens_correction_spec if template else '' }}"
+          placeholder="rectilinear:fov=95,src_fov=180,zoom=1.15"
+          title="Capture-side lens correction. Currently supports rectilinear fisheye correction with fov, src_fov, and zoom parameters."
+        />
+      </div>
+      <div class="form-row double-row">
+        <label
+          for="horizon_level_mode"
+          title="Level lake or buoy cameras by detecting the horizon and applying a bounded roll correction before stabilization and timelapse enhancement."
+          >Horizon Level:</label
+        >
+        <select
+          id="horizon_level_mode"
+          name="horizon_level_mode"
+          class="sm-select"
+          title="Choose whether Glimpser levels a clean horizon in the captured still"
+        >
+          {% set horizon_level_mode = template.horizon_level_mode if template
+          else '' %} {% set horizon_off_attr = 'selected' if not
+          horizon_level_mode else '' %} {% set horizon_roll_attr = 'selected' if
+          horizon_level_mode == 'roll' else '' %} {% set horizon_smooth_attr =
+          'selected' if horizon_level_mode == 'smooth' else '' %}
+          <option value="" {{ horizon_off_attr }}>Off</option>
+          <option value="roll" {{ horizon_roll_attr }}>Roll</option>
+          <option value="smooth" {{ horizon_smooth_attr }}>Smooth</option>
+        </select>
+        <label
+          for="horizon_level_roi"
+          title="Optional horizon detection ROI as x,y,w,h in pixels or normalized decimals. Leave blank for the default upper-middle lake horizon region."
+          >Horizon ROI:</label
+        >
+        <input
+          type="text"
+          id="horizon_level_roi"
+          name="horizon_level_roi"
+          value="{{ template.horizon_level_roi if template else '' }}"
+          placeholder="0.06,0.24,0.88,0.38"
+          title="Region used to detect the horizon line for roll correction"
+        />
+      </div>
+      <div class="form-row double-row">
+        <label
+          for="composite_view_mode"
+          title="Build one derived still from multiple named ROIs. Use this for special mirrored or multi-view cameras where one template should render a split-screen composite."
+          >Composite View:</label
+        >
+        <select
+          id="composite_view_mode"
+          name="composite_view_mode"
+          class="sm-select"
+          title="Choose how Glimpser arranges multiple ROI panels into one composite view"
+        >
+          {% set composite_view_mode = template.composite_view_mode if template
+          else '' %} {% set composite_off_attr = 'selected' if not
+          composite_view_mode else '' %} {% set composite_grid_attr = 'selected'
+          if composite_view_mode == 'grid' else '' %} {% set composite_hero_attr
+          = 'selected' if composite_view_mode == 'hero_strip' else '' %}
+          <option value="" {{ composite_off_attr }}>Off</option>
+          <option value="grid" {{ composite_grid_attr }}>Grid</option>
+          <option value="hero_strip" {{ composite_hero_attr }}>
+            Hero + strip
+          </option>
+        </select>
+        <label
+          for="composite_view_spec"
+          title="List labeled ROI panels as Label@x,y,w,h;Label2@x,y,w,h. Use pixels or normalized decimals. The first panel is the hero panel in Hero + strip mode."
+          >Composite Spec:</label
+        >
+        <input
+          type="text"
+          id="composite_view_spec"
+          name="composite_view_spec"
+          value="{{ template.composite_view_spec if template else '' }}"
+          placeholder="Direct@0.36,0.20,0.28,0.28;Left@0.40,0.35,0.11,0.11"
+          title="Semicolon-delimited labeled ROIs used to render the composite view"
+        />
+      </div>
+      {% set event_buffer_test_url = url_for('ui.event_buffer_test',
+      template_name=template.name) if template and template.name else '' %} {%
+      set event_buffer_status_url = url_for('ui.event_buffer_status',
+      template_name=template.name) if template and template.name else '' %}
+      <div
+        class="template-section compact event-buffer-section"
+        data-event-buffer-test-url="{{ event_buffer_test_url }}"
+        data-event-buffer-status-url="{{ event_buffer_status_url }}"
+      >
+        <div class="section-header">LAN Event Buffer</div>
+        <div class="form-row double-row">
+          <label for="event_buffer_enabled" title="Enable local event buffering"
+            >Buffer:</label
+          >
+          <label class="switch">
+            <input
+              type="checkbox"
+              id="event_buffer_enabled"
+              name="event_buffer_enabled"
+              {%
+              if
+              template
+              and
+              template.event_buffer_enabled
+              %}checked{%
+              endif
+              %}
+              title="Enable local event buffering"
+            />
+            <span class="slider round"></span>
+          </label>
+          <label for="event_buffer_profile" title="Buffer profile"
+            >Profile:</label
+          >
+          <select
+            id="event_buffer_profile"
+            name="event_buffer_profile"
+            class="sm-select"
+            data-event-buffer-field
+            title="Choose the event-buffer profile"
+          >
+            <option value="lan_hardwired" selected>LAN hardwired</option>
+          </select>
+        </div>
+        <div class="form-row double-row">
+          <label for="event_buffer_fps" title="Frames per second">FPS:</label>
+          <input
+            type="number"
+            id="event_buffer_fps"
+            name="event_buffer_fps"
+            class="short-input"
+            value="{{ template.event_buffer_fps if template else 1 }}"
+            min="1"
+            max="2"
+            step="1"
+            data-event-buffer-field
+            title="Event-buffer frames per second"
+          />
+          <label for="event_buffer_seconds" title="Ring buffer seconds"
+            >Ring:</label
+          >
+          <input
+            type="number"
+            id="event_buffer_seconds"
+            name="event_buffer_seconds"
+            class="short-input"
+            value="{{ template.event_buffer_seconds if template else 120 }}"
+            min="30"
+            max="300"
+            step="10"
+            data-event-buffer-field
+            title="Event-buffer ring seconds"
+          />
+        </div>
+        <div class="form-row double-row">
+          <label for="event_buffer_pre_seconds" title="Pre-event seconds"
+            >Pre:</label
+          >
+          <input
+            type="number"
+            id="event_buffer_pre_seconds"
+            name="event_buffer_pre_seconds"
+            class="short-input"
+            value="{{ template.event_buffer_pre_seconds if template else 8 }}"
+            min="0"
+            max="30"
+            step="1"
+            data-event-buffer-field
+            title="Seconds before an alert to include"
+          />
+          <label for="event_buffer_post_seconds" title="Post-event seconds"
+            >Post:</label
+          >
+          <input
+            type="number"
+            id="event_buffer_post_seconds"
+            name="event_buffer_post_seconds"
+            class="short-input"
+            value="{{ template.event_buffer_post_seconds if template else 6 }}"
+            min="1"
+            max="30"
+            step="1"
+            data-event-buffer-field
+            title="Seconds after an alert to include"
+          />
+        </div>
+        <div class="form-row double-row">
+          <label for="event_buffer_width" title="Buffered frame width"
+            >Width:</label
+          >
+          <input
+            type="number"
+            id="event_buffer_width"
+            name="event_buffer_width"
+            class="short-input"
+            value="{{ template.event_buffer_width if template else 640 }}"
+            min="320"
+            max="1280"
+            step="80"
+            data-event-buffer-field
+            title="Buffered frame width"
+          />
+          <label for="event_buffer_format" title="Alert media format"
+            >Format:</label
+          >
+          <select
+            id="event_buffer_format"
+            name="event_buffer_format"
+            class="sm-select"
+            data-event-buffer-field
+            title="Alert media format"
+          >
+            {% set event_buffer_format = template.event_buffer_format if
+            template else 'gif' %} {% set event_buffer_gif_attr = 'selected' if
+            event_buffer_format == 'gif' else '' %} {% set event_buffer_mp4_attr
+            = 'selected' if event_buffer_format == 'mp4' else '' %}
+            <option value="gif" {{ event_buffer_gif_attr }}>GIF</option>
+            <option value="mp4" {{ event_buffer_mp4_attr }}>MP4</option>
+          </select>
+        </div>
+        <div class="form-row double-row">
+          <label
+            for="event_buffer_backoff_seconds"
+            title="Failure backoff seconds"
+            >Backoff:</label
+          >
+          <input
+            type="number"
+            id="event_buffer_backoff_seconds"
+            name="event_buffer_backoff_seconds"
+            class="short-input"
+            value="{{ template.event_buffer_backoff_seconds if template else 300 }}"
+            min="30"
+            max="1800"
+            step="30"
+            data-event-buffer-field
+            title="Seconds to wait after a buffer failure"
+          />
+          <button
+            type="button"
+            id="event_buffer_test"
+            class="secondary"
+            title="Test LAN event-buffer eligibility"
+          >
+            Test
+          </button>
+          <button
+            type="button"
+            id="event_buffer_status"
+            class="secondary"
+            title="Show live LAN event-buffer status"
+          >
+            Status
+          </button>
+          <span
+            id="event_buffer_test_result"
+            role="status"
+            aria-live="polite"
+          ></span>
+        </div>
+      </div>
+      <div class="template-section compact">
+        <div class="section-header">Capture Mode</div>
+        <div class="section-help">
+          Choose direct streams for cameras or browser mode for complex web
+          pages.
+        </div>
+        <div class="mode-toggle">
+          <button type="button" class="mode-btn" data-mode="stream">
+            Direct Stream
+          </button>
+          <button type="button" class="mode-btn" data-mode="web">
+            Web Page
+          </button>
+        </div>
       </div>
       <div class="form-row double-row">
         <label
@@ -353,7 +938,31 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
           title="Enter proxy server address (optional)"
         />
       </div>
-      <div class="form-row hidden">
+      <div class="form-row">
+        <label
+          for="auth_enabled"
+          title="Enable authentication fields for this camera"
+          >Auth:</label
+        >
+        <label class="switch">
+          <input
+            type="checkbox"
+            id="auth_enabled"
+            {%
+            if
+            template
+            and
+            (template.auth_username
+            or
+            template.auth_password)
+            %}checked{%
+            endif
+            %}
+          />
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <div class="form-row auth-fields hidden" data-auth-fields>
         <label for="auth_username" title="Username for camera authentication"
           >Username:</label
         >
@@ -364,10 +973,9 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
           value="{{ template.auth_username if template else '' }}"
           placeholder="user"
           title="Camera username"
-          disabled
         />
       </div>
-      <div class="form-row hidden">
+      <div class="form-row auth-fields hidden" data-auth-fields>
         <label for="auth_password" title="Password for camera authentication"
           >Password:</label
         >
@@ -378,7 +986,6 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
           value="{{ template.auth_password if template else '' }}"
           placeholder="pass"
           title="Camera password"
-          disabled
         />
       </div>
       <div class="form-row hidden">
@@ -435,6 +1042,26 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
             title="Force dark color scheme when browser mode is enabled"
           />
           Dark Mode
+        </label>
+        <label
+          for="disable_autocrop"
+          title="Skip automatic background-trim autocropping after capture. Explicit Capture Crop still applies."
+        >
+          <input
+            type="checkbox"
+            id="disable_autocrop"
+            name="disable_autocrop"
+            {%
+            if
+            template
+            and
+            template.disable_autocrop
+            %}checked{%
+            endif
+            %}
+            title="Keep the full captured frame and skip automatic background trimming"
+          />
+          Disable Autocrop
         </label>
         <label
           for="browser"
@@ -591,7 +1218,14 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
       endif
       %}
     />
-    {% endif %}
+    {% if effective_settings and setting.name in effective_settings %}
+    <div
+      class="setting-effective"
+      title="Runtime value currently applied after mode overrides"
+    >
+      Effective: {{ effective_settings[setting.name] }}
+    </div>
+    {% endif %} {% endif %}
   </td>
   <td class="advanced-only">
     <button

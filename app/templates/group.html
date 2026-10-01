@@ -1,5 +1,17 @@
 {% extends 'base.html' %} {% from 'components.html' import template_controls %}
-{% block content %} {% call template_controls() %}
+{% block body_class %}templates-screen templates-wall{% endblock %} {% block
+content %} {% call template_controls() %}
+<label for="dashboard-picker" class="sr-only">Dashboard</label>
+<select id="dashboard-picker" aria-label="Dashboard">
+  <option value="">Choose a dashboard</option>
+  {% for key, label in [('security', 'Home Security'), ('systems', 'Home
+  Systems'), ('growers', 'Growers'), ('regional', 'Regional / Lake'),
+  ('operations', 'Operations')] %} {% if dashboard_name|default('') == key %}
+  <option value="{{ key }}" selected>{{ label }}</option>
+  {% else %}
+  <option value="{{ key }}">{{ label }}</option>
+  {% endif %} {% endfor %}
+</select>
 <select id="sort-date" class="sort-select" aria-label="Sort cameras">
   <option value="">↕</option>
   <option value="name_asc">A–Z</option>
@@ -12,12 +24,14 @@
   <option value="error_asc">Error ↑</option>
 </select>
 {% endcall %}
-<div
-  id="template-list"
-  title="List of all templates"
-  role="region"
-  aria-label="Templates"
-></div>
+<section id="template-list-section">
+  <div
+    id="template-list"
+    title="List of all templates"
+    role="region"
+    aria-label="Templates"
+  ></div>
+</section>
 <div
   id="index-time"
   class="corner-time"
@@ -26,10 +40,8 @@
   aria-live="polite"
 ></div>
 <script type="module">
-  import { loadTemplates } from '{{ url_for('static', filename='js/templates.js') }}';
   window.currentGroup = '{{ group_name }}';
-  document.addEventListener('DOMContentLoaded', () => {
-      loadTemplates();
-  });
+  window.currentDashboard = {{ dashboard_name|default('')|tojson }};
+  window.isGroupWall = true;
 </script>
 {% endblock %}

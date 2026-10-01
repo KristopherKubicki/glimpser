@@ -1,6 +1,5 @@
-{% extends 'base.html' %} {% block content %}
+{% extends 'base.html' %} {% block body_class %}player-screen{% endblock %} {% block content %}
 <h2>Live Camera Feed</h2>
-<h2>Live Feed</h2>
 
 <div class="video-container" title="Looping video feed from all cameras">
   <div
@@ -25,19 +24,24 @@
                 videoElement.src = `/clip/${currentCamera}`;
                 videoElement.load();
                 videoElement.playbackRate = 0.25;
-                videoElement.play();
+                const playPromise = videoElement.play();
+                if (playPromise && typeof playPromise.catch === 'function') {
+                    playPromise.catch(() => {});
+                }
       cameraNameElement.textContent = currentCamera;
                 currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
             }
         }
 
-        document.getElementById('live-video').addEventListener('ended', () => {
-            if (currentCameraIndex === 0) {
-                // Reload the page when the video roll is done
-                window.location.reload();
-            } else {
-                playNextCamera();
-            }
+        const liveVideo = document.getElementById('live-video');
+        liveVideo.addEventListener('ended', () => {
+            playNextCamera();
+        });
+        liveVideo.addEventListener('error', () => {
+            playNextCamera();
+        });
+        liveVideo.addEventListener('stalled', () => {
+            playNextCamera();
         });
 
         // Start playing the first camera

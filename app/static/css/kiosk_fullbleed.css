@@ -1,0 +1,193 @@
+/* Room displays are full bleed; readable text floats over the image. */
+body:is(.landing-profile-living, .landing-profile-office) main {
+  padding: 0;
+}
+body:is(.landing-profile-living, .landing-profile-office) {
+  --landing-screen-gutter: 0px;
+}
+body:is(.landing-profile-living, .landing-profile-office) .landing-stage-shell,
+body:is(.landing-profile-living, .landing-profile-office) .landing-stage,
+body:is(.landing-profile-living, .landing-profile-office) .landing-hero-media {
+  border: 0;
+  border-radius: 0;
+}
+body:is(.landing-profile-living, .landing-profile-office)
+  .landing-hero-media
+  img,
+body:is(.landing-profile-living, .landing-profile-office)
+  .landing-hero-media
+  .landing-hero-video,
+body:is(.landing-profile-living, .landing-profile-office)
+  .landing-hero-media.is-contained
+  img,
+body:is(.landing-profile-living, .landing-profile-office)
+  .landing-hero-media.is-contained
+  .landing-hero-video {
+  padding: 0;
+  object-fit: cover;
+  background: #000;
+}
+.kiosk-caption-strip {
+  height: auto;
+  min-height: clamp(132px, 11vw, 212px);
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.9) 28%);
+  padding: 30px 28px 16px;
+}
+.kiosk-caption-text {
+  text-shadow: 0 2px 4px #000;
+}
+
+.kiosk-location > div {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.kiosk-location svg {
+  max-height: 100px;
+}
+body:is(.landing-profile-living, .landing-profile-office),
+body:is(.landing-profile-living, .landing-profile-office) main {
+  margin: 0;
+  max-width: none;
+}
+body:is(.landing-profile-living, .landing-profile-office) .landing-hero-media {
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Source age stays separate from the time this page was captured. */
+.kiosk-source-age {
+  position: absolute;
+  top: 84px;
+  right: 20px;
+  z-index: 8;
+  max-width: min(70vw, 1100px);
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgb(6 15 24 / 88%);
+  color: #c7d5e3;
+  font-size: 24px;
+  line-height: 1.3;
+  text-align: right;
+}
+.kiosk-source-age.is-source-older,
+.rotation-overview-source.is-source-older {
+  color: #ffd18c;
+}
+.rotation-overview-source {
+  padding: 0 20px;
+  margin: 0;
+  font-size: 19px;
+  color: #b7c9da;
+  background: #08121d;
+}
+
+@media (max-width: 700px) {
+  .kiosk-source-age {
+    top: 66px;
+    font-size: 15px;
+    right: 10px;
+  }
+}
+
+/* Keep the whole age together on physical Chrome kiosks as well as previews. */
+body:is(.landing-profile-living, .landing-profile-office) .landing-capture-age {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35em;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  white-space: nowrap;
+  font-size: clamp(18px, 2vw, 38px);
+}
+body:is(.landing-profile-living, .landing-profile-office)
+  .landing-capture-age
+  > span {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+.kiosk-caption-copy {
+  min-width: 0;
+  flex: 1;
+}
+.kiosk-caption-age {
+  margin-top: 8px;
+  color: #c8d5e3;
+  font-size: clamp(16px, 1.25vw, 24px);
+  line-height: 1.3;
+}
+
+/* Let the picture reach every edge; overlays use only the space their text needs. */
+body:is(.landing-profile-living, .landing-profile-office) .kiosk-caption-strip {
+  min-height: 0;
+  padding: 26px 24px 12px;
+  gap: 18px;
+  background: linear-gradient(
+    transparent,
+    rgb(0 0 0 / 74%) 48%,
+    rgb(0 0 0 / 90%)
+  );
+}
+body:is(.landing-profile-living, .landing-profile-office) .kiosk-caption-text {
+  -webkit-line-clamp: 2;
+}
+body:is(.landing-profile-living, .landing-profile-office) .kiosk-location svg {
+  max-height: 76px;
+}
+body:is(.landing-profile-living, .landing-profile-office)
+  .landing-context-panel {
+  display: none;
+}
+/* Queue previews return when someone deliberately opens the kiosk controls. */
+body:is(.landing-profile-living, .landing-profile-office)
+  .landing-shell.is-chrome-visible
+  .landing-context-panel {
+  display: flex;
+}
+
+/* Slow the visual handoff, not the rotation timer; omit the old zoom effect. */
+body:is(.landing-profile-office, .landing-profile-living) .landing-scene {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body:is(.landing-profile-office, .landing-profile-living)
+    .landing-scene.is-visible {
+    animation: kiosk-scene-reveal 600ms ease-out;
+  }
+  body:is(.landing-profile-office, .landing-profile-living)
+    .has-priority-event
+    .landing-scene.is-visible {
+    animation: none;
+  }
+}
+
+@keyframes kiosk-scene-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 700px) {
+  .kiosk-caption-strip {
+    gap: 8px;
+  }
+}
+/* The docked clock replaces the old corner-time badge. */
+body:is(.landing-profile-office, .landing-profile-living) .corner-time {
+  display: none;
+}

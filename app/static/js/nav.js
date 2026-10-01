@@ -1,7 +1,22 @@
 import { initClocks } from "./clock.js";
 
-export function initNav() {
+export function visibleGroups(
+  groups,
+  currentGroup,
+  expanded = false,
+  configured = ["plants", "grower", "regional", "weather"],
+) {
+  const favorites = new Set([
+    "all",
+    ...(Array.isArray(configured) ? configured : []),
+    currentGroup,
+  ]);
+  return groups.filter((group) => expanded || favorites.has(group));
+}
+
+export function initNav(options = {}) {
   document.addEventListener("DOMContentLoaded", () => {
+    const passive = options.passive === true;
     const healthStatus = document.getElementById("health-status");
     const healthAlwaysVisible =
       healthStatus && healthStatus.dataset.alwaysVisible === "true";
@@ -16,20 +31,83 @@ export function initNav() {
     }
     const nav = document.querySelector("nav");
     const groupDropdown = document.getElementById("nav-group-dropdown");
-    const cameraDropdown = document.getElementById("nav-camera-dropdown");
-    const currentGroup = window.currentGroup || null;
-    const currentCamera = window.currentCamera || null;
-    const liveLink = document.getElementById("live");
-
-    if (liveLink) {
-      if (currentCamera) {
-        liveLink.href = `/live?camera=${encodeURIComponent(currentCamera)}`;
-      } else if (currentGroup && currentGroup !== "all") {
-        liveLink.href = `/live?group=${encodeURIComponent(currentGroup)}`;
-      } else {
-        liveLink.href = "/live";
-      }
+    let preferredGroups;
+    try {
+      preferredGroups =
+        JSON.parse(groupDropdown?.dataset.favorites || "null") ?? undefined;
+    } catch {
+      preferredGroups = undefined;
     }
+    const cameraDropdown = document.getElementById("nav-camera-dropdown");
+    const dashboardPicker = document.getElementById("dashboard-picker");
+    dashboardPicker?.addEventListener("change", () => {
+      if (dashboardPicker.value)
+        window.location.href = `/dashboard/${encodeURIComponent(dashboardPicker.value)}`;
+    });
+    let availableGroups = [];
+    let currentGroup =
+      typeof window.currentGroup === "string" && window.currentGroup
+        ? window.currentGroup
+        : null;
+    let currentCamera =
+      typeof window.currentCamera === "string" && window.currentCamera
+        ? window.currentCamera
+        : null;
+    const liveLink = document.getElementById("live");
+    let lastBootEpoch = null;
+    let restartHandled = false;
+
+    const updateLiveLinkHref = () => {
+      if (!liveLink) return;
+
+      // If we are currently viewing a template page, make the Live link open
+      // that specific camera's live view.
+      const templateAnchor = document.querySelector(
+        "nav .nav-center a[href^='/templates/']",
+      );
+      const templateHref = templateAnchor?.getAttribute("href") || "";
+      const templateName = templateHref.startsWith("/templates/")
+        ? decodeURIComponent(templateHref.slice("/templates/".length))
+        : null;
+      if (templateName) {
+        liveLink.href = `/live?camera=${encodeURIComponent(templateName)}`;
+        return;
+      }
+
+      if (currentGroup && currentGroup !== "all") {
+        liveLink.href = `/live?group=${encodeURIComponent(currentGroup)}`;
+        return;
+      }
+
+      // Default: global rotator view.
+      liveLink.href = "/live?rotator=all";
+    };
+
+    const syncNavSelections = () => {
+      if (groupDropdown && currentGroup) {
+        const hasGroup = Array.from(groupDropdown.options || []).some(
+          (opt) => opt.value === currentGroup,
+        );
+        if (hasGroup) groupDropdown.value = currentGroup;
+      }
+      if (cameraDropdown && currentCamera) {
+        const hasCamera = Array.from(cameraDropdown.options || []).some(
+          (opt) => opt.value === currentCamera,
+        );
+        if (hasCamera) cameraDropdown.value = currentCamera;
+      }
+    };
+
+    window.setLiveNavContext = ({ camera = null, group = null } = {}) => {
+      currentCamera = camera || null;
+      currentGroup = group && group !== "all" ? group : null;
+      window.currentCamera = currentCamera;
+      window.currentGroup = currentGroup;
+      updateLiveLinkHref();
+      syncNavSelections();
+    };
+
+    updateLiveLinkHref();
     const menuToggle = document.getElementById("menu-toggle");
 
     if (nav && menuToggle) {
@@ -43,13 +121,32 @@ export function initNav() {
       });
     }
 
-    const fetchJson = async (url) => {
-      const res = await fetch(url);
-      const type = res.headers.get("content-type") || "";
-      if (!res.ok || !type.includes("application/json")) {
-        return null;
+    if (passive) {
+      const speechIcon = document.getElementById("speech-stop");
+      if (speechIcon) {
+        speechIcon.style.display = "none";
       }
-      return res.json();
+    }
+
+    const fetchJson = async (url) => {
+      const controller =
+        typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timer = controller
+        ? setTimeout(() => controller.abort(), 10000)
+        : null;
+      try {
+        const res = await fetch(
+          url,
+          controller ? { signal: controller.signal } : undefined,
+        );
+        const type = res.headers.get("content-type") || "";
+        if (!res.ok || !type.includes("application/json")) {
+          return null;
+        }
+        return await res.json();
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
     };
 
     const loadNavGroups = async () => {
@@ -58,14 +155,21 @@ export function initNav() {
       groupDropdown.disabled = true;
       try {
         const groups = await fetchJson("/groups");
+        availableGroups = Array.isArray(groups) ? groups : [];
         groupDropdown.innerHTML = '<option value="">Groups</option>';
         if (groups && Array.isArray(groups)) {
-          groups.forEach((g) => {
-            const opt = document.createElement("option");
-            opt.value = g;
-            opt.textContent = g === "all" ? "All" : g;
-            groupDropdown.appendChild(opt);
-          });
+          visibleGroups(groups, currentGroup, false, preferredGroups).forEach(
+            (g) => {
+              const opt = document.createElement("option");
+              opt.value = g;
+              opt.textContent = g === "all" ? "All" : g;
+              groupDropdown.appendChild(opt);
+            },
+          );
+          const more = document.createElement("option");
+          more.value = "__all_tags__";
+          more.textContent = "All tags…";
+          groupDropdown.appendChild(more);
         }
         if (currentGroup) {
           groupDropdown.value = currentGroup;
@@ -77,6 +181,7 @@ export function initNav() {
             window.updateCameraOptions(currentGroup);
           }
         }
+        updateLiveLinkHref();
       } catch (error) {
         console.error("Error loading groups:", error);
       } finally {
@@ -95,11 +200,12 @@ export function initNav() {
         return;
       }
       cameraDropdown.style.display = "";
-      cameraDropdown.innerHTML = '<option value="">Cameras</option>';
+      cameraDropdown.innerHTML =
+        '<option value="">Cameras</option><option value="__all_rotator__">All Rotator</option>';
       cameraDropdown.disabled = true;
       try {
         const cams = await fetchJson(
-          `/templates?group=${encodeURIComponent(group)}`,
+          `/templates?viewer=1&group=${encodeURIComponent(group)}`,
         );
         // Ignore this response if a newer request was triggered
         if (requestId !== cameraRequestId) return;
@@ -125,32 +231,65 @@ export function initNav() {
     if (groupDropdown) {
       groupDropdown.addEventListener("change", () => {
         const selected = groupDropdown.value || "all";
-        if (
-          window.location.pathname.startsWith("/live") &&
-          typeof window.changeGroup === "function"
-        ) {
-          window.changeGroup(selected);
-          loadNavCameras(selected);
+        if (selected === "__all_tags__") {
+          groupDropdown.replaceChildren();
+          for (const group of availableGroups) {
+            const option = document.createElement("option");
+            option.value = group;
+            option.textContent = group === "all" ? "All" : group;
+            groupDropdown.appendChild(option);
+          }
+          groupDropdown.value = currentGroup || "all";
+          groupDropdown.focus();
           return;
         }
+        currentGroup = selected === "all" ? null : selected;
+        currentCamera = null;
+        updateLiveLinkHref();
+
+        // Group selection is always a wall view: All => home wall, group => group wall.
         if (selected === "all") {
-          window.location.href = "/live";
+          window.location.href = "/";
         } else {
           window.location.href = `/group/${encodeURIComponent(selected)}`;
         }
-        loadNavCameras(selected);
       });
       if (currentGroup) loadNavCameras(currentGroup);
     }
 
     if (cameraDropdown) {
       cameraDropdown.addEventListener("change", () => {
-        // Avoid navigation when adjusting the live view
-        if (window.location.pathname.startsWith("/live")) return;
-        if (cameraDropdown.value) {
-          window.location.href = `/templates/${encodeURIComponent(
-            cameraDropdown.value,
-          )}`;
+        const selectedCamera = cameraDropdown.value || null;
+        currentCamera = selectedCamera;
+        const activeGroup = groupDropdown ? groupDropdown.value : null;
+        currentGroup =
+          activeGroup && activeGroup !== "all" ? activeGroup : null;
+        updateLiveLinkHref();
+
+        // On /live, tile_player.js handles this selector directly.
+        if (window.location.pathname.startsWith("/live")) {
+          return;
+        }
+
+        if (selectedCamera === "__all_rotator__") {
+          currentCamera = null;
+          currentGroup = null;
+          updateLiveLinkHref();
+          window.location.href = "/live?rotator=all";
+          return;
+        }
+
+        // Outside /live, selecting a camera should always land in live view.
+        if (selectedCamera) {
+          window.location.href = `/live?camera=${encodeURIComponent(selectedCamera)}`;
+          return;
+        }
+
+        // "Cameras" (blank option) means rotate by current group/all on live.
+        if (currentGroup) {
+          window.location.href = `/live?group=${encodeURIComponent(currentGroup)}`;
+        } else {
+          window.location.href = "/live";
         }
       });
     }
@@ -160,6 +299,31 @@ export function initNav() {
       try {
         const data = await fetchJson("/health");
         if (!data) return;
+        const bootEpoch = Number(data?.metrics?.start_time_epoch || 0);
+        if (Number.isFinite(bootEpoch) && bootEpoch > 0) {
+          if (lastBootEpoch === null) {
+            lastBootEpoch = bootEpoch;
+          } else if (bootEpoch !== lastBootEpoch) {
+            lastBootEpoch = bootEpoch;
+            if (!restartHandled) {
+              restartHandled = true;
+              window.dispatchEvent(
+                new CustomEvent("glimpser:server-restart", {
+                  detail: { bootEpoch },
+                }),
+              );
+              // Long-lived /live tabs can get stuck on old runtime state after
+              // restarts/deploys. Force a one-time reload to pick up fresh JS
+              // and stream state.
+              if (window.location.pathname.startsWith("/live")) {
+                const reloadUrl = new URL(window.location.href);
+                reloadUrl.searchParams.set("_reload", String(Date.now()));
+                window.location.replace(reloadUrl.toString());
+                return;
+              }
+            }
+          }
+        }
         if (data.status === "healthy") {
           healthStatus.style.color = "green";
           healthStatus.title = "Status: Healthy\n\n";
@@ -369,12 +533,31 @@ export function initNav() {
       const showNav = () => {
         header.classList.remove("fade-out");
         clearTimeout(fadeTimeout);
-        fadeTimeout = setTimeout(() => header.classList.add("fade-out"), 3000);
+        fadeTimeout = setTimeout(() => {
+          // Keep focused controls visible until the user leaves navigation.
+          if (header.contains(document.activeElement)) return;
+          header.classList.add("fade-out");
+        }, 3000);
       };
 
-      ["mousemove", "scroll"].forEach((evt) => {
-        document.addEventListener(evt, showNav);
+      const activityEvents = ["mousemove", "scroll", "keydown", "touchstart"];
+      activityEvents.forEach((evt) => {
+        document.addEventListener(evt, showNav, { passive: true });
       });
+      header.addEventListener("focusin", showNav);
+      header.addEventListener("focusout", showNav);
+      const cleanup = (event) => {
+        // Back/forward cache restores this document with its existing listeners.
+        if (event.persisted) return;
+        clearTimeout(fadeTimeout);
+        activityEvents.forEach((evt) =>
+          document.removeEventListener(evt, showNav),
+        );
+        header.removeEventListener("focusin", showNav);
+        header.removeEventListener("focusout", showNav);
+        window.removeEventListener("pagehide", cleanup);
+      };
+      window.addEventListener("pagehide", cleanup);
 
       showNav();
     };
@@ -461,19 +644,44 @@ export function initNav() {
       );
     };
 
-    loadNavGroups().then(setupCameraNavigation);
-    checkHealth();
-    setInterval(checkHealth, 5000);
-    checkDanger();
-    setInterval(checkDanger, 5000);
-    checkCaptions();
-    setInterval(checkCaptions, 10000);
-    if (discoveryStatus && onSettingsPage) {
-      checkDiscovery();
-      setInterval(checkDiscovery, 60000);
+    const bootstrapNavChoices = () =>
+      loadNavGroups().then(setupCameraNavigation);
+    if (passive) {
+      if (groupDropdown) {
+        groupDropdown.innerHTML = '<option value="">Groups</option>';
+        groupDropdown.disabled = false;
+        let groupsBootstrapped = false;
+        const ensureNavGroupsLoaded = () => {
+          if (groupsBootstrapped) return;
+          groupsBootstrapped = true;
+          bootstrapNavChoices();
+        };
+        ["focus", "pointerdown", "touchstart"].forEach((eventName) => {
+          groupDropdown.addEventListener(eventName, ensureNavGroupsLoaded, {
+            once: true,
+            passive: true,
+          });
+        });
+      }
+    } else {
+      bootstrapNavChoices();
+    }
+    if (!passive) {
+      checkHealth();
+      setInterval(checkHealth, 5000);
+      checkDanger();
+      setInterval(checkDanger, 5000);
+      checkCaptions();
+      setInterval(checkCaptions, 10000);
+      if (discoveryStatus && onSettingsPage) {
+        checkDiscovery();
+        setInterval(checkDiscovery, 60000);
+      }
     }
     initClocks();
-    setupNavFade();
-    setupSpeechStop();
+    if (!passive) {
+      setupNavFade();
+      setupSpeechStop();
+    }
   });
 }

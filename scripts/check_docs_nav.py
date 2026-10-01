@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Ensure all documentation files are referenced in mkdocs navigation."""
+
 from __future__ import annotations
 
 import sys

@@ -17,14 +17,25 @@
   data-speed="{{ CHYRON_SPEED }}"
 ></div>
 <nav>
-  {% if session.get('user_id') %}
+  {% if session.get('user_id') or LAN_GUEST %}
   <div class="nav-left">
+    <a href="/dashboard/security" class="viewer-views-link">Views</a>
+    <a
+      href="/satellite"
+      class="viewer-views-link"
+      title="Daily regional satellite timelapse"
+      >Satellite</a
+    >
     {% if template_details is defined %} {% if template_details.get('groups') %}
     {% set __back_url = '/group/' ~
     template_details.get('groups').split(',')[0].strip() %} {% set __back_title
     = 'Back to Group' %} {% else %} {% set __back_url = url_for('index') %} {%
     set __back_title = 'Back to Dashboard' %} {% endif %} {% endif %}
-    <select id="nav-group-dropdown" title="Jump to group"></select>
+    <select
+      id="nav-group-dropdown"
+      title="Jump to group"
+      data-favorites='{{ NAVIGATION_GROUPS|default(["plants", "grower", "regional", "weather"])|tojson }}'
+    ></select>
     <select
       id="nav-camera-dropdown"
       title="Jump to camera"
@@ -47,7 +58,7 @@
   </div>
 
   <div class="nav-right">
-    {% if session.get('user_id') %}
+    {% if session.get('user_id') or LAN_GUEST %}
     <a
       id="health-status"
       href="/settings?tab=status-tab"
@@ -91,6 +102,32 @@
       </svg>
     </a>
     <div class="caption-container">
+      <a
+        href="/weather"
+        id="weather-link"
+        class="settings-icon"
+        aria-label="Open Weather Brief"
+        title="Open Weather Brief"
+      >
+        <svg width="20" height="20">
+          <use
+            href="{{ url_for('static', filename='icons/sprite.svg') }}#sun"
+          />
+        </svg>
+      </a>
+      <a
+        href="/seiche"
+        id="seiche-link"
+        class="settings-icon"
+        aria-label="Open SeicheClock"
+        title="Open SeicheClock"
+      >
+        <svg width="20" height="20">
+          <use
+            href="{{ url_for('static', filename='icons/sprite.svg') }}#moon"
+          />
+        </svg>
+      </a>
       <a
         href="/captions"
         id="captions"
@@ -154,6 +191,8 @@
       class="settings-icon"
       title="Update settings"
       aria-label="Update settings"
+      data-requires-login="true"
+      data-login-next="/settings"
     >
       <svg width="20" height="20">
         <use href="{{ url_for('static', filename='icons/sprite.svg') }}#gear" />

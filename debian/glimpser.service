@@ -1,0 +1,21 @@
+[Unit]
+Description=Glimpser Web Monitoring Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=glimpser
+Group=glimpser
+WorkingDirectory=/opt/glimpser
+ExecStart=/opt/glimpser/.venv/bin/python /opt/glimpser/main.py
+Environment=HOME=/var/lib/glimpser
+Environment=XDG_CACHE_HOME=/var/lib/glimpser/.cache
+EnvironmentFile=-/etc/glimpser/environment
+StateDirectory=glimpser
+UMask=0077
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

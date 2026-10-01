@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+case "${1:-}" in
+    remove|deconfigure)
+        if [ -d /run/systemd/system ]; then
+            deb-systemd-invoke stop glimpser.service
+        fi
+        ;;
+esac
+#DEBHELPER#
+exit 0

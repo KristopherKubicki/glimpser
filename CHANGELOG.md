@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.10] - 2026-10-01
+
+### Fixed
+
+- Isolate stream bursts, publish validated images atomically, and preserve the last good frame on failure.
+- Bound hardware decoder fallback time and prevent failed bursts contaminating retries.
+- Validate stream metadata, avoid redundant decoder probes, and honor configured temporary storage during cleanup.
+- Harden authentication, session-secret persistence, package contents, and dependency compatibility.
+
+### Changed
+
+- Add live, motion, history, kiosk, and health views with capture regression coverage.
+- Improve evidence-based captions and cache invalidation across policy changes.
+- Move household identities, camera tuning, and dashboard memberships into private installation configuration. Existing installations must migrate these settings before upgrading.
+- Require Python 3.11 or newer.
+
+
 ### Added
 
 - Bulk caption management with TSV import and export
@@ -41,6 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Move household identities, presence sources, and vehicle telemetry settings to opt-in private configuration.
+
 - Improved screenshot reliability
 - Enhanced camera list UI and video player controls
 - Updated package requirements and cleaned up imports
@@ -59,6 +78,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dashboard tiles now use the `/clip` endpoint to loop the last two minutes of footage
 
 ### Fixed
+
+- Reject empty API keys and replace the known default session secret with a private installation key.
+- Exclude local data and stale staging output from Debian packages.
+- Reject screenshot symlinks that escape through sibling path prefixes or linked directories.
+
+- Include the command-line entry module and credential setup helper in Python wheels.
+
+- Update vulnerable web, image, download, and test dependencies; Python 3.11 or newer is required.
+
+- Exclude cameras marked private from summary prompts, including stored boolean flags and mixed-case private groups.
+
+- Short-clip padding uses explicit H.264 software encoding instead of calling an
+  unavailable encoder helper.
+- Optional native motion and kiosk privacy integrations use installation-specific
+  configuration instead of built-in household addresses. See the release workflow
+  migration notes before upgrading an existing installation.
 
 - Release tagging reads the project version correctly with aligned TOML spacing
   and independent tool-version settings.

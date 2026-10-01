@@ -1,0 +1,218 @@
+body.landing-screen .kiosk-priority-alert {
+  top: 180px;
+  left: 50%;
+  width: min(720px, calc(100% - 48px));
+  box-sizing: border-box;
+  max-height: calc(100dvh - 300px);
+  overflow-y: auto;
+  transform: translateX(-50%);
+  padding: 18px 26px;
+  background: #211a08;
+  color: #fff5d9;
+  border: 3px solid #ffc857;
+  border-radius: 16px;
+  pointer-events: auto;
+  text-align: left;
+  box-shadow: 0 6px 32px #0009;
+}
+.kiosk-priority-label {
+  font-size: 22px;
+  color: #ffcf69;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.kiosk-priority-alert strong {
+  display: block;
+  font-size: 42px;
+  line-height: 1.2;
+  margin: 8px 0 16px;
+  overflow-wrap: anywhere;
+}
+.kiosk-priority-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  font-size: 24px;
+}
+.kiosk-priority-alert button {
+  font-size: 20px;
+  color: #fff5d9;
+  background: #3c3018;
+  border: 1px solid #ffcf69;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.kiosk-priority-alert button:focus-visible {
+  outline: 3px solid white;
+  outline-offset: 4px;
+}
+body.landing-screen .landing-stage-shell.has-priority-event {
+  box-shadow: inset 0 0 0 7px #ffc857;
+}
+
+@media (max-width: 700px) {
+  body.landing-screen .kiosk-priority-alert {
+    top: 156px;
+    padding: 12px;
+  }
+  .kiosk-priority-alert strong {
+    font-size: 28px;
+  }
+  .kiosk-priority-label,
+  .kiosk-priority-footer,
+  .kiosk-priority-alert button {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kiosk-priority-alert {
+    animation: none !important;
+  }
+}
+
+body.landing-screen .kiosk-priority-alert.has-replay {
+  left: auto;
+  right: 24px;
+  transform: none;
+  width: min(510px, calc(100% - 48px));
+}
+.kiosk-priority-alert .motion-preview {
+  background: #101b22;
+  border: 1px solid #56685c;
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 16px;
+}
+.kiosk-priority-alert .motion-preview header {
+  position: static;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: transparent;
+  gap: 10px;
+  padding: 0;
+}
+.kiosk-priority-alert .motion-preview strong {
+  font-size: 21px;
+  margin: 0;
+}
+.kiosk-priority-alert .motion-preview img {
+  display: block;
+  width: 100%;
+  height: 240px;
+  object-fit: contain;
+  margin-top: 10px;
+}
+.kiosk-priority-alert .motion-preview img[hidden] {
+  display: none;
+}
+.kiosk-priority-alert .motion-preview p {
+  font-size: 21px;
+  line-height: 1.4;
+  margin-bottom: 0;
+}
+.kiosk-priority-alert .motion-preview button {
+  font-size: 17px;
+}
+
+@media (max-width: 700px) {
+  .kiosk-priority-alert .motion-preview img {
+    height: 150px;
+  }
+}
+
+.kiosk-offline-view {
+  position: absolute;
+  inset: 0;
+  z-index: 90;
+  background: #080f19;
+  overflow: hidden;
+}
+.kiosk-offline-view > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.kiosk-offline-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 24px 32px;
+  border-top: 3px solid #ffc857;
+  background: #101820f5;
+  color: #fff5d9;
+  font-size: clamp(20px, 2vw, 32px);
+  line-height: 1.35;
+}
+.kiosk-offline-caption strong {
+  display: block;
+  font-size: clamp(24px, 2.5vw, 42px);
+}
+.kiosk-offline-caption p {
+  margin: 10px 0 0;
+}
+
+.kiosk-timelapse {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  overflow: hidden;
+  background: #080f19;
+}
+.kiosk-timelapse > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.kiosk-timelapse-label {
+  position: absolute;
+  inset: auto 0 0;
+  display: grid;
+  gap: 0.4rem;
+  padding: 1.5rem 2rem;
+  color: #f0fdfa;
+  background: #040c14;
+  font-size: clamp(20px, 1.65vw, 36px);
+  line-height: 1.25;
+}
+.kiosk-timelapse-label strong {
+  font-size: clamp(26px, 2.3vw, 48px);
+}
+.has-timelapse .kiosk-caption-strip {
+  visibility: hidden;
+}
+
+/* A recorded clip owns its timestamps; do not leave still-image ages over it. */
+.has-timelapse .landing-capture-age,
+.has-timelapse .kiosk-source-age,
+.has-timelapse .landing-hero-bug {
+  visibility: hidden;
+}
+.kiosk-timelapse-label {
+  padding: 30px 24px 16px;
+  gap: 6px;
+  background: linear-gradient(transparent, #040c14 20%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .kiosk-timelapse {
+    animation: kiosk-clip-reveal 400ms ease-out;
+    transition: opacity 350ms ease-in-out;
+  }
+  .kiosk-timelapse.is-ending {
+    opacity: 0;
+  }
+}
+
+@keyframes kiosk-clip-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

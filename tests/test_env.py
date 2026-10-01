@@ -5,7 +5,6 @@ from unittest.mock import mock_open, patch
 
 
 class TestEnvironmentVariables(unittest.TestCase):
-
     @patch.dict(os.environ, {"TEST_ENV_VAR": "12345"})
     def test_environment_variable_exists(self):
         self.assertEqual(os.getenv("TEST_ENV_VAR"), "12345")
@@ -16,7 +15,6 @@ class TestEnvironmentVariables(unittest.TestCase):
 
 
 class TestFileIO(unittest.TestCase):
-
     @patch("builtins.open", new_callable=mock_open, read_data="data")
     def test_file_reading(self, mock_file):
         with open("fakefile.txt") as file:
@@ -44,7 +42,6 @@ class TestFileIO(unittest.TestCase):
 
 
 class TestStringProcessing(unittest.TestCase):
-
     def test_string_contains(self):
         string = "This is a test string"
         self.assertIn("test", string)

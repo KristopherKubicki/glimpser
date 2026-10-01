@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Validate mkdocs.yml exclude_docs matches docs/exclude_docs list."""
+
 from __future__ import annotations
 
 import sys

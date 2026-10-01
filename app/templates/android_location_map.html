@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Glimpser - {{ page_title }}</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/android_location.css') }}?v={{ COMMIT_HASH or VERSION }}"
+    />
+  </head>
+  <body class="android-location-map-page">
+    <script id="location-data" type="application/json">
+      {{ locations|tojson }}
+    </script>
+    <main class="location-map-shell" aria-label="Shared location dashboard">
+      <header class="location-map-header">
+        <div>
+          <p class="android-eyebrow">Shared Locations</p>
+          <h1>People And Vehicles</h1>
+        </div>
+        <nav aria-label="Location dashboard links">
+          <a href="{{ url_for('location.android_home') }}">Bridge</a>
+          <a href="/">Home</a>
+        </nav>
+      </header>
+
+      <section class="location-dashboard">
+        <div class="location-map-card">
+          <div
+            id="location-map"
+            class="location-map-surface"
+            aria-live="polite"
+          >
+            <div
+              id="location-tile-layer"
+              class="location-tile-layer"
+              aria-hidden="true"
+            ></div>
+            <div class="location-map-grid" aria-hidden="true"></div>
+            <div id="location-marker-layer" class="location-marker-layer"></div>
+            <div class="location-map-attribution" aria-hidden="true">
+              © OpenStreetMap contributors
+            </div>
+            <div id="location-empty-state" class="location-empty-state">
+              Waiting for Android or vehicle location updates.
+            </div>
+          </div>
+        </div>
+
+        <aside
+          class="location-side-panel"
+          aria-label="Tracked location details"
+        >
+          <div class="location-stat-strip">
+            <div>
+              <span id="location-active-count">0</span>
+              <small>active</small>
+            </div>
+            <div>
+              <span id="location-stale-count">0</span>
+              <small>stale</small>
+            </div>
+            <div>
+              <span id="location-provider-count">0</span>
+              <small>sources</small>
+            </div>
+          </div>
+          <div id="location-list" class="location-list"></div>
+        </aside>
+      </section>
+    </main>
+    <script
+      src="{{ url_for('static', filename='js/android_location_map.js') }}?v={{ COMMIT_HASH or VERSION }}"
+      defer
+    ></script>
+  </body>
+</html>

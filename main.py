@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #  main.py
 
+import argparse
 import atexit
 import logging
 import os
@@ -10,11 +11,17 @@ import subprocess
 import sys
 import threading
 import time
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 from app import config, create_app, scheduler
 from app.utils.cli import build_argument_parser, cli_help_text
 from app.utils.logging_utils import ColorFormatter, RateLimitFilter
-from app.utils.scheduling import get_system_metrics, stop_background_tasks
+from app.utils.scheduling import (
+    get_system_metrics,
+    mark_shutdown,
+    stop_background_tasks,
+)
 
 banner = f"""\033[96m
           ____  _  _
@@ -55,18 +62,31 @@ def setup_config(args=None):
         return
 
     # Update variables based on command-line arguments
-    config.DATABASE_PATH = args.db_path
+    base_dir = Path(__file__).resolve().parent
+
+    def _resolve_project_path(value: str) -> str:
+        """Resolve relative paths against the project root.
+
+        Glimpser is frequently started under process managers (screen/systemd)
+        where the working directory can change. Keeping paths project-root
+        relative avoids accidentally creating a new DB/log file somewhere else,
+        which can look like credentials "reset" on restart.
+        """
+        raw = Path(value).expanduser()
+        return str(raw if raw.is_absolute() else base_dir / raw)
+
+    config.DATABASE_PATH = _resolve_project_path(args.db_path)
     config.HOST = args.host
     if config.ENFORCE_DOMAIN_IN_HOST and "." not in config.HOST:
         raise ValueError(
             "HOST must include a domain when ENFORCE_DOMAIN_IN_HOST is enabled"
         )
     config.PORT = args.port
-    config.LOGGING_PATH = args.log_path
+    config.LOGGING_PATH = _resolve_project_path(args.log_path)
     config.DEBUG_MODE = args.debug
-    config.SCREENSHOT_DIRECTORY = args.screenshot_dir
-    config.VIDEO_DIRECTORY = args.video_dir
-    config.SUMMARIES_DIRECTORY = args.summaries_dir
+    config.SCREENSHOT_DIRECTORY = _resolve_project_path(args.screenshot_dir)
+    config.VIDEO_DIRECTORY = _resolve_project_path(args.video_dir)
+    config.SUMMARIES_DIRECTORY = _resolve_project_path(args.summaries_dir)
 
 
 def setup_logging(args=None):
@@ -88,7 +108,9 @@ def setup_logging(args=None):
 
     # Set up file logging if not already configured
     if not any(isinstance(h, logging.FileHandler) for h in logger.handlers):
-        file_handler = logging.FileHandler(config.LOGGING_PATH)
+        file_handler = RotatingFileHandler(
+            config.LOGGING_PATH, maxBytes=25 * 1024 * 1024, backupCount=3
+        )
         file_handler.setFormatter(formatter)
         rate_filter = RateLimitFilter(config.LOG_RATE_LIMIT_SEC)
         file_handler.addFilter(rate_filter)
@@ -130,7 +152,35 @@ def generate_credentials_if_needed():
         else:
             from generate_credentials import generate_credentials
 
-            generate_credentials(args=None)
+            if not sys.stdin.isatty():
+                username = os.environ.get("GLIMPSER_BOOTSTRAP_USERNAME", "admin")
+                password = os.environ.get("GLIMPSER_BOOTSTRAP_PASSWORD")
+                temp_password = (
+                    os.environ.get("GLIMPSER_BOOTSTRAP_TEMP_PASSWORD") == "1"
+                )
+                secret_key = os.environ.get("GLIMPSER_BOOTSTRAP_SECRET_KEY")
+
+                if not password:
+                    raise SystemExit(
+                        "Database is missing and stdin is not a TTY. "
+                        "Refusing to auto-generate a random admin password. "
+                        "Set GLIMPSER_BOOTSTRAP_PASSWORD (and optionally "
+                        "GLIMPSER_BOOTSTRAP_USERNAME, GLIMPSER_BOOTSTRAP_TEMP_PASSWORD=1) "
+                        "or run with GLIMPSER_SETUP_WIZARD=1."
+                    )
+
+                args = argparse.Namespace(
+                    db_path=config.DATABASE_PATH,
+                    username=username,
+                    password=password,
+                    update_password=False,
+                    secret_key=secret_key,
+                    update_key=False,
+                    temp_password=temp_password,
+                )
+                generate_credentials(args=args)
+            else:
+                generate_credentials(args=None)
 
 
 def create_application(args=None):
@@ -246,6 +296,8 @@ class CleanupManager:
 
 
 shutdown_manager = CleanupManager()
+_shutdown_signal_lock = threading.Lock()
+_shutdown_signaled = False
 
 
 def cleanup_resources():
@@ -253,11 +305,57 @@ def cleanup_resources():
     shutdown_manager.cleanup()
 
 
+SHUTDOWN_DEADLINE_SECONDS = 20.0
+
+
+def _enforce_shutdown_deadline():
+    """Exit if cleanup or Python's worker-thread teardown exceeds the deadline."""
+    # Logging may hold the same lock as a stuck worker. Write directly, and
+    # always exit even if stderr has already closed. The service manager then
+    # reaps remaining child processes and restarts according to its policy.
+    try:
+        os.write(2, b"Shutdown deadline exceeded; terminating unfinished workers.\n")
+    finally:
+        os._exit(1)
+
+
+def _start_shutdown_deadline():
+    """Bound signal-driven shutdown without interrupting prompt cleanup."""
+    watchdog = threading.Timer(SHUTDOWN_DEADLINE_SECONDS, _enforce_shutdown_deadline)
+    watchdog.daemon = True
+    watchdog.start()
+    # Do not cancel after cleanup: sys.exit can still wait indefinitely for
+    # non-daemon executor threads. A normal process exit ends this daemon.
+
+
 def graceful_shutdown(signum, frame):
     """Handle termination signals by cleaning up and exiting."""
-    logging.info("Received signal %s. Shutting down...", signum)
+    global _shutdown_signaled
+    with _shutdown_signal_lock:
+        if _shutdown_signaled:
+            return
+        _shutdown_signaled = True
+    _start_shutdown_deadline()
+    mark_shutdown()
+    try:
+        scheduler.pause()
+    except Exception:
+        pass
+    try:
+        logging.info("Received signal %s. Shutting down...", signum)
+    except RuntimeError:
+        try:
+            os.write(2, f"Received signal {signum}. Shutting down...\n".encode())
+        except Exception:
+            pass
     cleanup_resources()
     time.sleep(0.01)
+    if os.environ.get("GLIMPSER_HARD_EXIT_ON_SIGNAL") == "1":
+        try:
+            logging.info("Glimpser shut down.")
+        except Exception:
+            pass
+        os._exit(0)
     sys.exit(0)
 
 
@@ -326,6 +424,9 @@ def display_startup_info(args=None):
         ["Version", config.VERSION],
         ["Host", config.HOST],
         ["Port", config.PORT],
+        ["HTTPS Enabled", "Yes" if config.HTTPS_ENABLED else "No"],
+        ["HTTPS Port", str(config.HTTPS_PORT)],
+        ["HTTPS Only", "Yes" if config.HTTPS_ONLY else "No"],
         ["Debug Mode", config.DEBUG_MODE],
         ["Log Level", config.LOG_LEVEL],
         ["Database", config.DATABASE_PATH],
@@ -413,31 +514,103 @@ def main(argv=None):
     args = parse_arguments(argv)
     app = create_application(args)
     display_startup_info(args)
+    # HTTPS may share its port with an address-specific reverse proxy such as
+    # Tailscale. Keep HTTP's bind unchanged so loopback integrations still work.
+    https_host = config.get_setting("HTTPS_HOST", config.HOST) or config.HOST
 
-    if is_port_in_use(config.PORT) and config.DEBUG_MODE is False:
-        logging.error(
-            "Error: Port %s is already in use. Please choose a different port.",
-            config.PORT,
-        )
-        usage = get_port_usage(config.PORT)
-        if usage:
-            logging.error("Processes using port %s:\n%s", config.PORT, usage)
+    ports_to_check: list[int]
+    if config.HTTPS_ENABLED:
+        if config.HTTPS_ONLY:
+            ports_to_check = [config.HTTPS_PORT]
         else:
+            if config.HTTPS_PORT == config.PORT:
+                logging.error(
+                    "HTTPS_PORT matches PORT (%s). Set HTTPS_ONLY=True or choose a different HTTPS_PORT.",
+                    config.PORT,
+                )
+                sys.exit(1)
+            ports_to_check = [config.PORT, config.HTTPS_PORT]
+    else:
+        ports_to_check = [config.PORT]
+
+    if config.DEBUG_MODE is False:
+        for port in ports_to_check:
+            if not is_port_in_use(port):
+                continue
             logging.error(
-                "Could not determine which process is using port %s.",
-                config.PORT,
+                "Error: Port %s is already in use. Please choose a different port.",
+                port,
             )
-        sys.exit(1)
+            usage = get_port_usage(port)
+            if usage:
+                logging.error("Processes using port %s:\n%s", port, usage)
+            else:
+                logging.error(
+                    "Could not determine which process is using port %s.",
+                    port,
+                )
+            sys.exit(1)
 
     try:
-        logging.info(
-            "Starting web interface at http://%s:%s",
-            config.HOST,
-            config.PORT,
-        )
-        app.run(
-            host=config.HOST, port=config.PORT, debug=config.DEBUG_MODE, threaded=True
-        )
+        ssl_context = None
+        if config.HTTPS_ENABLED:
+            from app.utils import https as https_utils
+
+            if config.HTTPS_SELF_SIGNED:
+                https_utils.ensure_self_signed_cert(
+                    config.HTTPS_CERT_PATH,
+                    config.HTTPS_KEY_PATH,
+                    https_utils.collect_cert_names(),
+                )
+            ssl_context = (config.HTTPS_CERT_PATH, config.HTTPS_KEY_PATH)
+
+        if config.HTTPS_ENABLED and not config.HTTPS_ONLY:
+            from werkzeug.serving import make_server
+
+            https_server = make_server(
+                https_host,
+                config.HTTPS_PORT,
+                app,
+                threaded=True,
+                ssl_context=ssl_context,
+            )
+            https_thread = threading.Thread(
+                target=https_server.serve_forever,
+                name="https-server",
+                daemon=True,
+            )
+            https_thread.start()
+            logging.info(
+                "Starting HTTPS interface at https://%s:%s",
+                https_host,
+                config.HTTPS_PORT,
+            )
+
+        if config.HTTPS_ENABLED and config.HTTPS_ONLY:
+            logging.info(
+                "Starting web interface at https://%s:%s",
+                https_host,
+                config.HTTPS_PORT,
+            )
+            app.run(
+                host=https_host,
+                port=config.HTTPS_PORT,
+                debug=config.DEBUG_MODE,
+                threaded=True,
+                ssl_context=ssl_context,
+            )
+        else:
+            logging.info(
+                "Starting web interface at http://%s:%s",
+                config.HOST,
+                config.PORT,
+            )
+            app.run(
+                host=config.HOST,
+                port=config.PORT,
+                debug=config.DEBUG_MODE,
+                threaded=True,
+            )
     except KeyboardInterrupt:
         logging.info("KeyboardInterrupt received. Cleaning up...")
         cleanup_resources()

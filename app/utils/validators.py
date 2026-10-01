@@ -5,6 +5,7 @@ reasonable defaults.  They are reused across route handlers, CLI tools
 and database updates to keep validation logic consistent.
 """
 
+import json
 import os
 import re
 import socket
@@ -28,6 +29,16 @@ BOOL_STRINGS = {
     "t",
     "f",
 }
+
+EVENT_BUFFER_DEFAULTS = {
+    "event_buffer_fps": 1,
+    "event_buffer_seconds": 120,
+    "event_buffer_width": 640,
+    "event_buffer_pre_seconds": 8,
+    "event_buffer_post_seconds": 6,
+    "event_buffer_backoff_seconds": 300,
+}
+EVENT_BUFFER_FORMATS = {"gif", "mp4"}
 
 
 def to_bool(value: object) -> bool:
@@ -121,6 +132,137 @@ def is_public_url(url: str) -> bool:
     return not _is_private_host(host)
 
 
+def _bounded_int(
+    value: object,
+    default: int,
+    minimum: int,
+    maximum: int,
+) -> int:
+    """Return an integer clamped to an inclusive range."""
+
+    try:
+        parsed = int(value or default)
+    except (TypeError, ValueError):
+        parsed = default
+    return min(max(parsed, minimum), maximum)
+
+
+def _is_loopback_host(host: str) -> bool:
+    """Return ``True`` for loopback names and addresses."""
+
+    normalized = str(host or "").strip().strip("[]").lower()
+    if normalized in {"localhost", "127.0.0.1", "::1"}:
+        return True
+    try:
+        return ip_address(normalized).is_loopback
+    except ValueError:
+        return False
+
+
+def _is_lan_camera_host(host: str) -> bool:
+    """Return ``True`` when *host* looks like a LAN camera endpoint."""
+
+    normalized = str(host or "").strip().strip("[]").lower()
+    if not normalized or _is_loopback_host(normalized):
+        return False
+    if normalized.endswith(".home.arpa"):
+        return True
+    return _is_private_host(normalized)
+
+
+def event_buffer_eligibility(data: dict) -> tuple[bool, str]:
+    """Return whether template data is eligible for LAN event buffering."""
+
+    url = str(data.get("url") or "").strip()
+    if not url:
+        return False, "URL is required"
+
+    if str(data.get("source_template") or "").strip():
+        return False, "source-template views are derived, not direct cameras"
+    if to_bool(data.get("browser", False)) or to_bool(data.get("stealth", False)):
+        return False, "browser captures are not direct LAN camera streams"
+    if validate_proxy(data.get("proxy")):
+        return False, "proxied captures are not eligible for local buffering"
+
+    parsed = urlparse(url)
+    if parsed.scheme.lower() not in {"http", "https", "rtsp"}:
+        return False, "only HTTP(S) or RTSP LAN camera URLs are eligible"
+    if not parsed.hostname:
+        return False, "URL must include a host"
+    if not _is_lan_camera_host(parsed.hostname):
+        return False, "host must be a private LAN camera address"
+
+    return True, "eligible"
+
+
+def normalize_event_buffer_settings(data: dict, sanitized: dict) -> None:
+    """Validate and copy LAN event-buffer settings into *sanitized*."""
+
+    enabled = to_bool(data.get("event_buffer_enabled", False))
+    profile = str(data.get("event_buffer_profile") or "lan_hardwired").strip().lower()
+    if profile in {"", "off"}:
+        profile = "lan_hardwired"
+    if profile != "lan_hardwired":
+        raise ValueError("event_buffer_profile is invalid")
+
+    fps = _bounded_int(
+        data.get("event_buffer_fps"), EVENT_BUFFER_DEFAULTS["event_buffer_fps"], 1, 2
+    )
+    seconds = _bounded_int(
+        data.get("event_buffer_seconds"),
+        EVENT_BUFFER_DEFAULTS["event_buffer_seconds"],
+        30,
+        300,
+    )
+    width = _bounded_int(
+        data.get("event_buffer_width"),
+        EVENT_BUFFER_DEFAULTS["event_buffer_width"],
+        320,
+        1280,
+    )
+    pre_seconds = _bounded_int(
+        data.get("event_buffer_pre_seconds"),
+        EVENT_BUFFER_DEFAULTS["event_buffer_pre_seconds"],
+        0,
+        30,
+    )
+    post_seconds = _bounded_int(
+        data.get("event_buffer_post_seconds"),
+        EVENT_BUFFER_DEFAULTS["event_buffer_post_seconds"],
+        1,
+        30,
+    )
+    backoff_seconds = _bounded_int(
+        data.get("event_buffer_backoff_seconds"),
+        EVENT_BUFFER_DEFAULTS["event_buffer_backoff_seconds"],
+        30,
+        1800,
+    )
+    if pre_seconds >= seconds:
+        pre_seconds = max(seconds - 1, 0)
+    if post_seconds > seconds:
+        post_seconds = seconds
+
+    output_format = str(data.get("event_buffer_format") or "gif").strip().lower()
+    if output_format not in EVENT_BUFFER_FORMATS:
+        raise ValueError("event_buffer_format is invalid")
+
+    if enabled:
+        eligible, reason = event_buffer_eligibility({**data, **sanitized})
+        if not eligible:
+            raise ValueError(f"event_buffer_enabled requires {reason}")
+
+    sanitized["event_buffer_enabled"] = enabled
+    sanitized["event_buffer_profile"] = "lan_hardwired" if enabled else ""
+    sanitized["event_buffer_fps"] = fps
+    sanitized["event_buffer_seconds"] = seconds
+    sanitized["event_buffer_width"] = width
+    sanitized["event_buffer_pre_seconds"] = pre_seconds
+    sanitized["event_buffer_post_seconds"] = post_seconds
+    sanitized["event_buffer_format"] = output_format
+    sanitized["event_buffer_backoff_seconds"] = backoff_seconds
+
+
 def validate_template_name(template_name: str):
     """Return sanitized template name if valid, otherwise ``None``."""
     if template_name is None or not isinstance(template_name, str):
@@ -212,8 +354,15 @@ def validate_update_data(data: dict) -> dict:
     default_frequency = 60 if stealth_flag or browser_flag else 30
     default_timeout = 30 if stealth_flag or browser_flag else 10
 
+    source_template = validate_template_name(
+        str(data.get("source_template") or "").strip()
+    )
+    if str(data.get("source_template") or "").strip() and not source_template:
+        raise ValueError("source_template is invalid")
+    sanitized["source_template"] = source_template or ""
+
     url = (data.get("url") or "").strip()
-    if not url:
+    if not url and not sanitized["source_template"]:
         raise ValueError("url is required")
     sanitized["url"] = url
 
@@ -262,6 +411,283 @@ def validate_update_data(data: dict) -> dict:
         motion = 1.0
     sanitized["motion"] = motion
 
+    stabilize_mode = str(data.get("stabilize_mode") or "").strip().lower()
+    if stabilize_mode not in {"", "off", "previous", "rolling_5m", "rolling_30m"}:
+        raise ValueError("stabilize_mode is invalid")
+    sanitized["stabilize_mode"] = (
+        "" if stabilize_mode in {"", "off"} else stabilize_mode
+    )
+
+    try:
+        capture_rotate_degrees = int(data.get("capture_rotate_degrees") or 0)
+    except (TypeError, ValueError):
+        raise ValueError("capture_rotate_degrees is invalid") from None
+    if capture_rotate_degrees == 270:
+        capture_rotate_degrees = -90
+    elif capture_rotate_degrees == -270:
+        capture_rotate_degrees = 90
+    elif capture_rotate_degrees == -180:
+        capture_rotate_degrees = 180
+    if capture_rotate_degrees not in {-90, 0, 90, 180}:
+        raise ValueError("capture_rotate_degrees is invalid")
+    sanitized["capture_rotate_degrees"] = capture_rotate_degrees
+
+    night_enhance_mode = str(data.get("night_enhance_mode") or "").strip().lower()
+    if night_enhance_mode not in {"", "off", "light", "medium", "strong"}:
+        raise ValueError("night_enhance_mode is invalid")
+    sanitized["night_enhance_mode"] = (
+        "" if night_enhance_mode in {"", "off"} else night_enhance_mode
+    )
+
+    deflicker_mode = str(data.get("deflicker_mode") or "").strip().lower()
+    if deflicker_mode not in {"", "off", "light", "medium", "strong"}:
+        raise ValueError("deflicker_mode is invalid")
+    sanitized["deflicker_mode"] = (
+        "" if deflicker_mode in {"", "off"} else deflicker_mode
+    )
+
+    burst_enhance_mode = str(data.get("burst_enhance_mode") or "").strip().lower()
+    if burst_enhance_mode not in {"", "off", "full_frame", "roi"}:
+        raise ValueError("burst_enhance_mode is invalid")
+    sanitized["burst_enhance_mode"] = (
+        "" if burst_enhance_mode in {"", "off"} else burst_enhance_mode
+    )
+
+    burst_enhance_profile = str(data.get("burst_enhance_profile") or "").strip().lower()
+    if burst_enhance_profile not in {"", "clean", "hybrid", "crisp"}:
+        raise ValueError("burst_enhance_profile is invalid")
+    sanitized["burst_enhance_profile"] = (
+        "" if not burst_enhance_profile else burst_enhance_profile
+    )
+
+    burst_enhance_roi = str(data.get("burst_enhance_roi") or "").strip()
+    if len(burst_enhance_roi) > 255:
+        raise ValueError("burst_enhance_roi is too long")
+    if burst_enhance_roi and not re.fullmatch(r"[0-9.,;\s-]+", burst_enhance_roi):
+        raise ValueError("burst_enhance_roi is invalid")
+    sanitized["burst_enhance_roi"] = burst_enhance_roi
+
+    capture_crop_roi = str(data.get("capture_crop_roi") or "").strip()
+    if len(capture_crop_roi) > 255:
+        raise ValueError("capture_crop_roi is too long")
+    if capture_crop_roi and not re.fullmatch(r"[0-9.,;\s-]+", capture_crop_roi):
+        raise ValueError("capture_crop_roi is invalid")
+    sanitized["capture_crop_roi"] = capture_crop_roi
+
+    lens_correction_spec = str(data.get("lens_correction_spec") or "").strip()
+    if len(lens_correction_spec) > 255:
+        raise ValueError("lens_correction_spec is too long")
+    if lens_correction_spec and not re.fullmatch(
+        r"[A-Za-z0-9_=.,;:\s-]+", lens_correction_spec
+    ):
+        raise ValueError("lens_correction_spec is invalid")
+    sanitized["lens_correction_spec"] = lens_correction_spec
+
+    horizon_level_mode = str(data.get("horizon_level_mode") or "").strip().lower()
+    if horizon_level_mode not in {"", "off", "roll", "smooth"}:
+        raise ValueError("horizon_level_mode is invalid")
+    sanitized["horizon_level_mode"] = (
+        "" if horizon_level_mode in {"", "off"} else horizon_level_mode
+    )
+
+    horizon_level_roi = str(data.get("horizon_level_roi") or "").strip()
+    if len(horizon_level_roi) > 255:
+        raise ValueError("horizon_level_roi is too long")
+    if horizon_level_roi and not re.fullmatch(r"[0-9.,;\s-]+", horizon_level_roi):
+        raise ValueError("horizon_level_roi is invalid")
+    sanitized["horizon_level_roi"] = horizon_level_roi
+
+    composite_view_mode = str(data.get("composite_view_mode") or "").strip().lower()
+    if composite_view_mode not in {"", "off", "grid", "hero_strip"}:
+        raise ValueError("composite_view_mode is invalid")
+    sanitized["composite_view_mode"] = (
+        "" if composite_view_mode in {"", "off"} else composite_view_mode
+    )
+
+    composite_view_spec = str(data.get("composite_view_spec") or "").strip()
+    if len(composite_view_spec) > 1000:
+        raise ValueError("composite_view_spec is too long")
+    if composite_view_spec and not re.fullmatch(
+        r"[A-Za-z0-9 _.\-@,;]+", composite_view_spec
+    ):
+        raise ValueError("composite_view_spec is invalid")
+    sanitized["composite_view_spec"] = composite_view_spec
+
+    normalize_event_buffer_settings(data, sanitized)
+
+    for key, min_value, max_value in [
+        ("camera_latitude", -90.0, 90.0),
+        ("view_target_latitude", -90.0, 90.0),
+        ("camera_longitude", -180.0, 180.0),
+        ("view_target_longitude", -180.0, 180.0),
+    ]:
+        raw_value = data.get(key)
+        if raw_value in {None, ""}:
+            sanitized[key] = None
+            continue
+        try:
+            numeric_value = float(raw_value)
+        except (TypeError, ValueError):
+            raise ValueError(f"{key} is invalid") from None
+        if not min_value <= numeric_value <= max_value:
+            raise ValueError(f"{key} is invalid")
+        sanitized[key] = numeric_value
+
+    elevation_value = data.get("camera_elevation_m")
+    if elevation_value in {None, ""}:
+        sanitized["camera_elevation_m"] = None
+    else:
+        try:
+            sanitized["camera_elevation_m"] = float(elevation_value)
+        except (TypeError, ValueError):
+            raise ValueError("camera_elevation_m is invalid") from None
+
+    for key in ("camera_location_label", "view_target_label"):
+        label = str(data.get(key) or "").strip()
+        if len(label) > 255:
+            raise ValueError(f"{key} is too long")
+        if label and not re.fullmatch(r"[A-Za-z0-9 _.,/#:()+~'\"-]+", label):
+            raise ValueError(f"{key} is invalid")
+        sanitized[key] = label
+
+    camera_location_accuracy = (
+        str(data.get("camera_location_accuracy") or "").strip().lower()
+    )
+    if camera_location_accuracy not in {
+        "",
+        "unknown",
+        "exact",
+        "approximate",
+        "site",
+        "region",
+        "source",
+    }:
+        raise ValueError("camera_location_accuracy is invalid")
+    sanitized["camera_location_accuracy"] = (
+        "" if camera_location_accuracy == "unknown" else camera_location_accuracy
+    )
+    sanitized["camera_location_private"] = to_bool(
+        data.get("camera_location_private", False)
+    )
+
+    for key in ("camera_location_evidence", "view_pose_evidence"):
+        evidence = str(data.get(key) or "").strip()
+        if len(evidence) > 2000:
+            raise ValueError(f"{key} is too long")
+        sanitized[key] = evidence
+
+    view_description = str(data.get("view_description") or "").strip()
+    if len(view_description) > 2000:
+        raise ValueError("view_description is too long")
+    sanitized["view_description"] = view_description
+
+    view_direction = str(data.get("view_direction") or "").strip()
+    if len(view_direction) > 64:
+        raise ValueError("view_direction is too long")
+    if view_direction and not re.fullmatch(r"[A-Za-z0-9 _./:+-]+", view_direction):
+        raise ValueError("view_direction is invalid")
+    sanitized["view_direction"] = view_direction
+
+    bearing_value = data.get("view_bearing_degrees")
+    if bearing_value in {None, ""}:
+        sanitized["view_bearing_degrees"] = None
+    else:
+        try:
+            view_bearing_degrees = float(bearing_value)
+        except (TypeError, ValueError):
+            raise ValueError("view_bearing_degrees is invalid") from None
+        if not 0 <= view_bearing_degrees < 360:
+            raise ValueError("view_bearing_degrees is invalid")
+        sanitized["view_bearing_degrees"] = view_bearing_degrees
+
+    for key, min_value, max_value, inclusive_min in [
+        ("view_pitch_degrees", -90.0, 90.0, True),
+        ("view_roll_degrees", -180.0, 180.0, True),
+        ("view_horizontal_fov_degrees", 0.0, 360.0, False),
+        ("view_vertical_fov_degrees", 0.0, 180.0, False),
+    ]:
+        raw_value = data.get(key)
+        if raw_value in {None, ""}:
+            sanitized[key] = None
+            continue
+        try:
+            numeric_value = float(raw_value)
+        except (TypeError, ValueError):
+            raise ValueError(f"{key} is invalid") from None
+        if inclusive_min:
+            valid = min_value <= numeric_value <= max_value
+        else:
+            valid = min_value < numeric_value <= max_value
+        if not valid:
+            raise ValueError(f"{key} is invalid")
+        sanitized[key] = numeric_value
+
+    view_mount_height = str(data.get("view_mount_height") or "").strip()
+    if len(view_mount_height) > 128:
+        raise ValueError("view_mount_height is too long")
+    if view_mount_height and not re.fullmatch(
+        r"[A-Za-z0-9 _./:+~'\"-]+", view_mount_height
+    ):
+        raise ValueError("view_mount_height is invalid")
+    sanitized["view_mount_height"] = view_mount_height
+
+    view_pose_confidence = str(data.get("view_pose_confidence") or "").strip().lower()
+    if view_pose_confidence not in {
+        "",
+        "unknown",
+        "estimated",
+        "operator",
+        "calibrated",
+    }:
+        raise ValueError("view_pose_confidence is invalid")
+    sanitized["view_pose_confidence"] = (
+        "" if view_pose_confidence == "unknown" else view_pose_confidence
+    )
+
+    view_staticness = str(data.get("view_staticness") or "").strip().lower()
+    if view_staticness not in {
+        "",
+        "unknown",
+        "static",
+        "slight_drift",
+        "drifting",
+        "ptz",
+        "rotating",
+        "composite",
+    }:
+        raise ValueError("view_staticness is invalid")
+    sanitized["view_staticness"] = (
+        "" if view_staticness == "unknown" else view_staticness
+    )
+
+    view_metadata = str(data.get("view_metadata") or "").strip()
+    if len(view_metadata) > 8000:
+        raise ValueError("view_metadata is too long")
+    if view_metadata:
+        try:
+            json.loads(view_metadata)
+        except Exception:
+            raise ValueError("view_metadata must be valid JSON") from None
+    sanitized["view_metadata"] = view_metadata
+
+    try:
+        view_metadata_version = int(data.get("view_metadata_version", 0) or 0)
+    except (TypeError, ValueError):
+        raise ValueError("view_metadata_version is invalid") from None
+    if view_metadata_version < 0:
+        raise ValueError("view_metadata_version is invalid")
+    sanitized["view_metadata_version"] = view_metadata_version
+
+    view_metadata_history = str(data.get("view_metadata_history") or "").strip()
+    if len(view_metadata_history) > 50000:
+        raise ValueError("view_metadata_history is too long")
+    if view_metadata_history:
+        try:
+            json.loads(view_metadata_history)
+        except Exception:
+            raise ValueError("view_metadata_history must be valid JSON") from None
+    sanitized["view_metadata_history"] = view_metadata_history
+
     for key in [
         "notes",
         "popup_xpath",
@@ -287,6 +713,7 @@ def validate_update_data(data: dict) -> dict:
     for key in [
         "invert",
         "dark",
+        "disable_autocrop",
         "headless",
         "stealth",
         "browser",
@@ -302,6 +729,7 @@ MAX_WORKERS_MAX = max(1, (os.cpu_count() or 1) * 2)
 
 INTEGER_RANGES = {
     "PORT": (1024, 65535),
+    "HTTPS_PORT": (1, 65535),
     "EMAIL_SMTP_PORT": (1, 65535),
     "MAX_WORKERS": (1, MAX_WORKERS_MAX),
     "FFMPEG_THREADS": (1, None),
@@ -320,6 +748,10 @@ INTEGER_RANGES = {
 BOOLEAN_SETTINGS = {
     "DEBUG",
     "DEBUG_MODE",
+    "LOW_CPU_MODE",
+    "HTTPS_ENABLED",
+    "HTTPS_ONLY",
+    "HTTPS_SELF_SIGNED",
     "SESSION_COOKIE_SECURE",
     "SESSION_COOKIE_HTTPONLY",
     "CLOCK_OVERLAY",
@@ -335,6 +767,7 @@ BOOLEAN_SETTINGS = {
     "FFMPEG_HWACCEL",
     "NOTIFY_ON_MOTION",
     "NOTIFY_ON_CAPTION",
+    "ALLOW_PRIVATE_CALLBACK_URLS",
 }
 
 
@@ -364,6 +797,12 @@ def validate_setting(name: str, value: str) -> str | None:
         level = val.upper()
         if level in {"DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"}:
             return level
+        return None
+
+    if key == "VISUAL_TIMESTAMP_MODE":
+        mode = val.lower()
+        if mode in {"clean", "compact", "debug", "off", "full"}:
+            return "clean" if mode == "off" else ("debug" if mode == "full" else mode)
         return None
 
     if key == "FFMPEG_HWACCEL":

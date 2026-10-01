@@ -36,3 +36,12 @@ if (typeof HTMLMediaElement !== "undefined") {
     value: () => {},
   });
 }
+
+if (typeof window !== "undefined") {
+  window.alert = () => {};
+}
+
+if (typeof globalThis.fetch !== "function") {
+  globalThis.fetch = () =>
+    Promise.reject(new Error("fetch is not available in test environment"));
+}

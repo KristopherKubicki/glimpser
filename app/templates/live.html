@@ -1,4 +1,5 @@
-{% extends 'base.html' %} {% block content %}
+{% extends 'base.html' %} {% block body_class %}player-screen{% endblock %} {%
+block content %}
 <div
   class="video-container full-height"
   role="region"
@@ -6,7 +7,6 @@
 >
   <video
     id="live-video"
-    controls
     autoplay
     muted
     preload="none"
@@ -26,6 +26,25 @@
   <div id="stream-error-message"></div>
   <div id="error-message" role="status" aria-live="polite"></div>
   <div id="controls-wrapper" class="fade-out">
+    <div id="live-quality-container" class="live-quality">
+      <label for="live-quality" class="sr-only">Live quality</label>
+      <select id="live-quality" aria-label="Live quality" title="Live quality">
+        <option value="auto">Auto</option>
+        <option value="low">Low</option>
+        <option value="high">High</option>
+      </select>
+      <button
+        id="live-action"
+        type="button"
+        class="live-action"
+        title="Upgrade to higher quality live stream"
+        aria-label="Live action"
+        style="display: none"
+      >
+        Upgrade
+      </button>
+      <div id="live-stats" class="live-stats" aria-hidden="true"></div>
+    </div>
     <div id="speed-container">
       <label for="speed-slider" class="sr-only">Speed</label>
       <input
@@ -33,11 +52,11 @@
         id="speed-slider"
         min="1"
         max="60"
-        value="1"
+        value="6"
         step="1"
         aria-label="Playback speed"
       />
-      <span id="speed-value">1fps</span>
+      <span id="speed-value">0.17fps</span>
     </div>
   </div>
   <button
@@ -51,10 +70,16 @@
 </div>
 <script>
   window.templateDetails = {{ template_details|tojson }};
+  {% if selected_camera %}
+  window.currentCamera = {{ selected_camera|tojson }};
+  {% endif %}
+  {% if selected_group %}
+  window.currentGroup = {{ selected_group|tojson }};
+  {% endif %}
 </script>
 
 <script
   type="module"
-  src="{{ url_for('static', filename='js/tile_player.js') }}"
+  src="{{ url_for('static', filename='js/tile_player.js') }}?v={{ ASSET_VERSION }}"
 ></script>
 {% endblock %}

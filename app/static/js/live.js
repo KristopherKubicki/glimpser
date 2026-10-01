@@ -1,6 +1,7 @@
 import { attemptAutoLogin } from "./login.js";
 import { safePlay, setClipSrc as setClipSrcVideo } from "./video_utils.js";
 import { getCameraNames as getCameraNamesUtil } from "./camera_utils.js";
+import { parseTimestamp } from "./time_utils.js";
 import {
   updateFrameTimestamp as updateFrameTimestampUtil,
   setTimestampVisibility as setTimestampVisibilityUtil,
@@ -59,6 +60,7 @@ let liveSwitchFunction;
 let hlsInstance = null;
 let loopHandler = null;
 const speedContainer = document.getElementById("speed-container");
+const controlsWrapper = document.getElementById("controls-wrapper");
 const videoOverlay = document.getElementById("video-overlay");
 const loadingIndicator = document.getElementById("loading-indicator");
 const playPauseIndicator = document.getElementById("play-pause-indicator");
@@ -86,6 +88,29 @@ window.detailsVisible = false;
 // a camera repeatedly fails. Track the last message and time displayed.
 let lastErrorMessage = "";
 let lastErrorTime = 0;
+
+function setOverlayState(kind, message = "") {
+  const isLoading = kind === "loading";
+  const isOffline = kind === "offline";
+  const isCaptureError = kind === "capture-error";
+  const isStreamError = kind === "stream-error";
+
+  loadingIndicator.style.display = isLoading ? "block" : "none";
+  playPauseIndicator.style.display = "none";
+
+  offlineIndicator.style.display = isOffline ? "block" : "none";
+  offlineMessage.textContent = isOffline ? message : "";
+
+  errorIndicator.style.display = isCaptureError ? "block" : "none";
+  errorIndicatorMessage.textContent = isCaptureError ? message : "";
+
+  streamErrorIndicator.style.display = isStreamError ? "block" : "none";
+  streamErrorMessage.textContent = isStreamError ? message : "";
+
+  const shouldShowOverlay =
+    isLoading || isOffline || isCaptureError || isStreamError;
+  videoOverlay.style.display = shouldShowOverlay ? "block" : "none";
+}
 
 function updateCameraOptions(group) {
   const camSelect = document.getElementById("camera-selector");
@@ -195,16 +220,20 @@ function resetVideo() {
 }
 
 function showLoadingIndicator() {
-  videoOverlay.style.display = "block";
-  loadingIndicator.style.display = "block";
-  playPauseIndicator.style.display = "none";
+  setOverlayState("loading");
 }
 
 function hideLoadingIndicator() {
   loadingIndicator.style.display = "none";
   if (videoOverlay.style.display === "block") {
     setTimeout(() => {
-      videoOverlay.style.display = "none";
+      const hasActiveStatus =
+        offlineIndicator.style.display !== "none" ||
+        errorIndicator.style.display !== "none" ||
+        streamErrorIndicator.style.display !== "none";
+      if (!hasActiveStatus && playPauseIndicator.style.display === "none") {
+        videoOverlay.style.display = "none";
+      }
     }, 500);
   }
 }
@@ -240,63 +269,32 @@ function showError(message) {
 }
 
 function showOfflineIndicator(message) {
-  videoOverlay.style.display = "block";
-  offlineIndicator.style.display = "block";
-  offlineMessage.textContent = message;
-  loadingIndicator.style.display = "none";
-  playPauseIndicator.style.display = "none";
+  setOverlayState("offline", message);
 }
 
 function hideOfflineIndicator() {
-  offlineIndicator.style.display = "none";
-  offlineMessage.textContent = "";
-  if (
-    loadingIndicator.style.display === "none" &&
-    playPauseIndicator.style.display === "none"
-  ) {
-    videoOverlay.style.display = "none";
+  if (offlineIndicator.style.display !== "none") {
+    setOverlayState("none");
   }
 }
 
 function showCaptureErrorIndicator(cameraName) {
-  videoOverlay.style.display = "block";
-  errorIndicator.style.display = "block";
-  errorIndicatorMessage.textContent = `Capture failed for ${cameraName}`;
-  loadingIndicator.style.display = "none";
-  playPauseIndicator.style.display = "none";
+  setOverlayState("capture-error", `Capture failed for ${cameraName}`);
 }
 
 function hideCaptureErrorIndicator() {
-  errorIndicator.style.display = "none";
-  errorIndicatorMessage.textContent = "";
-  if (
-    loadingIndicator.style.display === "none" &&
-    playPauseIndicator.style.display === "none" &&
-    offlineIndicator.style.display === "none" &&
-    streamErrorIndicator.style.display === "none"
-  ) {
-    videoOverlay.style.display = "none";
+  if (errorIndicator.style.display !== "none") {
+    setOverlayState("none");
   }
 }
 
 function showStreamErrorIndicator(message) {
-  videoOverlay.style.display = "block";
-  streamErrorIndicator.style.display = "block";
-  streamErrorMessage.textContent = message;
-  loadingIndicator.style.display = "none";
-  playPauseIndicator.style.display = "none";
+  setOverlayState("stream-error", message);
 }
 
 function hideStreamErrorIndicator() {
-  streamErrorIndicator.style.display = "none";
-  streamErrorMessage.textContent = "";
-  if (
-    loadingIndicator.style.display === "none" &&
-    playPauseIndicator.style.display === "none" &&
-    offlineIndicator.style.display === "none" &&
-    errorIndicator.style.display === "none"
-  ) {
-    videoOverlay.style.display = "none";
+  if (streamErrorIndicator.style.display !== "none") {
+    setOverlayState("none");
   }
 }
 
@@ -308,7 +306,13 @@ video.addEventListener("canplay", () => {
 // Hide the loading overlay when a PNG frame successfully loads so the
 // viewer immediately sees the latest snapshot instead of an indefinite
 // "Loading" message.
-image.addEventListener("load", hideLoadingIndicator);
+image.addEventListener("load", () => {
+  // When switching cameras/groups, we first show a still "last good" frame to
+  // avoid a blank player. Keep the spinner visible until the actual stream
+  // produces a frame.
+  if (image.dataset.mode === "snapshot") return;
+  hideLoadingIndicator();
+});
 video.addEventListener("play", () => showPlayPauseIndicator(false));
 video.addEventListener("pause", () => showPlayPauseIndicator(true));
 video.addEventListener("error", (e) => {
@@ -485,7 +489,6 @@ function updateFeed() {
     hideLoadingIndicator();
     video.pause();
     video.src = "";
-    image.src = "";
     showLastScreenshot();
     updateSeekBar();
     updateJogShuttle();
@@ -496,7 +499,6 @@ function updateFeed() {
     hideLoadingIndicator();
     video.pause();
     video.src = "";
-    image.src = "";
     showLastScreenshot();
     updateSeekBar();
     updateJogShuttle();
@@ -686,6 +688,7 @@ function setTimestampVisibility(show) {
 }
 
 function refreshPNG() {
+  image.dataset.mode = "png";
   image.src =
     "/last_screenshot/" +
     encodeURIComponent(currentCamera) +
@@ -695,23 +698,28 @@ function refreshPNG() {
 }
 
 function showLastScreenshot() {
-  const ts = "?time=" + new Date().getTime();
   let url;
   if (currentCamera === "All") {
     // Show the most recent screenshot across all cameras
-    url = "/stream.png" + ts;
+    url = "/stream.png?time=" + new Date().getTime();
+  } else if (currentCamera.startsWith("group-")) {
+    // Group views use a dedicated group screenshot generated server-side.
+    const groupName = currentCamera.split("group-")[1];
+    url = `/stream.png?group=${encodeURIComponent(groupName)}&time=${new Date().getTime()}`;
   } else {
-    // Display the latest screenshot for the selected camera or group
-    url = "/last_screenshot/" + encodeURIComponent(currentCamera) + ts;
+    // Display the latest screenshot for the selected camera
+    url = `/stream.png?camera=${encodeURIComponent(currentCamera)}&time=${new Date().getTime()}`;
   }
 
   // Preload the image so the viewer always sees a frame when switching
   const pre = new Image();
   pre.onload = () => {
+    image.dataset.mode = "snapshot";
     image.src = pre.src;
-    hideLoadingIndicator();
   };
-  pre.onerror = hideLoadingIndicator;
+  // If the snapshot isn't available yet (404/timeout), keep showing the prior
+  // frame and keep the spinner visible while the stream connects.
+  pre.onerror = () => {};
   pre.src = url;
   image.style.display = "block";
   updateFrameTimestamp();
@@ -909,6 +917,7 @@ function playMJPG() {
   stopPNG();
   video.style.display = "none";
   image.style.display = "block";
+  image.dataset.mode = "mjpg";
   // MJPEG streams are continuous images, disable scrubbing
   const seekBar = document.getElementById("seek-bar");
   if (seekBar) {
@@ -942,6 +951,7 @@ function playMotion() {
   stopPNG();
   video.style.display = "none";
   image.style.display = "block";
+  image.dataset.mode = "motion";
   const seekBar = document.getElementById("seek-bar");
   if (seekBar) {
     seekBar.style.display = "none";
@@ -1097,6 +1107,9 @@ function updateSpeedContainer() {
   speedContainer.style.pointerEvents = show ? "auto" : "none";
   const slider = document.getElementById("speed-slider");
   if (slider) slider.disabled = !show;
+  if (controlsWrapper) {
+    controlsWrapper.style.display = show ? "block" : "none";
+  }
 }
 
 function updateSeekBar() {
@@ -1149,7 +1162,10 @@ function checkCameraConnection(cameraName) {
     return false;
   }
 
-  const lastScreenshotTime = new Date(camera.last_screenshot_time);
+  const lastScreenshotTime = parseTimestamp(camera.last_screenshot_time);
+  if (!lastScreenshotTime) {
+    return false;
+  }
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
   return lastScreenshotTime > oneHourAgo;
 }

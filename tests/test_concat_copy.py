@@ -44,6 +44,8 @@ class TestConcatCopy(unittest.TestCase):
                 None,
             )
             self.assertIsNotNone(overlay_cmd)
+            self.assertEqual(overlay_cmd[overlay_cmd.index("-c:v") + 1], "libx264")
+            self.assertEqual(overlay_cmd[overlay_cmd.index("-preset") + 1], "ultrafast")
 
     def test_trim_uses_start_offset(self):
         """Ensure trimming seeks forward when clips exceed the limit."""

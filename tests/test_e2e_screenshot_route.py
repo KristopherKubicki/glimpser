@@ -14,7 +14,7 @@ if os.environ.get("NO_NETWORK") == "1" or os.environ.get("SKIP_E2E") == "1":
 pytest_socket.enable_socket()
 
 
-from app import create_app
+from app import create_app  # noqa: E402
 
 
 class ServerThread(Thread):
@@ -47,7 +47,9 @@ def screenshot_server(tmp_path):
 
         def first(self):
             return SimpleNamespace(
-                id=1, username="admin", password_hash="hash"  # pragma: allowlist secret
+                id=1,
+                username="admin",
+                password_hash="hash",  # pragma: allowlist secret
             )
 
     class DummySession:

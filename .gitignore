@@ -129,3 +129,8 @@ release-badges.md
 # Documentation build output
 site/
 pytest-report.xml
+
+# Installation session secrets and transient package staging
+*.session-secret
+*.session-secret.lock
+debian/glimpser-stage.*/
