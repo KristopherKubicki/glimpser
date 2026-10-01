@@ -7,6 +7,7 @@ exclude_docs: |
   README.md
 nav:
   - Home: index.md
+  - Weather and Sky Examples: weather_sky_showcase.md
   - Guides:
       - TODO: todo.md
       - Accessibility Improvements: accessibility.md

@@ -26,6 +26,13 @@ See [OpenSSF Scorecard](docs/scorecard.md) for details on the security badge.
 
 ![Glimpser June 2025](https://github.com/user-attachments/assets/ea3e094e-1fc5-447b-87f8-9772c9086e5f)
 
+## Weather and sky examples
+
+See [real timelapses of Chicago's skyline and continental cloud movement](docs/weather_sky_showcase.md),
+assembled from Glimpser's archived NOAA imagery, with source credits and capture details.
+
+![Chicago skyline timelapse](docs/assets/showcase/chicago-lake-sky.gif)
+
 ## Features
 
 - **Real-time Monitoring**: Continuously captures data from multiple sources. Whether it's a traffic camera or a weather dashboard, Glimpser ensures you’re always up-to-date with the latest information.
