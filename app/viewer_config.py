@@ -22,6 +22,10 @@ def load_viewer_config() -> dict:
     """Return validated settings or generic defaults without logging private values."""
     path = os.getenv("GLIMPSER_VIEWER_CONFIG", "").strip()
     if not path:
+        default_path = Path.home() / ".config/glimpser/viewer_config.json"
+        if default_path.is_file():
+            path = str(default_path)
+    if not path:
         return {}
     try:
         with Path(path).expanduser().open(encoding="utf-8") as stream:
@@ -41,11 +45,13 @@ def load_viewer_config() -> dict:
             "private_groups",
             "archived_groups",
             "timelapse_groups",
+            "timelapse_cameras",
             "status_groups",
             "navigation_groups",
             "google_live_cameras",
             "security_approaches",
             "dashboard_group_order",
+            "caption_freshness_groups",
         ):
             if key in data:
                 values = _names(data[key])
@@ -54,9 +60,25 @@ def load_viewer_config() -> dict:
                     if key.endswith("groups") or key == "dashboard_group_order"
                     else values
                 )
+        presentation = data.get("presentation", {})
+        if not isinstance(presentation, dict) or len(presentation) > 1024:
+            raise ValueError("Invalid presentation settings")
+        config["presentation"] = {
+            _text(key): _text(value) for key, value in presentation.items()
+        }
         contexts = {}
         for key, sections in data.get("context_views", {}).items():
-            if key not in {"arrivals", "property", "beach-conditions"}:
+            if key not in {
+                "arrivals",
+                "property",
+                "beach-conditions",
+                "energy",
+                "transportation",
+                "water",
+                "conditions",
+                "area",
+                "stores",
+            }:
                 raise ValueError("Unknown context dashboard")
             contexts[key] = {
                 _text(label): _names(names) for label, names in sections.items()

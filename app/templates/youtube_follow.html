@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>My YouTube · Glimpser</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/youtube_follow.css') }}?v=20261016-1"
+    />
+    <script
+      type="module"
+      src="{{ url_for('static', filename='js/youtube_follow_boot.js') }}?v=20261016-1"
+    ></script>
+  </head>
+  <body class="youtube-follow-page">
+    <main data-youtube-follow>
+      <header class="youtube-follow-heading">
+        <div>
+          <p class="youtube-follow-eyebrow">Your shared tab</p>
+          <h1>My YouTube</h1>
+        </div>
+        <a href="/?profile=office&amp;youtube=pin"
+          >Pin beside office rotation</a
+        >
+        <a href="/?profile=living&amp;youtube=pin">Pin beside living room</a>
+      </header>
+      <section
+        class="youtube-follow-screen"
+        aria-label="Shared YouTube picture"
+      >
+        <video
+          autoplay
+          muted
+          playsinline
+          aria-label="Your shared tab, muted"
+        ></video>
+        <p class="youtube-follow-status" data-follow-status role="status">
+          Waiting for your YouTube tab
+        </p>
+      </section>
+      <nav class="youtube-follow-controls" aria-label="Picture controls">
+        <button type="button" data-follow-hold aria-pressed="false">
+          Hold frame
+        </button>
+        <button type="button" data-follow-fullscreen>Full screen</button>
+        <a href="/?profile=office">Back to rotation</a>
+      </nav>
+      <section
+        class="youtube-follow-setup"
+        aria-labelledby="follow-setup-title"
+      >
+        <h2 id="follow-setup-title">Follow what you’re watching</h2>
+        <p>
+          On the computer playing YouTube, open this page over HTTPS and choose
+          your YouTube tab. Keep both tabs open. Playlist changes follow
+          automatically, with a small delay.
+        </p>
+        <button type="button" data-follow-share>Share YouTube tab</button>
+        <button type="button" data-follow-stop disabled>Stop sharing</button>
+        <p data-follow-sharing role="status">
+          Private to displays signed in to your Glimpser account. Muted video,
+          no recordings. Works on your local network when the devices can
+          connect directly.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

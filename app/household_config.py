@@ -25,6 +25,10 @@ def load_household_config() -> dict:
     """Read private JSON at startup; absent or invalid settings disable integration."""
     path = os.getenv("GLIMPSER_HOUSEHOLD_CONFIG", "").strip()
     if not path:
+        default_path = Path.home() / ".config/glimpser/household_config.json"
+        if default_path.is_file():
+            path = str(default_path)
+    if not path:
         return {}
     try:
         with Path(path).expanduser().open(encoding="utf-8") as stream:

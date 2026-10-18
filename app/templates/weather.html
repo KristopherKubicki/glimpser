@@ -2,15 +2,16 @@
 block content %}
 <style>
   body.weather-sheet {
+    color-scheme: dark;
     --weather-bg: #07110f;
-    --weather-panel: rgba(240, 237, 223, 0.92);
-    --weather-ink: #13211f;
-    --weather-muted: #52605b;
-    --weather-line: rgba(19, 33, 31, 0.16);
-    --weather-blue: #0b5d72;
-    --weather-rust: #b54d2f;
-    --weather-gold: #d5a232;
-    --weather-green: #315e4c;
+    --weather-panel: rgba(14, 34, 38, 0.94);
+    --weather-ink: #edf7f2;
+    --weather-muted: #adc2bc;
+    --weather-line: rgba(160, 211, 205, 0.18);
+    --weather-blue: #86d3e0;
+    --weather-rust: #ffac89;
+    --weather-gold: #efc574;
+    --weather-green: #92d4ad;
     background:
       radial-gradient(
         circle at 14% 8%,
@@ -44,7 +45,7 @@ block content %}
   .weather-brief-card,
   .weather-stat-card,
   .weather-section {
-    border: 1px solid rgba(255, 255, 255, 0.38);
+    border: 1px solid rgba(160, 211, 205, 0.18);
     background: var(--weather-panel);
     box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
     backdrop-filter: blur(16px);
@@ -89,7 +90,7 @@ block content %}
   .weather-title {
     max-width: 20ch;
     margin: 0;
-    color: #091413;
+    color: var(--weather-ink);
     font-family: Georgia, "Times New Roman", serif;
     font-size: clamp(2.2rem, 5vw, 4.5rem);
     line-height: 0.9;
@@ -99,7 +100,7 @@ block content %}
   .weather-headline {
     max-width: 62rem;
     margin: 0.85rem 0 0;
-    color: #1d2d29;
+    color: var(--weather-ink);
     font-size: clamp(1.05rem, 2vw, 1.55rem);
     font-weight: 700;
     line-height: 1.12;
@@ -150,8 +151,8 @@ block content %}
 
   .weather-watch-item {
     border-radius: 1.2rem;
-    border: 1px solid rgba(255, 255, 255, 0.32);
-    background: rgba(240, 237, 223, 0.86);
+    border: 1px solid rgba(160, 211, 205, 0.18);
+    background: rgba(14, 34, 38, 0.94);
     padding: 0.75rem;
   }
 
@@ -170,8 +171,13 @@ block content %}
 
   .weather-lane-board {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
     gap: 0.75rem;
+  }
+
+  .weather-empty {
+    color: var(--weather-muted);
+    font-size: 1rem;
   }
 
   .weather-section-header {
@@ -186,7 +192,7 @@ block content %}
 
   .weather-section-header h2 {
     margin: 0;
-    color: #0b1a18;
+    color: var(--weather-ink);
     font-size: clamp(1.1rem, 2vw, 1.65rem);
     letter-spacing: -0.045em;
   }
@@ -288,6 +294,8 @@ block content %}
   href="{{ url_for('static', filename='css/brief_dark.css') }}"
 />
 
+{% set visible_sections = brief.sections | selectattr('tiles') | list %}
+
 <section class="weather-hero" aria-labelledby="weather-title">
   <div class="weather-brief-card">
     <div>
@@ -318,7 +326,7 @@ block content %}
       <span class="weather-stat-label">Risk signals</span>
     </div>
     <div class="weather-stat-card">
-      <span class="weather-stat-value">{{ brief.sections|length }}</span>
+      <span class="weather-stat-value">{{ visible_sections|length }}</span>
       <span class="weather-stat-label">Evidence lanes</span>
     </div>
   </div>
@@ -334,14 +342,17 @@ block content %}
 </section>
 
 <div class="weather-lane-board">
-  {% for section in brief.sections %}
+  {% if not visible_sections %}
+  <section class="weather-section weather-empty">
+    No current weather image evidence is available.
+  </section>
+  {% endif %} {% for section in visible_sections %}
   <section class="weather-section" aria-labelledby="weather-{{ section.key }}">
     <header class="weather-section-header">
       <h2 id="weather-{{ section.key }}">{{ section.title }}</h2>
       <p>{{ section.purpose }}</p>
     </header>
 
-    {% if section.tiles %}
     <div class="weather-tile-grid">
       {% for tile in section.tiles[:3] %}
       <article class="weather-tile">
@@ -352,9 +363,10 @@ block content %}
         />
         <div class="weather-tile-body">
           <div class="weather-tile-meta">
-            <span class="weather-status-{{ tile.status }}"
+            <span class="weather-status-{{ tile.display_status }}"
               >{{ {"fresh": "Captured", "stale_ok": "Previous image", "failed":
-              "Capture failed"}.get(tile.status, "Status unknown") }}</span
+              "Capture failed"}.get(tile.display_status, "Status unknown")
+              }}</span
             >
             <span data-brief-captured="{{ tile.last_screenshot_time }}"
               >Captured {{ tile.age_label }} ago</span
@@ -376,9 +388,6 @@ block content %}
       </article>
       {% endfor %}
     </div>
-    {% else %}
-    <p>No sources matched this lane yet.</p>
-    {% endif %}
   </section>
   {% endfor %}
 </div>

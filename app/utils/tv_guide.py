@@ -130,9 +130,9 @@ def fetch_tv_guide_payload(fetcher=None) -> dict[str, Any]:
         "source_name": source_name,
         "timezone": "America/Chicago",
         "title": "New Tonight",
-        "message": (
-            "" if cards else "Program data unavailable; capture service is online."
-        ),
+        "message": ""
+        if cards
+        else "Program data unavailable; capture service is online.",
         "cards": cards[:16],
         "count": len(cards),
     }

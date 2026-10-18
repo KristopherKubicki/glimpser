@@ -13,8 +13,8 @@ test("online feed interruption is not described as offline", () => {
   document.body.append(stage);
   const hold = createKioskHold(stage, "test");
   hold.hold("Capture service unavailable");
-  expect(stage.textContent).toContain("FEED INTERRUPTED");
-  expect(stage.textContent).not.toContain("KIOSK OFFLINE");
+  expect(stage.textContent).toContain("Reconnecting");
+  expect(stage.textContent).not.toContain("Offline");
   hold.recover();
 });
 test("browser offline is explicitly labeled", () => {
@@ -26,7 +26,7 @@ test("browser offline is explicitly labeled", () => {
   document.body.append(stage);
   const hold = createKioskHold(stage, "test");
   hold.hold("No connection");
-  expect(stage.textContent).toContain("KIOSK OFFLINE");
+  expect(stage.textContent).toContain("Offline");
   hold.recover();
 });
 test("a frame arriving after a status timeout fills the saved view without clearing the warning", () => {
@@ -57,7 +57,7 @@ test("a frame arriving after a status timeout fills the saved view without clear
   expect(hold.active).toBe(true);
   expect(stage.querySelector("img").src).toBe("data:image/jpeg;base64,abcd");
   expect(stage.textContent).toContain("Saved view: BandwidthTX");
-  expect(stage.textContent).toContain("Status request delayed");
+  expect(stage.querySelector("p").title).toContain("Status request delayed");
   expect(stage.textContent).not.toContain("No saved image");
   hold.recover();
   expect(stage.querySelector(".kiosk-offline-view")).toBeNull();

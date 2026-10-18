@@ -91,4 +91,4 @@ def test_weather_page_renders_generated_brief(tmp_path, monkeypatch):
     assert response.status_code == 200
     assert b"Eyebat Local Weather Sheet" in response.data
     assert b"Lightning" in response.data
-    assert (tmp_path / "daily_brief.json").exists()
+    assert not (tmp_path / "daily_brief.json").exists()  # Page rendering is read-only.

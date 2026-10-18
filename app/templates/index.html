@@ -1,6 +1,7 @@
 {% extends 'base.html' %} {% block body_class %}landing-screen
 landing-profile-{{ landing_profile.key if landing_profile is defined else
 'public' }}{% endblock %} {% block content %}
+<script id="presentation-settings" type="application/json">{{ presentation_settings|default({})|tojson }}</script>
 <style>
   body.landing-screen {
     --landing-bg: rgba(5, 10, 18, 0.72);
@@ -1069,6 +1070,7 @@ landing-profile-{{ landing_profile.key if landing_profile is defined else
     data-landing-hero-video-playback-rate="{{ landing_mode.hero_video_playback_rate }}"
     data-landing-mode="{{ landing_mode.key }}"
     data-landing-events-enabled="{{ 'true' if landing_events_enabled else 'false' }}"
+    data-landing-asset-revision="{{ landing_asset_revision }}"
     data-landing-events-poll-ms="{{ landing_event_poll_ms }}"
     data-landing-events-url="{{ landing_events_url }}"
     data-landing-profile="{{ landing_profile.key }}"
@@ -1089,6 +1091,7 @@ landing-profile-{{ landing_profile.key if landing_profile is defined else
           data-hero-event-buffer-url="{{ scene.hero.event_buffer_url }}"
           data-hero-last-screenshot-time="{{ scene.hero.last_screenshot_time or '' }}"
           data-hero-live-url="{{ scene.hero.live_url }}"
+          data-hero-media-kind="{{ scene.hero.media_kind or '' }}"
           data-hero-name="{{ scene.hero.name }}"
           data-hero-replay-available="{{ 'true' if scene.hero.replay_available else 'false' }}"
           data-hero-video-url="{% if scene.hero.last_video_time %}{{ scene.hero.video_url }}{% endif %}"

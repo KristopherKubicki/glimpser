@@ -28,12 +28,6 @@ def _save_snapshot_png(
     camera_dir = os.path.join(SCREENSHOT_DIRECTORY, name)
     os.makedirs(camera_dir, exist_ok=True)
     output_path = os.path.join(camera_dir, f"{name}_{timestamp}.png")
-    existing = [
-        os.path.join(camera_dir, entry)
-        for entry in os.listdir(camera_dir)
-        if entry.startswith(f"{name}_") and entry.endswith(".png")
-    ]
-
     with Image.open(io.BytesIO(payload)) as img:
         img = img.convert("RGB")
         img = screenshots._postprocess_still_image(
@@ -45,19 +39,8 @@ def _save_snapshot_png(
         )
         reject_reason = screenshots._captured_frame_rejection_reason(img)
         if reject_reason is not None:
-            usable_existing = []
-            for path in sorted(existing):
-                try:
-                    with Image.open(path) as previous:
-                        if (
-                            screenshots._captured_frame_rejection_reason(previous)
-                            is None
-                        ):
-                            usable_existing.append(path)
-                except Exception:
-                    continue
-            if usable_existing:
-                return usable_existing[-1]
+            # Retain prior files, but never return one as a successful capture:
+            # the caller would refresh its timestamp and clear failure state.
             raise eufy_cloud.EufyCloudError(
                 f"Rejected Eufy snapshot after post-processing: {reject_reason}"
             )

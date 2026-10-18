@@ -3,11 +3,29 @@
   inset: 0;
   z-index: 4;
   background: #050a10;
-  opacity: 0;
+  /* Zero opacity can stop WebRTC presentation and deadlock readiness. */
+  opacity: 0.001;
+  transition: opacity var(--room-crossfade, 900ms) ease-in-out;
   pointer-events: none;
 }
 .kiosk-live-layer.is-playing {
   opacity: 1;
+}
+.kiosk-live-staging {
+  /* Keep a tiny compositor surface on screen without exposing buffering. */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 16px;
+  height: 9px;
+  overflow: hidden;
+  opacity: 0.001;
+  pointer-events: none;
+  z-index: 2147483646;
+}
+.kiosk-live-staging .kiosk-live-layer {
+  opacity: 1;
+  transition: none;
 }
 .kiosk-live-layer video {
   width: 100%;
@@ -55,4 +73,10 @@
 .kiosk-live-label .ambient-clock time {
   font-size: 1.5rem;
   line-height: 2rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kiosk-live-layer {
+    transition: none;
+  }
 }

@@ -200,8 +200,8 @@ body.landing-screen .kiosk-priority-alert.has-replay {
 
 @media (prefers-reduced-motion: no-preference) {
   .kiosk-timelapse {
-    animation: kiosk-clip-reveal 400ms ease-out;
-    transition: opacity 350ms ease-in-out;
+    animation: kiosk-clip-reveal var(--room-crossfade, 400ms) ease-out;
+    transition: opacity var(--room-crossfade, 350ms) ease-in-out;
   }
   .kiosk-timelapse.is-ending {
     opacity: 0;
@@ -215,4 +215,37 @@ body.landing-screen .kiosk-priority-alert.has-replay {
   to {
     opacity: 1;
   }
+}
+
+/* Keep ordinary motion notices out of the center of the camera image. */
+body.landing-screen .kiosk-priority-alert:not(.has-replay) {
+  top: auto;
+  bottom: 120px;
+  left: 24px;
+  transform: none;
+  width: min(720px, calc(100% - 48px));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 10px 14px;
+  border-width: 1px;
+  border-radius: 10px;
+}
+.kiosk-priority-alert:not(.has-replay) .kiosk-priority-label {
+  font-size: 14px;
+  letter-spacing: 0.03em;
+}
+.kiosk-priority-alert:not(.has-replay) > strong {
+  font-size: 20px;
+  margin: 0;
+}
+.kiosk-priority-alert:not(.has-replay) .kiosk-priority-footer {
+  margin-left: auto;
+  font-size: 14px;
+  gap: 12px;
+}
+.kiosk-priority-alert:not(.has-replay) button {
+  font-size: 14px;
+  padding: 6px 10px;
 }

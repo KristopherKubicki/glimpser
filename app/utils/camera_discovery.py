@@ -1242,7 +1242,7 @@ def _detect_open_ports(ip: str, ports: list[int]) -> list[int]:
 def _local_subnets(max_prefixlen: int = 24):
     """Return local IPv4 subnets limited to ``max_prefixlen``.
 
-    Some interfaces report very large networks (e.g. ``10.0.0.0/8``) which makes
+    Some interfaces report very large private networks, which makes
     discovery scans effectively unbounded. To keep discovery responsive we cap
     the size of each subnet to at most ``max_prefixlen``. Duplicate networks are
     removed so multi-homed interfaces only scan each subnet once. Interfaces that

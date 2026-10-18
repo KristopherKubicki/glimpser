@@ -1,8 +1,13 @@
 {% extends 'base.html' %} {% block body_class %}visual-dashboard-screen{%
 endblock %} {% block content %}
+<script id="presentation-settings" type="application/json">{{ presentation_settings|default({})|tojson }}</script>
 <link
   rel="stylesheet"
-  href="{{ url_for('static', filename='css/visual_dashboard.css') }}"
+  href="{{ url_for('static', filename='css/visual_dashboard.css') }}?v=20261016-mobile"
+/>
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/kiosk_live.css') }}?v=20261008-live-fade"
 />
 <section class="vd" data-visual-dashboard="{{ dashboard_name }}">
   <header class="vd-heading">
@@ -19,7 +24,8 @@ endblock %} {% block content %}
         href="/dashboard/{{ key }}"
         aria-current="{{ 'page' if key == dashboard_name else 'false' }}"
         >{{ label }}</a
-      >{% endfor %}<a href="/satellite">Satellite timelapse ↗</a><a href="/group/all">All cameras ↗</a>
+      >{% endfor %}<a href="/satellite">Satellite timelapse ↗</a
+      ><a href="/group/all">All cameras ↗</a>
     </nav>
   </header>
   {% if dashboard_name in ['security', 'systems', 'arrivals'] %}
@@ -47,8 +53,13 @@ endblock %} {% block content %}
       ><span>Need attention</span>
     </div>
     <div>
-      <strong id="vd-mapped">{{ dashboard_model.mapped }}</strong
-      ><span>Mapped locations</span>
+      <strong id="vd-mapped"
+        >{{ dashboard_model.live_capable if dashboard_name == 'property' else
+        dashboard_model.mapped }}</strong
+      ><span
+        >{{ 'Video sources' if dashboard_name == 'property' else 'Mapped
+        locations' }}</span
+      >
     </div>
   </div>
   {% if dashboard_name == 'health' %}
@@ -74,11 +85,31 @@ endblock %} {% block content %}
         ></label>
       </header>
       <p class="vd-note">
-        Separate camera views, shown together. Each panel has its own capture
-        time.
+        {% if dashboard_name == 'property' %}Exterior views, with live video
+        where a fresh stream is available.{% else %}Nearby views, shown
+        together.{% endif %} Each panel has its own capture time.
       </p>
+      <div
+        id="vd-board-status"
+        class="vd-board-status"
+        role="status"
+        hidden
+      ></div>
       <div id="vd-board" class="vd-board"></div>
     </section>
+    {% if dashboard_name == 'property' %}
+    <aside
+      class="vd-panel vd-property-systems"
+      aria-label="Property system captures"
+    >
+      <p class="vd-eyebrow">PROPERTY SYSTEMS</p>
+      <h2 id="vd-property-title">Water, power & climate</h2>
+      <p class="vd-note">
+        Captured status pages. Open a tile to read the full report.
+      </p>
+      <div id="vd-property-signals" class="vd-property-signals"></div>
+    </aside>
+    {% else %}
     <aside class="vd-panel">
       <p class="vd-eyebrow">LOCATION CONTEXT</p>
       <h2 id="vd-map-title">Camera minimap</h2>
@@ -86,6 +117,7 @@ endblock %} {% block content %}
       <div id="vd-map"></div>
       <p class="vd-note">Select a marker to find its camera below.</p>
     </aside>
+    {% endif %}
   </div>
   <section class="vd-gallery-section">
     <header>
@@ -129,6 +161,6 @@ endblock %} {% block content %}
 </script>
 <script
   type="module"
-  src="{{ url_for('static', filename='js/visual_dashboard.js') }}"
+  src="{{ url_for('static', filename='js/visual_dashboard.js') }}?v=20261016-resume"
 ></script>
 {% endblock %}

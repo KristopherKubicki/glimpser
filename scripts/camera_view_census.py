@@ -28,7 +28,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.config import SCREENSHOT_DIRECTORY  # noqa: E402
-from app.site_locations import load_site_locations  # noqa: E402
+from app.location_config import load_location_config  # noqa: E402
 from app.utils.template_manager import (  # noqa: E402
     Template,
     TemplateManager,
@@ -47,7 +47,7 @@ STATICNESS_VALUES = {
     "composite",
 }
 LOCATION_ACCURACY_VALUES = {"", "exact", "approximate", "site", "region", "source"}
-SITE_LOCATION_SEEDS = load_site_locations()
+SITE_LOCATION_SEEDS = load_location_config()
 
 
 def utc_now_text() -> str:

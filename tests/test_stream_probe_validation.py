@@ -68,7 +68,7 @@ def test_ffprobe_requests_and_caches_video_geometry(monkeypatch):
 
 def test_null_probe_requires_video_and_disables_stdin(monkeypatch):
     run = Mock(return_value=subprocess.CompletedProcess([], 0, b"", b""))
-    monkeypatch.setattr(ss.subprocess, "run", run)
+    monkeypatch.setattr(ss, "run_capture_command", run)
     assert ss._ffmpeg_null_probe("https://example.test/video", 10, "probe-test") is True
     command = run.call_args.args[0]
     assert "-nostdin" in command
@@ -84,7 +84,7 @@ def test_decode_probe_is_only_a_metadata_failure_fallback(
     monkeypatch.setattr(ss, "PREFLIGHT_FFMPEG_NULL_PROBE", True)
     probe = Mock(return_value=True)
     monkeypatch.setattr(ss, "_ffmpeg_null_probe", probe)
-    monkeypatch.setattr(ss.subprocess, "run", Mock())
+    monkeypatch.setattr(ss, "run_capture_command", Mock())
     monkeypatch.setattr(ss, "_select_best_stream_frame", lambda *a: (None, None))
     ss.capture_frame_from_stream(
         "https://example.test/video", str(tmp_path / "frame.png")

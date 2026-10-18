@@ -260,6 +260,7 @@ def _serve_latest_screenshot(
     raw_name: str | None = None,
     *,
     force_clean: bool = False,
+    allow_enhancement: bool = False,
 ):
     """Serve the latest valid screenshot or a placeholder for missing sources."""
 
@@ -337,9 +338,25 @@ def _serve_latest_screenshot(
                     template_name, os.path.basename(os.path.realpath(shot))
                 )
                 shot = _clean_screenshot_path(routes, shot, force_clean=force_clean)
+                enhancement = None
+                # Never replace annotated captures or signed outbound embeds.
+                # Only clean dashboard snapshots explicitly opted in by camera.
+                if allow_enhancement:
+                    from app.utils.enhancement_pipeline import display_candidate
+
+                    enhancement = display_candidate(
+                        template_name,
+                        shot,
+                        routes.template_manager.get_template(template_name) or {},
+                    )
+                    if enhancement:
+                        shot = str(enhancement[0])
                 response = _serve_fitted_screenshot(routes, shot)
                 if response is None:
                     response = routes.send_conditional_file(shot, routes.PNG_TTL_SEC)
+                if enhancement:
+                    response.headers["X-Glimpser-Enhancement"] = enhancement[1]
+                    response.headers["Cache-Control"] = "private, no-store"
                 if captured is not None:
                     response.headers["X-Capture-Time"] = captured.strftime(
                         "%Y-%m-%dT%H:%M:%SZ"
@@ -592,7 +609,11 @@ def create_blueprint() -> Blueprint:
             return resp
 
         return _serve_latest_screenshot(
-            routes, str(template_name), str(raw_name), force_clean=True
+            routes,
+            str(template_name),
+            str(raw_name),
+            force_clean=True,
+            allow_enhancement=True,
         )
 
     @bp.route("/embedded_screenshot/<string:template_name>")
@@ -633,7 +654,7 @@ def create_blueprint() -> Blueprint:
                 replay["path"], cache_seconds=0, mimetype="image/gif"
             )
             response.headers["Cache-Control"] = "no-store"
-            for field in ("start", "end", "frames", "fps"):
+            for field in ("start", "end", "frames", "fps", "duration"):
                 response.headers[f"X-Replay-{field.title()}"] = str(replay[field])
             return response
 

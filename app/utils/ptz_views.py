@@ -179,6 +179,29 @@ def _home(parent, cfg, template):
     _path(parent, ".return.json").unlink(missing_ok=True)
 
 
+def _recover_fault_at_verified_home(parent, cfg, template):
+    """Clear a stale PTZ fault only when live pixels match the saved home view."""
+    reference = _path(parent, ".home.png")
+    if not reference.exists() or paused(parent):
+        return False
+    try:
+        with Image.open(reference) as image:
+            if distance(image, snapshot(template)) > float(
+                cfg.get("home_tolerance", 12)
+            ):
+                return False
+    except Exception:
+        return False
+    state_path = _path(parent, ".state.json")
+    state = _read(state_path)
+    state.pop("fault", None)
+    state.pop("at", None)
+    state["last_fault_recovered_at"] = time.time()
+    _write(state_path, state)
+    _path(parent, ".return.json").unlink(missing_ok=True)
+    return True
+
+
 def capture(name, template, normal, provided):
     """Capture a named view only after restoring and verifying the parent view."""
     from app.utils.screenshots import CAPTURE_STALE_PREVIOUS
@@ -194,13 +217,17 @@ def capture(name, template, normal, provided):
         with lock(parent):
             parent_template = template if name == parent else get_template(parent)
             pending = _path(parent, ".return.json")
+            state_path = _path(parent, ".state.json")
+            if _read(state_path).get("fault") and not _recover_fault_at_verified_home(
+                parent, cfg, parent_template
+            ):
+                return CAPTURE_STALE_PREVIOUS
             if pending.exists():
-                if paused(parent) or _read(_path(parent, ".state.json")).get("fault"):
+                if paused(parent):
                     return CAPTURE_STALE_PREVIOUS
                 _home(parent, cfg, parent_template)
             if name == parent:
                 return normal()
-            state_path = _path(parent, ".state.json")
             state = _read(state_path)
             if not cfg.get("enabled") or paused(parent) or state.get("fault"):
                 return CAPTURE_STALE_PREVIOUS

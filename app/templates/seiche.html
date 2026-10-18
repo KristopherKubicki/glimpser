@@ -2,14 +2,15 @@
 block content %}
 <style>
   body.seiche-clock {
+    color-scheme: dark;
     --seiche-bg: #06131d;
-    --seiche-panel: rgba(231, 238, 230, 0.94);
-    --seiche-ink: #10212a;
-    --seiche-muted: #52676d;
-    --seiche-blue: #0d6178;
-    --seiche-cyan: #64c3d5;
-    --seiche-gold: #d49b35;
-    --seiche-red: #af4935;
+    --seiche-panel: rgba(12, 33, 45, 0.94);
+    --seiche-ink: #edf7f7;
+    --seiche-muted: #a9c0c7;
+    --seiche-blue: #7bd2e2;
+    --seiche-cyan: #7bd2e2;
+    --seiche-gold: #edbc69;
+    --seiche-red: #f18d79;
     background:
       radial-gradient(
         circle at 16% 10%,
@@ -117,7 +118,7 @@ block content %}
   .seiche-section {
     min-width: 0;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.34);
+    border: 1px solid rgba(146, 204, 213, 0.18);
     background: var(--seiche-panel);
     box-shadow: 0 24px 72px rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(16px);
@@ -181,8 +182,8 @@ block content %}
   .seiche-dial-inner {
     position: relative;
     z-index: 2;
-    width: min(27rem, 82vw);
-    height: min(27rem, 82vw);
+    width: min(27rem, 100%);
+    aspect-ratio: 1;
     border-radius: 50%;
     display: flex;
     flex-direction: column;
@@ -191,7 +192,7 @@ block content %}
     padding: 2rem;
     text-align: center;
     background:
-      radial-gradient(circle, rgba(255, 255, 255, 0.72), transparent 64%),
+      radial-gradient(circle, rgba(15, 48, 62, 0.8), transparent 66%),
       conic-gradient(
         from 210deg,
         rgba(13, 97, 120, 0.88),
@@ -215,9 +216,9 @@ block content %}
     margin: 0;
     color: #fffaf0;
     font-family: Georgia, "Times New Roman", serif;
-    font-size: clamp(2.3rem, 5.4vw, 4.8rem);
+    font-size: clamp(2.2rem, 4.2vw, 4rem);
     line-height: 0.86;
-    letter-spacing: -0.08em;
+    letter-spacing: -0.07em;
     text-shadow: 0 0.2rem 1.2rem rgba(4, 16, 24, 0.45);
   }
 
@@ -490,7 +491,7 @@ block content %}
 
   .seiche-headline {
     grid-column: 1 / -1;
-    background: rgba(246, 243, 231, 0.96);
+    background: linear-gradient(145deg, #102d3a, #0a1c29);
   }
 
   .seiche-headline .sr-only {
@@ -629,6 +630,10 @@ block content %}
     margin: 0;
   }
 
+  .seiche-camera-solo {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
   .seiche-camera-card {
     min-width: 0;
     min-height: 0;
@@ -749,13 +754,13 @@ block content %}
   }
 
   .seiche-watch .seiche-card {
-    background: rgba(246, 243, 231, 0.9);
+    background: rgba(13, 37, 48, 0.94);
   }
 
   .seiche-watch h2,
   .seiche-section h2 {
     margin: 0 0 0.45rem;
-    color: #0d2932;
+    color: var(--seiche-ink);
     font-size: 1.12rem;
   }
 
@@ -892,6 +897,60 @@ block content %}
     margin: 0;
     font-size: 0.76rem;
     line-height: 1.08;
+  }
+
+  /* The gauges use their own dark surfaces so the page stays calm at night. */
+  .seiche-phase-word,
+  .seiche-source-pill strong {
+    color: var(--seiche-ink);
+  }
+
+  .seiche-mini-meter {
+    color: var(--seiche-ink);
+    background: rgba(123, 210, 226, 0.13);
+  }
+
+  .seiche-source-pill,
+  .seiche-timeline {
+    background: rgba(123, 210, 226, 0.08);
+  }
+
+  .seiche-data-warning {
+    margin: 0.35rem 0 0;
+    color: var(--seiche-gold);
+    font-size: 0.75rem;
+    font-weight: 800;
+  }
+
+  .seiche-signal-gauge {
+    color: var(--seiche-ink);
+  }
+
+  .seiche-signal-gauge::before,
+  .seiche-moon-orbit::before {
+    background: #102935;
+  }
+
+  .seiche-compass {
+    background:
+      radial-gradient(circle, rgba(123, 210, 226, 0.1), transparent 42%),
+      conic-gradient(#173c4a, #66512e, #173c4a);
+  }
+
+  .seiche-compass::after {
+    background: var(--seiche-cyan);
+  }
+
+  .seiche-axis-dot {
+    background: var(--seiche-cyan);
+  }
+
+  .seiche-axis-dot b {
+    color: var(--seiche-ink);
+  }
+
+  .seiche-moon-orbit span {
+    background: var(--seiche-gold);
   }
 
   .seiche-lake-axis {
@@ -1073,6 +1132,24 @@ block content %}
     }
   }
 
+  @media (min-width: 981px) and (max-height: 820px) {
+    .seiche-onepage {
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
+      grid-template-rows: minmax(31rem, auto) minmax(8.4rem, auto) minmax(
+          7.5rem,
+          auto
+        );
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .seiche-camera-track {
+      animation: none;
+    }
+  }
+
   @media (max-width: 680px) {
     body.seiche-clock main {
       padding: 0;
@@ -1178,7 +1255,12 @@ calumet.get('sparkline') %}
               brief.get('source') }}
             </p>
             {% if brief.get('stale_reason') %}
-            <p>Using stale artifact: {{ brief.get('stale_reason') }}</p>
+            <p
+              class="seiche-data-warning"
+              title="{{ brief.get('stale_reason') }}"
+            >
+              NOAA update delayed · showing previous readings
+            </p>
             {% endif %}
           </div>
           <div class="seiche-signal-strip" aria-label="Seiche signal summary">
@@ -1269,7 +1351,10 @@ calumet.get('sparkline') %}
   </section>
 
   {% if beach_tiles %}
-  <section class="seiche-camera-strip" aria-label="Beach and shoreline cameras">
+  <section
+    class="seiche-camera-strip{% if beach_tiles|length == 1 %} seiche-camera-solo{% endif %}"
+    aria-label="Beach and shoreline cameras"
+  >
     {% set featured_tile = beach_tiles[0] %}
     <article class="seiche-camera-card seiche-camera-featured">
       <span
@@ -1278,18 +1363,22 @@ calumet.get('sparkline') %}
         style="--freshness-pct: {{ featured_tile.freshness_pct }}"
       ></span>
       <div class="seiche-camera-kicker">
-        {{ beach_tiles|length }} live views
+        {{ beach_tiles|length }} shore views
       </div>
       <img
         src="{{ featured_tile.image_url }}"
         loading="lazy"
-        alt="{{ featured_tile.name }} shoreline view"
+        alt="{{ featured_tile.label }} shoreline view"
       />
       <div class="seiche-camera-overlay">
-        <strong>{{ featured_tile.name }}</strong>
-        <span>{{ featured_tile.status }} · {{ featured_tile.age_label }}</span>
+        <strong>{{ featured_tile.label }}</strong>
+        <span
+          >{{ featured_tile.display_status }} · {{ featured_tile.age_label
+          }}</span
+        >
       </div>
     </article>
+    {% if beach_tiles|length > 1 %}
     <div class="seiche-camera-carousel" aria-label="Additional beach cameras">
       <div class="seiche-camera-track">
         {% for tile in beach_tiles[1:9] %}
@@ -1302,11 +1391,11 @@ calumet.get('sparkline') %}
           <img
             src="{{ tile.image_url }}"
             loading="lazy"
-            alt="{{ tile.name }} shoreline view"
+            alt="{{ tile.label }} shoreline view"
           />
           <div class="seiche-camera-overlay">
-            <strong>{{ tile.name }}</strong>
-            <span>{{ tile.status }} · {{ tile.age_label }}</span>
+            <strong>{{ tile.label }}</strong>
+            <span>{{ tile.display_status }} · {{ tile.age_label }}</span>
           </div>
         </article>
         {% endfor %} {% for tile in beach_tiles[1:9] %}
@@ -1322,16 +1411,17 @@ calumet.get('sparkline') %}
           <img
             src="{{ tile.image_url }}"
             loading="lazy"
-            alt="{{ tile.name }} shoreline carousel repeat"
+            alt="{{ tile.label }} shoreline carousel repeat"
           />
           <div class="seiche-camera-overlay">
-            <strong>{{ tile.name }}</strong>
-            <span>{{ tile.status }} · {{ tile.age_label }}</span>
+            <strong>{{ tile.label }}</strong>
+            <span>{{ tile.display_status }} · {{ tile.age_label }}</span>
           </div>
         </article>
         {% endfor %}
       </div>
     </div>
+    {% endif %}
   </section>
   {% endif %}
 

@@ -1,4 +1,4 @@
-"""Listen outbound to existing Knox motion feeds; never change camera settings."""
+"""Listen outbound to configured camera motion feeds; never change camera settings."""
 
 import logging
 import time
@@ -66,7 +66,7 @@ def listen(camera):
 
 
 def main():
-    """One read-only connection per explicitly configured Knox camera."""
+    """One read-only connection per explicitly configured native camera."""
     logging.basicConfig(level=logging.INFO)
     if not CAMERAS:
         LOG.info("No native event cameras configured; subscriber disabled")

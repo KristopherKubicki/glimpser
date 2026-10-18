@@ -36,7 +36,10 @@ class TestTimeline(unittest.TestCase):
     def test_timeline_requires_authentication(self):
         response = self.client.get("/timeline")
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.headers["Location"].startswith("/login?next="))
+        self.assertTrue(
+            response.headers["Location"].startswith("/login?next="),
+            response.headers["Location"],
+        )
 
 
 if __name__ == "__main__":

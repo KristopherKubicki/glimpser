@@ -46,7 +46,7 @@ test.each(["history", "503", "network"])(
     let clip;
     try {
       clip = mountTimelapse(`TestHistory-${mode}`, scene, { onReady: ready });
-      for (let i = 0; i < 8; i++) await Promise.resolve();
+      for (let i = 0; i < 20; i++) await Promise.resolve();
       expect(global.fetch).toHaveBeenCalledTimes(mode === "history" ? 1 : 2);
       image.onload();
       expect(scene.textContent).toContain("RECORDED HISTORY");
@@ -94,7 +94,7 @@ test.each(["dispose", "deadline"])(
       if (reason === "dispose") clip.dispose();
       else jest.advanceTimersByTime(8000);
       rejectReplay(new Error("late failure"));
-      for (let i = 0; i < 8; i++) await Promise.resolve();
+      for (let i = 0; i < 20; i++) await Promise.resolve();
       expect(global.fetch).toHaveBeenCalledTimes(1);
       expect(scene.querySelector("img").alt).toBe("Current capture");
       expect(scene.querySelector(".kiosk-timelapse")).toBeNull();

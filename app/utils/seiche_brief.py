@@ -83,6 +83,7 @@ BEACH_CAMERA_GROUPS = {
     "winthrop",
 }
 BEACH_CAMERA_PRIORITY = {
+    "beachsouthjetty": 1300,
     "beachshore": 1200,
     "beachnorthjetty": 1120,
     "beachbioswale": 1040,
@@ -428,6 +429,10 @@ def build_beach_camera_tiles(
     tiles = []
     for name, details in templates.items():
         groups = _split_groups(details)
+        if details.get("private_camera") or groups.intersection(
+            {"private", "expected-offline", "archive"}
+        ):
+            continue
         lowered = name.lower()
         source_text = (
             f"{name} {details.get('url', '')} {details.get('notes', '')}".lower()

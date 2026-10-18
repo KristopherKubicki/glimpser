@@ -1,0 +1,251 @@
+{% extends 'base.html' %} {% block content %}
+<style>
+  .system-map {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 24px;
+    color: #e7edf6;
+  }
+  .system-map h1 {
+    font-size: 2rem;
+    margin-bottom: 8px;
+  }
+  .system-map h2 {
+    margin: 28px 0 12px;
+    font-size: 1.2rem;
+  }
+  .system-map p {
+    line-height: 1.6;
+  }
+  .system-map a {
+    color: #9dccff;
+    text-decoration: underline;
+  }
+  .system-map a:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 4px;
+  }
+  .system-map .muted {
+    color: #b7c4d7;
+  }
+  .system-map .toolbar,
+  .system-map .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+  }
+  .system-map .legend {
+    padding: 16px 0;
+  }
+  .system-map .backbone {
+    background: #162236;
+    border: 1px solid #43556e;
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .system-map .path {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    font-size: 1.1rem;
+  }
+  .system-map .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 14px;
+  }
+  .system-map article {
+    border: 1px solid #43556e;
+    border-left: 4px solid #879ab4;
+    border-radius: 10px;
+    padding: 18px;
+    background: #101b2c;
+  }
+  .system-map article.responding {
+    border-left-color: #71deb4;
+  }
+  .system-map article.unreachable {
+    border-left-color: #ffc070;
+  }
+  .system-map article h3 {
+    margin: 0 0 8px;
+    font-size: 1.1rem;
+  }
+  .system-map .status {
+    font-weight: 600;
+  }
+  .system-map .responding .status {
+    color: #71deb4;
+  }
+  .system-map .unreachable .status {
+    color: #ffc070;
+  }
+  .system-map .address {
+    font-family: monospace;
+    color: #b7c4d7;
+  }
+  .system-map .flows {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+  }
+  .system-map .flows p {
+    background: #162236;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 0;
+  }
+  .system-map details {
+    padding: 18px;
+    border: 1px solid #43556e;
+    border-radius: 10px;
+    margin-top: 22px;
+  }
+  .system-map summary {
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  /* Keep all placement groups readable in a 1080p captured rotation frame. */
+  .system-map-kiosk {
+    max-width: 1600px;
+    padding: 12px 24px;
+    font-size: 14px;
+  }
+  .system-map-kiosk h1 {
+    margin: 0;
+    font-size: 1.7rem;
+  }
+  .system-map-kiosk h2 {
+    margin: 8px 0;
+  }
+  .system-map-kiosk p {
+    margin: 4px 0;
+    line-height: 1.3;
+  }
+  .system-map-kiosk .legend {
+    padding: 8px 0;
+  }
+  .system-map-kiosk .backbone {
+    padding: 10px;
+  }
+  .system-map-kiosk .cards {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .system-map-kiosk article {
+    padding: 10px;
+  }
+  .system-map-kiosk .toolbar,
+  .system-map-kiosk article a,
+  .system-map-kiosk details,
+  .system-map-kiosk section:has(.flows) {
+    display: none;
+  }
+</style>
+<div
+  class="system-map{% if request is defined and request.args.get('kiosk') == '1' %} system-map-kiosk{% endif %}"
+>
+  <p class="muted">HOME / NETWORK &amp; SERVICES</p>
+  <h1>House systems</h1>
+  <p>Where things run, what they support, and what answers from Glimpser.</p>
+  <div class="toolbar">
+    <a href="/house-systems">Refresh checks</a>
+    <a href="/dashboard/security">Cameras</a>
+  </div>
+  <p class="muted">
+    Last checked:
+    <time datetime="{{ system_map.checked_at }}"
+      >{{ system_map.checked_at }}</time
+    >
+    (UTC). Checks are cached for up to 30 seconds.
+  </p>
+  <div class="legend" aria-label="Reachability summary">
+    <strong>{{ system_map.responding }} responding</strong>
+    <strong>{{ system_map.unreachable }} unreachable from here</strong>
+    <span>{{ system_map.isolated }} isolated · not probed</span>
+  </div>
+  <section class="backbone" aria-labelledby="connection-map-title">
+    <h2 id="connection-map-title" style="margin-top: 0">Connection overview</h2>
+    <div
+      class="path"
+      aria-label="Internet through gateway and firewall into home switching and wireless"
+    >
+      <span>Internet</span><span aria-hidden="true">→</span
+      ><span>Gateway / firewall</span><span aria-hidden="true">→</span
+      ><span>Home switches &amp; Wi-Fi</span><span aria-hidden="true">→</span
+      ><span>Home systems</span>
+    </div>
+    <p class="muted">
+      Logical overview. Internet health and individual switch ports are not
+      measured on this page. Separate personal and work compute networks are
+      shown below.
+    </p>
+  </section>
+  {% for group in groups %}
+  <section aria-labelledby="group-{{ loop.index }}">
+    <h2 id="group-{{ loop.index }}">{{ group }}</h2>
+    <div class="cards">
+      {% for node in system_map.nodes if node.group == group %}
+      <article class="{{ node.status }}">
+        <h3>{{ node.name }}</h3>
+        <p class="status">{{ node.label }}</p>
+        <p>{{ node.role }}</p>
+        <p class="address">
+          {{ node.address }}{% if node.port %}:{{ node.port }}{% endif %}
+        </p>
+        {% if node.elapsed_ms is not none %}
+        <p class="muted">Connection check: {{ node.elapsed_ms }} ms</p>
+        {% endif %} {% if node.link %}<a href="{{ node.link }}"
+          >Open {{ node.name }}</a
+        >{% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+  <section aria-labelledby="service-paths-title">
+    <h2 id="service-paths-title">What depends on what</h2>
+    <div class="flows">
+      <p>
+        <strong>Door alerts</strong><br />Contact sensor → Hubitat → chimes<br />Hubitat
+        → Glimpser capture
+      </p>
+      <p>
+        <strong>Personal meeting preparation</strong><br />Personal calendar →
+        Housebot → Personal Spark → personal delivery
+      </p>
+      <p>
+        <strong>Work meeting preparation</strong><br />Work calendar →
+        Work-special → Work Spark → work delivery
+      </p>
+      <p>
+        <strong>Host observations</strong><br />HAL supplies desktop and
+        hardware observations. Shared scheduling lives on the owning guests.
+      </p>
+    </div>
+  </section>
+  <details>
+    <summary>How to interpret the checks</summary>
+    <p>
+      Responding means the named TCP port accepted a connection. It does not
+      prove that an automation, calendar sync, camera capture, or delivery
+      succeeded. Unreachable can mean a firewall boundary or a service problem;
+      it does not prove the host is off.
+    </p>
+    <p>
+      The Sparks are deliberately not probed from Glimpser. Their owning
+      services provide the appropriate health checks. This page does not combine
+      work and personal calendar content or credentials.
+    </p>
+    <p>
+      Addresses and service placement were reviewed October 1, 2026. This is a
+      curated service map, not automatic physical topology discovery. Older
+      Hubitat presence and temperature tiles may be stale; prefer timestamped
+      evidence over a cached green indicator.
+    </p>
+  </details>
+</div>
+{% endblock %}

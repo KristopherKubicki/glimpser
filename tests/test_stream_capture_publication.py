@@ -33,7 +33,7 @@ def stream_capture(monkeypatch, tmp_path):
         directories.append(frame.parent)
         Image.new("RGB", (64, 64), "blue").save(frame)
 
-    monkeypatch.setattr(ss.subprocess, "run", produce)
+    monkeypatch.setattr(ss, "run_capture_command", produce)
     return output, before, directories, produce
 
 
@@ -97,7 +97,7 @@ def test_overlapping_same_feed_bursts_keep_their_own_frames(
             assert capture(output.parent / "second.png") is True
             assert first_frame.exists()
 
-    monkeypatch.setattr(ss.subprocess, "run", overlapping_capture)
+    monkeypatch.setattr(ss, "run_capture_command", overlapping_capture)
     assert capture(output) is True
     assert len(set(directories)) == 2
     assert all(not path.exists() for path in directories)
@@ -110,7 +110,7 @@ def test_timeout_cleans_partial_burst(monkeypatch, stream_capture):
         produce(command, **kwargs)
         raise subprocess.TimeoutExpired(command, kwargs["timeout"])
 
-    monkeypatch.setattr(ss.subprocess, "run", timeout)
+    monkeypatch.setattr(ss, "run_capture_command", timeout)
     assert capture(output) is False
     assert output.read_bytes() == before
     assert all(not path.exists() for path in directories)
@@ -152,7 +152,7 @@ def test_software_retry_shares_deadline_and_discards_failed_burst(
         assert not list(Path(command[-1]).parent.iterdir())
         produce(command, **kwargs)
 
-    monkeypatch.setattr(ss.subprocess, "run", run)
+    monkeypatch.setattr(ss, "run_capture_command", run)
     result = ss.capture_frame_from_stream(
         "https://example.test/video", str(output), timeout=10, name="retry-test"
     )
@@ -178,6 +178,6 @@ def test_stream_decoder_never_reads_worker_stdin(monkeypatch, stream_capture):
         commands.append(command)
         produce(command, **kwargs)
 
-    monkeypatch.setattr(ss.subprocess, "run", run)
+    monkeypatch.setattr(ss, "run_capture_command", run)
     assert capture(output) is True
     assert all("-nostdin" in command for command in commands)

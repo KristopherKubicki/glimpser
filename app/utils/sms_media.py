@@ -6,12 +6,14 @@ import datetime as dt
 import hashlib
 import io
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFile, ImageOps
 
 from app.utils.screenshots import _is_valid_png, load_font
+from app.utils.source_freshness import read_evidence, timestamp
 from app.utils.validators import validate_template_name
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -165,17 +167,41 @@ def _render_sms_gif_from_paths(
     if not source_paths:
         raise SmsMediaNotFound("no source frames")
 
-    latest_path = source_paths[0]
-    source_age = max(
-        0, int(dt.datetime.now().timestamp() - latest_path.stat().st_mtime)
-    )
-    if max_age_seconds is not None and max_age_seconds > 0:
-        if source_age > max_age_seconds:
-            raise SmsMediaStale("latest source frame is stale")
-
     generated_at = dt.datetime.now(dt.UTC)
+    eligible = []
+    for path in source_paths:
+        try:
+            stamp = _capture_time(path)
+        except (OSError, ValueError):
+            continue
+        age = generated_at.timestamp() - stamp
+        if age >= 0 and (
+            max_age_seconds is None or max_age_seconds <= 0 or age <= max_age_seconds
+        ):
+            eligible.append((stamp, path))
+    if not eligible:
+        raise SmsMediaStale("no source frames meet the freshness limit")
+    # Snapshot a bounded set once. Retention/capture writers may remove files
+    # while encoding tries smaller palettes; no later filesystem read is needed.
+    prepared, capture_times = {}, {}
+    for stamp, path in sorted(eligible, reverse=True):
+        try:
+            with Image.open(path) as image:
+                picture = ImageOps.exif_transpose(image)
+                picture.thumbnail((long_edge, long_edge), Image.Resampling.LANCZOS)
+                prepared[path] = picture.convert("RGB").copy()
+            capture_times[path] = stamp
+        except (OSError, ValueError, Image.DecompressionBombError):
+            continue
+        if len(prepared) >= frames:
+            break
+    if not prepared:
+        raise SmsMediaNotFound("no renderable source frames")
+    source_paths = list(prepared)
+    latest_path = source_paths[0]
+    source_age = int(generated_at.timestamp() - capture_times[latest_path])
     label = _camera_label(camera_name)
-    stamp = generated_at.strftime("%Y-%m-%d %H:%M UTC")
+    latest_size = prepared[latest_path].size
 
     attempts: list[tuple[int, int, int]] = []
     for candidate_edge in _edge_attempts(long_edge):
@@ -187,16 +213,22 @@ def _render_sms_gif_from_paths(
     best_meta: tuple[int, int, int] | None = None
     for candidate_edge, candidate_frames, colors in attempts:
         paths = _sample_paths(source_paths, candidate_frames)
+        scale = min(1.0, candidate_edge / max(latest_size))
+        canvas_size = tuple(max(1, round(side * scale)) for side in latest_size)
         rendered_frames = [
             _render_frame(
                 path,
                 camera_name,
                 label,
-                stamp,
+                dt.datetime.fromtimestamp(
+                    capture_times[path], dt.timezone.utc
+                ).strftime("%Y-%m-%d %H:%M UTC"),
                 candidate_edge,
                 colors,
                 index,
                 len(paths),
+                canvas_size,
+                prepared[path],
             )
             for index, path in enumerate(paths)
         ]
@@ -245,9 +277,8 @@ def _asset(
     colors: int,
     source_kind: str,
 ) -> SmsMediaAsset:
-    media_key = hashlib.sha256(
-        f"{camera}:{latest_path.name}:{latest_path.stat().st_mtime_ns}:{len(body)}".encode()
-    ).hexdigest()[:16]
+    # Bind the key to the actual output, without restatting a retained source.
+    media_key = hashlib.sha256(body).hexdigest()[:16]
     return SmsMediaAsset(
         body=body,
         content_type="image/gif",
@@ -279,23 +310,91 @@ def _bounded_int(value: int | str | None, minimum: int, maximum: int, name: str)
 def _recent_frame_paths(
     source_dir: Path, *, suffixes: set[str] | None = None
 ) -> list[Path]:
-    if not source_dir.is_dir():
+    if source_dir.is_symlink() or not source_dir.is_dir():
         return []
     suffixes = suffixes or {".png"}
-    candidates = [
-        path
-        for path in source_dir.iterdir()
-        if path.is_file()
-        and not path.name.startswith(".")
-        and path.name != "latest_camera.png"
-        and path.suffix.lower() in suffixes
-    ]
-    candidates.sort(key=lambda path: path.stat().st_mtime, reverse=True)
-    valid = []
-    for path in candidates[:MAX_SOURCE_FRAMES]:
-        if path.stat().st_size > 0 and _is_valid_image(path):
-            valid.append(path)
-    return valid
+    # Rolling aliases and captioned copies are not independent captures.
+    aliases = {
+        "latest_camera.png",
+        "last_clean.png",
+        "last_motion.png",
+        "prev_motion.png",
+        "last_motion_caption.png",
+        "last_caption.png",
+    }
+    candidates = {}
+    try:
+        entries = list(source_dir.iterdir())
+    except OSError:
+        return []
+    for path in entries:
+        if (
+            path.is_symlink()
+            or path.name.startswith(".")
+            or path.name in aliases
+            or path.suffix.lower() not in suffixes
+        ):
+            continue
+        key = path.name.removesuffix(".clean.png")
+        if key in aliases:
+            continue
+        if path.name.endswith(".clean.png"):
+            candidates.setdefault(key, {})["clean"] = path
+        else:
+            candidates.setdefault(path.name, {})["original"] = path
+    ranked = []
+    for key, versions in candidates.items():
+        for kind in ("clean", "original"):
+            path = versions.get(kind)
+            if path is None:
+                continue
+            try:
+                ranked.append((_capture_time(path), key, versions))
+                break
+            except (OSError, ValueError):
+                continue
+    selected = []
+    # Bound image validation even if a camera directory holds years of history.
+    for _, _, versions in sorted(ranked, reverse=True)[: MAX_SOURCE_FRAMES * 4]:
+        for kind in ("clean", "original"):
+            path = versions.get(kind)
+            if path is None:
+                continue
+            try:
+                if path.is_file() and path.stat().st_size > 0 and _is_valid_image(path):
+                    selected.append((_capture_time(path), path))
+                    break
+            except (OSError, ValueError):
+                continue
+        if len(selected) >= MAX_SOURCE_FRAMES:
+            break
+    selected.sort(reverse=True)
+    return [path for _, path in selected[:MAX_SOURCE_FRAMES]]
+
+
+def _capture_time(path: Path) -> float:
+    """Prefer recorded UTC capture time; mtime is only for legacy unnamed frames."""
+    match = re.fullmatch(
+        r"(?:.+_)?(\d{14})\.(?:png|jpe?g)(?:\.clean\.png)?", path.name, re.I
+    )
+    if match:
+        captured = (
+            dt.datetime.strptime(match[1], "%Y%m%d%H%M%S")
+            .replace(tzinfo=dt.timezone.utc)
+            .timestamp()
+        )
+        # Import time is an upper bound on source freshness. Bind publisher
+        # evidence to this exact capture; never borrow another frame's record.
+        evidence = read_evidence(path.parent.name)
+        if evidence.get("capture_file") == path.name.removesuffix(".clean.png"):
+            for field in ("published_at", "inherited_at"):
+                source_time = timestamp(evidence.get(field))
+                if source_time is not None:
+                    captured = min(captured, source_time.timestamp())
+        return captured
+    if re.fullmatch(r"\d{13}\.jpe?g", path.name, re.I):
+        return int(path.stem) / 1000
+    return path.stat().st_mtime
 
 
 def _is_valid_image(path: Path) -> bool:
@@ -349,11 +448,22 @@ def _render_frame(
     colors: int,
     index: int,
     total: int,
+    canvas_size: tuple[int, int] | None = None,
+    prepared: Image.Image | None = None,
 ) -> Image.Image:
-    with Image.open(path) as image:
-        frame = ImageOps.exif_transpose(image).convert("RGB")
-        frame.thumbnail((long_edge, long_edge), Image.Resampling.LANCZOS)
-        frame = frame.copy()
+    if prepared is None:
+        with Image.open(path) as image:
+            frame = ImageOps.exif_transpose(image).convert("RGB")
+    else:
+        frame = prepared.copy()
+    frame.thumbnail(canvas_size or (long_edge, long_edge), Image.Resampling.LANCZOS)
+    if canvas_size is not None and frame.size != canvas_size:
+        canvas = Image.new("RGB", canvas_size, (3, 8, 13))
+        canvas.paste(
+            frame,
+            ((canvas.width - frame.width) // 2, (canvas.height - frame.height) // 2),
+        )
+        frame = canvas
     _apply_sms_stamp(frame, camera, label, stamp, index, total)
     return frame.convert(
         "P",

@@ -39,7 +39,7 @@ class TestCaptureStreamConfig(unittest.TestCase):
                 patch(
                     "app.utils.screenshots.shutil.which", return_value="/usr/bin/ffmpeg"
                 ),
-                patch("app.utils.screenshots.subprocess.run") as mock_run,
+                patch("app.utils.screenshots.run_capture_command") as mock_run,
                 patch("app.utils.screenshots.os.makedirs"),
                 patch("app.utils.screenshots.os.path.exists", return_value=True),
                 patch("app.utils.screenshots.os.listdir", return_value=["f.png"]),
@@ -79,7 +79,7 @@ class TestCaptureStreamConfig(unittest.TestCase):
                 patch(
                     "app.utils.screenshots.shutil.which", return_value="/usr/bin/ffmpeg"
                 ),
-                patch("app.utils.screenshots.subprocess.run") as mock_run,
+                patch("app.utils.screenshots.run_capture_command") as mock_run,
                 patch("app.utils.screenshots.os.makedirs"),
                 patch("app.utils.screenshots.os.path.exists", return_value=True),
                 patch("app.utils.screenshots.os.listdir", return_value=["f.png"]),
@@ -121,7 +121,7 @@ class TestCaptureStreamConfig(unittest.TestCase):
                 ),
                 patch("app.utils.screenshots._probe_stream_with_ffprobe") as mock_probe,
                 patch("app.utils.screenshots._ffmpeg_null_probe") as mock_null_probe,
-                patch("app.utils.screenshots.subprocess.run") as mock_run,
+                patch("app.utils.screenshots.run_capture_command") as mock_run,
                 patch("app.utils.screenshots.os.makedirs"),
                 patch("app.utils.screenshots.os.path.exists", return_value=True),
                 patch("app.utils.screenshots.os.listdir", return_value=["f.png"]),
@@ -156,7 +156,7 @@ class TestCaptureStreamConfig(unittest.TestCase):
                 ),
                 patch("app.utils.screenshots._probe_stream_with_ffprobe") as mock_probe,
                 patch("app.utils.screenshots._ffmpeg_null_probe") as mock_null_probe,
-                patch("app.utils.screenshots.subprocess.run") as mock_run,
+                patch("app.utils.screenshots.run_capture_command") as mock_run,
                 patch("app.utils.screenshots.os.makedirs"),
                 patch("app.utils.screenshots.os.path.exists", return_value=True),
                 patch("app.utils.screenshots.os.listdir", return_value=["f.png"]),

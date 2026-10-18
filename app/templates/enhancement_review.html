@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Glimpser · Enhancement review</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/magazine.css') }}"
+    />
+  </head>
+  <body>
+    <main>
+      <header>
+        <a href="/">Glimpser</a> · <a href="/magazine">Video magazine</a>
+        <h1>Enhancement review</h1>
+        <p>
+          Saved comparisons, newest captures first · originals retained. The
+          rotator uses an enhancement only while it matches the current capture;
+          a newer capture returns the view to its original until processing
+          finishes. Experimental glare reduction remains review-only.
+        </p>
+        <p>
+          AI upscaling can invent detail. Compare with the original before
+          interpreting people, text, or objects.
+        </p>
+      </header>
+      <section aria-labelledby="highlights-title">
+        <h2 id="highlights-title">Highlights · see what changed</h2>
+        <p>
+          Some changes are subtle; some trials are worse. These are varied
+          comparisons, not a ranking of proven improvements. Move the divider or
+          use the buttons to compare exactly the same area.
+        </p>
+        {% for item in items | selectattr('highlight', 'defined') %} {% set
+        height = 1100 * item.pixel_height / item.pixel_width %}
+        <article data-still-compare data-height="{{ height }}">
+          <h3>{{ item.camera }} · {{ item.label }}</h3>
+          <p>
+            <strong>{{ item.review_status }}</strong> · {{ item.captured_label
+            }}
+          </p>
+          <p>{{ item.highlight }}</p>
+          <p data-still-status aria-live="polite">
+            Original left · processed right. Drag the divider to compare.
+          </p>
+          <svg
+            data-comparison-image
+            height="480"
+            xmlns="http://www.w3.org/2000/svg"
+            width="100%"
+            viewBox="0 0 1100 {{ height }}"
+            role="img"
+            aria-label="{{ item.camera }} original and processed comparison"
+          >
+            <defs>
+              <clipPath
+                id="compare-{{ item.id }}"
+                clipPathUnits="userSpaceOnUse"
+              >
+                <rect
+                  data-reveal
+                  x="550"
+                  y="0"
+                  width="550"
+                  height="{{ height }}"
+                />
+              </clipPath>
+            </defs>
+            <image
+              href="/enhancements/{{ item.id }}/original"
+              width="1100"
+              height="{{ height }}"
+              preserveAspectRatio="xMidYMid meet"
+            />
+            <image
+              href="/enhancements/{{ item.id }}/enhanced"
+              width="1100"
+              height="{{ height }}"
+              preserveAspectRatio="xMidYMid meet"
+              clip-path="url(#compare-{{ item.id }})"
+            />
+            <line
+              data-divider
+              x1="550"
+              x2="550"
+              y1="0"
+              y2="{{ height }}"
+              stroke="#ffffff"
+              stroke-width="3"
+              vector-effect="non-scaling-stroke"
+            />
+          </svg>
+          <div data-still-controls hidden>
+            <label for="reveal-{{ item.id }}"
+              >Original / processed divider</label
+            >
+            <input
+              id="reveal-{{ item.id }}"
+              data-reveal-range
+              type="range"
+              min="0"
+              max="100"
+              value="50"
+            />
+            <button type="button" data-original>Original only</button>
+            <button type="button" data-processed>Processed only</button>
+            <button type="button" data-split>Split view</button>
+            <label
+              ><input type="checkbox" data-detail-zoom /> 2× center
+              detail</label
+            >
+          </div>
+          <p>
+            <a href="/enhancements/{{ item.id }}/original"
+              >Open original at full size</a
+            >
+            ·
+            <a href="/enhancements/{{ item.id }}/enhanced"
+              >Open processed at full size</a
+            >
+          </p>
+        </article>
+        {% else %}
+        <p>
+          No matching still comparisons are available yet. See the findings
+          below.
+        </p>
+        {% endfor %}
+      </section>
+      <details>
+        <summary>All findings and model notes</summary>
+        <section aria-labelledby="findings-title">
+          <h2 id="findings-title">Findings and model notes</h2>
+          <ul>
+            <li>
+              <strong>Multi-frame denoising:</strong> guarded fusion reduced
+              noise in a synthetic static low-light test. Motion tests preserved
+              newly arrived and departed subjects. Real low-light quality is
+              still under review.
+            </li>
+            <li>
+              <strong>Square pixels:</strong> horizon leveling now scales both
+              axes equally. Mismatched historical dimensions are rejected
+              instead of stretched. Older derivatives are not retroactively
+              corrected.
+            </li>
+            <li>
+              <strong>Fisheye inspection:</strong> inspection found lens curvature
+              in the original. Neural sharpening does not calibrate the lens or
+              straighten the doorway.
+            </li>
+            <li>
+              <strong>Motion:</strong> held frames mean interpolation was not
+              used. Smoother playback is not proof of accurate reconstructed
+              motion.
+            </li>
+            <li>
+              <strong>Low-light pilot:</strong> native neural restoration now
+              has an optional three-scale shadow recovery and bounded local
+              contrast stage. The saved Backyard comparison reveals more lawn
+              and fence detail, but lens reflections remain. Lighting correction
+              is not a new neural model or deglare reconstruction.
+            </li>
+            <li>
+              <strong>Jetty source quality:</strong> the October 14 dawn pilot
+              contains app controls, a loading spinner and a tilted horizon. Its
+              enhanced copy is rejected for display. Clean capture extraction
+              matters more here than additional sharpening.
+            </li>
+            <li>
+              <strong>Multi-stage processing:</strong> aligned brightness/color
+              fusion can feed neural restoration in the review queue. These
+              derivatives are not automatically substituted in rotation.
+            </li>
+            <li>
+              <strong>Neural glare pilot:</strong> Flare7K++ Uformer is
+              connected to the private Spark review pipeline. Overlapping tiles
+              preserve camera dimensions; a bounded blend protects clipped light
+              cores. It targets lens flare, not reflections through glass.
+              Technical completion does not establish improvement. No automatic
+              rotation. The first Backyard trial preserved geometry but left the
+              prominent lens-edge reflections; it was rejected for rotation
+              because no material improvement was visible. Upstream code and
+              weights have noncommercial restrictions and are installed
+              separately; store footage is outside this pilot.
+            </li>
+            <li>
+              <strong>New private review models:</strong> FastDVDnet denoises
+              adjacent video frames, Retinexformer restores low-light stills,
+              and SwinIR targets JPEG artifacts. All three have passed GPU
+              execution checks. Results require camera-specific visual review
+              and do not enter rotation automatically. The first Backyard
+              low-light trial amplified artifacts; the JPEG trial
+              softened fine detail. Both remain excluded from rotation. Temporal
+              denoising preserves real frames; it does not interpolate missing
+              moments. Glass-reflection removal still needs a separate model and
+              license review. Fog and weather remain meaningful scene content.
+            </li>
+            <li>
+              <strong>CIDNet low-light trial:</strong> HVI-CIDNet is installed
+              on the private Spark with pinned code and weights. The first clean
+              Backyard night capture was monochrome; the output washed out
+              contrast and lifted glare, so it was rejected. The recipe now
+              refuses near-monochrome inputs before inference. A clean
+              color-night trial also over-brightened the scene and amplified
+              texture artifacts; it was rejected too. This experiment is
+              excluded from automatic rotation.
+            </li>
+          </ul>
+        </section>
+      </details>
+      <h2>All comparisons</h2>
+      {% for item in items %}
+      <article data-enhancement-review>
+        <h2>{{ item.camera }} · {{ item.label }}</h2>
+        <p>
+          Captured
+          <time datetime="{{ item.captured }}">{{ item.captured_label }}</time>
+          · {{ "Still image" if item.kind == "still" else "Video" }} · {{
+          item.review_status }}{% if item.generated %} · {{ item.generated }}
+          generated frames{% endif %}
+        </p>
+        {% if item.evidence %}
+        <details>
+          <summary>Methods and frame evidence</summary>
+          <p>{{ item.evidence.stages }}</p>
+          {% if item.evidence.review_only %}
+          <p>Experimental result: excluded from automatic rotation.</p>
+          {% endif %} {% if item.evidence.glare_change_percent is not none %}
+          <p>
+            Mean pixel change: {{ item.evidence.glare_change_percent }}% of the
+            channel range. This measures alteration, not improvement. Compare
+            lamps, reflections, people and fine edges with the original.
+          </p>
+          {% endif %} {% if item.evidence.source_frames is not none %}
+          <p>
+            {{ item.evidence.source_frames }} source frame(s) recorded in job
+            metadata.
+          </p>
+          {% endif %} {% if item.evidence.capture_span_seconds is defined and
+          item.evidence.capture_span_seconds is not none %}
+          <p>
+            Captures span {{ item.evidence.capture_span_seconds }} seconds.
+            These are retained snapshots; capture times remain unchanged.
+          </p>
+          {% endif %} {% if item.evidence.night_fallback_reason %}
+          <p>
+            Single-frame fallback: {{ item.evidence.night_fallback_reason }}
+          </p>
+          {% endif %} {% if item.evidence.has_timeline %}
+          <p>
+            {{ item.evidence.interpolated }} generated frame(s); {{
+            item.evidence.held }} held frame(s). Held frames include
+            end-of-capture holds and rejected interpolation.
+          </p>
+          {% endif %}
+          <p>
+            Technical completion is not a measured quality improvement. Original
+            capture times and images are retained.
+          </p>
+        </details>
+        {% endif %} {% if item.kind == 'timelapse' %}
+        <button type="button" data-compare-play hidden>
+          Play both from the original’s position
+        </button>
+        <p data-compare-status role="status"></p>
+        {% endif %} {% for version, label in [('original',
+        item.evidence.input_label if item.evidence else 'Original capture'),
+        ('enhanced', item.label)] %}
+        <h3>{{ label }}</h3>
+        {% set size = item.original_dimensions if version == 'original' else
+        item.enhanced_dimensions %} {% if size %}
+        <p>{{ size }} pixels</p>
+        {% endif %} {% if item.kind == 'still' %} {% if version == 'enhanced'
+        and item.badge and item.pixel_width and item.pixel_height %}
+        <a href="/enhancements/{{ item.id }}/{{ version }}">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="100%"
+            viewBox="0 0 1100 {{ 1100 * item.pixel_height / item.pixel_width }}"
+            role="img"
+            aria-label="{{ item.camera }} · {{ item.badge }}"
+          >
+            <image
+              href="/enhancements/{{ item.id }}/{{ version }}"
+              width="1100"
+              height="{{ 1100 * item.pixel_height / item.pixel_width }}"
+              preserveAspectRatio="xMidYMid meet"
+            />
+            <rect
+              x="12"
+              y="12"
+              width="410"
+              height="34"
+              rx="7"
+              fill="#08121c"
+              fill-opacity="0.88"
+            />
+            <text
+              x="24"
+              y="35"
+              fill="#d4eee5"
+              font-size="18"
+              font-family="system-ui, sans-serif"
+            >
+              {{ item.badge }}
+            </text>
+          </svg>
+        </a>
+        {% else %}
+        <a href="/enhancements/{{ item.id }}/{{ version }}"
+          ><img
+            loading="lazy"
+            width="1100"
+            style="max-width: 100%; height: auto"
+            src="/enhancements/{{ item.id }}/{{ version }}"
+            alt="{{ item.camera }} · {{ label }}"
+        /></a>
+        {% endif %} {% else %}
+        <video
+          controls
+          playsinline
+          preload="none"
+          aria-label="{{ item.camera }} · {{ label }}"
+          src="/enhancements/{{ item.id }}/{{ version }}"
+        ></video>
+        {% endif %} {% endfor %}
+      </article>
+      {% else %}
+      <p>No completed review copies available.</p>
+      {% endfor %}
+    </main>
+    <script
+      type="module"
+      src="{{ url_for('static', filename='js/enhancement_review.js') }}?v=20261015-highlights"
+    ></script>
+  </body>
+</html>

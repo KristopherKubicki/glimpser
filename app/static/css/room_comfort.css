@@ -1,0 +1,93 @@
+/* Keep the outgoing scene beneath the incoming fade. Both use real colors;
+   only light output changes, never hue or inversion. */
+body.landing-screen .landing-stage-shell {
+  --room-brightness: 0.38;
+  --room-highlight-cap: 0.38;
+  --room-crossfade: 1800ms;
+}
+body.landing-screen .landing-stage-shell.room-bright {
+  --room-brightness: 1;
+  --room-highlight-cap: 0.78;
+}
+body.landing-screen .landing-stage-shell.room-dim {
+  --room-brightness: 0.78;
+  --room-highlight-cap: 0.6;
+  --room-crossfade: 2600ms;
+}
+/* Apply the night ceiling to every video frame, even after a dark poster. */
+body.landing-screen .landing-stage-shell.room-dark {
+  --room-brightness: 0.38;
+  --room-highlight-cap: 0.38;
+  --room-crossfade: 3200ms;
+}
+/* An entrance alert should reach its camera promptly even in a dark room. */
+body.landing-screen .landing-stage-shell.has-priority-event {
+  --room-crossfade: 650ms;
+}
+body.landing-screen
+  .landing-stage-shell
+  :is(.landing-scene, .rotation-overview) {
+  transform: none;
+  filter: brightness(var(--room-brightness));
+  transition:
+    opacity var(--room-crossfade) ease-in-out,
+    filter 5s ease-in-out;
+}
+body.landing-screen .landing-stage-shell .landing-scene.scene-bright {
+  filter: brightness(var(--room-highlight-cap));
+}
+/* Hidden media must receive its brightness cap before its first painted frame. */
+body.landing-screen
+  .landing-stage-shell
+  .landing-scene:not(.is-visible, .is-exiting) {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.landing-screen
+    .landing-stage-shell
+    :is(.landing-scene, .rotation-overview) {
+    transform: none;
+    transition:
+      opacity 600ms linear,
+      filter 5s linear;
+  }
+}
+
+/* Overviews share room light output; never introduce a full-brightness panel. */
+body.landing-screen .landing-stage-shell .rotation-overview {
+  animation: overview-arrive var(--room-crossfade) ease-in-out;
+}
+
+@keyframes overview-arrive {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.landing-screen .landing-stage-shell .rotation-overview {
+    animation: none;
+  }
+}
+
+/* A bright panel must not bypass the per-image cap used by single views.
+   The parent supplies room dimming; this only reduces bright image highlights. */
+body.landing-screen .rotation-overview-tile.scene-bright :is(img, video) {
+  filter: brightness(0.7);
+}
+
+/* Clamp newly bright content immediately; easing the clamp would expose the
+   new white pixels at the previous image's brightness for several seconds.
+   Releasing the cap still uses the ordinary slow filter transition. */
+body.landing-screen .landing-stage-shell .landing-scene.scene-clamping {
+  transition-property: opacity;
+}
+
+/* The exit must override the room-aware entrance animation as well. */
+body.landing-screen .landing-stage-shell .rotation-overview.is-leaving {
+  animation: none;
+}

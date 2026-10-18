@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Glimpser · In Review</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/magazine.css') }}"
+    />
+  </head>
+  <body>
+    <main>
+      <header>
+        <a href="/">Glimpser</a>
+        <a href="/feed-tv">Local TV highlights</a>
+        <a href="/enhancements">Enhancement review</a>
+        <p class="eyebrow">THE VIDEO MAGAZINE</p>
+        <h1>In Review</h1>
+        <p>Places, moments, and changes worth a closer look.</p>
+        <p>
+          Weekly editions Saturday mornings · Monthly, quarterly, and yearly
+          retrospectives.
+        </p>
+      </header>
+      {% for edition in editions %}
+      <article>
+        <h2>{{ edition.id }}</h2>
+        <p>
+          {{ edition.minutes }} minutes · {{ edition.chapters }} selected
+          sequences
+        </p>
+        <video
+          controls
+          preload="none"
+          playsinline
+          aria-label="{{ edition.id }} video edition"
+        >
+          <source src="/magazine/{{ edition.id }}/film.mp4" type="video/mp4" />
+        </video>
+        <nav aria-label="{{ edition.id }} resources">
+          <a href="/magazine/{{ edition.id }}/film.mp4" download
+            >Download MP4</a
+          >
+          <a href="/magazine/{{ edition.id }}/report.html">Read observations</a>
+          <a href="/magazine/{{ edition.id }}/manifest.json">Source details</a>
+        </nav>
+      </article>
+      {% else %}
+      <article>
+        <h2>The first edition is in preparation</h2>
+        <p>
+          Selected footage is being preserved and reviewed. Completed editions
+          will appear here.
+        </p>
+      </article>
+      {% endfor %}
+    </main>
+  </body>
+</html>

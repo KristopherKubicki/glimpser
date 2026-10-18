@@ -18,6 +18,19 @@ export function computeBorderColor(ageMinutes, isError) {
   return `rgba(${base[0]}, ${base[1]}, ${base[2]}, ${alpha})`;
 }
 
+function staleAfterMinutes(template) {
+  const scheduled = Math.max(60, 3 * (Number(template.frequency) || 30));
+  const groups = new Set(
+    String(template.groups || "")
+      .split(",")
+      .map((group) => group.trim().toLowerCase()),
+  );
+  // Beach Eufy arrives in daylight sweeps; the bridge accepts up to 16 hours.
+  return groups.has("beachhouse") && groups.has("eufy")
+    ? Math.max(scheduled, 16 * 60)
+    : scheduled;
+}
+
 export function createTemplateCard(name, template, index, mobile) {
   const div = document.createElement("div");
   div.className = "templateDiv viewer-card";
@@ -39,7 +52,7 @@ export function createTemplateCard(name, template, index, mobile) {
   const minutes = captured
     ? (Date.now() - captured.getTime()) / 60000
     : Infinity;
-  const stale = minutes > Math.max(60, 3 * (Number(template.frequency) || 30));
+  const stale = minutes > staleAfterMinutes(template);
   if (template.capture_failed || stale) media.classList.add("template-error");
   else media.classList.add("recent-screenshot");
 
@@ -76,10 +89,10 @@ export function createTemplateCard(name, template, index, mobile) {
   state.className = "camera-freshness";
   const status = !captured
     ? "No capture"
-    : stale
-      ? "STALE snapshot"
-      : template.capture_failed
-        ? "Capture failed · saved snapshot"
+    : template.capture_failed
+      ? "Capture failed · saved snapshot"
+      : stale
+        ? "STALE snapshot"
         : "Snapshot";
   const age = document.createElement("span");
   age.dataset.humanTime = template.last_screenshot_time || "";
@@ -115,12 +128,22 @@ export function createTemplateCard(name, template, index, mobile) {
   return div;
 }
 
-let captionsVisible = localStorage.getItem("showCaptions") !== "false";
+let captionsVisible = true;
+try {
+  captionsVisible = window.localStorage.getItem("showCaptions") !== "false";
+} catch (_) {
+  // This module is also imported by the live player. Optional preferences
+  // must not prevent that entire module graph from loading.
+}
 
 export function setCaptionsVisibility(value) {
   const slider = document.getElementById("grid-width-slider");
   captionsVisible = value;
-  localStorage.setItem("showCaptions", value.toString());
+  try {
+    window.localStorage.setItem("showCaptions", value.toString());
+  } catch (_) {
+    // The current page can still apply the in-memory caption preference.
+  }
   applyCaptionVisibility(parseFloat(slider?.value || "0"));
   updateTableLayout(parseFloat(slider?.value || "0"));
 }

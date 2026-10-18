@@ -313,7 +313,7 @@ sets a `--footer-space` CSS variable so mobile views always leave enough room.
 
 **Solution:**
 
-- Networks with many SSDP devices can delay this step. Wait a little longer or restrict scanning using the network dropdown (e.g., `192.168.1.0/24`).
+- Networks with many SSDP devices can delay this step. Wait a little longer or restrict scanning using the network dropdown (using your local subnet in CIDR notation).
 - Since v0.9.1 SSDP scanning stops after five seconds so discovery continues even on busy networks.
 - Ensure UDP multicast traffic is allowed; blocked multicast causes timeouts.
 - Check `logs/glimpser.log` for `SSDP probe error` messages if the scan never finishes.

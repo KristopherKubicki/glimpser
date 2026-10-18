@@ -58,7 +58,7 @@ body.weather-sheet .weather-section-header {
   display: block;
   position: static;
   width: auto;
-  min-height: 120px;
+  min-height: 0;
   box-sizing: border-box;
   padding: 0 0 14px;
   background: transparent;
