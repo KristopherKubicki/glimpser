@@ -6224,10 +6224,10 @@ def capture_screenshot_phantom(
 def cleanup_old_tempdirs(prefix="glimpser_", max_age_hours=12):
     """
     Best-effort removal of leftover ephemeral directories older than `max_age_hours`.
-    This helps if your program crashed and left behind /tmp/glimpser_XYZ directories.
+    Honor the same temporary root used when creating capture directories.
     """
     now = time.time()
-    tmp_root = "/tmp"
+    tmp_root = tempfile.gettempdir()
     for entry in os.scandir(tmp_root):
         if entry.is_dir() and entry.name.startswith(prefix):
             dir_path = os.path.join(tmp_root, entry.name)
