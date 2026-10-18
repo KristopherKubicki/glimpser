@@ -7,16 +7,18 @@ import pytest
 from app.utils import screenshots as ss
 
 
-@pytest.mark.parametrize(
-    "path", ["MacMiniDesktop", "Spark8ceaDesktop", "SparkBB49Desktop"]
-)
+@pytest.mark.parametrize("path", ["DesktopOne", "DesktopTwo", "DesktopThree"])
 def test_desktop_size_changes_are_accepted(path, monkeypatch):
     monkeypatch.setattr(
         ss.capture_policy,
         "CAPTURE_POLICY",
-        {"variable_size_images": [{"host": "192.168.2.137", "path": f"/{path}.png"}]},
+        {
+            "variable_size_images": [
+                {"host": "desktop.example.test", "path": f"/{path}.png"}
+            ]
+        },
     )
-    url = f"http://192.168.2.137:9077/{path}.png"
+    url = f"http://desktop.example.test:9077/{path}.png"
     with (
         patch.object(ss, "content_length_cache", {url: 1000}),
         patch.object(ss, "content_length_cache_time", {}),
@@ -31,9 +33,9 @@ def test_desktop_size_changes_are_accepted(path, monkeypatch):
 @pytest.mark.parametrize(
     "url",
     [
-        "http://192.168.2.137:9077/other.png",
-        "http://example.com:9077/Spark8ceaDesktop.png",
-        "http://192.168.2.137:80/Spark8ceaDesktop.png",
+        "http://desktop.example.test:9077/other.png",
+        "http://example.com:9077/DesktopTwo.png",
+        "http://desktop.example.test:80/DesktopTwo.png",
     ],
 )
 def test_other_sources_keep_size_guard(url):

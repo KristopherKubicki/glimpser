@@ -1,8 +1,10 @@
+import { presentationValue } from "./presentation_config.js";
+import { fitCameraMedia } from "./camera_fit.js?v=20261018-bounded";
 import { connectGoogleLive } from "./google_live.js?v=20261017-media-lifecycle";
 // Include verified door streams even when their source frame rate is low.
 export const LIVE_PILOT_CAMERAS = new Set([
   "FrontDoor",
-  "ArgyleEntryFisheye",
+  presentationValue("StoreOneEntryFisheye"),
   "Driveway",
   "Garage",
   "Walkway",
@@ -12,36 +14,36 @@ export const GOOGLE_LIVE_CAMERAS = new Set([
   "Front_door_doorbell",
   "Showroom_Entrance",
   "Beach_Google_Front_Door",
-  "Halsted_Google_Showroom",
+  presentationValue("StoreTwo_Google_Showroom"),
 ]);
 for (const camera of GOOGLE_LIVE_CAMERAS) LIVE_PILOT_CAMERAS.add(camera);
 // These sources are RTSP in the current office catalog. Keep the list explicit
 // so a web page or snapshot with a similar group name is never treated as live.
 export const STORE_LIVE_CAMERAS = new Set([
-  "ArgyleShowroomWide",
-  "ArgyleDisplayCase",
-  "Argyle100",
-  "Argyle200",
-  "Argyle300",
-  "Argyle400",
-  "Argyle500",
-  "Argyle1000",
-  "Argyle1500",
-  "Argyle1600",
-  "Halsted",
-  "Halsted019",
-  "Halsted020",
-  "Halsted021",
-  "Halsted022",
-  "Halsted023",
-  "Halsted024",
-  "Halsted034",
-  "Halsted035",
-  "Halsted036",
-  "Halsted037",
-  "Halsted038",
-  "Halsted039",
-  "Halsted040",
+  presentationValue("StoreOneShowroomWide"),
+  presentationValue("StoreOneDisplayCase"),
+  presentationValue("StoreOne100"),
+  presentationValue("StoreOne200"),
+  presentationValue("StoreOne300"),
+  presentationValue("StoreOne400"),
+  presentationValue("StoreOne500"),
+  presentationValue("StoreOne1000"),
+  presentationValue("StoreOne1500"),
+  presentationValue("StoreOne1600"),
+  presentationValue("StoreTwo"),
+  presentationValue("StoreTwo019"),
+  presentationValue("StoreTwo020"),
+  presentationValue("StoreTwo021"),
+  presentationValue("StoreTwo022"),
+  presentationValue("StoreTwo023"),
+  presentationValue("StoreTwo024"),
+  presentationValue("StoreTwo034"),
+  presentationValue("StoreTwo035"),
+  presentationValue("StoreTwo036"),
+  presentationValue("StoreTwo037"),
+  presentationValue("StoreTwo038"),
+  presentationValue("StoreTwo039"),
+  presentationValue("StoreTwo040"),
 ]);
 export const INTERIOR_LIVE_CAMERAS = new Set(["Safe", "PurpleClonerWide"]);
 for (const camera of [...STORE_LIVE_CAMERAS, ...INTERIOR_LIVE_CAMERAS])
@@ -71,39 +73,8 @@ export function liveStreamLimit(device = globalThis.navigator) {
     : 2;
 }
 
-const CAMERA_LABELS = {
-  FrontDoor: "Knox · Front door",
-  Driveway: "Knox · Driveway",
-  Garage: "Knox · Garage",
-  Walkway: "Knox · Walkway",
-  Street: "Knox · Street",
-  ArgyleEntryFisheye: "Argyle · Entrance",
-  Front_door_doorbell: "Argyle · Nest doorbell",
-  Showroom_Entrance: "Argyle · Nest entrance",
-  Beach_Google_Front_Door: "Beach · Nest front door",
-  Halsted_Google_Showroom: "Halsted · Nest showroom",
-  Backyard: "Knox · Backyard",
-  Garden: "Knox · Garden",
-  BeachDriveway: "Beach · Driveway",
-  BeachPathway: "Beach · Pathway",
-  BeachSouthJetty: "Beach · South Jetty view (camera on north jetty)",
-  BeachNorthJetty:
-    "Beach · North Jetty view (camera on south jetty; maintenance)",
-  BeachShore: "Beach · Shore",
-  BeachMapleTree: "Beach · Maple tree",
-  BeachFrontYard: "Beach · Front yard",
-  ArgyleShowroomWide: "Argyle · Showroom",
-  ArgyleDisplayCase: "Argyle · Display case",
-  Halsted: "Halsted · Wide",
-  Safe: "Knox · Safe",
-  PurpleClonerWide: "Garden · Cloner",
-};
-
 export function liveCameraLabel(camera) {
-  if (CAMERA_LABELS[camera]) return CAMERA_LABELS[camera];
-  const store = /^(Argyle|Halsted)(\d{3,4})$/.exec(camera);
-  if (store) return `${store[1]} · Camera ${Number(store[2])}`;
-  return camera.replaceAll("_", " ");
+  return cameraSettings(camera)?.label || camera.replaceAll("_", " ");
 }
 
 function cameraSettings(camera) {
@@ -267,6 +238,12 @@ export function mountKioskLive(
   };
   const watchdog = window.setInterval(() => {
     if (disposed || failed) return;
+    if (revealed)
+      fitCameraMedia(
+        video,
+        host,
+        !["youtube", "tv"].includes(scene.dataset.heroMediaKind),
+      );
     const progress = playbackProgress(video);
     // Decoder restarts and media timeline discontinuities can reset counters.
     // Rebase without refreshing the stall deadline: only new frames prove life.

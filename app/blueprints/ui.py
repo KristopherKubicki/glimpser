@@ -3110,7 +3110,7 @@ def create_blueprint() -> Blueprint:
 
         profile = (request.args.get("profile") or "").strip() or "default"
         list_error = ""
-        # Default new imports into the house profile group (argyle/beach/halsted)
+        # Default new imports into the configured profile group
         # when possible, so they appear in the expected video wall immediately.
         default_group = validate_group_name(profile) or "google_home"
 

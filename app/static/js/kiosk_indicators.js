@@ -1,3 +1,9 @@
+function configuredSite(value) {
+  return typeof value === "string" && value.trim() && value.length <= 240
+    ? value.trim()
+    : "";
+}
+
 const COVERAGE_REASONS = {
   read_failed: "hub read failed",
   stale_report: "sensor report is stale",
@@ -235,9 +241,7 @@ export function perimeterRows(data, now) {
         ? "Incomplete coverage — unverified sensors are listed below"
         : "Configured contacts report closed; lock states are not included",
     });
-  const site = ["Knox", "Argyle", "Halsted", "Beach"].includes(data.site)
-    ? data.site
-    : "Site unverified";
+  const site = configuredSite(data.site) || "Site unverified";
   rows.forEach((row) => {
     row.title = `${site} · ${row.title}`;
   });
@@ -314,9 +318,10 @@ export function openDoorNote(data, now = Date.now() / 1000) {
   )
     return "";
   const perimeter = data.perimeter;
+  const site = configuredSite(perimeter?.site);
   const doors = [];
   if (
-    perimeter?.site === "Knox" &&
+    site &&
     Number.isFinite(perimeter.checked_at) &&
     now - perimeter.checked_at >= -5 &&
     now - perimeter.checked_at <= 30 &&
@@ -352,7 +357,7 @@ export function openDoorNote(data, now = Date.now() / 1000) {
   )
     doors.push(`Garage · open ${Math.floor((now - garage.since) / 60)}m`);
   if (!doors.length) return "";
-  return `Knox · ${doors.slice(0, 2).join("; ")}${doors.length > 2 ? `; +${doors.length - 2} more — see Status` : ""}`;
+  return `${site || "Site unverified"} · ${doors.slice(0, 2).join("; ")}${doors.length > 2 ? `; +${doors.length - 2} more — see Status` : ""}`;
 }
 
 export function mountKioskIndicators(profile) {

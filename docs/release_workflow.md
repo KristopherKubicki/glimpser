@@ -77,7 +77,7 @@ or push the tag manually to publish the release and update the page.
 
 ## Migrating optional event integrations
 
-Native Knox motion events require `GLIMPSER_KNOX_CAMERAS`, a JSON object mapping
+Native camera motion events require `GLIMPSER_KNOX_CAMERAS`, a JSON object mapping
 existing camera template names to exact hostnames or IPv4 addresses. For example,
 `{"Entrance":"camera.example"}` enables only that template and host. Credentials
 remain in the template; do not put credentials, URL paths, or ports in this map.
@@ -550,7 +550,7 @@ exclusions; favorites never override these boundaries.
 Installation settings can be supplied with the existing `GLIMPSER_*` configuration
 variables or explicit JSON files under `~/.config/glimpser/`: `capture_policy.json`,
 `household_config.json`, `landing_config.json`, `viewer_config.json`, and
-`status_config.json`, and `media_config.json`. Environment paths take precedence. Missing files retain
+`status_config.json`, `media_config.json`, and `location_config.json`. Environment paths take precedence. Missing files retain
 generic defaults. Keep these files out of Git and package artifacts.
 
 The status inventory is optional. Its `nodes` entries contain ID, label, group,
@@ -576,3 +576,16 @@ Optional `ssh_identity`, `data_root`, `tuner_host`, `collect_cameras`, and
 Missing review targets disable review calls; they never select another account.
 Status configuration also accepts `native_event_cameras` (name-to-host mapping)
 and `privacy_url`; existing explicit environment overrides retain precedence.
+
+The camera census loads optional `sites` from `location_config.json` (override
+with `GLIMPSER_LOCATION_CONFIG`). Each site defines bounded `groups` and
+`url_prefixes` selectors, a label, evidence, optional paired coordinates,
+accuracy, and a private flag that defaults to true. Missing or invalid settings
+disable site seeding. Keep operator addresses and coordinates out of source.
+
+Kiosk render watchdogs use `GLIMPSER_RENDER_ORIGIN` (default
+`http://localhost`) and optionally `GLIMPSER_RENDER_WINDOW_CLASS` (default:
+origin hostname). Set these in the kiosk service environment before updating a
+remote kiosk installation. The VM source rollout does not update kiosk hosts.
+Dashboard presentation labels are supplied by the private viewer configuration
+`presentation` mapping, only on authorized dashboard pages.

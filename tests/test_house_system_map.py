@@ -131,6 +131,7 @@ def test_template_escapes_and_distinguishes_unknown(inventory, monkeypatch):
     monkeypatch.setattr(inventory.socket, "create_connection", MagicMock())
     data = inventory.snapshot()
     data["nodes"][0]["name"] = "<script>bad</script>"
+    data["nodes"][0]["link"] = "https://service.example.test/dashboard"
     env = Environment(
         loader=ChoiceLoader(
             [
@@ -143,6 +144,8 @@ def test_template_escapes_and_distinguishes_unknown(inventory, monkeypatch):
     result = env.get_template("house_systems.html").render(
         system_map=data, groups=inventory.GROUPS
     )
+    assert 'href="https://service.example.test/dashboard"' in result
+    assert result.count('href="http') == 1
     assert "<script>bad</script>" not in result
     assert "&lt;script&gt;" in result
     assert "Not probed · isolated" in result

@@ -40,6 +40,16 @@ def parse_template(path: Path) -> TemplateParser:
 
 
 class TestHtmlTemplates(unittest.TestCase):
+    def test_private_presentation_settings_are_dashboard_only(self):
+        for name in ("index.html", "visual_dashboard.html"):
+            source = (Path("app/templates") / name).read_text()
+            self.assertIn('id="presentation-settings"', source)
+            self.assertIn("presentation_settings|default({})|tojson", source)
+        for name in ("base.html", "login.html"):
+            self.assertNotIn(
+                "presentation-settings", (Path("app/templates") / name).read_text()
+            )
+
     def test_navigation_configuration_is_escaped(self):
         environment = Environment(
             loader=FileSystemLoader("app/templates"), autoescape=True

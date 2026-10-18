@@ -216,3 +216,36 @@ def test_normal_page_keeps_settle_wait_and_late_error_check(
     assert sleeps == [5, 6]
     browser.quit.assert_called_once()
     browser.save_screenshot.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "browser_error_page",
+        "browser_soft_error_page",
+        "browser_http_error_404",
+        "browser_http_error_503",
+    ],
+)
+def test_failed_navigation_is_not_saved_as_camera_frame(monkeypatch, reason):
+    driver = MagicMock()
+    driver.execute_script.return_value = reason
+    backoff = MagicMock()
+    monkeypatch.setattr(ss, "record_preflight_backoff", backoff)
+    assert ss._reject_browser_error_page(driver, "https://example.test", "Example")
+    assert backoff.call_args.args[1] == reason
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        None,
+        {},
+        "",
+        "browser_http_error_200",
+        "browser_http_error_600",
+        "browser_http_error_404_extra",
+    ],
+)
+def test_unknown_browser_response_does_not_trigger_error_rejection(reason):
+    assert not ss._is_browser_rejection_reason(reason)

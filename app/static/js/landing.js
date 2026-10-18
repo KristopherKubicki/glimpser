@@ -1,3 +1,6 @@
+import { presentationValue } from "./presentation_config.js";
+import { mountRotationLocator } from "./rotation_locator.js?v=20261018-context3";
+import { fitCameraMedia } from "./camera_fit.js?v=20261018-bounded";
 import {
   chooseHighlight,
   createHighlight,
@@ -17,7 +20,7 @@ import {
   LIVE_INTERVAL_MS,
   LIVE_CANDIDATE_CAMERAS,
   STORE_LIVE_CAMERAS,
-} from "./kiosk_live.js?v=20261017-media-lifecycle";
+} from "./kiosk_live.js?v=20261018-bounded-fit";
 import {
   mountTimelapse,
   preloadTimelapse,
@@ -609,6 +612,13 @@ function syncImageFit(image) {
     ".landing-hero-media, .landing-pip-card, .landing-deck-card",
   );
   setMediaFitClass(container, image.naturalWidth, image.naturalHeight);
+  const kind = image.closest("[data-hero-media-kind]")?.dataset.heroMediaKind;
+  fitCameraMedia(
+    image,
+    container,
+    container?.matches(".landing-hero-media") &&
+      ["rtsp", "mjpeg"].includes(kind),
+  );
 }
 
 function bindImageFit(image) {
@@ -1021,6 +1031,34 @@ export function initChromeAutoHide(shell, hideAfterMs) {
   };
 }
 
+// Keep image loading and HTTP failures off the visible stage.
+export function prepareRotationImage(image, onReady, onUnavailable) {
+  let done = false;
+  const dispose = () => {
+    done = true;
+    window.clearTimeout(deadline);
+    window.clearTimeout(initial);
+    image.removeEventListener("load", loaded);
+    image.removeEventListener("error", failed);
+  };
+  const finish = (callback) => {
+    if (done) return;
+    dispose();
+    callback();
+  };
+  const loaded = () => {
+    if (image.complete && image.naturalWidth && image.naturalHeight)
+      finish(onReady);
+    else if (image.complete) finish(onUnavailable);
+  };
+  const failed = () => finish(onUnavailable);
+  const deadline = window.setTimeout(failed, 8000);
+  const initial = window.setTimeout(loaded, 0);
+  image.addEventListener("load", loaded);
+  image.addEventListener("error", failed);
+  return { dispose };
+}
+
 export function syncSceneImages(scene, active) {
   scene.querySelectorAll("img[data-refresh-src]").forEach((image) => {
     if (active) {
@@ -1158,7 +1196,14 @@ export function rotationCategory(scene) {
     scene.querySelector?.("[data-area-label]")?.dataset.areaLabel || "other"
   ).toLowerCase();
   const categories = {
-    house: ["knox", "argyle", "halsted", "beachhouse", "plants", "garden"],
+    house: [
+      presentationValue("home"),
+      presentationValue("storeone"),
+      presentationValue("storetwo"),
+      "beachhouse",
+      "plants",
+      "garden",
+    ],
     systems: ["systems", "network", "hubitat", "power", "graph"],
     weather: ["weather", "sky", "radar", "satellite", "regional satellite"],
     science: ["cosmic", "science"],
@@ -1181,7 +1226,7 @@ export function rotationCategory(scene) {
   );
 }
 
-const KNOX_EXTERIORS = new Set([
+const HOME_EXTERIORS = new Set([
   "FrontDoor",
   "Driveway",
   "Street",
@@ -1201,10 +1246,10 @@ const BEACH_LANDSCAPES = new Set([
   "Beach_Google_Front_Yard",
 ]);
 
-const ARGYLE_ENTRY_VIEWS = new Set([
-  "ArgyleEntryFisheye",
-  "Argyle100",
-  "Argyle200",
+const STORE_ONE_ENTRY_VIEWS = new Set([
+  presentationValue("StoreOneEntryFisheye"),
+  presentationValue("StoreOne100"),
+  presentationValue("StoreOne200"),
   "Showroom_Entrance",
   "Front_door_doorbell",
 ]);
@@ -1212,9 +1257,12 @@ const ARGYLE_ENTRY_VIEWS = new Set([
 function storeProperty(scene) {
   const name = scene?.dataset.heroName || "";
   if (STORE_LIVE_CAMERAS.has(name))
-    return name.startsWith("Argyle") ? "argyle" : "halsted";
-  if (ARGYLE_ENTRY_VIEWS.has(name)) return "argyle";
-  if (name.startsWith("Halsted_Google_")) return "halsted";
+    return name.startsWith(presentationValue("StoreOne"))
+      ? presentationValue("storeone")
+      : presentationValue("storetwo");
+  if (STORE_ONE_ENTRY_VIEWS.has(name)) return presentationValue("storeone");
+  if (name.startsWith(presentationValue("StoreTwo_Google_")))
+    return presentationValue("storetwo");
   return null;
 }
 
@@ -1275,9 +1323,9 @@ export function createRotationBalance(profile, storage) {
             distance: (index - cursor + scenes.length) % scenes.length,
           }))
           .filter((item) => !used.has(item.index) && !suppressed(item.scene));
-        if (ARGYLE_ENTRY_VIEWS.has(scenes[cursor]?.dataset.heroName)) {
+        if (STORE_ONE_ENTRY_VIEWS.has(scenes[cursor]?.dataset.heroName)) {
           const otherViews = candidates.filter(
-            (item) => !ARGYLE_ENTRY_VIEWS.has(item.scene.dataset.heroName),
+            (item) => !STORE_ONE_ENTRY_VIEWS.has(item.scene.dataset.heroName),
           );
           if (otherViews.length) candidates = otherViews;
         }
@@ -1326,14 +1374,14 @@ export function createRotationBalance(profile, storage) {
             : null;
         // Reserve a regular exterior visit without dropping the broad queue.
         // Use least-recently shown so Street cannot lose to the same entrance.
-        const lastKnox = Math.max(
+        const lastHome = Math.max(
           0,
-          ...[...KNOX_EXTERIORS].map((name) => simulated.get(name) || 0),
+          ...[...HOME_EXTERIORS].map((name) => simulated.get(name) || 0),
         );
-        const knoxCandidate =
-          profile === "office" && order - lastKnox >= 4
+        const homeCandidate =
+          profile === "office" && order - lastHome >= 4
             ? candidates.find((item) =>
-                KNOX_EXTERIORS.has(item.scene.dataset.heroName),
+                HOME_EXTERIORS.has(item.scene.dataset.heroName),
               )
             : null;
         // A shoreline/quarry visit after six other scenes keeps landscapes
@@ -1365,7 +1413,7 @@ export function createRotationBalance(profile, storage) {
         // when a site has not appeared for twelve actual camera observations.
         const storeCandidate =
           profile === "office"
-            ? ["argyle", "halsted"]
+            ? [presentationValue("storeone"), presentationValue("storetwo")]
                 .map((site) => ({
                   last: Math.max(
                     0,
@@ -1384,7 +1432,7 @@ export function createRotationBalance(profile, storage) {
             : null;
         const pick =
           storeCandidate ||
-          knoxCandidate ||
+          homeCandidate ||
           beachCandidate ||
           scenicCandidate ||
           broadcastCandidate ||
@@ -1553,12 +1601,15 @@ export function initLanding({
     }
     let livePilot = null;
     let pendingLive = null;
+    let pendingImage = null;
     let lastLiveAt = null;
     let timelapse = null;
     let lastTimelapseAt = null;
     let lastHistoryAttemptAt = null;
     let timelapseDue = false;
     const stopTimelapse = () => {
+      pendingImage?.handle?.dispose();
+      pendingImage = null;
       pendingLive?.handle?.dispose();
       pendingLive = null;
       livePilot?.dispose();
@@ -1612,6 +1663,18 @@ export function initLanding({
       // A blocked storage API does not stop the overview cycle.
     }
     let overviewCatalogs = [];
+    if (!document.querySelector("link[data-rotation-locator-style]")) {
+      const style = document.createElement("link");
+      style.rel = "stylesheet";
+      style.href = "/static/css/rotation_locator.css?v=20261018-context3";
+      style.dataset.rotationLocatorStyle = "";
+      document.head.append(style);
+    }
+    const locator = mountRotationLocator(
+      stageShell,
+      () => overviewCatalogs,
+      rotationProfile,
+    );
     const overviewsEnabled = ["living", "office"].includes(rotationProfile);
     let overviewController = null;
     let overviewRefreshTimer = null;
@@ -2069,6 +2132,51 @@ export function initLanding({
       holdMs = "300000",
     ) => {
       if (targetIndex < 0 || targetIndex >= scenes.length) return;
+      const candidate = scenes[targetIndex];
+      if (isSceneSuppressed(candidate)) return;
+      pendingImage?.handle?.dispose();
+      pendingImage = null;
+      const image = candidate.querySelector(".landing-hero-media img");
+      if (
+        image &&
+        (!image.complete || !image.naturalWidth || !image.naturalHeight)
+      ) {
+        clearRotationTimer();
+        const fromIndex = currentIndex;
+        const pending = { handle: null };
+        pendingImage = pending;
+        syncSceneImages(candidate, true);
+        pending.handle = prepareRotationImage(
+          image,
+          () => {
+            if (pendingImage !== pending) return;
+            pendingImage = null;
+            if (disposed || document.hidden || currentIndex !== fromIndex)
+              return;
+            if (isSceneSuppressed(candidate)) {
+              rotationTimer = window.setTimeout(
+                rotate,
+                sceneRotationMs(scenes[currentIndex]),
+              );
+              return;
+            }
+            manualNavigate(targetIndex, holdForReview, holdMs);
+          },
+          () => {
+            if (pendingImage !== pending) return;
+            pendingImage = null;
+            candidate.dataset.landingSuppressedUntil = String(
+              Date.now() + suppressionMs,
+            );
+            if (!disposed && !document.hidden)
+              rotationTimer = window.setTimeout(
+                rotate,
+                sceneRotationMs(scenes[currentIndex]),
+              );
+          },
+        );
+        return;
+      }
       if (manualHold?.overview) clearManualHold();
       if (priorityResumeIndex >= 0) finishPriority();
       previousIndex = currentIndex;
@@ -2422,6 +2530,9 @@ export function initLanding({
       syncSceneQueueSlots(scenes[currentIndex], scenes, queueIndices);
       showLandingScene(scenes, currentIndex, previousIndex);
       if (preparedLive) syncSceneVideo(scenes[currentIndex], false);
+      scenes[currentIndex]
+        .querySelectorAll(".landing-hero-media img")
+        .forEach(syncImageFit);
       rememberRecentScene(scenes[currentIndex]);
       if (
         !continuity.active &&
@@ -2580,6 +2691,67 @@ export function initLanding({
         });
         return;
       }
+      const image = candidate?.querySelector(".landing-hero-media img");
+      if (
+        nextIndex !== currentIndex &&
+        image &&
+        (!image.complete || !image.naturalWidth || !image.naturalHeight)
+      ) {
+        if (pendingImage) return;
+        clearRotationTimer();
+        const fromIndex = currentIndex;
+        const pending = { handle: null };
+        pendingImage = pending;
+        syncSceneImages(candidate, true);
+        pending.handle = prepareRotationImage(
+          image,
+          () => {
+            if (pendingImage !== pending) return;
+            pendingImage = null;
+            if (
+              disposed ||
+              document.hidden ||
+              currentIndex !== fromIndex ||
+              continuity.active ||
+              isManualHoldActive()
+            )
+              return;
+            if (isSceneSuppressed(candidate)) {
+              advanceRotation();
+              return;
+            }
+            previousIndex = currentIndex;
+            currentIndex = nextIndex;
+            render();
+          },
+          () => {
+            if (pendingImage !== pending) return;
+            pendingImage = null;
+            candidate.dataset.landingSuppressedUntil = String(
+              Date.now() + suppressionMs,
+            );
+            if (
+              disposed ||
+              document.hidden ||
+              currentIndex !== fromIndex ||
+              continuity.active ||
+              isManualHoldActive()
+            )
+              return;
+            if (
+              !scenes.some(
+                (scene, index) =>
+                  index !== currentIndex && !isSceneSuppressed(scene),
+              )
+            ) {
+              rotationTimer = window.setTimeout(rotate, suppressionMs);
+              return;
+            }
+            advanceRotation();
+          },
+        );
+        return;
+      }
       previousIndex = currentIndex;
       currentIndex = nextIndex;
       refreshQueue();
@@ -2588,6 +2760,7 @@ export function initLanding({
 
     const rotate = () => {
       if (
+        pendingImage ||
         pendingLive ||
         document.hidden ||
         scenes.length < 2 ||
@@ -3066,6 +3239,7 @@ export function initLanding({
       "pagehide",
       () => {
         disposed = true;
+        locator.dispose();
         cancelEventRequest();
         cancelTimelapsePreload();
         stopTimelapse();

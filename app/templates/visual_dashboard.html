@@ -1,5 +1,6 @@
 {% extends 'base.html' %} {% block body_class %}visual-dashboard-screen{%
 endblock %} {% block content %}
+<script id="presentation-settings" type="application/json">{{ presentation_settings|default({})|tojson }}</script>
 <link
   rel="stylesheet"
   href="{{ url_for('static', filename='css/visual_dashboard.css') }}?v=20261016-mobile"

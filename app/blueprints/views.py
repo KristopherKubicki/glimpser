@@ -38,6 +38,9 @@ LANDING_ASSET_FILES = (
     "templates/index.html",
     "static/js/landing_boot.js",
     "static/js/landing.js",
+    "static/js/camera_fit.js",
+    "static/js/rotation_locator.js",
+    "static/css/rotation_locator.css",
     "static/js/kiosk_heartbeat.js",
     "static/js/kiosk_hold.js",
     "static/js/kiosk_live.js",
@@ -616,7 +619,11 @@ def _landing_item(
     caption_at = str(details.get("last_caption_time") or "")
     if (
         profile["key"] in LANDING_PRIORITY_PROFILES
-        and group_name in {"argyle", "knox", "halsted", "beachhouse", "traffic"}
+        and group_name
+        in VIEWER_CONFIG.get(
+            "caption_freshness_groups",
+            ["home", "storeone", "storetwo", "beachhouse", "traffic"],
+        )
         and caption
     ):
         capture_time = _parse_landing_timestamp(details.get("last_screenshot_time"))
@@ -1018,7 +1025,7 @@ def _apply_scene_timing(
         rotation_multiplier = 1.6
         playback_multiplier = 0.7
 
-    # Keep priority groups like Knox visible for longer once they surface in
+    # Keep priority property groups visible for longer once they surface in
     # the rundown. This complements the distribution pass so those scenes are
     # both spaced through the loop and given enough dwell to actually read.
     group_rotation_multiplier = float(
@@ -1265,7 +1272,7 @@ def _distribute_group_scenes(
 ) -> list[dict[str, Any]]:
     """Spread repeated group scenes through the final rundown.
 
-    Knox was being selected correctly but stacked at the top because camera
+    The home group was being selected correctly but stacked at the top because camera
     minimums are applied before the broader fill order. This helper preserves
     the same selected scenes while distributing one repeated group across the
     rundown so it stays visible throughout the loop instead of front-loading.
@@ -1582,6 +1589,7 @@ def create_blueprint() -> Blueprint:
                 if door in template_details
                 and landing_profile["key"] in LANDING_PRIORITY_PROFILES
             },
+            presentation_settings=VIEWER_CONFIG.get("presentation", {}),
             kiosk_live_settings={
                 name: options
                 for name, options in VIEWER_CONFIG.get("kiosk_live", {}).items()
@@ -1786,6 +1794,7 @@ def create_blueprint() -> Blueprint:
                 routes.template_manager.TemplateManager().get_templates(),
                 dashboard_name,
             ),
+            presentation_settings=VIEWER_CONFIG.get("presentation", {}),
             dashboard_options=DASHBOARDS,
             group_name="all",
             dashboard_name=dashboard_name,

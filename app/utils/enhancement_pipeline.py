@@ -194,6 +194,7 @@ def display_candidate(camera, source, settings, root=ROOT):
             or (job.get("processing") or {}).get("review_only") is True
             or job.get("sha256") != row["source_hash"]
             or job.get("pool") != row["pool"]
+            or job.get("scope") != row["scope"]
             or job.get("profile") != row["profile"]
             or job.get("camera") != camera
             or job.get("kind") != "still"
@@ -203,9 +204,12 @@ def display_candidate(camera, source, settings, root=ROOT):
         if row.get("profile") == "neural-colorize":
             from scripts.media_enhancement.colorize_policy import eligible
 
-            if job.get("processing", {}).get(
-                "color_inferred"
-            ) is not True or not eligible(camera, row.get("captured_at")):
+            captured_at = job.get("captured_at")
+            if (
+                captured_at != row.get("captured_at")
+                or job.get("processing", {}).get("color_inferred") is not True
+                or not eligible(camera, captured_at)
+            ):
                 return None
         image = folder / "display.png"
         if image.is_symlink() or file_hash(image, 64 * 1024**2) != row.get(
