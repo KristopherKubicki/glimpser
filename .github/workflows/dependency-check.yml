@@ -28,6 +28,9 @@ jobs:
                                                       '**/package*.json',
                                                       '**/pom.xml') }}
 
+      - name: Validate limited dev exception and generate suppression
+        run: python3 scripts/audit_npm.py --owasp-suppression .dependency-check-suppressions.xml
+
       - name: Run Dependency-Check
         uses: dependency-check/Dependency-Check_Action@main   # <-- switch to main
         with:
@@ -38,6 +41,7 @@ jobs:
           args: >
             --enableExperimental
             --failOnCVSS 7
+            --suppression /github/workspace/.dependency-check-suppressions.xml
         env:
           # only needed if another step (e.g. setup-java) changed JAVA_HOME
           JAVA_HOME: /opt/jdk

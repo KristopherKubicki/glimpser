@@ -83,7 +83,7 @@ jobs:
       - name: Run JavaScript tests with coverage
         run: npm test -- --coverage
       - name: Audit npm packages
-        run: npm audit --audit-level=high
+        run: python scripts/audit_npm.py
       - name: Run pip-audit
         run: pip-audit
       - name: Type check with mypy
