@@ -29,6 +29,9 @@ from pathlib import Path
 
 import psutil
 
+from app.caption_policy import usable_caption
+from app.utils.image_processing import _caption_cache_prompt
+
 try:
     from setproctitle import setproctitle
 except Exception:  # pragma: no cover - optional dependency
@@ -55,7 +58,6 @@ from PIL import Image, UnidentifiedImageError
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import ObjectDeletedError
 
-from app.caption_policy import usable_caption
 from app.config import (
     AUTO_UPDATE_BRANCH,
     CLIP_MODEL_NAME,
@@ -86,10 +88,11 @@ from . import system_metrics as _system_metrics
 from .detect import calculate_difference_fast
 from .email_alerts import email_alert
 from .http_callbacks import send_http_callback
-from .image_processing import _caption_cache_prompt, chatgpt_compare
+from .image_processing import chatgpt_compare
 from .image_utils import add_motion_and_caption, find_closest_image
 from .llm import summarize
-from .network import is_system_online, network_state
+from .network import network_state
+from .network_probe_cache import cached_is_system_online as is_system_online
 from .screenshots import (
     CAPTURE_STALE_BROWSER_SLOT_BUSY,
     CAPTURE_STALE_PREVIOUS,
@@ -434,6 +437,8 @@ _scheduler_health_lock = threading.Lock()
 _scheduler_max_instance_skips_total = 0
 _scheduler_last_max_instance_at: str | None = None
 _scheduler_job_max_instance_skips: dict[str, int] = {}
+_resource_deferral_lock = threading.Lock()
+_resource_deferrals: dict[str, dict[str, float | int]] = {}
 
 
 def mark_shutdown() -> None:
@@ -548,6 +553,11 @@ def get_scheduler_health(top_n: int = 10) -> dict:
     with scheduler._running_jobs_lock:  # noqa: SLF001 - internal telemetry only
         running_jobs = scheduler._running_jobs  # noqa: SLF001 - internal telemetry only
 
+    with _resource_deferral_lock:
+        resource_deferrals_total = {
+            key: int(value["total"]) for key, value in _resource_deferrals.items()
+        }
+
     return {
         "browser_queue": browser_queue.health(),
         "max_instance_skips_total": total,
@@ -556,6 +566,7 @@ def get_scheduler_health(top_n: int = 10) -> dict:
         "top_skipped_jobs": [
             {"job_id": job_id, "count": count} for job_id, count in top_jobs
         ],
+        "resource_deferrals_total": resource_deferrals_total,
     }
 
 
@@ -567,6 +578,35 @@ def _rate_limited_job_log(level: str, key: str, message: str) -> None:
         return
     _circuit_log_last[key] = now
     getattr(logging, level, logging.info)(message)
+
+
+def _log_resource_deferral(resource: str, level: float, func) -> None:
+    """Count every admission deferral and summarize repeated pressure in logs."""
+
+    job = getattr(func, "__name__", "job")
+    key = f"{resource.lower()}:{job}"
+    now = time.monotonic()
+    report = None
+    with _resource_deferral_lock:
+        stats = _resource_deferrals.setdefault(
+            key, {"total": 0, "pending": 0, "peak": 0.0, "last_log": -float("inf")}
+        )
+        stats["total"] += 1
+        stats["pending"] += 1
+        stats["peak"] = max(float(stats["peak"]), level)
+        if now - float(stats["last_log"]) >= LOG_RATE_LIMIT_SEC:
+            report = (int(stats["pending"]), float(stats["peak"]))
+            stats["pending"] = 0
+            stats["peak"] = 0.0
+            stats["last_log"] = now
+    if report:
+        logging.info(
+            "High %s (up to %.1f%%); deferred %d %s jobs since previous report",
+            resource,
+            report[1],
+            report[0],
+            job,
+        )
 
 
 def _circuit_remaining_seconds(key: str) -> float:
@@ -608,6 +648,7 @@ def register_job_failure(key: str) -> None:
 
 _WORKER_CAPTURE_FAILED = 2
 _WORKER_CAPTURE_DEFERRED = 3
+_WORKER_CAPTURE_BROWSER_BUSY = 4
 
 
 def _run_target(func, args):
@@ -631,16 +672,15 @@ def _run_target(func, args):
         # successful frame and erase its own backoff history.
         if job_failures.get(key, 0) > failures_before:
             exit_code = _WORKER_CAPTURE_FAILED
-        elif isinstance(result, str) and result in {
-            CAPTURE_STALE_BROWSER_SLOT_BUSY,
-            CAPTURE_STALE_PREVIOUS,
-        }:
+        elif isinstance(result, str) and result == CAPTURE_STALE_BROWSER_SLOT_BUSY:
+            exit_code = _WORKER_CAPTURE_BROWSER_BUSY
+        elif isinstance(result, str) and result == CAPTURE_STALE_PREVIOUS:
             exit_code = _WORKER_CAPTURE_DEFERRED
         else:
             exit_code = 0
     except SystemExit as exc:
         exit_code = exc.code if isinstance(exc.code, int) else int(exc.code is not None)
-        if exit_code == _WORKER_CAPTURE_DEFERRED:
+        if exit_code in {_WORKER_CAPTURE_DEFERRED, _WORKER_CAPTURE_BROWSER_BUSY}:
             exit_code = 1  # An explicit SystemExit is not our capture deferral.
     except Exception:
         logging.exception("Unhandled exception in %s", getattr(func, "__name__", "job"))
@@ -783,21 +823,13 @@ def run_with_timeout(func, args=(), timeout=300):
     # A short fixed window measures current pressure, independent of job length.
     cpu_level = psutil.cpu_percent(interval=0.1)
     if cpu_level > WATCHDOG_CPU_THRESHOLD:
-        logging.info(
-            "High CPU (%.1f%%); deferring job %s",
-            cpu_level,
-            getattr(func, "__name__", "job"),
-        )
+        _log_resource_deferral("CPU", cpu_level, func)
         _defer_camera_for_resources(func, args, timeout)
         return
 
     mem_level = psutil.virtual_memory().percent
     if mem_level > WATCHDOG_MEMORY_THRESHOLD:
-        logging.info(
-            "High memory (%.1f%%); deferring job %s",
-            mem_level,
-            getattr(func, "__name__", "job"),
-        )
+        _log_resource_deferral("memory", mem_level, func)
         _defer_camera_for_resources(func, args, timeout)
         return
 
@@ -887,7 +919,7 @@ def run_with_timeout(func, args=(), timeout=300):
                         cas_error(url)
             except Exception:
                 pass
-    elif process.exitcode == _WORKER_CAPTURE_DEFERRED:
+    elif process.exitcode in {_WORKER_CAPTURE_DEFERRED, _WORKER_CAPTURE_BROWSER_BUSY}:
         deferred = True
     elif process.exitcode and process.exitcode != 0:
         success = False
@@ -900,6 +932,11 @@ def run_with_timeout(func, args=(), timeout=300):
             job_circuit_open_until.pop(key, None)
             job_circuit_next_probe.pop(key, None)
 
+    if deferred and process.exitcode == _WORKER_CAPTURE_BROWSER_BUSY:
+        # Native captures can need a browser without entering its durable queue.
+        # Retry local slot contention promptly: no camera request has started.
+        # Actual stale frames still wait for the regular capture interval.
+        _defer_camera_for_resources(func, args, timeout)
     if not success:
         register_job_failure(key)
     return None if deferred else success
@@ -2084,8 +2121,21 @@ def retry_browser_camera(name: str, token: str) -> str | None:
         browser_queue.finish(name, token, retry=retry, attempted=attempted)
 
 
+_browser_queue_tick_lock = threading.Lock()
+
+
 def process_browser_queue() -> None:
-    """Run one leased capture; expired leases recover skipped or killed workers."""
+    """Run one leased capture while other scheduler ticks return promptly."""
+    if not _browser_queue_tick_lock.acquire(blocking=False):
+        return
+    try:
+        _process_browser_queue_turn()
+    finally:
+        _browser_queue_tick_lock.release()
+
+
+def _process_browser_queue_turn() -> None:
+    """Process the next durable browser turn under the coordinator lock."""
     if _shutdown_event.is_set():
         return
     turn = browser_queue.claim()
@@ -2148,7 +2198,7 @@ def schedule_browser_queue() -> None:
         # One worker, admission checks and per-ticket backoff still apply.
         seconds=1,
         executor="browser_retries",
-        max_instances=1,
+        max_instances=2,
         coalesce=True,
         replace_existing=True,
         misfire_grace_time=30,

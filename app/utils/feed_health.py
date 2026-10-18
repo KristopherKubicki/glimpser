@@ -3,6 +3,8 @@
 import re
 from datetime import UTC, datetime, timedelta
 
+from app.runtime_health import BEACH_EUFY_MAX_AGE_SECONDS
+
 
 def _timestamp(value):
     try:
@@ -23,6 +25,8 @@ def landing_feed_issue(details: dict, now: datetime | None = None) -> str:
     not operator notes/prompts or incidental errors in a healthy dashboard.
     """
     now = now or datetime.utcnow()
+    if now.tzinfo is not None:
+        now = now.astimezone(UTC).replace(tzinfo=None)
     captured = _timestamp(details.get("last_screenshot_time"))
     if captured is None:
         return "awaiting_capture"
@@ -36,6 +40,12 @@ def landing_feed_issue(details: dict, now: datetime | None = None) -> str:
         frequency = 30
     # Three scheduled intervals, with slack for transient scheduler/network lag.
     max_age = timedelta(minutes=max(30, frequency * 3))
+    groups = {
+        group.strip().lower() for group in str(details.get("groups") or "").split(",")
+    }
+    if {"beachhouse", "eufy"}.issubset(groups):
+        # These snapshots arrive in daylight sweeps; the bridge allows 16 hours.
+        max_age = max(max_age, timedelta(seconds=BEACH_EUFY_MAX_AGE_SECONDS))
     if now - captured > max_age:
         return "overdue_capture"
     caption = str(details.get("last_caption") or "").strip().lower()

@@ -13,6 +13,7 @@ NOW = 1800000000
 
 @pytest.fixture(autouse=True)
 def storage(tmp_path, monkeypatch):
+    monkeypatch.delenv("GLIMPSER_KIOSK_EXTENDED_STATUS", raising=False)
     monkeypatch.setattr(indicators, "PRIVACY_URL", "https://privacy.example/status")
     monkeypatch.setattr(indicators, "STATE", tmp_path / "state.json")
     monkeypatch.setattr(indicators, "TOKEN", tmp_path / "token")
@@ -113,3 +114,22 @@ def test_route_security_profile_scoping_and_no_store():
         ).status_code
         == 413
     )
+
+
+def test_extended_status_requires_opt_in_and_supported_profile(monkeypatch):
+    from app.utils import perimeter_status, tesla_status
+
+    with (
+        patch.object(perimeter_status, "snapshot", return_value={}) as perimeter,
+        patch.object(tesla_status, "snapshot", return_value={}) as tesla,
+    ):
+        indicators.snapshot("living", NOW)
+        perimeter.assert_not_called()
+        tesla.assert_not_called()
+        monkeypatch.setenv("GLIMPSER_KIOSK_EXTENDED_STATUS", "1")
+        indicators.snapshot("other", NOW)
+        perimeter.assert_not_called()
+        value = indicators.snapshot("living", NOW)
+        assert value["perimeter"] == {} and value["tesla"] == {}
+        perimeter.assert_called_once_with(NOW)
+        tesla.assert_called_once_with(NOW)

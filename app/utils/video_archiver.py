@@ -11,7 +11,6 @@ import glob
 import json
 import logging
 import os
-import selectors
 import subprocess
 import tempfile
 import time
@@ -36,6 +35,8 @@ from app.config import (
 )
 from app.utils.screenshots import _is_valid_png, is_mostly_blank
 
+from .encoder_pipe import stream_encoder_frames
+from .gpu_guard import run_encoder_command
 from .template_manager import get_templates
 from .validators import validate_template_name
 
@@ -64,8 +65,9 @@ DEFLICKER_FILTERS = {
     "strong": "deflicker=s=12:mode=pm",
 }
 BASE_TIMELAPSE_FILTER = (
-    "fps=30,scale=1280:720:force_original_aspect_ratio=decrease,"
-    "pad=1280:720:(ow-iw)/2:(oh-ih)/2"
+    "fps=30,scale=trunc(iw*sar/2)*2:ih,setsar=1,"
+    "scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2,"
+    "pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1"
 )
 TIMELAPSE_SIDECAR_PNGS = {
     "latest_camera.png",
@@ -172,7 +174,9 @@ def _archive_frame_version(path: str) -> tuple:
     )
 
 
-@lru_cache(maxsize=32768)
+# Two checks per frame across hundreds of camera histories must fit together.
+# Cache keys contain only file metadata and booleans, never decoded images.
+@lru_cache(maxsize=131072)
 def _cached_archive_check(version: tuple, check) -> bool:
     """Reuse a bounded check result only for the same on-disk frame version."""
     try:
@@ -259,13 +263,7 @@ def run_ffmpeg(command, timeout: int = 30):
     timeout: int, optional
         Number of seconds before the process is terminated. Defaults to 30.
     """
-    result = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=False,
-    )
+    result = run_encoder_command(command, timeout=timeout)
     if result.stdout:
         logging.debug("ffmpeg stdout: %s", result.stdout.strip())
     if result.stderr:
@@ -277,13 +275,7 @@ def run_ffmpeg(command, timeout: int = 30):
                 "ffmpeg hwaccel failed; retrying with software decode: %s",
                 _summarize_ffmpeg_stderr(result.stderr),
             )
-            retry_result = subprocess.run(
-                retry_command,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                check=False,
-            )
+            retry_result = run_encoder_command(retry_command, timeout=timeout)
             if retry_result.stdout:
                 logging.debug("ffmpeg stdout: %s", retry_result.stdout.strip())
             if retry_result.stderr:
@@ -436,64 +428,7 @@ def _log_ffmpeg_failure(prefix: str, exc: Exception) -> None:
 def _pipe_ffmpeg_frames_once(command, frame_files):
     """Feed frames while draining encoder output, retaining bounded diagnostics."""
 
-    def frame_chunks():
-        for frame in frame_files:
-            with open(frame, "rb") as img:
-                while chunk := img.read(65536):
-                    yield chunk
-
-    process = subprocess.Popen(
-        command,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        bufsize=0,
-    )
-    chunks = frame_chunks()
-    output = {"stdout": bytearray(), "stderr": bytearray()}
-    pending = b""
-    try:
-        with selectors.DefaultSelector() as selector:
-            os.set_blocking(process.stdin.fileno(), False)
-            selector.register(process.stdout, selectors.EVENT_READ, "stdout")
-            selector.register(process.stderr, selectors.EVENT_READ, "stderr")
-            selector.register(process.stdin, selectors.EVENT_WRITE, "stdin")
-            while selector.get_map():
-                for key, _ in selector.select():
-                    if key.data != "stdin":
-                        chunk = os.read(key.fd, 65536)
-                        if not chunk:
-                            selector.unregister(key.fileobj)
-                            continue
-                        tail = output[key.data]
-                        tail.extend(chunk)
-                        del tail[:-65536]
-                        continue
-                    if not pending:
-                        pending = next(chunks, b"")
-                    if not pending:
-                        selector.unregister(process.stdin)
-                        process.stdin.close()
-                        continue
-                    try:
-                        written = os.write(key.fd, pending)
-                        pending = pending[written:]
-                    except BlockingIOError:
-                        continue
-                    except BrokenPipeError:
-                        # Early encoder errors must still reach the caller's
-                        # hardware fallback logic after stderr has drained.
-                        selector.unregister(process.stdin)
-                        process.stdin.close()
-            process.wait()
-    finally:
-        chunks.close()
-        if process.poll() is None:
-            process.kill()
-        process.wait()
-        for pipe in (process.stdin, process.stdout, process.stderr):
-            pipe.close()
-    stdout, stderr = bytes(output["stdout"]), bytes(output["stderr"])
+    process, stdout, stderr = stream_encoder_frames(command, frame_files)
     if stdout:
         logging.debug("ffmpeg stdout: %s", stdout.decode(errors="replace").strip())
     if stderr:

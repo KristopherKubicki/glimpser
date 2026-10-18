@@ -16,6 +16,7 @@ import requests
 
 from app import config
 from app.utils import validators
+from app.utils.gpu_guard import run_capture_command
 from app.utils.http_probe import probe_url_with_range
 from app.utils.screenshots import (
     CAPTURE_TIMEOUT,
@@ -286,7 +287,7 @@ def _capture_preview_clip(url: str, output_path: str, timeout: int) -> bool:
                 output_path,
             ]
         )
-        proc = subprocess.run(
+        proc = run_capture_command(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

@@ -32,7 +32,7 @@ import { initVideoZoom } from "./zoom.js";
 import { initSearchShortcut } from "./search_shortcut.js";
 import { initUrlTester } from "./url_test.js";
 import { initComfort } from "./comfort.js";
-import { initLanding } from "./landing.js?v=20260930-private-rules";
+import { initLanding } from "./landing.js?v=20261008-house-live-dwell";
 
 function isLandingScreen() {
   return window.location.pathname === "/";
@@ -61,6 +61,7 @@ if (isLandingScreen()) {
   // Kiosk landing should stay cheap: no template loading, no status polling,
   // no discovery/settings tooling, and no extra page-wide timers beyond the
   // clock and curated scene rotator.
+  initOffline();
   initNav({ passive: true });
   initIndexTime();
   initLanding();

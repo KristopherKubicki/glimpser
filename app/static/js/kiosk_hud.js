@@ -111,7 +111,7 @@ if (document.body.matches(".landing-profile-office, .landing-profile-living")) {
 if (document.querySelector(".kiosk-caption-strip")) {
   const stylesheet = document.createElement("link");
   stylesheet.rel = "stylesheet";
-  stylesheet.href = "/static/css/kiosk_fullbleed.css?v=20260922-6";
+  stylesheet.href = "/static/css/kiosk_fullbleed.css?v=20261007-room-fade";
   document.body.append(stylesheet);
   let nearby = [];
   let cameras = [],

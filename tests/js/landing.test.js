@@ -56,9 +56,7 @@ test("holds a blank scene, then resumes rotation after a usable frame arrives", 
       naturalHeight: { value: 1057 },
     });
     const pixels =
-      image.closest("section").id === "blank"
-        ? solid(31, 41, 55)
-        : solid(160, 170, 180);
+      solid(31, 41, 55);
     image._landingProbeContext = {
       drawImage: () => {},
       getImageData: () => ({ data: new Uint8ClampedArray(pixels) }),
@@ -75,6 +73,9 @@ test("holds a blank scene, then resumes rotation after a usable frame arrives", 
   recovered._landingProbeContext.getImageData = () => ({
     data: new Uint8ClampedArray(solid(160, 170, 180)),
   });
+  for (const image of document.querySelectorAll("img")) {
+    image._landingProbeContext.getImageData = recovered._landingProbeContext.getImageData;
+  }
   recovered.dispatchEvent(new Event("load"));
   expect(document.querySelector(".kiosk-offline-view")).toBeNull();
   jest.advanceTimersByTime(1000);

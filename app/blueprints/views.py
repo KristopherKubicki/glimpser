@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -14,13 +15,14 @@ from PIL import Image
 from app.config import SCREENSHOT_DIRECTORY
 from app.landing_config import load_landing_config
 from app.utils.feed_health import landing_feed_issue
+from app.utils.live_caps import guess_kind
 from app.utils.seiche_brief import (
     build_beach_camera_tiles,
     load_or_generate_seiche_brief,
 )
 from app.utils.source_freshness import source_freshness
 from app.utils.visual_dashboard import build_visual_dashboard
-from app.utils.weather_brief import load_or_generate_weather_brief
+from app.utils.weather_brief import build_weather_brief, load_or_generate_weather_brief
 from app.viewer_policy import DASHBOARDS, QUARANTINED_PRESENTATION, VIEWER_CONFIG
 
 LANDING_CONFIG = load_landing_config()
@@ -31,6 +33,38 @@ LANDING_MAX_SCREENSHOT_LAG = timedelta(hours=36)
 LANDING_MAX_CONTENT_LAG = timedelta(days=14)
 LANDING_OFFLINE_GRACE = timedelta(minutes=10)
 LANDING_PORTRAIT_HERO_RATIO_MAX = 0.92
+LANDING_ASSET_FILES = (
+    "blueprints/views.py",
+    "templates/index.html",
+    "static/js/landing_boot.js",
+    "static/js/landing.js",
+    "static/js/kiosk_heartbeat.js",
+    "static/js/kiosk_hold.js",
+    "static/js/kiosk_live.js",
+    "static/js/rotation_overview.js",
+    "static/js/room_comfort.js",
+    "static/js/timelapse_preview.js",
+    "static/css/kiosk_live.css",
+    "static/css/rotation_overview.css",
+    "static/css/room_comfort.css",
+)
+
+
+def _landing_asset_revision(root: Path | None = None) -> str:
+    """Fingerprint kiosk assets without hashing their contents on every poll."""
+    root = root or Path(__file__).resolve().parents[1]
+    digest = hashlib.blake2s(digest_size=8)
+    for name in LANDING_ASSET_FILES:
+        path = root / name
+        try:
+            stat = path.stat()
+            detail = f"{name}:{stat.st_mtime_ns}:{stat.st_size}"
+        except OSError:
+            detail = f"{name}:missing"
+        digest.update(detail.encode())
+    return digest.hexdigest()
+
+
 LANDING_RECENT_MOTION_BOOSTS: tuple[tuple[timedelta, int], ...] = (
     (timedelta(minutes=10), 260),
     (timedelta(hours=1), 180),
@@ -371,6 +405,17 @@ def _landing_media_size(
     if not camera_dir.is_dir():
         return None
 
+    # Capture maintains this pointer for the same frame served by the UI.
+    # Room rotations can contain hundreds of cameras, so walking each entire
+    # archive on every new capture makes the five-second health poll expensive.
+    latest_link = camera_dir / "latest_camera.png"
+    if latest_link.is_file():
+        try:
+            with Image.open(latest_link) as image:
+                return image.size
+        except OSError:
+            pass
+
     latest_file: Path | None = None
     latest_mtime = -1.0
     for path in camera_dir.iterdir():
@@ -519,6 +564,40 @@ def _landing_event_score(
     return motion_boost + activity_boost
 
 
+def _landing_media_kind(details: dict[str, Any]) -> str:
+    """Classify a stream without exposing connection settings to the browser."""
+    url = str(details.get("url") or "")
+    from app.utils.feed_tv import is_tuner_url
+    from app.utils.youtube_live import video_id
+
+    if is_tuner_url(url):
+        return "tv"
+    if video_id(url):
+        return "youtube"
+    kind = guess_kind(url)
+    if kind in {"web", "snapshot"} and re.search(
+        r"/(?:ISAPI/Streaming/channels|Streaming/Channels)/\d+",
+        url,
+        flags=re.IGNORECASE,
+    ):
+        return "rtsp"
+    return kind
+
+
+def _landing_health_details(name: str, details: dict[str, Any]) -> dict[str, Any]:
+    """Use the external Tesla cadence for both selection and displayed age."""
+    groups = {
+        group.strip().lower() for group in str(details.get("groups") or "").split(",")
+    }
+    suffix = name.removeprefix("Tesla-")
+    if {"personal", "tesla"}.issubset(groups) and name.startswith("Tesla-"):
+        if suffix in {"Front", "Left", "Right", "Rear", "App", "Map"}:
+            # Native crawling is disabled; passive health allows 270 minutes
+            # for exterior snapshots and 45 minutes for app/map captures.
+            return dict(details, frequency=15 if suffix in {"App", "Map"} else 90)
+    return details
+
+
 def _landing_item(
     name: str,
     details: dict[str, Any],
@@ -533,11 +612,29 @@ def _landing_item(
     profile_score = _landing_profile_score(name, details, profile)
     event_score = _landing_event_score(details, lanes, profile, reference_time)
     hero_score = profile_score - (120 if is_portrait_media else 0)
+    caption = _landing_caption(details).split("\t")[0]
+    caption_at = str(details.get("last_caption_time") or "")
+    if (
+        profile["key"] in LANDING_PRIORITY_PROFILES
+        and group_name in {"argyle", "knox", "halsted", "beachhouse", "traffic"}
+        and caption
+    ):
+        capture_time = _parse_landing_timestamp(details.get("last_screenshot_time"))
+        description_time = _parse_landing_timestamp(caption_at)
+        now = reference_time or datetime.utcnow()
+        if (
+            capture_time
+            and description_time
+            and capture_time - description_time > timedelta(minutes=45)
+            and now - description_time > timedelta(hours=1)
+        ):
+            caption = "Latest view · description pending"
+            caption_at = ""
     return {
-        "caption": _landing_caption(details).split("\t")[0],
-        "caption_at": str(details.get("last_caption_time") or ""),
+        "caption": caption,
+        "caption_at": caption_at,
         "capture_age": _landing_capture_age(details.get("last_screenshot_time")),
-        "freshness": source_freshness(name, details),
+        "freshness": source_freshness(name, _landing_health_details(name, details)),
         "event_score": event_score,
         "event_buffer_url": _landing_event_buffer_url(
             name,
@@ -558,6 +655,7 @@ def _landing_item(
         "last_screenshot_time": str(details.get("last_screenshot_time") or ""),
         "last_video_time": str(details.get("last_video_time") or ""),
         "live_url": f"/live?camera={quote(name)}",
+        "media_kind": _landing_media_kind(details),
         "name": name,
         "quality_score": _landing_quality_score(name, details),
         "profile_score": profile_score,
@@ -803,6 +901,31 @@ def _build_landing_events(
     )[: 10 if profile["key"] in LANDING_PRIORITY_PROFILES else 3]
 
 
+def _landing_caption_updates(
+    scenes: list[dict[str, Any]], now: datetime | None = None
+) -> list[dict[str, str]]:
+    """Send recent descriptions to long-running kiosks between page reloads."""
+    now = now or datetime.utcnow()
+    updates = []
+    for scene in scenes:
+        hero = scene["hero"]
+        timestamp = _parse_landing_timestamp(hero.get("caption_at"))
+        caption = str(hero.get("caption") or "").strip()
+        if not timestamp or not caption:
+            continue
+        if not 0 <= (now - timestamp).total_seconds() <= 30 * 60:
+            continue
+        updates.append(
+            {
+                "camera_name": str(hero["name"]),
+                "caption": caption[:500],
+                "caption_at": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        )
+    updates.sort(key=lambda update: update["caption_at"], reverse=True)
+    return updates[:64]
+
+
 OFFICE_SCENIC_DWELL_CAMERAS = frozenset(
     {
         "River",
@@ -895,7 +1018,7 @@ def _apply_scene_timing(
         rotation_multiplier = 1.6
         playback_multiplier = 0.7
 
-    # Keep configured priority groups visible for longer once they surface in
+    # Keep priority groups like Knox visible for longer once they surface in
     # the rundown. This complements the distribution pass so those scenes are
     # both spaced through the loop and given enough dwell to actually read.
     group_rotation_multiplier = float(
@@ -1011,8 +1134,15 @@ def _compose_profiled_scenes(
     used_ids: set[str] = set()
     selected_group_counts: defaultdict[str, int] = defaultdict(int)
 
-    def can_pick(scene: dict[str, Any]) -> bool:
+    def is_deferred(scene: dict[str, Any]) -> bool:
+        return scene["hero"]["name"] in profile.get("deferred_cameras", ()) or scene[
+            "group_name"
+        ] in profile.get("deferred_groups", ())
+
+    def can_pick(scene: dict[str, Any], *, allow_deferred: bool = False) -> bool:
         if scene["id"] in used_ids:
+            return False
+        if not allow_deferred and is_deferred(scene):
             return False
         group_cap = _scene_group_cap(profile, scene["group_name"])
         if (
@@ -1086,14 +1216,48 @@ def _compose_profiled_scenes(
     for scene in ordered:
         if len(selected) >= max_scenes:
             break
-        if not can_pick(scene):
+        if not can_pick(scene, allow_deferred=True):
             continue
         remember(scene)
 
-    composed = selected[:max_scenes]
+    deferred = [scene for scene in selected if is_deferred(scene)]
+    composed = [scene for scene in selected if not is_deferred(scene)][:max_scenes]
     for group_name in profile.get("distributed_groups", ()):
         composed = _distribute_group_scenes(composed, group_name)
-    return composed
+    if profile["key"] == "office":
+        preferred = (
+            "ArgyleEntryFisheye",
+            "Showroom_Entrance",
+            "FrontDoor",
+            "Driveway",
+            "Garage",
+        )
+        now = datetime.utcnow()
+        for name in preferred:
+            for index, scene in enumerate(composed):
+                hero = scene["hero"]
+                capture_time = _parse_landing_timestamp(
+                    hero.get("last_screenshot_time")
+                )
+                freshness = hero.get("freshness") or {}
+                if (
+                    hero["name"] == name
+                    and capture_time
+                    and 0 <= (now - capture_time).total_seconds() <= 15 * 60
+                    and not any(
+                        freshness.get(flag)
+                        for flag in (
+                            "capture_overdue",
+                            "retained",
+                            "source_unchanged",
+                            "waiting_for_browser",
+                            "clock_ahead",
+                        )
+                    )
+                ):
+                    composed.insert(0, composed.pop(index))
+                    return (composed + deferred)[:max_scenes]
+    return (composed + deferred)[:max_scenes]
 
 
 def _distribute_group_scenes(
@@ -1101,7 +1265,7 @@ def _distribute_group_scenes(
 ) -> list[dict[str, Any]]:
     """Spread repeated group scenes through the final rundown.
 
-    The configured group was being selected correctly but stacked at the top because camera
+    Knox was being selected correctly but stacked at the top because camera
     minimums are applied before the broader fill order. This helper preserves
     the same selected scenes while distributing one repeated group across the
     rundown so it stays visible throughout the loop instead of front-loading.
@@ -1222,19 +1386,24 @@ def _build_landing_scenes(
     fallback_items: list[dict[str, str]] = []
 
     for name, details in templates.items():
-        # Keep inventory-only feeds available in the template catalog, but do
-        # not let them enter the public kiosk rotations.
-        if details.get("private_camera") or name in QUARANTINED_PRESENTATION:
+        if name in QUARANTINED_PRESENTATION or details.get("private_camera"):
             continue
+        office_private = False
         groups = {
             g.strip().lower() for g in str(details.get("groups") or "").split(",")
         }
-        # Expanding room pools must not revive intentionally retired monitors.
-        if "archive" in groups:
+        # External uploads use archive to disable native crawling, not to
+        # retire their views. Only the office opts into these personal feeds;
+        # ordinary archived monitors still stay out of every rotation.
+        external_capture = "personal" in groups and bool(
+            groups & {"tesla", "mac-capture"}
+        )
+        if "archive" in groups and not (office_private and external_capture):
             continue
-        if content["key"] == "public" and "private" in groups:
+        if "private" in groups:
             continue
-        if content["key"] in LANDING_PRIORITY_PROFILES and landing_feed_issue(details):
+        health_details = _landing_health_details(name, details)
+        if content.get("all_eligible") and landing_feed_issue(health_details):
             continue
         item_details = dict(details)
         item_details["name"] = name
@@ -1353,6 +1522,12 @@ def create_blueprint() -> Blueprint:
 
     bp = Blueprint("views", __name__)
 
+    @bp.app_template_global("enhancement_pool_choices")
+    def enhancement_pool_choices():
+        from app.utils.enhancement_pipeline import pool_choices
+
+        return pool_choices()
+
     @bp.route("/", endpoint="index")
     @routes.login_required
     def index():
@@ -1366,7 +1541,7 @@ def create_blueprint() -> Blueprint:
         )
         template_details = (
             routes.template_manager.TemplateManager().get_templates()
-            if landing_profile["key"] in LANDING_PRIORITY_PROFILES
+            if landing_profile.get("all_eligible")
             else routes.template_manager.get_templates()
         )
         landing_buffer_mode = _landing_event_buffer_mode(
@@ -1387,6 +1562,7 @@ def create_blueprint() -> Blueprint:
             landing_event_buffer_auto_every=LANDING_EVENT_BUFFER_AUTO_EVERY,
             landing_event_buffer_mode=landing_buffer_mode,
             landing_events_enabled=landing_event_poll > 0,
+            landing_asset_revision=_landing_asset_revision(),
             landing_events_url=routes.url_for(
                 "views.landing_events",
                 buffer=landing_buffer_mode,
@@ -1466,11 +1642,17 @@ def create_blueprint() -> Blueprint:
                 },
                 "available_cameras": (
                     [scene["hero"]["name"] for scene in landing_scenes]
-                    if landing_profile["key"] in LANDING_PRIORITY_PROFILES
+                    if landing_profile.get("all_eligible")
                     else None
                 ),
                 "events": events,
+                "caption_updates": (
+                    _landing_caption_updates(landing_scenes)
+                    if landing_profile["key"] in LANDING_PRIORITY_PROFILES
+                    else []
+                ),
                 "generated_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+                "asset_revision": _landing_asset_revision(),
                 "mode": landing_mode["key"],
                 "profile": landing_profile["key"],
             }
@@ -1482,7 +1664,9 @@ def create_blueprint() -> Blueprint:
         """Render the custom local weather dashboard."""
 
         template_details = routes.template_manager.get_templates()
-        brief = load_or_generate_weather_brief(template_details)
+        # The HTML view reflects current captures; the JSON artifact has its own
+        # bounded refresh schedule for consumers that need a stable document.
+        brief = build_weather_brief(template_details)
         for section in brief.get("sections", []):
             for tile in section.get("tiles", []):
                 name = tile.get("name", "")
@@ -1495,7 +1679,6 @@ def create_blueprint() -> Blueprint:
                     tile["image_url"] = (
                         f"/clean_screenshot/{quote(name)}?capture={quote(tile['last_screenshot_time'])}"
                     )
-                tile["status"] = str(details.get("last_capture_status") or "unknown")
         return routes.render_template(
             "weather.html",
             active_groups=routes.get_active_groups(),
@@ -1623,9 +1806,110 @@ def create_blueprint() -> Blueprint:
         if group_name not in groups:
             routes.abort(404)
         return routes.render_template(
-            "group.html",
+            "tesla.html" if group_name == "tesla" else "group.html",
             group_name=group_name,
             page_title=f"Group - {group_name}",
         )
+
+    @bp.route("/tesla/status")
+    @routes.login_required
+    def tesla_status():
+        """Expose passive capture health under the existing viewer authentication."""
+        from app.utils.tesla_status import snapshot
+
+        response = jsonify(snapshot())
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @bp.route("/feed-tv")
+    @routes.login_required
+    def feed_tv_page():
+        from flask import render_template
+
+        from app.utils.feed_tv import snapshot
+
+        return render_template("feed_tv.html", model=snapshot())
+
+    @bp.route("/feed-tv/data")
+    @routes.login_required
+    def feed_tv_data():
+        from app.utils.feed_tv import snapshot
+
+        response = jsonify(snapshot())
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @bp.route("/feed-tv/<clip>/<asset>")
+    @routes.login_required
+    def feed_tv_asset(clip, asset):
+        from flask import abort
+
+        from app.utils.feed_tv import ASSETS, CLIP_ID, ROOT, clips
+
+        if not CLIP_ID.fullmatch(clip) or asset not in ASSETS:
+            abort(404)
+        if clip not in {row["id"] for row in clips()}:
+            abort(404)
+        folder = ROOT / "clips" / clip
+        if (folder / asset).is_symlink():
+            abort(404)
+        return send_from_directory(folder, asset, conditional=True)
+
+    @bp.route("/magazine")
+    @routes.login_required
+    def magazine_library():
+        """Show private, completely published video editions."""
+        from flask import render_template
+
+        from app.utils.magazine_library import editions
+
+        return render_template("magazine.html", editions=editions())
+
+    @bp.route("/magazine/<edition>/<asset>")
+    @routes.login_required
+    def magazine_asset(edition, asset):
+        """Serve only the public assets of a validated private edition."""
+        from flask import abort
+
+        from app.utils.magazine_library import ASSETS, EDITION, ROOT
+
+        if not EDITION.fullmatch(edition) or asset not in ASSETS:
+            abort(404)
+        folder = ROOT / edition
+        if folder.is_symlink() or not (folder / "manifest.json").is_file():
+            abort(404)
+        response = send_from_directory(folder, asset, conditional=True)
+        response.headers["Cache-Control"] = "private, max-age=300"
+        return response
+
+    @bp.route("/enhancements")
+    @routes.login_required
+    def enhancement_review():
+        """Review private derivatives with explicit processing labels."""
+        from flask import make_response, render_template
+
+        from app.utils.enhancement_review import entries
+
+        response = make_response(
+            render_template("enhancement_review.html", items=entries())
+        )
+        response.headers["Cache-Control"] = "private, no-store"
+        return response
+
+    @bp.route("/enhancements/<identifier>/<which>")
+    @routes.login_required
+    def enhancement_review_asset(identifier, which):
+        """Serve review media under the existing viewer authentication."""
+        from flask import abort, send_file
+
+        from app.utils.enhancement_review import asset
+
+        selected = asset(identifier, which)
+        if selected is None:
+            abort(404)
+        path, mimetype = selected
+        response = send_file(path, mimetype=mimetype, conditional=True)
+        response.headers["Cache-Control"] = "private, no-store"
+        return response
 
     return bp

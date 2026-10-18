@@ -1,0 +1,81 @@
+{% extends 'base.html' %} {% block content %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/tesla_view.css') }}?v=20261004"
+/>
+<section class="tesla-view" aria-label="Tesla cameras and map">
+  <header>
+    <div>
+      <h1>Tesla</h1>
+      <p id="tesla-status" role="status">Checking capture status…</p>
+    </div>
+    <nav aria-label="Tesla views">
+      <a href="#tesla-cameras">Cameras</a>
+      <a href="/templates/Tesla-Dashcam">Saved clips</a>
+    </nav>
+  </header>
+  <div class="tesla-grid">
+    {% for name, label in [('Map', 'Location map'), ('App', 'Vehicle overview')]
+    %}
+    <article
+      class="tesla-card"
+      data-feed="Tesla-{{ name }}"
+      data-health="unknown"
+    >
+      <a
+        href="/last_screenshot/Tesla-{{ name }}"
+        aria-label="Open full-size {{ label }}"
+      >
+        <img
+          src="/last_screenshot/Tesla-{{ name }}"
+          alt="Tesla {{ label }} — saved screenshot"
+        />
+      </a>
+      <div class="tesla-caption">
+        <h2>{{ label }}</h2>
+        <span data-age>Checking image age…</span>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  <p>
+    Map and vehicle data may be cached by Tesla; image time is capture time.
+  </p>
+  <details>
+    <summary>Capture details</summary>
+    <p id="tesla-details">Waiting for collector.</p>
+    <p>
+      Exterior images are periodic parked snapshots. The car may be elsewhere;
+      these are not fixed house cameras or continuous motion coverage.
+    </p>
+  </details>
+  <div class="tesla-grid" id="tesla-cameras">
+    {% for name in ['Front', 'Rear', 'Left', 'Right'] %}
+    <article
+      class="tesla-card"
+      data-feed="Tesla-{{ name }}"
+      data-health="unknown"
+    >
+      <a
+        href="/templates/Tesla-{{ name }}"
+        aria-label="Open {{ name|lower }} camera history"
+      >
+        <img
+          src="/last_screenshot/Tesla-{{ name }}"
+          alt="Tesla {{ name|lower }} exterior camera — saved snapshot"
+          loading="lazy"
+        />
+      </a>
+      <div class="tesla-caption">
+        <h2>{{ name }}</h2>
+        <span data-age>Checking image age…</span>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/tesla_view.js') }}?v=20261004"
+></script>
+{% endblock %}

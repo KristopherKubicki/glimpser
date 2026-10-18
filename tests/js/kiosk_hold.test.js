@@ -6,8 +6,8 @@ test('online feed interruption is not described as offline',()=>{
  const stage=document.createElement('div');document.body.append(stage);
  const hold=createKioskHold(stage,'test');
  hold.hold('Capture service unavailable');
- expect(stage.textContent).toContain('FEED INTERRUPTED');
- expect(stage.textContent).not.toContain('KIOSK OFFLINE');
+ expect(stage.textContent).toContain('Reconnecting');
+ expect(stage.textContent).not.toContain('Offline');
  hold.recover();
 });
 test('browser offline is explicitly labeled',()=>{
@@ -15,6 +15,6 @@ test('browser offline is explicitly labeled',()=>{
  const stage=document.createElement('div');document.body.append(stage);
  const hold=createKioskHold(stage,'test');
  hold.hold('No connection');
- expect(stage.textContent).toContain('KIOSK OFFLINE');
+ expect(stage.textContent).toContain('Offline');
  hold.recover();
 });

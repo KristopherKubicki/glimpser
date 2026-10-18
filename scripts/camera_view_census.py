@@ -28,7 +28,6 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.config import SCREENSHOT_DIRECTORY  # noqa: E402
-from app.site_locations import load_site_locations  # noqa: E402
 from app.utils.template_manager import (  # noqa: E402
     Template,
     TemplateManager,
@@ -47,7 +46,60 @@ STATICNESS_VALUES = {
     "composite",
 }
 LOCATION_ACCURACY_VALUES = {"", "exact", "approximate", "site", "region", "source"}
-SITE_LOCATION_SEEDS = load_site_locations()
+SITE_LOCATION_SEEDS = [
+    {
+        "groups": {"lincolnwood", "knox"},
+        "url_prefixes": ("http://192.168.1.", "rtsp://192.168.1."),
+        "label": "6922 N Knox site",
+        "latitude": 41.9998,
+        "longitude": -87.7351,
+        "accuracy": "site",
+        "private": True,
+        "evidence": (
+            "Operator supplied address 6922 N Knox; site-level coordinate seeded "
+            "from existing local map templates, not an exact camera mount survey."
+        ),
+    },
+    {
+        "groups": {"beachhouse", "eufy"},
+        "url_prefixes": ("eufy://macmini/",),
+        "label": "9411 Lakeshore, Pleasant Prairie site",
+        "latitude": None,
+        "longitude": None,
+        "accuracy": "site",
+        "private": True,
+        "evidence": (
+            "Operator supplied address 9411 Lakeshore, Pleasant Prairie; "
+            "coordinates remain blank until evidence-backed geocode is supplied."
+        ),
+    },
+    {
+        "groups": {"argyle", "argyle-stale"},
+        "url_prefixes": ("sdm://argyle/",),
+        "label": "HengHeng Chicago site",
+        "latitude": None,
+        "longitude": None,
+        "accuracy": "site",
+        "private": True,
+        "evidence": (
+            "Operator supplied site name HengHeng Chicago for Argyle cameras; "
+            "coordinates remain blank until evidence-backed geocode is supplied."
+        ),
+    },
+    {
+        "groups": {"halsted", "halsted-stale"},
+        "url_prefixes": ("sdm://halsted/",),
+        "label": "Halsted site",
+        "latitude": None,
+        "longitude": None,
+        "accuracy": "site",
+        "private": True,
+        "evidence": (
+            "Site label seeded from Halsted groups; coordinates remain blank "
+            "until evidence-backed location is supplied."
+        ),
+    },
+]
 
 
 def utc_now_text() -> str:

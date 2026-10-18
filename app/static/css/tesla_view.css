@@ -1,0 +1,175 @@
+.static {
+  position: static;
+}
+
+.fixed {
+  position: fixed;
+}
+
+.block {
+  display: block;
+}
+
+.tesla-view {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 80rem;
+  padding: 1rem;
+
+  --tw-text-opacity: 1;
+
+  color: rgb(226 232 240 / var(--tw-text-opacity, 1));
+}
+
+.tesla-view h1 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 600;
+}
+
+.tesla-view h2 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 500;
+}
+
+.tesla-view p {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+
+  --tw-text-opacity: 1;
+
+  color: rgb(148 163 184 / var(--tw-text-opacity, 1));
+}
+
+.tesla-view header {
+  position: static;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.tesla-view nav {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.tesla-view a {
+  --tw-text-opacity: 1;
+
+  color: rgb(203 213 225 / var(--tw-text-opacity, 1));
+  text-decoration-line: underline;
+  text-underline-offset: 4px;
+}
+
+.tesla-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tesla-card {
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border-width: 1px;
+
+  --tw-border-opacity: 1;
+
+  border-color: rgb(51 65 85 / var(--tw-border-opacity, 1));
+
+  --tw-bg-opacity: 1;
+
+  background-color: rgb(2 6 23 / var(--tw-bg-opacity, 1));
+}
+
+.tesla-card > a {
+  display: block;
+}
+
+.tesla-card img {
+  display: block;
+  width: 100%;
+
+  --tw-bg-opacity: 1;
+
+  background-color: rgb(0 0 0 / var(--tw-bg-opacity, 1));
+  object-fit: contain;
+  aspect-ratio: 1080 / 822;
+}
+
+.tesla-card[data-feed="Tesla-Map"] img,
+.tesla-card[data-feed="Tesla-App"] img {
+  height: min(58vh, 38rem);
+  aspect-ratio: auto;
+}
+
+.tesla-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem;
+}
+
+.tesla-caption span {
+  font-size: 0.75rem;
+  line-height: 1rem;
+
+  --tw-text-opacity: 1;
+
+  color: rgb(148 163 184 / var(--tw-text-opacity, 1));
+}
+
+.tesla-card[data-health="stale"] .tesla-caption span,
+.tesla-card[data-health="unknown"] .tesla-caption span {
+  --tw-text-opacity: 1;
+
+  color: rgb(253 230 138 / var(--tw-text-opacity, 1));
+}
+
+.tesla-view details {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 0.5rem;
+  border-width: 1px;
+
+  --tw-border-opacity: 1;
+
+  border-color: rgb(30 41 59 / var(--tw-border-opacity, 1));
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+
+  --tw-text-opacity: 1;
+
+  color: rgb(148 163 184 / var(--tw-text-opacity, 1));
+}
+
+.tesla-view summary {
+  cursor: pointer;
+}
+
+@media (max-width: 639px) {
+  .tesla-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Preserve the whole map: a cover crop can hide the vehicle marker. */
+
+.tesla-card[data-feed="Tesla-Map"] img {
+  object-fit: contain;
+}
+
+body:has(.tesla-view) > footer {
+  position: static;
+}

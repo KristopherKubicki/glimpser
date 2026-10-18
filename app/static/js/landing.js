@@ -1,34 +1,59 @@
-import { mountKioskIndicators } from "./kiosk_indicators.js?v=20260927-1";
-import { canHandoffToDoor } from "./priority_handoff.js?v=20260930-private-rules";
+import {
+  chooseHighlight,
+  createHighlight,
+} from "./tv_highlights.js?v=20261015-setup-timeout";
+import {
+  mountRoomComfort,
+  prepareSceneComfort,
+} from "./room_comfort.js?v=20261009-night-clamp";
+import { mountKioskIndicators } from "./kiosk_indicators.js?v=20261014-contact-reasons";
+import { canHandoffToDoor } from "./priority_handoff.js";
 import { simplifyDashboardHud } from "./dashboard_hud.js?v=20260926-1";
-import { mountKioskHeartbeat } from "./kiosk_heartbeat.js?v=20260926-1";
+import { mountKioskHeartbeat } from "./kiosk_heartbeat.js?v=20261014-playback-frames";
 import {
   livePilotEligible,
   mountKioskLive,
+  liveStreamLimit,
   LIVE_INTERVAL_MS,
-} from "./kiosk_live.js?v=20260930-private-settings";
+  LIVE_CANDIDATE_CAMERAS,
+  STORE_LIVE_CAMERAS,
+} from "./kiosk_live.js?v=20261017-media-lifecycle";
 import {
   mountTimelapse,
   preloadTimelapse,
+  cancelTimelapsePreload,
   timelapseIsDue,
+  timelapseEligible,
+  scenicEligible,
+  SCENIC_CAMERAS,
   preferCurrentView,
   TIMELAPSE_INTERVAL_MS,
   TIMELAPSE_PRELOAD_LEAD_MS,
-} from "./timelapse_preview.js?v=20260929-history-fallback";
+} from "./timelapse_preview.js?v=20261017-media-lifecycle";
 import { createKioskHold } from "./kiosk_hold.js";
 import {
   chooseOverview,
+  withOfficeTelevision,
+  overviewFollowupIndex,
   createOverview,
   fetchOverviewCatalogs,
-} from "./rotation_overview.js";
-import { createPriorityAlert } from "./priority_alert.js?v=20260926-3";
-import { captureImageUrl, captureAge } from "./capture_age.js";
+} from "./rotation_overview.js?v=20261017-store-coverage";
+import { createPriorityAlert } from "./priority_alert.js?v=20261017-media-lifecycle";
+import { captureImageUrl, captureAge, captionAge } from "./capture_age.js";
 import { formatExactTime, timeAgo } from "./time_utils.js";
+
+if (!document.querySelector("link[data-rotator-review-style]")) {
+  const style = document.createElement("link");
+  style.rel = "stylesheet";
+  style.href = "/static/css/rotator_review.css?v=20261016-back";
+  style.dataset.rotatorReviewStyle = "";
+  document.head.append(style);
+}
 
 if (!document.querySelector("link[data-priority-alert-style]")) {
   const style = document.createElement("link");
   style.rel = "stylesheet";
-  style.href = "/static/css/priority_alert.css?v=20260922-7";
+  style.href = "/static/css/priority_alert.css?v=20261015-handoff";
   style.dataset.priorityAlertStyle = "";
   document.head.append(style);
 }
@@ -36,9 +61,32 @@ if (!document.querySelector("link[data-priority-alert-style]")) {
 if (!document.querySelector("link[data-kiosk-live-style]")) {
   const style = document.createElement("link");
   style.rel = "stylesheet";
-  style.href = "/static/css/kiosk_live.css?v=20260926-2";
+  style.href = "/static/css/kiosk_live.css?v=20261017-compositor";
   style.dataset.kioskLiveStyle = "";
   document.head.append(style);
+}
+
+// Require consecutive catalog observations before replacing a running wall.
+// Removals are handled in place; only additions need server-rendered scenes.
+export function createCatalogChangeTracker(renderedNames) {
+  const rendered = new Set(renderedNames);
+  let candidate = "";
+  return (available) => {
+    if (
+      !Array.isArray(available) ||
+      available.some((name) => typeof name !== "string" || !name.trim())
+    ) {
+      candidate = "";
+      return false;
+    }
+    const additions = [...new Set(available)]
+      .filter((name) => !rendered.has(name))
+      .sort();
+    const next = additions.length ? JSON.stringify(additions) : "";
+    const confirmed = Boolean(next && next === candidate);
+    candidate = next;
+    return confirmed;
+  };
 }
 
 const DEFAULT_LANDING_CHROME_FADE_MS = 2400;
@@ -63,8 +111,10 @@ const HERO_VISUAL_SAMPLE_WIDTH = 48;
 const LANDING_CONTAIN_MEDIA_RATIO_MAX = 0.92;
 const LANDING_WIDE_MEDIA_RATIO_MIN = 2.4;
 const LANDING_PREVIEW_QUEUE_LENGTH = 3;
-const LANDING_SCENE_EXIT_MS = 950;
+const LANDING_SCENE_EXIT_MS = 3300;
 const LANDING_TIME_REFRESH_MS = 60000;
+const LANDING_PROGRESS_CHECK_MS = 5000;
+const LANDING_MEANINGFUL_VIEW_MS = 8000;
 const LANDING_VIEWPORT_BEACON_DELAY_MS = 800;
 
 function roundedRect(element) {
@@ -895,10 +945,11 @@ function setChromeVisibility(shell, isVisible) {
   shell.classList.toggle("is-chrome-visible", isVisible);
 }
 
-function initChromeAutoHide(shell, hideAfterMs) {
+export function initChromeAutoHide(shell, hideAfterMs) {
   if (!shell || hideAfterMs <= 0) return () => {};
 
   let chromeTimer = null;
+  let reviewPointerActive = false;
 
   const clearChromeTimer = () => {
     if (chromeTimer) {
@@ -912,10 +963,12 @@ function initChromeAutoHide(shell, hideAfterMs) {
     chromeTimer = window.setTimeout(() => {
       const focused = document.activeElement;
       if (
-        shell.contains(focused) &&
-        focused?.matches(
-          ":focus-visible, input, select, textarea, [contenteditable='true']",
-        )
+        reviewPointerActive ||
+        shell.querySelector("[data-review-recent]:not([hidden])") ||
+        (shell.contains(focused) &&
+          focused?.matches(
+            ":focus-visible, input, select, textarea, [contenteditable='true']",
+          ))
       ) {
         scheduleHide();
         return;
@@ -928,6 +981,20 @@ function initChromeAutoHide(shell, hideAfterMs) {
     setChromeVisibility(shell, true);
     scheduleHide();
   };
+
+  const holdReviewChrome = (event) => {
+    reviewPointerActive = Boolean(
+      event.target?.closest?.("[data-landing-review-controls]"),
+    );
+    revealChrome();
+  };
+  const releaseReviewChrome = () => {
+    reviewPointerActive = false;
+    scheduleHide();
+  };
+  shell.addEventListener("pointerdown", holdReviewChrome, { passive: true });
+  for (const name of ["pointerup", "pointercancel", "blur"])
+    window.addEventListener(name, releaseReviewChrome);
 
   setChromeVisibility(shell, true);
   scheduleHide();
@@ -945,6 +1012,9 @@ function initChromeAutoHide(shell, hideAfterMs) {
 
   return () => {
     clearChromeTimer();
+    shell.removeEventListener("pointerdown", holdReviewChrome);
+    for (const name of ["pointerup", "pointercancel", "blur"])
+      window.removeEventListener(name, releaseReviewChrome);
     for (const [target, eventName] of eventTargets) {
       target.removeEventListener(eventName, revealChrome, { passive: true });
     }
@@ -972,6 +1042,14 @@ export function showLandingScene(scenes, index, previousIndex = -1) {
   scenes.forEach((scene, sceneIndex) => {
     const isVisible = sceneIndex === index;
     const isExiting = sceneIndex === previousIndex && previousIndex !== index;
+    if (isVisible && !scene.classList.contains("is-visible")) {
+      scene.classList.remove("is-exiting");
+      scene.style.display = "";
+      prepareSceneComfort(scene);
+      // Commit the hidden start state. display:none -> visible in one style
+      // update skips CSS transitions and exposes bright pages in one frame.
+      void scene.offsetWidth;
+    }
     scene.style.display = isVisible || isExiting ? "" : "none";
     scene.classList.toggle("is-visible", isVisible);
     scene.classList.toggle("is-exiting", isExiting);
@@ -984,33 +1062,399 @@ export function showLandingScene(scenes, index, previousIndex = -1) {
   });
 }
 
-// Save camera names rather than positions: health changes can reorder the loop.
+// Save upcoming camera names rather than positions: health changes reorder the pool.
 export function restoreOfficeRotation(scenes, profile) {
-  if (!["office", "living"].includes(profile)) return -1;
+  if (!["office", "living", "hal"].includes(profile)) return -1;
   try {
     const nextCamera = window.localStorage.getItem(
       `glimpser.${profile}.next-camera.v1`,
     );
-    return scenes.findIndex((scene) => scene.dataset.heroName === nextCamera);
+    const primary = scenes.findIndex(
+      (scene) => scene.dataset.heroName === nextCamera,
+    );
+    if (primary >= 0) return primary;
+    const upcoming = JSON.parse(
+      window.localStorage.getItem(`glimpser.${profile}.upcoming-cameras.v1`) ||
+        "[]",
+    );
+    if (!Array.isArray(upcoming)) return -1;
+    // If the next feed disappeared, continue to its next surviving neighbor.
+    for (const name of upcoming.slice(0, 12)) {
+      if (typeof name !== "string") continue;
+      const index = scenes.findIndex(
+        (scene) => scene.dataset.heroName === name,
+      );
+      if (index >= 0) return index;
+    }
+    return -1;
   } catch {
     return -1;
   }
 }
 
-export function rememberOfficeRotation(scene, profile) {
-  if (!["office", "living"].includes(profile) || !scene?.dataset.heroName)
+export function rememberOfficeRotation(scene, profile, scenes = []) {
+  if (
+    !["office", "living", "hal"].includes(profile) ||
+    !scene?.dataset.heroName
+  )
     return;
   try {
     window.localStorage.setItem(
       `glimpser.${profile}.next-camera.v1`,
       scene.dataset.heroName,
     );
+    const start = scenes.findIndex(
+      (candidate) => candidate.dataset.heroName === scene.dataset.heroName,
+    );
+    const upcoming =
+      start < 0
+        ? [scene.dataset.heroName]
+        : Array.from(
+            { length: Math.min(12, scenes.length) },
+            (_, offset) =>
+              scenes[(start + offset) % scenes.length].dataset.heroName,
+          ).filter((name) => typeof name === "string" && name.length > 0);
+    window.localStorage.setItem(
+      `glimpser.${profile}.upcoming-cameras.v1`,
+      JSON.stringify(upcoming),
+    );
   } catch {
     // Storage restrictions must never stop the display from rotating.
   }
 }
 
-export function initLanding() {
+// Reconcile health without resetting progress when the current feed disappears.
+export function updateLandingAvailability(
+  scenes,
+  currentIndex,
+  available,
+  profile,
+  isSuppressed,
+) {
+  if (
+    !Array.isArray(available) ||
+    !["living", "office", "hal"].includes(profile)
+  )
+    return null;
+  const names = new Set(available);
+  scenes.forEach((scene) => {
+    scene.dataset.landingFeedUnavailable = String(
+      !names.has(scene.dataset.heroName),
+    );
+  });
+  if (scenes[currentIndex] && !isSuppressed(scenes[currentIndex]))
+    return currentIndex;
+  // The preview-queue helper deliberately permits weak-frame fallbacks.
+  // Health reconciliation must never choose a known-unavailable fallback.
+  for (let offset = 1; offset < scenes.length; offset++) {
+    const next = (currentIndex + offset) % scenes.length;
+    if (!isSuppressed(scenes[next])) return next;
+  }
+  return -1;
+}
+
+export function rotationCategory(scene) {
+  const group = (
+    scene.querySelector?.("[data-area-label]")?.dataset.areaLabel || "other"
+  ).toLowerCase();
+  const categories = {
+    house: ["knox", "argyle", "halsted", "beachhouse", "plants", "garden"],
+    systems: ["systems", "network", "hubitat", "power", "graph"],
+    weather: ["weather", "sky", "radar", "satellite", "regional satellite"],
+    science: ["cosmic", "science"],
+    lake: ["marine", "beach", "waukegan", "winthrop", "crib"],
+    world: ["tv", "news", "health", "ecom", "usa"],
+    local: [
+      "regional",
+      "traffic",
+      "lincolnwood",
+      "chicago",
+      "milwaukee",
+      "skyline",
+      "map",
+      "flights",
+    ],
+  };
+  return (
+    Object.keys(categories).find((key) => categories[key].includes(group)) ||
+    group
+  );
+}
+
+const KNOX_EXTERIORS = new Set([
+  "FrontDoor",
+  "Driveway",
+  "Street",
+  "Garage",
+  "Walkway",
+  "Backyard",
+  "Garden",
+]);
+
+const BEACH_LANDSCAPES = new Set([
+  "BeachShore",
+  "BeachSouthJetty",
+  "BeachBioswale",
+  "BeachGravel",
+  "BeachMapleTree",
+  "Beach_Google_Backyard",
+  "Beach_Google_Front_Yard",
+]);
+
+const ARGYLE_ENTRY_VIEWS = new Set([
+  "ArgyleEntryFisheye",
+  "Argyle100",
+  "Argyle200",
+  "Showroom_Entrance",
+  "Front_door_doorbell",
+]);
+
+function storeProperty(scene) {
+  const name = scene?.dataset.heroName || "";
+  if (STORE_LIVE_CAMERAS.has(name))
+    return name.startsWith("Argyle") ? "argyle" : "halsted";
+  if (ARGYLE_ENTRY_VIEWS.has(name)) return "argyle";
+  if (name.startsWith("Halsted_Google_")) return "halsted";
+  return null;
+}
+
+export function createRotationBalance(profile, storage) {
+  if (!["office", "living", "hal"].includes(profile)) return null;
+  const key = `glimpser.${profile}.rotation-history.v1`;
+  let seen = new Map();
+  let serial = 0;
+  try {
+    const rows = JSON.parse(storage?.getItem(key) || "[]");
+    if (Array.isArray(rows)) {
+      seen = new Map(
+        rows
+          .slice(-512)
+          .filter(
+            (row) =>
+              Array.isArray(row) &&
+              typeof row[0] === "string" &&
+              Number.isSafeInteger(row[1]) &&
+              row[1] > 0 &&
+              row[1] < Number.MAX_SAFE_INTEGER - 10000,
+          ),
+      );
+      serial = Math.max(0, ...seen.values());
+    }
+  } catch {
+    /* An unavailable history never prevents rotation. */
+  }
+  return {
+    recentlyViewed(name) {
+      const last = seen.get(name);
+      return last !== undefined && serial - last < 12;
+    },
+    viewed(scene) {
+      const name = scene?.dataset.heroName;
+      if (!name) return;
+      seen.delete(name);
+      seen.set(name, ++serial);
+      seen = new Map([...seen].slice(-512));
+      try {
+        storage?.setItem(key, JSON.stringify([...seen]));
+      } catch {
+        /* Session-only fairness remains available. */
+      }
+    },
+    queue(scenes, currentIndex, suppressed, length, historyDue = false) {
+      const simulated = new Map(seen);
+      let order = serial;
+      let cursor = currentIndex;
+      const used = new Set([currentIndex]);
+      const result = [];
+      while (result.length < Math.min(length, scenes.length - 1)) {
+        let candidates = scenes
+          .map((scene, index) => ({
+            scene,
+            index,
+            last: simulated.get(scene.dataset.heroName) || 0,
+            distance: (index - cursor + scenes.length) % scenes.length,
+          }))
+          .filter((item) => !used.has(item.index) && !suppressed(item.scene));
+        if (ARGYLE_ENTRY_VIEWS.has(scenes[cursor]?.dataset.heroName)) {
+          const otherViews = candidates.filter(
+            (item) => !ARGYLE_ENTRY_VIEWS.has(item.scene.dataset.heroName),
+          );
+          if (otherViews.length) candidates = otherViews;
+        }
+        candidates.sort((a, b) => a.last - b.last || a.distance - b.distance);
+        // A bounded window prevents variety from repeatedly skipping older views.
+        const oldest = candidates.slice(0, 12);
+        const category = rotationCategory(scenes[cursor]);
+        const liveInterval =
+          profile === "office" ? 2 : profile === "living" ? 3 : Infinity;
+        const liveCandidates = Number.isFinite(liveInterval)
+          ? candidates.filter((item) => livePilotEligible(item.scene, profile))
+          : [];
+        // The catalog order is stable, so always taking its first stream
+        // starves other healthy entrances and exterior cameras.
+        liveCandidates.sort(
+          (a, b) => a.last - b.last || a.distance - b.distance,
+        );
+        const lastLive = Math.max(
+          0,
+          ...[
+            ...LIVE_CANDIDATE_CAMERAS,
+            ...scenes
+              .filter((scene) => scene.dataset.heroMediaKind === "youtube")
+              .map((scene) => scene.dataset.heroName),
+          ].map((name) => simulated.get(name) || 0),
+        );
+        // Public broadcasts get a regular turn even when the estate has many
+        // more live cameras. Oldest-viewed ordering still shares all broadcasts.
+        const lastBroadcast = Math.max(
+          0,
+          ...scenes
+            .filter((scene) => scene.dataset.heroMediaKind === "youtube")
+            .map((scene) => simulated.get(scene.dataset.heroName) || 0),
+        );
+        const broadcastCandidate =
+          order - lastBroadcast >= 6
+            ? liveCandidates.find(
+                (item) => item.scene.dataset.heroMediaKind === "youtube",
+              )
+            : null;
+        const historyCandidate =
+          historyDue && result.length === 0
+            ? candidates
+                .filter((item) => timelapseEligible(item.scene, profile))
+                .sort((a, b) => a.last - b.last || a.distance - b.distance)[0]
+            : null;
+        // Reserve a regular exterior visit without dropping the broad queue.
+        // Use least-recently shown so Street cannot lose to the same entrance.
+        const lastKnox = Math.max(
+          0,
+          ...[...KNOX_EXTERIORS].map((name) => simulated.get(name) || 0),
+        );
+        const knoxCandidate =
+          profile === "office" && order - lastKnox >= 4
+            ? candidates.find((item) =>
+                KNOX_EXTERIORS.has(item.scene.dataset.heroName),
+              )
+            : null;
+        // A shoreline/quarry visit after six other scenes keeps landscapes
+        // visible even when live entrances and house history dominate.
+        const lastScenic = Math.max(
+          0,
+          ...[...SCENIC_CAMERAS].map((name) => simulated.get(name) || 0),
+        );
+        const scenicCandidate =
+          order - lastScenic >= 6
+            ? candidates.find((item) => scenicEligible(item.scene, profile))
+            : null;
+        // Regional skylines can satisfy the scenic lane indefinitely. Give
+        // healthy beach-property landscapes their own frequent reservation.
+        // Count actual completed views (including overview tiles), not plans.
+        const lastBeach = Math.max(
+          0,
+          ...[...BEACH_LANDSCAPES].map((name) => simulated.get(name) || 0),
+        );
+        const beachCandidate =
+          order - lastBeach >= (profile === "office" ? 3 : 4)
+            ? candidates.find(
+                (item) =>
+                  BEACH_LANDSCAPES.has(item.scene.dataset.heroName) &&
+                  scenicEligible(item.scene, profile),
+              )
+            : null;
+        // Completed comparison tiles count too. Reserve a solo fallback only
+        // when a site has not appeared for twelve actual camera observations.
+        const storeCandidate =
+          profile === "office"
+            ? ["argyle", "halsted"]
+                .map((site) => ({
+                  last: Math.max(
+                    0,
+                    ...scenes
+                      .filter((scene) => storeProperty(scene) === site)
+                      .map(
+                        (scene) => simulated.get(scene.dataset.heroName) || 0,
+                      ),
+                  ),
+                  candidate: candidates.find(
+                    (item) => storeProperty(item.scene) === site,
+                  ),
+                }))
+                .filter((item) => item.candidate && order - item.last >= 12)
+                .sort((a, b) => a.last - b.last)[0]?.candidate
+            : null;
+        const pick =
+          storeCandidate ||
+          knoxCandidate ||
+          beachCandidate ||
+          scenicCandidate ||
+          broadcastCandidate ||
+          (order - lastLive >= liveInterval && liveCandidates[0]) ||
+          historyCandidate ||
+          oldest.find((item) => rotationCategory(item.scene) !== category) ||
+          oldest[0];
+        if (!pick) break;
+        result.push(pick.index);
+        used.add(pick.index);
+        simulated.set(pick.scene.dataset.heroName, ++order);
+        cursor = pick.index;
+      }
+      return result;
+    },
+  };
+}
+
+export function rememberOverviewViews(balance, scenes, names) {
+  // Only successfully displayed tiles count. Failed loads must keep their turn.
+  const shown = new Set(names);
+  for (const scene of scenes) {
+    if (shown.delete(scene.dataset.heroName)) balance?.viewed(scene);
+  }
+}
+
+export function normalizeRecentScenes(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .slice(0, 64)
+    .filter((entry) => entry && typeof entry === "object")
+    .map((entry) => ({
+      sceneId: typeof entry.sceneId === "string" ? entry.sceneId : "",
+      heroName: typeof entry.heroName === "string" ? entry.heroName : "",
+    }))
+    .filter((entry) => entry.sceneId || entry.heroName)
+    .slice(0, 8);
+}
+
+export function applyLandingCaptionUpdates(scenes, updates) {
+  if (!Array.isArray(updates)) return 0;
+  const byCamera = new Map(
+    scenes.map((scene) => [scene.dataset.heroName, scene]),
+  );
+  let changed = 0;
+  updates.slice(0, 64).forEach((update) => {
+    if (
+      !update ||
+      typeof update.camera_name !== "string" ||
+      typeof update.caption !== "string" ||
+      typeof update.caption_at !== "string" ||
+      !update.caption_at
+    )
+      return;
+    const scene = byCamera.get(update.camera_name);
+    const age = scene?.querySelector("[data-caption-age]");
+    const copy = scene?.querySelector(".kiosk-caption-text");
+    if (!age || !copy || (age.dataset.captionAge || "") >= update.caption_at)
+      return;
+    copy.textContent = update.caption;
+    age.dataset.captionAge = update.caption_at;
+    age.textContent = captionAge(update.caption_at);
+    changed++;
+  });
+  return changed;
+}
+
+export function initLanding({
+  reloadPage = () => window.location.reload(),
+} = {}) {
   const setup = () => {
     const shell = document.querySelector("[data-landing-screen]");
     if (!shell) return;
@@ -1019,7 +1463,7 @@ export function initLanding() {
     const cleanupLandingViewportBeacon = initLandingViewportBeacon(shell);
     const stageShell = shell.querySelector(".landing-stage-shell") || shell;
     // Refresh membership even from an empty pool, while preserving room progress.
-    const poolRefreshTimer = ["living", "office"].includes(
+    const poolRefreshTimer = ["living", "office", "hal"].includes(
       stageShell.dataset.landingProfile,
     )
       ? window.setInterval(
@@ -1080,6 +1524,19 @@ export function initLanding() {
     );
     let sceneShownAt = Date.now();
     const rotationProfile = stageShell.dataset.landingProfile;
+    mountRoomComfort(stageShell);
+    scenes.forEach(prepareSceneComfort);
+    let rotationStorage;
+    try {
+      rotationStorage = window.localStorage;
+    } catch {
+      /* Session-only history. */
+    }
+    const rotationBalance = createRotationBalance(
+      rotationProfile,
+      rotationStorage,
+    );
+
     const continuity = createKioskHold(stageShell, rotationProfile);
     let metadataHealthy = !eventsEnabled;
     mountKioskHeartbeat(rotationProfile);
@@ -1095,12 +1552,15 @@ export function initLanding() {
       }
     }
     let livePilot = null;
+    let pendingLive = null;
     let lastLiveAt = null;
     let timelapse = null;
     let lastTimelapseAt = null;
     let lastHistoryAttemptAt = null;
     let timelapseDue = false;
     const stopTimelapse = () => {
+      pendingLive?.handle?.dispose();
+      pendingLive = null;
       livePilot?.dispose();
       livePilot = null;
       timelapse?.dispose();
@@ -1116,8 +1576,21 @@ export function initLanding() {
     let rotationTimer = null;
     let manualHoldTimer = null;
     let eventPollTimer = null;
-    let eventPollInFlight = false;
+    let eventRequest = null;
+    const cancelEventRequest = () => {
+      const request = eventRequest;
+      eventRequest = null;
+      request?.cancel();
+    };
+    const pageAssetRevision = stageShell.dataset.landingAssetRevision || "";
+    let assetRevisionCandidate = "";
+    let pendingAssetReload = false;
+    let pendingCatalogReload = false;
+    const catalogChanged = createCatalogChangeTracker(
+      scenes.map((scene) => scene.dataset.heroName),
+    );
     let timeTimer = null;
+    let progressTimer = null;
     let imageRefreshTimer = null;
     let lastHandledEventKey = "";
     let lastReloadedEventKey = "";
@@ -1129,11 +1602,18 @@ export function initLanding() {
     let arrivalOverview = null;
     let overview = null;
     let normalViews = 0;
+    const overviewIndexStorage = `glimpser.overview-index.v1.${rotationProfile}`;
     let overviewIndex = 0;
+    try {
+      const saved = Number(window.localStorage.getItem(overviewIndexStorage));
+      if (Number.isSafeInteger(saved) && saved >= 0 && saved <= 1000000)
+        overviewIndex = saved;
+    } catch {
+      // A blocked storage API does not stop the overview cycle.
+    }
     let overviewCatalogs = [];
     const overviewsEnabled = ["living", "office"].includes(rotationProfile);
     let overviewController = null;
-    let overviewRequestTimer = null;
     let overviewRefreshTimer = null;
     let overviewDisposed = false;
     const manualHoldStorage = `glimpser.manual-hold.v1.${rotationProfile}`;
@@ -1162,28 +1642,26 @@ export function initLanding() {
       } else if (storedHold) {
         window.localStorage.removeItem(manualHoldStorage);
       }
-      const storedRecent = JSON.parse(
-        window.localStorage.getItem(recentStorage) || "[]",
-      );
-      if (Array.isArray(storedRecent)) recentScenes = storedRecent.slice(0, 8);
     } catch {
       manualHold = null;
+    }
+    // A damaged recent-view list must not cancel a valid, independent hold.
+    try {
+      recentScenes = normalizeRecentScenes(
+        JSON.parse(window.localStorage.getItem(recentStorage) || "[]"),
+      );
+    } catch {
       recentScenes = [];
     }
     async function refreshOverviewCatalogs() {
       if (overviewDisposed) return;
       overviewController =
         typeof AbortController === "function" ? new AbortController() : null;
-      overviewRequestTimer = window.setTimeout(
-        () => overviewController?.abort(),
-        8000,
-      );
       try {
         const models = await fetchOverviewCatalogs(overviewController?.signal);
         // Failed catalogs expire instead of leaving stale camera health eligible.
         if (!overviewDisposed) overviewCatalogs = models.filter(Boolean);
       } finally {
-        window.clearTimeout(overviewRequestTimer);
         if (!overviewDisposed)
           overviewRefreshTimer = window.setTimeout(
             refreshOverviewCatalogs,
@@ -1194,7 +1672,8 @@ export function initLanding() {
     if (overviewsEnabled) {
       const stylesheet = document.createElement("link");
       stylesheet.rel = "stylesheet";
-      stylesheet.href = "/static/css/rotation_overview.css?v=20260920";
+      stylesheet.href =
+        "/static/css/rotation_overview.css?v=20261015-wide-pairs";
       document.head.append(stylesheet);
       refreshOverviewCatalogs();
     }
@@ -1282,20 +1761,82 @@ export function initLanding() {
 
     const isSceneSuppressed = (scene) =>
       scene?.dataset.landingFeedUnavailable === "true" ||
+      (["youtube", "tv"].includes(scene?.dataset.heroMediaKind) &&
+        Number(scene.dataset.liveRetryAfter) > Date.now()) ||
       Number.parseInt(scene?.dataset.landingSuppressedUntil || "0", 10) >
         Date.now();
 
     const refreshQueue = () => {
-      queueIndices = buildLandingQueue(
-        scenes,
-        currentIndex,
-        isSceneSuppressed,
-        LANDING_PREVIEW_QUEUE_LENGTH,
-      );
+      queueIndices = rotationBalance
+        ? rotationBalance.queue(
+            scenes,
+            currentIndex,
+            isSceneSuppressed,
+            LANDING_PREVIEW_QUEUE_LENGTH,
+            timelapseDue && priorityResumeIndex < 0 && !continuity.active,
+          )
+        : buildLandingQueue(
+            scenes,
+            currentIndex,
+            isSceneSuppressed,
+            LANDING_PREVIEW_QUEUE_LENGTH,
+          );
     };
 
     const sceneRotationMs = (scene) =>
       parsePositiveInt(scene?.dataset.landingRotationMs, rotationMs);
+
+    // A fresh render can restart the normal timer without showing a new view.
+    // Count a different scene only after it has stayed on screen long enough.
+    let progressSceneIndex = currentIndex;
+    let progressSceneSince = Date.now();
+    let candidateSceneIndex = currentIndex;
+    let candidateSceneSince = progressSceneSince;
+    const checkRotationProgress = () => {
+      if (candidateSceneIndex !== currentIndex) {
+        candidateSceneIndex = currentIndex;
+        candidateSceneSince = Date.now();
+      }
+      if (
+        document.hidden ||
+        disposed ||
+        scenes.length < 2 ||
+        continuity.active ||
+        isManualHoldActive() ||
+        priorityResumeIndex >= 0 ||
+        scenes[currentIndex].classList.contains("has-timelapse") ||
+        overview ||
+        pendingLive ||
+        arrivalOverview
+      ) {
+        progressSceneIndex = currentIndex;
+        progressSceneSince = Date.now();
+        return;
+      }
+      if (currentIndex !== progressSceneIndex) {
+        if (Date.now() - candidateSceneSince >= LANDING_MEANINGFUL_VIEW_MS) {
+          progressSceneIndex = currentIndex;
+          progressSceneSince = Date.now();
+        }
+        return;
+      }
+      const rescueAfterMs = Math.min(
+        120000,
+        Math.max(70000, sceneRotationMs(scenes[currentIndex]) * 1.5),
+      );
+      if (Date.now() - progressSceneSince < rescueAfterMs) return;
+      refreshQueue();
+      const nextIndex = nextSceneIndex(currentIndex);
+      if (nextIndex === currentIndex || isSceneSuppressed(scenes[nextIndex])) {
+        progressSceneSince = Date.now();
+        return;
+      }
+      scenes[currentIndex].dataset.landingSuppressedUntil = String(
+        Date.now() + suppressionMs,
+      );
+      clearRotationTimer();
+      rotate();
+    };
 
     const resetSceneInterrupt = (scene) => {
       if (!scene) return;
@@ -1327,12 +1868,18 @@ export function initLanding() {
       "[data-review-duration]",
     );
     const recentStrip = reviewControls?.querySelector("[data-review-recent]");
+    const recentToggle = reviewControls?.querySelector(
+      '[data-review-action="recent"]',
+    );
+    recentToggle?.setAttribute("aria-expanded", "false");
     const holdButton = reviewControls?.querySelector(
       '[data-review-action="hold"]',
     );
 
     const isManualHoldActive = () => {
       if (!manualHold) return false;
+      // The hold timer must resume the comparison before discarding its binding.
+      if (manualHold.overview) return true;
       if (manualHold.until === null || Number(manualHold.until) > Date.now())
         return true;
       manualHold = null;
@@ -1363,13 +1910,26 @@ export function initLanding() {
             1,
             Math.ceil((Number(manualHold.until) - Date.now()) / 60000),
           );
-          reviewStatus.textContent = `Held · ${remainingMinutes}m`;
+          reviewStatus.textContent =
+            Number(manualHold.until) - Date.now() < 60000
+              ? "Held · less than a minute"
+              : `Held · ${remainingMinutes}m`;
         }
       }
     };
 
     const persistManualHold = () => {
       if (!manualHold) return;
+      if (manualHold.overview) {
+        // Comparison state is session-only; never restore a hold on the solo
+        // scene hidden underneath it after a reload.
+        try {
+          window.localStorage.removeItem(manualHoldStorage);
+        } catch {
+          /* Optional storage. */
+        }
+        return;
+      }
       const scene = scenes[currentIndex];
       manualHold.sceneId = scene?.dataset.sceneId || "";
       manualHold.heroName = scene?.dataset.heroName || "";
@@ -1390,7 +1950,8 @@ export function initLanding() {
       }
     };
 
-    const resumeManualHold = () => {
+    const clearManualHold = () => {
+      if (manualHold?.overview) overview?.setHeld?.(false);
       clearManualHoldTimer();
       manualHold = null;
       try {
@@ -1399,7 +1960,18 @@ export function initLanding() {
         /* Rotation can resume without storage cleanup. */
       }
       updateReviewControls();
-      render();
+    };
+
+    const disposeOverview = () => {
+      if (manualHold?.overview) clearManualHold();
+      overview?.dispose();
+      overview = null;
+    };
+
+    const resumeManualHold = () => {
+      const resumed = manualHold?.overview && overview?.setHeld?.(false);
+      clearManualHold();
+      if (!resumed) render();
     };
 
     const armManualHoldTimer = () => {
@@ -1409,7 +1981,7 @@ export function initLanding() {
       manualHoldTimer = window.setTimeout(resumeManualHold, remainingMs);
     };
 
-    const startManualHold = (durationValue) => {
+    const startManualHold = (durationValue, holdComparison = false) => {
       const durationMs = Number.parseInt(String(durationValue || ""), 10);
       manualHold = {
         until:
@@ -1417,6 +1989,10 @@ export function initLanding() {
             ? null
             : Date.now() + durationMs,
       };
+      if (holdComparison && overview) {
+        if (overview.setHeld?.(true)) manualHold.overview = true;
+        else disposeOverview();
+      }
       persistManualHold();
       clearRotationTimer();
       stopTimelapse();
@@ -1451,11 +2027,33 @@ export function initLanding() {
       if (!recentStrip) return;
       recentStrip.replaceChildren();
       recentScenes.slice(0, 6).forEach((entry) => {
+        const scene = scenes.find(
+          (item) =>
+            item.dataset.sceneId === entry.sceneId ||
+            item.dataset.heroName === entry.heroName,
+        );
+        if (!scene || isSceneSuppressed(scene)) return;
         const button = document.createElement("button");
         button.type = "button";
         button.dataset.reviewSceneId = entry.sceneId;
         button.dataset.reviewHeroName = entry.heroName;
-        button.textContent = entry.heroName || entry.sceneId || "Recent scene";
+        const label = document.createElement("span");
+        label.textContent = entry.heroName || entry.sceneId || "Recent scene";
+        const source = scene.querySelector(".landing-hero-media img");
+        if (
+          source?.getAttribute("src") &&
+          hasUsableImageFrame(source) === true
+        ) {
+          const thumbnail = document.createElement("img");
+          thumbnail.alt = "";
+          thumbnail.src = source.currentSrc || source.src;
+          thumbnail.decoding = "async";
+          thumbnail.addEventListener("error", () => thumbnail.remove(), {
+            once: true,
+          });
+          button.append(thumbnail);
+        }
+        button.append(label);
         recentStrip.append(button);
       });
       if (!recentStrip.childElementCount) {
@@ -1465,12 +2063,20 @@ export function initLanding() {
       }
     };
 
-    const manualNavigate = (targetIndex, holdForReview = false) => {
+    const manualNavigate = (
+      targetIndex,
+      holdForReview = false,
+      holdMs = "300000",
+    ) => {
       if (targetIndex < 0 || targetIndex >= scenes.length) return;
+      if (manualHold?.overview) clearManualHold();
       if (priorityResumeIndex >= 0) finishPriority();
       previousIndex = currentIndex;
       currentIndex = targetIndex;
-      if (holdForReview && !isManualHoldActive()) startManualHold("300000");
+      if (holdForReview && (!isManualHoldActive() || manualHold?.briefReview)) {
+        startManualHold(holdMs);
+        manualHold.briefReview = holdMs === "30000";
+      }
       if (isManualHoldActive()) persistManualHold();
       render();
     };
@@ -1502,25 +2108,45 @@ export function initLanding() {
             scene.dataset.heroName === recentButton.dataset.reviewHeroName,
         );
         recentStrip.hidden = true;
+        recentToggle?.setAttribute("aria-expanded", "false");
+        recentToggle?.focus({ preventScroll: true });
         manualNavigate(targetIndex, true);
         return;
       }
       const action = event.target.closest("[data-review-action]")?.dataset
         .reviewAction;
-      if (action === "previous") manualNavigate(previousSceneIndex());
+      if (action === "previous")
+        manualNavigate(previousSceneIndex(), true, "30000");
       if (action === "next") manualNavigate(nextSceneIndex(currentIndex));
       if (action === "hold") {
         if (isManualHoldActive()) resumeManualHold();
-        else startManualHold(reviewDuration?.value || "300000");
+        else startManualHold(reviewDuration?.value || "300000", true);
       }
       if (action === "recent" && recentStrip) {
         renderRecentStrip();
         recentStrip.hidden = !recentStrip.hidden;
+        recentToggle?.setAttribute(
+          "aria-expanded",
+          String(!recentStrip.hidden),
+        );
       }
     };
     const handleReviewKey = (event) => {
       if (
         event.defaultPrevented ||
+        event.isComposing ||
+        [
+          ...document.querySelectorAll(
+            'dialog[open], [role="dialog"][aria-modal="true"]',
+          ),
+        ].some(
+          (modal) =>
+            !modal.closest('[hidden], [aria-hidden="true"]') &&
+            (typeof modal.checkVisibility === "function"
+              ? modal.checkVisibility({ checkVisibilityCSS: true })
+              : window.getComputedStyle(modal).display !== "none" &&
+                window.getComputedStyle(modal).visibility !== "hidden"),
+        ) ||
         event.repeat ||
         event.altKey ||
         event.ctrlKey ||
@@ -1530,7 +2156,7 @@ export function initLanding() {
         return;
       if (
         event.target?.closest?.(
-          "input, select, textarea, [contenteditable]:not([contenteditable='false'])",
+          "input, select, textarea, video[controls], audio[controls], [role='slider'], [role='tab'], [role='menuitem'], [contenteditable]:not([contenteditable='false'])",
         )
       )
         return;
@@ -1540,6 +2166,8 @@ export function initLanding() {
           event.key === "ArrowLeft"
             ? previousSceneIndex()
             : nextSceneIndex(currentIndex),
+          event.key === "ArrowLeft",
+          "30000",
         );
       } else if (
         event.key === " " &&
@@ -1547,7 +2175,7 @@ export function initLanding() {
       ) {
         event.preventDefault();
         if (isManualHoldActive()) resumeManualHold();
-        else startManualHold(reviewDuration?.value || "300000");
+        else startManualHold(reviewDuration?.value || "300000", true);
       }
     };
     for (const [action, key] of [
@@ -1567,12 +2195,20 @@ export function initLanding() {
     updateReviewControls();
 
     const holdRotation = (reason) => {
+      if (!continuity.active) {
+        // Harvest already-decoded pictures; an outage must not require a fetch.
+        scenes.slice(0, 8).forEach((scene) => {
+          const image = scene.querySelector(".landing-hero-media img");
+          if (image?.complete && hasUsableImageFrame(image) === true)
+            continuity.remember(image, scene);
+        });
+      }
+      cancelTimelapsePreload();
       stopTimelapse();
       clearFallbackTimer();
       clearRotationTimer();
       clearExitState();
-      overview?.dispose();
-      overview = null;
+      disposeOverview();
       if (priorityResumeIndex >= 0) finishPriority();
       scenes.forEach((scene) => syncSceneVideo(scene, false));
       continuity.hold(reason);
@@ -1583,7 +2219,34 @@ export function initLanding() {
       scenes[sceneIndex].dataset.landingSuppressedUntil = String(
         Date.now() + suppressionMs,
       );
-      holdRotation("Camera image unavailable. Retrying automatically…");
+      clearFallbackTimer();
+      clearRotationTimer();
+      // A rejected frame belongs to one source, not the whole kiosk. Use a
+      // deferred, strict search so an all-bad queue cannot recurse or spin.
+      const eligible = (scene, index) => {
+        if (index === sceneIndex || isSceneSuppressed(scene)) return false;
+        const image = scene.querySelector(".landing-hero-media img");
+        return image?.complete && hasUsableImageFrame(image) === true;
+      };
+      // A bad queued frame must not bounce straight back to the just-viewed
+      // scene when another healthy candidate exists.
+      let candidate = scenes.findIndex(
+        (scene, index) => index !== previousIndex && eligible(scene, index),
+      );
+      if (candidate < 0) candidate = scenes.findIndex(eligible);
+      if (candidate < 0) {
+        holdRotation("No usable camera images. Retrying automatically…");
+        return;
+      }
+      fallbackTimer = window.setTimeout(() => {
+        fallbackTimer = null;
+        if (disposed || currentIndex !== sceneIndex) return;
+        if (priorityResumeIndex >= 0) finishPriority();
+        clearManualHold();
+        previousIndex = currentIndex;
+        currentIndex = candidate;
+        render();
+      }, 250);
     };
 
     const evaluateCurrentScene = (sceneIndex = currentIndex) => {
@@ -1625,6 +2288,7 @@ export function initLanding() {
       }
       if (
         !livePilot &&
+        !pendingLive &&
         !continuity.active &&
         !isManualHoldActive() &&
         metadataHealthy &&
@@ -1633,7 +2297,7 @@ export function initLanding() {
         !isSceneSuppressed(scene) &&
         (priorityResumeIndex >= 0 || !timelapse) &&
         preferCurrentView(
-          timelapseDue,
+          timelapseDue && timelapseEligible(scene, rotationProfile),
           lastHistoryAttemptAt,
           lastLiveAt,
           priorityResumeIndex >= 0,
@@ -1645,20 +2309,55 @@ export function initLanding() {
       ) {
         stopTimelapse();
         syncSceneVideo(scene, false);
+        const previousLiveAt = lastLiveAt;
+        let displayedLiveFrames = false;
         lastLiveAt = Date.now();
         livePilot = mountKioskLive(scene, {
+          onUnavailable: () => {
+            // Let mount finish before releasing its handle; never revive an exited scene.
+            window.setTimeout(() => {
+              if (
+                disposed ||
+                scenes[currentIndex] !== scene ||
+                priorityResumeIndex >= 0 ||
+                !livePilot?.failed
+              )
+                return;
+              livePilot.dispose();
+              livePilot = null;
+              // A failed connection is not a live viewing. Keep its per-feed
+              // cooldown, but let another healthy broadcast use this turn.
+              if (!displayedLiveFrames) lastLiveAt = previousLiveAt;
+              timelapseDue = true;
+              evaluateCurrentScene(currentIndex);
+            }, 0);
+          },
           onReady: () => {
+            displayedLiveFrames = true;
             clearRotationTimer();
             if (priorityResumeIndex >= 0) priorityAlert?.holdLive(45000);
             rotationTimer = window.setTimeout(
               rotate,
-              priorityResumeIndex >= 0 ? 45000 : 30000,
+              priorityResumeIndex >= 0
+                ? 45000
+                : Math.max(
+                    sceneRotationMs(scene),
+                    rotationProfile === "office" ? 40000 : 35000,
+                  ),
             );
           },
         });
+        if (scenes.length > 1 && rotationTimer !== null) {
+          clearRotationTimer();
+          rotationTimer = window.setTimeout(
+            rotate,
+            Math.max(sceneRotationMs(scene), livePilot.startupRemainingMs),
+          );
+        }
       }
       if (
         !livePilot &&
+        !pendingLive &&
         timelapseDue &&
         !continuity.active &&
         !isManualHoldActive() &&
@@ -1666,11 +2365,25 @@ export function initLanding() {
         !document.hidden &&
         priorityResumeIndex < 0 &&
         !overview &&
-        !isSceneSuppressed(scene)
+        !isSceneSuppressed(scene) &&
+        timelapseEligible(scene, rotationProfile)
       ) {
         timelapseDue = false;
         lastHistoryAttemptAt = Date.now();
+        const releaseHistory = () => {
+          window.setTimeout(() => {
+            if (disposed || scenes[currentIndex] !== scene || !timelapse)
+              return;
+            timelapse.dispose();
+            timelapse = null;
+            // Completed history no longer blocks a live view of this camera.
+            // Evaluation still enforces holds, visibility and stream cooldowns.
+            evaluateCurrentScene(currentIndex);
+          }, 0);
+        };
         timelapse = mountTimelapse(scene.dataset.heroName, scene, {
+          onUnavailable: releaseHistory,
+          onEnded: releaseHistory,
           onReady: (duration) => {
             lastTimelapseAt = Date.now();
             syncSceneVideo(scene, false);
@@ -1684,17 +2397,21 @@ export function initLanding() {
       }
     };
 
-    const render = () => {
+    const render = (preparedLive = null) => {
       sceneShownAt = Date.now();
       if (navigationHistory[navigationHistory.length - 1] !== currentIndex) {
         navigationHistory.push(currentIndex);
         if (navigationHistory.length > 64) navigationHistory.shift();
       }
       stopTimelapse();
+      if (preparedLive) {
+        livePilot = preparedLive;
+        livePilot.reveal();
+        lastLiveAt = Date.now();
+      }
       if (priorityResumeIndex < 0 && !continuity.active)
         timelapseDue = timelapseIsDue(lastTimelapseAt);
-      overview?.dispose();
-      overview = null;
+      disposeOverview();
       clearExitState();
       clearFallbackTimer();
       clearRotationTimer();
@@ -1704,15 +2421,22 @@ export function initLanding() {
       refreshQueue();
       syncSceneQueueSlots(scenes[currentIndex], scenes, queueIndices);
       showLandingScene(scenes, currentIndex, previousIndex);
+      if (preparedLive) syncSceneVideo(scenes[currentIndex], false);
       rememberRecentScene(scenes[currentIndex]);
       if (
         !continuity.active &&
         priorityResumeIndex < 0 &&
-        !timelapseDue &&
-        Date.now() - lastTimelapseAt >=
-          TIMELAPSE_INTERVAL_MS - TIMELAPSE_PRELOAD_LEAD_MS
+        (timelapseDue ||
+          Date.now() - lastTimelapseAt >=
+            TIMELAPSE_INTERVAL_MS - TIMELAPSE_PRELOAD_LEAD_MS)
       ) {
-        preloadTimelapse(scenes[queueIndices[0]]?.dataset.heroName);
+        preloadTimelapse(
+          queueIndices
+            .slice(0, 3)
+            .map((index) => scenes[index])
+            .find((scene) => timelapseEligible(scene, rotationProfile))?.dataset
+            .heroName,
+        );
       }
       if (continuity.active)
         scenes.forEach((scene) => syncSceneVideo(scene, false));
@@ -1723,6 +2447,7 @@ export function initLanding() {
             : (queueIndices[0] ?? currentIndex)
         ],
         rotationProfile,
+        scenes,
       );
       if (previousIndex >= 0 && previousIndex !== currentIndex) {
         const staleIndex = previousIndex;
@@ -1737,7 +2462,7 @@ export function initLanding() {
       const hero = scenes[currentIndex].querySelector(
         ".landing-hero-media img",
       );
-      if (hero && (!hero.complete || !hero.naturalWidth)) {
+      if (!preparedLive && hero && (!hero.complete || !hero.naturalWidth)) {
         fallbackTimer = window.setTimeout(() => {
           fallbackTimer = null;
           if (!hero.complete || !hero.naturalWidth)
@@ -1752,23 +2477,118 @@ export function initLanding() {
       ) {
         rotationTimer = window.setTimeout(
           rotate,
-          sceneRotationMs(scenes[currentIndex]),
+          Math.max(
+            sceneRotationMs(scenes[currentIndex]),
+            preparedLive ? (rotationProfile === "office" ? 40000 : 35000) : 0,
+            livePilot?.startupRemainingMs || 0,
+          ),
         );
       }
     };
 
-    const advanceRotation = () => {
-      previousIndex = currentIndex;
-      currentIndex =
+    const reloadForAssets = () => {
+      if (
+        !(pendingAssetReload || pendingCatalogReload) ||
+        !metadataHealthy ||
+        document.hidden ||
+        continuity.active ||
+        isManualHoldActive() ||
+        priorityResumeIndex >= 0
+      )
+        return false;
+      pendingAssetReload = false;
+      pendingCatalogReload = false;
+      reloadPage();
+      return true;
+    };
+
+    const advanceRotation = (relatedNames = []) => {
+      if (reloadForAssets()) return;
+      refreshQueue();
+      const relatedIndex = overviewFollowupIndex(
+        queueIndices,
+        scenes,
+        relatedNames,
+        currentIndex,
+      );
+      const nextIndex =
         priorityResumeIndex >= 0
           ? finishPriority()
-          : nextSceneIndex(currentIndex);
+          : relatedIndex >= 0
+            ? relatedIndex
+            : nextSceneIndex(currentIndex);
+      const candidate = scenes[nextIndex];
+      if (
+        nextIndex !== currentIndex &&
+        metadataHealthy &&
+        ["youtube", "tv"].includes(candidate?.dataset.heroMediaKind) &&
+        livePilotEligible(candidate, rotationProfile)
+      ) {
+        // Retain the outgoing useful scene while this broadcast starts. One
+        // pending stream only; normal cleanup also cancels it on holds/navigation.
+        if (pendingLive) return;
+        clearRotationTimer();
+        clearFallbackTimer();
+        if (livePilot && liveStreamLimit() < 2) {
+          livePilot.dispose();
+          livePilot = null;
+        }
+        const pending = { handle: null };
+        pendingLive = pending;
+        pending.handle = mountKioskLive(candidate, {
+          offscreen: true,
+          onReady: () => {
+            if (pendingLive !== pending) return;
+            pendingLive = null;
+            if (
+              disposed ||
+              document.hidden ||
+              continuity.active ||
+              isManualHoldActive() ||
+              isSceneSuppressed(candidate)
+            ) {
+              pending.handle.dispose();
+              if (
+                !disposed &&
+                !document.hidden &&
+                !continuity.active &&
+                !isManualHoldActive()
+              )
+                advanceRotation();
+              return;
+            }
+            previousIndex = currentIndex;
+            currentIndex = nextIndex;
+            render(pending.handle);
+          },
+          onUnavailable: () => {
+            // play() can fail synchronously, before the handle is assigned.
+            window.setTimeout(() => {
+              if (pendingLive === pending) {
+                pendingLive = null;
+                pending.handle.dispose();
+                advanceRotation();
+              } else if (!disposed && livePilot === pending.handle) {
+                // A formerly playing broadcast stalled: move on, not back to
+                // another long connecting screen. The player sets its cooldown.
+                livePilot.dispose();
+                livePilot = null;
+                advanceRotation();
+              }
+            }, 0);
+          },
+        });
+        return;
+      }
+      previousIndex = currentIndex;
+      currentIndex = nextIndex;
       refreshQueue();
       render();
     };
 
     const rotate = () => {
       if (
+        pendingLive ||
         document.hidden ||
         scenes.length < 2 ||
         continuity.active ||
@@ -1776,26 +2596,65 @@ export function initLanding() {
         (isManualHoldActive() && priorityResumeIndex < 0)
       )
         return;
-      if (priorityResumeIndex < 0 && overviewsEnabled && ++normalViews >= 8) {
+      if (reloadForAssets()) return;
+      // Count completed ordinary viewing, not alert interruptions or manual holds.
+      if (priorityResumeIndex < 0 && !isSceneSuppressed(scenes[currentIndex])) {
+        rotationBalance?.viewed(scenes[currentIndex]);
+        refreshQueue();
+      }
+      if (priorityResumeIndex < 0 && overviewsEnabled && ++normalViews >= 2) {
         normalViews = 0;
-        const selection = chooseOverview(
+        const selection = withOfficeTelevision(
+          chooseOverview(
+            scenes,
+            overviewCatalogs,
+            isSceneSuppressed,
+            overviewIndex,
+            rotationProfile,
+            (name) => rotationBalance?.recentlyViewed(name) || false,
+          ),
           scenes,
-          overviewCatalogs,
           isSceneSuppressed,
           overviewIndex,
+          rotationProfile,
         );
-        if (selection) {
-          overviewIndex++;
+        const highlight =
+          overviewIndex % 4 === 3 && !selection?.storeVisit
+            ? chooseHighlight(
+                overviewCatalogs,
+                rotationStorage,
+                rotationProfile,
+              )
+            : null;
+        if (selection || highlight) {
+          overviewIndex = (overviewIndex + 1) % 1000000;
+          try {
+            window.localStorage.setItem(
+              overviewIndexStorage,
+              String(overviewIndex),
+            );
+          } catch {
+            // Session-only sequencing remains available.
+          }
           clearFallbackTimer();
           stopTimelapse();
-          overview = createOverview(
-            selection,
+          const mountOverview = highlight
+            ? (item, host, ready, finish) =>
+                createHighlight(item, host, ready, finish, rotationStorage)
+            : createOverview;
+          overview = mountOverview(
+            highlight || selection,
             stageShell,
             () => {
               scenes.forEach((scene) => syncSceneVideo(scene, false));
             },
-            () => {
+            (relatedNames) => {
               overview = null;
+              if (!highlight)
+                rememberOverviewViews(rotationBalance, scenes, relatedNames);
+              // A completed four-up already covered these cameras. Let the
+              // refreshed fairness queue choose the next view instead of
+              // immediately showing one of the same tiles full-screen again.
               advanceRotation();
             },
           );
@@ -1858,8 +2717,7 @@ export function initLanding() {
       if (isSceneSuppressed(targetScene)) return;
       // Release the old live alert and preserve where normal rotation resumes.
       const handoffResume = priorityResumeIndex >= 0 ? finishPriority() : -1;
-      overview?.dispose();
-      overview = null;
+      disposeOverview();
       const interruptMs = parsePositiveInt(
         eventData.interrupt_ms || eventData.interruptMs,
         rotationMs,
@@ -1891,7 +2749,7 @@ export function initLanding() {
         priorityResumeIndex =
           handoffResume >= 0
             ? handoffResume
-            : targetIndex === currentIndex
+            : targetIndex === currentIndex && !isManualHoldActive()
               ? nextSceneIndex(currentIndex)
               : currentIndex;
         rememberPriorityEvent(eventData.key);
@@ -1904,6 +2762,7 @@ export function initLanding() {
             currentIndex = finishPriority();
             render();
           },
+          isManualHoldActive() ? "Return to held view" : "Resume rotation",
         );
         priorityNotice = priorityAlert.node;
         stageShell.append(priorityNotice);
@@ -1939,20 +2798,27 @@ export function initLanding() {
     };
 
     const syncAvailableCameras = (available) => {
-      if (
-        !Array.isArray(available) ||
-        !["living", "office"].includes(rotationProfile)
-      )
-        return;
-      const names = new Set(available);
-      scenes.forEach((scene) => {
-        scene.dataset.landingFeedUnavailable = String(
-          !names.has(scene.dataset.heroName),
+      const candidate = updateLandingAvailability(
+        scenes,
+        currentIndex,
+        available,
+        rotationProfile,
+        isSceneSuppressed,
+      );
+      if (candidate === null) return;
+      if (manualHold && !manualHold.overview) {
+        const heldScene = scenes.find(
+          (scene) =>
+            scene.dataset.heroName === manualHold.heroName ||
+            scene.dataset.sceneId === manualHold.sceneId,
         );
-      });
+        // A server-confirmed failed feed must not turn a manual hold into a
+        // hold on an unrelated fallback or restore that failed feed on reload.
+        if (!heldScene || heldScene.dataset.landingFeedUnavailable === "true")
+          clearManualHold();
+      }
       refreshQueue();
       // Never fall back to cycling through the same rejected cameras.
-      const candidate = scenes.findIndex((scene) => !isSceneSuppressed(scene));
       if (candidate < 0) {
         holdRotation("No healthy camera feeds. Retrying automatically…");
         return;
@@ -1971,47 +2837,77 @@ export function initLanding() {
         !eventsEnabled ||
         !eventsUrl ||
         document.hidden ||
-        eventPollInFlight
+        eventRequest
       ) {
         return;
       }
 
-      eventPollInFlight = true;
       const controller =
         typeof AbortController === "function" ? new AbortController() : null;
+      let rejectTimeout;
+      const timeout = new Promise((_, reject) => {
+        rejectTimeout = reject;
+      });
       const requestTimer = window.setTimeout(() => {
         controller?.abort();
-        if (!disposed) {
-          metadataHealthy = false;
-          holdRotation("Connection timed out. Retrying automatically…");
-        }
+        // An aborted fetch or response.json() may never settle on a kiosk.
+        // Release the poll slot so the next interval can try again.
+        rejectTimeout(new Error("Metadata request timed out"));
       }, 4000);
+      const request = {
+        cancel() {
+          window.clearTimeout(requestTimer);
+          controller?.abort();
+          rejectTimeout(new Error("Metadata request cancelled"));
+        },
+      };
+      eventRequest = request;
       try {
         const separator = eventsUrl.includes("?") ? "&" : "?";
-        const response = await window.fetch(
-          `${eventsUrl}${separator}_ts=${Date.now()}`,
-          {
-            cache: "no-store",
-            signal: controller?.signal,
-            credentials: "same-origin",
-            headers: {
-              Accept: "application/json",
-            },
-          },
-        );
-        if (!response.ok) throw new Error("Feed request failed");
-        const payload = await response.json();
-        if (disposed) return;
+        const payload = await Promise.race([
+          window
+            .fetch(`${eventsUrl}${separator}_ts=${Date.now()}`, {
+              cache: "no-store",
+              signal: controller?.signal,
+              credentials: "same-origin",
+              headers: { Accept: "application/json" },
+            })
+            .then((response) => {
+              if (!response.ok) throw new Error("Feed request failed");
+              return response.json();
+            }),
+          timeout,
+        ]);
+        if (disposed || eventRequest !== request || document.hidden) return;
         if (!payload || !Array.isArray(payload.events))
           throw new Error("Invalid feed response");
+        const assetRevision = payload.asset_revision;
+        if (
+          pageAssetRevision &&
+          typeof assetRevision === "string" &&
+          assetRevision &&
+          assetRevision !== pageAssetRevision
+        ) {
+          if (assetRevision === assetRevisionCandidate)
+            pendingAssetReload = true;
+          else {
+            assetRevisionCandidate = assetRevision;
+            pendingAssetReload = false;
+          }
+        } else {
+          assetRevisionCandidate = "";
+          pendingAssetReload = false;
+        }
+        pendingCatalogReload = catalogChanged(payload.available_cameras);
         metadataHealthy = true;
+        delete stageShell.dataset.landingMetadataStale;
         syncAvailableCameras(payload?.available_cameras);
+        applyLandingCaptionUpdates(scenes, payload?.caption_updates);
 
         if (
           overview?.cameras.some((camera) => isSceneSuppressed(camera.scene))
         ) {
-          overview.dispose();
-          overview = null;
+          disposeOverview();
           advanceRotation();
         }
         if (
@@ -2048,19 +2944,25 @@ export function initLanding() {
         if (!eventData?.key || eventData.key === lastHandledEventKey) {
           // A still can load before metadata recovers. Revisit live eligibility
           // even when no timelapse is due, without disturbing an overview/hold.
-          if ((timelapseDue || !livePilot) && !continuity.active && !overview)
+          if ((timelapseDue || !livePilot || continuity.active) && !overview)
             evaluateCurrentScene(currentIndex);
           return;
         }
         activateEvent(eventData);
       } catch {
-        if (!disposed) {
+        if (!disposed && eventRequest === request) {
+          assetRevisionCandidate = "";
+          pendingAssetReload = false;
+          pendingCatalogReload = catalogChanged(null);
           metadataHealthy = false;
-          holdRotation("Connection lost. Retrying automatically…");
+          stageShell.dataset.landingMetadataStale = "true";
+          // If canvas storage is unavailable, preserve already-loaded scenes.
+          if (continuity.available)
+            holdRotation("Server unavailable. Retrying automatically…");
         }
       } finally {
         window.clearTimeout(requestTimer);
-        eventPollInFlight = false;
+        if (eventRequest === request) eventRequest = null;
       }
     };
 
@@ -2072,9 +2974,12 @@ export function initLanding() {
       image.dataset.landingProbeBound = "true";
       image.addEventListener("load", () => evaluateCurrentScene(sceneIndex));
       image.addEventListener("error", () => advanceFromWeakScene(sceneIndex));
-      image.addEventListener("landing-image-failed", () =>
-        advanceFromWeakScene(sceneIndex),
-      );
+      image.addEventListener("landing-image-failed", () => {
+        // A background refresh can fail while the displayed frame is valid.
+        // Keep its original capture timestamp until a replacement really loads.
+        if (!image.complete || !image.naturalWidth)
+          advanceFromWeakScene(sceneIndex);
+      });
     });
 
     // Portrait wall cams look broken when forced through the same full-bleed
@@ -2096,6 +3001,10 @@ export function initLanding() {
       continuity.update();
       updateReviewControls();
     }, LANDING_TIME_REFRESH_MS);
+    progressTimer = window.setInterval(
+      checkRotationProgress,
+      LANDING_PROGRESS_CHECK_MS,
+    );
     if (imageRefreshMs > 0) {
       imageRefreshTimer = window.setInterval(() => {
         if (document.hidden) return;
@@ -2109,16 +3018,17 @@ export function initLanding() {
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
+        cancelEventRequest();
+        cancelTimelapsePreload();
         stopTimelapse();
-        overview?.dispose();
-        overview = null;
+        disposeOverview();
         clearRotationTimer();
         scenes.forEach((scene) => syncSceneVideo(scene, false));
         return;
       }
       clearRotationTimer();
+      pollLandingEvents();
       if (continuity.active || isManualHoldActive()) {
-        pollLandingEvents();
         return;
       }
       syncSceneVideo(
@@ -2131,9 +3041,13 @@ export function initLanding() {
           sceneRotationMs(scenes[currentIndex]),
         );
       }
+      // Hiding disposes live/replay playback. Re-evaluate the accepted still
+      // on return so a single-scene kiosk need not wait for another rotation.
+      evaluateCurrentScene(currentIndex);
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     const handleOffline = () => {
+      cancelEventRequest();
       metadataHealthy = false;
       holdRotation("Network offline. Retrying automatically…");
     };
@@ -2152,6 +3066,8 @@ export function initLanding() {
       "pagehide",
       () => {
         disposed = true;
+        cancelEventRequest();
+        cancelTimelapsePreload();
         stopTimelapse();
         continuity.dispose();
         window.removeEventListener("offline", handleOffline);
@@ -2168,11 +3084,10 @@ export function initLanding() {
         clearEventPollTimer();
         arrivalOverview?.dispose();
         priorityAlert?.dispose();
-        overview?.dispose();
+        disposeOverview();
         overviewDisposed = true;
         window.clearTimeout(overviewRefreshTimer);
         overviewController?.abort();
-        window.clearTimeout(overviewRequestTimer);
         document.removeEventListener(
           "visibilitychange",
           handleVisibilityChange,
@@ -2186,6 +3101,9 @@ export function initLanding() {
         });
         if (timeTimer) {
           window.clearInterval(timeTimer);
+        }
+        if (progressTimer) {
+          window.clearInterval(progressTimer);
         }
         if (imageRefreshTimer) {
           window.clearInterval(imageRefreshTimer);

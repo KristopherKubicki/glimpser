@@ -2,8 +2,13 @@ import { frameRateSample } from "./media_timing.js";
 import { showSpinner, hideSpinner, showErrorIndicator } from "./video.js";
 
 function safePlay(el) {
-  const p = el.play?.();
-  if (p && typeof p.catch === "function") p.catch(() => {});
+  try {
+    const p = el.play?.();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  } catch (_) {
+    // Older/restricted browsers can throw before returning a promise. Keep
+    // the connection deadline alive so the image fallback can still run.
+  }
 }
 
 function sendClientBeacon(event, data) {
@@ -89,6 +94,26 @@ export function adjustFullHeight() {
 export function initTilePlayer() {
   const video = document.getElementById("live-video");
   if (!video) return;
+  // Storage is optional. Keep writes (including removals) in this player's
+  // memory so failed persistence cannot lose backoff or revive stale values.
+  const localState = new Map();
+  function readState(key) {
+    if (localState.has(key)) return localState.get(key);
+    try {
+      return window.localStorage.getItem(key);
+    } catch (_) {
+      return null;
+    }
+  }
+  function writeState(key, value) {
+    localState.set(key, value);
+    try {
+      if (value === null) window.localStorage.removeItem(key);
+      else window.localStorage.setItem(key, value);
+    } catch (_) {
+      // Playback and retry limits remain usable until the page closes.
+    }
+  }
   video.addEventListener("contextmenu", (e) => e.preventDefault());
   const source = video.querySelector("source");
   const hasClipSource = Boolean(source && source.src);
@@ -187,13 +212,11 @@ export function initTilePlayer() {
   const container = video.parentElement;
 
   // Smooth camera switching: cross-fade + optional contrast/brightness guard.
-  const FLASH_GUARD_ENABLED = localStorage.getItem("flashGuard") !== "0";
+  const FLASH_GUARD_ENABLED = readState("flashGuard") !== "0";
+  const savedLuma = Number(readState("flashTargetLuma")?.trim() || "0.55");
   const FLASH_TARGET_LUMA = Math.min(
     0.8,
-    Math.max(
-      0.2,
-      parseFloat(localStorage.getItem("flashTargetLuma") || "0.55"),
-    ),
+    Math.max(0.2, Number.isFinite(savedLuma) ? savedLuma : 0.55),
   );
   const FLASH_GUARD_DARK_BIAS =
     window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? true;
@@ -427,7 +450,7 @@ export function initTilePlayer() {
   let forceLiveCamera = null;
   let liveQuality =
     liveQualitySelect?.value ||
-    localStorage.getItem("liveQuality") ||
+    readState("liveQuality") ||
     (window.LOW_CPU_MODE ? "low" : "auto");
   if (!{ auto: 1, low: 1, high: 1 }[liveQuality]) liveQuality = "auto";
   if (liveQualitySelect) {
@@ -436,7 +459,7 @@ export function initTilePlayer() {
       liveQuality = liveQualitySelect.value;
       liveAutoStage = "first";
       clearLiveAutoUpgradeTimer();
-      localStorage.setItem("liveQuality", liveQuality);
+      writeState("liveQuality", liveQuality);
       // Restart the live stream immediately with the new quality.
       if (current && shouldUseLiveVideo(current)) {
         play(current);
@@ -526,7 +549,7 @@ export function initTilePlayer() {
 
   function getLiveBadUntil(camera) {
     if (!camera) return 0;
-    const raw = localStorage.getItem(liveStateKey(camera, "badUntil"));
+    const raw = readState(liveStateKey(camera, "badUntil"));
     const n = Number(raw) || 0;
     return Number.isFinite(n) ? n : 0;
   }
@@ -534,22 +557,22 @@ export function initTilePlayer() {
   function markLiveBad(camera, ms = 120000) {
     if (!camera) return;
     const until = Date.now() + Math.max(30000, ms);
-    localStorage.setItem(liveStateKey(camera, "badUntil"), String(until));
+    writeState(liveStateKey(camera, "badUntil"), String(until));
   }
 
   function clearLiveBad(camera) {
     if (!camera) return;
-    localStorage.removeItem(liveStateKey(camera, "badUntil"));
+    writeState(liveStateKey(camera, "badUntil"), null);
   }
 
   function getLastGoodProfile(camera) {
     if (!camera) return "";
-    return (localStorage.getItem(liveStateKey(camera, "profile")) || "").trim();
+    return (readState(liveStateKey(camera, "profile")) || "").trim();
   }
 
   function setLastGoodProfile(camera, profile) {
     if (!camera || !profile) return;
-    localStorage.setItem(liveStateKey(camera, "profile"), profile);
+    writeState(liveStateKey(camera, "profile"), profile);
   }
 
   function canAttemptLive(camera) {
@@ -567,7 +590,7 @@ export function initTilePlayer() {
 
   function getLiveCooldownUntil(camera) {
     if (!camera) return 0;
-    const raw = localStorage.getItem(liveStateKey(camera, "cooldownUntil"));
+    const raw = readState(liveStateKey(camera, "cooldownUntil"));
     const n = Number(raw) || 0;
     return Number.isFinite(n) ? n : 0;
   }
@@ -576,10 +599,10 @@ export function initTilePlayer() {
     if (!camera) return;
     const until = Number(untilMs) || 0;
     if (!until) {
-      localStorage.removeItem(liveStateKey(camera, "cooldownUntil"));
+      writeState(liveStateKey(camera, "cooldownUntil"), null);
       return;
     }
-    localStorage.setItem(liveStateKey(camera, "cooldownUntil"), String(until));
+    writeState(liveStateKey(camera, "cooldownUntil"), String(until));
   }
 
   function setLiveAction(mode, camera = null) {
@@ -662,7 +685,7 @@ export function initTilePlayer() {
         }
         liveQuality = "high";
         if (liveQualitySelect) liveQualitySelect.value = liveQuality;
-        localStorage.setItem("liveQuality", liveQuality);
+        writeState("liveQuality", liveQuality);
         setLiveAction("", cam);
         play(cam);
       }

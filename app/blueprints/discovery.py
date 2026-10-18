@@ -199,12 +199,9 @@ def create_blueprint() -> Blueprint:
 
         ok, info = attempt()
         if not ok:
-            return (
-                jsonify(
-                    {"ok": False, "error": info.get("preconnect") or "unreachable"}
-                ),
-                400,
-            )
+            return jsonify(
+                {"ok": False, "error": info.get("preconnect") or "unreachable"}
+            ), 400
 
         info["ok"] = info.get("status", 500) < 400
 

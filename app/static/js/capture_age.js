@@ -78,9 +78,9 @@ export function safeMediaUrl(value) {
   try {
     const url = new URL(value, window.location.href);
     if (url.protocol !== "http:" && url.protocol !== "https:") return "";
-    return url.origin === window.location.origin
-      ? url.pathname + url.search + url.hash
-      : url.href;
+    // Keep the parsed scheme: a pathname beginning with // must never
+    // become a new protocol-relative destination when assigned to src.
+    return url.href;
   } catch {
     return "";
   }
@@ -93,9 +93,7 @@ export function captureImageUrl(base, captured) {
   if (!/^\/(?:clean_screenshot|last_screenshot)\//.test(url.pathname))
     return base;
   url.searchParams.set("capture", captured);
-  return url.origin === window.location.origin
-    ? url.pathname + url.search
-    : url.href;
+  return url.href;
 }
 
 export function captionAge(value, now = Date.now()) {

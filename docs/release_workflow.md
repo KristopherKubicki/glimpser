@@ -537,3 +537,42 @@ Frozen executables keep runtime data under `~/.glimpser` by default, with an
 optional `GLIMPSER_STATE_DIR` override. They never use the disposable bundle
 extraction directory for the database, session secret, logs, or capture storage.
 Source and Debian installations retain their existing paths.
+
+
+## Reconciling live camera features
+
+The reconciled capture runner bounds process lifetime and drains encoder pipes,
+retains the last good image until a replacement is validated, and isolates GPU
+faults. Kiosk playback releases abandoned media and keeps a bounded saved-view
+playlist. Broader rotation remains subject to private-camera and archived-feed
+exclusions; favorites never override these boundaries.
+
+Installation settings can be supplied with the existing `GLIMPSER_*` configuration
+variables or explicit JSON files under `~/.config/glimpser/`: `capture_policy.json`,
+`household_config.json`, `landing_config.json`, `viewer_config.json`, and
+`status_config.json`, and `media_config.json`. Environment paths take precedence. Missing files retain
+generic defaults. Keep these files out of Git and package artifacts.
+
+The status inventory is optional. Its `nodes` entries contain ID, label, group,
+host, port, role, link, and protocol, in that order. A null port marks an isolated
+node that must never be probed. `sensors` entries contain numeric device ID,
+label, and either `contact` or `motion`; `hub` is an HTTP(S) origin without
+credentials. `site` labels the inventory. Set `extended_kiosk` to true only when
+perimeter and local vehicle status should appear in supported room profiles.
+Absent or invalid inventory disables household probes.
+
+Before deployment, compare every installation override with the running source:
+dashboard membership, deferred rotation groups, verified live-camera settings,
+slow-stream tuning, exact variable-size image paths, household associations,
+privacy status, and native event allowlists. Schema validation alone does not
+prove this migration is complete. Back up the source, environment configuration,
+and SQLite databases; retain existing runtime queues and media. Verify live
+captures and event/status freshness after the controlled service restart.
+
+Media workers require `scope: personal` and an explicit `personal_review_host`
+in the private media configuration before invoking either fixed review worker.
+Optional `ssh_identity`, `data_root`, `tuner_host`, `collect_cameras`, and
+`magazine_cameras` preserve the installation's existing paths and inventory.
+Missing review targets disable review calls; they never select another account.
+Status configuration also accepts `native_event_cameras` (name-to-host mapping)
+and `privacy_url`; existing explicit environment overrides retain precedence.

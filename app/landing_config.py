@@ -69,6 +69,8 @@ def _profile(key, values):
             "camera_minimums",
             "group_minimums",
             "distributed_groups",
+            "deferred_cameras",
+            "deferred_groups",
         }:
             result[name] = _names(value)
         elif name == "lane_bias":
@@ -91,6 +93,10 @@ def load_landing_config() -> dict:
     """Load bounded private JSON at startup, falling back atomically on invalid data."""
     defaults = copy.deepcopy(DEFAULTS)
     path = os.getenv("GLIMPSER_LANDING_CONFIG", "").strip()
+    if not path:
+        default_path = Path.home() / ".config/glimpser/landing_config.json"
+        if default_path.is_file():
+            path = str(default_path)
     if not path:
         return defaults
     try:

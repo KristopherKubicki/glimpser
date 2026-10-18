@@ -74,7 +74,7 @@ test("startup timeout keeps saved capture and closes connection", () => {
   mount();
   jest.advanceTimersByTime(21000);
   expect(scene.querySelector("video")).toBeNull();
-  expect(scene.textContent).toContain("SAVED");
+  expect(scene.textContent).toContain("Saved view");
   expect(ready).not.toHaveBeenCalled();
 });
 test("stall restores saved capture without advancing the rotation", () => {
@@ -84,7 +84,7 @@ test("stall restores saved capture without advancing the rotation", () => {
   jest.advanceTimersByTime(6000);
   expect(scene.querySelector("video")).toBeNull();
   expect(scene.classList.contains("has-kiosk-live")).toBe(false);
-  expect(scene.textContent).toContain("SAVED");
+  expect(scene.textContent).toContain("Saved view");
   expect(ready).toHaveBeenCalledTimes(1);
 });
 test("dispose releases video and prevents late error UI", () => {
@@ -123,7 +123,7 @@ test("advancing media time cannot conceal frozen video frames", () => {
     jest.advanceTimersByTime(1000);
   }
   expect(scene.querySelector("video")).toBeNull();
-  expect(scene.textContent).toContain("SAVED");
+  expect(scene.textContent).toContain("Saved view");
 });
 
 test("dropped frames alone do not declare a live picture", () => {

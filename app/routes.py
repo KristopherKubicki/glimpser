@@ -1,3 +1,5 @@
+import secrets
+
 # ruff: noqa
 """HTTP route handlers and helper utilities.
 
@@ -19,12 +21,11 @@ import math
 import os
 import random
 import re
-import secrets
-import select
 import shutil
 import socket
-import sqlite3
 import ssl
+import select
+import sqlite3
 import struct
 import subprocess
 import sys
@@ -101,9 +102,6 @@ from app.utils import (
     camera_fix,
     event_buffer,
     limit_rate,
-    live_caps,
-    live_host_caps,
-    live_limits,
     prompt_optimizer,
     scheduling,
     screenshots,
@@ -114,6 +112,7 @@ from app.utils import (
 from app.utils.http_probe import probe_url_with_range
 from app.utils.llm import ask_question
 from app.utils.screenshots import (
+    _normalize_capture_rotation,
     capture_frame_from_stream,
     check_user_activity,
     is_chrome_debug_port_open,
@@ -128,6 +127,9 @@ from app.utils.settings_tooltips import (
     SETTINGS_TOOLTIPS,
 )
 from app.utils.warm_live import WarmLiveManager
+from app.utils import live_caps
+from app.utils import live_host_caps
+from app.utils import live_limits
 
 try:
     import onnxruntime as ort
@@ -1138,6 +1140,7 @@ def build_live_ffmpeg_command(
     width: int | None = None,
     fps: int | None = None,
     transcode_rtsp: bool | None = None,
+    rotation: int = 0,
 ) -> list[str]:
     """Build the ffmpeg command used for browser-friendly live playback."""
 
@@ -1185,17 +1188,35 @@ def build_live_ffmpeg_command(
         config.LIVE_TRANSCODE_RTSP if transcode_rtsp is None else bool(transcode_rtsp)
     )
 
-    if parsed.scheme in ("rtsp", "rtsps") and do_transcode_rtsp:
+    from app.utils.feed_tv import is_tuner_url
+
+    television = is_tuner_url(url)
+    rotation = _normalize_capture_rotation(rotation)
+    if (
+        television
+        or rotation
+        or (parsed.scheme in ("rtsp", "rtsps") and do_transcode_rtsp)
+    ):
         # Add low-delay mode without clearing the muxer's global-header flag.
         # Replacing flags emits an empty avcC box and unplayable fragmented MP4.
         command.extend(["-fflags", "nobuffer", "-flags", "+low_delay"])
-        vf_parts: list[str] = []
+        vf_parts: list[str] = ["yadif=0"] if television else []
+        if rotation in (-90, 90):
+            vf_parts.append(
+                "transpose=cclock" if rotation == -90 else "transpose=clock"
+            )
+        elif rotation == 180:
+            vf_parts.extend(["hflip", "vflip"])
         live_fps = fps if fps is not None else config.LIVE_RTSP_FPS
         live_width = width if width is not None else config.LIVE_RTSP_WIDTH
         if live_fps:
             vf_parts.append(f"fps={int(live_fps)}")
-        if live_width:
-            vf_parts.append(f"scale=min(iw\\,{int(live_width)}):-2")
+        # Bake display aspect into square pixels so still/live handoffs agree
+        # even when a camera or broadcast uses anamorphic encoded pixels.
+        output_width = f"min(iw*sar\\,{int(live_width)})" if live_width else "iw*sar"
+        vf_parts.append(
+            f"scale=trunc({output_width}/2)*2:max(2\\,trunc(ow/dar/2)*2),setsar=1"
+        )
         if vf_parts:
             command.extend(["-vf", ",".join(vf_parts)])
 
@@ -1253,9 +1274,13 @@ warm_live_manager = WarmLiveManager()
 
 
 def _warm_live_key(
-    url: str, width: int | None, fps: int | None, transcode_rtsp: bool | None
+    url: str,
+    width: int | None,
+    fps: int | None,
+    transcode_rtsp: bool | None,
+    rotation: int = 0,
 ) -> str:
-    return f"{url}|w={width or ''}|fps={fps or ''}|t={1 if transcode_rtsp else 0}"
+    return f"{url}|w={width or ''}|fps={fps or ''}|t={1 if transcode_rtsp else 0}|r={_normalize_capture_rotation(rotation)}"
 
 
 def warm_live(
@@ -1264,11 +1289,14 @@ def warm_live(
     width: int | None = None,
     fps: int | None = None,
     transcode_rtsp: bool | None = None,
+    rotation: int = 0,
 ) -> None:
     cmd = build_live_ffmpeg_command(
-        url, width=width, fps=fps, transcode_rtsp=transcode_rtsp
+        url, width=width, fps=fps, transcode_rtsp=transcode_rtsp, rotation=rotation
     )
-    warm_live_manager.warm(_warm_live_key(url, width, fps, transcode_rtsp), cmd)
+    warm_live_manager.warm(
+        _warm_live_key(url, width, fps, transcode_rtsp, rotation), cmd
+    )
 
 
 def generate_warm_live_stream(
@@ -1277,15 +1305,16 @@ def generate_warm_live_stream(
     width: int | None = None,
     fps: int | None = None,
     transcode_rtsp: bool | None = None,
+    rotation: int = 0,
 ) -> Generator[bytes, None, None]:
     cmd = build_live_ffmpeg_command(
-        url, width=width, fps=fps, transcode_rtsp=transcode_rtsp
+        url, width=width, fps=fps, transcode_rtsp=transcode_rtsp, rotation=rotation
     )
     proc_start_ts = time.time()
     host_key = live_host_key(url)
     first = True
     for chunk in warm_live_manager.subscribe(
-        _warm_live_key(url, width, fps, transcode_rtsp), cmd
+        _warm_live_key(url, width, fps, transcode_rtsp, rotation), cmd
     ):
         if first:
             live_caps.record_success(
@@ -1303,6 +1332,7 @@ def generate_live_stream(
     width: int | None = None,
     fps: int | None = None,
     transcode_rtsp: bool | None = None,
+    rotation: int = 0,
     max_no_output_seconds: float | None = None,
     max_no_output_failures: int | None = None,
 ) -> Generator[bytes, None, None]:
@@ -1368,8 +1398,12 @@ def generate_live_stream(
         width=width,
         fps=fps,
         transcode_rtsp=transcode_rtsp,
+        rotation=rotation,
     )
 
+    from app.utils.feed_tv import is_tuner_url
+
+    television = is_tuner_url(url)
     parsed = urlparse(url)
     host_key = live_host_key(url)
     host_marked_ok = False
@@ -1401,7 +1435,9 @@ def generate_live_stream(
         if parsed.scheme in ("http", "https"):
             if http_budget_exhausted():
                 return
-            if not check_url_accessible(url):
+            # Opening a tuner URL is a tuning operation, not a harmless probe.
+            # Let the bounded encoder connection be the single source request.
+            if not television and not check_url_accessible(url):
                 failures += 1
                 if http_budget_exhausted():
                     return
@@ -1615,10 +1651,10 @@ def resize_and_pad(
     """Resize ``img`` to fit ``size`` while preserving aspect ratio."""
 
     # Calculate the scaling factor to resize the image while maintaining the aspect ratio
-    scale = max(size[0] / img.size[0], size[1] / img.size[1])
+    scale = min(size[0] / img.size[0], size[1] / img.size[1])
 
     # Resize the image using the scaling factor
-    new_size = (int(img.size[0] * scale), int(img.size[1] * scale))
+    new_size = (max(1, int(img.size[0] * scale)), max(1, int(img.size[1] * scale)))
     img = img.resize(new_size)
 
     # Create a new image with the specified size and color
@@ -1999,11 +2035,9 @@ def generate(
                                 "Discarding invalid screenshot %s (size=%s, age=%s)",
                                 most_recent_file,
                                 size,
-                                (
-                                    f"{age_seconds:.1f}s"
-                                    if age_seconds is not None
-                                    else "unknown"
-                                ),
+                                f"{age_seconds:.1f}s"
+                                if age_seconds is not None
+                                else "unknown",
                             )
                             try:
                                 os.remove(most_recent_file)
@@ -2173,6 +2207,9 @@ def init_routes(app: Flask) -> None:
     from app.blueprints.system import create_blueprint as create_system_blueprint
     from app.blueprints.timeline import create_blueprint as create_timeline_blueprint
     from app.blueprints.views import create_blueprint as create_views_blueprint
+    from app.blueprints.youtube_follow import (
+        create_blueprint as create_youtube_follow_blueprint,
+    )
 
     if not getattr(app, "_network_bp_registered", False):
         app.register_blueprint(create_blueprint())
@@ -2225,6 +2262,10 @@ def init_routes(app: Flask) -> None:
     if not getattr(app, "_location_bp_registered", False):
         app.register_blueprint(create_location_blueprint())
         app._location_bp_registered = True
+
+    if not getattr(app, "_youtube_follow_bp_registered", False):
+        app.register_blueprint(create_youtube_follow_blueprint())
+        app._youtube_follow_bp_registered = True
 
     if not getattr(app, "_views_bp_registered", False):
         app.register_blueprint(create_views_blueprint())
@@ -2286,8 +2327,6 @@ def init_routes(app: Flask) -> None:
 
     @app.context_processor
     def inject_footer_data():
-        from app.viewer_policy import VIEWER_CONFIG
-
         lan_guest = False
         if has_request_context():
             ip = request.remote_addr
@@ -2324,7 +2363,4 @@ def init_routes(app: Flask) -> None:
             CLOCK_DIGITAL=CLOCK_DIGITAL,
             CLOCK_NAVBAR=CLOCK_NAVBAR,
             LAN_GUEST=lan_guest,
-            NAVIGATION_GROUPS=VIEWER_CONFIG.get(
-                "navigation_groups", ["plants", "grower", "regional", "weather"]
-            ),
         )

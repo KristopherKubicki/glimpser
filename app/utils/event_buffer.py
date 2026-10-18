@@ -24,7 +24,7 @@ from pathlib import Path
 from urllib.parse import quote, unquote, urlparse, urlunparse
 
 import requests
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageOps, ImageSequence, UnidentifiedImageError
 from werkzeug.utils import secure_filename
 
 from app import config
@@ -100,6 +100,16 @@ def _safe_name(name: str) -> str:
     if valid is None:
         raise ValueError("invalid template name")
     return secure_filename(valid)
+
+
+def _is_isapi_snapshot(template: dict) -> bool:
+    """Identify direct ISAPI stills that may take longer than a probe to return."""
+    parsed = urlparse(str(template.get("url") or ""))
+    return parsed.scheme.lower() in {"http", "https"} and bool(
+        re.fullmatch(
+            r"/ISAPI/Streaming/channels/\d+/picture/?", parsed.path, re.IGNORECASE
+        )
+    )
 
 
 def _frame_dir(name: str) -> Path:
@@ -240,6 +250,19 @@ def _prepare_image(image: Image.Image, width: int) -> Image.Image:
     return image
 
 
+def _save_oriented_frame(
+    name: str, image: Image.Image, template: dict, timestamp: float, width: int
+) -> Path:
+    """Use the same EXIF and explicit orientation as the main camera capture."""
+    from app.utils.screenshots import _rotate_captured_image
+
+    oriented = ImageOps.exif_transpose(image)
+    oriented = _rotate_captured_image(
+        oriented, template.get("capture_rotate_degrees"), name
+    )
+    return _save_frame(name, oriented, timestamp, width)
+
+
 def _save_frame(name: str, image: Image.Image, timestamp: float, width: int) -> Path:
     frame_dir = _frame_dir(name)
     frame_dir.mkdir(parents=True, exist_ok=True)
@@ -267,7 +290,9 @@ def _capture_http_frame(
 ) -> Path:
     started = time.monotonic()
     url = str(template.get("url") or "").strip()
-    timeout = _bounded_int(template.get("timeout"), 3, 2, 5)
+    timeout = _bounded_int(
+        template.get("timeout"), 3, 2, 12 if _is_isapi_snapshot(template) else 5
+    )
     deadline = started + timeout
 
     def remaining_timeout() -> float:
@@ -309,7 +334,9 @@ def _capture_http_frame(
         payload.seek(0)
         try:
             with Image.open(payload) as image:
-                return _save_frame(name, image, _finished_at(timestamp, started), width)
+                return _save_oriented_frame(
+                    name, image, template, _finished_at(timestamp, started), width
+                )
         except UnidentifiedImageError as exc:
             raise ValueError("event buffer response is not an image") from exc
 
@@ -339,7 +366,7 @@ def _capture_rtsp_frame(
             "-frames:v",
             "1",
             "-vf",
-            f"scale={width}:-2",
+            f"scale={width}:max(2\\,trunc(ow/dar/2)*2),setsar=1",
             "-q:v",
             "6",
             "-y",
@@ -347,7 +374,9 @@ def _capture_rtsp_frame(
         ]
         subprocess.run(command, timeout=timeout, check=True, capture_output=True)
         with Image.open(tmp_name) as image:
-            return _save_frame(name, image, _finished_at(timestamp, started), width)
+            return _save_oriented_frame(
+                name, image, template, _finished_at(timestamp, started), width
+            )
     finally:
         try:
             os.remove(tmp_name)
@@ -454,7 +483,12 @@ def _capture_due_template(name, template, now):
     state.last_failure = 0.0
     state.backoff_until = 0.0
     finished_at = _finished_at(now, started_monotonic)
-    state.next_due = finished_at + (1.0 / max(settings["fps"], 1))
+    capture_gap = 1.0 / max(settings["fps"], 1)
+    if _is_isapi_snapshot(template):
+        # A slow still camera cannot sustain one frame per second. Give it
+        # at least its response time to recover before requesting another.
+        capture_gap = max(capture_gap, finished_at - now)
+    state.next_due = finished_at + capture_gap
     state.last_success = finished_at
     result["captured"] += 1
     return result
@@ -557,6 +591,7 @@ def build_event_gif(
                     times.append(_frame_timestamp(frame))
             except (OSError, UnidentifiedImageError):
                 continue
+        images, times = _consistent_replay_geometry(images, times, resources)
         if not images:
             return None
 
@@ -588,6 +623,28 @@ def build_event_gif(
         return gif_path
 
 
+def _consistent_replay_geometry(images, times, resources: ExitStack):
+    """Keep a recent compatible segment on one canvas without stretching."""
+    if not images:
+        return images, times
+    size = images[-1].size
+    ratio = size[0] / size[1]
+    start = 0
+    for index in range(len(images) - 2, -1, -1):
+        if abs((images[index].width / images[index].height) / ratio - 1) > 0.02:
+            start = index + 1
+            break
+    normalized = []
+    for image in images[start:]:
+        if image.size != size:
+            image = ImageOps.pad(
+                image, size, method=_RESAMPLING.LANCZOS, color=(0, 0, 0)
+            )
+            resources.callback(image.close)
+        normalized.append(image)
+    return normalized, times[start:]
+
+
 def recent_replay(name: str, now: float | None = None) -> dict | None:
     """Build a short replay only from recent buffered frames, with honest timing.
 
@@ -601,7 +658,7 @@ def recent_replay(name: str, now: float | None = None) -> dict | None:
         return None
     frames = _sample_frames(_frames_for_window(safe_name, now - 30, now), 30)
     with ExitStack() as resources:
-        images, times, fingerprints = [], [], set()
+        images, times = [], []
         for frame in frames:
             try:
                 with Image.open(frame) as image:
@@ -611,9 +668,10 @@ def recent_replay(name: str, now: float | None = None) -> dict | None:
                     resources.callback(converted.close)
                     images.append(converted)
                     times.append(_frame_timestamp(frame))
-                    fingerprints.add(hashlib.sha256(images[-1].tobytes()).digest())
             except (OSError, UnidentifiedImageError):
                 continue
+        images, times = _consistent_replay_geometry(images, times, resources)
+        fingerprints = {hashlib.sha256(image.tobytes()).digest() for image in images}
         if (
             len(images) < 2
             or len(fingerprints) < 2
@@ -627,7 +685,9 @@ def recent_replay(name: str, now: float | None = None) -> dict | None:
         directory.mkdir(parents=True, exist_ok=True)
         # Stable frame-derived filename makes repeated requests reusable. Each
         # writer has its own temporary path, so two kiosk requests cannot collide.
-        path = directory / f"replay_{int(times[0] * 1000)}_{int(times[-1] * 1000)}.gif"
+        path = (
+            directory / f"replay_v2_{int(times[0] * 1000)}_{int(times[-1] * 1000)}.gif"
+        )
         if not path.exists():
             import tempfile
 
@@ -648,8 +708,19 @@ def recent_replay(name: str, now: float | None = None) -> dict | None:
             finally:
                 temporary.unlink(missing_ok=True)
             _prune_events(safe_name)
+        # Read encoded delays, including GIF quantization and merged identical
+        # frames. Reused files must report their actual playback length too.
+        with Image.open(path) as replay:
+            duration = (
+                sum(
+                    frame.info.get("duration", 0)
+                    for frame in ImageSequence.Iterator(replay)
+                )
+                / 1000
+            )
         return {
             "path": path,
+            "duration": duration,
             "start": times[0],
             "end": times[-1],
             "frames": len(images),

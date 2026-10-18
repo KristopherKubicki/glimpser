@@ -178,7 +178,7 @@ def record_failure(url: str, *, reason: str = "") -> None:
         # If we're repeatedly failing to produce bytes, back off to avoid hammering
         # the camera (or a snapshot endpoint that isn't really a stream).
         if (
-            reason == "no_output"
+            reason in {"no_output", "empty_startup"}
             and c.fail_count >= 3
             and (c.last_ok_ts or 0) < _now() - 60
         ):

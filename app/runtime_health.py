@@ -5,7 +5,11 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
+from app.encoder_pipe import run_encoder_command
+from app.gpu_guard import gpu_fault
 from app.viewer_policy import ARCHIVE_GROUPS
+
+BEACH_EUFY_MAX_AGE_SECONDS = 16 * 60 * 60
 
 
 def probe_acceleration(ffmpeg_path: str, method: str) -> dict:
@@ -16,6 +20,14 @@ def probe_acceleration(ffmpeg_path: str, method: str) -> dict:
         return {**result, "effective": "false", "status": "disabled"}
     if selected != "cuda":
         return result
+    fault = gpu_fault()
+    if fault:
+        return {
+            **result,
+            "effective": "false",
+            "status": "failed",
+            "reason": fault["reason"],
+        }
     command = [
         ffmpeg_path,
         "-hide_banner",
@@ -35,7 +47,7 @@ def probe_acceleration(ffmpeg_path: str, method: str) -> dict:
         "-",
     ]
     try:
-        completed = subprocess.run(command, capture_output=True, timeout=8, check=False)
+        completed = run_encoder_command(command, timeout=8)
         if completed.returncode == 0:
             return {**result, "status": "verified"}
         reason = "CUDA encoder initialization failed"
@@ -50,7 +62,8 @@ def capture_health(database_path: str, now: datetime | None = None) -> dict:
     """Summarize persisted capture freshness, without scanning media directories.
 
     This deliberately reports database telemetry, not playable-frame integrity.
-    Freshness matches the detailed camera report: three intervals or one hour.
+    Freshness allows three intervals or one hour, except the daylight-only
+    Beach Eufy sweep, whose bridge permits a 16-hour overnight gap.
     """
     now = now or datetime.now(UTC)
     summary = dict(
@@ -81,9 +94,11 @@ def capture_health(database_path: str, now: datetime | None = None) -> dict:
             stamp = datetime.fromisoformat(last_capture.replace("Z", "+00:00"))
             if stamp.tzinfo is None:
                 stamp = stamp.replace(tzinfo=UTC)
-            stale = (now - stamp).total_seconds() > max(
-                60, float(frequency or 30) * 3
-            ) * 60
+            limit = max(60, float(frequency or 30) * 3) * 60
+            if {"beachhouse", "eufy"}.issubset(group_names):
+                # The external Eufy sweep intentionally pauses overnight.
+                limit = max(limit, BEACH_EUFY_MAX_AGE_SECONDS)
+            stale = (now - stamp).total_seconds() > limit
         except (AttributeError, TypeError, ValueError):
             stale = True
         summary["stale" if stale else "fresh"] += 1

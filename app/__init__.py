@@ -165,8 +165,13 @@ def create_app(
             "camera_captures": {"type": "threadpool", "max_workers": MAX_WORKERS},
             # Keep entrance captures moving when slow scenic feeds fill the queue.
             "priority_cameras": {"type": "threadpool", "max_workers": 2},
-            "browser_retries": {"type": "threadpool", "max_workers": 1},
+            # A second thread lets scheduled ticks return while a capture runs;
+            # the queue coordinator still admits only one browser render.
+            "browser_retries": {"type": "threadpool", "max_workers": 2},
             "browser_captures": {"type": "threadpool", "max_workers": 2},
+            # Presence is a short network poll; maintenance jobs must not make
+            # its observations expire before the next 30-second check.
+            "presence": {"type": "threadpool", "max_workers": 1},
             "event_buffer": {
                 "type": "threadpool",
                 "max_workers": 2,
@@ -383,17 +388,9 @@ def create_app(
                 schedule_offline_job_processor()
                 schedule_event_buffers()
                 schedule_baseline_updates()
-                from app.utils.household_presence import poll_presence
+                from app.utils.household_presence import schedule_presence
 
-                scheduler.add_job(
-                    id="household_presence",
-                    func=poll_presence,
-                    trigger="interval",
-                    seconds=30,
-                    max_instances=1,
-                    coalesce=True,
-                    replace_existing=True,
-                )
+                schedule_presence(scheduler)
                 if enable_clip_refresh:
                     schedule_clip_refresh()
                 if DISCOVERY_AUTOSTART:

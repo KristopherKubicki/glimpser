@@ -68,7 +68,9 @@ class _Mp4BoxParser:
 @dataclass
 class WarmLiveConfig:
     ttl_seconds: float = 30.0
-    init_timeout_seconds: float = 8.0
+    # Cold exterior RTSP feeds can take just over eight seconds to deliver
+    # their first fragment; stay within the player's 20-second startup window.
+    init_timeout_seconds: float = 15.0
     max_cache_bytes: int = 2_000_000
     max_cached_fragments: int = 6
     stall_timeout_seconds: float = 20.0
