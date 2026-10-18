@@ -589,3 +589,12 @@ origin hostname). Set these in the kiosk service environment before updating a
 remote kiosk installation. The VM source rollout does not update kiosk hosts.
 Dashboard presentation labels are supplied by the private viewer configuration
 `presentation` mapping, only on authorized dashboard pages.
+
+Development dependency security floors: `sh>=2.2.4` protects Gitlint's subprocess
+helper against incomplete supplementary-group drops. It is limited to the
+existing development/agent dependency groups. npm overrides select
+`postcss-selector-parser>=7.1.6` and the compatible js-yaml 4.x reader (minimum
+4.3.2); the latter removes argparse 1.x and unpatched sprintf-js from Istanbul's
+configuration-loading chain. Validate CSS lint, Jest coverage, Istanbul YAML
+configuration loading and Gitlint when changing these overrides. The existing
+expiring braces exception is unchanged.
