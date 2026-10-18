@@ -9,7 +9,7 @@ Glimpser supports enclosed Eufy imports with VM/emulator mode:
 ## Configure
 
 1. Open **Settings -> Eufy Cloud Cameras -> Open Eufy Integration**.
-2. Create a profile (for example `argyle`, `beach`, `halsted`).
+2. Create a profile (for example `front-door`, `garden`, `garage`).
 3. Mode is deployment-locked to `VM / Emulator (ADB)`:
    - Fill `Emulator Device Catalog (JSON)` with one row per camera.
    - Optional: set `Emulator ADB Path` when `adb` is not on system `PATH`.

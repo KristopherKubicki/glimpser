@@ -1961,7 +1961,7 @@ class TestScreenshotsExtras(unittest.TestCase):
             patch("app.utils.screenshots.ssl.create_default_context") as make_context,
         ):
             ok, reason = ss._preflight_dns_tls(
-                "https://io.home.lollie.org/bandwidthd/example.png"
+                "https://camera.example.invalid/bandwidthd/example.png"
             )
 
         self.assertTrue(ok)
