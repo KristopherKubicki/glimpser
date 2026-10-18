@@ -34,7 +34,18 @@ def browser(monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize("late", [False, True])
-def test_browser_error_preserves_previous_image(browser, monkeypatch, tmp_path, late):
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "browser_error_page",
+        "browser_soft_error_page",
+        "browser_http_error_404",
+        "browser_http_error_503",
+    ],
+)
+def test_browser_error_preserves_previous_image(
+    browser, monkeypatch, tmp_path, late, reason
+):
     output = tmp_path / "camera.png"
     output.write_bytes(b"previous accepted image")
     calls = 0
@@ -43,7 +54,7 @@ def test_browser_error_preserves_previous_image(browser, monkeypatch, tmp_path, 
         nonlocal calls
         if "location.protocol" in source:
             calls += 1
-            return "browser_error_page" if not late or calls > 1 else ""
+            return reason if not late or calls > 1 else ""
         return 0
 
     browser.execute_script.side_effect = script
@@ -57,7 +68,7 @@ def test_browser_error_preserves_previous_image(browser, monkeypatch, tmp_path, 
     assert output.read_bytes() == b"previous accepted image"
     assert not (tmp_path / "camera.png.tmp.png").exists()
     finalize.assert_not_called()
-    assert ss.throttle_cache[url]["reason"] == "browser_error_page"
+    assert ss.throttle_cache[url]["reason"] == reason
     assert ss._renderer_healthy("headless")
     browser.quit.assert_called_once()
 
