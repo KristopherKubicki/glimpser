@@ -60,12 +60,14 @@ class TestUpdateCameraSymlink(unittest.TestCase):
                 patch("app.utils.scheduling.send_http_callback"),
                 patch("app.utils.scheduling.chatgpt_compare", return_value="cap"),
                 patch("app.utils.scheduling.is_mostly_blank", return_value=False),
-                patch("app.utils.scheduling.update_last_screenshot_time"),
-                patch("app.utils.scheduling.set_capture_failed"),
+                patch("app.utils.scheduling.update_last_screenshot_time") as timestamp,
+                patch("app.utils.scheduling.set_capture_failed") as failure,
                 patch("app.utils.scheduling.get_template", return_value=template),
             ):
                 scheduling.update_camera("cam1", template)
 
+            timestamp.assert_called_once()
+            failure.assert_not_called()
             self.assertFalse(os.path.lexists(os.path.join(cam_dir, "prev_motion.png")))
             self.assertEqual(
                 os.path.realpath(os.path.join(cam_dir, "last_motion.png")), newest

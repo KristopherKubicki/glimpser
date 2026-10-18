@@ -1255,8 +1255,8 @@ def update_camera(name, template, image_file=None, motion=False):
         captured_at = parse_canonical_screenshot_timestamp(name, png_files[-1])
         # Validation must precede metadata publication. A retried check may have
         # produced no new file, and processing may finish long after acquisition.
+        # The timestamp transaction also clears failure and offline state.
         update_last_screenshot_time(name, captured_at=captured_at)
-        set_capture_failed(name, False)
 
         clean_path = os.path.join(directory, "last_clean.png")
         # A clean companion belongs to one immutable capture filename. This

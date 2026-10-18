@@ -721,7 +721,7 @@ class TestOfflineHandling(unittest.TestCase):
     def test_update_last_screenshot_time_clears_offline(self, mock_session):
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
-        template = Template(name="cam1", offline_since="yesterday")
+        template = Template(name="cam1", offline_since="yesterday", capture_failed=True)
         mock_sess.query.return_value.filter_by.return_value.first.return_value = (
             template
         )
@@ -730,6 +730,7 @@ class TestOfflineHandling(unittest.TestCase):
 
         self.assertEqual(template.offline_since, "")
         self.assertNotEqual(template.last_screenshot_time, "")
+        self.assertFalse(template.capture_failed)
         mock_sess.commit.assert_called_once()
 
     @patch("app.utils.template_manager.SessionLocal")
