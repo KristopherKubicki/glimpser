@@ -598,3 +598,10 @@ existing development/agent dependency groups. npm overrides select
 configuration-loading chain. Validate CSS lint, Jest coverage, Istanbul YAML
 configuration loading and Gitlint when changing these overrides. The existing
 expiring braces exception is unchanged.
+
+Dependency update PRs target `staging`; promote validated updates to `main` through
+the normal release lane. Keep dependency manifests and `uv.lock` synchronized.
+The NumPy 2.x range is supported alongside 1.26; validate the native ONNX tensor
+round trip as well as image processing tests when updating it. SQLAlchemy 2.1
+and Alembic updates require the database/schema test suite. isort 9 also requires
+a compatible Pylint/Astroid pair, which the lockfile resolves together.
