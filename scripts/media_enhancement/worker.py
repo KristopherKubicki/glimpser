@@ -37,7 +37,7 @@ PROFILES = {
 
 def recipe_version(profile):
     if profile == "neural-colorize":
-        return "neural-colorize-v1"
+        return "neural-colorize-v2"
     if profile in {
         "neural-retinex",
         "neural-cidnet",

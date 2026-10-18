@@ -10,7 +10,7 @@ from urllib.request import urlopen
 from app.status_config import STATUS_CONFIG
 
 HUB = STATUS_CONFIG.get("hub", "")
-# Existing Knox contacts and sensitive-area sensors; no inferred store coverage.
+# Configured contacts and sensitive-area sensors; no inferred store coverage.
 SENSORS = STATUS_CONFIG.get("sensors", [])
 _CACHE = {"at": 0.0, "rows": []}
 _LOCK = Lock()

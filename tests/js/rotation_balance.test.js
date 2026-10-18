@@ -22,7 +22,7 @@ test.each(["office", "living", "hal"])(
   "%s eventually shows every view despite an uneven category mix",
   (profile) => {
     const pool = Array.from({ length: 220 }, (_, i) =>
-      scene(String(i), i < 180 ? "Systems" : i < 210 ? "Weather" : "Knox"),
+      scene(String(i), i < 180 ? "Systems" : i < 210 ? "Weather" : "Home"),
     );
     const planner = createRotationBalance(profile, storage());
     const shown = new Set();

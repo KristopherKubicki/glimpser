@@ -1,17 +1,18 @@
+import { presentationValue } from "./presentation_config.js";
 import { captureAge } from "./capture_age.js";
 import { HOUSE_EXTERIOR_CAMERAS } from "./kiosk_live.js?v=20261017-media-lifecycle";
 
 export const TIMELAPSE_INTERVAL_MS = 30000;
 export const TIMELAPSE_PRELOAD_LEAD_MS = 25000;
 const CAMERA_GROUPS = new Set([
-  "argyle",
+  presentationValue("storeone"),
   "beach",
   "beachhouse",
   "chicago",
   "garden",
-  "halsted",
+  presentationValue("storetwo"),
   "kenosha",
-  "knox",
+  presentationValue("home"),
   "lincolnwood",
   "marine",
   "milwaukee",

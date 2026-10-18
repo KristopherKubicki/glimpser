@@ -6437,6 +6437,9 @@ def _capture_or_download_inner(
                 ) or (
                     str((throttle_cache.get(url) or {}).get("reason") or "")
                     in {"browser_error_page", "sdm_preview_not_ready"}
+                    or _is_browser_rejection_reason(
+                        (throttle_cache.get(url) or {}).get("reason")
+                    )
                 )
                 cas_error(url)
                 if time.time() - method_start > timeout:
@@ -12502,8 +12505,15 @@ def _release_browser_capture_file_lock(
 ########################################
 
 
+def _is_browser_rejection_reason(reason) -> bool:
+    return isinstance(reason, str) and bool(
+        reason in {"browser_error_page", "browser_soft_error_page"}
+        or re.fullmatch(r"browser_http_error_[45][0-9]{2}", reason)
+    )
+
+
 def _reject_browser_error_page(driver, url: str, name: str) -> bool:
-    """Reject Chrome's own error UI before it can become a camera image."""
+    """Reject browser errors and failed main documents before saving a frame."""
     # Use Chrome's structural markers, not page titles or arbitrary body text:
     # legitimate pages can discuss certificate errors and network failures.
     reason = driver.execute_script(
@@ -12515,12 +12525,37 @@ def _reject_browser_error_page(driver, url: str, name: str) -> bool:
         const interstitial = body && body.classList.contains('ssl') &&
             document.querySelector('.interstitial-wrapper') &&
             document.querySelector('#error-code, .error-code');
-        return internal || neterror || interstitial ? 'browser_error_page' : '';
+        if (internal || neterror || interstitial) return 'browser_error_page';
+        // Only the top-level navigation response matters. A missing favicon,
+        // image or analytics request must not reject an otherwise useful page.
+        // Older browsers may not expose responseStatus: leave their existing
+        // visual/structural checks in charge instead of guessing from text.
+        try {
+            const navigation = performance.getEntriesByType('navigation')[0];
+            const status = navigation?.responseStatus;
+            if (Number.isInteger(status) && status >= 400 && status <= 599)
+                return `browser_http_error_${status}`;
+        } catch (_) { /* Navigation timing unavailable. */ }
+        // A small standalone error document can incorrectly return HTTP 200.
+        // Require an exact error heading, little text and no useful media;
+        // articles discussing errors and normal dashboard widgets stay valid.
+        const heading = document.querySelector('h1');
+        const title = heading?.textContent.trim().toLowerCase() || '';
+        const text = body?.innerText.trim() || '';
+        const errorTitles = ['forbidden', 'access denied', 'service unavailable',
+            '502 bad gateway', '503 service unavailable', '404 not found'];
+        const media = [...document.querySelectorAll('img, video, canvas, iframe')]
+            .some(el => el.tagName !== 'IMG' || (el.complete && el.naturalWidth > 64));
+        if (errorTitles.includes(title) && text.length < 500 && !media)
+            return 'browser_soft_error_page';
+        return '';
         """
     )
-    if reason != "browser_error_page":
+    if not _is_browser_rejection_reason(reason):
         return False
-    logging.warning("[%s] Rejecting browser error page: %s", name, sanitize_url(url))
+    logging.warning(
+        "[%s] Rejecting browser page (%s): %s", name, reason, sanitize_url(url)
+    )
     record_preflight_backoff(url, reason, PREFLIGHT_BACKOFF_BROWSER_FAIL)
     return True
 

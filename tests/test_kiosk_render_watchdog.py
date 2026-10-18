@@ -6,7 +6,9 @@ import pytest
 
 
 @pytest.fixture
-def watchdog():
+def watchdog(monkeypatch):
+    monkeypatch.setenv("GLIMPSER_RENDER_ORIGIN", "https://kiosk.example.test")
+    monkeypatch.delenv("GLIMPSER_RENDER_WINDOW_CLASS", raising=False)
     path = Path(__file__).resolve().parents[1] / "scripts/kiosk_render_watchdog.py"
     spec = importlib.util.spec_from_file_location("watchdog_test", path)
     module = importlib.util.module_from_spec(spec)
@@ -14,7 +16,7 @@ def watchdog():
     return module
 
 
-def tree(title="Glimpser - Dashboard", identity="glimpser.home.arpa", size="1920x1080"):
+def tree(title="Glimpser - Dashboard", identity="kiosk.example.test", size="1920x1080"):
     return f'  0xe00003 "{title}": ("{identity}" "Google-chrome") {size}+0+0 +0+0'
 
 
@@ -22,7 +24,7 @@ def tree(title="Glimpser - Dashboard", identity="glimpser.home.arpa", size="1920
     "title",
     [
         "Glimpser - Dashboard",
-        "glimpser.home.arpa",
+        "kiosk.example.test",
         "This site can’t be reached",
         "Privacy error",
         "",
@@ -37,7 +39,7 @@ def test_title_changes_do_not_hide_the_kiosk(watchdog, title):
     [
         ("google-chrome", "1920x1080"),
         ("example.com", "1920x1080"),
-        ("glimpser.home.arpa", "800x600"),
+        ("kiosk.example.test", "800x600"),
     ],
 )
 def test_other_windows_are_not_selected(watchdog, identity, size):

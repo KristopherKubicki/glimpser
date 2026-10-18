@@ -2,8 +2,8 @@
 
 Run from the repository: python -m scripts.google_event_subscriber CONFIG.json.
 Config: {"credentials": "/private/subscriber.json", "subscriptions":
-[{"name": "argyle", "subscription": "projects/PROJECT/subscriptions/glimpser",
-"profile": "argyle"}]}. Install the google-events optional dependency first.
+[{"name": "location-one", "subscription": "projects/PROJECT/subscriptions/glimpser",
+"profile": "location-one"}]}. Install the google-events optional dependency first.
 """
 
 from __future__ import annotations

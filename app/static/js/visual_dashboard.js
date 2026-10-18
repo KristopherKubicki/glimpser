@@ -1,3 +1,4 @@
+import { presentationValue } from "./presentation_config.js";
 import { mountAmbientClock } from "./ambient_clock.js";
 import {
   captionAge,
@@ -15,20 +16,20 @@ import {
 } from "./kiosk_live.js?v=20261017-media-lifecycle";
 
 const HOUSE_BOARD_ORDER = {
-  "Argyle arrivals": [
+  [presentationValue("StoreOne arrivals")]: [
     "Front_door_doorbell",
-    "Argyle200",
-    "ArgyleEntryFisheye",
+    presentationValue("StoreOne200"),
+    presentationValue("StoreOneEntryFisheye"),
     "Showroom_Entrance",
   ],
-  "Knox property health": [
+  [presentationValue("Home property health")]: [
     "Backyard",
     "Garden",
     "Driveway",
     "Garage",
     "Walkway",
   ],
-  "Knox arrivals": [
+  [presentationValue("Home arrivals")]: [
     "FrontDoor",
     "Driveway",
     "Garage",
@@ -56,7 +57,10 @@ const PROPERTY_SIGNALS = [
 ];
 const BEACH_PROPERTY_SIGNALS = [["HubitatBeachMain", "Beach house status"]];
 
-export function selectPropertySignals(cameras, group = "Knox property health") {
+export function selectPropertySignals(
+  cameras,
+  group = presentationValue("Home property health"),
+) {
   const byName = new Map(cameras.map((camera) => [camera.name, camera]));
   const signals =
     group === "Beach property health"
@@ -79,7 +83,10 @@ const hasRecentMotion = (camera, now) => {
   const age = now - motionTime(camera);
   return age >= 0 && age <= 5 * 60000;
 };
-const KNOX_ROTATING_GROUPS = new Set(["Knox property health", "Knox arrivals"]);
+const HOME_ROTATING_GROUPS = new Set([
+  presentationValue("Home property health"),
+  presentationValue("Home arrivals"),
+]);
 
 export function selectBoardCameras(cameras, group, rotation = 0, now = 0) {
   const order = HOUSE_BOARD_ORDER[group];
@@ -89,10 +96,10 @@ export function selectBoardCameras(cameras, group, rotation = 0, now = 0) {
     const bi = order.indexOf(b.name);
     return (ai < 0 ? order.length : ai) - (bi < 0 ? order.length : bi);
   });
-  if (!KNOX_ROTATING_GROUPS.has(group) || sorted.length <= 4)
+  if (!HOME_ROTATING_GROUPS.has(group) || sorted.length <= 4)
     return sorted.slice(0, 4);
   const anchor =
-    group === "Knox arrivals"
+    group === presentationValue("Home arrivals")
       ? sorted.find((c) => c.name === "FrontDoor")
       : null;
   const cycling = anchor
@@ -117,13 +124,13 @@ export function selectBoardLive(
   now = Date.now(),
   device = globalThis.navigator,
 ) {
-  const motion = KNOX_ROTATING_GROUPS.has(group)
+  const motion = HOME_ROTATING_GROUPS.has(group)
     ? records
         .filter((record) => hasRecentMotion(record.camera, now))
         .sort((a, b) => motionTime(b.camera) - motionTime(a.camera))[0]
     : null;
   const door =
-    group === "Knox arrivals"
+    group === presentationValue("Home arrivals")
       ? records.find((record) => record.camera.name === "FrontDoor")
       : null;
   const pinned = [...new Set([door, motion].filter(Boolean))].slice(0, 2);
@@ -140,7 +147,7 @@ export function selectBoardCandidates(members, group) {
     (camera) => !camera.issue && !sourceNeedsAttention(camera.freshness),
   );
   if (!healthy.length) return members;
-  if (group !== "Knox arrivals") return healthy;
+  if (group !== presentationValue("Home arrivals")) return healthy;
   const door = members.find((camera) => camera.name === "FrontDoor");
   return door && !healthy.includes(door) ? [...healthy, door] : healthy;
 }
@@ -974,8 +981,8 @@ export function initVisualDashboard() {
   };
   const render = () => {
     const preferred = {
-      arrivals: "Knox arrivals",
-      property: "Knox property health",
+      arrivals: presentationValue("Home arrivals"),
+      property: presentationValue("Home property health"),
       "beach-conditions": "Nearby lake conditions",
     };
     const selected = area.value || preferred[model.dashboard] || "";

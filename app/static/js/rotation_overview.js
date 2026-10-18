@@ -1,3 +1,4 @@
+import { presentationValue } from "./presentation_config.js";
 import { prepareSceneComfort } from "./room_comfort.js?v=20261009-night-clamp";
 import {
   captureImageUrl,
@@ -12,16 +13,16 @@ import {
 } from "./kiosk_live.js?v=20261017-media-lifecycle";
 
 const HOUSE_OVERVIEW_GROUPS = new Set([
-  "Knox arrivals",
+  presentationValue("Home arrivals"),
   "Beach arrivals",
-  "Knox property health",
+  presentationValue("Home property health"),
   "Beach property health",
   "At the Beach house",
   "Approaches",
   "Around the home",
 ]);
 const HOUSE_EXTERIOR_ORDER = [
-  "ArgyleEntryFisheye",
+  presentationValue("StoreOneEntryFisheye"),
   "FrontDoor",
   "Driveway",
   "Street",
@@ -37,7 +38,7 @@ const HOUSE_EXTERIOR_ORDER = [
   "BeachMapleTree",
 ];
 const HOUSE_GROUP_ORDER = [
-  "Knox arrivals",
+  presentationValue("Home arrivals"),
   "Beach property health",
   "Beach arrivals",
   "Around the home",
@@ -47,7 +48,7 @@ const HOUSE_GROUP_ORDER = [
 
 function houseOverviewCycle(houses) {
   const byGroup = new Map(houses.map((entry) => [entry[1][0].group, entry]));
-  const property = byGroup.get("Knox property health");
+  const property = byGroup.get(presentationValue("Home property health"));
   const otherHouses = [
     ...HOUSE_GROUP_ORDER.map((group) => byGroup.get(group)).filter(Boolean),
     ...houses.filter(
@@ -340,16 +341,19 @@ export function chooseOverview(
       : eligible;
   let turn = alternate ? Math.floor(offset / 2) : offset;
   if (profile === "office") {
-    const knox = eligible.filter(([, cameras]) =>
-      ["Knox arrivals", "Knox property health"].includes(cameras[0].group),
+    const home = eligible.filter(([, cameras]) =>
+      [
+        presentationValue("Home arrivals"),
+        presentationValue("Home property health"),
+      ].includes(cameras[0].group),
     );
-    const rest = eligible.filter((entry) => !knox.includes(entry));
-    if (knox.length && rest.length) {
+    const rest = eligible.filter((entry) => !home.includes(entry));
+    if (home.length && rest.length) {
       // Half of office overview visits return home; the other half retains
       // every other eligible board. Expand complete cycles for window fairness.
       lane = [];
-      for (let i = 0; i < knox.length * rest.length; i++) {
-        lane.push(knox[i % knox.length], rest[i % rest.length]);
+      for (let i = 0; i < home.length * rest.length; i++) {
+        lane.push(home[i % home.length], rest[i % rest.length]);
       }
       turn = offset;
     }
@@ -363,7 +367,10 @@ export function chooseOverview(
       ].includes(cameras[0].group),
     );
     const home = eligible.filter(([, cameras]) =>
-      ["Knox arrivals", "Knox property health"].includes(cameras[0].group),
+      [
+        presentationValue("Home arrivals"),
+        presentationValue("Home property health"),
+      ].includes(cameras[0].group),
     );
     const other = eligible.filter(
       (entry) => !beach.includes(entry) && !home.includes(entry),
@@ -387,19 +394,26 @@ export function chooseOverview(
     }
   }
   if (profile === "office") {
-    const argyle = eligible.filter(([, cameras]) =>
-      ["Argyle arrivals", "Argyle showroom"].includes(cameras[0].group),
+    const storeone = eligible.filter(([, cameras]) =>
+      [
+        presentationValue("StoreOne arrivals"),
+        presentationValue("StoreOne showroom"),
+      ].includes(cameras[0].group),
     );
-    const halsted = eligible.filter(
-      ([, cameras]) => cameras[0].group === "Halsted activity",
+    const storetwo = eligible.filter(
+      ([, cameras]) =>
+        cameras[0].group === presentationValue("StoreTwo activity"),
     );
-    // Share by property first: Argyle having two boards must not halve
-    // Halsted's coverage. Each site's own boards advance independently.
+    // Share by property first: StoreOne having two boards must not halve
+    // StoreTwo's coverage. Each site's own boards advance independently.
     const stores = [];
-    if (argyle.length && halsted.length) {
-      for (let i = 0; i < argyle.length * halsted.length; i++)
-        stores.push(argyle[i % argyle.length], halsted[i % halsted.length]);
-    } else stores.push(...argyle, ...halsted);
+    if (storeone.length && storetwo.length) {
+      for (let i = 0; i < storeone.length * storetwo.length; i++)
+        stores.push(
+          storeone[i % storeone.length],
+          storetwo[i % storetwo.length],
+        );
+    } else stores.push(...storeone, ...storetwo);
     if (stores.length) {
       const beach = eligible.filter(([, cameras]) =>
         [
@@ -409,7 +423,10 @@ export function chooseOverview(
         ].includes(cameras[0].group),
       );
       const home = eligible.filter(([, cameras]) =>
-        ["Knox arrivals", "Knox property health"].includes(cameras[0].group),
+        [
+          presentationValue("Home arrivals"),
+          presentationValue("Home property health"),
+        ].includes(cameras[0].group),
       );
       const other = eligible.filter(
         (entry) =>
@@ -443,18 +460,18 @@ export function chooseOverview(
   }
   const [label, cameras] = lane[turn % lane.length];
   const house = HOUSE_OVERVIEW_GROUPS.has(cameras[0].group);
-  const argyleOrder = [
+  const storeoneOrder = [
     "Front_door_doorbell",
-    "Argyle100",
-    "ArgyleEntryFisheye",
+    presentationValue("StoreOne100"),
+    presentationValue("StoreOneEntryFisheye"),
     "Showroom_Entrance",
   ];
   const ranked =
-    cameras[0].group === "Argyle arrivals"
+    cameras[0].group === presentationValue("StoreOne arrivals")
       ? [...cameras].sort((a, b) => {
           const rank = (camera) => {
-            const index = argyleOrder.indexOf(camera.name);
-            return index < 0 ? argyleOrder.length : index;
+            const index = storeoneOrder.indexOf(camera.name);
+            return index < 0 ? storeoneOrder.length : index;
           };
           return rank(a) - rank(b);
         })
@@ -476,9 +493,9 @@ export function chooseOverview(
     lane.slice(0, turn % lane.length).filter(([key]) => key === label).length;
   const start = (groupVisits * 4) % ranked.length;
   let window = [...ranked.slice(start), ...ranked.slice(0, start)];
-  if (cameras[0].group === "Argyle arrivals") {
+  if (cameras[0].group === presentationValue("StoreOne arrivals")) {
     const anchors = ranked.filter((camera) =>
-      argyleOrder.slice(0, 2).includes(camera.name),
+      storeoneOrder.slice(0, 2).includes(camera.name),
     );
     const companions = ranked.filter((camera) => !anchors.includes(camera));
     const companionStart =
@@ -492,9 +509,9 @@ export function chooseOverview(
   // Catalogs overlap: a camera shown on another board or full-screen should
   // yield to unseen alternatives here. Stable partition preserves the rotating
   // window within each tier, and never removes the only healthy choices.
-  // Argyle arrivals keeps its deliberate Nest/exterior-first sequence.
+  // StoreOne arrivals keeps its deliberate Nest/exterior-first sequence.
   const ordered =
-    cameras[0].group === "Argyle arrivals"
+    cameras[0].group === presentationValue("StoreOne arrivals")
       ? window
       : window
           .map((camera) => ({
@@ -506,23 +523,31 @@ export function chooseOverview(
   return {
     label: label.split(": ").slice(1).join(": "),
     cameras:
-      cameras[0].group === "Argyle arrivals"
+      cameras[0].group === presentationValue("StoreOne arrivals")
         ? ordered.slice(0, 4)
         : spaceAwareCameras(ordered, groupVisits),
-    // Argyle approaches should lead with Nest/exterior live video on each visit.
+    // StoreOne approaches should lead with Nest/exterior live video on each visit.
     // Interior tiles remain visible and can take over when exterior streams fail.
-    liveOffset: cameras[0].group === "Argyle arrivals" ? 0 : groupVisits,
-    duration: house || cameras[0].group === "Argyle arrivals" ? 30000 : 20000,
+    liveOffset:
+      cameras[0].group === presentationValue("StoreOne arrivals")
+        ? 0
+        : groupVisits,
+    duration:
+      house || cameras[0].group === presentationValue("StoreOne arrivals")
+        ? 30000
+        : 20000,
     profile,
     storeVisit:
       profile === "office" &&
-      ["Argyle arrivals", "Argyle showroom", "Halsted activity"].includes(
-        cameras[0].group,
-      ),
+      [
+        presentationValue("StoreOne arrivals"),
+        presentationValue("StoreOne showroom"),
+        presentationValue("StoreTwo activity"),
+      ].includes(cameras[0].group),
   };
 }
 
-// Alternate a mixed camera/TV board with a TV-only surf board. Knox's
+// Alternate a mixed camera/TV board with a TV-only surf board. Home's
 // even-numbered visits stay intact; only two tuner streams can run at once.
 export function withOfficeTelevision(
   selection,

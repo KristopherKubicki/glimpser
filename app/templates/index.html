@@ -1,6 +1,7 @@
 {% extends 'base.html' %} {% block body_class %}landing-screen
 landing-profile-{{ landing_profile.key if landing_profile is defined else
 'public' }}{% endblock %} {% block content %}
+<script id="presentation-settings" type="application/json">{{ presentation_settings|default({})|tojson }}</script>
 <style>
   body.landing-screen {
     --landing-bg: rgba(5, 10, 18, 0.72);

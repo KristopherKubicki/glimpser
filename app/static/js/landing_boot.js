@@ -2,7 +2,7 @@ import { initPinnedFollow } from "./youtube_follow.js?v=20261017-deadline";
 import { initOffline } from "./offline.js";
 import { initNav } from "./nav.js";
 import { initIndexTime } from "./time.js";
-import { initLanding } from "./landing.js?v=20261017-store-coverage";
+import { initLanding } from "./landing.js?v=20261018-buffer4";
 
 function initGuestGuard() {
   if (!window.IS_LAN_GUEST) return;

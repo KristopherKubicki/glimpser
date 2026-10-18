@@ -1,0 +1,81 @@
+.rotation-locator {
+  position: absolute;
+  top: 110px;
+  left: 16px;
+  width: clamp(150px, 13vw, 230px);
+  z-index: 65;
+  pointer-events: none;
+  padding: 10px;
+  border: 1px solid rgb(140 175 190 / 20%);
+  border-radius: 12px;
+  background: rgb(5 13 20 / 82%);
+  color: #b7c8d2;
+  font:
+    12px/1.3 system-ui,
+    sans-serif;
+}
+.rotation-locator[hidden] {
+  display: none;
+}
+.rotation-locator svg {
+  width: 100%;
+  display: block;
+}
+.rotation-locator circle {
+  fill: #536d7d;
+}
+.rotation-locator circle.locator-active {
+  fill: var(--locator-key-color, #89d9ce);
+  stroke: #c3ebe5;
+  stroke-width: 2px;
+}
+.rotation-locator circle.locator-held {
+  fill: #897353;
+}
+.rotation-locator text {
+  fill: #b7c8d2;
+  font-size: 9px;
+}
+.rotation-locator-heading {
+  font-weight: 600;
+}
+.rotation-locator-caption {
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+.rotation-locator small {
+  color: #94a7b3;
+  font-size: 10px;
+}
+
+@media (max-width: 700px), (max-height: 500px) {
+  .rotation-locator {
+    display: none;
+  }
+}
+
+.has-priority-event .rotation-locator {
+  display: none;
+}
+
+.rotation-locator .locator-marker-key {
+  fill: #07121b;
+  font-weight: 700;
+  font-size: 8px;
+}
+.rotation-locator .locator-held-source {
+  stroke-dasharray: 2 2;
+}
+.rotation-locator-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1.4em;
+  height: 1.4em;
+  border-radius: 50%;
+  background: var(--locator-key-color, #89d9ce);
+  color: #07121b;
+  font-size: 14px;
+  font-weight: 700;
+}

@@ -8,9 +8,23 @@ import re
 import subprocess
 import time
 import urllib.request
+from urllib.parse import urlencode, urlsplit
 
 PROFILE = os.environ.get("GLIMPSER_RENDER_PROFILE", "office")
-URL = f"http://glimpser.home.arpa/kiosk_health?profile={PROFILE}"
+ORIGIN = os.environ.get("GLIMPSER_RENDER_ORIGIN", "http://localhost").rstrip("/")
+_origin = urlsplit(ORIGIN)
+if (
+    _origin.scheme not in {"http", "https"}
+    or not _origin.hostname
+    or _origin.username
+    or _origin.password
+    or _origin.path
+    or _origin.query
+    or _origin.fragment
+):
+    raise ValueError("GLIMPSER_RENDER_ORIGIN must be an HTTP(S) origin")
+WINDOW_CLASS = os.environ.get("GLIMPSER_RENDER_WINDOW_CLASS", _origin.hostname)
+URL = f"{ORIGIN}/kiosk_health?{urlencode({'profile': PROFILE})}"
 
 
 def should_recover(age, healthy_for, since_restart):
@@ -24,7 +38,7 @@ def kiosk_window_id(tree: str) -> int | None:
     """Identify the fullscreen Glimpser app even when its page title is an error."""
     match = re.search(
         r'^\s*(0x[0-9a-f]+) "[^"\n]*": '
-        r'\("glimpser\.home\.arpa" "Google-chrome"\)\s+1920x1080[+-]\d+[+-]\d+',
+        rf'\("{re.escape(WINDOW_CLASS)}" "Google-chrome"\)\s+1920x1080[+-]\d+[+-]\d+',
         tree,
         re.MULTILINE,
     )

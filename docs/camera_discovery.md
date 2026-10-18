@@ -221,7 +221,7 @@ outside the local network. Selecting **internet** in the subnet field loads a
 curated list of public feeds including `time.gov` and other reference cameras.
 
 When creating a new template you can now supply just the camera's base
-address (for example `http://192.168.1.10`). If the device speaks ONVIF,
+address (for example `http://192.0.2.10`). If the device speaks ONVIF,
 Glimpser queries it for the recommended snapshot and stream URIs and
 updates the template URL automatically. This makes initial setup similar to
 tools like Blue Iris.

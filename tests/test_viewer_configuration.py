@@ -247,3 +247,27 @@ def test_area_membership_cannot_override_privacy(monkeypatch):
         {"groups": "homesite"},
     ):
         assert not viewer.dashboard_matches("area", "Listed", details)
+
+
+def test_private_presentation_settings(tmp_path, monkeypatch):
+    path = tmp_path / "viewer.json"
+    path.write_text(
+        json.dumps(
+            {
+                "presentation": {"Home arrivals": "Example property arrivals"},
+                "caption_freshness_groups": ["Example"],
+            }
+        )
+    )
+    monkeypatch.setenv("GLIMPSER_VIEWER_CONFIG", str(path))
+    config = load_viewer_config()
+    assert config["presentation"] == {"Home arrivals": "Example property arrivals"}
+    assert config["caption_freshness_groups"] == ["example"]
+
+
+@pytest.mark.parametrize("values", [[], {"key": 42}, {"key": "x" * 241}])
+def test_invalid_private_presentation_settings(tmp_path, monkeypatch, values):
+    path = tmp_path / "viewer.json"
+    path.write_text(json.dumps({"presentation": values}))
+    monkeypatch.setenv("GLIMPSER_VIEWER_CONFIG", str(path))
+    assert load_viewer_config() == {}

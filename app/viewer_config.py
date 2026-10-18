@@ -51,6 +51,7 @@ def load_viewer_config() -> dict:
             "google_live_cameras",
             "security_approaches",
             "dashboard_group_order",
+            "caption_freshness_groups",
         ):
             if key in data:
                 values = _names(data[key])
@@ -59,6 +60,12 @@ def load_viewer_config() -> dict:
                     if key.endswith("groups") or key == "dashboard_group_order"
                     else values
                 )
+        presentation = data.get("presentation", {})
+        if not isinstance(presentation, dict) or len(presentation) > 1024:
+            raise ValueError("Invalid presentation settings")
+        config["presentation"] = {
+            _text(key): _text(value) for key, value in presentation.items()
+        }
         contexts = {}
         for key, sections in data.get("context_views", {}).items():
             if key not in {
