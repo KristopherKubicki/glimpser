@@ -9,9 +9,15 @@ from app.routes import init_routes
 class NotificationTestMixin:
     def create_client(self, motion=True, caption=True):
         app = Flask(__name__)
-        patch("app.routes.login_required", lambda x: x).start()
-        patch("app.routes.session", {"user_id": 1}).start()
-        patch("app.routes.SessionLocal").start()
+        # Each client installs nested patches; unittest unwinds them in reverse
+        # order even if a request assertion fails. Never leak an auth bypass.
+        for patcher in (
+            patch("app.routes.login_required", lambda x: x),
+            patch("app.routes.session", {"user_id": 1}),
+            patch("app.routes.SessionLocal"),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
         with (
             patch("app.config.NOTIFY_ON_MOTION", motion),
             patch("app.config.NOTIFY_ON_CAPTION", caption),
