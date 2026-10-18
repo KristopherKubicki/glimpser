@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -29,10 +29,11 @@ RUN CHROME_DRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_
 WORKDIR /app
 
 # Install Python dependencies
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md main.py generate_credentials.py ./
 
 # Copy package source early for installation
-COPY app scripts ./
+COPY app ./app
+COPY scripts ./scripts
 
 # Install Python dependencies once sources are present
 RUN pip install --no-cache-dir . gunicorn
