@@ -23,7 +23,9 @@ def stream_capture(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(ss, "add_timestamp", lambda *a, **k: None)
     monkeypatch.setattr(ss, "record_preflight_backoff", lambda *a: None)
-    output = tmp_path / "latest.png"
+    # Other test services may create databases beside this capture directory.
+    output = tmp_path / "capture" / "latest.png"
+    output.parent.mkdir()
     Image.new("RGB", (64, 64), "red").save(output)
     before = output.read_bytes()
     directories = []
